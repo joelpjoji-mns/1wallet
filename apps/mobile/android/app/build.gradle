@@ -214,10 +214,19 @@ android {
 }
 
 afterEvaluate {
-    def googleSignInProject = rootProject.findProject(':react-native-google-signin_google-signin')
-    if (googleSignInProject != null && (findProperty('newArchEnabled') ?: 'false').toBoolean()) {
+    if ((findProperty('newArchEnabled') ?: 'false').toBoolean()) {
+        def nativeCodegenTasks = [
+            ':react-native-async-storage_async-storage',
+            ':react-native-gesture-handler',
+            ':react-native-google-signin_google-signin',
+            ':react-native-pager-view',
+            ':react-native-safe-area-context',
+            ':react-native-screens',
+        ].findAll { path -> rootProject.findProject(path) != null }
+            .collect { path -> "${path}:generateCodegenArtifactsFromSchema" }
+
         tasks.matching { task -> task.name.startsWith('configureCMake') || task.name.startsWith('buildCMake') }.configureEach {
-            dependsOn("${googleSignInProject.path}:generateCodegenArtifactsFromSchema")
+            dependsOn(nativeCodegenTasks)
         }
     }
 }
