@@ -2,7 +2,7 @@
   "expo": {
     "name": "1wallet",
     "slug": "1wallet",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "orientation": "portrait",
     "icon": "./assets/brand/icon.png",
     "scheme": "onewallet",

@@ -52,6 +52,12 @@ export type UpdateCheckOutcome =
   | { status: 'not-configured'; message: string }
   | { status: 'up-to-date'; checkedAt: string; current: InstalledAppVersion }
   | {
+      status: 'ahead-of-channel';
+      checkedAt: string;
+      current: InstalledAppVersion;
+      release: AppUpdateRelease;
+    }
+  | {
       status: 'available';
       checkedAt: string;
       current: InstalledAppVersion;
@@ -84,6 +90,7 @@ export type AppUpdateStatus =
   | 'idle'
   | 'checking'
   | 'up-to-date'
+  | 'ahead-of-channel'
   | 'available'
   | 'downloading'
   | 'downloaded'
@@ -101,6 +108,7 @@ export type AppUpdateState = {
   status: AppUpdateStatus;
   channel: UpdateChannel;
   current: InstalledAppVersion;
+  installedRelease: AppUpdateRelease | null;
   release: AppUpdateRelease | null;
   downloaded: DownloadedUpdate | null;
   download: UpdateDownloadSnapshot | null;

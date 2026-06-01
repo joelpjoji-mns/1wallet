@@ -38,7 +38,7 @@ function parsePullRequestBody(body) {
       continue;
     }
     if (!current) continue;
-    const bullet = stripBullet(line);
+    const bullet = readBullet(line);
     if (bullet && !isPlaceholder(bullet)) result[current].push(bullet);
   }
   return result;
@@ -58,9 +58,14 @@ function sectionForHeading(value) {
 
 function stripBullet(value) {
   return value
-    .replace(/^- \[[ xX]\]\s+/, '')
+    .replace(/^- \[[ xX]\]\s*/, '')
     .replace(/^[-*]\s*/, '')
     .trim();
+}
+
+function readBullet(value) {
+  if (!/^(- \[[ xX]\]\s*|[-*]\s*)/.test(value)) return null;
+  return stripBullet(value);
 }
 
 function isPlaceholder(value) {

@@ -1,16 +1,16 @@
 import { tokens } from '@1wallet/ui';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { memo, useCallback, useEffect, useMemo } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Divider, Portal, Surface, Text, TouchableRipple, useTheme } from 'react-native-paper';
 import Animated, {
-    Easing,
-    runOnJS,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming,
+  Easing,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { withColorAlpha } from '../colorAlpha';
@@ -112,6 +112,7 @@ export function AppDrawer({
   const { width: windowWidth } = useWindowDimensions();
   const progress = useSharedValue(0);
   const gestureStartProgress = useSharedValue(0);
+  const pendingRouteRef = useRef<string | null>(null);
   const drawerWidth = Math.min(windowWidth * DRAWER_WIDTH_RATIO, DRAWER_MAX_WIDTH);
   const profileName = profileDisplayName(email, displayName);
   const drawerPaddingTop = Math.max(insets.top, tokens.space.sm) + tokens.space.sm;
@@ -136,6 +137,10 @@ export function AppDrawer({
   useEffect(() => {
     animateTo(visible ? 1 : 0, visible ? undefined : onClosed);
   }, [animateTo, onClosed, visible]);
+
+  useEffect(() => {
+    pendingRouteRef.current = null;
+  }, [currentPath]);
 
   const dismiss = useCallback(() => onDismiss(), [onDismiss]);
   const dismissGesture = useMemo(
@@ -175,13 +180,15 @@ export function AppDrawer({
   );
 
   const openRoute = useCallback(
-    (route: string) => {
+    (route: string, active?: boolean) => {
       onDismiss();
+      const isActive = active ?? isDrawerItemActive(route, currentPath);
+      if (pendingRouteRef.current || isActive) return;
+      pendingRouteRef.current = route;
       router.push(route as never);
     },
-    [onDismiss],
+    [currentPath, onDismiss],
   );
-  const openSettings = useCallback(() => openRoute('/settings'), [openRoute]);
   const dividerTheme = useMemo(
     () => ({ colors: { outlineVariant: theme.colors.outlineVariant } }),
     [theme.colors.outlineVariant],
@@ -324,7 +331,8 @@ export function AppDrawer({
                   label="Settings"
                   icon="cog-outline"
                   active={isDrawerItemActive('/settings', currentPath)}
-                  onPress={openSettings}
+                  route="/settings"
+                  onRoutePress={openRoute}
                 />
                 <DrawerRow label="Sign out" icon="logout-variant" onPress={onSignOut} danger />
               </View>
@@ -345,7 +353,7 @@ const DrawerSection = memo(function DrawerSection({
   title: string;
   items: DrawerItemConfig[];
   currentPath?: string;
-  onPress: (route: string) => void;
+  onPress: (route: string, active?: boolean) => void;
 }) {
   const theme = useTheme();
 
@@ -357,22 +365,25 @@ const DrawerSection = memo(function DrawerSection({
       >
         {title.toUpperCase()}
       </Text>
-      {items.map((item) => (
-        <DrawerRow
-          key={`${item.label}-${item.route}`}
-          label={item.label}
-          icon={item.icon}
-          badge={item.badge}
-          active={isDrawerItemActive(
-            item.route,
-            currentPath,
-            item.activePrefixes,
-            item.inactivePrefixes,
-          )}
-          route={item.route}
-          onRoutePress={onPress}
-        />
-      ))}
+      {items.map((item) => {
+        const active = isDrawerItemActive(
+          item.route,
+          currentPath,
+          item.activePrefixes,
+          item.inactivePrefixes,
+        );
+        return (
+          <DrawerRow
+            key={`${item.label}-${item.route}`}
+            label={item.label}
+            icon={item.icon}
+            badge={item.badge}
+            active={active}
+            route={item.route}
+            onRoutePress={onPress}
+          />
+        );
+      })}
     </View>
   );
 });
@@ -393,17 +404,17 @@ const DrawerRow = memo(function DrawerRow({
   badge?: string;
   active?: boolean;
   danger?: boolean;
-  onRoutePress?: (route: string) => void;
+  onRoutePress?: (route: string, active?: boolean) => void;
   onPress?: () => void;
 }) {
   const theme = useTheme();
   const handlePress = useCallback(() => {
     if (route && onRoutePress) {
-      onRoutePress(route);
+      onRoutePress(route, active);
       return;
     }
     onPress?.();
-  }, [onPress, onRoutePress, route]);
+  }, [active, onPress, onRoutePress, route]);
   const color = danger
     ? theme.colors.error
     : active

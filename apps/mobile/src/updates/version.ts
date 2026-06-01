@@ -7,9 +7,9 @@ import {
   type UpdateReleaseType,
 } from './types';
 
-const FALLBACK_VERSION_NAME = '1.3.0';
-const FALLBACK_VERSION_CODE = 1030000;
-const FALLBACK_RUNTIME_VERSION = '1.3.0';
+const FALLBACK_VERSION_NAME = '1.4.0';
+const FALLBACK_VERSION_CODE = 1040000;
+const FALLBACK_RUNTIME_VERSION = '1.4.0';
 
 type Semver = {
   major: number;
@@ -75,9 +75,7 @@ export function isReleaseNewerThanInstalled(
   release: AppUpdateRelease,
   installed: InstalledAppVersion,
 ): boolean {
-  if (release.versionCode !== installed.versionCode)
-    return release.versionCode > installed.versionCode;
-  return compareSemver(release.versionName, installed.versionName) > 0;
+  return release.versionCode > installed.versionCode;
 }
 
 export function isReleaseRuntimeCompatible(

@@ -72,7 +72,7 @@ function parsePullRequestBody(body) {
       continue;
     }
     if (!current) continue;
-    const bullet = stripBullet(line);
+    const bullet = readBullet(line);
     if (bullet && !isPlaceholder(bullet)) result[current].push(bullet);
   }
   return result;
@@ -118,10 +118,15 @@ function listValues(value) {
     .filter((item) => item && !isPlaceholder(item));
 }
 
+function readBullet(value) {
+  if (!/^(- \[[ xX]\]\s*|[-*]\s*)/.test(value)) return null;
+  return stripBullet(value);
+}
+
 function stripBullet(value) {
   return value
-    .replace(/^[-*]\s+/, '')
-    .replace(/^- \[[ xX]\]\s+/, '')
+    .replace(/^- \[[ xX]\]\s*/, '')
+    .replace(/^[-*]\s*/, '')
     .trim();
 }
 
@@ -134,7 +139,7 @@ function looksLikeFix(value) {
 }
 
 function isPlaceholder(value) {
-  return /^(none|n\/a|na|todo|tbd|not applicable)$/i.test(value);
+  return /^(none|n\/a|na|todo|tbd|not applicable|-|_)$/i.test(value);
 }
 
 function mergeItems(...groups) {
