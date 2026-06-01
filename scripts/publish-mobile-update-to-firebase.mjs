@@ -65,11 +65,18 @@ await writeFirestoreDocument({
   path: manifest.channelPath,
   data: manifest.channel,
 });
+const releaseFeed = buildReleaseFeed(manifest);
+await writeFirestoreDocument({
+  token,
+  project,
+  path: releaseFeed.path,
+  data: releaseFeed.data,
+});
 
 writeFileSync(outputPath, `${JSON.stringify(manifest, null, 2)}\n`);
 if (objectName) console.log(`Uploaded ${objectName}`);
 console.log(`Wrote ${relative(outputPath)}`);
-console.log(`Published ${manifest.releasePath} and ${manifest.channelPath}`);
+console.log(`Published ${manifest.releasePath}, ${manifest.channelPath}, and ${releaseFeed.path}`);
 
 async function uploadApk({ token, bucket, apkPath, objectName, downloadToken }) {
   const boundary = `onewallet-${randomUUID()}`;
@@ -178,6 +185,50 @@ function toFirestoreValue(key, value) {
   }
   if (typeof value === 'object') return { mapValue: { fields: toFirestoreFields(value) } };
   throw new Error(`Unsupported Firestore value for ${key}.`);
+}
+
+function buildReleaseFeed(manifest) {
+  if (manifest.releaseFeedPath && manifest.releaseFeed) {
+    return {
+      path: manifest.releaseFeedPath,
+      data: manifest.releaseFeed,
+    };
+  }
+  const release = manifest.release;
+  const id = releaseFeedId(release.versionCode, release.channel, release.versionName);
+  return {
+    path: `appUpdates/android/releaseFeed/${id}`,
+    data: {
+      platform: release.platform ?? 'android',
+      channel: release.channel,
+      status: release.status,
+      versionName: release.versionName,
+      versionCode: release.versionCode,
+      releasePath: manifest.releasePath,
+      publishedAt: release.publishedAt,
+      title: `1Wallet Android ${release.versionName} ${release.channel === 'beta' ? 'Beta' : 'Stable'} (${release.versionCode})`,
+    },
+  };
+}
+
+function releaseFeedId(versionCode, channel, versionName) {
+  const maxVersionCode = 999999999;
+  const parsedVersionCode = Number(versionCode);
+  if (!Number.isInteger(parsedVersionCode) || parsedVersionCode <= 0) {
+    throw new Error('release feed versionCode must be a positive integer.');
+  }
+  if (parsedVersionCode >= maxVersionCode) {
+    throw new Error('release feed versionCode is too high for descending sort key.');
+  }
+  const sortKey = String(maxVersionCode - parsedVersionCode).padStart(9, '0');
+  return `${sortKey}-${parsedVersionCode}-${safeDocIdPart(channel)}-${safeDocIdPart(versionName)}`;
+}
+
+function safeDocIdPart(value) {
+  return String(value ?? 'unknown')
+    .replace(/[^A-Za-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
 }
 
 async function getFirebaseAccessToken() {
