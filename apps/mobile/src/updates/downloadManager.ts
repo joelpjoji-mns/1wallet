@@ -82,6 +82,7 @@ export function createApkDownloadTask(
 
     return {
       releaseId: release.id,
+      channel: release.channel,
       versionName: release.versionName,
       versionCode: release.versionCode,
       localUri,
