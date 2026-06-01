@@ -28,22 +28,22 @@ Examples:
 1.2.3 -> 1020300
 ```
 
-The current target release is `1.3.0` with version code `1030000`. Use `1.2.2` as the baseline when testing update detection.
+The current target release is `1.4.0` with version code `1040000`. Use `1.3.0` as the baseline when testing update detection.
 
 Release asset names are channel-aware and omit `versionCode` for readability:
 
 ```text
-1wallet-1.3.0-stable-arm64-v8a.apk
-1wallet-1.3.0-beta.1-beta-arm64-v8a.apk
+1wallet-1.4.0-stable-arm64-v8a.apk
+1wallet-1.4.0-beta.1-beta-arm64-v8a.apk
 ```
 
-Keep `versionCode` in Android build metadata, Firestore release IDs, workflow artifact names, and Git tags. Android uses `versionCode` for install ordering, so beta builds must not get stuck above the next stable build. Prefer beta display versions such as `1.3.0-beta.1` for the upcoming stable `1.3.0`, then assign the final stable a higher `versionCode` than every beta in that train.
+Keep `versionCode` in Android build metadata, Firestore release IDs, workflow artifact names, and Git tags. Android uses `versionCode` for install ordering, so beta builds must not get stuck above the next stable build. Prefer beta display versions such as `1.4.0-beta.1` for the upcoming stable `1.4.0`, then assign the final stable a higher `versionCode` than every beta in that train.
 
 Recommended GitHub Release tags:
 
 ```text
-android-stable-v1.3.0-1030000
-android-beta-v1.3.0-beta.1-1029901
+android-stable-v1.4.0-1040000
+android-beta-v1.4.0-beta.1-1039901
 ```
 
 ## Firestore Schema
@@ -58,7 +58,7 @@ appUpdates/android/channels/beta
 Release document:
 
 ```text
-appUpdates/android/releases/1030000
+appUpdates/android/releases/1040000
 ```
 
 Required release fields:
@@ -68,9 +68,9 @@ Required release fields:
   "platform": "android",
   "channel": "stable",
   "status": "published",
-  "versionName": "1.3.0",
-  "versionCode": 1030000,
-  "runtimeVersion": "1.3.0",
+  "versionName": "1.4.0",
+  "versionCode": 1040000,
+  "runtimeVersion": "1.4.0",
   "releaseType": "minor",
   "mandatory": false,
   "requirement": "optional",
@@ -82,8 +82,8 @@ Required release fields:
     "notes": ["APK installation opens the Android system installer"]
   },
   "apk": {
-    "downloadUrl": "https://github.com/joelpjoji-mns/1wallet/releases/download/android-stable-v1.3.0-1030000/1wallet-1.3.0-stable-arm64-v8a.apk",
-    "fileName": "1wallet-1.3.0-stable-arm64-v8a.apk",
+    "downloadUrl": "https://github.com/joelpjoji-mns/1wallet/releases/download/android-stable-v1.4.0-1040000/1wallet-1.4.0-stable-arm64-v8a.apk",
+    "fileName": "1wallet-1.4.0-stable-arm64-v8a.apk",
     "sizeBytes": 30000000,
     "sha256": "64 lowercase hex characters",
     "architecture": "arm64-v8a",
@@ -100,7 +100,7 @@ The channel document should point at the latest published build:
   "platform": "android",
   "channel": "stable",
   "status": "published",
-  "latestVersionCode": 1030000,
+  "latestVersionCode": 1040000,
   "updatedAt": "Firestore timestamp"
 }
 ```
@@ -110,7 +110,7 @@ The channel document should point at the latest published build:
 After building the APK, generate the release manifest:
 
 ```powershell
-pnpm run mobile:update:manifest -- --apk apps/mobile/android/app/build/outputs/apk/release/app-release.apk --version 1.3.0 --version-code 1030000 --url "https://example.com/1wallet-1.3.0-stable-arm64-v8a.apk" --file-name "1wallet-1.3.0-stable-arm64-v8a.apk" --architecture arm64-v8a --channel stable --release-type minor --feature "Home header now shows 1Wallet again" --fix "Update download validation" --note "Android installer confirmation is required" --output importdata/mobile-update-1.3.0-stable.json
+pnpm run mobile:update:manifest -- --apk apps/mobile/android/app/build/outputs/apk/release/app-release.apk --version 1.4.0 --version-code 1040000 --url "https://example.com/1wallet-1.4.0-stable-arm64-v8a.apk" --file-name "1wallet-1.4.0-stable-arm64-v8a.apk" --architecture arm64-v8a --channel stable --release-type minor --feature "Home header now shows 1Wallet again" --fix "Update download validation" --note "Android installer confirmation is required" --output importdata/mobile-update-1.4.0-stable.json
 ```
 
 ## Release Workflow
@@ -119,7 +119,7 @@ Do not commit directly to `main`. Create a feature or fix branch from `main`, te
 
 Stable releases publish only after a PR is merged into `main`. The Android Release workflow builds the arm64-v8a APK used by production phones, uploads it to this repo's GitHub Release, generates the manifest, and publishes the Firestore `stable` channel document. PRs that should not ship an APK must use the `skip-release` label or include `[skip release]` in the merge commit.
 
-Beta releases are explicit pre-merge releases from a feature or PR branch. Run the Android Release workflow manually with `channel=beta` and a `beta_number` from `1` to `99`; the workflow derives a display version like `1.3.0-beta.1` and a lower-than-stable version code like `1029901`. It publishes a prerelease GitHub Release and updates `appUpdates/android/channels/beta`. Do not dispatch beta from `main`.
+Beta releases are explicit pre-merge releases from a feature or PR branch. Run the Android Release workflow manually with `channel=beta` and a `beta_number` from `1` to `99`; the workflow derives a display version like `1.4.0-beta.1` and a lower-than-stable version code like `1039901`. It publishes a prerelease GitHub Release and updates `appUpdates/android/channels/beta`. Do not dispatch beta from `main`.
 
 The repo still keeps local universal/x86 build scripts for emulator QA. If `PUBLISH_APK_TO_ASSETS_REPO=true`, the workflow also mirrors the same APK and manifest to `APK_RELEASE_REPO`; otherwise the Firestore `apk.downloadUrl` points at this repo.
 
@@ -131,8 +131,8 @@ True JS OTA through `expo-updates` can be added later for JavaScript/assets-only
 
 ## QA Checklist
 
-1. Install a signed `1.2.2` build on the Pixel.
-2. Publish `1.3.0` metadata and APK URL.
+1. Install a signed `1.3.0` build on the Pixel.
+2. Publish `1.4.0` metadata and APK URL.
 3. Open the drawer, then Updates.
 4. Confirm it shows current version, new version, release type, mandatory/optional status, changelog, size, and ETA.
 5. Tap Update app and confirm progress moves.
