@@ -105,18 +105,18 @@ function assertBetaPatchVersion(versionName) {
 }
 
 function runSelfTest() {
-  const stableVersionName = deriveVersionName('1.4.0', 'stable', 1);
-  const stableVersionCode = deriveVersionCode(1040000, stableVersionName, 'stable', 1);
-  if (stableVersionName !== '1.4.0' || stableVersionCode !== 1040000) {
-    throw new Error('Expected stable 1.4.0 to produce versionCode 1040000.');
+  const stableVersionName = deriveVersionName('1.4.1', 'stable', 1);
+  const stableVersionCode = deriveVersionCode(1040100, stableVersionName, 'stable', 1);
+  if (stableVersionName !== '1.4.1' || stableVersionCode !== 1040100) {
+    throw new Error('Expected stable 1.4.1 to produce versionCode 1040100.');
   }
 
   assertThrows(() => deriveVersionName('1.4.0', 'beta', 1), '1.4.0 beta');
 
-  const betaVersionName = deriveVersionName('1.4.1', 'beta', 1);
-  const betaVersionCode = deriveVersionCode(1040100, betaVersionName, 'beta', 1);
-  if (betaVersionName !== '1.4.1-beta.1' || betaVersionCode !== 1040001) {
-    throw new Error('Expected beta 1.4.1 to produce 1.4.1-beta.1 / 1040001.');
+  const betaVersionName = deriveVersionName('1.4.2', 'beta', 1);
+  const betaVersionCode = deriveVersionCode(1040200, betaVersionName, 'beta', 1);
+  if (betaVersionName !== '1.4.2-beta.1' || betaVersionCode !== 1040101) {
+    throw new Error('Expected beta 1.4.2 to produce 1.4.2-beta.1 / 1040101.');
   }
 }
 
