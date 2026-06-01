@@ -31,8 +31,8 @@ import { NotificationBellButton } from '../../src/components/NotificationBellBut
 import { ReviewQueueButton } from '../../src/components/ReviewQueueButton';
 import { UserProfileButton } from '../../src/components/UserProfileButton';
 import {
-  EDGE_DRAWER_GESTURE,
   GESTURE_IGNORE_OFFSET,
+  HOME_DRAWER_GESTURE,
   REORDER_GESTURE,
 } from '../../src/gestureDefaults';
 import { unreadNotificationCount } from '../../src/notifications';
@@ -170,28 +170,29 @@ export default function Home() {
     () =>
       Gesture.Pan()
         .enabled(!isWidgetDragging)
+        .maxPointers(1)
         .runOnJS(true)
-        .minDistance(EDGE_DRAWER_GESTURE.slop)
-        .activeOffsetX([-GESTURE_IGNORE_OFFSET, EDGE_DRAWER_GESTURE.slop])
-        .failOffsetX([-EDGE_DRAWER_GESTURE.negativeFail, GESTURE_IGNORE_OFFSET])
-        .failOffsetY([-EDGE_DRAWER_GESTURE.failY, EDGE_DRAWER_GESTURE.failY])
+        .minDistance(HOME_DRAWER_GESTURE.slop)
+        .activeOffsetX([-GESTURE_IGNORE_OFFSET, HOME_DRAWER_GESTURE.slop])
+        .failOffsetX([-HOME_DRAWER_GESTURE.negativeFail, GESTURE_IGNORE_OFFSET])
+        .failOffsetY([-HOME_DRAWER_GESTURE.failY, HOME_DRAWER_GESTURE.failY])
         .onBegin(() => {
           drawerSwipeOpenedRef.current = false;
         })
         .onUpdate((event) => {
           if (
-            event.translationX > EDGE_DRAWER_GESTURE.distance ||
-            (event.velocityX > EDGE_DRAWER_GESTURE.velocity * 1000 &&
-              event.translationX > EDGE_DRAWER_GESTURE.slop)
+            event.translationX > HOME_DRAWER_GESTURE.distance ||
+            (event.velocityX > HOME_DRAWER_GESTURE.velocity * 1000 &&
+              event.translationX > HOME_DRAWER_GESTURE.slop)
           ) {
             openDrawerFromSwipe();
           }
         })
         .onEnd((event) => {
           if (
-            event.translationX > EDGE_DRAWER_GESTURE.distance ||
-            (event.velocityX > EDGE_DRAWER_GESTURE.velocity * 1000 &&
-              event.translationX > EDGE_DRAWER_GESTURE.slop)
+            event.translationX > HOME_DRAWER_GESTURE.distance ||
+            (event.velocityX > HOME_DRAWER_GESTURE.velocity * 1000 &&
+              event.translationX > HOME_DRAWER_GESTURE.slop)
           ) {
             openDrawerFromSwipe();
           }

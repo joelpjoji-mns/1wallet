@@ -22,6 +22,8 @@ const publishedAt = args['published-at'] ?? new Date().toISOString();
 const fileName = args['file-name'] ?? apk.split(/[\\/]/).pop() ?? '1wallet-update.apk';
 const outputPath = args.output ? resolve(repoRoot, args.output) : null;
 const changelog = args['changelog-json'] ? readChangelogFile(args['changelog-json']) : null;
+const releasePath = `appUpdates/android/releases/${versionCode}`;
+const channelPath = `appUpdates/android/channels/${channel}`;
 
 if (!['major', 'minor', 'patch'].includes(releaseType)) {
   throw new Error('--release-type must be one of major, minor, patch.');
@@ -35,36 +37,38 @@ if (!Number.isInteger(minimumSupportedVersionCode) || minimumSupportedVersionCod
 
 const sizeBytes = statSync(apk).size;
 const sha256 = createHash('sha256').update(readFileSync(apk)).digest('hex');
-const manifest = {
-  releasePath: `appUpdates/android/releases/${versionCode}`,
-  release: {
-    platform: 'android',
-    channel,
-    status: 'published',
-    versionName,
-    versionCode,
-    runtimeVersion,
-    releaseType,
-    mandatory,
-    requirement: mandatory ? 'mandatory' : 'optional',
-    minimumSupportedVersionCode,
-    publishedAt,
-    changelog: {
-      newFeatures: [...(changelog?.newFeatures ?? []), ...listValues(args.feature)],
-      bugFixes: [...(changelog?.bugFixes ?? []), ...listValues(args.fix)],
-      notes: [...(changelog?.notes ?? []), ...listValues(args.note)],
-    },
-    apk: {
-      downloadUrl,
-      fileName,
-      sizeBytes,
-      sha256,
-      architecture,
-      minSdk: Number(args['min-sdk'] ?? 24),
-      estimatedDownloadSeconds: args.eta ? Number(args.eta) : undefined,
-    },
+const release = {
+  platform: 'android',
+  channel,
+  status: 'published',
+  versionName,
+  versionCode,
+  runtimeVersion,
+  releaseType,
+  mandatory,
+  requirement: mandatory ? 'mandatory' : 'optional',
+  minimumSupportedVersionCode,
+  publishedAt,
+  changelog: {
+    newFeatures: [...(changelog?.newFeatures ?? []), ...listValues(args.feature)],
+    bugFixes: [...(changelog?.bugFixes ?? []), ...listValues(args.fix)],
+    notes: [...(changelog?.notes ?? []), ...listValues(args.note)],
   },
-  channelPath: `appUpdates/android/channels/${channel}`,
+  apk: {
+    downloadUrl,
+    fileName,
+    sizeBytes,
+    sha256,
+    architecture,
+    minSdk: Number(args['min-sdk'] ?? 24),
+    estimatedDownloadSeconds: args.eta ? Number(args.eta) : undefined,
+  },
+};
+const releaseFeed = buildReleaseFeed(release, releasePath);
+const manifest = {
+  releasePath,
+  release,
+  channelPath,
   channel: {
     platform: 'android',
     channel,
@@ -72,6 +76,8 @@ const manifest = {
     latestVersionCode: versionCode,
     updatedAt: publishedAt,
   },
+  releaseFeedPath: releaseFeed.path,
+  releaseFeed: releaseFeed.data,
 };
 
 const json = `${JSON.stringify(manifest, null, 2)}\n`;
@@ -154,6 +160,40 @@ function listValues(value) {
       .map(stripBullet)
       .filter(Boolean);
   return [];
+}
+
+function buildReleaseFeed(release, releasePath) {
+  const id = releaseFeedId(release.versionCode, release.channel, release.versionName);
+  return {
+    path: `appUpdates/android/releaseFeed/${id}`,
+    data: {
+      platform: release.platform,
+      channel: release.channel,
+      status: release.status,
+      versionName: release.versionName,
+      versionCode: release.versionCode,
+      releasePath,
+      publishedAt: release.publishedAt,
+      title: `1Wallet Android ${release.versionName} ${release.channel === 'beta' ? 'Beta' : 'Stable'} (${release.versionCode})`,
+    },
+  };
+}
+
+function releaseFeedId(versionCode, channel, versionName) {
+  const maxVersionCode = 999999999;
+  const parsedVersionCode = numberValue(versionCode, 'release feed versionCode');
+  if (parsedVersionCode >= maxVersionCode) {
+    throw new Error('release feed versionCode is too high for descending sort key.');
+  }
+  const sortKey = String(maxVersionCode - parsedVersionCode).padStart(9, '0');
+  return `${sortKey}-${parsedVersionCode}-${safeDocIdPart(channel)}-${safeDocIdPart(versionName)}`;
+}
+
+function safeDocIdPart(value) {
+  return String(value ?? 'unknown')
+    .replace(/[^A-Za-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
 }
 
 function readChangelogFile(value) {
