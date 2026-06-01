@@ -126,6 +126,11 @@ jobs:
           ONEWALLET_RELEASE_KEY_PASSWORD: ${{ secrets.ONEWALLET_RELEASE_KEY_PASSWORD }}
         run: pnpm --config.auto-install-peers=false --config.node-linker=hoisted --filter @1wallet/mobile android:release:universal
 
+      - name: Stage release assets
+        run: |
+          mkdir -p .tmp-release-assets
+          cp "$APK_PATH" ".tmp-release-assets/${{ steps.info.outputs.apkFileName }}"
+
       - name: Collect release note source
         env:
           GH_TOKEN: ${{ github.token }}
@@ -139,15 +144,27 @@ jobs:
           fi
 
       - name: Generate release notes
+        env:
+          RELEASE_FEATURES: ${{ inputs.features }}
+          RELEASE_FIXES: ${{ inputs.fixes }}
+          RELEASE_NOTES: ${{ inputs.notes }}
         run: |
+          changelog_args=()
+          if [ -n "$RELEASE_FEATURES" ]; then
+            changelog_args+=(--feature "$RELEASE_FEATURES")
+          fi
+          if [ -n "$RELEASE_FIXES" ]; then
+            changelog_args+=(--fix "$RELEASE_FIXES")
+          fi
+          if [ -n "$RELEASE_NOTES" ]; then
+            changelog_args+=(--note "$RELEASE_NOTES")
+          fi
           node scripts/mobile-release-notes.mjs \
             --pr-json .tmp-pr.json \
             --commit-log .tmp-commits.txt \
             --version "${{ steps.info.outputs.versionName }}" \
             --version-code "${{ steps.info.outputs.versionCode }}" \
-            --feature "${{ inputs.features }}" \
-            --fix "${{ inputs.fixes }}" \
-            --note "${{ inputs.notes }}" \
+            "${changelog_args[@]}" \
             --output .tmp-release-notes.json \
             --markdown .tmp-release-notes.md
 
@@ -162,7 +179,7 @@ jobs:
           else
             gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$title" --notes-file .tmp-release-notes.md --latest
           fi
-          gh release upload "$tag" "$APK_PATH#${{ steps.info.outputs.apkFileName }}" --repo "$GITHUB_REPOSITORY" --clobber
+          gh release upload "$tag" ".tmp-release-assets/${{ steps.info.outputs.apkFileName }}" --repo "$GITHUB_REPOSITORY" --clobber
 
       - name: Publish APK to public assets repo
         id: asset_release
@@ -179,24 +196,34 @@ jobs:
             else
               gh release create "$tag" --repo "$ASSET_REPO" --title "$title" --notes-file .tmp-release-notes.md --latest
             fi
-            gh release upload "$tag" "$APK_PATH#${{ steps.info.outputs.apkFileName }}" --repo "$ASSET_REPO" --clobber
+            gh release upload "$tag" ".tmp-release-assets/${{ steps.info.outputs.apkFileName }}" --repo "$ASSET_REPO" --clobber
             download_repo="$ASSET_REPO"
           fi
           download_url="$(gh release view "$tag" --repo "$download_repo" --json assets --jq '.assets[] | select(.name == "${{ steps.info.outputs.apkFileName }}") | .url')"
+          if [ -z "$download_url" ]; then
+            echo "::error::Could not resolve download URL for ${{ steps.info.outputs.apkFileName }} in $download_repo"
+            exit 1
+          fi
           echo "download_url=$download_url" >> "$GITHUB_OUTPUT"
           echo "download_repo=$download_repo" >> "$GITHUB_OUTPUT"
 
       - name: Generate update manifest
+        env:
+          DOWNLOAD_URL: ${{ steps.asset_release.outputs.download_url }}
         run: |
           mandatory_args=()
           if [ "$MANDATORY_UPDATE" = "true" ]; then
             mandatory_args=(--mandatory true)
           fi
+          if [ -z "$DOWNLOAD_URL" ]; then
+            echo "::error::Update manifest download URL is empty"
+            exit 1
+          fi
           pnpm --config.auto-install-peers=false --config.node-linker=hoisted run mobile:update:manifest -- \
             --apk "$APK_PATH" \
             --version "${{ steps.info.outputs.versionName }}" \
             --version-code "${{ steps.info.outputs.versionCode }}" \
-            --url "${{ steps.asset_release.outputs.download_url }}" \
+            --url "$DOWNLOAD_URL" \
             --channel "$UPDATE_CHANNEL" \
             --release-type "$RELEASE_TYPE" \
             --changelog-json .tmp-release-notes.json \
@@ -218,9 +245,11 @@ jobs:
         run: |
           tag="${{ steps.info.outputs.tag }}"
           manifest="importdata/mobile-update-${{ steps.info.outputs.versionName }}.json"
-          gh release upload "$tag" "$manifest#${{ steps.info.outputs.manifestFileName }}" --repo "$GITHUB_REPOSITORY" --clobber
+          manifest_asset=".tmp-release-assets/${{ steps.info.outputs.manifestFileName }}"
+          cp "$manifest" "$manifest_asset"
+          gh release upload "$tag" "$manifest_asset" --repo "$GITHUB_REPOSITORY" --clobber
           if [ "${{ steps.asset_release.outputs.download_repo }}" != "$GITHUB_REPOSITORY" ]; then
-            gh release upload "$tag" "$manifest#${{ steps.info.outputs.manifestFileName }}" --repo "${{ steps.asset_release.outputs.download_repo }}" --clobber
+            gh release upload "$tag" "$manifest_asset" --repo "${{ steps.asset_release.outputs.download_repo }}" --clobber
           fi
 
       - name: Upload workflow artifacts
@@ -228,6 +257,6 @@ jobs:
         with:
           name: 1wallet-android-${{ steps.info.outputs.versionName }}-${{ steps.info.outputs.versionCode }}
           path: |
-            ${{ env.APK_PATH }}
+            .tmp-release-assets/${{ steps.info.outputs.apkFileName }}
             importdata/mobile-update-${{ steps.info.outputs.versionName }}.json
             .tmp-release-notes.md

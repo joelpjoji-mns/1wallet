@@ -153,7 +153,7 @@ function parseArgs(values) {
     if (!raw?.startsWith('--')) continue;
     const key = raw.slice(2);
     const next = values[index + 1];
-    if (!next || next.startsWith('--')) {
+    if (next === undefined || next.startsWith('--')) {
       result[key] = 'true';
       continue;
     }
