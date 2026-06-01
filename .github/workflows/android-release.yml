@@ -33,9 +33,9 @@ on:
         required: false
         type: string
       publish_assets_repo:
-        description: Also publish APK to APK_RELEASE_REPO for public OTA downloads
+        description: Also mirror APK to APK_RELEASE_REPO
         required: true
-        default: true
+        default: false
         type: boolean
 
 permissions:
@@ -57,7 +57,7 @@ jobs:
       FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID || 'wallet-1a5af' }}
       UPDATE_CHANNEL: ${{ vars.ONEWALLET_UPDATE_CHANNEL || 'stable' }}
       PUBLISH_ASSET_REPO_INPUT: ${{ inputs.publish_assets_repo }}
-      PUBLISH_ASSET_REPO_DEFAULT: ${{ vars.PUBLISH_APK_TO_ASSETS_REPO || 'true' }}
+      PUBLISH_ASSET_REPO_DEFAULT: ${{ vars.PUBLISH_APK_TO_ASSETS_REPO || 'false' }}
       RELEASE_TYPE: ${{ inputs.release_type || 'patch' }}
       MANDATORY_UPDATE: ${{ inputs.mandatory }}
     steps:
