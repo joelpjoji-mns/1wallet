@@ -27,7 +27,7 @@ Examples:
 1.2.3 -> 1020300
 ```
 
-The current target release is `1.2.1` with version code `1020100`. Use `1.2.0` as the baseline when testing update detection.
+The current target release is `1.2.2` with version code `1020200`. Use `1.2.1` as the baseline when testing update detection.
 
 ## Firestore Schema
 
@@ -40,7 +40,7 @@ appUpdates/android/channels/stable
 Release document:
 
 ```text
-appUpdates/android/releases/1020100
+appUpdates/android/releases/1020200
 ```
 
 Required release fields:
@@ -50,9 +50,9 @@ Required release fields:
   "platform": "android",
   "channel": "stable",
   "status": "published",
-  "versionName": "1.2.1",
-  "versionCode": 1020100,
-  "runtimeVersion": "1.2.1",
+  "versionName": "1.2.2",
+  "versionCode": 1020200,
+  "runtimeVersion": "1.2.2",
   "releaseType": "patch",
   "mandatory": false,
   "requirement": "optional",
@@ -64,8 +64,8 @@ Required release fields:
     "notes": ["APK installation opens the Android system installer"]
   },
   "apk": {
-    "downloadUrl": "https://github.com/joelpjoji-mns/1wallet/releases/download/android-v1.2.1-1020100/1wallet-1.2.1-1020100-arm64-v8a.apk",
-    "fileName": "1wallet-1.2.1-1020100-arm64-v8a.apk",
+    "downloadUrl": "https://github.com/joelpjoji-mns/1wallet/releases/download/android-v1.2.2-1020200/1wallet-1.2.2-1020200-arm64-v8a.apk",
+    "fileName": "1wallet-1.2.2-1020200-arm64-v8a.apk",
     "sizeBytes": 30000000,
     "sha256": "64 lowercase hex characters",
     "architecture": "arm64-v8a",
@@ -82,7 +82,7 @@ The channel document should point at the latest published build:
   "platform": "android",
   "channel": "stable",
   "status": "published",
-  "latestVersionCode": 1020100,
+  "latestVersionCode": 1020200,
   "updatedAt": "Firestore timestamp"
 }
 ```
@@ -92,7 +92,7 @@ The channel document should point at the latest published build:
 After building the APK, generate the release manifest:
 
 ```powershell
-pnpm run mobile:update:manifest -- --apk apps/mobile/android/app/build/outputs/apk/release/app-release.apk --version 1.2.1 --version-code 1020100 --url "https://example.com/1wallet-1.2.1-1020100-arm64-v8a.apk" --file-name "1wallet-1.2.1-1020100-arm64-v8a.apk" --architecture arm64-v8a --release-type patch --feature "Home header now shows 1Wallet again" --fix "Update download validation" --note "Android installer confirmation is required" --output importdata/mobile-update-1.2.1.json
+pnpm run mobile:update:manifest -- --apk apps/mobile/android/app/build/outputs/apk/release/app-release.apk --version 1.2.2 --version-code 1020200 --url "https://example.com/1wallet-1.2.2-1020200-arm64-v8a.apk" --file-name "1wallet-1.2.2-1020200-arm64-v8a.apk" --architecture arm64-v8a --release-type patch --feature "Home header now shows 1Wallet again" --fix "Update download validation" --note "Android installer confirmation is required" --output importdata/mobile-update-1.2.2.json
 ```
 
 The GitHub Actions Android Release workflow builds the arm64-v8a APK used by production phones, uploads it to this repo's GitHub Release, generates the manifest, and publishes the Firestore release/channel documents. The repo still keeps local universal/x86 build scripts for emulator QA. If `PUBLISH_APK_TO_ASSETS_REPO=true`, the workflow also mirrors the same APK and manifest to `APK_RELEASE_REPO`; otherwise the Firestore `apk.downloadUrl` points at this repo.
@@ -101,8 +101,8 @@ True JS OTA through `expo-updates` can be added later for JavaScript/assets-only
 
 ## QA Checklist
 
-1. Install a signed `1.2.0` build on the Pixel.
-2. Publish `1.2.1` metadata and APK URL.
+1. Install a signed `1.2.1` build on the Pixel.
+2. Publish `1.2.2` metadata and APK URL.
 3. Open the drawer, then Updates.
 4. Confirm it shows current version, new version, release type, mandatory/optional status, changelog, size, and ETA.
 5. Tap Update app and confirm progress moves.
