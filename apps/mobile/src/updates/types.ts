@@ -1,5 +1,7 @@
 export const APP_UPDATE_PLATFORM = 'android';
-export const DEFAULT_UPDATE_CHANNEL = 'stable';
+export const UPDATE_CHANNELS = ['stable', 'beta'] as const;
+export type UpdateChannel = (typeof UPDATE_CHANNELS)[number];
+export const DEFAULT_UPDATE_CHANNEL: UpdateChannel = 'stable';
 export const UPDATE_METADATA_ROOT = 'appUpdates';
 
 export type UpdateReleaseType = 'major' | 'minor' | 'patch';
@@ -32,7 +34,7 @@ export type UpdateApkMetadata = {
 export type AppUpdateRelease = {
   id: string;
   platform: typeof APP_UPDATE_PLATFORM;
-  channel: string;
+  channel: UpdateChannel;
   status: 'published';
   versionName: string;
   versionCode: number;
@@ -68,6 +70,7 @@ export type UpdateDownloadSnapshot = {
 
 export type DownloadedUpdate = {
   releaseId: string;
+  channel: UpdateChannel;
   versionName: string;
   versionCode: number;
   localUri: string;
@@ -96,6 +99,7 @@ export type JsUpdateStatus =
 
 export type AppUpdateState = {
   status: AppUpdateStatus;
+  channel: UpdateChannel;
   current: InstalledAppVersion;
   release: AppUpdateRelease | null;
   downloaded: DownloadedUpdate | null;
@@ -105,3 +109,7 @@ export type AppUpdateState = {
   message?: string;
   error?: string;
 };
+
+export function isUpdateChannel(value: unknown): value is UpdateChannel {
+  return typeof value === 'string' && UPDATE_CHANNELS.includes(value as UpdateChannel);
+}
