@@ -107,6 +107,7 @@ const result = spawnSync(gradleCommand, gradleArgs, {
   stdio: 'inherit',
 });
 
+if (result.error) console.error(`Failed to start Gradle: ${result.error.message}`);
 if (result.status !== 0) process.exit(result.status ?? 1);
 const extension = buildBundle ? '.aab' : '.apk';
 const artifacts = listCurrentArtifacts(outputDir, extension, buildStartedAt);
