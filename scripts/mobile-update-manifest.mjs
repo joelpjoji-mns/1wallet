@@ -17,7 +17,7 @@ const releaseType = args['release-type'] ?? inferReleaseType(versionName);
 const mandatory = args.mandatory === 'true';
 const runtimeVersion = args.runtime ?? versionName;
 const minimumSupportedVersionCode = Number(args['minimum-supported-version-code'] ?? 0);
-const architecture = args.architecture ?? 'universal';
+const architecture = args.architecture ?? 'arm64-v8a';
 const publishedAt = args['published-at'] ?? new Date().toISOString();
 const fileName = args['file-name'] ?? apk.split(/[\\/]/).pop() ?? '1wallet-update.apk';
 const outputPath = args.output ? resolve(repoRoot, args.output) : null;

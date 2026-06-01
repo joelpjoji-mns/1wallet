@@ -64,11 +64,11 @@ Required release fields:
     "notes": ["APK installation opens the Android system installer"]
   },
   "apk": {
-    "downloadUrl": "https://github.com/joelpjoji-mns/1wallet/releases/download/android-v1.2.1-1020100/1wallet-1.2.1-1020100-universal.apk",
-    "fileName": "1wallet-1.2.1-1020100-universal.apk",
-    "sizeBytes": 62217478,
+    "downloadUrl": "https://github.com/joelpjoji-mns/1wallet/releases/download/android-v1.2.1-1020100/1wallet-1.2.1-1020100-arm64-v8a.apk",
+    "fileName": "1wallet-1.2.1-1020100-arm64-v8a.apk",
+    "sizeBytes": 30000000,
     "sha256": "64 lowercase hex characters",
-    "architecture": "universal",
+    "architecture": "arm64-v8a",
     "minSdk": 24,
     "estimatedDownloadSeconds": 60
   }
@@ -92,10 +92,10 @@ The channel document should point at the latest published build:
 After building the APK, generate the release manifest:
 
 ```powershell
-pnpm run mobile:update:manifest -- --apk apps/mobile/android/app/build/outputs/apk/release/app-universal-release.apk --version 1.2.1 --version-code 1020100 --url "https://example.com/app-universal-release.apk" --release-type patch --feature "Home header now shows 1Wallet again" --fix "Update download validation" --note "Android installer confirmation is required" --output importdata/mobile-update-1.2.1.json
+pnpm run mobile:update:manifest -- --apk apps/mobile/android/app/build/outputs/apk/release/app-release.apk --version 1.2.1 --version-code 1020100 --url "https://example.com/1wallet-1.2.1-1020100-arm64-v8a.apk" --file-name "1wallet-1.2.1-1020100-arm64-v8a.apk" --architecture arm64-v8a --release-type patch --feature "Home header now shows 1Wallet again" --fix "Update download validation" --note "Android installer confirmation is required" --output importdata/mobile-update-1.2.1.json
 ```
 
-The GitHub Actions Android Release workflow builds the APK, uploads it to this repo's GitHub Release, generates the manifest, and publishes the Firestore release/channel documents. If `PUBLISH_APK_TO_ASSETS_REPO=true`, it also mirrors the same APK and manifest to `APK_RELEASE_REPO`; otherwise the Firestore `apk.downloadUrl` points at this repo.
+The GitHub Actions Android Release workflow builds the arm64-v8a APK used by production phones, uploads it to this repo's GitHub Release, generates the manifest, and publishes the Firestore release/channel documents. The repo still keeps local universal/x86 build scripts for emulator QA. If `PUBLISH_APK_TO_ASSETS_REPO=true`, the workflow also mirrors the same APK and manifest to `APK_RELEASE_REPO`; otherwise the Firestore `apk.downloadUrl` points at this repo.
 
 True JS OTA through `expo-updates` can be added later for JavaScript/assets-only fixes, but it is not required for the current update system. The APK pipeline is the reliable path for this app because most release changes can include native Android code, permissions, or native module updates.
 

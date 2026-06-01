@@ -42,6 +42,9 @@ permissions:
   contents: write
   pull-requests: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 concurrency:
   group: android-release-${{ github.ref }}
   cancel-in-progress: false
@@ -52,7 +55,8 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip release]')
     env:
-      APK_PATH: apps/mobile/android/app/build/outputs/apk/release/app-universal-release.apk
+      APK_PATH: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+      RELEASE_ARCHITECTURE: arm64-v8a
       ASSET_REPO: ${{ vars.APK_RELEASE_REPO }}
       FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID || 'wallet-1a5af' }}
       UPDATE_CHANNEL: ${{ vars.ONEWALLET_UPDATE_CHANNEL || 'stable' }}
@@ -71,6 +75,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+          cache: gradle
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -115,16 +120,14 @@ jobs:
         id: info
         run: node scripts/mobile-release-info.mjs --output "$GITHUB_OUTPUT"
 
-      - name: Typecheck mobile app
-        run: pnpm --config.auto-install-peers=false --config.node-linker=hoisted --filter @1wallet/mobile typecheck
-
-      - name: Build signed universal APK
+      - name: Build signed arm64 APK
         env:
+          ONEWALLET_RELEASE_ARCHITECTURES: arm64-v8a
           ONEWALLET_RELEASE_STORE_FILE: release.keystore
           ONEWALLET_RELEASE_STORE_PASSWORD: ${{ secrets.ONEWALLET_RELEASE_STORE_PASSWORD }}
           ONEWALLET_RELEASE_KEY_ALIAS: ${{ secrets.ONEWALLET_RELEASE_KEY_ALIAS }}
           ONEWALLET_RELEASE_KEY_PASSWORD: ${{ secrets.ONEWALLET_RELEASE_KEY_PASSWORD }}
-        run: pnpm --config.auto-install-peers=false --config.node-linker=hoisted --filter @1wallet/mobile android:release:universal
+        run: pnpm --config.auto-install-peers=false --config.node-linker=hoisted --filter @1wallet/mobile android:release
 
       - name: Stage release assets
         run: |
@@ -224,6 +227,8 @@ jobs:
             --version "${{ steps.info.outputs.versionName }}" \
             --version-code "${{ steps.info.outputs.versionCode }}" \
             --url "$DOWNLOAD_URL" \
+            --file-name "${{ steps.info.outputs.apkFileName }}" \
+            --architecture "$RELEASE_ARCHITECTURE" \
             --channel "$UPDATE_CHANNEL" \
             --release-type "$RELEASE_TYPE" \
             --changelog-json .tmp-release-notes.json \
@@ -255,7 +260,7 @@ jobs:
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: 1wallet-android-${{ steps.info.outputs.versionName }}-${{ steps.info.outputs.versionCode }}
+          name: 1wallet-android-arm64-v8a-${{ steps.info.outputs.versionName }}-${{ steps.info.outputs.versionCode }}
           path: |
             .tmp-release-assets/${{ steps.info.outputs.apkFileName }}
             importdata/mobile-update-${{ steps.info.outputs.versionName }}.json

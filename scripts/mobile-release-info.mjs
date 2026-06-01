@@ -16,7 +16,7 @@ const info = {
   versionName,
   versionCode: String(versionCode),
   tag: `android-v${versionName}-${versionCode}`,
-  apkFileName: `1wallet-${versionName}-${versionCode}-universal.apk`,
+  apkFileName: `1wallet-${versionName}-${versionCode}-arm64-v8a.apk`,
   manifestFileName: `1wallet-${versionName}-${versionCode}-update-manifest.json`,
 };
 
