@@ -225,6 +225,7 @@ jobs:
         run: |
           tag="${{ steps.info.outputs.tag }}"
           title="${{ steps.info.outputs.releaseTitle }}"
+          target="$GITHUB_SHA"
           create_flags=()
           edit_flags=()
           if [ "${{ steps.info.outputs.prerelease }}" = "true" ]; then
@@ -234,10 +235,12 @@ jobs:
             create_flags+=(--latest)
             edit_flags+=(--latest)
           fi
+          git tag --force "$tag" "$target"
+          git push --force origin "refs/tags/$tag"
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --title "$title" --notes-file .tmp-release-notes.md "${edit_flags[@]}"
+            gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --target "$target" --title "$title" --notes-file .tmp-release-notes.md "${edit_flags[@]}"
           else
-            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$title" --notes-file .tmp-release-notes.md "${create_flags[@]}"
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$target" --title "$title" --notes-file .tmp-release-notes.md "${create_flags[@]}"
           fi
           gh release upload "$tag" ".tmp-release-assets/${{ steps.info.outputs.apkFileName }}" --repo "$GITHUB_REPOSITORY" --clobber
 

@@ -17,11 +17,12 @@ import {
   type UpdateDownloadTask,
 } from './downloadManager';
 import { checkForJsUpdate, fetchJsUpdate, reloadIntoJsUpdate } from './expoOta';
-import { checkForAndroidUpdate } from './firebaseUpdates';
+import { checkForAndroidUpdate, fetchPublishedAndroidReleaseByCode } from './firebaseUpdates';
 import { canRequestPackageInstalls, installApk, openInstallSettings } from './nativeInstaller';
 import {
   DEFAULT_UPDATE_CHANNEL,
   isUpdateChannel,
+  type AppUpdateRelease,
   type AppUpdateState,
   type DownloadedUpdate,
   type UpdateChannel,
@@ -36,6 +37,7 @@ const initialState: AppUpdateState = {
   status: 'idle',
   channel: DEFAULT_UPDATE_CHANNEL,
   current: initialCurrent,
+  installedRelease: null,
   release: null,
   downloaded: null,
   download: null,
@@ -105,9 +107,10 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
         message: manual ? 'Checking for updates...' : previous.message,
       }));
 
-      const [androidOutcome, jsUpdate] = await Promise.all([
+      const [androidOutcome, jsUpdate, installedRelease] = await Promise.all([
         checkForAndroidUpdate(current, selectedChannel),
         checkForJsUpdate(),
+        fetchInstalledRelease(current.versionCode),
       ]);
 
       if (androidOutcome.status === 'available') {
@@ -122,6 +125,7 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
           status: nextStatus,
           channel: selectedChannel,
           current,
+          installedRelease,
           release: androidOutcome.release,
           downloaded,
           download: null,
@@ -144,6 +148,7 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
           ...previous,
           channel: selectedChannel,
           current,
+          installedRelease,
           status: 'error',
           release: null,
           download: null,
@@ -167,6 +172,7 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
           ...previous,
           channel: selectedChannel,
           current,
+          installedRelease,
           status: nextStatus,
           release: null,
           downloaded: null,
@@ -185,17 +191,24 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
       }
 
       const nextStatus = jsUpdate.available ? 'js-update-ready' : 'up-to-date';
+      const aheadRelease =
+        androidOutcome.status === 'ahead-of-channel' ? androidOutcome.release : null;
       setState((previous) => ({
         ...previous,
         channel: selectedChannel,
         current,
-        status: nextStatus,
+        installedRelease,
+        status: aheadRelease ? 'ahead-of-channel' : nextStatus,
         release: null,
         downloaded: null,
         download: null,
         jsUpdate,
         lastCheckedAt: androidOutcome.checkedAt,
-        message: jsUpdate.available ? 'JavaScript update available' : undefined,
+        message: aheadRelease
+          ? aheadOfChannelMessage(selectedChannel, current.versionCode, aheadRelease.versionCode)
+          : jsUpdate.available
+            ? 'JavaScript update available'
+            : undefined,
         error: undefined,
       }));
       await writeStoredState({
@@ -448,6 +461,22 @@ function drawerBadgeForState(state: AppUpdateState): string | undefined {
   if (state.jsUpdate.available) return 'Update';
   if (state.channel === 'beta') return 'Beta';
   return undefined;
+}
+
+async function fetchInstalledRelease(versionCode: number): Promise<AppUpdateRelease | null> {
+  try {
+    return await fetchPublishedAndroidReleaseByCode(versionCode);
+  } catch {
+    return null;
+  }
+}
+
+function aheadOfChannelMessage(
+  channel: UpdateChannel,
+  installedVersionCode: number,
+  latestVersionCode: number,
+): string {
+  return `This installed build (${installedVersionCode}) is newer than the latest ${channel} build (${latestVersionCode}). Stay on this build until a higher ${channel} release is published.`;
 }
 
 function normalizeStoredChannel(value: unknown): UpdateChannel {

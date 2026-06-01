@@ -54,8 +54,8 @@ def releaseKeyAlias = releaseProperty('ONEWALLET_RELEASE_KEY_ALIAS')
 def releaseKeyPassword = releaseProperty('ONEWALLET_RELEASE_KEY_PASSWORD')
 def releaseSigningReady = releaseStoreFilePath && releaseStorePassword && releaseKeyAlias && releaseKeyPassword
 def requestedReleaseTask = gradle.startParameter.taskNames.any { task -> task.toLowerCase().contains('release') }
-def appVersionCode = (findProperty('onewallet.versionCode') ?: System.getenv('ONEWALLET_VERSION_CODE') ?: '1030000').toInteger()
-def appVersionName = (findProperty('onewallet.versionName') ?: System.getenv('ONEWALLET_VERSION_NAME') ?: '1.3.0').toString()
+def appVersionCode = (findProperty('onewallet.versionCode') ?: System.getenv('ONEWALLET_VERSION_CODE') ?: '1040000').toInteger()
+def appVersionName = (findProperty('onewallet.versionName') ?: System.getenv('ONEWALLET_VERSION_NAME') ?: '1.4.0').toString()
 def csvList = { value ->
     value?.toString()?.split(',')?.collect { it.trim() }?.findAll { it.length() > 0 } ?: []
 }
