@@ -1,0 +1,36 @@
+{
+  "name": "@1wallet/web",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node ../../node_modules/next/dist/bin/next dev -p 3000",
+    "build": "node ../../node_modules/next/dist/bin/next build",
+    "start": "node ../../node_modules/next/dist/bin/next start",
+    "lint": "node ../../node_modules/eslint/bin/eslint.js .",
+    "typecheck": "node ../../node_modules/typescript/bin/tsc --noEmit",
+    "clean": "node ../../node_modules/rimraf/dist/esm/bin.mjs .next .turbo"
+  },
+  "dependencies": {
+    "@1wallet/config": "workspace:*",
+    "@1wallet/domain": "workspace:*",
+    "@1wallet/ledger": "workspace:*",
+    "@1wallet/state": "workspace:*",
+    "@1wallet/ui": "workspace:*",
+    "@1wallet/validation": "workspace:*",
+    "@tanstack/react-query": "^5.90.12",
+    "next": "^16.2.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.1",
+    "eslint-config-next": "^16.2.6",
+    "ajv": "^8.20.0",
+    "rimraf": "^6.1.3",
+    "typescript": "^6.0.3"
+  }
+}

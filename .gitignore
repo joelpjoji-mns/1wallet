@@ -1,0 +1,59 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Build
+dist/
+build/
+.next/
+.expo/
+.firebase/
+.turbo/
+.tmp/
+.tmp-*.json
+*.tsbuildinfo
+apps/mobile/android/.kotlin/
+apps/mobile/android/local.properties
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Android signing
+*.jks
+*.keystore
+apps/mobile/android/release-signing.properties.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local backups
+backups/
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Test
+coverage/
+
+# Supabase
+supabase/.branches
+supabase/.temp

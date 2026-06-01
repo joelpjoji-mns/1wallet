@@ -1,0 +1,201 @@
+import { doc, getDoc, type DocumentData, type Firestore } from 'firebase/firestore';
+import { getFirebaseServices } from '../firebase/client';
+import {
+    APP_UPDATE_PLATFORM,
+    DEFAULT_UPDATE_CHANNEL,
+    UPDATE_METADATA_ROOT,
+    type AppUpdateRelease,
+    type InstalledAppVersion,
+    type UpdateChangelog,
+    type UpdateCheckOutcome,
+    type UpdateReleaseType,
+} from './types';
+import { inferReleaseType, isReleaseNewerThanInstalled } from './version';
+
+export async function checkForAndroidUpdate(
+  current: InstalledAppVersion,
+  channel = DEFAULT_UPDATE_CHANNEL,
+): Promise<UpdateCheckOutcome> {
+  const checkedAt = new Date().toISOString();
+  try {
+    const release = await fetchLatestPublishedAndroidRelease(channel);
+    if (!release || !isReleaseNewerThanInstalled(release, current)) {
+      return { status: 'up-to-date', checkedAt, current };
+    }
+    return { status: 'available', checkedAt, current, release };
+  } catch (error) {
+    if (isPermissionDeniedError(error)) {
+      return { status: 'not-configured', message: 'Update channel is not published yet.' };
+    }
+    return {
+      status: 'error',
+      checkedAt,
+      current,
+      message: updateErrorMessage(error),
+    };
+  }
+}
+
+export async function fetchLatestPublishedAndroidRelease(
+  channel = DEFAULT_UPDATE_CHANNEL,
+): Promise<AppUpdateRelease | null> {
+  let services;
+  try {
+    services = getFirebaseServices();
+  } catch (error) {
+    throw new Error(updateErrorMessage(error));
+  }
+  if (!services) throw new Error('Firebase is not configured for update checks.');
+
+  const channelRelease = await fetchChannelRelease(services.db, channel);
+  return channelRelease;
+}
+
+async function fetchChannelRelease(db: Firestore, channel: string) {
+  const channelRef = doc(db, UPDATE_METADATA_ROOT, APP_UPDATE_PLATFORM, 'channels', channel);
+  const channelSnapshot = await getDoc(channelRef);
+  if (!channelSnapshot.exists()) return null;
+
+  const data = channelSnapshot.data();
+  if (stringValue(data.status) !== 'published') return null;
+  const latestVersionCode = numberValue(data.latestVersionCode);
+  if (!latestVersionCode) return null;
+
+  const releaseRef = doc(
+    db,
+    UPDATE_METADATA_ROOT,
+    APP_UPDATE_PLATFORM,
+    'releases',
+    String(latestVersionCode),
+  );
+  const releaseSnapshot = await getDoc(releaseRef);
+  if (!releaseSnapshot.exists()) return null;
+  return parseReleaseDocument(releaseSnapshot.id, releaseSnapshot.data());
+}
+
+function parseReleaseDocument(id: string, data: DocumentData): AppUpdateRelease | null {
+  const versionName = stringValue(data.versionName);
+  const versionCode = numberValue(data.versionCode);
+  const apk = parseApkMetadata(data.apk);
+  if (!versionName || !versionCode || !apk) return null;
+
+  const status = stringValue(data.status);
+  if (status !== 'published') return null;
+
+  const platform = stringValue(data.platform) ?? APP_UPDATE_PLATFORM;
+  if (platform !== APP_UPDATE_PLATFORM) return null;
+
+  const channel = stringValue(data.channel) ?? DEFAULT_UPDATE_CHANNEL;
+  const runtimeVersion = stringValue(data.runtimeVersion) ?? versionName;
+  const mandatory = booleanValue(data.mandatory) ?? stringValue(data.requirement) === 'mandatory';
+  const releaseType = releaseTypeValue(data.releaseType) ?? inferReleaseType('0.0.0', versionName);
+  const minimumSupportedVersionCode = numberValue(data.minimumSupportedVersionCode) ?? 0;
+  const publishedAt = timestampValue(data.publishedAt) ?? new Date().toISOString();
+
+  return {
+    id,
+    platform: APP_UPDATE_PLATFORM,
+    channel,
+    status: 'published',
+    versionName,
+    versionCode,
+    runtimeVersion,
+    releaseType,
+    requirement: mandatory ? 'mandatory' : 'optional',
+    mandatory,
+    minimumSupportedVersionCode,
+    publishedAt,
+    changelog: parseChangelog(data.changelog),
+    apk,
+  };
+}
+
+function parseApkMetadata(value: unknown): AppUpdateRelease['apk'] | null {
+  if (!isRecord(value)) return null;
+  const downloadUrl = stringValue(value.downloadUrl);
+  const fileName = stringValue(value.fileName) ?? '1wallet-update.apk';
+  const sizeBytes = numberValue(value.sizeBytes);
+  const sha256 = normalizeSha256(stringValue(value.sha256));
+  const architecture = stringValue(value.architecture) ?? 'universal';
+  if (!downloadUrl || !isHttpUrl(downloadUrl) || !sizeBytes || !sha256) return null;
+
+  return {
+    downloadUrl,
+    fileName,
+    sizeBytes,
+    sha256,
+    architecture,
+    minSdk: numberValue(value.minSdk) ?? undefined,
+    estimatedDownloadSeconds: numberValue(value.estimatedDownloadSeconds) ?? undefined,
+  };
+}
+
+function parseChangelog(value: unknown): UpdateChangelog {
+  if (!isRecord(value)) return { newFeatures: [], bugFixes: [], notes: [] };
+  return {
+    newFeatures: stringList(value.newFeatures),
+    bugFixes: stringList(value.bugFixes),
+    notes: stringList(value.notes),
+  };
+}
+
+function updateErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) return error.message;
+  return 'Error updating app. Please try again later.';
+}
+
+function isPermissionDeniedError(error: unknown): boolean {
+  if (!isRecord(error)) return false;
+  return (
+    error.code === 'permission-denied' || error.message === 'Missing or insufficient permissions.'
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function stringValue(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function numberValue(value: unknown): number | null {
+  const parsed =
+    typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : null;
+}
+
+function booleanValue(value: unknown): boolean | null {
+  return typeof value === 'boolean' ? value : null;
+}
+
+function stringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .filter((item) => item.length > 0)
+    .slice(0, 20);
+}
+
+function releaseTypeValue(value: unknown): UpdateReleaseType | null {
+  return value === 'major' || value === 'minor' || value === 'patch' ? value : null;
+}
+
+function timestampValue(value: unknown): string | null {
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  if (isRecord(value) && typeof value.toDate === 'function') {
+    const date = value.toDate() as Date;
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  }
+  return null;
+}
+
+function normalizeSha256(value: string | null): string | null {
+  if (!value) return null;
+  const normalized = value.replace(/^sha256:/i, '').toLowerCase();
+  return /^[0-9a-f]{64}$/.test(normalized) ? normalized : null;
+}
+
+function isHttpUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value);
+}

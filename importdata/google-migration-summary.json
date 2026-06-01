@@ -1,0 +1,329 @@
+{
+  "ok": true,
+  "outputs": {
+    "ledger": "importdata/google-migration-ledger.json",
+    "archive": "importdata/google-migration.onewallet.json",
+    "summary": "importdata/google-migration-summary.json",
+    "review": "importdata/google-migration-review.json"
+  },
+  "validation": {
+    "errors": [],
+    "warnings": [],
+    "checksum": "fnv1a32:a2b47b77"
+  },
+  "archive": {
+    "accounts": 20,
+    "categories": 107,
+    "transactions": 3531,
+    "transactionSplits": 0,
+    "captureCandidates": 3480,
+    "importBatches": 1,
+    "plannedPayments": 23,
+    "loanAccounts": 4,
+    "budgets": 0,
+    "goals": 0,
+    "exchangeRates": 0,
+    "currencies": [
+      "GBP",
+      "INR"
+    ],
+    "dateRange": {
+      "start": "2023-01-01",
+      "end": "2026-05-29"
+    }
+  },
+  "csv": {
+    "rows": 4328,
+    "proposals": 3783,
+    "queueable": 3480,
+    "blocked": 303,
+    "duplicates": 14,
+    "transferPairs": 545,
+    "detectedPlannedPayments": 39,
+    "provision": {
+      "accountsCreated": 16,
+      "categoriesCreated": 0,
+      "accountNames": [
+        "ICICI Bank",
+        "SBI Cashback Credit Card",
+        "Swiggy HDFC Credit Card",
+        "Kiwi YES Bank Credit Card",
+        "HDFC Bank",
+        "Axis Forex Card",
+        "Cash",
+        "RBL Xtra Credit Card",
+        "Amazon Pay Credit Card",
+        "HDFC MoneyBack Credit Card",
+        "Sbi SimplyClick Credit Card",
+        "One Card BOB",
+        "Amazon Wallet",
+        "ICICI Coral Credit Card",
+        "Union Bank",
+        "Scapia Credit Card"
+      ],
+      "categoryNames": []
+    },
+    "categoriesSeeded": true,
+    "import": {
+      "batchId": "ec7632a8-2bd4-4bec-8dac-bfa92081b464",
+      "queueable": 3480,
+      "queued": 3480,
+      "approved": 3480,
+      "failed": 0,
+      "failures": []
+    }
+  },
+  "plannedPayments": {
+    "totalRules": 23,
+    "seedRules": 19,
+    "detectedRules": 0,
+    "loanRules": 4,
+    "loanCandidateLinks": 0,
+    "detectedHistoryLinked": 0,
+    "seedHistoryLinked": 196
+  },
+  "loans": [
+    {
+      "key": "education-loan",
+      "name": "Educational Loan",
+      "matched": 22,
+      "transformed": 22,
+      "finalBalance": {
+        "amountMinor": -33000000,
+        "currency": "INR"
+      }
+    },
+    {
+      "key": "personal-loan",
+      "name": "Personal Loan",
+      "matched": 20,
+      "transformed": 19,
+      "finalBalance": {
+        "amountMinor": -59100000,
+        "currency": "INR"
+      }
+    },
+    {
+      "key": "anu-loan",
+      "name": "Anu Loan",
+      "matched": 7,
+      "transformed": 7,
+      "finalBalance": {
+        "amountMinor": -50000000,
+        "currency": "INR"
+      }
+    },
+    {
+      "key": "jerry-education-loan",
+      "name": "Jerry's Educational Loan",
+      "matched": 3,
+      "transformed": 3,
+      "finalBalance": {
+        "amountMinor": -24900000,
+        "currency": "INR"
+      }
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Cash",
+      "type": "cash",
+      "currency": "INR",
+      "balance": {
+        "amountMinor": 3567974,
+        "currency": "INR"
+      },
+      "sortOrder": 0
+    },
+    {
+      "name": "Union Bank",
+      "type": "bank",
+      "currency": "INR",
+      "balance": {
+        "amountMinor": 50000,
+        "currency": "INR"
+      },
+      "sortOrder": 1
+    },
+    {
+      "name": "ICICI Bank",
+      "type": "bank",
+      "currency": "INR",
+      "balance": {
+        "amountMinor": 8423603,
+        "currency": "INR"
+      },
+      "sortOrder": 2
+    },
+    {
+      "name": "HDFC Bank",
+      "type": "bank",
+      "currency": "INR",
+      "balance": {
+        "amountMinor": 1771700,
+        "currency": "INR"
+      },
+      "sortOrder": 3
+    },
+    {
+      "name": "HDFC MoneyBack Credit Card",
+      "type": "credit_card",
+      "currency": "INR",
+      "balance": {
+        "amountMinor": 0,
+        "currency": "INR"
+      },
+      "sortOrder": 4
+    },
+    {
+      "name": "ICICI Coral Credit Card",
+      "type": "credit_card",
+      "currency": "INR",
+      "balance": {
+        "amountMinor": 0,
+        "currency": "INR"
+      },
+      "sortOrder": 5
+    },
+    {
+      "name": "Amazon Pay Credit Card",
+      "type": "credit_card",
+      "currency": "INR",
+      "balance": {
+        "amountMinor": 0,
+        "currency": "INR"
+      },
+      "sortOrder": 6
+    },
+    {
+      "name": "Sbi SimplyClick Credit Card",
+      "type": "credit_card",
+      "currency": "INR",
+      "balance": {
+        "amountMinor": 0,
+        "currency": "INR"
+      },
+      "sortOrder": 7
+    },
+    {
+      "name": "SBI Cashback Credit Card",
+      "type": "credit_card",
+      "currency": "INR",
+      "balance": {
+        "amountMinor": -90000,
+        "currency": "INR"
+      },
+      "sortOrder": 8
+    },
+    {
+      "name": "Swiggy HDFC Credit Card",
+      "type": "credit_card",
+      "currency": "INR",
+      "balance": {
+        "amountMinor": 0,
+        "currency": "INR"
+      },
+      "sortOrder": 9
+    },
+    {
+      "name": "RBL Xtra Credit Card",
+      "type": "credit_card",
+      "currency": "INR",
+      "balance": {
+        "amountMinor": -505800,
+        "currency": "INR"
+      },
+      "sortOrder": 10
+    },
+    {
+      "name": "One Card BOB",
+      "type": "credit_card",
+      "currency": "INR",
+      "balance": {
+        "amountMinor": -75900,
+        "currency": "INR"
+      },
+      "sortOrder": 11
+    },
+    {
+      "name": "Kiwi YES Bank Credit Card",
+      "type": "credit_card",
+      "currency": "INR",
+      "balance": {
+        "amountMinor": -1736900,
+        "currency": "INR"
+      },
+      "sortOrder": 12
+    },
+    {
+      "name": "Amazon Wallet",
+      "type": "wallet",
+      "currency": "INR",
+      "balance": {
+        "amountMinor": 255436,
+        "currency": "INR"
+      },
+      "sortOrder": 13
+    },
+    {
+      "name": "Scapia Credit Card",
+      "type": "credit_card",
+      "currency": "INR",
+      "balance": {
+        "amountMinor": 0,
+        "currency": "INR"
+      },
+      "sortOrder": 14
+    },
+    {
+      "name": "Axis Forex Card",
+      "type": "prepaid",
+      "currency": "GBP",
+      "balance": {
+        "amountMinor": 255278,
+        "currency": "GBP"
+      },
+      "sortOrder": 15
+    },
+    {
+      "name": "Educational Loan",
+      "type": "loan",
+      "currency": "INR",
+      "balance": {
+        "amountMinor": -33000000,
+        "currency": "INR"
+      },
+      "sortOrder": 16
+    },
+    {
+      "name": "Personal Loan",
+      "type": "loan",
+      "currency": "INR",
+      "balance": {
+        "amountMinor": -59100000,
+        "currency": "INR"
+      },
+      "sortOrder": 17
+    },
+    {
+      "name": "Anu Loan",
+      "type": "loan",
+      "currency": "INR",
+      "balance": {
+        "amountMinor": -50000000,
+        "currency": "INR"
+      },
+      "sortOrder": 18
+    },
+    {
+      "name": "Jerry's Educational Loan",
+      "type": "loan",
+      "currency": "INR",
+      "balance": {
+        "amountMinor": -24900000,
+        "currency": "INR"
+      },
+      "sortOrder": 19
+    }
+  ]
+}

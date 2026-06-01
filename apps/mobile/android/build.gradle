@@ -1,0 +1,103 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+    ext {
+        buildToolsVersion = findProperty('android.buildToolsVersion') ?: '36.0.0'
+        minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '24')
+        compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '36')
+        targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '36')
+        kotlinVersion = findProperty('android.kotlinVersion') ?: '2.1.20'
+
+        ndkVersion = "27.1.12297006"
+    }
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath('com.android.tools.build:gradle')
+        classpath('com.facebook.react:react-native-gradle-plugin')
+        classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')
+    }
+}
+
+apply plugin: "expo-root-project"
+apply plugin: "com.facebook.react.rootproject"
+
+def nodeResolve = { String expression ->
+    providers.exec {
+        workingDir(rootDir)
+        commandLine('node', '--preserve-symlinks', '--print', expression)
+    }.standardOutput.asText.get().trim()
+}
+
+def optionalNodeResolve = { String expression ->
+    providers.exec {
+        workingDir(rootDir)
+        commandLine('node', '--preserve-symlinks', '--eval', "try { console.log(${expression}) } catch (error) {}")
+    }.standardOutput.asText.get().trim()
+}
+
+def releaseTaskRequested = gradle.startParameter.taskNames.any { taskName ->
+    taskName.toLowerCase(Locale.ROOT).contains('release')
+}
+
+subprojects {
+    tasks.withType(org.gradle.api.tasks.Exec).configureEach { task ->
+        if (releaseTaskRequested && task.name == 'createExpoConfig' && !task.environment.containsKey('NODE_ENV')) {
+            task.environment('NODE_ENV', 'production')
+        }
+    }
+
+    if (name == 'expo') {
+        def patchExpoFetchModuleRegistration = tasks.register('patchExpoFetchModuleRegistration') {
+            dependsOn tasks.named('generatePackagesList')
+
+            def packageListFile = layout.buildDirectory.file('generated/expo/src/main/java/expo/modules/ExpoModulesPackageList.kt')
+            inputs.file(packageListFile)
+            outputs.file(packageListFile)
+
+            doLast {
+                def file = packageListFile.get().asFile
+                if (!file.exists()) {
+                    throw new GradleException("Expo modules package list was not generated: ${file}")
+                }
+
+                def marker = 'expo.modules.fetch.ExpoFetchModule::class.java to null'
+                def text = file.getText('UTF-8')
+                if (!text.contains(marker)) {
+                    def anchor = '    val modulesMap: Map<Class<out Module>, String?> = mapOf(\n'
+                    if (!text.contains(anchor)) {
+                        throw new GradleException('Unable to patch ExpoFetchModule into ExpoModulesPackageList.kt')
+                    }
+
+                    file.setText(text.replace(anchor, anchor + "          ${marker},\n"), 'UTF-8')
+                }
+            }
+        }
+
+        tasks.matching { task ->
+            task.name.startsWith('compile') && task.name.endsWith('Kotlin')
+        }.configureEach { task ->
+            task.dependsOn(patchExpoFetchModuleRegistration)
+        }
+    }
+}
+
+allprojects {
+    repositories {
+        maven {
+            // All of React Native (JS, Obj-C sources, Android binaries) is installed from npm
+            url(new File(nodeResolve("require.resolve('react-native/package.json')"), '../android'))
+        }
+        def jscAndroidPackage = optionalNodeResolve("require.resolve('jsc-android/package.json', { paths: [require.resolve('react-native/package.json')] })")
+        if (jscAndroidPackage) maven {
+            // Android JSC is installed from npm
+            url(new File(jscAndroidPackage, '../dist'))
+        }
+
+        google()
+        mavenCentral()
+        maven { url 'https://www.jitpack.io' }
+    }
+}

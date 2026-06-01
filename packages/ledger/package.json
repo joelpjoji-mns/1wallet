@@ -1,0 +1,38 @@
+{
+  "name": "@1wallet/ledger",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./archive/onewallet": "./src/archive/onewallet.ts",
+    "./capture/messages": "./src/capture/messages.ts",
+    "./id": "./src/id.ts",
+    "./import/walletCsv": "./src/import/walletCsv.ts",
+    "./loans": "./src/loans.ts",
+    "./rules/futureGeneration": "./src/rules/futureGeneration.ts",
+    "./seed": "./src/seed.ts",
+    "./store": "./src/store/index.ts",
+    "./store/memory": "./src/store/memory.ts",
+    "./store/types": "./src/store/types.ts",
+    "./services/indexes": "./src/services/indexes.ts",
+    "./services": "./src/services/index.ts"
+  },
+  "scripts": {
+    "typecheck": "node ../../node_modules/typescript/bin/tsc --noEmit",
+    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json",
+    "test": "node test/messages.test.cjs && node test/loans.test.cjs && node test/futureGeneration.test.cjs && node test/walletCsv.test.cjs && node test/archive.test.cjs",
+    "clean": "node ../../node_modules/rimraf/dist/esm/bin.mjs dist .turbo"
+  },
+  "dependencies": {
+    "@1wallet/domain": "workspace:*",
+    "@1wallet/validation": "workspace:*"
+  },
+  "devDependencies": {
+    "sucrase": "^3.35.1",
+    "typescript": "^6.0.3",
+    "rimraf": "^6.1.3"
+  }
+}

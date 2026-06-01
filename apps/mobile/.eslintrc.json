@@ -1,0 +1,26 @@
+{
+  "root": true,
+  "extends": "expo",
+  "ignorePatterns": [
+    ".expo/",
+    ".tmp/",
+    "android/",
+    "ios/"
+  ],
+  "rules": {
+    "react-hooks/preserve-manual-memoization": "off",
+    "react-hooks/immutability": "off",
+    "react-hooks/refs": "off",
+    "react-hooks/set-state-in-effect": "off"
+  },
+  "overrides": [
+    {
+      "files": [
+        "*.config.js"
+      ],
+      "env": {
+        "node": true
+      }
+    }
+  ]
+}

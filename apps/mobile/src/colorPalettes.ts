@@ -1,0 +1,59 @@
+export const ACCENT_COLOR_SWATCHES = [
+  '#315DA8',
+  '#6750A4',
+  '#006A6A',
+  '#2F6B4F',
+  '#8A5A00',
+  '#A83246',
+  '#7C3AED',
+  '#3867D6',
+  '#0F766E',
+  '#9D174D',
+  '#475569',
+  '#C56A5B',
+] as const;
+
+export const ACCOUNT_COLOR_SWATCHES = [
+  '#315DA8',
+  '#2F6B4F',
+  '#A83246',
+  '#6B5F47',
+  '#5C5AA8',
+  '#475569',
+  '#006A6A',
+  '#7D5260',
+  '#6750A4',
+  '#386A20',
+  '#8A5A00',
+  '#7C3AED',
+  '#3867D6',
+  '#0F766E',
+  '#9D174D',
+  '#C56A5B',
+] as const;
+
+export const CATEGORY_COLOR_SWATCHES = [
+  '#315DA8',
+  '#2F6B4F',
+  '#A83246',
+  '#6B5F47',
+  '#5C5AA8',
+  '#475569',
+  '#006A6A',
+  '#7D5260',
+  '#6750A4',
+  '#386A20',
+  '#8A5A00',
+  '#0F766E',
+  '#9D174D',
+  '#7C3AED',
+  '#3867D6',
+  '#C56A5B',
+] as const;
+
+export const DEFAULT_ACCOUNT_COLOR = ACCOUNT_COLOR_SWATCHES[0];
+export const DEFAULT_CATEGORY_COLOR = CATEGORY_COLOR_SWATCHES[0];
+
+export const ACCENT_COLOR_OPTIONS = ACCENT_COLOR_SWATCHES;
+export const ACCOUNT_COLOR_OPTIONS = ACCOUNT_COLOR_SWATCHES;
+export const CATEGORY_COLOR_OPTIONS = CATEGORY_COLOR_SWATCHES;

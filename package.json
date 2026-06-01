@@ -1,0 +1,39 @@
+{
+  "name": "1wallet",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "packageManager": "pnpm@11.4.0",
+  "scripts": {
+    "build": "turbo run build",
+    "inventory": "node scripts/generate-code-inventory.mjs",
+    "mobile:update:manifest": "node scripts/mobile-update-manifest.mjs",
+    "mobile:update:publish": "node scripts/publish-mobile-update-to-firebase.mjs",
+    "migrate:google": "node importdata/create-google-migration-ledger.cjs",
+    "normalize:wallet-csv": "node scripts/normalize-wallet-csv.mjs",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean && rimraf node_modules"
+  },
+  "devDependencies": {
+    "prettier": "^3.8.3",
+    "rimraf": "^6.1.3",
+    "turbo": "^2.9.16",
+    "typescript": "^6.0.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/react": "^19.2.15",
+      "@types/react-dom": "^19.2.3"
+    },
+    "patchedDependencies": {
+      "@react-native-ml-kit/text-recognition@2.0.0": "patches/@react-native-ml-kit__text-recognition@2.0.0.patch",
+      "react-native-get-sms-android@2.1.0": "patches/react-native-get-sms-android@2.1.0.patch"
+    }
+  }
+}

@@ -1,0 +1,278 @@
+apply plugin: "com.android.application"
+apply plugin: "org.jetbrains.kotlin.android"
+apply plugin: "com.facebook.react"
+
+def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
+
+def nodeResolve = { String expression ->
+    providers.exec {
+        workingDir(rootDir)
+        commandLine('node', '--preserve-symlinks', '--print', expression)
+    }.standardOutput.asText.get().trim()
+}
+
+static def versionToNumber(major, minor, patch) {
+  return patch * 100 + minor * 10000 + major * 1000000
+}
+
+def getRNVersion() {
+  def version = providers.exec {
+    workingDir(projectDir)
+    commandLine("node", "-e", "console.log(require('react-native/package.json').version);")
+  }.standardOutput.asText.get().trim()
+
+  def coreVersion = version.split("-")[0]
+  def (major, minor, patch) = coreVersion.tokenize('.').collect { it.toInteger() }
+
+  return versionToNumber(
+      major,
+      minor,
+      patch
+  )
+}
+def rnVersion = getRNVersion()
+
+def releaseSigningProperties = new Properties()
+def releaseSigningPropertiesFile = rootProject.file('release-signing.properties.local')
+if (releaseSigningPropertiesFile.exists()) {
+    releaseSigningPropertiesFile.withInputStream { stream -> releaseSigningProperties.load(stream) }
+}
+
+def releaseProperty = { name ->
+    def value = findProperty(name) ?: System.getenv(name) ?: releaseSigningProperties.getProperty(name)
+    return value?.toString()?.trim()
+}
+
+def resolveReleaseFile = { path ->
+    def candidate = new File(path)
+    return candidate.isAbsolute() ? candidate : rootProject.file(path)
+}
+
+def releaseStoreFilePath = releaseProperty('ONEWALLET_RELEASE_STORE_FILE')
+def releaseStorePassword = releaseProperty('ONEWALLET_RELEASE_STORE_PASSWORD')
+def releaseKeyAlias = releaseProperty('ONEWALLET_RELEASE_KEY_ALIAS')
+def releaseKeyPassword = releaseProperty('ONEWALLET_RELEASE_KEY_PASSWORD')
+def releaseSigningReady = releaseStoreFilePath && releaseStorePassword && releaseKeyAlias && releaseKeyPassword
+def requestedReleaseTask = gradle.startParameter.taskNames.any { task -> task.toLowerCase().contains('release') }
+def appVersionCode = (findProperty('onewallet.versionCode') ?: System.getenv('ONEWALLET_VERSION_CODE') ?: '1020100').toInteger()
+def appVersionName = (findProperty('onewallet.versionName') ?: System.getenv('ONEWALLET_VERSION_NAME') ?: '1.2.1').toString()
+def csvList = { value ->
+    value?.toString()?.split(',')?.collect { it.trim() }?.findAll { it.length() > 0 } ?: []
+}
+def releaseResourceConfigurations = csvList(findProperty('onewallet.resourceConfigurations') ?: System.getenv('ONEWALLET_RESOURCE_CONFIGURATIONS') ?: 'en')
+def releaseArchitectures = csvList(findProperty('reactNativeArchitectures'))
+def enableAbiSplits = (findProperty('onewallet.enableAbiSplits') ?: false).toBoolean()
+def enableUniversalApk = (findProperty('onewallet.enableUniversalApk') ?: false).toBoolean()
+
+/**
+ * This is the configuration block to customize your React Native Android app.
+ * By default you don't need to apply any configuration, just uncomment the lines you need.
+ */
+react {
+    entryFile = file("$projectRoot/index.js")
+    reactNativeDir = new File(nodeResolve("require.resolve('react-native/package.json')")).getParentFile().getAbsoluteFile()
+    hermesCommand = new File(nodeResolve("require.resolve('hermes-compiler/package.json', { paths: [require.resolve('react-native/package.json')] })")).getParentFile().getAbsolutePath() + "/hermesc/%OS-BIN%/hermesc"
+    codegenDir = new File(nodeResolve("require.resolve('@react-native/codegen/package.json', { paths: [require.resolve('react-native/package.json')] })")).getParentFile().getAbsoluteFile()
+
+    // Use Expo CLI to bundle the app, this ensures the Metro config
+    // works correctly with Expo projects.
+    cliFile = new File(nodeResolve("require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })"))
+    bundleCommand = "export:embed"
+
+    /* Folders */
+    //   The root of your project, i.e. where "package.json" lives. Default is '..'
+    // root = file("../")
+    //   The folder where the react-native NPM package is. Default is ../node_modules/react-native
+    // reactNativeDir = file("../node_modules/react-native")
+    //   The folder where the react-native Codegen package is. Default is ../node_modules/@react-native/codegen
+    // codegenDir = file("../node_modules/@react-native/codegen")
+
+    /* Variants */
+    //   The list of variants to that are debuggable. For those we're going to
+    //   skip the bundling of the JS bundle and the assets. By default is just 'debug'.
+    //   If you add flavors like lite, prod, etc. you'll have to list your debuggableVariants.
+    // debuggableVariants = ["liteDebug", "prodDebug"]
+
+    /* Bundling */
+    //   A list containing the node command and its flags. Default is just 'node'.
+    // nodeExecutableAndArgs = ["node"]
+
+    //
+    //   The path to the CLI configuration file. Default is empty.
+    // bundleConfig = file(../rn-cli.config.js)
+    //
+    //   The name of the generated asset file containing your JS bundle
+    // bundleAssetName = "MyApplication.android.bundle"
+    //
+    //   The entry file for bundle generation. Default is 'index.android.js' or 'index.js'
+    // entryFile = file("../js/MyApplication.android.js")
+    //
+    //   A list of extra flags to pass to the 'bundle' commands.
+    //   See https://github.com/react-native-community/cli/blob/main/docs/commands.md#bundle
+    // extraPackagerArgs = []
+
+    /* Hermes Commands */
+    //   The hermes compiler command to run. By default it is 'hermesc'
+    // hermesCommand = "$rootDir/my-custom-hermesc/bin/hermesc"
+    //
+    //   The list of flags to pass to the Hermes compiler. By default is "-O", "-output-source-map"
+    hermesFlags = (findProperty('onewallet.enableHermesSourceMaps')?.toBoolean() ?: false)
+        ? ["-O", "-output-source-map"]
+        : ["-O"]
+    enableBundleCompression = true
+
+    if (rnVersion >= versionToNumber(0, 75, 0)) {
+        /* Autolinking */
+        autolinkLibrariesWithApp()
+    }
+}
+
+/**
+ * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
+ */
+def enableProguardInReleaseBuilds = (findProperty('android.enableProguardInReleaseBuilds') ?: true).toBoolean()
+
+/**
+ * The preferred build flavor of JavaScriptCore (JSC)
+ *
+ * For example, to use the international variant, you can use:
+ * `def jscFlavor = 'org.webkit:android-jsc-intl:+'`
+ *
+ * The international variant includes ICU i18n library and necessary data
+ * allowing to use e.g. `Date.toLocaleString` and `String.localeCompare` that
+ * give correct results when using with locales other than en-US. Note that
+ * this variant is about 6MiB larger per architecture than default.
+ */
+def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
+
+android {
+    ndkVersion rootProject.ext.ndkVersion
+
+    buildToolsVersion rootProject.ext.buildToolsVersion
+    compileSdk rootProject.ext.compileSdkVersion
+
+    namespace 'com.joelpjoji.one.wallet'
+    defaultConfig {
+        applicationId 'com.joelpjoji.one.wallet'
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode appVersionCode
+        versionName appVersionName
+        if (!releaseResourceConfigurations.isEmpty()) {
+            resourceConfigurations += releaseResourceConfigurations
+        }
+        buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
+    }
+    splits {
+        abi {
+            reset()
+            enable enableAbiSplits
+            universalApk enableUniversalApk
+            if (!releaseArchitectures.isEmpty()) {
+                include(*releaseArchitectures)
+            }
+        }
+    }
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+        release {
+            if (releaseSigningReady) {
+                storeFile resolveReleaseFile(releaseStoreFilePath)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            if (!releaseSigningReady && requestedReleaseTask) {
+                throw new GradleException('Release signing is not configured. Set ONEWALLET_RELEASE_STORE_FILE, ONEWALLET_RELEASE_STORE_PASSWORD, ONEWALLET_RELEASE_KEY_ALIAS, and ONEWALLET_RELEASE_KEY_PASSWORD in apps/mobile/android/release-signing.properties.local or the environment.')
+            }
+            signingConfig signingConfigs.release
+            debuggable false
+            jniDebuggable false
+            shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: enableProguardInReleaseBuilds)
+            minifyEnabled enableProguardInReleaseBuilds
+            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            crunchPngs (findProperty('android.enablePngCrunchInReleaseBuilds')?.toBoolean() ?: true)
+        }
+    }
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging (findProperty('expo.useLegacyPackaging')?.toBoolean() ?: true)
+        }
+    }
+}
+
+afterEvaluate {
+    def googleSignInProject = rootProject.findProject(':react-native-google-signin_google-signin')
+    if (googleSignInProject != null && (findProperty('newArchEnabled') ?: 'false').toBoolean()) {
+        tasks.matching { task -> task.name.startsWith('configureCMake') || task.name.startsWith('buildCMake') }.configureEach {
+            dependsOn("${googleSignInProject.path}:generateCodegenArtifactsFromSchema")
+        }
+    }
+}
+
+// Apply static values from `gradle.properties` to the `android.packagingOptions`
+// Accepts values in comma delimited lists, example:
+// android.packagingOptions.pickFirsts=/LICENSE,**/picasa.ini
+["pickFirsts", "excludes", "merges", "doNotStrip"].each { prop ->
+    // Split option: 'foo,bar' -> ['foo', 'bar']
+    def options = (findProperty("android.packagingOptions.$prop") ?: "").split(",");
+    // Trim all elements in place.
+    for (i in 0..<options.size()) options[i] = options[i].trim();
+    // `[] - ""` is essentially `[""].filter(Boolean)` removing all empty strings.
+    options -= ""
+
+    if (options.length > 0) {
+        println "android.packagingOptions.$prop += $options ($options.length)"
+        // Ex: android.packagingOptions.pickFirsts += '**/SCCS/**'
+        options.each {
+            android.packagingOptions[prop] += it
+        }
+    }
+}
+
+dependencies {
+    // The version of react-native is set by the React Native Gradle Plugin
+    implementation("com.facebook.react:react-android")
+    implementation(project(":expo"))
+
+    def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
+    def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";
+    def isWebpAnimatedEnabled = (findProperty('expo.webp.animated') ?: "") == "true";
+
+    if (isGifEnabled) {
+        // For animated gif support
+        implementation("com.facebook.fresco:animated-gif:${expoLibs.versions.fresco.get()}")
+    }
+
+    if (isWebpEnabled) {
+        // For webp support
+        implementation("com.facebook.fresco:webpsupport:${expoLibs.versions.fresco.get()}")
+        if (isWebpAnimatedEnabled) {
+            // Animated webp support
+            implementation("com.facebook.fresco:animated-webp:${expoLibs.versions.fresco.get()}")
+        }
+    }
+
+    if (hermesEnabled.toBoolean()) {
+        implementation("com.facebook.react:hermes-android")
+    } else {
+        implementation jscFlavor
+    }
+}
+
+if (rnVersion < versionToNumber(0, 75, 0)) {
+    apply from: new File(nodeResolve("require.resolve('@react-native-community/cli-platform-android/package.json', { paths: [require.resolve('react-native/package.json')] })"), "../native_modules.gradle");
+    applyNativeModulesAppBuildGradle(project)
+}

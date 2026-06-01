@@ -1,0 +1,77 @@
+diff --git a/android/build.gradle b/android/build.gradle
+index 4cf39ee259d5f1b5aa1a34fcc94e6c3ceef9b240..39edee90e7fa9bb617c2551e76f6d5459ed6b0ea 100644
+--- a/android/build.gradle
++++ b/android/build.gradle
+@@ -62,13 +62,5 @@ dependencies {
+     //noinspection GradleDynamicVersion
+     implementation 'com.facebook.react:react-native:+'  // From node_modules
+     // To recognize Latin script
+     implementation 'com.google.mlkit:text-recognition:16.0.1'
+-    // To recognize Chinese script
+-    implementation 'com.google.mlkit:text-recognition-chinese:16.0.1'
+-    // To recognize Devanagari script
+-    implementation 'com.google.mlkit:text-recognition-devanagari:16.0.1'
+-    // To recognize Japanese script
+-    implementation 'com.google.mlkit:text-recognition-japanese:16.0.1'
+-    // To recognize Korean script
+-    implementation 'com.google.mlkit:text-recognition-korean:16.0.1'
+ }
+diff --git a/android/src/main/java/com/rnmlkit/textrecognition/TextRecognitionModule.java b/android/src/main/java/com/rnmlkit/textrecognition/TextRecognitionModule.java
+index 6370949a2626ed88ea6c76bf8f92fc8d4110dcc4..300261260e6ad581d932f66de67990948814636f 100644
+--- a/android/src/main/java/com/rnmlkit/textrecognition/TextRecognitionModule.java
++++ b/android/src/main/java/com/rnmlkit/textrecognition/TextRecognitionModule.java
+@@ -23,10 +23,6 @@ import com.google.android.gms.tasks.OnSuccessListener;
+ import com.google.mlkit.vision.common.InputImage;
+ import com.google.mlkit.vision.text.Text;
+ import com.google.mlkit.vision.text.TextRecognition;
+ import com.google.mlkit.vision.text.TextRecognizer;
+ import com.google.mlkit.vision.text.TextRecognizerOptionsInterface;
+-import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions;
+-import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions;
+-import com.google.mlkit.vision.text.japanese.JapaneseTextRecognizerOptions;
+-import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions;
+ import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
+@@ -140,20 +136,5 @@ public class TextRecognitionModule extends ReactContextBaseJavaModule {
+
+     @NonNull
+     TextRecognizerOptionsInterface getScriptTextRecognizerOptions(@Nullable String script) {
+-        if (script == null) {
+-            return TextRecognizerOptions.DEFAULT_OPTIONS;
+-        }
+-
+-        switch (script) {
+-            case "Chinese":
+-                return new ChineseTextRecognizerOptions.Builder().build();
+-            case "Devanagari":
+-                return new DevanagariTextRecognizerOptions.Builder().build();
+-            case "Japanese":
+-                return new JapaneseTextRecognizerOptions.Builder().build();
+-            case "Korean":
+-                return new KoreanTextRecognizerOptions.Builder().build();
+-            default:
+-                return TextRecognizerOptions.DEFAULT_OPTIONS;
+-        }
++        return TextRecognizerOptions.DEFAULT_OPTIONS;
+     }
+diff --git a/index.ts b/index.ts
+index 257a6473f8ecae83556535982c716b04c4a0eae5..b55f1ff6d9c51f4b5549bc5de5333ed3d342b4dd 100644
+--- a/index.ts
++++ b/index.ts
+@@ -63,8 +63,4 @@ export interface TextRecognitionResult {
+
+ export enum TextRecognitionScript {
+   LATIN = 'Latin',
+-  CHINESE = 'Chinese',
+-  DEVANAGARI = 'Devanagari',
+-  JAPANESE = 'Japanese',
+-  KOREAN = 'Korean',
+ }
+@@ -93,7 +89,7 @@ const TextRecognition = {
+    * @param imageURL The URL/path of the image to process.
+    *
+    * @param [script=TextRecognitionScript.LATIN] The language script to recognize.
+-   * Supported languages are Latin, Chinese, Devanagari, Japanese, and Korean.
++   * This app packages the Latin recognizer only to keep Android release size down.
+    *
+    * @returns Text recognition result
+    */

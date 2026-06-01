@@ -1,0 +1,639 @@
+{
+  "userId": "firebase:pending-google-user",
+  "baseCurrency": "INR",
+  "displayCurrency": "INR",
+  "locale": "en-IN",
+  "now": "2026-05-31T00:00:00.000Z",
+  "sourceCsv": "import data/wallet_records (1).csv",
+  "profile": {
+    "displayName": "Joel",
+    "primaryUseCases": [
+      "daily_spending",
+      "cards_loans",
+      "budgeting"
+    ],
+    "onboardingCompletedAt": "2026-05-31T00:00:00.000Z"
+  },
+  "outputs": {
+    "ledger": "importdata/google-migration-ledger.json",
+    "archive": "importdata/google-migration.onewallet.json",
+    "summary": "importdata/google-migration-summary.json",
+    "review": "importdata/google-migration-review.json"
+  },
+  "accountOverrides": [
+    {
+      "matchName": "Cash",
+      "type": "cash",
+      "sortOrder": 0,
+      "icon": "cash",
+      "color": "#16A34A",
+      "targetBalanceMinor": 3567974
+    },
+    {
+      "matchName": "Union Bank",
+      "type": "bank",
+      "sortOrder": 1,
+      "icon": "bank-outline",
+      "color": "#0F766E",
+      "institution": "Union Bank of India",
+      "targetBalanceMinor": 50000
+    },
+    {
+      "matchName": "ICICI Bank",
+      "type": "bank",
+      "sortOrder": 2,
+      "icon": "bank-outline",
+      "color": "#2563EB",
+      "institution": "ICICI Bank",
+      "targetBalanceMinor": 8423603
+    },
+    {
+      "matchName": "HDFC Bank",
+      "type": "bank",
+      "sortOrder": 3,
+      "icon": "bank-outline",
+      "color": "#DC2626",
+      "institution": "HDFC Bank",
+      "targetBalanceMinor": 1771700
+    },
+    {
+      "matchName": "HDFC MoneyBack Credit Card",
+      "type": "credit_card",
+      "sortOrder": 4,
+      "icon": "credit-card-outline",
+      "color": "#B91C1C",
+      "institution": "HDFC Bank",
+      "targetBalanceMinor": 0
+    },
+    {
+      "matchName": "ICICI Coral Credit Card",
+      "type": "credit_card",
+      "sortOrder": 5,
+      "icon": "credit-card-outline",
+      "color": "#DB2777",
+      "institution": "ICICI Bank",
+      "targetBalanceMinor": 0
+    },
+    {
+      "matchName": "Amazon Pay Credit Card",
+      "type": "credit_card",
+      "sortOrder": 6,
+      "icon": "credit-card-outline",
+      "color": "#D97706",
+      "institution": "ICICI Bank",
+      "targetBalanceMinor": 0
+    },
+    {
+      "matchName": "Sbi SimplyClick Credit Card",
+      "type": "credit_card",
+      "sortOrder": 7,
+      "icon": "credit-card-outline",
+      "color": "#0284C7",
+      "institution": "SBI Card",
+      "targetBalanceMinor": 0
+    },
+    {
+      "matchName": "SBI Cashback Credit Card",
+      "type": "credit_card",
+      "sortOrder": 8,
+      "icon": "credit-card-outline",
+      "color": "#1D4ED8",
+      "institution": "SBI Card",
+      "targetBalanceMinor": -90000
+    },
+    {
+      "matchName": "Swiggy HDFC Credit Card",
+      "type": "credit_card",
+      "sortOrder": 9,
+      "icon": "credit-card-outline",
+      "color": "#EA580C",
+      "institution": "HDFC Bank",
+      "targetBalanceMinor": 0
+    },
+    {
+      "matchName": "RBL Xtra Credit Card",
+      "type": "credit_card",
+      "sortOrder": 10,
+      "icon": "credit-card-outline",
+      "color": "#7C2D12",
+      "institution": "RBL Bank",
+      "targetBalanceMinor": -505800
+    },
+    {
+      "matchName": "One Card BOB",
+      "type": "credit_card",
+      "sortOrder": 11,
+      "icon": "credit-card-outline",
+      "color": "#111827",
+      "institution": "Bank of Baroda",
+      "targetBalanceMinor": -75900
+    },
+    {
+      "matchName": "Kiwi YES Bank Credit Card",
+      "type": "credit_card",
+      "sortOrder": 12,
+      "icon": "credit-card-outline",
+      "color": "#65A30D",
+      "institution": "YES Bank",
+      "targetBalanceMinor": -1736900
+    },
+    {
+      "matchName": "Amazon Wallet",
+      "type": "wallet",
+      "sortOrder": 13,
+      "icon": "wallet-outline",
+      "color": "#F59E0B",
+      "targetBalanceMinor": 255436
+    },
+    {
+      "matchName": "Scapia Credit Card",
+      "type": "credit_card",
+      "sortOrder": 14,
+      "icon": "credit-card-outline",
+      "color": "#0891B2",
+      "targetBalanceMinor": 0
+    },
+    {
+      "matchName": "Axis Forex Card",
+      "type": "prepaid",
+      "sortOrder": 15,
+      "icon": "credit-card-chip-outline",
+      "color": "#7C3AED",
+      "institution": "Axis Bank",
+      "targetBalanceMinor": 255278
+    }
+  ],
+  "detectedPlannedPayments": {
+    "includeActivities": [
+      "active",
+      "needs_review"
+    ],
+    "skipKinds": [],
+    "limit": 0,
+    "rewriteExternalRefs": false
+  },
+  "plannedPaymentSeeds": [
+    {
+      "name": "Jio STB",
+      "kind": "bill",
+      "type": "expense",
+      "account": "Amazon Wallet",
+      "category": "Internet",
+      "amountMinor": 70682,
+      "currency": "INR",
+      "frequency": "monthly",
+      "dayOfMonth": 3,
+      "startsOn": "2026-06-03",
+      "historyMatch": {
+        "account": "Amazon Wallet",
+        "category": "Internet",
+        "textIncludes": [
+          "jiofiber",
+          "stb"
+        ]
+      }
+    },
+    {
+      "name": "Home Electricity",
+      "kind": "bill",
+      "type": "expense",
+      "account": "Amazon Wallet",
+      "category": "Electricity",
+      "amountMinor": 220000,
+      "currency": "INR",
+      "frequency": "monthly",
+      "dayOfMonth": 12,
+      "startsOn": "2026-06-12",
+      "historyMatch": {
+        "category": "Electricity",
+        "textIncludes": [
+          "home electricity"
+        ]
+      }
+    },
+    {
+      "name": "Netflix",
+      "kind": "subscription",
+      "type": "expense",
+      "account": "SBI Cashback Credit Card",
+      "category": "TV, Streaming",
+      "amountMinor": 64900,
+      "currency": "INR",
+      "frequency": "monthly",
+      "dayOfMonth": 17,
+      "startsOn": "2026-06-17",
+      "historyMatch": {
+        "account": "SBI Cashback Credit Card",
+        "category": "TV, Streaming",
+        "amountMinor": 64900,
+        "textIncludes": [
+          "netflix"
+        ]
+      }
+    },
+    {
+      "name": "Spotify",
+      "kind": "subscription",
+      "type": "expense",
+      "account": "SBI Cashback Credit Card",
+      "category": "Amazon Prime",
+      "amountMinor": 14900,
+      "currency": "INR",
+      "frequency": "monthly",
+      "dayOfMonth": 26,
+      "startsOn": "2026-06-26",
+      "historyMatch": {
+        "account": "SBI Cashback Credit Card",
+        "amountMinor": 14900,
+        "textIncludes": [
+          "spotify"
+        ]
+      }
+    },
+    {
+      "name": "Google One",
+      "kind": "subscription",
+      "type": "expense",
+      "account": "SBI Cashback Credit Card",
+      "category": "Software, apps, games",
+      "amountMinor": 13000,
+      "currency": "INR",
+      "frequency": "monthly",
+      "dayOfMonth": 30,
+      "startsOn": "2026-06-30",
+      "historyMatch": {
+        "account": "SBI Cashback Credit Card",
+        "category": "Software, apps, games",
+        "amountMinor": 13000,
+        "textIncludes": [
+          "google one"
+        ]
+      }
+    },
+    {
+      "name": "Rent",
+      "kind": "bill",
+      "type": "expense",
+      "account": "ICICI Bank",
+      "category": "Rent",
+      "amountMinor": 850000,
+      "currency": "INR",
+      "frequency": "monthly",
+      "dayOfMonth": 1,
+      "startsOn": "2026-07-01",
+      "historyMatch": {
+        "account": "ICICI Bank",
+        "category": "Rent",
+        "amountMinor": 850000,
+        "textIncludes": [
+          "suniya"
+        ]
+      }
+    },
+    {
+      "name": "Home - Maintenance",
+      "kind": "bill",
+      "type": "expense",
+      "account": "ICICI Bank",
+      "category": "Maintenance",
+      "amountMinor": 70000,
+      "currency": "INR",
+      "frequency": "monthly",
+      "dayOfMonth": 1,
+      "startsOn": "2026-07-01",
+      "historyMatch": {
+        "account": "ICICI Bank",
+        "category": "Maintenance",
+        "amountMinor": 70000,
+        "textIncludes": [
+          "suni aunty"
+        ]
+      }
+    },
+    {
+      "name": "Salary",
+      "kind": "income",
+      "type": "income",
+      "account": "HDFC Bank",
+      "category": "TCS",
+      "amountMinor": 7022500,
+      "currency": "INR",
+      "frequency": "monthly",
+      "dayOfMonth": 1,
+      "startsOn": "2026-07-01",
+      "historyMatch": {
+        "account": "HDFC Bank",
+        "category": "TCS"
+      }
+    },
+    {
+      "name": "Church",
+      "kind": "bill",
+      "type": "expense",
+      "account": "ICICI Bank",
+      "category": "Charity",
+      "amountMinor": 100000,
+      "currency": "INR",
+      "frequency": "monthly",
+      "dayOfMonth": 1,
+      "startsOn": "2026-07-01",
+      "historyMatch": {
+        "account": "ICICI Bank",
+        "category": "Charity",
+        "amountMinor": 100000,
+        "textIncludes": [
+          "church"
+        ]
+      }
+    },
+    {
+      "name": "Jio Recharge - Papa",
+      "kind": "bill",
+      "type": "expense",
+      "account": "Amazon Wallet",
+      "category": "Phone",
+      "amountMinor": 178900,
+      "currency": "INR",
+      "frequency": "yearly",
+      "startsOn": "2026-08-09",
+      "historyMatch": {
+        "account": "Amazon Wallet",
+        "category": "Phone",
+        "textIncludes": [
+          "papa"
+        ]
+      }
+    },
+    {
+      "name": "Vento Car Insurance",
+      "kind": "bill",
+      "type": "expense",
+      "account": "ICICI Bank",
+      "category": "Vehicle insurance",
+      "amountMinor": 1078000,
+      "currency": "INR",
+      "frequency": "yearly",
+      "startsOn": "2026-09-15",
+      "historyMatch": {
+        "category": "Vehicle insurance",
+        "textIncludes": [
+          "vento insurance"
+        ]
+      }
+    },
+    {
+      "name": "Jio Recharge - Mom",
+      "kind": "bill",
+      "type": "expense",
+      "account": "Amazon Wallet",
+      "category": "Phone",
+      "amountMinor": 178900,
+      "currency": "INR",
+      "frequency": "yearly",
+      "startsOn": "2026-09-23",
+      "historyMatch": {
+        "account": "Amazon Wallet",
+        "category": "Phone",
+        "textIncludes": [
+          "mom"
+        ]
+      }
+    },
+    {
+      "name": "Twister Bike Insurance",
+      "kind": "bill",
+      "type": "expense",
+      "account": "Amazon Wallet",
+      "category": "Vehicle insurance",
+      "amountMinor": 85000,
+      "currency": "INR",
+      "frequency": "yearly",
+      "startsOn": "2026-11-05",
+      "historyMatch": {
+        "category": "Vehicle insurance",
+        "textIncludes": [
+          "twister insurance"
+        ]
+      }
+    },
+    {
+      "name": "Crunchyroll",
+      "kind": "subscription",
+      "type": "expense",
+      "account": "SBI Cashback Credit Card",
+      "category": "Amazon Prime",
+      "amountMinor": 47500,
+      "currency": "INR",
+      "frequency": "yearly",
+      "startsOn": "2026-12-17",
+      "historyMatch": {
+        "account": "SBI Cashback Credit Card",
+        "textIncludes": [
+          "crunchyroll"
+        ]
+      }
+    },
+    {
+      "name": "Bullet Bike Insurance",
+      "kind": "bill",
+      "type": "expense",
+      "account": "Amazon Wallet",
+      "category": "Vehicle insurance",
+      "amountMinor": 150000,
+      "currency": "INR",
+      "frequency": "yearly",
+      "startsOn": "2027-01-11",
+      "historyMatch": {
+        "category": "Vehicle insurance",
+        "textIncludes": [
+          "bullet insurance"
+        ]
+      }
+    },
+    {
+      "name": "Jio Recharge - Mine",
+      "kind": "bill",
+      "type": "expense",
+      "account": "Amazon Wallet",
+      "category": "Phone",
+      "amountMinor": 359900,
+      "currency": "INR",
+      "frequency": "yearly",
+      "startsOn": "2027-01-22",
+      "historyMatch": {
+        "account": "Amazon Wallet",
+        "category": "Phone",
+        "textIncludes": [
+          "jio recharge",
+          "mine"
+        ]
+      }
+    },
+    {
+      "name": "Amazon Prime",
+      "kind": "subscription",
+      "type": "expense",
+      "account": "Amazon Pay Credit Card",
+      "category": "Software, apps, games",
+      "amountMinor": 149900,
+      "currency": "INR",
+      "frequency": "yearly",
+      "startsOn": "2027-02-02",
+      "historyMatch": {
+        "account": "Amazon Pay Credit Card",
+        "category": "Software, apps, games",
+        "amountMinor": 149900
+      }
+    },
+    {
+      "name": "Truecaller",
+      "kind": "subscription",
+      "type": "expense",
+      "account": "One Card BOB",
+      "category": "Software, apps, games",
+      "amountMinor": 149900,
+      "currency": "INR",
+      "frequency": "yearly",
+      "startsOn": "2027-03-22",
+      "historyMatch": {
+        "account": "One Card BOB",
+        "category": "Software, apps, games",
+        "amountMinor": 149900
+      }
+    },
+    {
+      "name": "YouTube Premium",
+      "kind": "subscription",
+      "type": "expense",
+      "account": "SBI Cashback Credit Card",
+      "category": "Amazon Prime",
+      "amountMinor": 149000,
+      "currency": "INR",
+      "frequency": "yearly",
+      "startsOn": "2027-05-13",
+      "historyMatch": {
+        "textIncludes": [
+          "youtube premium"
+        ]
+      }
+    }
+  ],
+  "loanAccounts": [
+    {
+      "key": "education-loan",
+      "name": "Educational Loan",
+      "ruleName": "Education Loan",
+      "sortOrder": 16,
+      "loanKind": "education",
+      "principalMinor": 33000000,
+      "currentOutstandingMinor": 33000000,
+      "emiMinor": 421000,
+      "currency": "INR",
+      "repaymentSourceAccount": "Union Bank",
+      "repaymentStartsOn": "2023-04-05",
+      "trackingStartsOn": "2023-04-05",
+      "dayOfMonth": 5,
+      "repaymentCount": 180,
+      "interestRatePercent": 11.85,
+      "interestRatePeriod": "annual",
+      "interestMethod": "reducing_balance",
+      "fixedRate": true,
+      "matchTerms": [
+        "education",
+        "educational",
+        "loan",
+        "emi"
+      ],
+      "allowAmountOnlyMatch": true,
+      "amountToleranceMinor": 100,
+      "maxDateDriftDays": 20
+    },
+    {
+      "key": "personal-loan",
+      "name": "Personal Loan",
+      "ruleName": "Personal loan EMI",
+      "sortOrder": 17,
+      "loanKind": "personal",
+      "principalMinor": 81400000,
+      "currentOutstandingMinor": 59100000,
+      "emiMinor": 1771700,
+      "currency": "INR",
+      "repaymentSourceAccount": "HDFC Bank",
+      "repaymentStartsOn": "2024-10-07",
+      "trackingStartsOn": "2024-10-07",
+      "dayOfMonth": 7,
+      "repaymentCount": 60,
+      "interestRatePercent": 11,
+      "interestRatePeriod": "annual",
+      "interestMethod": "reducing_balance",
+      "matchTerms": [
+        "personal",
+        "loan",
+        "emi"
+      ],
+      "allowAmountOnlyMatch": true,
+      "amountToleranceMinor": 100,
+      "maxDateDriftDays": 20
+    },
+    {
+      "key": "anu-loan",
+      "name": "Anu Loan",
+      "ruleName": "Anu's Loan",
+      "sortOrder": 18,
+      "loanKind": "personal",
+      "principalMinor": 50000000,
+      "currentOutstandingMinor": 50000000,
+      "emiMinor": 1107000,
+      "currency": "INR",
+      "repaymentSourceAccount": "ICICI Bank",
+      "repaymentStartsOn": "2025-11-01",
+      "trackingStartsOn": "2025-11-01",
+      "dayOfMonth": 1,
+      "repaymentCount": 60,
+      "interestRatePercent": 11,
+      "interestRatePeriod": "annual",
+      "interestMethod": "reducing_balance",
+      "matchTerms": [
+        "anu",
+        "loan",
+        "emi"
+      ],
+      "allowAmountOnlyMatch": true,
+      "amountToleranceMinor": 100,
+      "maxDateDriftDays": 20
+    },
+    {
+      "key": "jerry-education-loan",
+      "name": "Jerry's Educational Loan",
+      "ruleName": "Jerry's Educational Loan",
+      "sortOrder": 19,
+      "loanKind": "education",
+      "principalMinor": 24900000,
+      "currentOutstandingMinor": 24900000,
+      "emiMinor": 300000,
+      "currency": "INR",
+      "repaymentSourceAccount": "ICICI Bank",
+      "repaymentStartsOn": "2026-01-01",
+      "trackingStartsOn": "2026-01-01",
+      "dayOfMonth": 1,
+      "skippedOccurrences": [
+        "2026-06-01"
+      ],
+      "repaymentCount": 240,
+      "interestRatePercent": 11,
+      "interestRatePeriod": "annual",
+      "interestMethod": "reducing_balance",
+      "fixedRate": true,
+      "matchTerms": [
+        "jerry",
+        "education",
+        "educational",
+        "loan",
+        "emi"
+      ],
+      "allowAmountOnlyMatch": true,
+      "amountToleranceMinor": 100,
+      "maxDateDriftDays": 20
+    }
+  ]
+}

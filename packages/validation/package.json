@@ -1,0 +1,24 @@
+{
+  "name": "@1wallet/validation",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "node ../../node_modules/typescript/bin/tsc --noEmit",
+    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json",
+    "clean": "node ../../node_modules/rimraf/dist/esm/bin.mjs dist .turbo"
+  },
+  "dependencies": {
+    "zod": "^3.23.0",
+    "@1wallet/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "rimraf": "^6.1.3"
+  }
+}

@@ -1,0 +1,246 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    function isStringOrNull(value) {
+      return value == null || value is string;
+    }
+
+    function isOptionalString(data, key) {
+      return !(key in data) || data[key] is string;
+    }
+
+    function isOptionalStringOrNull(data, key) {
+      return !(key in data) || isStringOrNull(data[key]);
+    }
+
+    function isOptionalTimestamp(data, key) {
+      return !(key in data) || data[key] is timestamp;
+    }
+
+    function isValidChecksum(value) {
+      return value is string && value.matches('^fnv1a32:[0-9a-f]{8}$');
+    }
+
+    function isValidSummary(summary) {
+      return summary is map &&
+        summary.keys().hasOnly([
+          'accounts',
+          'categories',
+          'transactions',
+          'transactionSplits',
+          'captureCandidates',
+          'importBatches',
+          'plannedPayments',
+          'loanAccounts',
+          'budgets',
+          'goals',
+          'exchangeRates',
+          'currencies',
+          'dateRange'
+        ]) &&
+        summary.accounts is int && summary.accounts >= 0 &&
+        summary.categories is int && summary.categories >= 0 &&
+        summary.transactions is int && summary.transactions >= 0 &&
+        summary.transactionSplits is int && summary.transactionSplits >= 0 &&
+        summary.captureCandidates is int && summary.captureCandidates >= 0 &&
+        summary.importBatches is int && summary.importBatches >= 0 &&
+        summary.plannedPayments is int && summary.plannedPayments >= 0 &&
+        summary.loanAccounts is int && summary.loanAccounts >= 0 &&
+        summary.budgets is int && summary.budgets >= 0 &&
+        summary.goals is int && summary.goals >= 0 &&
+        summary.exchangeRates is int && summary.exchangeRates >= 0 &&
+        summary.currencies is list && summary.currencies.size() <= 32 &&
+        (!('dateRange' in summary) ||
+          (summary.dateRange is map &&
+            summary.dateRange.keys().hasOnly(['start', 'end']) &&
+            summary.dateRange.start is string &&
+            summary.dateRange.end is string));
+    }
+
+    function isValidUserDocument(data) {
+      return data.keys().hasOnly(['email', 'displayName', 'authProvider', 'updatedAt']) &&
+        isOptionalStringOrNull(data, 'email') &&
+        isOptionalStringOrNull(data, 'displayName') &&
+        (!('authProvider' in data) || data.authProvider == 'google') &&
+        isOptionalTimestamp(data, 'updatedAt');
+    }
+
+    function isValidWalletDocument(data, walletId) {
+      return walletId == 'default' &&
+        data.keys().hasOnly([
+          'walletId',
+          'cloudRevision',
+          'latestSnapshotId',
+          'latestSnapshotChecksum',
+          'latestSnapshotChunks',
+          'latestSnapshotSize',
+          'ledgerStateVersion',
+          'summary',
+          'lastWriterDeviceId',
+          'lastWriterAt',
+          'updatedAt'
+        ]) &&
+        data.walletId == walletId &&
+        data.cloudRevision is int && data.cloudRevision >= 0 &&
+        data.latestSnapshotId is string &&
+        data.latestSnapshotId.matches('^[0-9]{12,17}-[A-Za-z0-9_-]{8,80}$') &&
+        isValidChecksum(data.latestSnapshotChecksum) &&
+        data.latestSnapshotChunks is int && data.latestSnapshotChunks >= 1 && data.latestSnapshotChunks <= 200 &&
+        data.latestSnapshotSize is int && data.latestSnapshotSize > 0 && data.latestSnapshotSize <= 104857600 &&
+        data.ledgerStateVersion is int && data.ledgerStateVersion >= 1 && data.ledgerStateVersion <= 1000 &&
+        isValidSummary(data.summary) &&
+        data.lastWriterDeviceId is string && data.lastWriterDeviceId.size() >= 8 && data.lastWriterDeviceId.size() <= 80 &&
+        data.lastWriterAt is string &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidSnapshotDocument(data, snapshotId) {
+      return data.keys().hasOnly([
+          'snapshotId',
+          'checksum',
+          'chunks',
+          'size',
+          'reason',
+          'ledgerStateVersion',
+          'summary',
+          'writerDeviceId',
+          'createdAt'
+        ]) &&
+        data.snapshotId == snapshotId &&
+        snapshotId.matches('^[0-9]{12,17}-[A-Za-z0-9_-]{8,80}$') &&
+        isValidChecksum(data.checksum) &&
+        data.chunks is int && data.chunks >= 1 && data.chunks <= 200 &&
+        data.size is int && data.size > 0 && data.size <= 104857600 &&
+        data.reason in ['auto', 'seed'] &&
+        data.ledgerStateVersion is int && data.ledgerStateVersion >= 1 && data.ledgerStateVersion <= 1000 &&
+        isValidSummary(data.summary) &&
+        data.writerDeviceId is string && data.writerDeviceId.size() >= 8 && data.writerDeviceId.size() <= 80 &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidChunkDocument(data, chunkId) {
+      return chunkId.matches('^[0-9]{5}$') &&
+        data.keys().hasOnly(['index', 'content']) &&
+        data.index is int && data.index >= 0 && data.index <= 99999 &&
+        data.content is string && data.content.size() > 0 && data.content.size() <= 524288;
+    }
+
+    function isValidUpdateList(value, maxItems) {
+      return value is list && value.size() <= maxItems;
+    }
+
+    function isValidUpdateChangelog(data) {
+      return data is map &&
+        data.keys().hasOnly(['newFeatures', 'bugFixes', 'notes']) &&
+        isValidUpdateList(data.newFeatures, 20) &&
+        isValidUpdateList(data.bugFixes, 20) &&
+        isValidUpdateList(data.notes, 20);
+    }
+
+    function isValidUpdateApk(data) {
+      return data is map &&
+        data.keys().hasOnly([
+          'downloadUrl',
+          'fileName',
+          'sizeBytes',
+          'sha256',
+          'architecture',
+          'minSdk',
+          'estimatedDownloadSeconds'
+        ]) &&
+        data.downloadUrl is string && data.downloadUrl.matches('^https?://.+') &&
+        data.fileName is string && data.fileName.size() > 0 && data.fileName.size() <= 160 &&
+        data.sizeBytes is int && data.sizeBytes > 0 && data.sizeBytes <= 250000000 &&
+        data.sha256 is string && data.sha256.matches('^(sha256:)?[0-9a-f]{64}$') &&
+        data.architecture is string && data.architecture in ['universal', 'arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64'] &&
+        (!('minSdk' in data) || (data.minSdk is int && data.minSdk >= 21 && data.minSdk <= 100)) &&
+        (!('estimatedDownloadSeconds' in data) || (data.estimatedDownloadSeconds is int && data.estimatedDownloadSeconds > 0 && data.estimatedDownloadSeconds <= 86400));
+    }
+
+    function isValidAppUpdateRelease(data, platform) {
+      return platform == 'android' &&
+        data is map &&
+        data.keys().hasOnly([
+          'platform',
+          'channel',
+          'status',
+          'versionName',
+          'versionCode',
+          'runtimeVersion',
+          'releaseType',
+          'mandatory',
+          'requirement',
+          'minimumSupportedVersionCode',
+          'publishedAt',
+          'changelog',
+          'apk'
+        ]) &&
+        data.platform == platform &&
+        data.channel is string && data.channel.matches('^[a-z0-9._-]{1,40}$') &&
+        data.status == 'published' &&
+        data.versionName is string && data.versionName.matches('^[0-9]+\\.[0-9]+\\.[0-9]+([+-][0-9A-Za-z.-]+)?$') &&
+        data.versionCode is int && data.versionCode > 0 && data.versionCode <= 2147483647 &&
+        data.runtimeVersion is string && data.runtimeVersion.size() > 0 && data.runtimeVersion.size() <= 80 &&
+        data.releaseType in ['major', 'minor', 'patch'] &&
+        data.mandatory is bool &&
+        data.requirement in ['mandatory', 'optional'] &&
+        ((data.mandatory == true && data.requirement == 'mandatory') || (data.mandatory == false && data.requirement == 'optional')) &&
+        data.minimumSupportedVersionCode is int && data.minimumSupportedVersionCode >= 0 &&
+        data.publishedAt is timestamp &&
+        isValidUpdateChangelog(data.changelog) &&
+        isValidUpdateApk(data.apk);
+    }
+
+    function isValidAppUpdateChannel(data, platform, channel) {
+      return platform == 'android' &&
+        data is map &&
+        data.keys().hasOnly(['platform', 'channel', 'status', 'latestVersionCode', 'updatedAt']) &&
+        data.platform == platform &&
+        data.channel == channel &&
+        data.status == 'published' &&
+        data.latestVersionCode is int && data.latestVersionCode > 0 && data.latestVersionCode <= 2147483647 &&
+        data.updatedAt is timestamp;
+    }
+
+    match /appUpdates/{platform}/releases/{releaseId} {
+      allow get: if isValidAppUpdateRelease(resource.data, platform);
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+
+    match /appUpdates/{platform}/channels/{channel} {
+      allow get: if platform == 'android' && channel.matches('^[a-z0-9._-]{1,40}$');
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidUserDocument(request.resource.data);
+      allow delete: if false;
+
+      match /wallets/{walletId} {
+        allow read: if isOwner(userId) && walletId == 'default';
+        allow create, update: if isOwner(userId) && isValidWalletDocument(request.resource.data, walletId);
+        allow delete: if false;
+
+        match /snapshots/{snapshotId} {
+          allow read: if isOwner(userId) && walletId == 'default';
+          allow create: if isOwner(userId) && walletId == 'default' && isValidSnapshotDocument(request.resource.data, snapshotId);
+          allow update, delete: if false;
+
+          match /chunks/{chunkId} {
+            allow read: if isOwner(userId) && walletId == 'default';
+            allow create: if isOwner(userId) && walletId == 'default' && isValidChunkDocument(request.resource.data, chunkId);
+            allow update, delete: if false;
+          }
+        }
+      }
+    }
+  }
+}

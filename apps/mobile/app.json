@@ -1,0 +1,82 @@
+{
+  "expo": {
+    "name": "1wallet",
+    "slug": "1wallet",
+    "version": "1.2.1",
+    "orientation": "portrait",
+    "icon": "./assets/brand/icon.png",
+    "scheme": "onewallet",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/brand/splash-native.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FBF8FF"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.joelpjoji.one.wallet"
+    },
+    "android": {
+      "package": "com.joelpjoji.one.wallet",
+      "permissions": [
+        "CAMERA",
+        "READ_SMS",
+        "RECEIVE_SMS",
+        "WAKE_LOCK",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VISUAL_USER_SELECTED",
+        "READ_EXTERNAL_STORAGE",
+        "REQUEST_INSTALL_PACKAGES",
+        "POST_NOTIFICATIONS",
+        "VIBRATE"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/brand/adaptive-icon.png",
+        "backgroundColor": "#315DA8"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-notifications",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow 1wallet to scan receipt and bill photos.",
+          "photosPermission": "Allow 1wallet to choose receipt and bill images from your photos."
+        }
+      ],
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/Inter-Regular.ttf",
+            "./assets/fonts/Inter-Medium.ttf",
+            "./assets/fonts/Inter-SemiBold.ttf",
+            "./assets/fonts/Inter-Bold.ttf",
+            "./assets/fonts/RobotoMono-Regular.ttf",
+            "./assets/fonts/RobotoMono-Medium.ttf"
+          ]
+        }
+      ],
+      "expo-updates",
+      "expo-sharing"
+    ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_ERROR_RECOVERY",
+      "fallbackToCacheTimeout": 0
+    },
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
