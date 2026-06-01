@@ -21,8 +21,13 @@ export async function checkForAndroidUpdate(
   const checkedAt = new Date().toISOString();
   try {
     const release = await fetchLatestPublishedAndroidRelease(channel);
-    if (!release || !isReleaseNewerThanInstalled(release, current)) {
+    if (!release) {
       return { status: 'up-to-date', checkedAt, current };
+    }
+    if (!isReleaseNewerThanInstalled(release, current)) {
+      return release.versionCode < current.versionCode
+        ? { status: 'ahead-of-channel', checkedAt, current, release }
+        : { status: 'up-to-date', checkedAt, current };
     }
     return { status: 'available', checkedAt, current, release };
   } catch (error) {
@@ -41,6 +46,28 @@ export async function checkForAndroidUpdate(
 export async function fetchLatestPublishedAndroidRelease(
   channel: UpdateChannel = DEFAULT_UPDATE_CHANNEL,
 ): Promise<AppUpdateRelease | null> {
+  const db = getUpdateFirestore();
+  return fetchChannelRelease(db, channel);
+}
+
+export async function fetchPublishedAndroidReleaseByCode(
+  versionCode: number,
+): Promise<AppUpdateRelease | null> {
+  if (!Number.isInteger(versionCode) || versionCode <= 0) return null;
+  const db = getUpdateFirestore();
+  const releaseRef = doc(
+    db,
+    UPDATE_METADATA_ROOT,
+    APP_UPDATE_PLATFORM,
+    'releases',
+    String(versionCode),
+  );
+  const releaseSnapshot = await getDoc(releaseRef);
+  if (!releaseSnapshot.exists()) return null;
+  return parseReleaseDocument(releaseSnapshot.id, releaseSnapshot.data());
+}
+
+function getUpdateFirestore(): Firestore {
   let services;
   try {
     services = getFirebaseServices();
@@ -48,9 +75,7 @@ export async function fetchLatestPublishedAndroidRelease(
     throw new Error(updateErrorMessage(error));
   }
   if (!services) throw new Error('Firebase is not configured for update checks.');
-
-  const channelRelease = await fetchChannelRelease(services.db, channel);
-  return channelRelease;
+  return services.db;
 }
 
 async function fetchChannelRelease(db: Firestore, channel: UpdateChannel) {
