@@ -28,22 +28,22 @@ Examples:
 1.2.3 -> 1020300
 ```
 
-The current target release is the stable rescue `1.4.0` with version code `1040000`. This release intentionally sits above the accidental `1.4.0-beta.1 / 1039901` beta so affected devices can upgrade through Android's normal APK installer. Use `1.3.0` as the baseline when testing update detection, and use `1039901` to verify the rescue path.
+The current target release is the stable rescue `1.4.1` with version code `1040100`. The earlier `1.4.0 / 1040000` rescue is published, but the accidental beta's old in-app updater can compute its current build as `1040000`, so the in-app rescue must be higher than that. Use `1.3.0` as the baseline when testing update detection, and use `1039901` to verify the installed-beta rescue path.
 
 Release asset names are channel-aware and omit `versionCode` for readability:
 
 ```text
-1wallet-1.4.0-stable-arm64-v8a.apk
-1wallet-1.4.1-beta.1-beta-arm64-v8a.apk
+1wallet-1.4.1-stable-arm64-v8a.apk
+1wallet-1.4.2-beta.1-beta-arm64-v8a.apk
 ```
 
-Keep `versionCode` in Android build metadata, Firestore release IDs, workflow artifact names, and Git tags. Android uses `versionCode` for install ordering, so beta builds must stay above the last stable build and below the next stable build. Stable versions may end in `.0`; beta versions must not. After stable `1.4.0`, the next beta line is `1.4.1-beta.1 / 1040001`, below the future stable `1.4.1 / 1040100`.
+Keep `versionCode` in Android build metadata, Firestore release IDs, workflow artifact names, and Git tags. Android uses `versionCode` for install ordering, so beta builds must stay above the last stable build and below the next stable build. Stable versions may end in `.0`; beta versions must not. After stable `1.4.1`, the next beta line is `1.4.2-beta.1 / 1040101`, below the future stable `1.4.2 / 1040200`.
 
 Recommended GitHub Release tags:
 
 ```text
-android-stable-v1.4.0-1040000
-android-beta-v1.4.1-beta.1-1040001
+android-stable-v1.4.1-1040100
+android-beta-v1.4.2-beta.1-1040101
 ```
 
 ## Firestore Schema
@@ -58,7 +58,7 @@ appUpdates/android/channels/beta
 Release document:
 
 ```text
-appUpdates/android/releases/1040000
+appUpdates/android/releases/1040100
 ```
 
 Required release fields:
@@ -68,9 +68,9 @@ Required release fields:
   "platform": "android",
   "channel": "stable",
   "status": "published",
-  "versionName": "1.4.0",
-  "versionCode": 1040000,
-  "runtimeVersion": "1.4.0",
+  "versionName": "1.4.1",
+  "versionCode": 1040100,
+  "runtimeVersion": "1.4.1",
   "releaseType": "patch",
   "mandatory": false,
   "requirement": "optional",
@@ -82,8 +82,8 @@ Required release fields:
     "notes": ["APK installation opens the Android system installer"]
   },
   "apk": {
-    "downloadUrl": "https://github.com/joelpjoji-mns/1wallet/releases/download/android-stable-v1.4.0-1040000/1wallet-1.4.0-stable-arm64-v8a.apk",
-    "fileName": "1wallet-1.4.0-stable-arm64-v8a.apk",
+    "downloadUrl": "https://github.com/joelpjoji-mns/1wallet/releases/download/android-stable-v1.4.1-1040100/1wallet-1.4.1-stable-arm64-v8a.apk",
+    "fileName": "1wallet-1.4.1-stable-arm64-v8a.apk",
     "sizeBytes": 30000000,
     "sha256": "64 lowercase hex characters",
     "architecture": "arm64-v8a",
@@ -100,7 +100,7 @@ The channel document should point at the latest published build:
   "platform": "android",
   "channel": "stable",
   "status": "published",
-  "latestVersionCode": 1040000,
+  "latestVersionCode": 1040100,
   "updatedAt": "Firestore timestamp"
 }
 ```
@@ -110,7 +110,7 @@ The channel document should point at the latest published build:
 After building the APK, generate the release manifest:
 
 ```powershell
-pnpm run mobile:update:manifest -- --apk apps/mobile/android/app/build/outputs/apk/release/app-release.apk --version 1.4.0 --version-code 1040000 --url "https://example.com/1wallet-1.4.0-stable-arm64-v8a.apk" --file-name "1wallet-1.4.0-stable-arm64-v8a.apk" --architecture arm64-v8a --channel stable --release-type patch --feature "Home header now shows 1Wallet again" --fix "Update download validation" --note "Android installer confirmation is required" --output importdata/mobile-update-1.4.0-stable.json
+pnpm run mobile:update:manifest -- --apk apps/mobile/android/app/build/outputs/apk/release/app-release.apk --version 1.4.1 --version-code 1040100 --url "https://example.com/1wallet-1.4.1-stable-arm64-v8a.apk" --file-name "1wallet-1.4.1-stable-arm64-v8a.apk" --architecture arm64-v8a --channel stable --release-type patch --feature "Home header now shows 1Wallet again" --fix "Update download validation" --note "Android installer confirmation is required" --output importdata/mobile-update-1.4.1-stable.json
 ```
 
 ## Release Workflow
@@ -119,7 +119,7 @@ Do not commit directly to `main`. Create a feature or fix branch from `main`, te
 
 Stable releases publish only after a PR is merged into `main`. The Android Release workflow builds the arm64-v8a APK used by production phones, uploads it to this repo's GitHub Release, generates the manifest, and publishes the Firestore `stable` channel document. PRs that should not ship an APK must use the `skip-release` label or include `[skip release]` in the merge commit.
 
-Beta releases are explicit pre-merge releases from a feature or PR branch. Run the Android Release workflow manually with `channel=beta` and a `beta_number` from `1` to `99`; the workflow derives a display version like `1.4.1-beta.1` and a lower-than-stable version code like `1040001`. It publishes a prerelease GitHub Release and updates `appUpdates/android/channels/beta`. Do not dispatch beta from `main`, and do not dispatch beta from a source version whose patch is `0`.
+Beta releases are explicit pre-merge releases from a feature or PR branch. Run the Android Release workflow manually with `channel=beta` and a `beta_number` from `1` to `99`; the workflow derives a display version like `1.4.2-beta.1` and a lower-than-target-stable version code like `1040101`. It publishes a prerelease GitHub Release and updates `appUpdates/android/channels/beta`. Do not dispatch beta from `main`, and do not dispatch beta from a source version whose patch is `0`.
 
 The repo still keeps local universal/x86 build scripts for emulator QA. If `PUBLISH_APK_TO_ASSETS_REPO=true`, the workflow also mirrors the same APK and manifest to `APK_RELEASE_REPO`; otherwise the Firestore `apk.downloadUrl` points at this repo.
 
@@ -145,7 +145,7 @@ True JS OTA through `expo-updates` can be added later for JavaScript/assets-only
 10. Relaunch and confirm `Your app is up to date`.
 11. Test offline, bad URL, checksum mismatch, denied install permission, installer cancellation, stale metadata, and low storage where feasible.
 12. Switch to beta, confirm the app checks the beta channel, then switch back to stable and confirm stale beta download state clears.
-13. On a device with `1039901` installed, switch to stable and confirm the app offers `1.4.0 / 1040000`.
+13. On a device with `1039901` installed, switch to stable and confirm the app offers `1.4.1 / 1040100`.
 14. On an older `1.2.x` build, confirm stable checks jump directly to the latest `channels/stable.latestVersionCode` release instead of stepping through older releases.
 
 ## Rollback
