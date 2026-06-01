@@ -3,9 +3,9 @@
 1wallet uses a hybrid update model for Android:
 
 - Firestore stores published release metadata under `appUpdates/android`.
-- APK files are hosted through Firebase Storage or any HTTPS URL stored in Firestore.
+- APK files are hosted through this public repository's GitHub Releases by default. The separate `APK_RELEASE_REPO` mirror is optional and controlled by `PUBLISH_APK_TO_ASSETS_REPO`.
 - The app downloads APK updates into private app cache, verifies SHA-256, then opens the Android system installer.
-- `expo-updates` is installed for compatible JavaScript/assets updates, but it still needs an update URL/channel before JS OTA can be validated end to end.
+- `expo-updates` is installed for compatible JavaScript/assets updates, but true JS OTA is optional. It cannot replace APK updates for native code, permissions, Android modules, signing, or dependency changes.
 
 Android does not allow this app to silently install APK files. Users must confirm installation in the system installer.
 
@@ -64,8 +64,8 @@ Required release fields:
     "notes": ["APK installation opens the Android system installer"]
   },
   "apk": {
-    "downloadUrl": "https://.../app-universal-release.apk",
-    "fileName": "app-universal-release.apk",
+    "downloadUrl": "https://github.com/joelpjoji-mns/1wallet/releases/download/android-v1.2.1-1020100/1wallet-1.2.1-1020100-universal.apk",
+    "fileName": "1wallet-1.2.1-1020100-universal.apk",
     "sizeBytes": 62217478,
     "sha256": "64 lowercase hex characters",
     "architecture": "universal",
@@ -95,7 +95,9 @@ After building the APK, generate the release manifest:
 pnpm run mobile:update:manifest -- --apk apps/mobile/android/app/build/outputs/apk/release/app-universal-release.apk --version 1.2.1 --version-code 1020100 --url "https://example.com/app-universal-release.apk" --release-type patch --feature "Home header now shows 1Wallet again" --fix "Update download validation" --note "Android installer confirmation is required" --output importdata/mobile-update-1.2.1.json
 ```
 
-Upload the APK to Firebase Storage or another HTTPS host, then use the generated JSON to create/update the Firestore release and channel documents. Convert `publishedAt` and `updatedAt` to Firestore timestamp fields when entering them through the Firebase Console.
+The GitHub Actions Android Release workflow builds the APK, uploads it to this repo's GitHub Release, generates the manifest, and publishes the Firestore release/channel documents. If `PUBLISH_APK_TO_ASSETS_REPO=true`, it also mirrors the same APK and manifest to `APK_RELEASE_REPO`; otherwise the Firestore `apk.downloadUrl` points at this repo.
+
+True JS OTA through `expo-updates` can be added later for JavaScript/assets-only fixes, but it is not required for the current update system. The APK pipeline is the reliable path for this app because most release changes can include native Android code, permissions, or native module updates.
 
 ## QA Checklist
 
