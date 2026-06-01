@@ -90,7 +90,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --config.auto-install-peers=false --config.node-linker=hoisted --frozen-lockfile
+        run: pnpm --config.auto-install-peers=false --config.node-linker=hoisted install --frozen-lockfile
 
       - name: Write mobile environment
         run: |
@@ -116,7 +116,7 @@ jobs:
         run: node scripts/mobile-release-info.mjs --output "$GITHUB_OUTPUT"
 
       - name: Typecheck mobile app
-        run: pnpm --filter @1wallet/mobile typecheck
+        run: pnpm --config.auto-install-peers=false --config.node-linker=hoisted --filter @1wallet/mobile typecheck
 
       - name: Build signed universal APK
         env:
@@ -124,7 +124,7 @@ jobs:
           ONEWALLET_RELEASE_STORE_PASSWORD: ${{ secrets.ONEWALLET_RELEASE_STORE_PASSWORD }}
           ONEWALLET_RELEASE_KEY_ALIAS: ${{ secrets.ONEWALLET_RELEASE_KEY_ALIAS }}
           ONEWALLET_RELEASE_KEY_PASSWORD: ${{ secrets.ONEWALLET_RELEASE_KEY_PASSWORD }}
-        run: pnpm --filter @1wallet/mobile android:release:universal
+        run: pnpm --config.auto-install-peers=false --config.node-linker=hoisted --filter @1wallet/mobile android:release:universal
 
       - name: Collect release note source
         env:
@@ -192,7 +192,7 @@ jobs:
           if [ "$MANDATORY_UPDATE" = "true" ]; then
             mandatory_args=(--mandatory true)
           fi
-          pnpm run mobile:update:manifest -- \
+          pnpm --config.auto-install-peers=false --config.node-linker=hoisted run mobile:update:manifest -- \
             --apk "$APK_PATH" \
             --version "${{ steps.info.outputs.versionName }}" \
             --version-code "${{ steps.info.outputs.versionCode }}" \
@@ -207,7 +207,7 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
         run: |
-          pnpm run mobile:update:publish -- \
+          pnpm --config.auto-install-peers=false --config.node-linker=hoisted run mobile:update:publish -- \
             --project "$FIREBASE_PROJECT_ID" \
             --skip-upload \
             --manifest "importdata/mobile-update-${{ steps.info.outputs.versionName }}.json"

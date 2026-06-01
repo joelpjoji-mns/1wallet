@@ -29,7 +29,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --config.auto-install-peers=false --config.node-linker=hoisted --frozen-lockfile
+        run: pnpm --config.auto-install-peers=false --config.node-linker=hoisted install --frozen-lockfile
 
       - name: Typecheck mobile app
-        run: pnpm --filter @1wallet/mobile typecheck
+        run: pnpm --config.auto-install-peers=false --config.node-linker=hoisted --filter @1wallet/mobile typecheck
