@@ -34,6 +34,9 @@ export default function UpdatesScreen() {
   const { state } = updates;
   const [channelPickerVisible, setChannelPickerVisible] = useState(false);
   const release = state.release;
+  const installedRelease = state.installedRelease;
+  const currentVersionName = installedRelease?.versionName ?? state.current.versionName;
+  const currentChannelLabel = installedRelease ? channelLabel(installedRelease.channel) : 'Unknown';
   const progress = state.download?.progress ?? 0;
   const hasNativeUpdate = Boolean(release);
   const isBusy =
@@ -100,7 +103,12 @@ export default function UpdatesScreen() {
             label="Checking channel"
             value={channelLabel(state.channel)}
           />
-          <InfoRow icon="cellphone" label="Current version" value={state.current.versionName} />
+          <InfoRow
+            icon={installedRelease?.channel === 'beta' ? 'flask-outline' : 'shield-check-outline'}
+            label="Installed channel"
+            value={currentChannelLabel}
+          />
+          <InfoRow icon="cellphone" label="Current version" value={currentVersionName} />
           <InfoRow icon="counter" label="Current build" value={String(state.current.versionCode)} />
           {release ? (
             <>
@@ -280,6 +288,7 @@ function statusTitle(status: string, hasUpdate: boolean): string {
   if (status === 'downloading') return 'Downloading update...';
   if (status === 'downloaded') return 'Update downloaded successfully';
   if (status === 'installing') return 'Installing update...';
+  if (status === 'ahead-of-channel') return 'Installed build is ahead';
   if (status === 'cancelled') return 'Update cancelled';
   if (status === 'error') return 'Update needs attention';
   if (hasUpdate) return 'Update available';
@@ -293,6 +302,9 @@ function statusBody(status: string, hasUpdate: boolean, message?: string, error?
   if (status === 'downloading') return 'Downloading update...';
   if (status === 'downloaded') return 'Install the downloaded update when ready.';
   if (status === 'installing') return 'Android will ask you to confirm the installation.';
+  if (status === 'ahead-of-channel') {
+    return 'A newer release on this channel is needed before Android can move this device.';
+  }
   if (status === 'cancelled') return 'Update cancelled';
   if (hasUpdate) return 'A newer 1wallet release is ready for this device.';
   return 'Your app is up to date';
