@@ -1,28 +1,30 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-    type ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
 } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import {
-    createApkDownloadTask,
-    removeDownloadedUpdate,
-    UpdateDownloadCancelledError,
-    type UpdateDownloadTask,
+  createApkDownloadTask,
+  removeDownloadedUpdate,
+  UpdateDownloadCancelledError,
+  type UpdateDownloadTask,
 } from './downloadManager';
 import { checkForJsUpdate, fetchJsUpdate, reloadIntoJsUpdate } from './expoOta';
 import { checkForAndroidUpdate } from './firebaseUpdates';
 import { canRequestPackageInstalls, installApk, openInstallSettings } from './nativeInstaller';
 import {
-    DEFAULT_UPDATE_CHANNEL,
-    type AppUpdateState,
-    type DownloadedUpdate
+  DEFAULT_UPDATE_CHANNEL,
+  isUpdateChannel,
+  type AppUpdateState,
+  type DownloadedUpdate,
+  type UpdateChannel,
 } from './types';
 import { getInstalledAppVersion, isReleaseNewerThanInstalled } from './version';
 
@@ -32,6 +34,7 @@ const AUTO_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const initialCurrent = getInstalledAppVersion();
 const initialState: AppUpdateState = {
   status: 'idle',
+  channel: DEFAULT_UPDATE_CHANNEL,
   current: initialCurrent,
   release: null,
   downloaded: null,
@@ -40,6 +43,7 @@ const initialState: AppUpdateState = {
 };
 
 type StoredUpdateState = {
+  channel?: UpdateChannel;
   lastCheckedAt?: string;
   downloaded?: DownloadedUpdate | null;
 };
@@ -48,6 +52,7 @@ type AppUpdateContextValue = {
   state: AppUpdateState;
   drawerBadge?: string;
   checkForUpdates: (manual?: boolean) => Promise<void>;
+  setUpdateChannel: (channel: UpdateChannel) => Promise<void>;
   downloadUpdate: () => Promise<void>;
   cancelDownload: () => Promise<void>;
   installDownloadedUpdate: () => Promise<void>;
@@ -68,11 +73,14 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     void readStoredState().then((stored) => {
       if (cancelled || !stored) return;
+      const channel = normalizeStoredChannel(stored.channel);
+      const downloaded = normalizeDownloadedUpdate(stored.downloaded, channel);
       setState((current) => ({
         ...current,
+        channel,
         lastCheckedAt: stored.lastCheckedAt ?? current.lastCheckedAt,
-        downloaded: stored.downloaded ?? current.downloaded,
-        status: stored.downloaded ? 'downloaded' : current.status,
+        downloaded,
+        status: downloaded ? 'downloaded' : current.status,
       }));
     });
     return () => {
@@ -81,7 +89,8 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const checkForUpdates = useCallback(
-    async (manual = false) => {
+    async (manual = false, requestedChannel?: UpdateChannel) => {
+      const selectedChannel = requestedChannel ?? state.channel;
       const now = Date.now();
       if (!manual && now - lastAutoCheckRef.current < AUTO_CHECK_INTERVAL_MS) return;
       lastAutoCheckRef.current = now;
@@ -89,6 +98,7 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
       const current = getInstalledAppVersion();
       setState((previous) => ({
         ...previous,
+        channel: selectedChannel,
         current,
         status: 'checking',
         error: undefined,
@@ -96,18 +106,21 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
       }));
 
       const [androidOutcome, jsUpdate] = await Promise.all([
-        checkForAndroidUpdate(current, DEFAULT_UPDATE_CHANNEL),
+        checkForAndroidUpdate(current, selectedChannel),
         checkForJsUpdate(),
       ]);
 
       if (androidOutcome.status === 'available') {
         const downloaded =
-          state.downloaded && state.downloaded.versionCode === androidOutcome.release.versionCode
+          state.downloaded &&
+          state.downloaded.channel === androidOutcome.release.channel &&
+          state.downloaded.versionCode === androidOutcome.release.versionCode
             ? state.downloaded
             : null;
         const nextStatus = downloaded ? 'downloaded' : 'available';
         const nextState: AppUpdateState = {
           status: nextStatus,
+          channel: selectedChannel,
           current,
           release: androidOutcome.release,
           downloaded,
@@ -117,13 +130,19 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
           message: downloaded ? 'Update downloaded successfully' : undefined,
         };
         setState(nextState);
-        await writeStoredState({ lastCheckedAt: androidOutcome.checkedAt, downloaded });
+        await writeStoredState({
+          channel: selectedChannel,
+          lastCheckedAt: androidOutcome.checkedAt,
+          downloaded,
+        });
         return;
       }
 
       if (androidOutcome.status === 'error') {
+        const downloaded = state.downloaded?.channel === selectedChannel ? state.downloaded : null;
         setState((previous) => ({
           ...previous,
+          channel: selectedChannel,
           current,
           status: 'error',
           release: null,
@@ -134,8 +153,9 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
           message: androidOutcome.message,
         }));
         await writeStoredState({
+          channel: selectedChannel,
           lastCheckedAt: androidOutcome.checkedAt,
-          downloaded: state.downloaded,
+          downloaded,
         });
         return;
       }
@@ -145,6 +165,7 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
         const nextStatus = jsUpdate.available ? 'js-update-ready' : 'up-to-date';
         setState((previous) => ({
           ...previous,
+          channel: selectedChannel,
           current,
           status: nextStatus,
           release: null,
@@ -155,13 +176,18 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
           message: jsUpdate.available ? 'JavaScript update available' : androidOutcome.message,
           error: undefined,
         }));
-        await writeStoredState({ lastCheckedAt: checkedAt, downloaded: null });
+        await writeStoredState({
+          channel: selectedChannel,
+          lastCheckedAt: checkedAt,
+          downloaded: null,
+        });
         return;
       }
 
       const nextStatus = jsUpdate.available ? 'js-update-ready' : 'up-to-date';
       setState((previous) => ({
         ...previous,
+        channel: selectedChannel,
         current,
         status: nextStatus,
         release: null,
@@ -172,9 +198,44 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
         message: jsUpdate.available ? 'JavaScript update available' : undefined,
         error: undefined,
       }));
-      await writeStoredState({ lastCheckedAt: androidOutcome.checkedAt, downloaded: null });
+      await writeStoredState({
+        channel: selectedChannel,
+        lastCheckedAt: androidOutcome.checkedAt,
+        downloaded: null,
+      });
     },
-    [state.downloaded],
+    [state.channel, state.downloaded],
+  );
+
+  const setUpdateChannel = useCallback(
+    async (channel: UpdateChannel) => {
+      if (channel === state.channel) {
+        await checkForUpdates(true, channel);
+        return;
+      }
+
+      const task = downloadTaskRef.current;
+      if (task) await task.cancel().catch(() => undefined);
+      downloadTaskRef.current = null;
+      await removeDownloadedUpdate(state.downloaded?.localUri);
+      lastAutoCheckRef.current = 0;
+
+      const current = getInstalledAppVersion();
+      setState((previous) => ({
+        ...previous,
+        channel,
+        current,
+        status: 'checking',
+        release: null,
+        downloaded: null,
+        download: null,
+        error: undefined,
+        message: channel === 'beta' ? 'Beta updates enabled' : 'Stable updates enabled',
+      }));
+      await writeStoredState({ channel, lastCheckedAt: state.lastCheckedAt, downloaded: null });
+      await checkForUpdates(true, channel);
+    },
+    [checkForUpdates, state.channel, state.downloaded?.localUri, state.lastCheckedAt],
   );
 
   const downloadUpdate = useCallback(async () => {
@@ -216,7 +277,11 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
         error: undefined,
         message: 'Update downloaded successfully',
       }));
-      await writeStoredState({ lastCheckedAt: state.lastCheckedAt, downloaded });
+      await writeStoredState({
+        channel: state.channel,
+        lastCheckedAt: state.lastCheckedAt,
+        downloaded,
+      });
     } catch (error) {
       downloadTaskRef.current = null;
       if (error instanceof UpdateDownloadCancelledError) {
@@ -228,7 +293,11 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
           error: undefined,
           message: 'Update cancelled',
         }));
-        await writeStoredState({ lastCheckedAt: state.lastCheckedAt, downloaded: null });
+        await writeStoredState({
+          channel: state.channel,
+          lastCheckedAt: state.lastCheckedAt,
+          downloaded: null,
+        });
         return;
       }
       setState((previous) => ({
@@ -240,7 +309,7 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
         message: 'Error updating app. Please try again later.',
       }));
     }
-  }, [state.downloaded?.localUri, state.lastCheckedAt, state.release]);
+  }, [state.channel, state.downloaded?.localUri, state.lastCheckedAt, state.release]);
 
   const cancelDownload = useCallback(async () => {
     const task = downloadTaskRef.current;
@@ -337,6 +406,7 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
       state,
       drawerBadge,
       checkForUpdates,
+      setUpdateChannel,
       downloadUpdate,
       cancelDownload,
       installDownloadedUpdate,
@@ -355,6 +425,7 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
       drawerBadge,
       installDownloadedUpdate,
       openInstallerSettings,
+      setUpdateChannel,
       state,
     ],
   );
@@ -375,7 +446,22 @@ function drawerBadgeForState(state: AppUpdateState): string | undefined {
     return state.release.mandatory ? 'Required' : 'Update';
   }
   if (state.jsUpdate.available) return 'Update';
+  if (state.channel === 'beta') return 'Beta';
   return undefined;
+}
+
+function normalizeStoredChannel(value: unknown): UpdateChannel {
+  return isUpdateChannel(value) ? value : DEFAULT_UPDATE_CHANNEL;
+}
+
+function normalizeDownloadedUpdate(
+  downloaded: DownloadedUpdate | null | undefined,
+  channel: UpdateChannel,
+): DownloadedUpdate | null {
+  if (!downloaded) return null;
+  const downloadedChannel = normalizeStoredChannel(downloaded.channel);
+  if (downloadedChannel !== channel) return null;
+  return { ...downloaded, channel: downloadedChannel };
 }
 
 async function readStoredState(): Promise<StoredUpdateState | null> {

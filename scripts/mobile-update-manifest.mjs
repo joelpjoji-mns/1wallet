@@ -26,6 +26,9 @@ const changelog = args['changelog-json'] ? readChangelogFile(args['changelog-jso
 if (!['major', 'minor', 'patch'].includes(releaseType)) {
   throw new Error('--release-type must be one of major, minor, patch.');
 }
+if (!['stable', 'beta'].includes(channel)) {
+  throw new Error('--channel must be one of stable, beta.');
+}
 if (!Number.isInteger(minimumSupportedVersionCode) || minimumSupportedVersionCode < 0) {
   throw new Error('--minimum-supported-version-code must be a non-negative integer.');
 }

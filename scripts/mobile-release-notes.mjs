@@ -19,6 +19,12 @@ const changelog = {
   notes: mergeItems(explicit.notes, parsed.notes),
 };
 
+if (args['require-changelog'] === 'true' && isEmpty(changelog)) {
+  throw new Error(
+    'Release changelog is required. Fill at least one New Features, Bug Fixes, or Notes item in the PR body, or pass release note inputs.',
+  );
+}
+
 if (isEmpty(changelog)) {
   const fallbackTarget = looksLikeFix(title) ? changelog.bugFixes : changelog.newFeatures;
   fallbackTarget.push(stripConventionalPrefix(title));

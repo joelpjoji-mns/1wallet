@@ -1,20 +1,22 @@
 import { doc, getDoc, type DocumentData, type Firestore } from 'firebase/firestore';
 import { getFirebaseServices } from '../firebase/client';
 import {
-    APP_UPDATE_PLATFORM,
-    DEFAULT_UPDATE_CHANNEL,
-    UPDATE_METADATA_ROOT,
-    type AppUpdateRelease,
-    type InstalledAppVersion,
-    type UpdateChangelog,
-    type UpdateCheckOutcome,
-    type UpdateReleaseType,
+  APP_UPDATE_PLATFORM,
+  DEFAULT_UPDATE_CHANNEL,
+  UPDATE_METADATA_ROOT,
+  isUpdateChannel,
+  type AppUpdateRelease,
+  type InstalledAppVersion,
+  type UpdateChangelog,
+  type UpdateChannel,
+  type UpdateCheckOutcome,
+  type UpdateReleaseType,
 } from './types';
 import { inferReleaseType, isReleaseNewerThanInstalled } from './version';
 
 export async function checkForAndroidUpdate(
   current: InstalledAppVersion,
-  channel = DEFAULT_UPDATE_CHANNEL,
+  channel: UpdateChannel = DEFAULT_UPDATE_CHANNEL,
 ): Promise<UpdateCheckOutcome> {
   const checkedAt = new Date().toISOString();
   try {
@@ -37,7 +39,7 @@ export async function checkForAndroidUpdate(
 }
 
 export async function fetchLatestPublishedAndroidRelease(
-  channel = DEFAULT_UPDATE_CHANNEL,
+  channel: UpdateChannel = DEFAULT_UPDATE_CHANNEL,
 ): Promise<AppUpdateRelease | null> {
   let services;
   try {
@@ -51,7 +53,7 @@ export async function fetchLatestPublishedAndroidRelease(
   return channelRelease;
 }
 
-async function fetchChannelRelease(db: Firestore, channel: string) {
+async function fetchChannelRelease(db: Firestore, channel: UpdateChannel) {
   const channelRef = doc(db, UPDATE_METADATA_ROOT, APP_UPDATE_PLATFORM, 'channels', channel);
   const channelSnapshot = await getDoc(channelRef);
   if (!channelSnapshot.exists()) return null;
@@ -70,7 +72,8 @@ async function fetchChannelRelease(db: Firestore, channel: string) {
   );
   const releaseSnapshot = await getDoc(releaseRef);
   if (!releaseSnapshot.exists()) return null;
-  return parseReleaseDocument(releaseSnapshot.id, releaseSnapshot.data());
+  const release = parseReleaseDocument(releaseSnapshot.id, releaseSnapshot.data());
+  return release?.channel === channel ? release : null;
 }
 
 function parseReleaseDocument(id: string, data: DocumentData): AppUpdateRelease | null {
@@ -85,7 +88,7 @@ function parseReleaseDocument(id: string, data: DocumentData): AppUpdateRelease 
   const platform = stringValue(data.platform) ?? APP_UPDATE_PLATFORM;
   if (platform !== APP_UPDATE_PLATFORM) return null;
 
-  const channel = stringValue(data.channel) ?? DEFAULT_UPDATE_CHANNEL;
+  const channel = updateChannelValue(data.channel) ?? DEFAULT_UPDATE_CHANNEL;
   const runtimeVersion = stringValue(data.runtimeVersion) ?? versionName;
   const mandatory = booleanValue(data.mandatory) ?? stringValue(data.requirement) === 'mandatory';
   const releaseType = releaseTypeValue(data.releaseType) ?? inferReleaseType('0.0.0', versionName);
@@ -108,6 +111,10 @@ function parseReleaseDocument(id: string, data: DocumentData): AppUpdateRelease 
     changelog: parseChangelog(data.changelog),
     apk,
   };
+}
+
+function updateChannelValue(value: unknown): UpdateChannel | null {
+  return isUpdateChannel(value) ? value : null;
 }
 
 function parseApkMetadata(value: unknown): AppUpdateRelease['apk'] | null {
