@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { withColorAlpha } from '../../src/colorAlpha';
 
 type TabIconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 type TabConfig = {
@@ -27,7 +28,6 @@ type TabConfig = {
   title: string;
   icon: TabIconName;
   activeIcon?: TabIconName;
-  visible?: boolean;
 };
 
 const TAB_CONFIG: TabConfig[] = [
@@ -40,16 +40,13 @@ const TAB_CONFIG: TabConfig[] = [
     activeIcon: 'calendar-month',
   },
   { name: 'planner', title: 'Planner', icon: 'chart-timeline-variant' },
-  {
-    name: 'accounts',
-    title: 'Accounts',
-    icon: 'wallet-outline',
-    activeIcon: 'wallet',
-  },
+  { name: 'accounts', title: 'Accounts', icon: 'wallet-outline', activeIcon: 'wallet' },
 ];
 
 const TAB_BY_NAME = new Map(TAB_CONFIG.map((tab) => [tab.name, tab]));
 const ANDROID_NAV_BAR_FALLBACK_PADDING = tokens.space.xl;
+const ISLAND_HORIZONTAL_MARGIN = tokens.space.lg;
+const ISLAND_MAX_WIDTH = 430;
 const { Navigator } = createMaterialTopTabNavigator();
 
 const PagerTabs = withLayoutContext<
@@ -69,7 +66,7 @@ export default function TabsLayout() {
       initialRouteName="home"
       backBehavior="initialRoute"
       tabBarPosition="bottom"
-      tabBar={(props: MaterialTopTabBarProps) => <BottomPagerBar {...props} />}
+      tabBar={(props: MaterialTopTabBarProps) => <BottomIslandTabBar {...props} />}
       screenOptions={{
         swipeEnabled: true,
         animationEnabled: true,
@@ -93,29 +90,22 @@ export default function TabsLayout() {
   );
 }
 
-function BottomPagerBar({ state, descriptors, navigation, position }: MaterialTopTabBarProps) {
+function BottomIslandTabBar({ state, descriptors, navigation }: MaterialTopTabBarProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const visibleRoutes = useMemo(
-    () =>
-      state.routes.filter(
-        (route: TabNavigationState<ParamListBase>['routes'][number]) =>
-          TAB_BY_NAME.get(route.name)?.visible !== false,
-      ),
-    [state.routes],
-  );
   const [islandWidth, setIslandWidth] = useState(0);
+  const indicatorProgress = useRef(new Animated.Value(state.index)).current;
   const settleProgress = useRef(new Animated.Value(1)).current;
-
+  const visibleRoutes = useMemo(() => state.routes, [state.routes]);
+  const compact = width < 390;
   const bottomSafePadding = Math.max(
     insets.bottom,
     Platform.OS === 'android' ? ANDROID_NAV_BAR_FALLBACK_PADDING : tokens.space.xs,
   );
-  const compact = width < 370;
-  const islandPadding = compact ? 4 : tokens.space.xs;
-  const indicatorSize = compact ? 34 : 38;
-  const indicatorTop = compact ? 7 : 8;
+  const islandMaxWidth = Math.min(width - ISLAND_HORIZONTAL_MARGIN * 2, ISLAND_MAX_WIDTH);
+  const islandPadding = compact ? 4 : 5;
+  const indicatorHeight = compact ? 42 : 46;
   const routeIndexes = useMemo(
     () =>
       Array.from(
@@ -124,67 +114,34 @@ function BottomPagerBar({ state, descriptors, navigation, position }: MaterialTo
       ),
     [visibleRoutes.length],
   );
-  const indicatorTranslateX = useMemo(() => {
+  const indicatorMetrics = useMemo(() => {
     const usableWidth = Math.max(0, islandWidth - islandPadding * 2);
     const tabWidth = usableWidth / Math.max(visibleRoutes.length, 1);
+    const pillWidth = Math.max(44, tabWidth - (compact ? 2 : 4));
     const outputRange = routeIndexes.map(
-      (index: number) => islandPadding + tabWidth * index + (tabWidth - indicatorSize) / 2,
+      (index: number) => islandPadding + tabWidth * index + (tabWidth - pillWidth) / 2,
     );
 
-    return position.interpolate({
-      inputRange: routeIndexes,
-      outputRange,
-      extrapolate: 'clamp',
-    });
-  }, [indicatorSize, islandPadding, islandWidth, position, routeIndexes, visibleRoutes.length]);
-  const indicatorTravelScale = useMemo(() => {
-    const inputRange = routeIndexes.flatMap((index: number) =>
-      index === 0 ? [index] : [index - 0.5, index],
-    );
-    const outputRange = routeIndexes.flatMap((index: number) => (index === 0 ? [1] : [0.24, 1]));
-
-    return position.interpolate({
-      inputRange,
-      outputRange,
-      extrapolate: 'clamp',
-    });
-  }, [position, routeIndexes]);
-  const indicatorDotOpacity = useMemo(() => {
-    const inputRange = routeIndexes.flatMap((index: number) =>
-      index === 0 ? [index] : [index - 0.5, index],
-    );
-    const outputRange = routeIndexes.flatMap((index: number) => (index === 0 ? [0] : [1, 0]));
-
-    return position.interpolate({
-      inputRange,
-      outputRange,
-      extrapolate: 'clamp',
-    });
-  }, [position, routeIndexes]);
+    return { pillWidth, outputRange };
+  }, [compact, islandPadding, islandWidth, routeIndexes, visibleRoutes.length]);
+  const indicatorTranslateX = indicatorProgress.interpolate({
+    inputRange: routeIndexes,
+    outputRange: indicatorMetrics.outputRange,
+    extrapolate: 'clamp',
+  });
   const indicatorScaleX = settleProgress.interpolate({
     inputRange: [0, 1],
-    outputRange: [1.14, 1],
+    outputRange: [0.96, 1],
   });
-  const indicatorScaleY = settleProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.92, 1],
-  });
-  const indicatorTravelScaleX = Animated.multiply(indicatorScaleX, indicatorTravelScale);
-  const indicatorTravelScaleY = Animated.multiply(indicatorScaleY, indicatorTravelScale);
   const indicatorOpacity = settleProgress.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.7, 1],
+    outputRange: [0.72, 1],
   });
 
   useEffect(() => {
-    settleProgress.setValue(0);
-    Animated.spring(settleProgress, {
-      toValue: 1,
-      speed: 20,
-      bounciness: 8,
-      useNativeDriver: true,
-    }).start();
-  }, [settleProgress, state.index]);
+    indicatorProgress.setValue(state.index);
+    settleProgress.setValue(1);
+  }, [indicatorProgress, settleProgress, state.index]);
 
   const handleIslandLayout = (event: LayoutChangeEvent) => {
     const nextWidth = event.nativeEvent.layout.width;
@@ -198,7 +155,6 @@ function BottomPagerBar({ state, descriptors, navigation, position }: MaterialTo
       pointerEvents="box-none"
       style={[
         styles.tabBarWrap,
-        compact && styles.tabBarWrapCompact,
         {
           paddingBottom: bottomSafePadding + tokens.space.xs,
         },
@@ -210,49 +166,28 @@ function BottomPagerBar({ state, descriptors, navigation, position }: MaterialTo
           styles.tabBarIsland,
           compact && styles.tabBarIslandCompact,
           {
+            maxWidth: islandMaxWidth,
             backgroundColor: theme.colors.elevation.level2,
-            borderColor: theme.colors.outlineVariant,
+            borderColor: withColorAlpha(theme.colors.outline, theme.dark ? 0.22 : 0.14),
             shadowColor: theme.colors.shadow,
           },
         ]}
       >
-        <View
-          pointerEvents="none"
-          style={[styles.tabBarHighlight, { backgroundColor: theme.colors.elevation.level4 }]}
-        />
         {islandWidth > 0 ? (
           <Animated.View
             pointerEvents="none"
             style={[
-              styles.activeTabHalo,
+              styles.activeTabPill,
               {
-                width: indicatorSize,
-                height: indicatorSize,
-                borderRadius: indicatorSize / 2,
-                top: indicatorTop,
-                transform: [{ translateX: indicatorTranslateX }],
+                width: indicatorMetrics.pillWidth,
+                height: indicatorHeight,
+                borderRadius: indicatorHeight / 2,
+                backgroundColor: withColorAlpha(theme.colors.primary, theme.dark ? 0.2 : 0.1),
+                opacity: indicatorOpacity,
+                transform: [{ translateX: indicatorTranslateX }, { scaleX: indicatorScaleX }],
               },
             ]}
-          >
-            <Animated.View
-              style={[
-                styles.activeTabRing,
-                {
-                  borderRadius: indicatorSize / 2,
-                  borderColor: theme.colors.primary,
-                  opacity: indicatorOpacity,
-                  shadowColor: theme.colors.primary,
-                  transform: [{ scaleX: indicatorTravelScaleX }, { scaleY: indicatorTravelScaleY }],
-                },
-              ]}
-            />
-            <Animated.View
-              style={[
-                styles.activeTabDot,
-                { backgroundColor: theme.colors.primary, opacity: indicatorDotOpacity },
-              ]}
-            />
-          </Animated.View>
+          />
         ) : null}
         {visibleRoutes.map(
           (route: TabNavigationState<ParamListBase>['routes'][number], index: number) => {
@@ -280,13 +215,13 @@ function BottomPagerBar({ state, descriptors, navigation, position }: MaterialTo
             };
 
             return (
-              <BottomPagerTabButton
+              <IslandTabButton
                 key={route.key}
                 accessibilityLabel={options?.tabBarAccessibilityLabel ?? `${title} tab`}
-                focused={focused}
                 activeIcon={activeIcon}
-                icon={icon}
                 compact={compact}
+                focused={focused}
+                icon={icon}
                 title={title}
                 onLongPress={onLongPress}
                 onPress={onPress}
@@ -299,21 +234,21 @@ function BottomPagerBar({ state, descriptors, navigation, position }: MaterialTo
   );
 }
 
-function BottomPagerTabButton({
+function IslandTabButton({
   accessibilityLabel,
-  focused,
   activeIcon,
-  icon,
   compact,
+  focused,
+  icon,
   title,
   onLongPress,
   onPress,
 }: {
   accessibilityLabel: string;
-  focused: boolean;
   activeIcon: TabIconName;
-  icon: TabIconName;
   compact: boolean;
+  focused: boolean;
+  icon: TabIconName;
   title: string;
   onLongPress: () => void;
   onPress: () => void;
@@ -321,45 +256,29 @@ function BottomPagerTabButton({
   const theme = useTheme();
   const focusProgress = useRef(new Animated.Value(focused ? 1 : 0)).current;
   const pressProgress = useRef(new Animated.Value(0)).current;
+  const activeColor = theme.colors.primary;
+  const inactiveColor = theme.dark ? theme.colors.onSurface : theme.colors.onSurfaceVariant;
+  const color = focused ? activeColor : inactiveColor;
 
   useEffect(() => {
-    Animated.spring(focusProgress, {
-      toValue: focused ? 1 : 0,
-      speed: 20,
-      bounciness: 8,
-      useNativeDriver: true,
-    }).start();
+    focusProgress.setValue(focused ? 1 : 0);
   }, [focusProgress, focused]);
 
-  const lift = focusProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -2],
-  });
   const iconScale = focusProgress.interpolate({
     inputRange: [0, 1],
-    outputRange: [1, 1.04],
+    outputRange: [1, 1.05],
   });
   const labelOpacity = focusProgress.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.62, 1],
-  });
-  const labelLift = focusProgress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.5, 0],
+    outputRange: [0.72, 1],
   });
   const pressScale = pressProgress.interpolate({
     inputRange: [0, 1],
-    outputRange: [1, 0.94],
+    outputRange: [1, 0.95],
   });
-  const color = focused ? theme.colors.primary : theme.colors.onSurfaceVariant;
 
   const animatePress = (toValue: number) => {
-    Animated.spring(pressProgress, {
-      toValue,
-      speed: 34,
-      bounciness: 0,
-      useNativeDriver: true,
-    }).start();
+    pressProgress.setValue(toValue);
   };
 
   return (
@@ -377,34 +296,26 @@ function BottomPagerTabButton({
         style={[
           styles.tabButtonInner,
           compact && styles.tabButtonInnerCompact,
-          {
-            transform: [{ translateY: lift }, { scale: pressScale }],
-          },
+          { transform: [{ scale: pressScale }] },
         ]}
       >
-        <Animated.View
-          style={[
-            styles.iconPill,
-            compact && styles.iconPillCompact,
-            { transform: [{ scale: iconScale }] },
-          ]}
-        >
+        <Animated.View style={{ transform: [{ scale: iconScale }] }}>
           <MaterialCommunityIcons
             name={focused ? activeIcon : icon}
-            size={compact ? 22 : 23}
+            size={compact ? 21 : 22}
             color={color}
           />
         </Animated.View>
-        <Animated.View
-          style={[
-            styles.tabLabelWrap,
-            { opacity: labelOpacity, transform: [{ translateY: labelLift }] },
-          ]}
-        >
+        <Animated.View style={[styles.tabLabelWrap, { opacity: labelOpacity }]}>
           <Text
             variant="labelSmall"
             numberOfLines={1}
-            style={[styles.tabLabel, focused && styles.tabLabelFocused, { color }]}
+            style={[
+              styles.tabLabel,
+              compact && styles.tabLabelCompact,
+              focused && styles.tabLabelFocused,
+              { color },
+            ]}
           >
             {title}
           </Text>
@@ -422,100 +333,69 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 20,
     backgroundColor: 'transparent',
-    minHeight: 90,
+    minHeight: 88,
     justifyContent: 'flex-end',
-    paddingHorizontal: tokens.space.md,
+    alignItems: 'center',
+    paddingHorizontal: ISLAND_HORIZONTAL_MARGIN,
     paddingTop: tokens.space.xs,
   },
-  tabBarWrapCompact: {
-    minHeight: 82,
-    paddingHorizontal: tokens.space.sm,
-  },
   tabBarIsland: {
+    width: '100%',
+    minHeight: 58,
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: tokens.size.bottomBar,
-    borderRadius: tokens.radius.xl,
+    borderRadius: 31,
     borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: tokens.space.xs,
-    paddingVertical: 6,
-    elevation: 14,
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    position: 'relative',
+    padding: 5,
+    elevation: 18,
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    overflow: 'hidden',
   },
   tabBarIslandCompact: {
-    minHeight: 64,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
+    minHeight: 54,
+    borderRadius: 29,
+    padding: 4,
   },
-  tabBarHighlight: {
+  activeTabPill: {
     position: 'absolute',
-    left: 22,
-    right: 22,
-    top: 1,
-    height: StyleSheet.hairlineWidth,
-    borderRadius: tokens.radius.pill,
+    left: 0,
+    top: 5,
   },
   tabButton: {
     flex: 1,
     minWidth: 0,
-    borderRadius: tokens.radius.xl,
+    borderRadius: tokens.radius.pill,
     zIndex: 1,
   },
   tabButtonInner: {
-    minHeight: 60,
+    minHeight: 46,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    borderRadius: tokens.radius.lg,
-    paddingHorizontal: tokens.space.xs,
-  },
-  tabButtonInnerCompact: {
-    minHeight: 54,
-    gap: 2,
+    gap: 1,
+    borderRadius: tokens.radius.pill,
     paddingHorizontal: 2,
   },
-  activeTabHalo: {
-    position: 'absolute',
-    left: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 0,
+  tabButtonInnerCompact: {
+    minHeight: 42,
   },
-  activeTabRing: {
+  tabLabelWrap: {
     width: '100%',
-    height: '100%',
-    borderWidth: 1.8,
-    backgroundColor: 'transparent',
-    shadowOpacity: 0.16,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
+    minWidth: 0,
   },
-  activeTabDot: {
-    position: 'absolute',
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  iconPill: {
-    width: 46,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: tokens.radius.pill,
-  },
-  iconPillCompact: { width: 40, height: 29 },
-  tabLabelWrap: { width: '100%' },
   tabLabel: {
     width: '100%',
     textAlign: 'center',
     fontWeight: '600',
-    fontSize: 10.5,
-    lineHeight: 13,
+    fontSize: 9.5,
+    lineHeight: 12,
     letterSpacing: 0,
     includeFontPadding: false,
+  },
+  tabLabelCompact: {
+    fontSize: 8.5,
+    lineHeight: 11,
   },
   tabLabelFocused: {
     fontWeight: '700',

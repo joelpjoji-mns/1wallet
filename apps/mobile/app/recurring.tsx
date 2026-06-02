@@ -31,15 +31,24 @@ const EMPTY_FUTURE_RULES: FutureGenerationRule[] = [];
 export default function Recurring() {
   const { state } = useLedger();
   const planRules = state.preferences.futureGenerationRules ?? EMPTY_FUTURE_RULES;
-  const visiblePlanRules = useMemo(
-    () => planRules.filter((rule) => !plannedRuleProgressSummary(state, rule).complete),
-    [planRules, state],
-  );
-  const completedPlanRules = useMemo(
-    () => planRules.filter((rule) => plannedRuleProgressSummary(state, rule).complete),
-    [planRules, state],
-  );
-  const activePlanRules = visiblePlanRules.filter((rule) => rule.enabled);
+  const { activePlanCount, completedPlanRules, visiblePlanRules } = useMemo(() => {
+    const nextVisible: FutureGenerationRule[] = [];
+    const nextCompleted: FutureGenerationRule[] = [];
+    let nextActiveCount = 0;
+    for (const rule of planRules) {
+      if (plannedRuleProgressSummary(state, rule).complete) {
+        nextCompleted.push(rule);
+        continue;
+      }
+      nextVisible.push(rule);
+      if (rule.enabled) nextActiveCount += 1;
+    }
+    return {
+      activePlanCount: nextActiveCount,
+      completedPlanRules: nextCompleted,
+      visiblePlanRules: nextVisible,
+    };
+  }, [planRules, state]);
   const dueThisWeekCount = useMemo(
     () => countDueThisWeekPlanOccurrences(state, visiblePlanRules),
     [state, visiblePlanRules],
@@ -58,7 +67,7 @@ export default function Recurring() {
     >
       <SectionCard title="Overview" compact variant="elevated">
         <PlanSummaryPanel
-          activeCount={activePlanRules.length}
+          activeCount={activePlanCount}
           dueCount={dueThisWeekCount}
           onAdd={openNewPlan}
         />

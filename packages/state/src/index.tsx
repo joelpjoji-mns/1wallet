@@ -1,75 +1,75 @@
 import { uid } from '@1wallet/ledger/id';
 import { seedDefaultCategories } from '@1wallet/ledger/seed';
 import type {
-    ApproveCaptureCandidateInput,
-    CreateAccountInput,
-    CreateCaptureCandidateInput,
-    CreateCategoryInput,
-    CreateImportBatchInput,
-    CreateTransactionInput,
-    CreateTransactionSplitInput,
-    UpdateCaptureCandidateInput,
-    UpdateCategoryInput,
-    UpdateImportBatchInput,
-    UpdateTransactionInput,
-    UpdateTransactionSplitInput,
+  ApproveCaptureCandidateInput,
+  CreateAccountInput,
+  CreateCaptureCandidateInput,
+  CreateCategoryInput,
+  CreateImportBatchInput,
+  CreateTransactionInput,
+  CreateTransactionSplitInput,
+  UpdateCaptureCandidateInput,
+  UpdateCategoryInput,
+  UpdateImportBatchInput,
+  UpdateTransactionInput,
+  UpdateTransactionSplitInput,
 } from '@1wallet/ledger/services';
 import {
-    accountBalance,
-    approveCaptureCandidate,
-    budgetStatuses,
-    cashflow,
-    categoryBreakdown,
-    convertMoneyForDisplay,
-    createAccount,
-    createCaptureCandidate,
-    createCategory,
-    createImportBatch,
-    createTransaction,
-    createTransactionSplit,
-    cycleDisplayCurrency as cycleLedgerDisplayCurrency,
-    deleteAccount,
-    deleteCategory,
-    deleteTransaction,
-    deleteTransactionSplit,
-    displayCurrency,
-    ensureEnabledCurrency,
-    goalStatuses,
-    ignoreCaptureCandidate,
-    netWorth,
-    queryCaptureCandidates,
-    queryTransactions,
-    rejectCaptureCandidate,
-    removeEnabledCurrency,
-    setBaseCurrency as setLedgerBaseCurrency,
-    setDisplayCurrency as setLedgerDisplayCurrency,
-    setRate,
-    totalBalance,
-    updateAccount,
-    updateCaptureCandidate,
-    updateCategory,
-    updateImportBatch,
-    updateTransaction,
-    updateTransactionSplit,
+  accountBalance,
+  approveCaptureCandidate,
+  budgetStatuses,
+  cashflow,
+  categoryBreakdown,
+  convertMoneyForDisplay,
+  createAccount,
+  createCaptureCandidate,
+  createCategory,
+  createImportBatch,
+  createTransaction,
+  createTransactionSplit,
+  cycleDisplayCurrency as cycleLedgerDisplayCurrency,
+  deleteAccount,
+  deleteCategory,
+  deleteTransaction,
+  deleteTransactionSplit,
+  displayCurrency,
+  ensureEnabledCurrency,
+  goalStatuses,
+  ignoreCaptureCandidate,
+  netWorth,
+  queryCaptureCandidates,
+  queryTransactions,
+  rejectCaptureCandidate,
+  removeEnabledCurrency,
+  setBaseCurrency as setLedgerBaseCurrency,
+  setDisplayCurrency as setLedgerDisplayCurrency,
+  setRate,
+  totalBalance,
+  updateAccount,
+  updateCaptureCandidate,
+  updateCategory,
+  updateImportBatch,
+  updateTransaction,
+  updateTransactionSplit,
 } from '@1wallet/ledger/services';
 import type { LedgerIndexes } from '@1wallet/ledger/services/indexes';
 import { buildLedgerIndexes } from '@1wallet/ledger/services/indexes';
 import type { LedgerState, LedgerStore } from '@1wallet/ledger/store/types';
 import { emptyState } from '@1wallet/ledger/store/types';
 import {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-    type ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
 } from 'react';
 import {
-    exchangeRateRefreshKey,
-    refreshInternetExchangeRates,
-    type ExchangeRateRefreshResult,
+  exchangeRateRefreshKey,
+  refreshInternetExchangeRates,
+  type ExchangeRateRefreshResult,
 } from './fxRates';
 
 export { INTERNET_RATE_PROVIDER, refreshInternetExchangeRates } from './fxRates';
@@ -87,7 +87,7 @@ interface LedgerContextValue {
   replaceLedgerState: (nextState: LedgerState) => Promise<void>;
   reload: () => Promise<void>;
   flushSaves: () => Promise<void>;
-  mutate: (mutator: (draft: LedgerState) => void) => Promise<void>;
+  mutate: (mutator: (draft: LedgerState) => void, options?: LedgerMutationOptions) => Promise<void>;
 
   // Convenience actions
   addAccount: (input: CreateAccountInput) => Promise<void>;
@@ -154,9 +154,32 @@ type SaveResolver = {
   reject: (error: unknown) => void;
 };
 
+type LedgerMutationSlice =
+  | 'preferences'
+  | 'accounts'
+  | 'categories'
+  | 'transactions'
+  | 'transactionSplits'
+  | 'budgets'
+  | 'goals'
+  | 'captureCandidates'
+  | 'importBatches'
+  | 'tags'
+  | 'merchants'
+  | 'exchangeRates';
+
+type LedgerMutationOptions = {
+  slices?: readonly LedgerMutationSlice[];
+};
+
 const LedgerContext = createContext<LedgerContextValue | undefined>(undefined);
 
 const SAVE_DEBOUNCE_MS = 350;
+const SAVE_IDLE_TIMEOUT_MS = 750;
+const SAVE_FORCE_FLUSH_MS = 5000;
+const SAVE_QUEUE_WARNING_DEPTH = 8;
+
+type CancelScheduledTask = () => void;
 
 export interface LedgerProviderProps {
   store: LedgerStore;
@@ -167,17 +190,25 @@ export interface LedgerProviderProps {
 
 export function LedgerProvider({ store, children, seedOnEmpty = true }: LedgerProviderProps) {
   const [state, setState] = useState<LedgerState>(() => emptyState(uid()));
-  const indexes = useMemo(
-    () => buildLedgerIndexes(state),
-    [
-      state.accounts,
-      state.categories,
-      state.exchangeRates,
-      state.preferences.baseCurrency,
-      state.transactions,
-      state.transactionSplits,
-    ],
-  );
+  const indexes = useMemo(() => {
+    const startedAt = ledgerPerfNow();
+    const nextIndexes = buildLedgerIndexes(state);
+    warnSlowLedgerOperation('indexes.build', startedAt, 24, {
+      accounts: state.accounts.length,
+      transactions: state.transactions.length,
+      splits: state.transactionSplits.length,
+      captureCandidates: state.captureCandidates.length,
+    });
+    return nextIndexes;
+  }, [
+    state.accounts,
+    state.captureCandidates,
+    state.categories,
+    state.exchangeRates,
+    state.preferences.baseCurrency,
+    state.transactions,
+    state.transactionSplits,
+  ]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<LedgerSaveStatus>('idle');
@@ -186,8 +217,11 @@ export function LedgerProvider({ store, children, seedOnEmpty = true }: LedgerPr
   const stateRef = useRef(state);
   const pendingSaveRef = useRef<LedgerState | null>(null);
   const pendingSaveResolversRef = useRef<SaveResolver[]>([]);
+  const pendingSaveQueuedAtRef = useRef<number | null>(null);
   const saveInFlightRef = useRef<Promise<void> | null>(null);
   const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveDeadlineRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveIdleCancelRef = useRef<CancelScheduledTask | null>(null);
   const flushQueuedSaveRef = useRef<() => Promise<void>>(async () => undefined);
 
   const commitState = useCallback((nextState: LedgerState) => {
@@ -200,35 +234,71 @@ export function LedgerProvider({ store, children, seedOnEmpty = true }: LedgerPr
   }, [state]);
 
   const clearScheduledSave = useCallback(() => {
-    if (!saveDebounceRef.current) return;
-    clearTimeout(saveDebounceRef.current);
-    saveDebounceRef.current = null;
+    if (saveDebounceRef.current) {
+      clearTimeout(saveDebounceRef.current);
+      saveDebounceRef.current = null;
+    }
+    saveIdleCancelRef.current?.();
+    saveIdleCancelRef.current = null;
+  }, []);
+
+  const clearSaveDeadline = useCallback(() => {
+    if (!saveDeadlineRef.current) return;
+    clearTimeout(saveDeadlineRef.current);
+    saveDeadlineRef.current = null;
+  }, []);
+
+  const scheduleSaveDeadline = useCallback(() => {
+    if (saveDeadlineRef.current) return;
+    saveDeadlineRef.current = setTimeout(() => {
+      saveDeadlineRef.current = null;
+      if (!pendingSaveRef.current) return;
+      warnLedgerMessage('save.queue.deadline_flush', {
+        queuedMs:
+          pendingSaveQueuedAtRef.current === null
+            ? undefined
+            : Math.round(Date.now() - pendingSaveQueuedAtRef.current),
+        waiters: pendingSaveResolversRef.current.length,
+      });
+      void flushQueuedSaveRef.current().catch(() => undefined);
+    }, SAVE_FORCE_FLUSH_MS);
   }, []);
 
   const scheduleQueuedSave = useCallback(() => {
     clearScheduledSave();
     saveDebounceRef.current = setTimeout(() => {
       saveDebounceRef.current = null;
-      void flushQueuedSaveRef.current();
+      saveIdleCancelRef.current = scheduleLowPriorityTask(() => {
+        saveIdleCancelRef.current = null;
+        void flushQueuedSaveRef.current();
+      }, SAVE_IDLE_TIMEOUT_MS);
     }, SAVE_DEBOUNCE_MS);
   }, [clearScheduledSave]);
 
   const flushQueuedSave = useCallback(() => {
     clearScheduledSave();
+    clearSaveDeadline();
     if (saveInFlightRef.current) return saveInFlightRef.current;
     if (!pendingSaveRef.current) return Promise.resolve();
 
     const task = (async () => {
       let lastSaveFailed = false;
       while (pendingSaveRef.current) {
+        const saveStartedAt = ledgerPerfNow();
         const stateToSave = pendingSaveRef.current;
         const resolvers = pendingSaveResolversRef.current;
         pendingSaveRef.current = null;
         pendingSaveResolversRef.current = [];
+        pendingSaveQueuedAtRef.current = null;
         setSaveStatus('saving');
 
         try {
           await store.save(stateToSave);
+          warnSlowLedgerOperation('save.flush', saveStartedAt, 120, {
+            accounts: stateToSave.accounts.length,
+            transactions: stateToSave.transactions.length,
+            waiters: resolvers.length,
+          });
           lastSaveFailed = false;
           setSaveError(null);
           resolvers.forEach(({ resolve }) => resolve());
@@ -249,7 +319,7 @@ export function LedgerProvider({ store, children, seedOnEmpty = true }: LedgerPr
     });
 
     return saveInFlightRef.current;
-  }, [clearScheduledSave, scheduleQueuedSave, store]);
+  }, [clearSaveDeadline, clearScheduledSave, scheduleQueuedSave, store]);
 
   flushQueuedSaveRef.current = flushQueuedSave;
 
@@ -258,10 +328,18 @@ export function LedgerProvider({ store, children, seedOnEmpty = true }: LedgerPr
       new Promise<void>((resolve, reject) => {
         pendingSaveRef.current = nextState;
         pendingSaveResolversRef.current.push({ resolve, reject });
+        pendingSaveQueuedAtRef.current ??= Date.now();
+        if (pendingSaveResolversRef.current.length > SAVE_QUEUE_WARNING_DEPTH) {
+          warnLedgerMessage('save.queue.depth', {
+            waiters: pendingSaveResolversRef.current.length,
+            hasInFlightSave: Boolean(saveInFlightRef.current),
+          });
+        }
         if (!saveInFlightRef.current) setSaveStatus('pending');
+        scheduleSaveDeadline();
         scheduleQueuedSave();
       }),
-    [scheduleQueuedSave],
+    [scheduleQueuedSave, scheduleSaveDeadline],
   );
 
   const waitForQueuedSaves = useCallback(async () => {
@@ -271,7 +349,13 @@ export function LedgerProvider({ store, children, seedOnEmpty = true }: LedgerPr
     }
   }, [clearScheduledSave, flushQueuedSave]);
 
-  useEffect(() => () => clearScheduledSave(), [clearScheduledSave]);
+  useEffect(
+    () => () => {
+      clearScheduledSave();
+      clearSaveDeadline();
+    },
+    [clearSaveDeadline, clearScheduledSave],
+  );
 
   const load = useCallback(async () => {
     try {
@@ -283,6 +367,7 @@ export function LedgerProvider({ store, children, seedOnEmpty = true }: LedgerPr
         await store.save(loaded);
       }
       pendingSaveRef.current = null;
+      pendingSaveQueuedAtRef.current = null;
       pendingSaveResolversRef.current.splice(0).forEach(({ resolve }) => resolve());
       commitState({ ...loaded });
       setSaveStatus('idle');
@@ -331,13 +416,23 @@ export function LedgerProvider({ store, children, seedOnEmpty = true }: LedgerPr
   }, [commitState, queueSave, ready, state]);
 
   const mutate = useCallback(
-    async (mutator: (draft: LedgerState) => void) => {
+    async (mutator: (draft: LedgerState) => void, options?: LedgerMutationOptions) => {
       let draft: LedgerState;
       try {
         setError(null);
         setSaveError(null);
-        draft = cloneLedgerState(stateRef.current);
+        const cloneStartedAt = ledgerPerfNow();
+        draft = cloneLedgerStateForMutation(stateRef.current, options);
+        warnSlowLedgerOperation('state.clone_for_mutation', cloneStartedAt, 24, {
+          slices: options?.slices?.join(',') ?? 'all',
+          accounts: stateRef.current.accounts.length,
+          transactions: stateRef.current.transactions.length,
+        });
+        const mutateStartedAt = ledgerPerfNow();
         mutator(draft);
+        warnSlowLedgerOperation('state.apply_mutation', mutateStartedAt, 16, {
+          slices: options?.slices?.join(',') ?? 'all',
+        });
       } catch (err) {
         setError(errorMessage(err, 'Could not save your wallet changes.'));
         throw err;
@@ -389,6 +484,7 @@ export function LedgerProvider({ store, children, seedOnEmpty = true }: LedgerPr
         setSaveStatus('saving');
         await store.save(replacement);
         pendingSaveRef.current = null;
+        pendingSaveQueuedAtRef.current = null;
         pendingSaveResolversRef.current.splice(0).forEach(({ resolve }) => resolve());
         commitState(replacement);
         setSaveStatus('idle');
@@ -456,39 +552,75 @@ export function LedgerProvider({ store, children, seedOnEmpty = true }: LedgerPr
       resetAndMutate,
       replaceLedgerState,
       mutate,
-      addAccount: (input) => mutate((s) => void createAccount(s, input)),
-      editAccount: (id, patch) => mutate((s) => void updateAccount(s, id, patch)),
-      removeAccount: (id) => mutate((s) => void deleteAccount(s, id)),
-      addTransaction: (input) => mutate((s) => void createTransaction(s, input)),
-      editTransaction: (id, patch) => mutate((s) => void updateTransaction(s, id, patch)),
-      removeTransaction: (id) => mutate((s) => void deleteTransaction(s, id)),
-      addTransactionSplit: (input) => mutate((s) => void createTransactionSplit(s, input)),
-      editTransactionSplit: (id, patch) => mutate((s) => void updateTransactionSplit(s, id, patch)),
-      removeTransactionSplit: (id) => mutate((s) => void deleteTransactionSplit(s, id)),
-      addCaptureCandidate: (input) => mutate((s) => void createCaptureCandidate(s, input)),
-      editCaptureCandidate: (id, patch) => mutate((s) => void updateCaptureCandidate(s, id, patch)),
-      approveCaptureCandidate: (id, input) =>
-        mutate((s) => void approveCaptureCandidate(s, id, input)),
-      approveCaptureCandidates: (approvals) =>
-        mutate((s) => {
-          approvals.forEach(({ id, input }) => {
-            approveCaptureCandidate(s, id, input);
-          });
+      addAccount: (input) =>
+        mutate((s) => void createAccount(s, input), { slices: ['accounts', 'preferences'] }),
+      editAccount: (id, patch) =>
+        mutate((s) => void updateAccount(s, id, patch), { slices: ['accounts', 'preferences'] }),
+      removeAccount: (id) => mutate((s) => void deleteAccount(s, id), { slices: ['accounts'] }),
+      addTransaction: (input) =>
+        mutate((s) => void createTransaction(s, input), { slices: ['transactions'] }),
+      editTransaction: (id, patch) =>
+        mutate((s) => void updateTransaction(s, id, patch), { slices: ['transactions'] }),
+      removeTransaction: (id) =>
+        mutate((s) => void deleteTransaction(s, id), {
+          slices: ['transactions', 'transactionSplits'],
         }),
-      rejectCaptureCandidate: (id) => mutate((s) => void rejectCaptureCandidate(s, id)),
-      ignoreCaptureCandidate: (id) => mutate((s) => void ignoreCaptureCandidate(s, id)),
-      addImportBatch: (input) => mutate((s) => void createImportBatch(s, input)),
-      editImportBatch: (id, patch) => mutate((s) => void updateImportBatch(s, id, patch)),
-      addCategory: (input) => mutate((s) => void createCategory(s, input)),
-      editCategory: (id, patch) => mutate((s) => void updateCategory(s, id, patch)),
-      removeCategory: (id) => mutate((s) => void deleteCategory(s, id)),
-      setBaseCurrency: (currency) => mutate((s) => void setLedgerBaseCurrency(s, currency)),
-      setDisplayCurrency: (currency) => mutate((s) => void setLedgerDisplayCurrency(s, currency)),
-      cycleDisplayCurrency: () => mutate((s) => void cycleLedgerDisplayCurrency(s)),
-      addCurrency: (currency) => mutate((s) => void ensureEnabledCurrency(s, currency)),
-      removeCurrency: (currency) => mutate((s) => void removeEnabledCurrency(s, currency)),
+      addTransactionSplit: (input) =>
+        mutate((s) => void createTransactionSplit(s, input), { slices: ['transactionSplits'] }),
+      editTransactionSplit: (id, patch) =>
+        mutate((s) => void updateTransactionSplit(s, id, patch), {
+          slices: ['transactionSplits'],
+        }),
+      removeTransactionSplit: (id) =>
+        mutate((s) => void deleteTransactionSplit(s, id), { slices: ['transactionSplits'] }),
+      addCaptureCandidate: (input) =>
+        mutate((s) => void createCaptureCandidate(s, input), { slices: ['captureCandidates'] }),
+      editCaptureCandidate: (id, patch) =>
+        mutate((s) => void updateCaptureCandidate(s, id, patch), {
+          slices: ['captureCandidates'],
+        }),
+      approveCaptureCandidate: (id, input) =>
+        mutate((s) => void approveCaptureCandidate(s, id, input), {
+          slices: ['accounts', 'transactions', 'captureCandidates'],
+        }),
+      approveCaptureCandidates: (approvals) =>
+        mutate(
+          (s) => {
+            approvals.forEach(({ id, input }) => {
+              approveCaptureCandidate(s, id, input);
+            });
+          },
+          { slices: ['accounts', 'transactions', 'captureCandidates'] },
+        ),
+      rejectCaptureCandidate: (id) =>
+        mutate((s) => void rejectCaptureCandidate(s, id), { slices: ['captureCandidates'] }),
+      ignoreCaptureCandidate: (id) =>
+        mutate((s) => void ignoreCaptureCandidate(s, id), { slices: ['captureCandidates'] }),
+      addImportBatch: (input) =>
+        mutate((s) => void createImportBatch(s, input), { slices: ['importBatches'] }),
+      editImportBatch: (id, patch) =>
+        mutate((s) => void updateImportBatch(s, id, patch), { slices: ['importBatches'] }),
+      addCategory: (input) =>
+        mutate((s) => void createCategory(s, input), { slices: ['categories'] }),
+      editCategory: (id, patch) =>
+        mutate((s) => void updateCategory(s, id, patch), { slices: ['categories'] }),
+      removeCategory: (id) => mutate((s) => void deleteCategory(s, id), { slices: ['categories'] }),
+      setBaseCurrency: (currency) =>
+        mutate((s) => void setLedgerBaseCurrency(s, currency), {
+          slices: ['preferences', 'transactions'],
+        }),
+      setDisplayCurrency: (currency) =>
+        mutate((s) => void setLedgerDisplayCurrency(s, currency), { slices: ['preferences'] }),
+      cycleDisplayCurrency: () =>
+        mutate((s) => void cycleLedgerDisplayCurrency(s), { slices: ['preferences'] }),
+      addCurrency: (currency) =>
+        mutate((s) => void ensureEnabledCurrency(s, currency), { slices: ['preferences'] }),
+      removeCurrency: (currency) =>
+        mutate((s) => void removeEnabledCurrency(s, currency), { slices: ['preferences'] }),
       setExchangeRate: (base, quote, rate, asOfDate, options) =>
-        mutate((s) => void setRate(s, base, quote, rate, asOfDate, options)),
+        mutate((s) => void setRate(s, base, quote, rate, asOfDate, options), {
+          slices: ['exchangeRates'],
+        }),
       refreshExchangeRates,
       selectors,
     }),
@@ -526,69 +658,229 @@ function cloneState<T>(s: T): T {
   return JSON.parse(JSON.stringify(s)) as T;
 }
 
+type IdleRuntime = typeof globalThis & {
+  requestIdleCallback?: (
+    callback: (deadline: { didTimeout: boolean; timeRemaining: () => number }) => void,
+    options?: { timeout?: number },
+  ) => number;
+  cancelIdleCallback?: (handle: number) => void;
+  requestAnimationFrame?: (callback: (time: number) => void) => number;
+  cancelAnimationFrame?: (handle: number) => void;
+};
+
+function scheduleLowPriorityTask(task: () => void, timeoutMs: number): CancelScheduledTask {
+  const runtime = globalThis as IdleRuntime;
+  if (runtime.requestIdleCallback) {
+    const idleHandle = runtime.requestIdleCallback(task, { timeout: timeoutMs });
+    return () => runtime.cancelIdleCallback?.(idleHandle);
+  }
+
+  let cancelled = false;
+  let frameHandle: number | undefined;
+  const timeoutHandle = setTimeout(() => {
+    if (cancelled) return;
+    if (runtime.requestAnimationFrame) {
+      frameHandle = runtime.requestAnimationFrame(() => {
+        if (cancelled) return;
+        cancelled = true;
+        task();
+      });
+      return;
+    }
+    cancelled = true;
+    task();
+  }, timeoutMs);
+
+  return () => {
+    cancelled = true;
+    clearTimeout(timeoutHandle);
+    if (frameHandle !== undefined) runtime.cancelAnimationFrame?.(frameHandle);
+  };
+}
+
+function cloneLedgerStateForMutation(
+  state: LedgerState,
+  options?: LedgerMutationOptions,
+): LedgerState {
+  if (!options?.slices?.length) return cloneLedgerState(state);
+  const slices = new Set(options.slices);
+  return {
+    ...state,
+    preferences: slices.has('preferences') ? cloneState(state.preferences) : state.preferences,
+    accounts: slices.has('accounts') ? cloneLedgerAccounts(state.accounts) : state.accounts,
+    categories: slices.has('categories')
+      ? cloneLedgerCategories(state.categories)
+      : state.categories,
+    transactions: slices.has('transactions')
+      ? cloneLedgerTransactions(state.transactions)
+      : state.transactions,
+    transactionSplits: slices.has('transactionSplits')
+      ? cloneLedgerTransactionSplits(state.transactionSplits)
+      : state.transactionSplits,
+    budgets: slices.has('budgets') ? cloneLedgerBudgets(state.budgets) : state.budgets,
+    goals: slices.has('goals') ? cloneLedgerGoals(state.goals) : state.goals,
+    captureCandidates: slices.has('captureCandidates')
+      ? cloneLedgerCaptureCandidates(state.captureCandidates)
+      : state.captureCandidates,
+    importBatches: slices.has('importBatches')
+      ? cloneLedgerImportBatches(state.importBatches)
+      : state.importBatches,
+    tags: slices.has('tags') ? cloneLedgerTags(state.tags) : state.tags,
+    merchants: slices.has('merchants') ? cloneLedgerMerchants(state.merchants) : state.merchants,
+    exchangeRates: slices.has('exchangeRates')
+      ? cloneLedgerExchangeRates(state.exchangeRates)
+      : state.exchangeRates,
+  };
+}
+
 function cloneLedgerState(state: LedgerState): LedgerState {
   return {
     ...state,
     preferences: cloneState(state.preferences),
-    accounts: state.accounts.map((account) => ({
-      ...account,
-      openingBalance: { ...account.openingBalance },
-      loanDetails: account.loanDetails
-        ? {
-            ...account.loanDetails,
-            principal: account.loanDetails.principal
-              ? { ...account.loanDetails.principal }
-              : undefined,
-            repaymentAmount: account.loanDetails.repaymentAmount
-              ? { ...account.loanDetails.repaymentAmount }
-              : undefined,
-          }
-        : undefined,
-      matchIdentifiers: account.matchIdentifiers?.map((identifier) => ({ ...identifier })),
-      messageSourceHints: account.messageSourceHints
-        ? {
-            ...account.messageSourceHints,
-            smsSenderIds: account.messageSourceHints.smsSenderIds
-              ? [...account.messageSourceHints.smsSenderIds]
-              : undefined,
-            emailDomains: account.messageSourceHints.emailDomains
-              ? [...account.messageSourceHints.emailDomains]
-              : undefined,
-            keywords: account.messageSourceHints.keywords
-              ? [...account.messageSourceHints.keywords]
-              : undefined,
-          }
-        : undefined,
-    })),
-    categories: state.categories.map((category) => ({ ...category })),
-    transactions: state.transactions.map((transaction) => ({
-      ...transaction,
-      amount: { ...transaction.amount },
-      baseAmount: { ...transaction.baseAmount },
-      originalAmount: transaction.originalAmount ? { ...transaction.originalAmount } : undefined,
-      counterAmount: transaction.counterAmount ? { ...transaction.counterAmount } : undefined,
-      attachments: transaction.attachments?.map((attachment) => ({ ...attachment })),
-      tags: transaction.tags ? [...transaction.tags] : undefined,
-    })),
-    transactionSplits: state.transactionSplits.map((split) => ({
-      ...split,
-      amount: { ...split.amount },
-    })),
-    budgets: state.budgets.map((budget) => ({ ...budget })),
-    goals: state.goals.map((goal) => ({ ...goal })),
-    captureCandidates: state.captureCandidates.map((candidate) => ({
-      ...candidate,
-      warnings: candidate.warnings ? [...candidate.warnings] : undefined,
-      rawPayload: { ...candidate.rawPayload },
-    })),
-    importBatches: state.importBatches.map((batch) => ({
-      ...batch,
-      fileNames: [...batch.fileNames],
-    })),
-    tags: state.tags.map((tag) => ({ ...tag })),
-    merchants: state.merchants.map((merchant) => ({ ...merchant })),
-    exchangeRates: state.exchangeRates.map((rate) => ({ ...rate })),
+    accounts: cloneLedgerAccounts(state.accounts),
+    categories: cloneLedgerCategories(state.categories),
+    transactions: cloneLedgerTransactions(state.transactions),
+    transactionSplits: cloneLedgerTransactionSplits(state.transactionSplits),
+    budgets: cloneLedgerBudgets(state.budgets),
+    goals: cloneLedgerGoals(state.goals),
+    captureCandidates: cloneLedgerCaptureCandidates(state.captureCandidates),
+    importBatches: cloneLedgerImportBatches(state.importBatches),
+    tags: cloneLedgerTags(state.tags),
+    merchants: cloneLedgerMerchants(state.merchants),
+    exchangeRates: cloneLedgerExchangeRates(state.exchangeRates),
   };
+}
+
+function cloneLedgerAccounts(accounts: LedgerState['accounts']): LedgerState['accounts'] {
+  return accounts.map((account) => ({
+    ...account,
+    openingBalance: { ...account.openingBalance },
+    loanDetails: account.loanDetails
+      ? {
+          ...account.loanDetails,
+          principal: account.loanDetails.principal
+            ? { ...account.loanDetails.principal }
+            : undefined,
+          repaymentAmount: account.loanDetails.repaymentAmount
+            ? { ...account.loanDetails.repaymentAmount }
+            : undefined,
+        }
+      : undefined,
+    matchIdentifiers: account.matchIdentifiers?.map((identifier) => ({ ...identifier })),
+    messageSourceHints: account.messageSourceHints
+      ? {
+          ...account.messageSourceHints,
+          smsSenderIds: account.messageSourceHints.smsSenderIds
+            ? [...account.messageSourceHints.smsSenderIds]
+            : undefined,
+          emailDomains: account.messageSourceHints.emailDomains
+            ? [...account.messageSourceHints.emailDomains]
+            : undefined,
+          keywords: account.messageSourceHints.keywords
+            ? [...account.messageSourceHints.keywords]
+            : undefined,
+        }
+      : undefined,
+  }));
+}
+
+function cloneLedgerCategories(categories: LedgerState['categories']): LedgerState['categories'] {
+  return categories.map((category) => ({ ...category }));
+}
+
+function cloneLedgerTransactions(
+  transactions: LedgerState['transactions'],
+): LedgerState['transactions'] {
+  return transactions.map((transaction) => ({
+    ...transaction,
+    amount: { ...transaction.amount },
+    baseAmount: { ...transaction.baseAmount },
+    originalAmount: transaction.originalAmount ? { ...transaction.originalAmount } : undefined,
+    counterAmount: transaction.counterAmount ? { ...transaction.counterAmount } : undefined,
+    attachments: transaction.attachments?.map((attachment) => ({ ...attachment })),
+    tags: transaction.tags ? [...transaction.tags] : undefined,
+  }));
+}
+
+function cloneLedgerTransactionSplits(
+  splits: LedgerState['transactionSplits'],
+): LedgerState['transactionSplits'] {
+  return splits.map((split) => ({ ...split, amount: { ...split.amount } }));
+}
+
+function cloneLedgerBudgets(budgets: LedgerState['budgets']): LedgerState['budgets'] {
+  return budgets.map((budget) => ({ ...budget }));
+}
+
+function cloneLedgerGoals(goals: LedgerState['goals']): LedgerState['goals'] {
+  return goals.map((goal) => ({ ...goal }));
+}
+
+function cloneLedgerCaptureCandidates(
+  candidates: LedgerState['captureCandidates'],
+): LedgerState['captureCandidates'] {
+  return candidates.map((candidate) => ({
+    ...candidate,
+    parsedAmount: candidate.parsedAmount ? { ...candidate.parsedAmount } : undefined,
+    parsedOriginalAmount: candidate.parsedOriginalAmount
+      ? { ...candidate.parsedOriginalAmount }
+      : undefined,
+    parsedCounterAmount: candidate.parsedCounterAmount
+      ? { ...candidate.parsedCounterAmount }
+      : undefined,
+    parsedTags: candidate.parsedTags ? [...candidate.parsedTags] : undefined,
+    warnings: candidate.warnings ? [...candidate.warnings] : undefined,
+    rawPayload: { ...candidate.rawPayload },
+  }));
+}
+
+function cloneLedgerImportBatches(
+  batches: LedgerState['importBatches'],
+): LedgerState['importBatches'] {
+  return batches.map((batch) => ({ ...batch, fileNames: [...batch.fileNames] }));
+}
+
+function cloneLedgerTags(tags: LedgerState['tags']): LedgerState['tags'] {
+  return tags.map((tag) => ({ ...tag }));
+}
+
+function cloneLedgerMerchants(merchants: LedgerState['merchants']): LedgerState['merchants'] {
+  return merchants.map((merchant) => ({ ...merchant }));
+}
+
+function cloneLedgerExchangeRates(
+  rates: LedgerState['exchangeRates'],
+): LedgerState['exchangeRates'] {
+  return rates.map((rate) => ({ ...rate }));
+}
+
+function ledgerPerfNow(): number {
+  return typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+}
+
+function shouldLogLedgerPerformance(): boolean {
+  const runtime = globalThis as { __DEV__?: boolean };
+  return runtime.__DEV__ === true;
+}
+
+function warnSlowLedgerOperation(
+  name: string,
+  startedAt: number,
+  thresholdMs: number,
+  details?: Record<string, unknown>,
+): number {
+  const durationMs = ledgerPerfNow() - startedAt;
+  if (shouldLogLedgerPerformance() && durationMs >= thresholdMs) {
+    console.warn(`[ledger-perf] ${name} ${durationMs.toFixed(1)}ms`, details ?? '');
+  }
+  return durationMs;
+}
+
+function warnLedgerMessage(name: string, details?: Record<string, unknown>): void {
+  if (!shouldLogLedgerPerformance()) return;
+  console.warn(`[ledger-perf] ${name}`, details ?? '');
 }
 
 function errorMessage(err: unknown, fallback: string): string {

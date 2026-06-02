@@ -6,9 +6,9 @@ import { Snackbar } from 'react-native-paper';
 import { AppScreen } from '../../src/components/AppKit';
 import { PlannedPaymentEditor } from '../../src/plannedPayments/PlanEditor';
 import {
-  createDefaultPlanDraft,
-  futureRuleInputFromDraft,
-  type PlannedPaymentDraft,
+    createDefaultPlanDraft,
+    futureRuleInputFromDraft,
+    type PlannedPaymentDraft,
 } from '../../src/plannedPayments/planDraft';
 
 export default function NewPlannedPayment() {
@@ -24,10 +24,13 @@ export default function NewPlannedPayment() {
     }
 
     let savedId: string | undefined;
-    await mutate((draftState) => {
-      const rule = createFutureGenerationRule(draftState, result.input);
-      savedId = rule.id;
-    });
+    await mutate(
+      (draftState) => {
+        const rule = createFutureGenerationRule(draftState, result.input);
+        savedId = rule.id;
+      },
+      { slices: ['preferences'] },
+    );
 
     if (savedId) router.replace(`/recurring/${savedId}` as never);
   };

@@ -1,22 +1,23 @@
+import { toMinor } from '@1wallet/domain/money';
 import type {
-    LoanInterestMethod,
-    LoanInterestRatePeriod,
-    LoanKind,
-    RecurrenceFrequency,
+  LoanInterestMethod,
+  LoanInterestRatePeriod,
+  LoanKind,
+  RecurrenceFrequency,
 } from '@1wallet/domain/types';
 import {
-    buildLoanForecast,
-    buildLoanPlannedPaymentInput,
-    completedLoanInstallmentCount,
-    deriveLoanOutstandingPrincipal,
-    dueDateForInstallment,
-    findLinkedLoanRule,
-    legacyLoanPlanRefPrefix,
-    loanOpeningBalanceMinorForOutstanding,
+  buildLoanForecast,
+  buildLoanPlannedPaymentInput,
+  completedLoanInstallmentCount,
+  deriveLoanOutstandingPrincipal,
+  dueDateForInstallment,
+  findLinkedLoanRule,
+  legacyLoanPlanRefPrefix,
+  loanOpeningBalanceMinorForOutstanding,
 } from '@1wallet/ledger/loans';
 import {
-    createFutureGenerationRule,
-    updateFutureGenerationRule,
+  createFutureGenerationRule,
+  updateFutureGenerationRule,
 } from '@1wallet/ledger/rules/futureGeneration';
 import { updateAccount } from '@1wallet/ledger/services';
 import { indexedAccountBalance } from '@1wallet/ledger/services/indexes';
@@ -28,32 +29,46 @@ import { StyleSheet, Switch, View } from 'react-native';
 import { Button, Snackbar, Text, useTheme } from 'react-native-paper';
 import { accountTypeLabel, resolveAccountIconVisual } from '../../../src/accountOptions';
 import {
-    AppScreen,
-    EmptyState,
-    InfoRow,
-    PremiumTextInput,
-    SectionCard,
+  AppScreen,
+  EmptyState,
+  InfoRow,
+  PremiumTextInput,
+  SectionCard,
 } from '../../../src/components/AppKit';
 import { DateOnlyPickerField } from '../../../src/components/DateOnlyPickerField';
 import { OptionListOverlay, OptionSelectorRow } from '../../../src/components/OptionListOverlay';
 import {
-    FREQUENCY_OPTIONS,
-    INTEREST_METHOD_OPTIONS,
-    LOAN_KIND_OPTIONS,
-    RATE_PERIOD_OPTIONS,
-    buildDraftLoanDetails,
-    defaultLoanKind,
-    formatInputAmount,
-    isValidIsoDate,
-    loanScheduleCloseLabel,
-    optionLabel,
-    repaymentSourceAccounts,
-    todayIso,
+  FREQUENCY_OPTIONS,
+  INTEREST_METHOD_OPTIONS,
+  LOAN_KIND_OPTIONS,
+  RATE_PERIOD_OPTIONS,
+  buildDraftLoanDetails,
+  defaultLoanKind,
+  formatInputAmount,
+  isValidIsoDate,
+  loanScheduleCloseLabel,
+  optionLabel,
+  parseAmount,
+  repaymentSourceAccounts,
+  todayIso,
 } from '../../../src/loans/loanUtils';
 import { removeUnpostedFutureScheduledRecordsForRule } from '../../../src/plannedPayments/ruleActions';
 
+type AutoSolveAnchor = 'paidInstallments' | 'amountLeft';
+
 type LoanEditPicker = 'source' | 'kind' | 'frequency' | 'ratePeriod' | 'interestMethod' | null;
 
+type LoanMathOverrides = Partial<{
+  principal: string;
+  amountLeft: string;
+  payment: string;
+  rate: string;
+  ratePeriod: LoanInterestRatePeriod;
+  frequency: RecurrenceFrequency;
+  interval: string;
+  installments: string;
+  paidInstallments: string;
+}>;
 export default function LoanEdit() {
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -76,8 +91,14 @@ export default function LoanEdit() {
   const [dayOfMonth, setDayOfMonth] = useState(String(new Date().getDate()));
   const [installments, setInstallments] = useState('12');
   const [paidInstallments, setPaidInstallments] = useState('0');
+  const [remainingInstallments, setRemainingInstallments] = useState('12');
+  const [autoSolveAnchor, setAutoSolveAnchor] = useState<AutoSolveAnchor>('paidInstallments');
+  const [remainingInterest, setRemainingInterest] = useState('0');
+  const [amountLeftWithInterest, setAmountLeftWithInterest] = useState('0');
   const [endsOn, setEndsOn] = useState('');
   const [autoCreate, setAutoCreate] = useState(true);
+  const [manualEndDate, setManualEndDate] = useState(false);
+  const [manualInterestTiles, setManualInterestTiles] = useState(false);
 
   const sourceAccounts = useMemo(
     () => repaymentSourceAccounts(state.accounts, loan),
@@ -96,6 +117,12 @@ export default function LoanEdit() {
     const details = loan.loanDetails;
     const balance = indexedAccountBalance(indexes, loan);
     const outstandingMinor = Math.abs(balance.amountMinor || details?.principal?.amountMinor || 0);
+    const scheduleStart =
+      details?.disbursedOn ?? details?.repaymentStartsOn ?? details?.trackingStartsOn ?? todayIso();
+    const cadenceFrequency = details?.repaymentFrequency ?? 'monthly';
+    const cadenceInterval = String(details?.repaymentInterval ?? 1);
+    const cadenceDayOfMonth = String(details?.repaymentDayOfMonth ?? new Date().getDate());
+    const totalCount = details?.repaymentCount ?? 12;
     setLoanKind(details?.loanKind ?? defaultLoanKind(loan));
     setSourceAccountId(
       details?.repaymentSourceAccountId &&
@@ -113,6 +140,19 @@ export default function LoanEdit() {
       ? deriveLoanOutstandingPrincipal(details, loan.currency, { paidInstallments: paidCount })
       : { amountMinor: outstandingMinor, currency: loan.currency };
     setAmountLeft(formatInputAmount(calculatedOutstanding));
+    const seededRemainingInterest = details
+      ? buildLoanForecast(state, loan, details, {
+          amountMinor: calculatedOutstanding.amountMinor,
+          currency: loan.currency,
+        }).totalInterest
+      : { amountMinor: 0, currency: loan.currency };
+    setRemainingInterest(formatInputAmount(seededRemainingInterest));
+    setAmountLeftWithInterest(
+      formatInputAmount({
+        amountMinor: calculatedOutstanding.amountMinor + seededRemainingInterest.amountMinor,
+        currency: loan.currency,
+      }),
+    );
     setPaidInstallments(String(paidCount));
     setPayment(
       formatInputAmount(details?.repaymentAmount ?? { amountMinor: 0, currency: loan.currency }),
@@ -120,14 +160,46 @@ export default function LoanEdit() {
     setRate(String(details?.interestRatePercent ?? 0));
     setRatePeriod(details?.interestRatePeriod ?? 'annual');
     setInterestMethod(details?.interestMethod ?? 'reducing_balance');
-    setStartsOn(details?.repaymentStartsOn ?? details?.trackingStartsOn ?? todayIso());
-    setFrequency(details?.repaymentFrequency ?? 'monthly');
-    setInterval(String(details?.repaymentInterval ?? 1));
-    setDayOfMonth(String(details?.repaymentDayOfMonth ?? new Date().getDate()));
-    setInstallments(String(details?.repaymentCount ?? 12));
-    setEndsOn(details?.repaymentEndsOn ?? '');
+    setStartsOn(scheduleStart);
+    setFrequency(cadenceFrequency);
+    setInterval(cadenceInterval);
+    setDayOfMonth(cadenceDayOfMonth);
+    setInstallments(String(totalCount));
+    setRemainingInstallments(String(Math.max(0, totalCount - paidCount)));
+    const seededEndDate =
+      details?.repaymentEndsOn ??
+      installmentDueOnIndex({
+        startsOn: scheduleStart,
+        frequency: cadenceFrequency,
+        interval: cadenceInterval,
+        dayOfMonth: cadenceDayOfMonth,
+        installmentIndex: Math.max(0, totalCount - 1),
+      });
+    setEndsOn(seededEndDate);
+    setManualEndDate(Boolean(details?.repaymentEndsOn));
+    setManualInterestTiles(false);
+    setAutoSolveAnchor('paidInstallments');
     setAutoCreate(details?.autoCreateScheduledRecords ?? true);
-  }, [indexes, loan, sourceAccounts]);
+  }, [indexes, loan, sourceAccounts, state]);
+
+  const computedScheduleCloseOn = useMemo(
+    () =>
+      installmentDueOnIndex({
+        startsOn,
+        frequency,
+        interval,
+        dayOfMonth,
+        installmentIndex: Math.max(0, parseWholeNumber(installments, 1) - 1),
+      }),
+    [dayOfMonth, frequency, installments, interval, startsOn],
+  );
+
+  useEffect(() => {
+    if (manualEndDate) return;
+    setEndsOn((current) =>
+      current === computedScheduleCloseOn ? current : computedScheduleCloseOn,
+    );
+  }, [computedScheduleCloseOn, manualEndDate]);
 
   const draftTrackingStartsOn = useMemo(
     () =>
@@ -152,6 +224,7 @@ export default function LoanEdit() {
             rate,
             ratePeriod,
             interestMethod,
+            disbursedOn: startsOn,
             startsOn,
             frequency,
             interval,
@@ -183,35 +256,34 @@ export default function LoanEdit() {
       draftTrackingStartsOn,
     ],
   );
-  const calculatedOutstanding = useMemo(
-    () =>
-      draftDetails && loan
-        ? deriveLoanOutstandingPrincipal(draftDetails, loan.currency, {
-            paidInstallments: parseWholeNumber(paidInstallments, 0),
-          })
-        : undefined,
-    [draftDetails, loan, paidInstallments],
-  );
-  const totalInstallments = draftDetails?.repaymentCount;
-  const paidInstallmentCount = parseWholeNumber(paidInstallments, 0);
-  const remainingInstallments =
-    totalInstallments !== undefined ? Math.max(0, totalInstallments - paidInstallmentCount) : 0;
 
-  useEffect(() => {
-    if (!calculatedOutstanding) return;
-    setAmountLeft(formatInputAmount(calculatedOutstanding));
-  }, [calculatedOutstanding]);
+  const outstandingMinor = useMemo(
+    () => (loan ? toMinor(Math.max(0, parseAmount(amountLeft)), loan.currency) : 0),
+    [amountLeft, loan],
+  );
 
   const forecast = useMemo(
     () =>
       loan && draftDetails
         ? buildLoanForecast(state, loan, draftDetails, {
-            amountMinor: calculatedOutstanding?.amountMinor ?? 0,
+            amountMinor: outstandingMinor,
             currency: loan.currency,
           })
         : undefined,
-    [calculatedOutstanding?.amountMinor, draftDetails, loan, state],
+    [draftDetails, loan, outstandingMinor, state],
   );
+
+  useEffect(() => {
+    if (!loan || !forecast || manualInterestTiles) return;
+    const nextInterest = forecast.totalInterest;
+    setRemainingInterest(formatInputAmount(nextInterest));
+    setAmountLeftWithInterest(
+      formatInputAmount({
+        amountMinor: outstandingMinor + nextInterest.amountMinor,
+        currency: loan.currency,
+      }),
+    );
+  }, [forecast, loan, manualInterestTiles, outstandingMinor]);
 
   if (!loan) {
     return (
@@ -232,6 +304,157 @@ export default function LoanEdit() {
     ? resolveAccountIconVisual(selectedSource)
     : undefined;
 
+  const parseMathInputs = (overrides: LoanMathOverrides = {}) => {
+    const principalMinor = toMinor(
+      Math.max(0, parseAmount(overrides.principal ?? principal)),
+      loan.currency,
+    );
+    const paymentMinor = toMinor(
+      Math.max(0, parseAmount(overrides.payment ?? payment)),
+      loan.currency,
+    );
+    const amountLeftMinor = toMinor(
+      Math.max(0, parseAmount(overrides.amountLeft ?? amountLeft)),
+      loan.currency,
+    );
+    const totalInstallments = Math.max(
+      0,
+      parseWholeNumber(overrides.installments ?? installments, 0),
+    );
+    const paidCount = Math.max(
+      0,
+      parseWholeNumber(overrides.paidInstallments ?? paidInstallments, 0),
+    );
+    return {
+      principalMinor,
+      paymentMinor,
+      amountLeftMinor,
+      totalInstallments,
+      paidCount,
+    };
+  };
+
+  const syncRemainingFromCounts = (overrides: LoanMathOverrides = {}) => {
+    const { totalInstallments, paidCount } = parseMathInputs(overrides);
+    setRemainingInstallments(String(Math.max(0, totalInstallments - paidCount)));
+  };
+
+  const syncAmountLeftFromPaid = (overrides: LoanMathOverrides = {}) => {
+    const { principalMinor, paymentMinor, paidCount } = parseMathInputs(overrides);
+    const solvedOutstanding = solveOutstandingFromInputs(principalMinor, paymentMinor, paidCount);
+    setAmountLeft(formatInputAmount({ amountMinor: solvedOutstanding, currency: loan.currency }));
+    syncRemainingFromCounts(overrides);
+  };
+
+  const syncPaidFromAmountLeft = (overrides: LoanMathOverrides = {}) => {
+    const { principalMinor, paymentMinor, amountLeftMinor, totalInstallments } =
+      parseMathInputs(overrides);
+    const solvedPaid = solvePaidFromOutstanding(principalMinor, paymentMinor, amountLeftMinor);
+    if (solvedPaid === undefined) {
+      syncRemainingFromCounts(overrides);
+      return;
+    }
+    const roundedPaid = Math.max(0, Math.round(solvedPaid));
+    const boundedPaid =
+      totalInstallments > 0 ? Math.min(totalInstallments, roundedPaid) : roundedPaid;
+    setPaidInstallments(String(boundedPaid));
+    setRemainingInstallments(String(Math.max(0, totalInstallments - boundedPaid)));
+  };
+
+  const applyAutoSolve = (anchor: AutoSolveAnchor, overrides: LoanMathOverrides = {}) => {
+    if (anchor === 'amountLeft') {
+      syncPaidFromAmountLeft(overrides);
+      return;
+    }
+    syncAmountLeftFromPaid(overrides);
+  };
+
+  const handlePrincipalChange = (nextValue: string) => {
+    setPrincipal(nextValue);
+    setManualInterestTiles(false);
+    applyAutoSolve(autoSolveAnchor, { principal: nextValue });
+  };
+
+  const handleAmountLeftChange = (nextValue: string) => {
+    setAutoSolveAnchor('amountLeft');
+    setAmountLeft(nextValue);
+    setManualInterestTiles(false);
+    applyAutoSolve('amountLeft', { amountLeft: nextValue });
+  };
+
+  const handlePaymentChange = (nextValue: string) => {
+    setPayment(nextValue);
+    setManualInterestTiles(false);
+    applyAutoSolve(autoSolveAnchor, { payment: nextValue });
+  };
+
+  const handleRateChange = (nextValue: string) => {
+    setRate(nextValue);
+    setManualInterestTiles(false);
+    applyAutoSolve(autoSolveAnchor, { rate: nextValue });
+  };
+
+  const handleRemainingInterestChange = (nextValue: string) => {
+    const interestMinor = toMinor(Math.max(0, parseAmount(nextValue)), loan.currency);
+    setManualInterestTiles(true);
+    setRemainingInterest(nextValue);
+    setAmountLeftWithInterest(
+      formatInputAmount({ amountMinor: outstandingMinor + interestMinor, currency: loan.currency }),
+    );
+  };
+
+  const handleAmountLeftWithInterestChange = (nextValue: string) => {
+    const totalMinor = toMinor(Math.max(0, parseAmount(nextValue)), loan.currency);
+    const interestMinor = Math.max(0, totalMinor - outstandingMinor);
+    setManualInterestTiles(true);
+    setAmountLeftWithInterest(nextValue);
+    setRemainingInterest(
+      formatInputAmount({ amountMinor: interestMinor, currency: loan.currency }),
+    );
+  };
+
+  const handleInstallmentsChange = (nextValue: string) => {
+    setInstallments(nextValue);
+    setManualEndDate(false);
+    setManualInterestTiles(false);
+    applyAutoSolve(autoSolveAnchor, { installments: nextValue });
+  };
+
+  const handlePaidInstallmentsChange = (nextValue: string) => {
+    setAutoSolveAnchor('paidInstallments');
+    setPaidInstallments(nextValue);
+    setManualInterestTiles(false);
+    applyAutoSolve('paidInstallments', { paidInstallments: nextValue });
+  };
+
+  const handleRemainingInstallmentsChange = (nextValue: string) => {
+    const remaining = parseWholeNumber(nextValue, 0);
+    const paid = parseWholeNumber(paidInstallments, 0);
+    const total = paid + remaining;
+    setRemainingInstallments(nextValue);
+    setInstallments(String(total));
+    setManualEndDate(false);
+    setManualInterestTiles(false);
+    applyAutoSolve(autoSolveAnchor, { installments: String(total) });
+  };
+
+  const handleEndDateChange = (nextValue: string) => {
+    setEndsOn(nextValue);
+    setManualEndDate(Boolean(nextValue));
+    if (!nextValue || !isValidIsoDate(startsOn) || !isValidIsoDate(nextValue)) return;
+    const total = countInstallmentsThroughDate({
+      startsOn,
+      frequency,
+      interval,
+      dayOfMonth,
+      endsOn: nextValue,
+    });
+    if (!total) return;
+    setInstallments(String(total));
+    setManualInterestTiles(false);
+    applyAutoSolve(autoSolveAnchor, { installments: String(total) });
+  };
+
   const savePlan = async () => {
     if (!draftDetails || !forecast) {
       setSnackbar('Add a loan account first');
@@ -245,7 +468,7 @@ export default function LoanEdit() {
       setSnackbar('Enter a repayment amount');
       return;
     }
-    const amountLeftMinor = calculatedOutstanding?.amountMinor ?? 0;
+    const amountLeftMinor = toMinor(Math.max(0, parseAmount(amountLeft)), loan.currency);
     const principalMinor = Math.abs(draftDetails.principal?.amountMinor ?? 0);
     const paidCount = parseWholeNumber(paidInstallments, 0);
     const totalInstallments = draftDetails.repaymentCount ?? 0;
@@ -267,40 +490,43 @@ export default function LoanEdit() {
     }
 
     let linkedRuleId: string | undefined;
-    await mutate((draft) => {
-      const existingRule = findLinkedLoanRule(draft, loan.id);
-      const input = buildLoanPlannedPaymentInput(
-        loan,
-        draftDetails,
-        existingRule?.tags ?? linkedRule?.tags,
-      );
-      const prefix = legacyLoanPlanRefPrefix(loan.id);
-      draft.transactions = draft.transactions.filter(
-        (transaction) =>
-          !(transaction.status === 'scheduled' && transaction.externalRef?.startsWith(prefix)),
-      );
+    await mutate(
+      (draft) => {
+        const existingRule = findLinkedLoanRule(draft, loan.id);
+        const input = buildLoanPlannedPaymentInput(
+          loan,
+          draftDetails,
+          existingRule?.tags ?? linkedRule?.tags,
+        );
+        const prefix = legacyLoanPlanRefPrefix(loan.id);
+        draft.transactions = draft.transactions.filter(
+          (transaction) =>
+            !(transaction.status === 'scheduled' && transaction.externalRef?.startsWith(prefix)),
+        );
 
-      if (input) {
-        const rule = existingRule
-          ? updateFutureGenerationRule(draft, existingRule.id, input)
-          : createFutureGenerationRule(draft, input);
-        linkedRuleId = rule?.id;
-        if (linkedRuleId) removeUnpostedFutureScheduledRecordsForRule(draft, linkedRuleId);
-      }
+        if (input) {
+          const rule = existingRule
+            ? updateFutureGenerationRule(draft, existingRule.id, input)
+            : createFutureGenerationRule(draft, input);
+          linkedRuleId = rule?.id;
+          if (linkedRuleId) removeUnpostedFutureScheduledRecordsForRule(draft, linkedRuleId);
+        }
 
-      const draftLoan = draft.accounts.find((account) => account.id === loan.id);
-      const openingBalanceMinor = draftLoan
-        ? loanOpeningBalanceMinorForOutstanding(draft, draftLoan, {
-            amountMinor: amountLeftMinor,
-            currency: loan.currency,
-          })
-        : undefined;
+        const draftLoan = draft.accounts.find((account) => account.id === loan.id);
+        const openingBalanceMinor = draftLoan
+          ? loanOpeningBalanceMinorForOutstanding(draft, draftLoan, {
+              amountMinor: amountLeftMinor,
+              currency: loan.currency,
+            })
+          : undefined;
 
-      updateAccount(draft, loan.id, {
-        ...(openingBalanceMinor !== undefined ? { openingBalanceMinor } : {}),
-        loanDetails: { ...draftDetails, linkedPlannedPaymentRuleId: linkedRuleId },
-      });
-    });
+        updateAccount(draft, loan.id, {
+          ...(openingBalanceMinor !== undefined ? { openingBalanceMinor } : {}),
+          loanDetails: { ...draftDetails, linkedPlannedPaymentRuleId: linkedRuleId },
+        });
+      },
+      { slices: ['preferences', 'accounts', 'transactions'] },
+    );
     setSnackbar(linkedRuleId ? 'Loan plan saved with linked EMI forecast' : 'Loan plan saved');
     router.replace(`/loans/${loan.id}` as never);
   };
@@ -317,8 +543,7 @@ export default function LoanEdit() {
             iconBackgroundColor={loanVisual.backgroundColor}
             iconColor={loanVisual.iconColor}
             valueNumberOfLines={2}
-            disabled
-            onPress={() => undefined}
+            onPress={() => router.push(`/account/${loan.id}` as never)}
           />
           <OptionSelectorRow
             label={loan.type === 'lent' ? 'Receive into' : 'Pay from'}
@@ -354,21 +579,35 @@ export default function LoanEdit() {
             <MoneyField
               label="Original principal"
               value={principal}
-              onChangeText={setPrincipal}
+              onChangeText={handlePrincipalChange}
               currency={loan.currency}
             />
             <MoneyField
-              label="Calculated amount left"
+              label="Amount left (principal)"
               value={amountLeft}
+              onChangeText={handleAmountLeftChange}
               currency={loan.currency}
-              editable={false}
             />
           </View>
           <View style={styles.twoColumn}>
             <MoneyField
               label="Principal EMI"
               value={payment}
-              onChangeText={setPayment}
+              onChangeText={handlePaymentChange}
+              currency={loan.currency}
+            />
+            <MoneyField
+              label="Remaining interest"
+              value={remainingInterest}
+              onChangeText={handleRemainingInterestChange}
+              currency={loan.currency}
+            />
+          </View>
+          <View style={styles.twoColumn}>
+            <MoneyField
+              label="Amount left incl interest"
+              value={amountLeftWithInterest}
+              onChangeText={handleAmountLeftWithInterestChange}
               currency={loan.currency}
             />
           </View>
@@ -377,7 +616,7 @@ export default function LoanEdit() {
               mode="outlined"
               label="Interest rate %"
               value={rate}
-              onChangeText={setRate}
+              onChangeText={handleRateChange}
               keyboardType="numeric"
               style={styles.flexField}
             />
@@ -398,16 +637,22 @@ export default function LoanEdit() {
           />
           <View style={styles.twoColumn}>
             <DateOnlyPickerField
-              label="Start date"
+              label="Loan start date"
               value={startsOn}
-              onChange={setStartsOn}
+              onChange={(nextValue) => {
+                setStartsOn(nextValue);
+                setManualInterestTiles(false);
+              }}
               style={styles.flexField}
             />
             <PremiumTextInput
               mode="outlined"
               label="Day"
               value={dayOfMonth}
-              onChangeText={setDayOfMonth}
+              onChangeText={(nextValue) => {
+                setDayOfMonth(nextValue);
+                setManualInterestTiles(false);
+              }}
               keyboardType="number-pad"
               style={styles.flexField}
             />
@@ -417,7 +662,11 @@ export default function LoanEdit() {
               mode="outlined"
               label="Every"
               value={interval}
-              onChangeText={setInterval}
+              onChangeText={(nextValue) => {
+                setInterval(nextValue);
+                setManualInterestTiles(false);
+                applyAutoSolve(autoSolveAnchor, { interval: nextValue });
+              }}
               keyboardType="number-pad"
               style={styles.flexField}
             />
@@ -425,7 +674,7 @@ export default function LoanEdit() {
               mode="outlined"
               label="Installments"
               value={installments}
-              onChangeText={setInstallments}
+              onChangeText={handleInstallmentsChange}
               keyboardType="number-pad"
               style={styles.flexField}
             />
@@ -435,22 +684,23 @@ export default function LoanEdit() {
               mode="outlined"
               label="Paid EMIs"
               value={paidInstallments}
-              onChangeText={setPaidInstallments}
+              onChangeText={handlePaidInstallmentsChange}
               keyboardType="number-pad"
               style={styles.flexField}
             />
             <PremiumTextInput
               mode="outlined"
               label="Remaining EMIs"
-              value={String(remainingInstallments)}
-              editable={false}
+              value={remainingInstallments}
+              onChangeText={handleRemainingInstallmentsChange}
+              keyboardType="number-pad"
               style={styles.flexField}
             />
           </View>
           <DateOnlyPickerField
-            label="End date optional"
+            label="End date"
             value={endsOn}
-            onChange={setEndsOn}
+            onChange={handleEndDateChange}
             allowClear
           />
           <View style={styles.switchRow}>
@@ -539,6 +789,8 @@ export default function LoanEdit() {
         onDismiss={() => setPicker(null)}
         onSelect={(option) => {
           setFrequency(option.value);
+          setManualInterestTiles(false);
+          applyAutoSolve(autoSolveAnchor, { frequency: option.value });
           setPicker(null);
         }}
       />
@@ -551,6 +803,8 @@ export default function LoanEdit() {
         onDismiss={() => setPicker(null)}
         onSelect={(option) => {
           setRatePeriod(option.value);
+          setManualInterestTiles(false);
+          applyAutoSolve(autoSolveAnchor, { ratePeriod: option.value });
           setPicker(null);
         }}
       />
@@ -613,12 +867,35 @@ function installmentDueOn({
   paidInstallments: string;
 }): string {
   if (!isValidIsoDate(startsOn)) return startsOn;
+  return installmentDueOnIndex({
+    startsOn,
+    frequency,
+    interval,
+    dayOfMonth,
+    installmentIndex: parseWholeNumber(paidInstallments, 0),
+  });
+}
+
+function installmentDueOnIndex({
+  startsOn,
+  frequency,
+  interval,
+  dayOfMonth,
+  installmentIndex,
+}: {
+  startsOn: string;
+  frequency: RecurrenceFrequency;
+  interval: string;
+  dayOfMonth: string;
+  installmentIndex: number;
+}): string {
+  if (!isValidIsoDate(startsOn)) return startsOn;
   return dateOnly(
     dueDateForInstallment(
       startsOn,
       frequency,
       parseWholeNumber(interval, 1),
-      parseWholeNumber(paidInstallments, 0),
+      Math.max(0, installmentIndex),
       parseWholeNumber(dayOfMonth, new Date().getDate()),
     ),
   );
@@ -634,6 +911,60 @@ function dateOnly(value: Date): string {
   const month = String(value.getMonth() + 1).padStart(2, '0');
   const day = String(value.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function countInstallmentsThroughDate({
+  startsOn,
+  frequency,
+  interval,
+  dayOfMonth,
+  endsOn,
+}: {
+  startsOn: string;
+  frequency: RecurrenceFrequency;
+  interval: string;
+  dayOfMonth: string;
+  endsOn: string;
+}): number {
+  if (!isValidIsoDate(startsOn) || !isValidIsoDate(endsOn)) return 0;
+  const endDate = new Date(endsOn);
+  const maxInstallments = 1200;
+  for (let index = 0; index < maxInstallments; index += 1) {
+    const due = dueDateForInstallment(
+      startsOn,
+      frequency,
+      parseWholeNumber(interval, 1),
+      index,
+      parseWholeNumber(dayOfMonth, new Date().getDate()),
+    );
+    if (due > endDate) return Math.max(1, index);
+  }
+  return maxInstallments;
+}
+
+function solveOutstandingFromInputs(
+  principalMinor: number,
+  paymentMinor: number,
+  paidInstallments: number,
+): number {
+  const principal = Math.max(0, principalMinor);
+  const payment = Math.max(0, paymentMinor);
+  const paid = Math.max(0, paidInstallments);
+  if (!principal || !payment || paid <= 0) return principal;
+  return Math.max(0, principal - payment * paid);
+}
+
+function solvePaidFromOutstanding(
+  principalMinor: number,
+  paymentMinor: number,
+  outstandingMinor: number,
+): number | undefined {
+  const principal = Math.max(0, principalMinor);
+  const payment = Math.max(0, paymentMinor);
+  const outstanding = Math.max(0, outstandingMinor);
+  if (!principal || !payment) return undefined;
+  if (outstanding >= principal) return 0;
+  return (principal - outstanding) / payment;
 }
 
 const styles = StyleSheet.create({

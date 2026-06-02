@@ -118,6 +118,7 @@ export function normalizeLedgerState(state: Partial<LedgerState>): LedgerState {
   const transactions = removeGeneratedScheduledTransactions(
     repairForeignPostedAmounts(state.transactions ?? [], baseCurrency, exchangeRates),
   );
+  const captureCandidates = compactReviewedCaptureCandidates(state.captureCandidates ?? []);
   const displayCurrency = normalizeCurrencyCode(state.preferences?.displayCurrency ?? baseCurrency);
   const enabledCurrencies = collectEnabledCurrencies(
     state,
@@ -172,9 +173,54 @@ export function normalizeLedgerState(state: Partial<LedgerState>): LedgerState {
       messageCategoryRules: state.preferences?.messageCategoryRules ?? [],
     },
     transactionSplits: state.transactionSplits ?? [],
+    captureCandidates,
     importBatches: state.importBatches ?? [],
     version: LEDGER_STATE_VERSION,
   } as LedgerState;
+}
+
+function compactReviewedCaptureCandidates(
+  candidates: NonNullable<Partial<LedgerState>['captureCandidates']>,
+): LedgerState['captureCandidates'] {
+  return candidates.map((candidate) => {
+    if (candidate.status === 'pending') return candidate;
+    return {
+      ...candidate,
+      rawPayload: compactReviewedRawPayload(candidate.rawPayload),
+      parsedNotes: compactReviewedText(candidate.parsedNotes),
+    };
+  });
+}
+
+function compactReviewedRawPayload(rawPayload: Record<string, unknown>): Record<string, unknown> {
+  if (rawPayload.kind === 'transaction_message') {
+    const body = typeof rawPayload.body === 'string' ? rawPayload.body : undefined;
+    const next = { ...rawPayload };
+    delete next.body;
+    delete next.fragments;
+    delete next.acceptedMessageHints;
+    if (body) {
+      next.bodyPreview = compactReviewedText(body);
+      next.bodyLength = body.length;
+    }
+    return next;
+  }
+
+  if (rawPayload.source === 'wallet_csv' && Array.isArray(rawPayload.rows)) {
+    const next = { ...rawPayload };
+    next.rowsCount = rawPayload.rows.length;
+    delete next.rows;
+    return next;
+  }
+
+  return rawPayload;
+}
+
+function compactReviewedText(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  if (normalized.length <= 280) return normalized || undefined;
+  return `${normalized.slice(0, 277)}...`;
 }
 
 function isLegacySnapshotAxisForexCard(account: LedgerState['accounts'][number]): boolean {

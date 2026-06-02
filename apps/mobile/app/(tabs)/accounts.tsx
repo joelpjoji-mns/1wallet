@@ -5,36 +5,32 @@ import { useLedger } from '@1wallet/state';
 import { tokens } from '@1wallet/ui';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import DraggableFlatList, {
-    ScaleDecorator,
-    ShadowDecorator,
-} from 'react-native-draggable-flatlist';
+import DraggableFlatList from 'react-native-draggable-flatlist';
 import {
-    ActivityIndicator,
-    Appbar,
-    FAB,
-    Text,
-    TouchableRipple,
-    useTheme,
+  ActivityIndicator,
+  Appbar,
+  Button,
+  Text,
+  TouchableRipple,
+  useTheme,
 } from 'react-native-paper';
 import { accountTypeLabel, resolveAccountIconVisual } from '../../src/accountOptions';
 import { useAppDrawer } from '../../src/components/AppDrawerHost';
 import {
-    AppMenuAction,
-    EmptyState,
-    MetricTile,
-    PremiumSearchInput,
-    TAB_BAR_OVERLAY_CLEARANCE,
-    TAB_FAB_BOTTOM_OFFSET,
+  AppMenuAction,
+  EmptyState,
+  MetricTile,
+  PremiumSearchInput,
 } from '../../src/components/AppKit';
 import {
-    OptionListOverlay,
-    OptionSelectorRow,
-    type OptionListItem,
+  OptionListOverlay,
+  OptionSelectorRow,
+  type OptionListItem,
 } from '../../src/components/OptionListOverlay';
 import { numericMediumFontFamily } from '../../src/fonts';
+import { useDebouncedValue } from '../../src/useDebouncedValue';
 
 type AccountFilterPicker = 'included' | 'archived' | null;
 const LIABILITY_ACCOUNT_TYPES = new Set<Account['type']>(['credit_card', 'loan', 'overdraft']);
@@ -86,6 +82,7 @@ export default function Accounts() {
   const [showExcluded, setShowExcluded] = useState(true);
   const [showArchived, setShowArchived] = useState(false);
   const [filterPicker, setFilterPicker] = useState<AccountFilterPicker>(null);
+  const debouncedQuery = useDebouncedValue(query, 120);
 
   const orderedAccounts = useMemo(
     () =>
@@ -96,7 +93,7 @@ export default function Accounts() {
   );
 
   const rows = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+    const normalizedQuery = debouncedQuery.trim().toLowerCase();
     return orderedAccounts
       .filter((account) => showArchived || !account.isArchived)
       .filter((account) => showExcluded || account.includeInTotals)
@@ -108,7 +105,7 @@ export default function Accounts() {
           .toLowerCase();
         return haystack.includes(normalizedQuery);
       });
-  }, [orderedAccounts, query, showArchived, showExcluded]);
+  }, [debouncedQuery, orderedAccounts, showArchived, showExcluded]);
 
   const persistReorder = useCallback(
     (visibleRows: Account[]) => {
@@ -129,57 +126,47 @@ export default function Accounts() {
       const changed = orderedIds.some((id, index) => id !== orderedAccounts[index]?.id);
       if (!changed) return;
 
-      void mutate((draft) => {
-        const sortOrderById = new Map(orderedIds.map((id, index) => [id, index + 1] as const));
-        for (const account of draft.accounts) {
-          const sortOrder = sortOrderById.get(account.id);
-          if (sortOrder) account.sortOrder = sortOrder;
-        }
-      }).catch(() => undefined);
+      void mutate(
+        (draft) => {
+          const sortOrderById = new Map(orderedIds.map((id, index) => [id, index + 1] as const));
+          for (const account of draft.accounts) {
+            const sortOrder = sortOrderById.get(account.id);
+            if (sortOrder) account.sortOrder = sortOrder;
+          }
+        },
+        { slices: ['accounts'] },
+      ).catch(() => undefined);
     },
     [mutate, orderedAccounts],
   );
 
   const viewCurrency = selectors.displayCurrency(state);
-  const total = useMemo(
-    () =>
-      state.accounts.reduce(
-        (sum, account) => {
-          if (!account.includeInTotals) return sum;
-          return {
-            amountMinor:
-              sum.amountMinor +
-              selectors.convertMoneyForDisplay(
-                state,
-                indexedAccountBalance(indexes, account),
-                viewCurrency,
-              ).amountMinor,
-            currency: viewCurrency,
-          };
-        },
-        { amountMinor: 0, currency: viewCurrency },
-      ),
-    [indexes, selectors, state, viewCurrency],
-  );
-  const netWorth = useMemo(() => {
+  const accountSummary = useMemo(() => {
+    let totalAmountMinor = 0;
     let assets = 0;
     let liabilities = 0;
+    let excluded = 0;
+    let archived = 0;
     for (const account of state.accounts) {
-      if (!account.includeInNetWorth) continue;
+      if (!account.includeInTotals && !account.isArchived) excluded += 1;
+      if (account.isArchived) archived += 1;
       const amountMinor = selectors.convertMoneyForDisplay(
         state,
         indexedAccountBalance(indexes, account),
         viewCurrency,
       ).amountMinor;
+      if (account.includeInTotals) totalAmountMinor += amountMinor;
+      if (!account.includeInNetWorth) continue;
       if (LIABILITY_ACCOUNT_TYPES.has(account.type)) liabilities += amountMinor;
       else assets += amountMinor;
     }
-    return { total: { amountMinor: assets + liabilities, currency: viewCurrency } };
+    return {
+      archived,
+      excluded,
+      netWorth: { amountMinor: assets + liabilities, currency: viewCurrency },
+      total: { amountMinor: totalAmountMinor, currency: viewCurrency },
+    };
   }, [indexes, selectors, state, viewCurrency]);
-  const excluded = state.accounts.filter(
-    (account) => !account.includeInTotals && !account.isArchived,
-  ).length;
-  const archived = state.accounts.filter((account) => account.isArchived).length;
   const lastActivityByAccountId = useMemo(() => {
     const map = new Map<string, string>();
     for (const [accountId, transactions] of indexes.transactionsByAccountId) {
@@ -191,6 +178,21 @@ export default function Accounts() {
     }
     return map;
   }, [indexes.transactionsByAccountId]);
+  const renderAccountItem = useCallback(
+    ({ item, drag, isActive }: { item: Account; drag: () => void; isActive: boolean }) => (
+      <View collapsable={false} style={styles.accountCell}>
+        <AccountRow
+          account={item}
+          balance={indexedAccountBalance(indexes, item)}
+          drag={drag}
+          isDragging={isActive}
+          locale={state.preferences.locale}
+          lastActivityAt={lastActivityByAccountId.get(item.id)}
+        />
+      </View>
+    ),
+    [indexes, lastActivityByAccountId, state.preferences.locale],
+  );
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
@@ -222,13 +224,13 @@ export default function Accounts() {
             <View style={styles.metricGrid}>
               <MetricTile
                 label="Total"
-                value={formatMoney(total, state.preferences.locale)}
+                value={formatMoney(accountSummary.total, state.preferences.locale)}
                 icon="wallet-outline"
                 compact
               />
               <MetricTile
                 label="Net worth"
-                value={formatMoney(netWorth.total, state.preferences.locale)}
+                value={formatMoney(accountSummary.netWorth, state.preferences.locale)}
                 icon="scale-balance"
                 compact
               />
@@ -237,8 +239,12 @@ export default function Accounts() {
             <View style={styles.visibilityRow}>
               <OptionSelectorRow
                 label="Included accounts"
-                value={showExcluded ? `Include excluded (${excluded})` : 'Totals only'}
-                description={showExcluded ? 'All active accounts' : `${excluded} hidden`}
+                value={
+                  showExcluded ? `Include excluded (${accountSummary.excluded})` : 'Totals only'
+                }
+                description={
+                  showExcluded ? 'All active accounts' : `${accountSummary.excluded} hidden`
+                }
                 icon="scale-balance"
                 compact
                 style={styles.visibilitySelector}
@@ -246,8 +252,12 @@ export default function Accounts() {
               />
               <OptionSelectorRow
                 label="Archive visibility"
-                value={showArchived ? `Include archived (${archived})` : 'Active only'}
-                description={showArchived ? 'Archived visible' : `${archived} archived`}
+                value={
+                  showArchived ? `Include archived (${accountSummary.archived})` : 'Active only'
+                }
+                description={
+                  showArchived ? 'Archived visible' : `${accountSummary.archived} archived`
+                }
                 icon="archive-outline"
                 compact
                 style={styles.visibilitySelector}
@@ -265,14 +275,27 @@ export default function Accounts() {
                     {rows.length} in current order
                   </Text>
                 </View>
-                {saveStatus === 'saving' ? <ActivityIndicator size="small" /> : null}
-                {saveError ? (
-                  <MaterialCommunityIcons
-                    name="alert-circle-outline"
-                    size={20}
-                    color={theme.colors.error}
-                  />
-                ) : null}
+                <View style={styles.accountsHeaderActions}>
+                  {saveStatus === 'saving' ? <ActivityIndicator size="small" /> : null}
+                  {saveError ? (
+                    <MaterialCommunityIcons
+                      name="alert-circle-outline"
+                      size={20}
+                      color={theme.colors.error}
+                    />
+                  ) : null}
+                  <Button
+                    compact
+                    mode="contained-tonal"
+                    icon="plus"
+                    onPress={() => router.push('/account/new')}
+                    style={styles.addAccountButton}
+                    contentStyle={styles.addAccountButtonContent}
+                    accessibilityLabel="Add account"
+                  >
+                    Add account
+                  </Button>
+                </View>
               </View>
             ) : null}
           </View>
@@ -302,22 +325,7 @@ export default function Accounts() {
             />
           </View>
         )}
-        renderItem={({ item, drag, isActive }) => (
-          <View collapsable={false} style={styles.accountCell}>
-            <ScaleDecorator activeScale={1.01}>
-              <ShadowDecorator>
-                <AccountRow
-                  account={item}
-                  balance={indexedAccountBalance(indexes, item)}
-                  drag={drag}
-                  isDragging={isActive}
-                  locale={state.preferences.locale}
-                  lastActivityAt={lastActivityByAccountId.get(item.id)}
-                />
-              </ShadowDecorator>
-            </ScaleDecorator>
-          </View>
-        )}
+        renderItem={renderAccountItem}
       />
       <OptionListOverlay
         visible={filterPicker === 'included'}
@@ -343,36 +351,39 @@ export default function Accounts() {
           setFilterPicker(null);
         }}
       />
-      <FAB
-        icon="plus"
-        style={[styles.fab, { backgroundColor: theme.colors.primaryContainer }]}
-        color={theme.colors.onPrimaryContainer}
-        onPress={() => router.push('/account/new')}
-      />
     </View>
   );
 }
 
-function AccountRow({
-  account,
-  balance,
-  drag,
-  isDragging,
-  locale,
-  lastActivityAt,
-}: {
+type AccountRowProps = {
   account: Account;
   balance: ReturnType<typeof indexedAccountBalance>;
   drag: () => void;
   isDragging: boolean;
   locale: string;
   lastActivityAt?: string;
-}) {
+};
+
+const AccountRow = memo(function AccountRow({
+  account,
+  balance,
+  drag,
+  isDragging,
+  locale,
+  lastActivityAt,
+}: AccountRowProps) {
   const theme = useTheme();
-  const visual = resolveAccountIconVisual(account);
-  const onPress = () => router.push({ pathname: '/account/[id]', params: { id: account.id } });
-  const meta = accountMetaLabel(account, lastActivityAt, locale);
-  const flags = accountFlagLabel(account);
+  const visual = useMemo(() => resolveAccountIconVisual(account), [account]);
+  const onPress = useCallback(
+    () => router.push({ pathname: '/account/[id]', params: { id: account.id } }),
+    [account.id],
+  );
+  const meta = useMemo(
+    () => accountMetaLabel(account, lastActivityAt, locale),
+    [account, lastActivityAt, locale],
+  );
+  const flags = useMemo(() => accountFlagLabel(account), [account]);
+  const formattedBalance = useMemo(() => formatMoney(balance, locale), [balance, locale]);
 
   return (
     <TouchableRipple
@@ -404,7 +415,7 @@ function AccountRow({
               {account.name}
             </Text>
             <Text variant="titleSmall" style={styles.balanceText}>
-              {formatMoney(balance, locale)}
+              {formattedBalance}
             </Text>
           </View>
           <Text
@@ -440,6 +451,26 @@ function AccountRow({
         </TouchableRipple>
       </View>
     </TouchableRipple>
+  );
+}, areAccountRowsEqual);
+
+function areAccountRowsEqual(previous: AccountRowProps, next: AccountRowProps) {
+  return (
+    previous.account.id === next.account.id &&
+    previous.account.name === next.account.name &&
+    previous.account.type === next.account.type &&
+    previous.account.currency === next.account.currency &&
+    previous.account.institution === next.account.institution &&
+    previous.account.groupName === next.account.groupName &&
+    previous.account.includeInTotals === next.account.includeInTotals &&
+    previous.account.includeInNetWorth === next.account.includeInNetWorth &&
+    previous.account.includeInReports === next.account.includeInReports &&
+    previous.account.isArchived === next.account.isArchived &&
+    previous.balance.amountMinor === next.balance.amountMinor &&
+    previous.balance.currency === next.balance.currency &&
+    previous.isDragging === next.isDragging &&
+    previous.locale === next.locale &&
+    previous.lastActivityAt === next.lastActivityAt
   );
 }
 
@@ -479,7 +510,10 @@ const styles = StyleSheet.create({
     gap: tokens.space.md,
   },
   accountsHeaderCopy: { flex: 1, minWidth: 0 },
+  accountsHeaderActions: { flexDirection: 'row', alignItems: 'center', gap: tokens.space.sm },
   accountsHeaderTitle: { fontWeight: '800' },
+  addAccountButton: { borderRadius: tokens.radius.md },
+  addAccountButtonContent: { minHeight: 38, paddingHorizontal: tokens.space.xs },
   metricGrid: { flexDirection: 'row', gap: tokens.space.sm },
   visibilityRow: { flexDirection: 'row', gap: tokens.space.sm },
   visibilitySelector: { flex: 1, minWidth: 0 },
@@ -522,16 +556,6 @@ const styles = StyleSheet.create({
   dragHandle: {
     width: 44,
     height: 44,
-    borderRadius: tokens.radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fab: {
-    position: 'absolute',
-    right: tokens.space.lg,
-    bottom: TAB_BAR_OVERLAY_CLEARANCE + TAB_FAB_BOTTOM_OFFSET,
-    width: 56,
-    height: 56,
     borderRadius: tokens.radius.pill,
     alignItems: 'center',
     justifyContent: 'center',

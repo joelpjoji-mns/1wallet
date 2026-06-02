@@ -244,7 +244,7 @@ const jewelleryCategory = categoryMatchState.categories.find(
   (item) => item.name === 'Jewellery & accessories',
 );
 const allowanceCategory = categoryMatchState.categories.find(
-  (item) => item.name === 'Family support' && item.kind === 'income',
+  (item) => item.name === 'Family support',
 );
 const advisoryCategory = categoryMatchState.categories.find(
   (item) => item.name === 'Professional services',

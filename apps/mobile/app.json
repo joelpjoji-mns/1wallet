@@ -2,7 +2,7 @@
   "expo": {
     "name": "1wallet",
     "slug": "1wallet",
-    "version": "1.4.2",
+    "version": "1.5.0",
     "orientation": "portrait",
     "icon": "./assets/brand/icon.png",
     "scheme": "onewallet",
@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/brand/splash-native.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FBF8FF"
+      "backgroundColor": "#FFFFFF"
     },
     "ios": {
       "supportsTablet": true,

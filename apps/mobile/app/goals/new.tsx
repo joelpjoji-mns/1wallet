@@ -28,19 +28,22 @@ export default function NewGoal() {
     if (!name.trim()) return Alert.alert('Enter a name');
     if (!n || n <= 0) return Alert.alert('Enter a target amount');
     const base = state.preferences.baseCurrency;
-    await mutate((s) => {
-      s.goals.push({
-        id: uid(),
-        userId: s.userId,
-        name: name.trim(),
-        kind: 'save_up',
-        targetAmount: { amountMinor: toMinor(n, base), currency: base },
-        targetDate: targetDate || undefined,
-        priority: 'medium',
-        isPaused: false,
-        isCompleted: false,
-      });
-    });
+    await mutate(
+      (s) => {
+        s.goals.push({
+          id: uid(),
+          userId: s.userId,
+          name: name.trim(),
+          kind: 'save_up',
+          targetAmount: { amountMinor: toMinor(n, base), currency: base },
+          targetDate: targetDate || undefined,
+          priority: 'medium',
+          isPaused: false,
+          isCompleted: false,
+        });
+      },
+      { slices: ['goals'] },
+    );
     goBackOrHome();
   };
 

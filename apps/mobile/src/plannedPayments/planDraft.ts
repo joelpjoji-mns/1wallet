@@ -15,12 +15,7 @@ import type {
 } from '@1wallet/ledger/store/types';
 import { accountTypeLabel, resolveAccountIconVisual } from '../accountOptions';
 import type { OptionListItem } from '../components/OptionListOverlay';
-import {
-    categoryApplies,
-    categoryKindForPlanKind,
-    requiresCounterAccount,
-    transactionTypeForPlannedKind,
-} from './display';
+import { categoryApplies, requiresCounterAccount, transactionTypeForPlannedKind } from './display';
 
 export type PlanPickerMode =
   | 'kind'
@@ -403,7 +398,7 @@ export function compatibleCategoryId(
 ): string | undefined {
   if (!categoryApplies(kind)) return undefined;
   const category = state.categories.find((item) => item.id === categoryId && !item.isArchived);
-  return category?.kind === categoryKindForPlanKind(kind) ? category.id : undefined;
+  return category?.id;
 }
 
 export function amountMinorFromText(value: string, currency: string): number | undefined {

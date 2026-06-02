@@ -136,7 +136,7 @@ export function ColorPickerOverlay({
                         styles.swatchButton,
                         {
                           borderColor: selected
-                            ? theme.colors.onSurface
+                            ? iconTextColorForBackground(normalizedSwatch)
                             : theme.colors.outlineVariant,
                           backgroundColor: normalizedSwatch,
                         },
@@ -536,7 +536,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.08)',
+    backgroundColor: 'transparent',
   },
   actionRow: {
     flexDirection: 'row',
