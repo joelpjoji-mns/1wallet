@@ -33,13 +33,16 @@ export default function PastPlannedPayments() {
 
   const restartPlan = async (rule: FutureGenerationRule) => {
     let restartedId: string | undefined;
-    await mutate((draftState) => {
-      const currentRule = draftState.preferences.futureGenerationRules?.find(
-        (item) => item.id === rule.id,
-      );
-      if (!currentRule) return;
-      restartedId = restartFutureRulePlan(draftState, currentRule).id;
-    });
+    await mutate(
+      (draftState) => {
+        const currentRule = draftState.preferences.futureGenerationRules?.find(
+          (item) => item.id === rule.id,
+        );
+        if (!currentRule) return;
+        restartedId = restartFutureRulePlan(draftState, currentRule).id;
+      },
+      { slices: ['preferences'] },
+    );
     if (restartedId) router.push(`/recurring/${restartedId}` as never);
   };
 

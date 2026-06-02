@@ -59,12 +59,15 @@ export default function Widgets() {
   const addWidget = useCallback(
     (id: HomeWidgetId) => {
       const title = HOME_WIDGET_META[id].title;
-      void mutate((draft) => {
-        const current = normalizeHomeWidgetPreferences(draft.preferences.homeWidgets);
-        draft.preferences.homeWidgets = toStoredHomeWidgetPreferences(
-          restoreHomeWidgetPreference(current, id),
-        );
-      })
+      void mutate(
+        (draft) => {
+          const current = normalizeHomeWidgetPreferences(draft.preferences.homeWidgets);
+          draft.preferences.homeWidgets = toStoredHomeWidgetPreferences(
+            restoreHomeWidgetPreference(current, id),
+          );
+        },
+        { slices: ['preferences'] },
+      )
         .then(() => setSnackbar(`${title} added to Home`))
         .catch((error) => setSnackbar(`Could not add ${title}: ${(error as Error).message}`));
     },
@@ -72,9 +75,12 @@ export default function Widgets() {
   );
 
   const resetWidgets = useCallback(() => {
-    void mutate((draft) => {
-      draft.preferences.homeWidgets = toStoredHomeWidgetPreferences(resetHomeWidgetPreferences());
-    })
+    void mutate(
+      (draft) => {
+        draft.preferences.homeWidgets = toStoredHomeWidgetPreferences(resetHomeWidgetPreferences());
+      },
+      { slices: ['preferences'] },
+    )
       .then(() => setSnackbar('Home widgets reset'))
       .catch((error) => setSnackbar(`Could not reset widgets: ${(error as Error).message}`));
   }, [mutate]);

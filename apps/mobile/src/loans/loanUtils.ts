@@ -156,6 +156,7 @@ export type LoanDraftFields = {
   rate: string;
   ratePeriod: LoanInterestRatePeriod;
   interestMethod: LoanInterestMethod;
+  disbursedOn: string;
   startsOn: string;
   frequency: RecurrenceFrequency;
   interval: string;
@@ -231,6 +232,7 @@ export function buildDraftLoanDetails(loan: Account, input: LoanDraftFields): Ac
   return {
     loanKind: input.loanKind,
     principal: { amountMinor: toMinor(principalAmount, loan.currency), currency: loan.currency },
+    disbursedOn: input.disbursedOn.trim() || input.startsOn.trim() || todayIso(),
     interestRatePercent: Math.max(0, Number(input.rate) || 0),
     interestRatePeriod: input.ratePeriod,
     interestMethod: input.interestMethod,
@@ -239,7 +241,7 @@ export function buildDraftLoanDetails(loan: Account, input: LoanDraftFields): Ac
       amountMinor: toMinor(paymentAmount, loan.currency),
       currency: loan.currency,
     },
-    repaymentStartsOn: input.startsOn.trim() || todayIso(),
+    repaymentStartsOn: input.startsOn.trim() || input.disbursedOn.trim() || todayIso(),
     repaymentFrequency: input.frequency,
     repaymentInterval: interval,
     repaymentDayOfMonth: dayOfMonth,

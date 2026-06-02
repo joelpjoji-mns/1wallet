@@ -1,35 +1,37 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    type ReactNode,
 } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
+import { deliverNativeUpdateNotification } from '../nativeNotifications';
 import {
-  createApkDownloadTask,
-  removeDownloadedUpdate,
-  UpdateDownloadCancelledError,
-  type UpdateDownloadTask,
+    createApkDownloadTask,
+    removeDownloadedUpdate,
+    UpdateDownloadCancelledError,
+    type UpdateDownloadTask,
 } from './downloadManager';
 import { checkForJsUpdate, fetchJsUpdate, reloadIntoJsUpdate } from './expoOta';
 import { checkForAndroidUpdate, fetchPublishedAndroidReleaseByCode } from './firebaseUpdates';
 import { canRequestPackageInstalls, installApk, openInstallSettings } from './nativeInstaller';
 import {
-  DEFAULT_UPDATE_CHANNEL,
-  isUpdateChannel,
-  type AppUpdateRelease,
-  type AppUpdateState,
-  type DownloadedUpdate,
-  type UpdateChannel,
+    DEFAULT_UPDATE_CHANNEL,
+    isUpdateChannel,
+    type AppUpdateRelease,
+    type AppUpdateState,
+    type DownloadedUpdate,
+    type UpdateChannel,
 } from './types';
 import { getInstalledAppVersion, isReleaseNewerThanInstalled } from './version';
 
 const UPDATE_STATE_STORAGE_KEY = 'onewallet.updates.state.v1';
+const UPDATE_NATIVE_NOTIFICATION_STORAGE_KEY = 'onewallet.updates.nativeNotification.v1';
 const AUTO_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
 const initialCurrent = getInstalledAppVersion();
@@ -70,6 +72,7 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppUpdateState>(initialState);
   const downloadTaskRef = useRef<UpdateDownloadTask | null>(null);
   const lastAutoCheckRef = useRef(0);
+  const nativeUpdateNotificationKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,6 +87,16 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
         downloaded,
         status: downloaded ? 'downloaded' : current.status,
       }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void readLastNativeUpdateNotificationKey().then((key) => {
+      if (!cancelled) nativeUpdateNotificationKeyRef.current = key;
     });
     return () => {
       cancelled = true;
@@ -139,6 +152,7 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
           lastCheckedAt: androidOutcome.checkedAt,
           downloaded,
         });
+        await notifyNativeUpdateAvailable(androidOutcome.release, nativeUpdateNotificationKeyRef);
         return;
       }
 
@@ -507,6 +521,29 @@ async function writeStoredState(state: StoredUpdateState): Promise<void> {
   await AsyncStorage.setItem(UPDATE_STATE_STORAGE_KEY, JSON.stringify(state)).catch(
     () => undefined,
   );
+}
+
+async function readLastNativeUpdateNotificationKey(): Promise<string | null> {
+  const value = await AsyncStorage.getItem(UPDATE_NATIVE_NOTIFICATION_STORAGE_KEY).catch(
+    () => null,
+  );
+  return value?.trim() || null;
+}
+
+async function writeLastNativeUpdateNotificationKey(key: string): Promise<void> {
+  await AsyncStorage.setItem(UPDATE_NATIVE_NOTIFICATION_STORAGE_KEY, key).catch(() => undefined);
+}
+
+async function notifyNativeUpdateAvailable(
+  release: AppUpdateRelease,
+  notifiedKeyRef: { current: string | null },
+): Promise<void> {
+  const key = `${release.channel}:${release.versionCode}`;
+  if (notifiedKeyRef.current === key) return;
+  const delivered = await deliverNativeUpdateNotification(release).catch(() => false);
+  if (!delivered) return;
+  notifiedKeyRef.current = key;
+  await writeLastNativeUpdateNotificationKey(key);
 }
 
 function updateMessage(error: unknown): string {

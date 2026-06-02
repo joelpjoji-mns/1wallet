@@ -23,35 +23,38 @@ import { CategoryPickerOverlay as RecordCategoryPickerOverlay } from '../../src/
 export default function NewBudget() {
   const theme = useTheme();
   const { state, mutate } = useLedger();
-  const expenseCats = state.categories.filter((c) => c.kind === 'expense' && !c.isArchived);
-  const [categoryId, setCategoryId] = useState<string | undefined>(expenseCats[0]?.id);
+  const categories = state.categories.filter((category) => !category.isArchived);
+  const [categoryId, setCategoryId] = useState<string | undefined>(categories[0]?.id);
   const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
   const [amount, setAmount] = useState('');
-  const selectedCategory = expenseCats.find((c) => c.id === categoryId);
+  const selectedCategory = categories.find((category) => category.id === categoryId);
   const selectedCategoryVisual = selectedCategory
     ? resolveCategoryIconVisual(selectedCategory, state.categories)
     : undefined;
 
   const save = async () => {
-    const cat = expenseCats.find((c) => c.id === categoryId);
+    const cat = categories.find((category) => category.id === categoryId);
     if (!cat) return Alert.alert('Pick a category');
     const n = Number(amount.replace(/,/g, ''));
     if (!n || n <= 0) return Alert.alert('Enter an amount');
     const baseCurrency = state.preferences.baseCurrency;
-    await mutate((s) => {
-      s.budgets.push({
-        id: uid(),
-        userId: s.userId,
-        name: cat.name,
-        period: 'monthly',
-        startsOn: new Date().toISOString().slice(0, 10),
-        amount: { amountMinor: toMinor(n, baseCurrency), currency: baseCurrency },
-        rolloverUnused: false,
-        carryOverspend: false,
-        isPaused: false,
-        alertThresholds: [50, 80, 100],
-      });
-    });
+    await mutate(
+      (s) => {
+        s.budgets.push({
+          id: uid(),
+          userId: s.userId,
+          name: cat.name,
+          period: 'monthly',
+          startsOn: new Date().toISOString().slice(0, 10),
+          amount: { amountMinor: toMinor(n, baseCurrency), currency: baseCurrency },
+          rolloverUnused: false,
+          carryOverspend: false,
+          isPaused: false,
+          alertThresholds: [50, 80, 100],
+        });
+      },
+      { slices: ['budgets'] },
+    );
     goBackOrHome();
   };
 
@@ -107,7 +110,6 @@ export default function NewBudget() {
       </KeyboardAvoidingView>
       <RecordCategoryPickerOverlay
         visible={categoryPickerVisible}
-        kind="expense"
         categories={state.categories}
         selectedId={categoryId}
         onDismiss={() => setCategoryPickerVisible(false)}

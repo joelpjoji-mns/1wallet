@@ -3,68 +3,68 @@ import type { Transaction } from '@1wallet/domain/types';
 import { syncLoanDetailsFromRule } from '@1wallet/ledger/loans';
 import type { FutureRuleOccurrence } from '@1wallet/ledger/rules/futureGeneration';
 import {
-    deleteFutureGenerationRule,
-    plannedPaymentKindForRule,
-    plannedPaymentPostModeForRule,
-    plannedPaymentRuleStats,
-    updateFutureGenerationRule,
+  deleteFutureGenerationRule,
+  plannedPaymentKindForRule,
+  plannedPaymentPostModeForRule,
+  plannedPaymentRuleStats,
+  updateFutureGenerationRule,
 } from '@1wallet/ledger/rules/futureGeneration';
 import type { FutureGenerationRule, LedgerState } from '@1wallet/ledger/store/types';
 import { useLedger } from '@1wallet/state';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
-    Button,
-    Divider,
-    ProgressBar,
-    Snackbar,
-    Surface,
-    Text,
-    TouchableRipple,
-    useTheme,
+  Button,
+  Divider,
+  ProgressBar,
+  Snackbar,
+  Surface,
+  Text,
+  TouchableRipple,
+  useTheme,
 } from 'react-native-paper';
 import { resolveAccountIconVisual } from '../../src/accountOptions';
 import {
-    AppScreen,
-    EmptyState,
-    InfoRow,
-    InlineMeta,
-    SectionCard,
-    resolveAppIconName,
-    type AppIconName,
+  AppScreen,
+  EmptyState,
+  InfoRow,
+  InlineMeta,
+  SectionCard,
+  resolveAppIconName,
+  type AppIconName,
 } from '../../src/components/AppKit';
 import { positiveAmountColor } from '../../src/financeColors';
 import { iconSurfaceForThemeTone } from '../../src/iconSystem';
 import { linkedLoanInterestTransaction } from '../../src/loans/loanUtils';
 import {
-    PLANNED_PAYMENT_ICON_FOREGROUND_COLOR,
-    accountName,
-    categoryApplies,
-    categoryDisplayName,
-    categoryForRule,
-    dueLabel,
-    plannedKindMeta,
-    plannedPaymentAmountColor,
-    plannedPaymentCategorySummary,
-    plannedPaymentEndSummary,
-    plannedPaymentRecurrenceSummary,
-    plannedPaymentTileIcon,
-    plannedPaymentTileIconBackgroundColor,
+  PLANNED_PAYMENT_ICON_FOREGROUND_COLOR,
+  accountName,
+  categoryApplies,
+  categoryDisplayName,
+  categoryForRule,
+  dueLabel,
+  plannedKindMeta,
+  plannedPaymentAmountColor,
+  plannedPaymentCategorySummary,
+  plannedPaymentEndSummary,
+  plannedPaymentRecurrenceSummary,
+  plannedPaymentTileIcon,
+  plannedPaymentTileIconBackgroundColor,
 } from '../../src/plannedPayments/display';
 import { OccurrenceConfirmDialog } from '../../src/plannedPayments/OccurrenceConfirmDialog';
 import { OccurrencePostponeDialog } from '../../src/plannedPayments/OccurrencePostponeDialog';
 import { plannedRuleProgressSummary } from '../../src/plannedPayments/progress';
 import {
-    PLAN_DETAIL_OCCURRENCE_LOOKUP_OPTIONS,
-    confirmFutureRuleOccurrence,
-    confirmedTransactionsForRule,
-    dismissFutureRuleOccurrence,
-    nearestActionableOccurrence,
-    postponeFutureRuleOccurrence,
-    removeUnpostedFutureScheduledRecordsForRule,
-    restartFutureRulePlan,
+  PLAN_DETAIL_OCCURRENCE_LOOKUP_OPTIONS,
+  confirmFutureRuleOccurrence,
+  confirmedTransactionsForRule,
+  dismissFutureRuleOccurrence,
+  nearestActionableOccurrence,
+  postponeFutureRuleOccurrence,
+  removeUnpostedFutureScheduledRecordsForRule,
+  restartFutureRulePlan,
 } from '../../src/plannedPayments/ruleActions';
 import { transactionTypeBucket } from '../../src/transactionTypes';
 
@@ -78,7 +78,25 @@ export default function PlannedPaymentDetail() {
   const [postponingOccurrence, setPostponingOccurrence] = useState<FutureRuleOccurrence | null>(
     null,
   );
-  const rule = state.preferences.futureGenerationRules?.find((item) => item.id === id);
+  const rule = useMemo(
+    () => state.preferences.futureGenerationRules?.find((item) => item.id === id),
+    [id, state.preferences.futureGenerationRules],
+  );
+  const occurrence = useMemo(
+    () =>
+      rule
+        ? nearestActionableOccurrence(state, rule, PLAN_DETAIL_OCCURRENCE_LOOKUP_OPTIONS)
+        : undefined,
+    [rule, state],
+  );
+  const history = useMemo(
+    () => (rule ? confirmedTransactionsForRule(state, rule) : []),
+    [rule, state],
+  );
+  const progressSummary = useMemo(
+    () => (rule ? plannedRuleProgressSummary(state, rule) : undefined),
+    [rule, state],
+  );
 
   if (!rule) {
     return (
@@ -94,27 +112,24 @@ export default function PlannedPaymentDetail() {
     );
   }
 
-  const occurrence = nearestActionableOccurrence(
-    state,
-    rule,
-    PLAN_DETAIL_OCCURRENCE_LOOKUP_OPTIONS,
-  );
-  const history = confirmedTransactionsForRule(state, rule);
-  const progressSummary = plannedRuleProgressSummary(state, rule);
+  if (!progressSummary) return null;
 
   const confirm = async (
     targetOccurrence: FutureRuleOccurrence,
     overrides: Parameters<typeof confirmFutureRuleOccurrence>[3],
   ) => {
     let confirmed = false;
-    await mutate((draftState) => {
-      const currentRule = draftState.preferences.futureGenerationRules?.find(
-        (item) => item.id === rule.id,
-      );
-      if (!currentRule) return;
-      confirmFutureRuleOccurrence(draftState, currentRule, targetOccurrence, overrides);
-      confirmed = true;
-    });
+    await mutate(
+      (draftState) => {
+        const currentRule = draftState.preferences.futureGenerationRules?.find(
+          (item) => item.id === rule.id,
+        );
+        if (!currentRule) return;
+        confirmFutureRuleOccurrence(draftState, currentRule, targetOccurrence, overrides);
+        confirmed = true;
+      },
+      { slices: ['preferences', 'transactions', 'transactionSplits'] },
+    );
     setConfirmingOccurrence(null);
     setSnackbar(confirmed ? 'Occurrence confirmed' : 'Nothing to confirm');
   };
@@ -124,64 +139,79 @@ export default function PlannedPaymentDetail() {
     overrides: Parameters<typeof postponeFutureRuleOccurrence>[3],
   ) => {
     let postponed = false;
-    await mutate((draftState) => {
-      const currentRule = draftState.preferences.futureGenerationRules?.find(
-        (item) => item.id === rule.id,
-      );
-      if (!currentRule) return;
-      postponeFutureRuleOccurrence(draftState, currentRule, targetOccurrence, overrides);
-      postponed = true;
-    });
+    await mutate(
+      (draftState) => {
+        const currentRule = draftState.preferences.futureGenerationRules?.find(
+          (item) => item.id === rule.id,
+        );
+        if (!currentRule) return;
+        postponeFutureRuleOccurrence(draftState, currentRule, targetOccurrence, overrides);
+        postponed = true;
+      },
+      { slices: ['preferences'] },
+    );
     setPostponingOccurrence(null);
     setSnackbar(postponed ? 'Occurrence postponed' : 'Nothing to postpone');
   };
 
   const dismiss = async () => {
     let dismissed = false;
-    await mutate((draftState) => {
-      const currentRule = draftState.preferences.futureGenerationRules?.find(
-        (item) => item.id === rule.id,
-      );
-      if (!currentRule) return;
-      const nextOccurrence = nearestActionableOccurrence(
-        draftState,
-        currentRule,
-        PLAN_DETAIL_OCCURRENCE_LOOKUP_OPTIONS,
-      );
-      if (!nextOccurrence) return;
-      dismissFutureRuleOccurrence(draftState, currentRule, nextOccurrence.dueOn);
-      dismissed = true;
-    });
+    await mutate(
+      (draftState) => {
+        const currentRule = draftState.preferences.futureGenerationRules?.find(
+          (item) => item.id === rule.id,
+        );
+        if (!currentRule) return;
+        const nextOccurrence = nearestActionableOccurrence(
+          draftState,
+          currentRule,
+          PLAN_DETAIL_OCCURRENCE_LOOKUP_OPTIONS,
+        );
+        if (!nextOccurrence) return;
+        dismissFutureRuleOccurrence(draftState, currentRule, nextOccurrence.dueOn);
+        dismissed = true;
+      },
+      { slices: ['preferences'] },
+    );
     setSnackbar(dismissed ? 'Occurrence dismissed' : 'Nothing to dismiss');
   };
 
   const toggle = async () => {
-    await mutate((draftState) => {
-      const updatedRule = updateFutureGenerationRule(draftState, rule.id, {
-        enabled: !rule.enabled,
-      });
-      if (updatedRule) syncLoanDetailsFromRule(draftState, updatedRule);
-    });
+    await mutate(
+      (draftState) => {
+        const updatedRule = updateFutureGenerationRule(draftState, rule.id, {
+          enabled: !rule.enabled,
+        });
+        if (updatedRule) syncLoanDetailsFromRule(draftState, updatedRule);
+      },
+      { slices: ['preferences', 'accounts'] },
+    );
     setSnackbar(rule.enabled ? 'Plan paused' : 'Plan resumed');
   };
 
   const remove = async () => {
-    await mutate((draftState) => {
-      deleteFutureGenerationRule(draftState, rule.id);
-      removeUnpostedFutureScheduledRecordsForRule(draftState, rule.id);
-    });
+    await mutate(
+      (draftState) => {
+        deleteFutureGenerationRule(draftState, rule.id);
+        removeUnpostedFutureScheduledRecordsForRule(draftState, rule.id);
+      },
+      { slices: ['preferences', 'transactions'] },
+    );
     router.replace('/recurring' as never);
   };
 
   const restart = async () => {
     let restartedId: string | undefined;
-    await mutate((draftState) => {
-      const currentRule = draftState.preferences.futureGenerationRules?.find(
-        (item) => item.id === rule.id,
-      );
-      if (!currentRule) return;
-      restartedId = restartFutureRulePlan(draftState, currentRule).id;
-    });
+    await mutate(
+      (draftState) => {
+        const currentRule = draftState.preferences.futureGenerationRules?.find(
+          (item) => item.id === rule.id,
+        );
+        if (!currentRule) return;
+        restartedId = restartFutureRulePlan(draftState, currentRule).id;
+      },
+      { slices: ['preferences'] },
+    );
     if (restartedId) router.replace(`/recurring/${restartedId}` as never);
   };
 
@@ -291,8 +321,10 @@ function PlanHero({
   const remainingAmountLabel = progressSummary.remainingAmount
     ? formatMoney(progressSummary.remainingAmount, state.preferences.locale)
     : 'Open ended';
-  const statusLabel = progressSummary.complete ? 'Complete' : rule.enabled ? 'Active' : 'Paused';
-
+  const displayAmount = {
+    amountMinor: occurrence?.amountMinor ?? rule.amountMinor,
+    currency: occurrence?.currency ?? rule.currency,
+  };
   return (
     <Surface
       style={[
@@ -332,10 +364,7 @@ function PlanHero({
           numberOfLines={1}
           style={[styles.heroAmount, { color: amountColor }]}
         >
-          {formatMoney(
-            { amountMinor: rule.amountMinor, currency: rule.currency },
-            state.preferences.locale,
-          )}
+          {formatMoney(displayAmount, state.preferences.locale)}
         </Text>
       </View>
       <View style={styles.heroStats}>
@@ -347,7 +376,6 @@ function PlanHero({
           label="Posting"
           value={plannedPaymentPostModeForRule(rule) === 'automatic' ? 'Auto' : 'Manual'}
         />
-        <StatPill label="Status" value={statusLabel} />
       </View>
       <View style={styles.progressPanel}>
         <View style={styles.progressCopyRow}>
@@ -481,6 +509,8 @@ function OccurrenceCard({
   const counterAccountVisual = counterAccount
     ? resolveAccountIconVisual(counterAccount)
     : undefined;
+  const principalAmountMinor = Math.max(0, occurrence.principalAmountMinor ?? 0);
+  const interestAmountMinor = Math.max(0, occurrence.interestAmountMinor ?? 0);
 
   return (
     <SectionCard title="Next occurrence" compact>
@@ -497,10 +527,40 @@ function OccurrenceCard({
         iconColor={PLANNED_PAYMENT_ICON_FOREGROUND_COLOR}
         label="Amount"
         value={formatMoney(
-          { amountMinor: rule.amountMinor, currency: rule.currency },
+          { amountMinor: occurrence.amountMinor, currency: occurrence.currency },
           state.preferences.locale,
         )}
       />
+      {principalAmountMinor > 0 ? (
+        <InfoRow
+          icon="bank-transfer-out"
+          iconBackgroundColor={occurrenceIconBackgroundColor}
+          iconColor={PLANNED_PAYMENT_ICON_FOREGROUND_COLOR}
+          label="Principal"
+          value={formatMoney(
+            {
+              amountMinor: principalAmountMinor,
+              currency: occurrence.principalCurrency ?? occurrence.currency,
+            },
+            state.preferences.locale,
+          )}
+        />
+      ) : null}
+      {interestAmountMinor > 0 ? (
+        <InfoRow
+          icon="percent-outline"
+          iconBackgroundColor={occurrenceIconBackgroundColor}
+          iconColor={PLANNED_PAYMENT_ICON_FOREGROUND_COLOR}
+          label="Interest"
+          value={formatMoney(
+            {
+              amountMinor: interestAmountMinor,
+              currency: occurrence.interestCurrency ?? occurrence.currency,
+            },
+            state.preferences.locale,
+          )}
+        />
+      ) : null}
       <InfoRow
         icon={accountVisual?.icon ?? 'wallet-outline'}
         iconBackgroundColor={accountVisual?.backgroundColor ?? occurrenceIconBackgroundColor}

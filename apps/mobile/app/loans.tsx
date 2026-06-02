@@ -36,42 +36,52 @@ export default function Loans() {
   }>();
   const { state, indexes, selectors } = useLedger();
   const requestedLoanId = firstParamValue(loanId) ?? firstParamValue(selectedLoanId);
-  const allItems = useMemo(
-    () => loanListItems(state, indexes, 12, { includePaidOff: true }),
-    [indexes, state],
-  );
-  const pastItems = useMemo(
-    () => allItems.filter((item) => isPastLoanItem(state, item)),
-    [allItems, state],
-  );
-  const items = useMemo(
-    () =>
-      allItems.filter((item) => !pastItems.some((pastItem) => pastItem.loan.id === item.loan.id)),
-    [allItems, pastItems],
-  );
+  const { allItems, items, pastItems } = useMemo(() => {
+    const nextAllItems = loanListItems(state, indexes, 12, { includePaidOff: true });
+    const nextItems: LoanListItem[] = [];
+    const nextPastItems: LoanListItem[] = [];
+    for (const item of nextAllItems) {
+      if (isPastLoanItem(state, item)) nextPastItems.push(item);
+      else nextItems.push(item);
+    }
+    return { allItems: nextAllItems, items: nextItems, pastItems: nextPastItems };
+  }, [indexes, state]);
   const projection = useMemo(() => buildLoanPayoffProjection(state), [state]);
+  const projectionPlanByLoanId = useMemo(
+    () => new Map(projection.loans.map((plan) => [plan.account.id, plan])),
+    [projection.loans],
+  );
   const viewCurrency = selectors.displayCurrency(state);
-  const totalOutstanding = items.reduce(
-    (sum, item) =>
-      sum +
-      Math.abs(
+  const { forecastInterest, monthlyPrincipalEmi, nextDue, totalOutstanding } = useMemo(() => {
+    let outstandingMinor = 0;
+    let closestDue: NonNullable<LoanListItem['nextDue']> | undefined;
+    for (const item of items) {
+      outstandingMinor += Math.abs(
         selectors.convertMoneyForDisplay(
           state,
           { amountMinor: Math.abs(item.balance.amountMinor), currency: item.balance.currency },
           viewCurrency,
         ).amountMinor,
+      );
+      if (item.nextDue && (!closestDue || item.nextDue.occurredAt < closestDue.occurredAt)) {
+        closestDue = item.nextDue;
+      }
+    }
+    return {
+      forecastInterest: selectors.convertMoneyForDisplay(
+        state,
+        projection.totalInterest,
+        viewCurrency,
       ),
-    0,
-  );
-  const monthlyPrincipalEmi = selectors.convertMoneyForDisplay(
-    state,
-    projection.monthlyPayment,
-    viewCurrency,
-  );
-  const nextDue = items
-    .map((item) => item.nextDue)
-    .filter((item): item is NonNullable<typeof item> => Boolean(item))
-    .sort((left, right) => left.occurredAt.localeCompare(right.occurredAt))[0];
+      monthlyPrincipalEmi: selectors.convertMoneyForDisplay(
+        state,
+        projection.monthlyPayment,
+        viewCurrency,
+      ),
+      nextDue: closestDue,
+      totalOutstanding: outstandingMinor,
+    };
+  }, [items, projection.monthlyPayment, projection.totalInterest, selectors, state, viewCurrency]);
 
   useEffect(() => {
     if (!requestedLoanId) return;
@@ -144,10 +154,7 @@ export default function Loans() {
         <InfoRow
           icon="bank-minus"
           label="Forecast interest"
-          value={formatMoney(
-            selectors.convertMoneyForDisplay(state, projection.totalInterest, viewCurrency),
-            state.preferences.locale,
-          )}
+          value={formatMoney(forecastInterest, state.preferences.locale)}
         />
         <View style={styles.actionRow}>
           <Button mode="contained" icon="plus" onPress={() => router.push('/loans/new' as never)}>
@@ -178,9 +185,7 @@ export default function Loans() {
           />
         ) : (
           items.map((item, index) => {
-            const plan = projection.loans.find(
-              (candidate) => candidate.account.id === item.loan.id,
-            );
+            const plan = projectionPlanByLoanId.get(item.loan.id);
             return (
               <View key={item.loan.id}>
                 <LoanAccountRow item={item} payoffPlan={plan} />

@@ -5,7 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { ACCENT_COLOR_SWATCHES } from '../colorPalettes';
 import { createMaterial3Theme } from '../material3Theme';
-import { DEFAULT_CUSTOM_ACCENT_COLOR } from '../theme';
+import { createAppPaperTheme, DEFAULT_CUSTOM_ACCENT_COLOR } from '../theme';
 import { ColorPickerOverlay } from './ColorPickerOverlay';
 
 export function ThemeAccentPicker({
@@ -37,8 +37,13 @@ export function ThemeAccentPicker({
 
 function ThemeAccentPreview({ color }: { color: string }) {
   const theme = useTheme();
-  const previewScheme = useMemo(
-    () => createMaterial3Theme(color, { colorFidelity: true })[theme.dark ? 'dark' : 'light'],
+  const previewColors = useMemo(
+    () =>
+      createAppPaperTheme(
+        theme.dark ? 'dark' : 'light',
+        createMaterial3Theme(color, { colorFidelity: true }),
+        { customAccentColor: color },
+      ).colors,
     [color, theme.dark],
   );
 
@@ -47,36 +52,36 @@ function ThemeAccentPreview({ color }: { color: string }) {
       style={[
         styles.previewPanel,
         {
-          backgroundColor: previewScheme.surfaceContainerLow,
-          borderColor: previewScheme.outlineVariant,
+          backgroundColor: previewColors.elevation.level1,
+          borderColor: previewColors.outlineVariant,
         },
       ]}
     >
-      <View style={[styles.previewHero, { backgroundColor: previewScheme.primaryContainer }]}>
-        <View style={[styles.previewAvatar, { backgroundColor: previewScheme.primary }]}>
-          <Text variant="titleSmall" style={{ color: previewScheme.onPrimary }}>
+      <View style={[styles.previewHero, { backgroundColor: previewColors.primaryContainer }]}>
+        <View style={[styles.previewAvatar, { backgroundColor: previewColors.primary }]}>
+          <Text variant="titleSmall" style={{ color: previewColors.onPrimary }}>
             Q
           </Text>
         </View>
         <View style={styles.previewCopy}>
-          <Text variant="titleMedium" style={{ color: previewScheme.onPrimaryContainer }}>
+          <Text variant="titleMedium" style={{ color: previewColors.onPrimaryContainer }}>
             My Wallet
           </Text>
-          <Text variant="bodySmall" style={{ color: previewScheme.onPrimaryContainer }}>
+          <Text variant="bodySmall" style={{ color: previewColors.onPrimaryContainer }}>
             Drawer accent
           </Text>
         </View>
       </View>
 
-      <View style={[styles.previewRow, { backgroundColor: previewScheme.primaryContainer }]}>
-        <View style={[styles.previewIcon, { backgroundColor: previewScheme.primary }]}>
+      <View style={[styles.previewRow, { backgroundColor: previewColors.primaryContainer }]}>
+        <View style={[styles.previewIcon, { backgroundColor: previewColors.primary }]}>
           <MaterialCommunityIcons
             name="view-dashboard-outline"
             size={18}
-            color={previewScheme.onPrimary}
+            color={previewColors.onPrimary}
           />
         </View>
-        <Text variant="bodyLarge" style={{ color: previewScheme.onPrimaryContainer }}>
+        <Text variant="bodyLarge" style={{ color: previewColors.onPrimaryContainer }}>
           Home
         </Text>
       </View>
@@ -86,17 +91,17 @@ function ThemeAccentPreview({ color }: { color: string }) {
           style={[
             styles.previewTag,
             {
-              backgroundColor: previewScheme.primaryContainer,
-              borderColor: previewScheme.primary,
+              backgroundColor: previewColors.primaryContainer,
+              borderColor: previewColors.primary,
             },
           ]}
         >
-          <MaterialCommunityIcons name="filter-variant" size={16} color={previewScheme.primary} />
-          <Text variant="labelLarge" style={{ color: previewScheme.onPrimaryContainer }}>
+          <MaterialCommunityIcons name="filter-variant" size={16} color={previewColors.primary} />
+          <Text variant="labelLarge" style={{ color: previewColors.onPrimaryContainer }}>
             Filter
           </Text>
         </View>
-        <View style={[styles.previewDot, { backgroundColor: previewScheme.primary }]} />
+        <View style={[styles.previewDot, { backgroundColor: previewColors.primary }]} />
       </View>
     </View>
   );

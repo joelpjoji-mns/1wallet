@@ -1,8 +1,16 @@
 import { tokens } from '@1wallet/ui';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
-import { Appbar, Portal, Surface, Text, TouchableRipple, useTheme } from 'react-native-paper';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+    FlatList,
+    Modal,
+    Platform,
+    StyleSheet,
+    View,
+    type ListRenderItem,
+    type ViewStyle,
+} from 'react-native';
+import { Appbar, Surface, Text, TouchableRipple, useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBackLayer } from './AppBackLayer';
 import {
@@ -65,10 +73,43 @@ export function OptionListOverlay<TValue extends string>({
     );
   }, [options, query]);
 
+  const keyExtractor = useCallback((option: OptionListItem<TValue>) => option.value, []);
+  const renderOption = useCallback<ListRenderItem<OptionListItem<TValue>>>(
+    ({ item: option }) => (
+      <PremiumRow
+        icon={resolveAppIconName(option.icon, 'format-list-bulleted')}
+        title={option.label}
+        subtitle={option.description}
+        iconBackgroundColor={option.iconBackgroundColor}
+        iconColor={option.iconColor}
+        titleNumberOfLines={2}
+        selected={selectedValue === option.value}
+        disabled={option.disabled}
+        onPress={() => onSelect(option)}
+      />
+    ),
+    [onSelect, selectedValue],
+  );
+  const emptyState = useMemo(
+    () => (
+      <View style={styles.emptyState}>
+        <MaterialCommunityIcons
+          name="text-search"
+          size={28}
+          color={theme.colors.onSurfaceVariant}
+        />
+        <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+          {emptyText}
+        </Text>
+      </View>
+    ),
+    [emptyText, theme.colors.onSurfaceVariant],
+  );
+
   if (!visible) return null;
 
   return (
-    <Portal>
+    <Modal visible animationType="fade" presentationStyle="fullScreen" onRequestClose={onDismiss}>
       <Surface
         style={[styles.fullScreenOverlay, { backgroundColor: theme.colors.background }]}
         elevation={0}
@@ -86,46 +127,24 @@ export function OptionListOverlay<TValue extends string>({
                 onChangeText={setQuery}
               />
             ) : null}
-            <ScrollView
+            <FlatList
+              data={filtered}
+              keyExtractor={keyExtractor}
+              renderItem={renderOption}
+              ListEmptyComponent={emptyState}
               contentContainerStyle={styles.optionListContent}
+              initialNumToRender={18}
               keyboardShouldPersistTaps="handled"
+              maxToRenderPerBatch={16}
+              removeClippedSubviews={Platform.OS === 'android'}
               showsVerticalScrollIndicator={false}
-            >
-              {filtered.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <MaterialCommunityIcons
-                    name="text-search"
-                    size={28}
-                    color={theme.colors.onSurfaceVariant}
-                  />
-                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                    {emptyText}
-                  </Text>
-                </View>
-              ) : (
-                filtered.map((option) => {
-                  const selected = selectedValue === option.value;
-                  return (
-                    <PremiumRow
-                      key={option.value}
-                      icon={resolveAppIconName(option.icon, 'format-list-bulleted')}
-                      title={option.label}
-                      subtitle={option.description}
-                      iconBackgroundColor={option.iconBackgroundColor}
-                      iconColor={option.iconColor}
-                      titleNumberOfLines={2}
-                      selected={selected}
-                      disabled={option.disabled}
-                      onPress={() => onSelect(option)}
-                    />
-                  );
-                })
-              )}
-            </ScrollView>
+              updateCellsBatchingPeriod={32}
+              windowSize={8}
+            />
           </View>
         </SafeAreaView>
       </Surface>
-    </Portal>
+    </Modal>
   );
 }
 
@@ -212,7 +231,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   appbarTitle: { fontWeight: '700' },
   content: { flex: 1, gap: tokens.space.md, padding: tokens.space.lg, paddingTop: 0 },
-  optionListContent: { gap: tokens.space.sm, paddingBottom: tokens.space.lg },
+  optionListContent: { flexGrow: 1, gap: tokens.space.sm, paddingBottom: tokens.space.lg },
   copy: { flex: 1, minWidth: 0, gap: 2 },
   emptyState: {
     minHeight: 180,

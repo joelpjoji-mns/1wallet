@@ -1,41 +1,41 @@
 import { formatMoney, normalizeCurrencyCode, toMinor } from '@1wallet/domain/money';
 import type { Account, TransactionStatus, TransactionType } from '@1wallet/domain/types';
 import {
-    createCaptureCandidate,
-    createTransaction,
-    createTransactionSplit,
-    enabledCurrencies,
-    hasExplicitRate,
-    rateBetween,
+  createCaptureCandidate,
+  createTransaction,
+  createTransactionSplit,
+  enabledCurrencies,
+  hasExplicitRate,
+  rateBetween,
 } from '@1wallet/ledger/services';
 import { indexedAccountBalance } from '@1wallet/ledger/services/indexes';
 import { useLedger } from '@1wallet/state';
 import { tokens } from '@1wallet/ui';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    Alert,
-    Animated,
-    Easing,
-    PanResponder,
-    ScrollView,
-    StyleSheet,
-    useWindowDimensions,
-    View,
+  Alert,
+  Animated,
+  Easing,
+  PanResponder,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
 } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import {
-    Appbar,
-    Button,
-    Divider,
-    HelperText,
-    IconButton,
-    Menu,
-    Text,
-    TextInput,
-    TouchableRipple,
-    useTheme,
+  Appbar,
+  Button,
+  Divider,
+  HelperText,
+  IconButton,
+  Menu,
+  Text,
+  TextInput,
+  TouchableRipple,
+  useTheme,
 } from 'react-native-paper';
 import { resolveAccountIconVisual } from '../src/accountOptions';
 import { isAddRecordEntryOrigin, type AddRecordEntryOrigin } from '../src/addRecordNavigation';
@@ -44,12 +44,12 @@ import { categoryBreadcrumb } from '../src/categoryTree';
 import { withColorAlpha } from '../src/colorAlpha';
 import { useBackLayer } from '../src/components/AppBackLayer';
 import {
-    goBackOrHome,
-    InfoRow,
-    PremiumTextInput,
-    SectionCard,
-    TAB_BAR_OVERLAY_CLEARANCE,
-    TAB_FAB_BOTTOM_OFFSET,
+  goBackOrHome,
+  InfoRow,
+  PremiumTextInput,
+  SectionCard,
+  TAB_BAR_OVERLAY_CLEARANCE,
+  TAB_FAB_BOTTOM_OFFSET,
 } from '../src/components/AppKit';
 import { OptionListOverlay, type OptionListItem } from '../src/components/OptionListOverlay';
 import { PulsingFieldGlow } from '../src/components/PulsingFieldGlow';
@@ -57,14 +57,14 @@ import { NoteAutocompleteInput } from '../src/components/record/NoteAutocomplete
 import { PaymentMethodSelector } from '../src/components/record/PaymentMethodSelector';
 import { RecordCurrencyFields } from '../src/components/record/RecordCurrencyFields';
 import {
-    numberFromCurrencyText,
-    resolveRecordCurrencyDraft,
-    trimFxRateValue,
+  numberFromCurrencyText,
+  resolveRecordCurrencyDraft,
+  trimFxRateValue,
 } from '../src/components/record/recordCurrencyMath';
 import { RecordDateTimeFields } from '../src/components/record/RecordDateTimeFields';
 import {
-    AccountPickerOverlay as RecordAccountPickerOverlay,
-    CategoryPickerOverlay as RecordCategoryPickerOverlay,
+  AccountPickerOverlay as RecordAccountPickerOverlay,
+  CategoryPickerOverlay as RecordCategoryPickerOverlay,
 } from '../src/components/record/RecordPickers';
 import { RecordSelectorRow as SelectorRow } from '../src/components/record/RecordSelectorRow';
 import { buildEnabledCurrencyOptions, optionTitle } from '../src/currencyOptions';
@@ -75,22 +75,22 @@ import { iconSurfaceForThemeTone } from '../src/iconSystem';
 import { pickReceiptAsset, type ReceiptCaptureSource } from '../src/receiptCapture';
 import { extractReceiptFieldsFromPhoto } from '../src/receiptOcr';
 import { resolveRecordCurrencyDraftForState } from '../src/recordCurrencyFreshness';
+import { useDebouncedValue } from '../src/useDebouncedValue';
 import {
-    dateTimeToIso,
-    isValidLocalDate,
-    isValidLocalTime,
-    localDateTimeParts,
+  dateTimeToIso,
+  isValidLocalDate,
+  isValidLocalTime,
+  localDateTimeParts,
 } from '../src/recordDateTime';
 import {
-    categoryKindForTransactionType,
-    TRANSACTION_TYPE_BUCKET_OPTIONS,
-    transactionTypeLabel,
-    TRANSFER_PURPOSE_OPTIONS,
-    type TransactionTypeBucket,
+  TRANSACTION_TYPE_BUCKET_OPTIONS,
+  transactionTypeLabel,
+  TRANSFER_PURPOSE_OPTIONS,
+  type TransactionTypeBucket,
 } from '../src/transactionTypes';
 
 type AddType = TransactionTypeBucket;
-type PickerMode = 'account' | 'counter' | 'category' | 'status' | 'transferType' | null;
+type PickerMode = 'account' | 'counter' | 'category' | 'transferType' | null;
 type AddPanelPage = 0 | 1;
 type ChargeDraft = { id: string; label: string; amount: string };
 type AddMissingField = 'amount' | 'account' | 'counter' | 'category' | 'date' | 'charges';
@@ -187,27 +187,6 @@ const NUMBER_WORD_SCALES = [
 
 const MAX_SPELLABLE_AMOUNT = 999_999_999_999_999;
 
-const STATUS_OPTIONS: OptionListItem<TransactionStatus>[] = [
-  {
-    value: 'cleared',
-    label: 'Cleared',
-    description: 'Posted now and included in balances',
-    icon: 'check-circle-outline',
-  },
-  {
-    value: 'pending',
-    label: 'Pending',
-    description: 'Waiting to settle, visible in records and filters',
-    icon: 'clock-outline',
-  },
-  {
-    value: 'scheduled',
-    label: 'Scheduled',
-    description: 'Planned for a future bill, EMI, transfer, or income',
-    icon: 'calendar-clock-outline',
-  },
-];
-
 const TRANSFER_TYPE_OPTIONS: OptionListItem<TransactionType>[] = TRANSFER_PURPOSE_OPTIONS;
 
 export default function AddTransaction() {
@@ -230,11 +209,18 @@ export default function AddTransaction() {
     ? routeParams.entryOrigin[0]
     : routeParams.entryOrigin;
   const entryOrigin = isAddRecordEntryOrigin(routeEntryOrigin) ? routeEntryOrigin : 'center';
-  const activeAccounts = state.accounts.filter((account) => !account.isArchived);
+  const activeAccounts = useMemo(
+    () => state.accounts.filter((account) => !account.isArchived),
+    [state.accounts],
+  );
+  const activeAccountsById = useMemo(
+    () => new Map(activeAccounts.map((account) => [account.id, account])),
+    [activeAccounts],
+  );
   const initialAccount =
     activeAccounts.find((account) => account.id === routeAccountId) ?? activeAccounts[0];
   const [type, setType] = useState<AddType>('expense');
-  const [status, setStatus] = useState<TransactionStatus>('cleared');
+  const status: TransactionStatus = 'cleared';
   const [transferType, setTransferType] = useState<TransactionType>('transfer');
   const [amount, setAmount] = useState('');
   const [expression, setExpression] = useState('');
@@ -351,49 +337,59 @@ export default function AddTransaction() {
   );
 
   const enabledCurrencyCodes = useMemo(() => enabledCurrencies(state), [state]);
-  const sourceAccount = activeAccounts.find((account) => account.id === accountId);
-  const counterAccount = activeAccounts.find((account) => account.id === counterAccountId);
-  const sourceAccountVisual = sourceAccount ? resolveAccountIconVisual(sourceAccount) : undefined;
-  const counterAccountVisual = counterAccount
-    ? resolveAccountIconVisual(counterAccount)
-    : undefined;
+  const sourceAccount = accountId ? activeAccountsById.get(accountId) : undefined;
+  const counterAccount = counterAccountId ? activeAccountsById.get(counterAccountId) : undefined;
+  const sourceAccountVisual = useMemo(
+    () => (sourceAccount ? resolveAccountIconVisual(sourceAccount) : undefined),
+    [sourceAccount],
+  );
+  const counterAccountVisual = useMemo(
+    () => (counterAccount ? resolveAccountIconVisual(counterAccount) : undefined),
+    [counterAccount],
+  );
   const isAdjustment = type === 'adjustment';
-  const categoryKind = categoryKindForTransactionType(type);
   const recordType: TransactionType = type === 'transfer' ? transferType : type;
-  const categories = useMemo(
+  const selectedCategory = categoryId ? indexes.categoriesById.get(categoryId) : undefined;
+  const selectedCategoryParentPath = useMemo(
+    () => categoryBreadcrumb(state.categories, selectedCategory?.parentId),
+    [selectedCategory?.parentId, state.categories],
+  );
+  const selectedCategoryIcon = useMemo(
     () =>
-      state.categories.filter((category) => !category.isArchived && category.kind === categoryKind),
-    [categoryKind, state.categories],
+      selectedCategory ? resolveCategoryIcon(selectedCategory, state.categories) : 'shape-outline',
+    [selectedCategory, state.categories],
   );
-  const selectedCategory = categories.find((category) => category.id === categoryId);
-  const selectedCategoryParentPath = categoryBreadcrumb(
-    state.categories,
-    selectedCategory?.parentId,
+  const selectedCategoryVisual = useMemo(
+    () =>
+      selectedCategory ? resolveCategoryIconVisual(selectedCategory, state.categories) : undefined,
+    [selectedCategory, state.categories],
   );
-  const selectedCategoryIcon = selectedCategory
-    ? resolveCategoryIcon(selectedCategory, state.categories)
-    : 'shape-outline';
-  const selectedCategoryVisual = selectedCategory
-    ? resolveCategoryIconVisual(selectedCategory, state.categories)
-    : undefined;
-  const feeCategory = state.categories.find(
-    (category) => category.name.toLowerCase() === 'charges, fees',
+  const feeCategory = useMemo(
+    () => state.categories.find((category) => category.name.toLowerCase() === 'charges, fees'),
+    [state.categories],
   );
   const currency = normalizeCurrencyCode(sourceAccount?.currency ?? state.preferences.baseCurrency);
   const purchaseCurrency = normalizeCurrencyCode(originalCurrency || currency);
-  const suggestedPurchaseRate =
-    sourceAccount &&
-    purchaseCurrency !== sourceAccount.currency &&
-    hasExplicitRate(state, purchaseCurrency, sourceAccount.currency)
-      ? rateBetween(state, purchaseCurrency, sourceAccount.currency)
-      : undefined;
-  const foreignCurrencyDraft = resolveRecordCurrencyDraft({
-    originalAmountText: originalAmount,
-    purchaseCurrency,
-    postedCurrency: currency,
-    fxRateText: originalFxRate,
-    suggestedRate: suggestedPurchaseRate,
-  });
+  const suggestedPurchaseRate = useMemo(
+    () =>
+      sourceAccount &&
+      purchaseCurrency !== sourceAccount.currency &&
+      hasExplicitRate(state, purchaseCurrency, sourceAccount.currency)
+        ? rateBetween(state, purchaseCurrency, sourceAccount.currency)
+        : undefined,
+    [purchaseCurrency, sourceAccount, state],
+  );
+  const foreignCurrencyDraft = useMemo(
+    () =>
+      resolveRecordCurrencyDraft({
+        originalAmountText: originalAmount,
+        purchaseCurrency,
+        postedCurrency: currency,
+        fxRateText: originalFxRate,
+        suggestedRate: suggestedPurchaseRate,
+      }),
+    [currency, originalAmount, originalFxRate, purchaseCurrency, suggestedPurchaseRate],
+  );
   const amountValue = numberFromCurrencyText(amount);
   const effectiveAmountValue = Number.isFinite(amountValue)
     ? isAdjustment
@@ -404,35 +400,59 @@ export default function AddTransaction() {
     ? (foreignCurrencyDraft.postedAmountMinor ??
       toMinor(effectiveAmountValue, sourceAccount.currency))
     : 0;
-  const chargeTotalMinor =
-    sourceAccount && !isAdjustment
-      ? charges.reduce(
-          (sum, charge) =>
-            sum +
-            toMinor(Number(charge.amount.replace(/,/g, '').trim()) || 0, sourceAccount.currency),
-          0,
-        )
-      : 0;
-  const errors = validate({
-    type,
-    amountMinor,
-    sourceAccount,
-    counterAccount,
-    chargeTotalMinor,
-    date,
-    time,
-    categoryId,
-    fxNeedsRate: foreignCurrencyDraft.needsRate,
-    purchaseCurrency,
-    accountCurrency: currency,
-  });
+  const chargeTotalMinor = useMemo(
+    () =>
+      sourceAccount && !isAdjustment
+        ? charges.reduce(
+            (sum, charge) =>
+              sum +
+              toMinor(Number(charge.amount.replace(/,/g, '').trim()) || 0, sourceAccount.currency),
+            0,
+          )
+        : 0,
+    [charges, isAdjustment, sourceAccount],
+  );
+  const errors = useMemo(
+    () =>
+      validate({
+        type,
+        amountMinor,
+        sourceAccount,
+        counterAccount,
+        chargeTotalMinor,
+        date,
+        time,
+        categoryId,
+        fxNeedsRate: foreignCurrencyDraft.needsRate,
+        purchaseCurrency,
+        accountCurrency: currency,
+      }),
+    [
+      amountMinor,
+      categoryId,
+      chargeTotalMinor,
+      counterAccount,
+      currency,
+      date,
+      foreignCurrencyDraft.needsRate,
+      purchaseCurrency,
+      sourceAccount,
+      time,
+      type,
+    ],
+  );
   const showErrors = submitAttempted;
   const tone = toneForType(type, theme.dark);
   const isForeignPurchase = purchaseCurrency !== currency;
   const calculatorAmount = isForeignPurchase ? originalAmount : amount;
+  const debouncedCalculatorAmount = useDebouncedValue(calculatorAmount, 120);
+  const deferredCalculatorAmount = useDeferredValue(debouncedCalculatorAmount);
   const calculatorAmountValue = numberFromCurrencyText(calculatorAmount);
   const displayAmount = normalizeDisplayAmount(calculatorAmount || '0');
-  const amountWords = useMemo(() => amountToWords(calculatorAmount), [calculatorAmount]);
+  const amountWords = useMemo(
+    () => amountToWords(deferredCalculatorAmount),
+    [deferredCalculatorAmount],
+  );
   const convertedAmountText =
     isForeignPurchase && foreignCurrencyDraft.postedMoney
       ? `${currency} ${formatMoney(foreignCurrencyDraft.postedMoney, state.preferences.locale)}`
@@ -505,84 +525,87 @@ export default function AddTransaction() {
     try {
       await refreshRatesForPairIfStale(state, refreshExchangeRates, purchaseCurrency, currency);
       const occurredAt = dateTimeToIso(date, time);
-      await mutate((draft) => {
-        const draftSourceAccount = draft.accounts.find(
-          (account) => account.id === sourceAccount.id,
-        );
-        if (!draftSourceAccount) throw new Error('Choose an account.');
-        const draftPostedCurrency = normalizeCurrencyCode(draftSourceAccount.currency);
-        const draftPurchaseCurrency = normalizeCurrencyCode(
-          originalCurrency || draftPostedCurrency,
-        );
-        const draftForeignCurrency = resolveRecordCurrencyDraftForState({
-          state: draft,
-          originalAmountText: originalAmount,
-          purchaseCurrency: draftPurchaseCurrency,
-          postedCurrency: draftPostedCurrency,
-          fxRateText: originalFxRate,
-        });
-        if (draftForeignCurrency.needsRate) {
-          throw new Error(
-            `Enter a ${draftPurchaseCurrency} to ${draftPostedCurrency} rate before saving.`,
+      await mutate(
+        (draft) => {
+          const draftSourceAccount = draft.accounts.find(
+            (account) => account.id === sourceAccount.id,
           );
-        }
-        const originalMinor = draftForeignCurrency.originalAmountMinor;
-        const draftAmountMinor =
-          draftForeignCurrency.postedAmountMinor ??
-          toMinor(effectiveAmountValue, draftSourceAccount.currency);
-        const parent = createTransaction(draft, {
-          type: recordType,
-          status,
-          accountId: draftSourceAccount.id,
-          counterAccountId:
-            recordType === 'transfer' ||
-            recordType === 'card_payment' ||
-            recordType === 'loan_repayment'
-              ? counterAccount?.id
-              : undefined,
-          amountMinor: draftAmountMinor,
-          currency: draftSourceAccount.currency,
-          originalAmountMinor: originalMinor,
-          originalCurrency: originalMinor !== undefined ? draftPurchaseCurrency : undefined,
-          originalFxRate: originalMinor !== undefined ? draftForeignCurrency.fxRate : undefined,
-          categoryId: type === 'transfer' || type === 'adjustment' ? undefined : categoryId,
-          paymentMethod: paymentMethod.trim() || undefined,
-          notes: notes.trim() || undefined,
-          occurredAt,
-          locationLabel: locationLabel.trim() || undefined,
-        });
-
-        if (type === 'adjustment') return;
-
-        for (const charge of charges) {
-          const numeric = Number(charge.amount.replace(/,/g, '').trim()) || 0;
-          const chargeMinor = toMinor(numeric, sourceAccount.currency);
-          if (chargeMinor <= 0) continue;
-          const label = charge.label.trim() || 'Charges';
-          if (type === 'transfer') {
-            createTransaction(draft, {
-              type: 'fee',
-              status,
-              accountId: sourceAccount.id,
-              amountMinor: chargeMinor,
-              currency: sourceAccount.currency,
-              categoryId: feeCategory?.id,
-              notes: `${label} for transfer`,
-              occurredAt,
-              locationLabel: locationLabel.trim() || undefined,
-              originalTransactionId: parent.id,
-            });
-          } else {
-            createTransactionSplit(draft, {
-              transactionId: parent.id,
-              amountMinor: chargeMinor,
-              currency: sourceAccount.currency,
-              categoryId: feeCategory?.id ?? categoryId,
-              notes: label,
-            });
+          if (!draftSourceAccount) throw new Error('Choose an account.');
+          const draftPostedCurrency = normalizeCurrencyCode(draftSourceAccount.currency);
+          const draftPurchaseCurrency = normalizeCurrencyCode(
+            originalCurrency || draftPostedCurrency,
+          );
+          const draftForeignCurrency = resolveRecordCurrencyDraftForState({
+            state: draft,
+            originalAmountText: originalAmount,
+            purchaseCurrency: draftPurchaseCurrency,
+            postedCurrency: draftPostedCurrency,
+            fxRateText: originalFxRate,
+          });
+          if (draftForeignCurrency.needsRate) {
+            throw new Error(
+              `Enter a ${draftPurchaseCurrency} to ${draftPostedCurrency} rate before saving.`,
+            );
           }
-        }
-      });
+          const originalMinor = draftForeignCurrency.originalAmountMinor;
+          const draftAmountMinor =
+            draftForeignCurrency.postedAmountMinor ??
+            toMinor(effectiveAmountValue, draftSourceAccount.currency);
+          const parent = createTransaction(draft, {
+            type: recordType,
+            status,
+            accountId: draftSourceAccount.id,
+            counterAccountId:
+              recordType === 'transfer' ||
+              recordType === 'card_payment' ||
+              recordType === 'loan_repayment'
+                ? counterAccount?.id
+                : undefined,
+            amountMinor: draftAmountMinor,
+            currency: draftSourceAccount.currency,
+            originalAmountMinor: originalMinor,
+            originalCurrency: originalMinor !== undefined ? draftPurchaseCurrency : undefined,
+            originalFxRate: originalMinor !== undefined ? draftForeignCurrency.fxRate : undefined,
+            categoryId: type === 'transfer' || type === 'adjustment' ? undefined : categoryId,
+            paymentMethod: paymentMethod.trim() || undefined,
+            notes: notes.trim() || undefined,
+            occurredAt,
+            locationLabel: locationLabel.trim() || undefined,
+          });
+
+          if (type === 'adjustment') return;
+
+          for (const charge of charges) {
+            const numeric = Number(charge.amount.replace(/,/g, '').trim()) || 0;
+            const chargeMinor = toMinor(numeric, sourceAccount.currency);
+            if (chargeMinor <= 0) continue;
+            const label = charge.label.trim() || 'Charges';
+            if (type === 'transfer') {
+              createTransaction(draft, {
+                type: 'fee',
+                status,
+                accountId: sourceAccount.id,
+                amountMinor: chargeMinor,
+                currency: sourceAccount.currency,
+                categoryId: feeCategory?.id,
+                notes: `${label} for transfer`,
+                occurredAt,
+                locationLabel: locationLabel.trim() || undefined,
+                originalTransactionId: parent.id,
+              });
+            } else {
+              createTransactionSplit(draft, {
+                transactionId: parent.id,
+                amountMinor: chargeMinor,
+                currency: sourceAccount.currency,
+                categoryId: feeCategory?.id ?? categoryId,
+                notes: label,
+              });
+            }
+          }
+        },
+        { slices: ['transactions', 'transactionSplits'] },
+      );
       closeAddRecord();
     } catch (error) {
       Alert.alert('Could not save record', (error as Error).message);
@@ -681,7 +704,7 @@ export default function AddTransaction() {
   const changeType = (value: string) => {
     const nextType = value as AddType;
     setType(nextType);
-    setCategoryId(undefined);
+    if (nextType === 'transfer' || nextType === 'adjustment') setCategoryId(undefined);
     if (nextType !== 'transfer') setCounterAccountId(undefined);
     if (nextType === 'transfer') setTransferType('transfer');
     if (nextType === 'adjustment') setCharges([]);
@@ -774,68 +797,71 @@ export default function AddTransaction() {
         receiptAmountMinor ? 'review receipt draft fields' : 'amount missing from receipt draft',
         ...receiptFields.warnings,
       ]);
-      await mutate((draft) => {
-        createCaptureCandidate(draft, {
-          source: 'import',
-          rawHash: `receipt:${receipt.source}:${receipt.uri}`,
-          rawPayload: {
-            kind: 'receipt_attachment',
-            source: receipt.source,
-            fileName: receipt.name,
-            mimeType: receipt.mimeType,
-            size: receipt.size,
-            width: receipt.width,
-            height: receipt.height,
-            uri: receipt.uri,
-            capturedAt: new Date().toISOString(),
-            ocrProvider: receiptFields.provider,
-            ocrStatus: receiptFields.status,
-            ocrText: receiptFields.text,
-            ocrLines: receiptFields.lines,
-            ocrParsed: {
-              amountMinor: receiptFields.amountMinor,
-              currency: receiptFields.currency,
-              merchant: receiptFields.merchant,
-              occurredAt: receiptFields.occurredAt,
-              paymentMethod: receiptFields.paymentMethod,
+      await mutate(
+        (draft) => {
+          createCaptureCandidate(draft, {
+            source: 'import',
+            rawHash: `receipt:${receipt.source}:${receipt.uri}`,
+            rawPayload: {
+              kind: 'receipt_attachment',
+              source: receipt.source,
+              fileName: receipt.name,
+              mimeType: receipt.mimeType,
+              size: receipt.size,
+              width: receipt.width,
+              height: receipt.height,
+              uri: receipt.uri,
+              capturedAt: new Date().toISOString(),
+              ocrProvider: receiptFields.provider,
+              ocrStatus: receiptFields.status,
+              ocrText: receiptFields.text,
+              ocrLines: receiptFields.lines,
+              ocrParsed: {
+                amountMinor: receiptFields.amountMinor,
+                currency: receiptFields.currency,
+                merchant: receiptFields.merchant,
+                occurredAt: receiptFields.occurredAt,
+                paymentMethod: receiptFields.paymentMethod,
+              },
+              ocrError: receiptFields.errorMessage,
+              ocrWarnings: receiptFields.warnings,
+              sourceScreen: 'add_record',
+              draft: {
+                type: recordType,
+                status,
+                amountMinor: receiptAmountMinor,
+                currency,
+                originalCurrency: purchaseCurrency,
+                originalAmount,
+                originalFxRate,
+                occurredAt: receiptOccurredAt,
+                accountId: sourceAccount?.id,
+                counterAccountId: type === 'transfer' ? counterAccount?.id : undefined,
+                categoryId: type === 'transfer' || type === 'adjustment' ? undefined : categoryId,
+                paymentMethod: receiptPaymentMethod || undefined,
+                locationLabel: receiptLocation || undefined,
+                notes: trimmedNotes || undefined,
+              },
             },
-            ocrError: receiptFields.errorMessage,
-            ocrWarnings: receiptFields.warnings,
-            sourceScreen: 'add_record',
-            draft: {
-              type: recordType,
-              status,
-              amountMinor: receiptAmountMinor,
-              currency,
-              originalCurrency: purchaseCurrency,
-              originalAmount,
-              originalFxRate,
-              occurredAt: receiptOccurredAt,
-              accountId: sourceAccount?.id,
-              counterAccountId: type === 'transfer' ? counterAccount?.id : undefined,
-              categoryId: type === 'transfer' || type === 'adjustment' ? undefined : categoryId,
-              paymentMethod: receiptPaymentMethod || undefined,
-              locationLabel: receiptLocation || undefined,
-              notes: trimmedNotes || undefined,
-            },
-          },
-          parsedAmountMinor: receiptAmountMinor,
-          parsedCurrency: receiptCurrency,
-          parsedMerchant: receiptMerchant,
-          parsedLocationLabel: receiptLocation,
-          parsedNotes: receiptNotes,
-          parsedPaymentMethod: receiptPaymentMethod || undefined,
-          parsedOccurredAt: receiptOccurredAt,
-          suggestedAccountId: sourceAccount?.id,
-          suggestedCounterAccountId: type === 'transfer' ? counterAccount?.id : undefined,
-          suggestedCategoryId:
-            type === 'transfer' || type === 'adjustment' ? undefined : categoryId,
-          suggestedType: recordType,
-          confidence: Math.max(receiptFields.confidence, receiptAmountMinor ? 68 : 28),
-          externalRef: receipt.uri,
-          warnings: receiptWarnings,
-        });
-      });
+            parsedAmountMinor: receiptAmountMinor,
+            parsedCurrency: receiptCurrency,
+            parsedMerchant: receiptMerchant,
+            parsedLocationLabel: receiptLocation,
+            parsedNotes: receiptNotes,
+            parsedPaymentMethod: receiptPaymentMethod || undefined,
+            parsedOccurredAt: receiptOccurredAt,
+            suggestedAccountId: sourceAccount?.id,
+            suggestedCounterAccountId: type === 'transfer' ? counterAccount?.id : undefined,
+            suggestedCategoryId:
+              type === 'transfer' || type === 'adjustment' ? undefined : categoryId,
+            suggestedType: recordType,
+            confidence: Math.max(receiptFields.confidence, receiptAmountMinor ? 68 : 28),
+            externalRef: receipt.uri,
+            warnings: receiptWarnings,
+          });
+        },
+        { slices: ['captureCandidates'] },
+      );
       router.push('/review' as never);
     } catch (error) {
       Alert.alert('Could not import receipt', (error as Error).message);
@@ -1161,19 +1187,6 @@ export default function AddTransaction() {
                           onChangeTime={setTime}
                         />
                       </PulsingFieldGlow>
-                      <SelectorRow
-                        icon="list-status"
-                        label="Status"
-                        value={optionLabel(STATUS_OPTIONS, status)}
-                        supporting={
-                          status === 'scheduled'
-                            ? 'Upcoming payment or income'
-                            : status === 'pending'
-                              ? 'Waiting to settle'
-                              : 'Posted now'
-                        }
-                        onPress={() => setPickerMode('status')}
-                      />
                       {type === 'transfer' ? (
                         <SelectorRow
                           icon="swap-horizontal"
@@ -1354,7 +1367,6 @@ export default function AddTransaction() {
         />
         <RecordCategoryPickerOverlay
           visible={pickerMode === 'category' && type !== 'adjustment'}
-          kind={categoryKind}
           categories={state.categories}
           selectedId={categoryId}
           allowClear={false}
@@ -1362,18 +1374,6 @@ export default function AddTransaction() {
           onDismiss={() => setPickerMode(null)}
           onSelect={(category) => {
             setCategoryId(category.id);
-            setPickerMode(null);
-          }}
-        />
-        <OptionListOverlay
-          visible={pickerMode === 'status'}
-          title="Record status"
-          options={STATUS_OPTIONS}
-          selectedValue={status}
-          searchable={false}
-          onDismiss={() => setPickerMode(null)}
-          onSelect={(option) => {
-            setStatus(option.value);
             setPickerMode(null);
           }}
         />
@@ -1813,13 +1813,6 @@ function keyLabel(key: CalcKey): string {
   if (key === 'sign') return '+/-';
   if (key === '*') return 'x';
   return key;
-}
-
-function optionLabel<TValue extends string>(
-  options: readonly OptionListItem<TValue>[],
-  value: TValue,
-) {
-  return options.find((option) => option.value === value)?.label ?? value;
 }
 
 function toneForType(type: AddType, isDark: boolean) {

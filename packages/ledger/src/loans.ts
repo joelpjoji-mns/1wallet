@@ -475,7 +475,7 @@ export function completedLoanInstallmentCount(
 }
 
 export function loanScheduleStartsOn(details: AccountLoanDetails): string {
-  return details.repaymentStartsOn ?? details.disbursedOn ?? details.trackingStartsOn ?? todayIso();
+  return details.disbursedOn ?? details.repaymentStartsOn ?? details.trackingStartsOn ?? todayIso();
 }
 
 export function loanTotalInstallmentCount(details: AccountLoanDetails): number | undefined {
@@ -724,7 +724,7 @@ export function loanRuleOccurrenceAmounts(
 }
 
 export function loanForecastStartsOn(details: AccountLoanDetails): string {
-  return details.trackingStartsOn ?? details.repaymentStartsOn ?? todayIso();
+  return details.trackingStartsOn ?? details.repaymentStartsOn ?? details.disbursedOn ?? todayIso();
 }
 
 export function dueDateForInstallment(

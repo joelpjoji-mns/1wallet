@@ -1,35 +1,32 @@
 import { formatMoney, fromMinor, normalizeCurrencyCode, toMinor } from '@1wallet/domain/money';
-import type { AccountMessageHint, CaptureCandidate, TransactionType } from '@1wallet/domain/types';
+import type {
+  Account,
+  AccountMessageHint,
+  CaptureCandidate,
+  Category,
+  TransactionType,
+} from '@1wallet/domain/types';
 import { messageHintSuggestionsFromCapturePayload } from '@1wallet/ledger/capture/messages';
 import {
-    rejectCaptureCandidate as rejectCaptureCandidateInLedger,
-    type ApproveCaptureCandidateInput,
+  rejectCaptureCandidate as rejectCaptureCandidateInLedger,
+  type ApproveCaptureCandidateInput,
 } from '@1wallet/ledger/services';
 import { indexedAccountBalance } from '@1wallet/ledger/services/indexes';
 import { useLedger } from '@1wallet/state';
 import { tokens } from '@1wallet/ui';
-import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { router } from 'expo-router';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    View,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
 } from 'react-native';
-import {
-    Appbar,
-    Button,
-    Chip,
-    Dialog,
-    Portal,
-    Surface,
-    Text,
-    TextInput,
-    useTheme,
-} from 'react-native-paper';
+import { Appbar, Button, Chip, Surface, Text, TextInput, useTheme } from 'react-native-paper';
 import { resolveAccountIconVisual } from '../src/accountOptions';
 import { resolveCategoryIconVisual } from '../src/categoryIcons';
 import { useBackLayer } from '../src/components/AppBackLayer';
@@ -39,21 +36,20 @@ import { OptionListOverlay } from '../src/components/OptionListOverlay';
 import { PulsingFieldGlow } from '../src/components/PulsingFieldGlow';
 import { RecordDateTimeFields } from '../src/components/record/RecordDateTimeFields';
 import {
-    AccountPickerOverlay,
-    CategoryPickerOverlay,
+  AccountPickerOverlay,
+  CategoryPickerOverlay,
 } from '../src/components/record/RecordPickers';
 import { RecordSelectorRow } from '../src/components/record/RecordSelectorRow';
 import {
-    dateTimeToIso,
-    isValidLocalDate,
-    isValidLocalTime,
-    localDateTimeParts,
+  dateTimeToIso,
+  isValidLocalDate,
+  isValidLocalTime,
+  localDateTimeParts,
 } from '../src/recordDateTime';
 import {
-    categoryKindForTransactionType,
-    isTransferTransactionType,
-    TRANSACTION_TYPE_OPTIONS,
-    transactionTypeLabel,
+  isTransferTransactionType,
+  TRANSACTION_TYPE_OPTIONS,
+  transactionTypeLabel,
 } from '../src/transactionTypes';
 
 type SourceFilter = 'all' | 'import' | 'sms' | 'email' | 'notification';
@@ -93,23 +89,40 @@ export default function ReviewQueue() {
     approveCaptureCandidates,
     rejectCaptureCandidate,
     mutate,
-    reload,
-    selectors,
     indexes,
   } = useLedger();
-  const allPending = selectors.queryCaptureCandidates(state, { status: 'pending' });
-  const pending = allPending.filter(
-    (candidate) => sourceFilter === 'all' || candidate.source === sourceFilter,
+  const allPending = useMemo(
+    () => indexes.captureCandidatesByStatus.get('pending') ?? [],
+    [indexes.captureCandidatesByStatus],
   );
-  const activeAccounts = state.accounts.filter((account) => !account.isArchived);
+  const pending = useMemo(
+    () =>
+      allPending.filter((candidate) => sourceFilter === 'all' || candidate.source === sourceFilter),
+    [allPending, sourceFilter],
+  );
+  const pendingSourceCounts = useMemo(() => captureSourceCounts(allPending), [allPending]);
+  const activeAccounts = useMemo(
+    () => state.accounts.filter((account) => !account.isArchived),
+    [state.accounts],
+  );
+  const accountById = indexes.accountsById;
+  const categoryById = indexes.categoriesById;
+  const rulesById = useMemo(
+    () => new Map((state.preferences.futureGenerationRules ?? []).map((rule) => [rule.id, rule])),
+    [state.preferences.futureGenerationRules],
+  );
+  const captureCandidateById = useMemo(
+    () => new Map(state.captureCandidates.map((candidate) => [candidate.id, candidate])),
+    [state.captureCandidates],
+  );
   const approvalCandidate = approvalDraft
-    ? state.captureCandidates.find((candidate) => candidate.id === approvalDraft.candidateId)
+    ? captureCandidateById.get(approvalDraft.candidateId)
     : undefined;
   const approvalAccount = approvalDraft?.accountId
-    ? state.accounts.find((account) => account.id === approvalDraft.accountId)
+    ? accountById.get(approvalDraft.accountId)
     : undefined;
   const approvalCounterAccount = approvalDraft?.counterAccountId
-    ? state.accounts.find((account) => account.id === approvalDraft.counterAccountId)
+    ? accountById.get(approvalDraft.counterAccountId)
     : undefined;
   const approvalAccountVisual = approvalAccount
     ? resolveAccountIconVisual(approvalAccount)
@@ -120,11 +133,8 @@ export default function ReviewQueue() {
   const approvalNeedsCounter = approvalDraft
     ? isTransferTransactionType(approvalDraft.type)
     : false;
-  const approvalCategoryKind = approvalDraft
-    ? categoryKindForTransactionType(approvalDraft.type)
-    : 'expense';
   const approvalCategory = approvalDraft?.categoryId
-    ? state.categories.find((category) => category.id === approvalDraft.categoryId)
+    ? categoryById.get(approvalDraft.categoryId)
     : undefined;
   const approvalCategoryVisual = approvalCategory
     ? resolveCategoryIconVisual(approvalCategory, state.categories)
@@ -132,29 +142,24 @@ export default function ReviewQueue() {
   const approvalCurrency =
     approvalAccount?.currency ?? approvalDraft?.currency ?? state.preferences.baseCurrency;
 
-  useFocusEffect(
-    useCallback(() => {
-      void reload().catch(() => undefined);
-    }, [reload]),
-  );
-
-  const flashApprovalFields = (fields: ApprovalField[]) => {
+  const flashApprovalFields = useCallback((fields: ApprovalField[]) => {
     const uniqueFields = Array.from(new Set(fields));
     setHighlightedApprovalFields(new Set(uniqueFields));
     setApprovalGlowPulseKey((key) => key + 1);
-  };
+  }, []);
 
-  const openApproval = (candidate: CaptureCandidate) => {
-    const draft = approvalDraftFromCandidate(candidate, state.preferences.baseCurrency);
-    setApprovalDraft(draft);
-    setApprovalPicker(null);
-    const missing = approvalMissingFields(draft, { includeSoftFields: true });
-    if (missing.length) setTimeout(() => flashApprovalFields(missing), 80);
-  };
+  const openApproval = useCallback(
+    (candidate: CaptureCandidate) => {
+      const draft = approvalDraftFromCandidate(candidate, state.preferences.baseCurrency);
+      setApprovalDraft(draft);
+      setApprovalPicker(null);
+    },
+    [state.preferences.baseCurrency],
+  );
 
-  const updateApprovalDraft = (patch: Partial<ApprovalDraft>) => {
+  const updateApprovalDraft = useCallback((patch: Partial<ApprovalDraft>) => {
     setApprovalDraft((current) => (current ? { ...current, ...patch } : current));
-  };
+  }, []);
 
   const closeApproval = useCallback(() => {
     setApprovalDraft(undefined);
@@ -164,55 +169,67 @@ export default function ReviewQueue() {
 
   useBackLayer(Boolean(approvalDraft), closeApproval);
 
-  const buildApprovalInput = (
-    candidate: CaptureCandidate,
-    draft: ApprovalDraft,
-  ): { input?: ApproveCaptureCandidateInput; missing: ApprovalField[] } => {
-    const missing = approvalMissingFields(draft);
-    const account = draft.accountId
-      ? state.accounts.find((item) => item.id === draft.accountId)
-      : undefined;
-    if (!account) {
-      if (!missing.includes('account')) missing.push('account');
-      return { missing };
-    }
-    if (missing.length) {
-      return { missing };
-    }
-    const numericAmount = Number(draft.amount.replace(/,/g, '').trim());
-    const amountMinor = toMinor(
-      draft.type === 'adjustment' ? numericAmount : Math.abs(numericAmount),
-      account.currency,
-    );
-    const parsedCounterAmount =
-      isTransferTransactionType(draft.type) &&
-      candidate.parsedCounterAmount &&
-      candidate.suggestedAccountId === account.id &&
-      candidate.suggestedCounterAccountId === draft.counterAccountId &&
-      candidate.parsedAmount?.amountMinor === amountMinor
-        ? candidate.parsedCounterAmount
-        : undefined;
-    const acceptedMessageHints = messageHintsForApproval(candidate, account.id);
-    return {
-      missing: [],
-      input: {
-        type: draft.type,
-        accountId: account.id,
-        counterAccountId: isTransferTransactionType(draft.type)
-          ? draft.counterAccountId
-          : undefined,
-        amountMinor,
-        currency: account.currency,
-        counterAmountMinor: parsedCounterAmount?.amountMinor,
-        counterCurrency: parsedCounterAmount?.currency,
-        counterFxRate: parsedCounterAmount ? candidate.parsedCounterFxRate : undefined,
-        categoryId: approvalUsesCategory(draft.type) ? draft.categoryId : undefined,
-        occurredAt: dateTimeToIso(draft.date, draft.time),
-        notes: draft.merchantNote.trim() || undefined,
-        acceptedMessageHints: acceptedMessageHints.length ? acceptedMessageHints : undefined,
-      },
-    };
-  };
+  const messageHintsForApproval = useCallback(
+    (candidate: CaptureCandidate, accountId: string): AccountMessageHint[] => {
+      const account = accountById.get(accountId);
+      if (!account) return [];
+      return messageHintSuggestionsFromCapturePayload(account, candidate.rawPayload).filter(
+        (hint) => !hint.existing,
+      );
+    },
+    [accountById],
+  );
+
+  const buildApprovalInput = useCallback(
+    (
+      candidate: CaptureCandidate,
+      draft: ApprovalDraft,
+    ): { input?: ApproveCaptureCandidateInput; missing: ApprovalField[] } => {
+      const missing = approvalMissingFields(draft);
+      const account = draft.accountId ? accountById.get(draft.accountId) : undefined;
+      if (!account) {
+        if (!missing.includes('account')) missing.push('account');
+        return { missing };
+      }
+      if (missing.length) {
+        return { missing };
+      }
+      const numericAmount = Number(draft.amount.replace(/,/g, '').trim());
+      const amountMinor = toMinor(
+        draft.type === 'adjustment' ? numericAmount : Math.abs(numericAmount),
+        account.currency,
+      );
+      const parsedCounterAmount =
+        isTransferTransactionType(draft.type) &&
+        candidate.parsedCounterAmount &&
+        candidate.suggestedAccountId === account.id &&
+        candidate.suggestedCounterAccountId === draft.counterAccountId &&
+        candidate.parsedAmount?.amountMinor === amountMinor
+          ? candidate.parsedCounterAmount
+          : undefined;
+      const acceptedMessageHints = messageHintsForApproval(candidate, account.id);
+      return {
+        missing: [],
+        input: {
+          type: draft.type,
+          accountId: account.id,
+          counterAccountId: isTransferTransactionType(draft.type)
+            ? draft.counterAccountId
+            : undefined,
+          amountMinor,
+          currency: account.currency,
+          counterAmountMinor: parsedCounterAmount?.amountMinor,
+          counterCurrency: parsedCounterAmount?.currency,
+          counterFxRate: parsedCounterAmount ? candidate.parsedCounterFxRate : undefined,
+          categoryId: approvalUsesCategory(draft.type) ? draft.categoryId : undefined,
+          occurredAt: dateTimeToIso(draft.date, draft.time),
+          notes: draft.merchantNote.trim() || undefined,
+          acceptedMessageHints: acceptedMessageHints.length ? acceptedMessageHints : undefined,
+        },
+      };
+    },
+    [accountById, messageHintsForApproval],
+  );
 
   const submitApproval = async () => {
     if (!approvalDraft || !approvalCandidate) return;
@@ -271,11 +288,14 @@ export default function ReviewQueue() {
     const ids = pending.map((candidate) => candidate.id);
     setBulkRejectRunning(true);
     try {
-      await mutate((draft) => {
-        ids.forEach((id) => {
-          rejectCaptureCandidateInLedger(draft, id);
-        });
-      });
+      await mutate(
+        (draft) => {
+          ids.forEach((id) => {
+            rejectCaptureCandidateInLedger(draft, id);
+          });
+        },
+        { slices: ['captureCandidates'] },
+      );
       Alert.alert('Rejected', `Rejected ${ids.length} visible captures.`);
     } catch (error) {
       Alert.alert('Cannot reject all', (error as Error).message);
@@ -296,17 +316,6 @@ export default function ReviewQueue() {
     ]);
   };
 
-  const messageHintsForApproval = (
-    candidate: CaptureCandidate,
-    accountId: string,
-  ): AccountMessageHint[] => {
-    const account = state.accounts.find((item) => item.id === accountId);
-    if (!account) return [];
-    return messageHintSuggestionsFromCapturePayload(account, candidate.rawPayload).filter(
-      (hint) => !hint.existing,
-    );
-  };
-
   const approvalGlowProps = (field: ApprovalField) => ({
     active: highlightedApprovalFields.has(field),
     color: theme.colors.error,
@@ -321,6 +330,37 @@ export default function ReviewQueue() {
     );
   };
 
+  const renderCaptureCandidate = useCallback(
+    ({ item }: { item: CaptureCandidate }) => (
+      <CaptureCandidateCard
+        candidate={item}
+        account={item.suggestedAccountId ? accountById.get(item.suggestedAccountId) : undefined}
+        counterAccount={
+          item.suggestedCounterAccountId
+            ? accountById.get(item.suggestedCounterAccountId)
+            : undefined
+        }
+        category={item.suggestedCategoryId ? categoryById.get(item.suggestedCategoryId) : undefined}
+        linkedPlanName={
+          item.suggestedRecurringTemplateId
+            ? rulesById.get(item.suggestedRecurringTemplateId)?.name
+            : undefined
+        }
+        locale={state.preferences.locale}
+        onApprove={openApproval}
+        onReject={rejectCaptureCandidate}
+      />
+    ),
+    [
+      accountById,
+      categoryById,
+      openApproval,
+      rejectCaptureCandidate,
+      rulesById,
+      state.preferences.locale,
+    ],
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Appbar.Header elevated={false} style={{ backgroundColor: theme.colors.background }}>
@@ -331,6 +371,11 @@ export default function ReviewQueue() {
         data={pending}
         keyExtractor={(candidate) => candidate.id}
         contentContainerStyle={{ padding: tokens.space.lg, gap: tokens.space.md }}
+        removeClippedSubviews={Platform.OS === 'android'}
+        initialNumToRender={8}
+        maxToRenderPerBatch={6}
+        updateCellsBatchingPeriod={32}
+        windowSize={7}
         ListHeaderComponent={
           <View style={s.listHeader}>
             <View style={s.filterBar}>
@@ -341,7 +386,7 @@ export default function ReviewQueue() {
                   selected={sourceFilter === filter}
                   onPress={() => setSourceFilter(filter)}
                 >
-                  {filterLabel(filter, allPending)}
+                  {filterLabel(filter, pendingSourceCounts)}
                 </Chip>
               ))}
             </View>
@@ -384,275 +429,120 @@ export default function ReviewQueue() {
             </Text>
           </View>
         }
-        renderItem={({ item }) => {
-          const account = state.accounts.find(
-            (candidateAccount) => candidateAccount.id === item.suggestedAccountId,
-          );
-          const counterAccount = state.accounts.find(
-            (candidateAccount) => candidateAccount.id === item.suggestedCounterAccountId,
-          );
-          const category = state.categories.find(
-            (candidateCategory) => candidateCategory.id === item.suggestedCategoryId,
-          );
-          const linkedPlan = item.suggestedRecurringTemplateId
-            ? state.preferences.futureGenerationRules?.find(
-                (rule) => rule.id === item.suggestedRecurringTemplateId,
-              )
-            : undefined;
-          const receiptFileName =
-            typeof item.rawPayload.fileName === 'string' ? item.rawPayload.fileName : undefined;
-          const walletCsvRows = walletCsvCaptureRows(item.rawPayload);
-          const needsCounter = item.suggestedType
-            ? isTransferTransactionType(item.suggestedType)
-            : false;
-
-          const reject = async () => {
-            await rejectCaptureCandidate(item.id);
-          };
-
-          return (
-            <Surface
-              style={[
-                s.card,
-                {
-                  backgroundColor: theme.colors.elevation.level1,
-                  borderColor: theme.colors.outlineVariant,
-                },
-              ]}
-              elevation={1}
-            >
-              <View style={s.cardHeader}>
-                <Text variant="labelMedium" style={[s.source, { color: theme.colors.primary }]}>
-                  {item.source.toUpperCase()}
-                </Text>
-                <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                  {Math.round(item.confidence)}%
-                </Text>
-              </View>
-              <Text variant="headlineSmall" style={s.amount}>
-                {item.parsedAmount
-                  ? formatMoney(item.parsedAmount, state.preferences.locale)
-                  : 'Amount missing'}
-              </Text>
-              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                {item.parsedMerchant ?? 'Unknown merchant'}
-              </Text>
-              <View style={s.metaGrid}>
-                <Meta
-                  label="Type"
-                  value={
-                    item.suggestedType ? transactionTypeLabel(item.suggestedType) : 'Needs review'
-                  }
-                  labelColor={theme.colors.onSurfaceVariant}
-                  valueColor={theme.colors.onSurface}
-                />
-                <Meta
-                  label="Account"
-                  value={account?.name ?? 'Needs review'}
-                  labelColor={theme.colors.onSurfaceVariant}
-                  valueColor={theme.colors.onSurface}
-                />
-                {needsCounter ? (
-                  <Meta
-                    label="To account"
-                    value={counterAccount?.name ?? 'Needs review'}
-                    labelColor={theme.colors.onSurfaceVariant}
-                    valueColor={theme.colors.onSurface}
-                  />
-                ) : null}
-                {item.suggestedType === 'adjustment' ? null : (
-                  <Meta
-                    label="Category"
-                    value={category?.name ?? 'Uncategorized'}
-                    labelColor={theme.colors.onSurfaceVariant}
-                    valueColor={theme.colors.onSurface}
-                  />
-                )}
-                {linkedPlan ? (
-                  <Meta
-                    label="Plan"
-                    value={linkedPlan.name}
-                    labelColor={theme.colors.onSurfaceVariant}
-                    valueColor={theme.colors.primary}
-                  />
-                ) : null}
-                <Meta
-                  label="Date"
-                  value={
-                    item.parsedOccurredAt
-                      ? new Date(item.parsedOccurredAt).toLocaleString()
-                      : 'Needs review'
-                  }
-                  labelColor={theme.colors.onSurfaceVariant}
-                  valueColor={theme.colors.onSurface}
-                />
-                {item.parsedLocationLabel ? (
-                  <Meta
-                    label="Place"
-                    value={item.parsedLocationLabel}
-                    labelColor={theme.colors.onSurfaceVariant}
-                    valueColor={theme.colors.onSurface}
-                  />
-                ) : null}
-                {receiptFileName ? (
-                  <Meta
-                    label="Receipt"
-                    value={receiptFileName}
-                    labelColor={theme.colors.onSurfaceVariant}
-                    valueColor={theme.colors.onSurface}
-                  />
-                ) : null}
-              </View>
-              {walletCsvRows.length > 0 ? (
-                <View style={s.csvBox}>
-                  <Text variant="titleSmall" style={s.hintTitle}>
-                    Wallet CSV source
-                  </Text>
-                  {walletCsvRows.map((row, index) => (
-                    <Text
-                      key={`${row.fileName}:${row.rowNumber}:${index}`}
-                      variant="bodySmall"
-                      style={{ color: theme.colors.onSurfaceVariant }}
-                    >
-                      {row.fileName ? `${row.fileName} · ` : ''}
-                      {row.rowNumber ? `row ${row.rowNumber} · ` : ''}
-                      {row.accountName}
-                      {row.matchedAccountName && row.matchedAccountName !== row.accountName
-                        ? ` -> ${row.matchedAccountName}`
-                        : ''}
-                      {' · '}
-                      {row.categoryName || 'No category'} · {row.amount} {row.currency}
-                      {row.payee ? ` · ${row.payee}` : row.note ? ` · ${row.note}` : ''}
-                    </Text>
-                  ))}
-                </View>
-              ) : null}
-              <View style={s.actions}>
-                <Button
-                  mode="contained"
-                  icon="check"
-                  style={s.actionButton}
-                  onPress={() => openApproval(item)}
-                >
-                  Approve
-                </Button>
-                <Button
-                  mode="outlined"
-                  textColor={theme.colors.error}
-                  icon="close"
-                  style={s.actionButton}
-                  onPress={reject}
-                >
-                  Reject
-                </Button>
-              </View>
-            </Surface>
-          );
-        }}
+        renderItem={renderCaptureCandidate}
       />
-      <Portal>
+      <Modal
+        visible={Boolean(approvalDraft)}
+        transparent
+        animationType="none"
+        statusBarTranslucent
+        onRequestClose={closeApproval}
+      >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={tokens.space.lg}
-          pointerEvents="box-none"
-          style={s.keyboardHost}
+          style={[s.approvalOverlay, { backgroundColor: theme.colors.backdrop }]}
         >
-          <Dialog visible={Boolean(approvalDraft)} onDismiss={closeApproval} style={s.dialog}>
-            <Dialog.Title>Approve capture</Dialog.Title>
-            <Dialog.ScrollArea style={s.dialogScrollArea}>
-              <ScrollView
-                ref={approvalScrollRef}
-                contentContainerStyle={s.dialogContent}
-                keyboardDismissMode="on-drag"
-                keyboardShouldPersistTaps="handled"
-              >
-                {approvalDraft ? (
-                  <>
-                    <PulsingFieldGlow {...approvalGlowProps('amount')}>
-                      <PremiumTextInput
-                        label="Amount"
-                        value={approvalDraft.amount}
-                        onChangeText={(value) => updateApprovalDraft({ amount: value })}
-                        keyboardType="decimal-pad"
-                        left={<TextInput.Affix text={approvalCurrency} />}
-                      />
-                    </PulsingFieldGlow>
-                    <PulsingFieldGlow {...approvalGlowProps('type')}>
+          <Surface
+            elevation={4}
+            style={[s.approvalSheet, { backgroundColor: theme.colors.elevation.level3 }]}
+          >
+            <Text variant="titleLarge" style={s.approvalTitle}>
+              Approve capture
+            </Text>
+            <ScrollView
+              ref={approvalScrollRef}
+              style={s.approvalScroll}
+              contentContainerStyle={s.approvalContent}
+              keyboardDismissMode="on-drag"
+              keyboardShouldPersistTaps="handled"
+            >
+              {approvalDraft ? (
+                <>
+                  <PulsingFieldGlow {...approvalGlowProps('amount')}>
+                    <PremiumTextInput
+                      label="Amount"
+                      value={approvalDraft.amount}
+                      onChangeText={(value) => updateApprovalDraft({ amount: value })}
+                      keyboardType="decimal-pad"
+                      left={<TextInput.Affix text={approvalCurrency} />}
+                    />
+                  </PulsingFieldGlow>
+                  <PulsingFieldGlow {...approvalGlowProps('type')}>
+                    <RecordSelectorRow
+                      icon="shape-outline"
+                      label="Type"
+                      value={transactionTypeLabel(approvalDraft.type)}
+                      onPress={() => setApprovalPicker('type')}
+                    />
+                  </PulsingFieldGlow>
+                  <PulsingFieldGlow {...approvalGlowProps('account')}>
+                    <RecordSelectorRow
+                      icon={approvalAccountVisual?.icon ?? 'wallet-outline'}
+                      iconBackgroundColor={approvalAccountVisual?.backgroundColor}
+                      iconColor={approvalAccountVisual?.iconColor}
+                      label={approvalNeedsCounter ? 'From account' : 'Account'}
+                      value={approvalAccount?.name ?? 'Choose account'}
+                      valueNumberOfLines={2}
+                      onPress={() => setApprovalPicker('account')}
+                    />
+                  </PulsingFieldGlow>
+                  {approvalNeedsCounter ? (
+                    <PulsingFieldGlow {...approvalGlowProps('counter')}>
                       <RecordSelectorRow
-                        icon="shape-outline"
-                        label="Type"
-                        value={transactionTypeLabel(approvalDraft.type)}
-                        onPress={() => setApprovalPicker('type')}
-                      />
-                    </PulsingFieldGlow>
-                    <PulsingFieldGlow {...approvalGlowProps('account')}>
-                      <RecordSelectorRow
-                        icon={approvalAccountVisual?.icon ?? 'wallet-outline'}
-                        iconBackgroundColor={approvalAccountVisual?.backgroundColor}
-                        iconColor={approvalAccountVisual?.iconColor}
-                        label={approvalNeedsCounter ? 'From account' : 'Account'}
-                        value={approvalAccount?.name ?? 'Choose account'}
+                        icon={approvalCounterAccountVisual?.icon ?? 'swap-horizontal'}
+                        iconBackgroundColor={approvalCounterAccountVisual?.backgroundColor}
+                        iconColor={approvalCounterAccountVisual?.iconColor}
+                        label="To account"
+                        value={approvalCounterAccount?.name ?? 'Choose destination'}
                         valueNumberOfLines={2}
-                        onPress={() => setApprovalPicker('account')}
+                        onPress={() => setApprovalPicker('counter')}
                       />
                     </PulsingFieldGlow>
-                    {approvalNeedsCounter ? (
-                      <PulsingFieldGlow {...approvalGlowProps('counter')}>
-                        <RecordSelectorRow
-                          icon={approvalCounterAccountVisual?.icon ?? 'swap-horizontal'}
-                          iconBackgroundColor={approvalCounterAccountVisual?.backgroundColor}
-                          iconColor={approvalCounterAccountVisual?.iconColor}
-                          label="To account"
-                          value={approvalCounterAccount?.name ?? 'Choose destination'}
-                          valueNumberOfLines={2}
-                          onPress={() => setApprovalPicker('counter')}
-                        />
-                      </PulsingFieldGlow>
-                    ) : null}
-                    {approvalUsesCategory(approvalDraft.type) ? (
-                      <PulsingFieldGlow {...approvalGlowProps('category')}>
-                        <RecordSelectorRow
-                          icon={approvalCategoryVisual?.icon ?? 'shape-outline'}
-                          iconBackgroundColor={approvalCategoryVisual?.backgroundColor}
-                          iconColor={approvalCategoryVisual?.iconColor}
-                          label="Category"
-                          value={approvalCategory?.name ?? 'Choose category'}
-                          valueNumberOfLines={2}
-                          onPress={() => setApprovalPicker('category')}
-                        />
-                      </PulsingFieldGlow>
-                    ) : null}
-                    <PulsingFieldGlow {...approvalGlowProps('date')}>
-                      <RecordDateTimeFields
-                        date={approvalDraft.date}
-                        time={approvalDraft.time}
-                        layout="stacked"
-                        onChangeDate={(date) => updateApprovalDraft({ date })}
-                        onChangeTime={(time) => updateApprovalDraft({ time })}
+                  ) : null}
+                  {approvalUsesCategory(approvalDraft.type) ? (
+                    <PulsingFieldGlow {...approvalGlowProps('category')}>
+                      <RecordSelectorRow
+                        icon={approvalCategoryVisual?.icon ?? 'shape-outline'}
+                        iconBackgroundColor={approvalCategoryVisual?.backgroundColor}
+                        iconColor={approvalCategoryVisual?.iconColor}
+                        label="Category"
+                        value={approvalCategory?.name ?? 'Choose category'}
+                        valueNumberOfLines={2}
+                        onPress={() => setApprovalPicker('category')}
                       />
                     </PulsingFieldGlow>
-                    <PulsingFieldGlow {...approvalGlowProps('merchant')}>
-                      <PremiumTextInput
-                        label="Merchant / notes"
-                        value={approvalDraft.merchantNote}
-                        onChangeText={(merchantNote) => updateApprovalDraft({ merchantNote })}
-                        onFocus={scrollApprovalToEnd}
-                        left={<TextInput.Icon icon="storefront-outline" />}
-                      />
-                    </PulsingFieldGlow>
-                  </>
-                ) : null}
-              </ScrollView>
-            </Dialog.ScrollArea>
-            <Dialog.Actions>
+                  ) : null}
+                  <PulsingFieldGlow {...approvalGlowProps('date')}>
+                    <RecordDateTimeFields
+                      date={approvalDraft.date}
+                      time={approvalDraft.time}
+                      layout="stacked"
+                      onChangeDate={(date) => updateApprovalDraft({ date })}
+                      onChangeTime={(time) => updateApprovalDraft({ time })}
+                    />
+                  </PulsingFieldGlow>
+                  <PulsingFieldGlow {...approvalGlowProps('merchant')}>
+                    <PremiumTextInput
+                      label="Merchant / notes"
+                      value={approvalDraft.merchantNote}
+                      onChangeText={(merchantNote) => updateApprovalDraft({ merchantNote })}
+                      onFocus={scrollApprovalToEnd}
+                      left={<TextInput.Icon icon="storefront-outline" />}
+                    />
+                  </PulsingFieldGlow>
+                </>
+              ) : null}
+            </ScrollView>
+            <View style={s.approvalActions}>
               <Button onPress={closeApproval}>Cancel</Button>
               <Button mode="contained" onPress={() => void submitApproval()}>
                 Approve
               </Button>
-            </Dialog.Actions>
-          </Dialog>
+            </View>
+          </Surface>
         </KeyboardAvoidingView>
-      </Portal>
+      </Modal>
       <AccountPickerOverlay
         visible={approvalPicker === 'account' || approvalPicker === 'counter'}
         title={approvalPicker === 'counter' ? 'Choose destination' : 'Choose account'}
@@ -689,7 +579,6 @@ export default function ReviewQueue() {
       />
       <CategoryPickerOverlay
         visible={approvalPicker === 'category' && Boolean(approvalDraft)}
-        kind={approvalCategoryKind}
         categories={state.categories}
         selectedId={approvalDraft?.categoryId}
         allowClear={false}
@@ -723,6 +612,175 @@ export default function ReviewQueue() {
   );
 }
 
+const CaptureCandidateCard = memo(function CaptureCandidateCard({
+  candidate,
+  account,
+  counterAccount,
+  category,
+  linkedPlanName,
+  locale,
+  onApprove,
+  onReject,
+}: {
+  candidate: CaptureCandidate;
+  account?: Account;
+  counterAccount?: Account;
+  category?: Category;
+  linkedPlanName?: string;
+  locale: string;
+  onApprove: (candidate: CaptureCandidate) => void;
+  onReject: (id: string) => Promise<void>;
+}) {
+  const theme = useTheme();
+  const walletCsvRows = useMemo(
+    () => walletCsvCaptureRows(candidate.rawPayload),
+    [candidate.rawPayload],
+  );
+  const receiptFileName =
+    typeof candidate.rawPayload.fileName === 'string' ? candidate.rawPayload.fileName : undefined;
+  const needsCounter = candidate.suggestedType
+    ? isTransferTransactionType(candidate.suggestedType)
+    : false;
+  const approve = useCallback(() => onApprove(candidate), [candidate, onApprove]);
+  const reject = useCallback(() => {
+    void onReject(candidate.id).catch((error) => {
+      Alert.alert('Cannot reject capture', (error as Error).message);
+    });
+  }, [candidate.id, onReject]);
+
+  return (
+    <Surface
+      style={[
+        s.card,
+        {
+          backgroundColor: theme.colors.elevation.level1,
+          borderColor: theme.colors.outlineVariant,
+        },
+      ]}
+      elevation={1}
+    >
+      <View style={s.cardHeader}>
+        <Text variant="labelMedium" style={[s.source, { color: theme.colors.primary }]}>
+          {candidate.source.toUpperCase()}
+        </Text>
+        <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+          {Math.round(candidate.confidence)}%
+        </Text>
+      </View>
+      <Text variant="headlineSmall" style={s.amount}>
+        {candidate.parsedAmount ? formatMoney(candidate.parsedAmount, locale) : 'Amount missing'}
+      </Text>
+      <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+        {candidate.parsedMerchant ?? 'Unknown merchant'}
+      </Text>
+      <View style={s.metaGrid}>
+        <Meta
+          label="Type"
+          value={
+            candidate.suggestedType ? transactionTypeLabel(candidate.suggestedType) : 'Needs review'
+          }
+          labelColor={theme.colors.onSurfaceVariant}
+          valueColor={theme.colors.onSurface}
+        />
+        <Meta
+          label="Account"
+          value={account?.name ?? 'Needs review'}
+          labelColor={theme.colors.onSurfaceVariant}
+          valueColor={theme.colors.onSurface}
+        />
+        {needsCounter ? (
+          <Meta
+            label="To account"
+            value={counterAccount?.name ?? 'Needs review'}
+            labelColor={theme.colors.onSurfaceVariant}
+            valueColor={theme.colors.onSurface}
+          />
+        ) : null}
+        {candidate.suggestedType === 'adjustment' ? null : (
+          <Meta
+            label="Category"
+            value={category?.name ?? 'Uncategorized'}
+            labelColor={theme.colors.onSurfaceVariant}
+            valueColor={theme.colors.onSurface}
+          />
+        )}
+        {linkedPlanName ? (
+          <Meta
+            label="Plan"
+            value={linkedPlanName}
+            labelColor={theme.colors.onSurfaceVariant}
+            valueColor={theme.colors.primary}
+          />
+        ) : null}
+        <Meta
+          label="Date"
+          value={
+            candidate.parsedOccurredAt
+              ? new Date(candidate.parsedOccurredAt).toLocaleString()
+              : 'Needs review'
+          }
+          labelColor={theme.colors.onSurfaceVariant}
+          valueColor={theme.colors.onSurface}
+        />
+        {candidate.parsedLocationLabel ? (
+          <Meta
+            label="Place"
+            value={candidate.parsedLocationLabel}
+            labelColor={theme.colors.onSurfaceVariant}
+            valueColor={theme.colors.onSurface}
+          />
+        ) : null}
+        {receiptFileName ? (
+          <Meta
+            label="Receipt"
+            value={receiptFileName}
+            labelColor={theme.colors.onSurfaceVariant}
+            valueColor={theme.colors.onSurface}
+          />
+        ) : null}
+      </View>
+      {walletCsvRows.length > 0 ? (
+        <View style={s.csvBox}>
+          <Text variant="titleSmall" style={s.hintTitle}>
+            Wallet CSV source
+          </Text>
+          {walletCsvRows.map((row, index) => (
+            <Text
+              key={`${row.fileName}:${row.rowNumber}:${index}`}
+              variant="bodySmall"
+              style={{ color: theme.colors.onSurfaceVariant }}
+            >
+              {row.fileName ? `${row.fileName} · ` : ''}
+              {row.rowNumber ? `row ${row.rowNumber} · ` : ''}
+              {row.accountName}
+              {row.matchedAccountName && row.matchedAccountName !== row.accountName
+                ? ` -> ${row.matchedAccountName}`
+                : ''}
+              {' · '}
+              {row.categoryName || 'No category'} · {row.amount} {row.currency}
+              {row.payee ? ` · ${row.payee}` : row.note ? ` · ${row.note}` : ''}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+      <View style={s.actions}>
+        <Button mode="contained" icon="check" style={s.actionButton} onPress={approve}>
+          Approve
+        </Button>
+        <Button
+          mode="outlined"
+          textColor={theme.colors.error}
+          icon="close"
+          style={s.actionButton}
+          onPress={reject}
+        >
+          Reject
+        </Button>
+      </View>
+    </Surface>
+  );
+});
+
 function Meta({
   label,
   value,
@@ -746,9 +804,23 @@ function Meta({
   );
 }
 
-function filterLabel(filter: SourceFilter, candidates: CaptureCandidate[]): string {
-  if (filter === 'all') return `${candidates.length} total`;
-  const count = candidates.filter((candidate) => candidate.source === filter).length;
+function captureSourceCounts(candidates: CaptureCandidate[]): Map<SourceFilter, number> {
+  const counts = new Map<SourceFilter, number>(SOURCE_FILTERS.map((filter) => [filter, 0]));
+  counts.set('all', candidates.length);
+  for (const candidate of candidates) {
+    if (SOURCE_FILTERS.includes(candidate.source as SourceFilter)) {
+      counts.set(
+        candidate.source as SourceFilter,
+        (counts.get(candidate.source as SourceFilter) ?? 0) + 1,
+      );
+    }
+  }
+  return counts;
+}
+
+function filterLabel(filter: SourceFilter, counts: Map<SourceFilter, number>): string {
+  if (filter === 'all') return `${counts.get('all') ?? 0} total`;
+  const count = counts.get(filter) ?? 0;
   return `${filter === 'notification' ? 'Notif' : filter.toUpperCase()} ${count}`;
 }
 
@@ -933,11 +1005,33 @@ const s = StyleSheet.create({
     gap: 2,
   },
   actionButton: { flexGrow: 1, borderRadius: tokens.radius.md },
-  keyboardHost: { flex: 1, justifyContent: 'center' },
-  dialog: { borderRadius: tokens.radius.lg, maxHeight: '88%' },
-  dialogScrollArea: { maxHeight: 520 },
-  dialogContent: {
+  approvalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: tokens.space.lg,
+  },
+  approvalSheet: {
+    borderRadius: tokens.radius.lg,
+    maxHeight: '88%',
+    overflow: 'hidden',
+  },
+  approvalTitle: {
+    fontWeight: '700',
+    paddingHorizontal: tokens.space.lg,
+    paddingTop: tokens.space.lg,
+    paddingBottom: tokens.space.sm,
+  },
+  approvalScroll: { maxHeight: 520 },
+  approvalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
     gap: tokens.space.sm,
+    padding: tokens.space.md,
+    paddingTop: tokens.space.sm,
+  },
+  approvalContent: {
+    gap: tokens.space.sm,
+    paddingHorizontal: tokens.space.lg,
     paddingBottom: tokens.space.xxl,
     paddingTop: tokens.space.md,
   },

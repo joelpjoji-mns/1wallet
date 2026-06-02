@@ -31,22 +31,33 @@ export default function Notifications() {
   const { state, mutate } = useLedger();
   const settings = normalizeNotificationPreferences(state.preferences.notifications);
   const notifications = useMemo(() => buildNotificationInbox(state), [state]);
-  const unreadCount = notifications.filter((notification) => !notification.read).length;
+  const unreadCount = useMemo(
+    () => notifications.filter((notification) => !notification.read).length,
+    [notifications],
+  );
 
   const markAllRead = async () => {
-    await mutate((draft) => markAllNotificationsRead(draft, notifications));
+    await mutate((draft) => markAllNotificationsRead(draft, notifications), {
+      slices: ['preferences'],
+    });
   };
 
   const dismissAll = async () => {
-    await mutate((draft) => dismissAllNotifications(draft, notifications));
+    await mutate((draft) => dismissAllNotifications(draft, notifications), {
+      slices: ['preferences'],
+    });
   };
 
   const dismiss = async (notification: AppNotification) => {
-    await mutate((draft) => dismissNotification(draft, notification.id));
+    await mutate((draft) => dismissNotification(draft, notification.id), {
+      slices: ['preferences'],
+    });
   };
 
   const openNotification = async (notification: AppNotification) => {
-    await mutate((draft) => markNotificationRead(draft, notification.id, true));
+    await mutate((draft) => markNotificationRead(draft, notification.id, true), {
+      slices: ['preferences'],
+    });
     openTarget(notification);
   };
 

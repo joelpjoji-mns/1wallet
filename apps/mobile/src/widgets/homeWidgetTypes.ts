@@ -215,7 +215,7 @@ export const HOME_WIDGETS: HomeWidgetMeta[] = [
   {
     id: 'incomeMix',
     title: 'Income mix',
-    body: 'Income categories like salary, refunds, interest, and cashback.',
+    body: 'Income records grouped by category, like salary, refunds, interest, and cashback.',
     icon: 'chart-donut',
     iconTone: 'income',
     defaultSize: 'wide',

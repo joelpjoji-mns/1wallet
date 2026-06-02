@@ -1,21 +1,21 @@
 import { formatMoney } from '@1wallet/domain/money';
 import type { AccountMessageHint, CategoryKind } from '@1wallet/domain/types';
 import type {
-    TransactionMessageCaptureResult,
-    TransactionMessageSource,
+  TransactionMessageCaptureResult,
+  TransactionMessageSource,
 } from '@1wallet/ledger/capture/messages';
 import {
-    createMessageCategoryRule,
-    deleteMessageCategoryRule,
-    messageHintSuggestionsForAccount,
-    parseTransactionMessage,
-    processTransactionMessageCapture,
-    updateMessageCategoryRule,
+  createMessageCategoryRule,
+  deleteMessageCategoryRule,
+  messageHintSuggestionsForAccount,
+  parseTransactionMessage,
+  processTransactionMessageCapture,
+  updateMessageCategoryRule,
 } from '@1wallet/ledger/capture/messages';
 import { createCaptureCandidate, mergeAcceptedMessageAccountHints } from '@1wallet/ledger/services';
 import {
-    normalizeAutoCapturePreferences,
-    type MessageCategoryKeywordRule,
+  normalizeAutoCapturePreferences,
+  type MessageCategoryKeywordRule,
 } from '@1wallet/ledger/store/types';
 import { useLedger } from '@1wallet/state';
 import { tokens } from '@1wallet/ui';
@@ -25,27 +25,27 @@ import { Alert, Linking, Platform, StyleSheet, View } from 'react-native';
 import { Button, Chip, Divider, Switch, Text, useTheme } from 'react-native-paper';
 import { resolveAccountIconVisual } from '../src/accountOptions';
 import {
-    getAndroidSmsPermissionState,
-    isAndroidSmsInboxAvailable,
-    readAndroidSmsInbox,
-    requestAndroidSmsPermission,
-    type AndroidSmsPermissionState,
-    type AndroidSmsPermissionStatus,
+  getAndroidSmsPermissionState,
+  isAndroidSmsInboxAvailable,
+  readAndroidSmsInbox,
+  requestAndroidSmsPermission,
+  type AndroidSmsPermissionState,
+  type AndroidSmsPermissionStatus,
 } from '../src/androidSmsInbox';
 import { categoryBreadcrumb } from '../src/categoryTree';
 import {
-    AppScreen,
-    EmptyState,
-    InfoRow,
-    InlineMeta,
-    PremiumTextInput,
-    SectionCard,
+  AppScreen,
+  EmptyState,
+  InfoRow,
+  InlineMeta,
+  PremiumTextInput,
+  SectionCard,
 } from '../src/components/AppKit';
 import { DateOnlyPickerField } from '../src/components/DateOnlyPickerField';
 import {
-    OptionListOverlay,
-    OptionSelectorRow,
-    type OptionListItem,
+  OptionListOverlay,
+  OptionSelectorRow,
+  type OptionListItem,
 } from '../src/components/OptionListOverlay';
 import { CategoryPickerOverlay } from '../src/components/record/RecordPickers';
 import { RecordSelectorRow } from '../src/components/record/RecordSelectorRow';
@@ -74,7 +74,7 @@ type SmsScanSummary = {
 
 export default function SmsImport() {
   const theme = useTheme();
-  const { state, mutate, selectors } = useLedger();
+  const { state, indexes, mutate } = useLedger();
   const autoCapture = normalizeAutoCapturePreferences(state.preferences.autoCapture);
   const storedTriggerKeywords = autoCapture.sms.triggerKeywords.join(', ');
   const storedIgnoredSenders = autoCapture.sms.ignoredSenderIds.join(', ');
@@ -103,7 +103,12 @@ export default function SmsImport() {
   const [rulePickerMode, setRulePickerMode] = useState<RulePickerMode>(null);
   const smsInboxAvailable = isAndroidSmsInboxAvailable();
   const messageCategoryRules = state.preferences.messageCategoryRules ?? [];
-  const pendingReviewCount = selectors.queryCaptureCandidates(state, { status: 'pending' }).length;
+  const pendingReviewCount = useMemo(
+    () => indexes.captureCandidatesByStatus.get('pending')?.length ?? 0,
+    [indexes.captureCandidatesByStatus],
+  );
+  const accountsById = indexes.accountsById;
+  const categoriesById = indexes.categoriesById;
 
   const refreshSmsPermissionState = useCallback(async () => {
     const next = await getAndroidSmsPermissionState();
@@ -143,20 +148,16 @@ export default function SmsImport() {
   }, [body, sender, source, state, subject]);
 
   const matchedAccount = result?.match.accountId
-    ? state.accounts.find((account) => account.id === result.match.accountId)
+    ? accountsById.get(result.match.accountId)
     : undefined;
   const matchedCategory = result?.categoryMatch.categoryId
-    ? state.categories.find((category) => category.id === result.categoryMatch.categoryId)
+    ? categoriesById.get(result.categoryMatch.categoryId)
     : undefined;
-  const selectedAccount = selectedAccountId
-    ? state.accounts.find((account) => account.id === selectedAccountId)
-    : matchedAccount;
+  const selectedAccount = selectedAccountId ? accountsById.get(selectedAccountId) : matchedAccount;
   const selectedAccountVisual = selectedAccount
     ? resolveAccountIconVisual(selectedAccount)
     : undefined;
-  const selectedRuleCategory = ruleCategoryId
-    ? state.categories.find((category) => category.id === ruleCategoryId)
-    : undefined;
+  const selectedRuleCategory = ruleCategoryId ? categoriesById.get(ruleCategoryId) : undefined;
   const hintSuggestions = useMemo(
     () =>
       result && selectedAccount
@@ -183,12 +184,6 @@ export default function SmsImport() {
     );
   }, [hintSuggestions]);
 
-  useEffect(() => {
-    if (selectedRuleCategory && selectedRuleCategory.kind !== ruleKind) {
-      setRuleCategoryId(undefined);
-    }
-  }, [ruleKind, selectedRuleCategory]);
-
   const resetRuleEditor = () => {
     setRuleEditorId(undefined);
     setRuleName('');
@@ -199,7 +194,7 @@ export default function SmsImport() {
   };
 
   const editRule = (rule: MessageCategoryKeywordRule) => {
-    const category = state.categories.find((item) => item.id === rule.categoryId);
+    const category = categoriesById.get(rule.categoryId);
     setRuleEditorId(rule.id);
     setRuleName(rule.name);
     setRuleKeywords(rule.keywords.join(', '));
@@ -218,34 +213,43 @@ export default function SmsImport() {
       return;
     }
 
-    await mutate((draft) => {
-      if (ruleEditorId) {
-        updateMessageCategoryRule(draft, ruleEditorId, {
-          name: ruleName,
-          keywords,
-          categoryId: ruleCategoryId,
-        });
-      } else {
-        createMessageCategoryRule(draft, {
-          name: ruleName,
-          keywords,
-          categoryId: ruleCategoryId,
-        });
-      }
-    });
+    await mutate(
+      (draft) => {
+        if (ruleEditorId) {
+          updateMessageCategoryRule(draft, ruleEditorId, {
+            name: ruleName,
+            keywords,
+            categoryId: ruleCategoryId,
+          });
+        } else {
+          createMessageCategoryRule(draft, {
+            name: ruleName,
+            keywords,
+            categoryId: ruleCategoryId,
+          });
+        }
+      },
+      { slices: ['preferences'] },
+    );
     resetRuleEditor();
   };
 
   const toggleRule = async (rule: MessageCategoryKeywordRule) => {
-    await mutate((draft) => {
-      updateMessageCategoryRule(draft, rule.id, { enabled: !rule.enabled });
-    });
+    await mutate(
+      (draft) => {
+        updateMessageCategoryRule(draft, rule.id, { enabled: !rule.enabled });
+      },
+      { slices: ['preferences'] },
+    );
   };
 
   const removeRule = async (rule: MessageCategoryKeywordRule) => {
-    await mutate((draft) => {
-      deleteMessageCategoryRule(draft, rule.id);
-    });
+    await mutate(
+      (draft) => {
+        deleteMessageCategoryRule(draft, rule.id);
+      },
+      { slices: ['preferences'] },
+    );
     if (ruleEditorId === rule.id) resetRuleEditor();
   };
 
@@ -264,21 +268,24 @@ export default function SmsImport() {
         return;
       }
     }
-    await mutate((draft) => {
-      const current = normalizeAutoCapturePreferences(draft.preferences.autoCapture);
-      draft.preferences.autoCapture = normalizeAutoCapturePreferences({
-        ...current,
-        enabled: patch.enabled ?? (enablingSmsCapture ? true : current.enabled),
-        autoPost: patch.autoPost ?? current.autoPost,
-        sms: {
-          ...current.sms,
-          enabled: patch.smsEnabled ?? (enablingSmsCapture ? true : current.sms.enabled),
-          backgroundEnabled:
-            patch.smsBackgroundEnabled ??
-            (patch.smsEnabled === true ? true : current.sms.backgroundEnabled),
-        },
-      });
-    });
+    await mutate(
+      (draft) => {
+        const current = normalizeAutoCapturePreferences(draft.preferences.autoCapture);
+        draft.preferences.autoCapture = normalizeAutoCapturePreferences({
+          ...current,
+          enabled: patch.enabled ?? (enablingSmsCapture ? true : current.enabled),
+          autoPost: patch.autoPost ?? current.autoPost,
+          sms: {
+            ...current.sms,
+            enabled: patch.smsEnabled ?? (enablingSmsCapture ? true : current.sms.enabled),
+            backgroundEnabled:
+              patch.smsBackgroundEnabled ??
+              (patch.smsEnabled === true ? true : current.sms.backgroundEnabled),
+          },
+        });
+      },
+      { slices: ['preferences'] },
+    );
   };
 
   const requestSmsPermissions = async () => {
@@ -293,38 +300,44 @@ export default function SmsImport() {
   };
 
   const enableSmsAutoCapture = async () => {
-    await mutate((draft) => {
-      const current = normalizeAutoCapturePreferences(draft.preferences.autoCapture);
-      draft.preferences.autoCapture = normalizeAutoCapturePreferences({
-        ...current,
-        enabled: true,
-        sms: {
-          ...current.sms,
+    await mutate(
+      (draft) => {
+        const current = normalizeAutoCapturePreferences(draft.preferences.autoCapture);
+        draft.preferences.autoCapture = normalizeAutoCapturePreferences({
+          ...current,
           enabled: true,
-          backgroundEnabled: true,
-        },
-      });
-    });
+          sms: {
+            ...current.sms,
+            enabled: true,
+            backgroundEnabled: true,
+          },
+        });
+      },
+      { slices: ['preferences'] },
+    );
   };
 
   const saveAutoCaptureSettings = async () => {
     const scanLimit = Number(scanLimitDraft);
     const autoPostConfidence = Number(autoPostConfidenceDraft);
-    await mutate((draft) => {
-      const current = normalizeAutoCapturePreferences(draft.preferences.autoCapture);
-      draft.preferences.autoCapture = normalizeAutoCapturePreferences({
-        ...current,
-        autoPostConfidence: Number.isFinite(autoPostConfidence)
-          ? autoPostConfidence
-          : current.autoPostConfidence,
-        sms: {
-          ...current.sms,
-          scanLimit: Number.isFinite(scanLimit) ? scanLimit : current.sms.scanLimit,
-          triggerKeywords: splitKeywordList(triggerKeywordsDraft),
-          ignoredSenderIds: splitKeywordList(ignoredSendersDraft),
-        },
-      });
-    });
+    await mutate(
+      (draft) => {
+        const current = normalizeAutoCapturePreferences(draft.preferences.autoCapture);
+        draft.preferences.autoCapture = normalizeAutoCapturePreferences({
+          ...current,
+          autoPostConfidence: Number.isFinite(autoPostConfidence)
+            ? autoPostConfidence
+            : current.autoPostConfidence,
+          sms: {
+            ...current.sms,
+            scanLimit: Number.isFinite(scanLimit) ? scanLimit : current.sms.scanLimit,
+            triggerKeywords: splitKeywordList(triggerKeywordsDraft),
+            ignoredSenderIds: splitKeywordList(ignoredSendersDraft),
+          },
+        });
+      },
+      { slices: ['preferences'] },
+    );
     Alert.alert('Auto Capture saved', 'SMS trigger and posting settings are updated.');
   };
 
@@ -350,12 +363,15 @@ export default function SmsImport() {
             )
           : result.candidateInput.warnings,
     };
-    await mutate((draft) => {
-      if (selectedAccountId && acceptedHints.length > 0) {
-        mergeAcceptedMessageAccountHints(draft, selectedAccountId, acceptedHints);
-      }
-      createCaptureCandidate(draft, candidateInput);
-    });
+    await mutate(
+      (draft) => {
+        if (selectedAccountId && acceptedHints.length > 0) {
+          mergeAcceptedMessageAccountHints(draft, selectedAccountId, acceptedHints);
+        }
+        createCaptureCandidate(draft, candidateInput);
+      },
+      { slices: ['accounts', 'captureCandidates'] },
+    );
     Alert.alert('Queued for review', 'The parsed message is waiting in Review.', [
       { text: 'Stay', style: 'cancel' },
       { text: 'Review', onPress: () => router.push('/review') },
@@ -416,42 +432,53 @@ export default function SmsImport() {
         unrecognized: 0,
         ignoredReasons: {},
       };
-      await mutate((draft) => {
-        const preferences = normalizeAutoCapturePreferences(draft.preferences.autoCapture);
-        for (const message of messages) {
-          const result = processTransactionMessageCapture(
-            draft,
-            {
-              source: 'sms',
-              sender: message.sender,
-              body: message.body,
-              receivedAt: message.receivedAt,
+      await mutate(
+        (draft) => {
+          const preferences = normalizeAutoCapturePreferences(draft.preferences.autoCapture);
+          for (const message of messages) {
+            const result = processTransactionMessageCapture(
+              draft,
+              {
+                source: 'sms',
+                sender: message.sender,
+                body: message.body,
+                receivedAt: message.receivedAt,
+              },
+              {
+                triggerKeywords: preferences.sms.triggerKeywords,
+                ignoredSenderIds: preferences.sms.ignoredSenderIds,
+                autoPost: preferences.autoPost,
+                autoPostConfidence: preferences.autoPostConfidence,
+                smsInboxId: message.id,
+              },
+            );
+            if (result.parseResult?.candidateInput) summary.recognized += 1;
+            if (result.outcome === 'posted') summary.posted += 1;
+            else if (result.outcome === 'queued') summary.queued += 1;
+            else if (result.outcome === 'duplicate') summary.duplicates += 1;
+            else if (result.outcome === 'ignored') summary.ignored += 1;
+            else if (result.outcome === 'unrecognized') summary.unrecognized += 1;
+            const reason = smsCaptureReason(result);
+            if (reason) summary.ignoredReasons[reason] = (summary.ignoredReasons[reason] ?? 0) + 1;
+          }
+          draft.preferences.autoCapture = normalizeAutoCapturePreferences({
+            ...preferences,
+            sms: {
+              ...preferences.sms,
+              lastRun: { ...summary, ranAt: new Date().toISOString() },
             },
-            {
-              triggerKeywords: preferences.sms.triggerKeywords,
-              ignoredSenderIds: preferences.sms.ignoredSenderIds,
-              autoPost: preferences.autoPost,
-              autoPostConfidence: preferences.autoPostConfidence,
-              smsInboxId: message.id,
-            },
-          );
-          if (result.parseResult?.candidateInput) summary.recognized += 1;
-          if (result.outcome === 'posted') summary.posted += 1;
-          else if (result.outcome === 'queued') summary.queued += 1;
-          else if (result.outcome === 'duplicate') summary.duplicates += 1;
-          else if (result.outcome === 'ignored') summary.ignored += 1;
-          else if (result.outcome === 'unrecognized') summary.unrecognized += 1;
-          const reason = smsCaptureReason(result);
-          if (reason) summary.ignoredReasons[reason] = (summary.ignoredReasons[reason] ?? 0) + 1;
-        }
-        draft.preferences.autoCapture = normalizeAutoCapturePreferences({
-          ...preferences,
-          sms: {
-            ...preferences.sms,
-            lastRun: { ...summary, ranAt: new Date().toISOString() },
-          },
-        });
-      });
+          });
+        },
+        {
+          slices: [
+            'preferences',
+            'accounts',
+            'transactions',
+            'transactionSplits',
+            'captureCandidates',
+          ],
+        },
+      );
       setSmsScanSummary(summary);
       Alert.alert(
         'SMS scan complete',
@@ -1054,7 +1081,6 @@ export default function SmsImport() {
       />
       <CategoryPickerOverlay
         visible={rulePickerMode === 'category'}
-        kind={ruleKind}
         categories={state.categories}
         selectedId={ruleCategoryId}
         onDismiss={() => setRulePickerMode(null)}

@@ -3,50 +3,53 @@ import { enabledCurrencies } from '@1wallet/ledger/services';
 import { useLedger } from '@1wallet/state';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
-    Button,
-    Dialog,
-    Divider,
-    Portal,
-    Snackbar,
-    Switch,
-    Text,
-    useTheme,
+  Button,
+  Dialog,
+  Divider,
+  HelperText,
+  Portal,
+  Snackbar,
+  Switch,
+  Text,
+  useTheme,
 } from 'react-native-paper';
 import {
-    getAndroidNotificationPermissionStatus,
-    openAndroidAppSettings,
-    requestAndroidNotificationPermission,
-    type AndroidRuntimePermissionStatus,
+  getAndroidNotificationPermissionStatus,
+  openAndroidAppSettings,
+  requestAndroidNotificationPermission,
+  type AndroidRuntimePermissionStatus,
 } from '../src/androidPermissions';
 import { useAuth } from '../src/auth';
 import {
-    AppScreen,
-    InfoRow,
-    PremiumTextInput,
-    QuickLink,
-    SectionCard,
-    type AppIconName,
+  AppScreen,
+  InfoRow,
+  PremiumTextInput,
+  QuickLink,
+  SectionCard,
+  type AppIconName,
 } from '../src/components/AppKit';
 import {
-    OptionListOverlay,
-    OptionSelectorRow,
-    type OptionListItem,
+  OptionListOverlay,
+  OptionSelectorRow,
+  type OptionListItem,
 } from '../src/components/OptionListOverlay';
 import { ThemeAccentPicker } from '../src/components/ThemeAccentPicker';
 import { buildEnabledCurrencyOptions, currencyOptionIcon } from '../src/currencyOptions';
 import {
-    buildNotificationInbox,
-    normalizeNotificationPreferences,
-    type AppNotificationChannel,
+  buildNotificationInbox,
+  normalizeNotificationPreferences,
+  type AppNotificationChannel,
 } from '../src/notifications';
 import {
-    DEFAULT_CUSTOM_ACCENT_COLOR,
-    normalizeHexColor,
-    normalizeThemeAccentPreference,
+  DEFAULT_CUSTOM_ACCENT_COLOR,
+  normalizeHexColor,
+  normalizeThemeAccentPreference,
 } from '../src/theme';
+import { saveCachedThemePreference } from '../src/themePreferenceStorage';
+import { useAutoSaveDraft } from '../src/useAutoSaveDraft';
 import { useWalletSignOut } from '../src/useWalletSignOut';
 
 const LOCALE_OPTIONS: OptionListItem[] = [
@@ -119,12 +122,6 @@ const NOTIFICATION_CHANNELS: {
   icon: AppIconName;
 }[] = [
   {
-    channel: 'reviewQueue',
-    label: 'Review queue',
-    body: 'Captured records waiting for approval.',
-    icon: 'robot-outline',
-  },
-  {
     channel: 'scheduled',
     label: 'Scheduled records',
     body: 'Upcoming and overdue payments, transfers, bills, and income.',
@@ -142,21 +139,11 @@ const NOTIFICATION_CHANNELS: {
     body: 'Goal deadline and progress warnings.',
     icon: 'bullseye-arrow',
   },
-  {
-    channel: 'accounts',
-    label: 'Accounts and cards',
-    body: 'Negative balances, card debt, and account-level warnings.',
-    icon: 'wallet-outline',
-  },
-  {
-    channel: 'imports',
-    label: 'Imports',
-    body: 'CSV and automation warnings or duplicates.',
-    icon: 'file-alert-outline',
-  },
 ];
 
 type SettingsPicker = 'currency' | 'locale' | 'theme' | 'accent' | null;
+type StartDayDraft = { day: string };
+type NormalizedStartDayDraft = { day: number | null };
 
 const MANAGEMENT_LINKS = [
   {
@@ -223,10 +210,18 @@ const MANAGEMENT_LINKS = [
 
 export default function Settings() {
   const theme = useTheme();
-  const { state, mutate, reset, setBaseCurrency: setLedgerBaseCurrency } = useLedger();
+  const {
+    state,
+    indexes,
+    mutate,
+    reset,
+    flushSaves,
+    setBaseCurrency: setLedgerBaseCurrency,
+  } = useLedger();
   const { authProvider, user } = useAuth();
   const { signOutWallet, signingOut } = useWalletSignOut();
   const [startDay, setStartDay] = useState(String(state.preferences.startDayOfMonth));
+  const [startDayTouched, setStartDayTouched] = useState(false);
   const [picker, setPicker] = useState<SettingsPicker>(null);
   const [accentPickerVisible, setAccentPickerVisible] = useState(false);
   const [resetVisible, setResetVisible] = useState(false);
@@ -234,16 +229,53 @@ export default function Settings() {
   const [pushPermissionStatus, setPushPermissionStatus] =
     useState<AndroidRuntimePermissionStatus>('unavailable');
   const notificationSettings = normalizeNotificationPreferences(state.preferences.notifications);
-  const notifications = buildNotificationInbox(state);
-  const unreadNotifications = notifications.filter((notification) => !notification.read).length;
+  const notifications = useMemo(() => buildNotificationInbox(state), [state]);
+  const unreadNotifications = useMemo(
+    () => notifications.filter((notification) => !notification.read).length,
+    [notifications],
+  );
   const accentPreference = normalizeThemeAccentPreference(state.preferences.themeAccent);
   const savedCustomAccent = normalizeHexColor(state.preferences.themeAccent?.customColor);
   const currencyOptions = useMemo(
     () => buildEnabledCurrencyOptions(enabledCurrencies(state), [state.preferences.baseCurrency]),
     [state],
   );
+  const startDayDraft = useMemo<StartDayDraft>(() => ({ day: startDay }), [startDay]);
+  const savedStartDayDraft = useMemo<StartDayDraft>(
+    () => ({ day: String(state.preferences.startDayOfMonth) }),
+    [state.preferences.startDayOfMonth],
+  );
 
   const saveMessage = (message: string) => setSnackbar(message);
+
+  const saveStartDayDraft = useCallback(
+    async (draft: NormalizedStartDayDraft) => {
+      if (draft.day === null) return;
+      await mutate(
+        (nextState) => {
+          nextState.preferences.startDayOfMonth =
+            draft.day ?? nextState.preferences.startDayOfMonth;
+        },
+        { slices: ['preferences'] },
+      );
+    },
+    [mutate],
+  );
+  const startDayAutosave = useAutoSaveDraft<StartDayDraft, NormalizedStartDayDraft>({
+    value: startDayDraft,
+    savedValue: savedStartDayDraft,
+    sourceKey: 'settings.startDayOfMonth',
+    save: saveStartDayDraft,
+    disabled: !startDayTouched,
+    normalize: normalizeStartDayDraft,
+    validate: startDayDraftIsValid,
+    isEqual: normalizedStartDayDraftsEqual,
+    onError: (error) => saveMessage(autosaveErrorMessage(error, 'Could not save month start day')),
+  });
+  const startDayValidationError = startDayTouched
+    ? startDayValidationMessage(normalizeStartDayDraft(startDayDraft))
+    : null;
+  const startDayStatusLabel = autosaveStatusLabel(startDayAutosave.status);
 
   useEffect(() => {
     let mounted = true;
@@ -255,64 +287,79 @@ export default function Settings() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!startDayTouched) setStartDay(String(state.preferences.startDayOfMonth));
+  }, [startDayTouched, state.preferences.startDayOfMonth]);
+
+  useEffect(() => {
+    const normalizedDraft = normalizeStartDayDraft(startDayDraft);
+    if (startDayTouched && normalizedDraft.day === state.preferences.startDayOfMonth) {
+      setStartDayTouched(false);
+    }
+  }, [startDayDraft, startDayTouched, state.preferences.startDayOfMonth]);
+
   const setBaseCurrency = async (currency: string) => {
     await setLedgerBaseCurrency(currency);
     saveMessage('Base currency updated');
   };
 
   const setLocale = async (locale: string) => {
-    await mutate((draft) => {
-      draft.preferences.locale = locale;
-    });
+    await mutate(
+      (draft) => {
+        draft.preferences.locale = locale;
+      },
+      { slices: ['preferences'] },
+    );
     saveMessage('Locale updated');
   };
 
   const setThemePreference = async (value: ThemePreference) => {
-    await mutate((draft) => {
-      draft.preferences.theme = value;
-    });
+    await mutate(
+      (draft) => {
+        draft.preferences.theme = value;
+      },
+      { slices: ['preferences'] },
+    );
+    await flushSaves();
+    await saveCachedThemePreference(value);
     saveMessage('Theme preference saved');
   };
 
   const setSystemAccent = async () => {
-    await mutate((draft) => {
-      draft.preferences.themeAccent = {
-        source: 'system',
-        customColor: normalizeHexColor(draft.preferences.themeAccent?.customColor),
-      };
-    });
+    await mutate(
+      (draft) => {
+        draft.preferences.themeAccent = {
+          source: 'system',
+          customColor: normalizeHexColor(draft.preferences.themeAccent?.customColor),
+        };
+      },
+      { slices: ['preferences'] },
+    );
     saveMessage('System accent enabled');
   };
 
   const setCustomAccent = async (color: string) => {
     const normalized = normalizeHexColor(color) ?? DEFAULT_CUSTOM_ACCENT_COLOR;
-    await mutate((draft) => {
-      draft.preferences.themeAccent = { source: 'custom', customColor: normalized };
-    });
+    await mutate(
+      (draft) => {
+        draft.preferences.themeAccent = { source: 'custom', customColor: normalized };
+      },
+      { slices: ['preferences'] },
+    );
     setAccentPickerVisible(false);
     saveMessage('Custom accent saved');
   };
 
-  const saveStartDay = async () => {
-    const day = Number(startDay);
-    if (!Number.isInteger(day) || day < 1 || day > 28) {
-      saveMessage('Start day must be between 1 and 28');
-      return;
-    }
-
-    await mutate((draft) => {
-      draft.preferences.startDayOfMonth = day;
-    });
-    saveMessage('Month start day updated');
-  };
-
   const setNotificationsEnabled = async (enabled: boolean) => {
-    await mutate((draft) => {
-      draft.preferences.notifications = {
-        ...normalizeNotificationPreferences(draft.preferences.notifications),
-        enabled,
-      };
-    });
+    await mutate(
+      (draft) => {
+        draft.preferences.notifications = {
+          ...normalizeNotificationPreferences(draft.preferences.notifications),
+          enabled,
+        };
+      },
+      { slices: ['preferences'] },
+    );
     saveMessage(enabled ? 'Notifications enabled' : 'Notifications paused');
   };
 
@@ -330,23 +377,29 @@ export default function Settings() {
       }
     }
 
-    await mutate((draft) => {
-      draft.preferences.notifications = {
-        ...normalizeNotificationPreferences(draft.preferences.notifications),
-        pushEnabled: enabled,
-      };
-    });
+    await mutate(
+      (draft) => {
+        draft.preferences.notifications = {
+          ...normalizeNotificationPreferences(draft.preferences.notifications),
+          pushEnabled: enabled,
+        };
+      },
+      { slices: ['preferences'] },
+    );
     saveMessage(enabled ? 'Android notifications enabled' : 'Android notifications paused');
   };
 
   const setQuietHoursEnabled = async (enabled: boolean) => {
-    await mutate((draft) => {
-      const current = normalizeNotificationPreferences(draft.preferences.notifications);
-      draft.preferences.notifications = {
-        ...current,
-        quietHours: { ...current.quietHours, enabled },
-      };
-    });
+    await mutate(
+      (draft) => {
+        const current = normalizeNotificationPreferences(draft.preferences.notifications);
+        draft.preferences.notifications = {
+          ...current,
+          quietHours: { ...current.quietHours, enabled },
+        };
+      },
+      { slices: ['preferences'] },
+    );
     saveMessage(enabled ? 'Quiet hours enabled' : 'Quiet hours disabled');
   };
 
@@ -354,13 +407,16 @@ export default function Settings() {
     channel: AppNotificationChannel,
     enabled: boolean,
   ) => {
-    await mutate((draft) => {
-      const current = normalizeNotificationPreferences(draft.preferences.notifications);
-      draft.preferences.notifications = {
-        ...current,
-        channels: { ...current.channels, [channel]: enabled },
-      };
-    });
+    await mutate(
+      (draft) => {
+        const current = normalizeNotificationPreferences(draft.preferences.notifications);
+        draft.preferences.notifications = {
+          ...current,
+          channels: { ...current.channels, [channel]: enabled },
+        };
+      },
+      { slices: ['preferences'] },
+    );
     saveMessage(enabled ? 'Notification channel enabled' : 'Notification channel paused');
   };
 
@@ -380,8 +436,9 @@ export default function Settings() {
     }
   };
 
-  const pendingCaptures = state.captureCandidates.filter(
-    (candidate) => candidate.status === 'pending',
+  const pendingCaptures = useMemo(
+    () => indexes.captureCandidatesByStatus.get('pending') ?? [],
+    [indexes.captureCandidatesByStatus],
   );
 
   return (
@@ -438,14 +495,22 @@ export default function Settings() {
             <PremiumTextInput
               label="Month starts on day"
               value={startDay}
-              onChangeText={setStartDay}
+              onChangeText={(value) => {
+                setStartDayTouched(true);
+                setStartDay(value);
+              }}
               keyboardType="number-pad"
               style={styles.dayInput}
             />
-            <Button mode="contained-tonal" onPress={() => void saveStartDay()}>
-              Save
-            </Button>
           </View>
+          <HelperText type="error" visible={Boolean(startDayValidationError)}>
+            {startDayValidationError ?? ' '}
+          </HelperText>
+          {startDayStatusLabel ? (
+            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+              {startDayStatusLabel}
+            </Text>
+          ) : null}
 
           <OptionSelectorRow
             label="Theme"
@@ -525,14 +590,14 @@ export default function Settings() {
 
         <SectionCard
           title="Notifications"
-          subtitle="Local-first finance alerts generated from the ledger."
+          subtitle="Actionable Android alerts for updates and time-sensitive wallet items."
         >
           <View style={styles.switchRow}>
             <View style={styles.switchCopy}>
               <Text variant="titleSmall">Notification inbox</Text>
               <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                {notifications.length} active signals across review, reminders, budgets, accounts,
-                and imports.
+                {notifications.length} active reminder, budget, or goal alert
+                {notifications.length === 1 ? '' : 's'}.
               </Text>
             </View>
             <Switch
@@ -545,7 +610,8 @@ export default function Settings() {
             <View style={styles.switchCopy}>
               <Text variant="titleSmall">Android notifications</Text>
               <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                {notificationPermissionLabel(pushPermissionStatus)}
+                {notificationPermissionLabel(pushPermissionStatus)} Updates use Android alerts when
+                permission is granted.
               </Text>
             </View>
             <Switch
@@ -777,6 +843,41 @@ function notificationPermissionLabel(status: AndroidRuntimePermissionStatus): st
   if (status === 'blocked') return 'Android permission is blocked for this app.';
   if (status === 'denied') return 'Android permission is needed for native alerts.';
   return 'Native alerts are available on Android devices.';
+}
+
+function normalizeStartDayDraft(draft: StartDayDraft): NormalizedStartDayDraft {
+  const day = Number(draft.day.trim());
+  return { day: Number.isInteger(day) ? day : null };
+}
+
+function startDayDraftIsValid(draft: NormalizedStartDayDraft) {
+  return !startDayValidationMessage(draft);
+}
+
+function startDayValidationMessage(draft: NormalizedStartDayDraft) {
+  if (draft.day === null || draft.day < 1 || draft.day > 28) {
+    return 'Start day must be between 1 and 28';
+  }
+  return null;
+}
+
+function normalizedStartDayDraftsEqual(
+  left: NormalizedStartDayDraft,
+  right: NormalizedStartDayDraft,
+) {
+  return left.day === right.day;
+}
+
+function autosaveStatusLabel(status: string) {
+  if (status === 'saving') return 'Saving...';
+  if (status === 'saved') return 'Saved';
+  return '';
+}
+
+function autosaveErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string' && error.trim()) return error;
+  return fallback;
 }
 
 function settingsErrorMessage(err: unknown, fallback: string): string {

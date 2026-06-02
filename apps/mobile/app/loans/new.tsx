@@ -283,88 +283,95 @@ export default function NewLoan() {
     }
 
     let createdLoanId: string | undefined;
-    await mutate((draft) => {
-      const openingBalanceMinor =
-        setupMode === 'backfill_paid' ? -principalMinor : -outstandingMinor;
-      const loan = createAccount(draft, {
-        name: cleanName,
-        type: accountType,
-        currency,
-        openingBalanceMinor,
-        openingDate: setupMode === 'backfill_paid' ? loanStartedOn : nextEmiOn,
-        institution: institution.trim() || undefined,
-        icon: accountIconForType(accountType),
-        color: accountType === 'overdraft' ? '#A83246' : '#6B5F47',
-        includeInTotals: true,
-        includeInBudgets: false,
-        includeInReports: true,
-        includeInNetWorth,
-      });
-      createdLoanId = loan.id;
+    await mutate(
+      (draft) => {
+        const openingBalanceMinor =
+          setupMode === 'backfill_paid' ? -principalMinor : -outstandingMinor;
+        const loan = createAccount(draft, {
+          name: cleanName,
+          type: accountType,
+          currency,
+          openingBalanceMinor,
+          openingDate: setupMode === 'backfill_paid' ? loanStartedOn : nextEmiOn,
+          institution: institution.trim() || undefined,
+          icon: accountIconForType(accountType),
+          color: accountType === 'overdraft' ? '#A83246' : '#6B5F47',
+          includeInTotals: true,
+          includeInBudgets: false,
+          includeInReports: true,
+          includeInNetWorth,
+        });
+        createdLoanId = loan.id;
 
-      if (setupMode === 'backfill_paid' && paid > 0) {
-        const historicalDetails = buildLoanDetails(loan, {
+        if (setupMode === 'backfill_paid' && paid > 0) {
+          const historicalDetails = buildLoanDetails(loan, {
+            loanKind,
+            principalMinor,
+            sourceAccountId: source.id,
+            emiMinor,
+            startsOn: loanStartedOn,
+            trackingStartsOn: loanStartedOn,
+            remainingCount: paid + remaining,
+            paid: 0,
+            rate,
+            ratePeriod,
+            interestMethod,
+            setupMode,
+          });
+          const forecast = buildLoanForecast(draft, loan, historicalDetails, {
+            amountMinor: openingBalanceMinor,
+            currency,
+          });
+          for (const row of forecast.rows.slice(0, paid)) {
+            createTransaction(draft, {
+              type: 'loan_repayment',
+              status: 'cleared',
+              source: 'manual',
+              accountId: source.id,
+              counterAccountId: loan.id,
+              amountMinor: row.payment.amountMinor,
+              currency,
+              counterAmountMinor: row.principal.amountMinor || undefined,
+              counterCurrency: row.principal.amountMinor ? currency : undefined,
+              occurredAt: withHour(row.dueAt, 8),
+              paymentMethod: 'Auto debit',
+              notes: `${loan.name} backfilled EMI #${row.installment}`,
+              externalRef: `loan-backfill-v1:${loan.id}:${row.dueAt}`,
+            });
+          }
+        }
+
+        const loanDetails = buildLoanDetails(loan, {
           loanKind,
           principalMinor,
           sourceAccountId: source.id,
           emiMinor,
           startsOn: loanStartedOn,
-          trackingStartsOn: loanStartedOn,
+          trackingStartsOn: nextEmiOn,
           remainingCount: paid + remaining,
-          paid: 0,
+          paid,
           rate,
           ratePeriod,
           interestMethod,
           setupMode,
         });
-        const forecast = buildLoanForecast(draft, loan, historicalDetails, {
-          amountMinor: openingBalanceMinor,
-          currency,
-        });
-        for (const row of forecast.rows.slice(0, paid)) {
-          createTransaction(draft, {
-            type: 'loan_repayment',
-            status: 'cleared',
-            source: 'manual',
-            accountId: source.id,
-            counterAccountId: loan.id,
-            amountMinor: row.payment.amountMinor,
+        const input = buildLoanPlannedPaymentInput(loan, loanDetails);
+        const rule = input ? createFutureGenerationRule(draft, input) : undefined;
+        const openingBalanceMinorForOutstanding = loanOpeningBalanceMinorForOutstanding(
+          draft,
+          loan,
+          {
+            amountMinor: outstandingMinor,
             currency,
-            counterAmountMinor: row.principal.amountMinor || undefined,
-            counterCurrency: row.principal.amountMinor ? currency : undefined,
-            occurredAt: withHour(row.dueAt, 8),
-            paymentMethod: 'Auto debit',
-            notes: `${loan.name} backfilled EMI #${row.installment}`,
-            externalRef: `loan-backfill-v1:${loan.id}:${row.dueAt}`,
-          });
-        }
-      }
-
-      const loanDetails = buildLoanDetails(loan, {
-        loanKind,
-        principalMinor,
-        sourceAccountId: source.id,
-        emiMinor,
-        startsOn: loanStartedOn,
-        trackingStartsOn: nextEmiOn,
-        remainingCount: paid + remaining,
-        paid,
-        rate,
-        ratePeriod,
-        interestMethod,
-        setupMode,
-      });
-      const input = buildLoanPlannedPaymentInput(loan, loanDetails);
-      const rule = input ? createFutureGenerationRule(draft, input) : undefined;
-      const openingBalanceMinorForOutstanding = loanOpeningBalanceMinorForOutstanding(draft, loan, {
-        amountMinor: outstandingMinor,
-        currency,
-      });
-      updateAccount(draft, loan.id, {
-        openingBalanceMinor: openingBalanceMinorForOutstanding,
-        loanDetails: { ...loanDetails, linkedPlannedPaymentRuleId: rule?.id },
-      });
-    });
+          },
+        );
+        updateAccount(draft, loan.id, {
+          openingBalanceMinor: openingBalanceMinorForOutstanding,
+          loanDetails: { ...loanDetails, linkedPlannedPaymentRuleId: rule?.id },
+        });
+      },
+      { slices: ['preferences', 'accounts', 'transactions'] },
+    );
 
     setSnackbar('Loan created with EMI forecast');
     if (createdLoanId) {

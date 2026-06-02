@@ -2,7 +2,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
 import type { MD3Theme } from 'react-native-paper';
 import { withColorAlpha } from './colorAlpha';
-import { readableTextColorForBackground } from './colorContrast';
+import {
+    mixHexColors,
+    readableContentColorForBackground,
+    readableTextColorForBackground,
+} from './colorContrast';
 import { normalizeHexColor } from './theme';
 
 export type AppIconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
@@ -136,12 +140,17 @@ export function subtleIconBackgroundColor(color: string): string {
 
 export function iconSurfaceForThemeTone(theme: MD3Theme, tone: IconSurfaceTone): IconSurface {
   const sourceColor = iconSourceColorForThemeTone(theme, tone);
+  const alpha = theme.dark ? ICON_LAYER_ALPHA.semanticDark : ICON_LAYER_ALPHA.semantic;
+  const opaqueBackground = mixHexColors(
+    sourceColor,
+    theme.colors.elevation.level1 === 'transparent'
+      ? theme.colors.surface
+      : theme.colors.elevation.level1,
+    alpha,
+  );
   return {
-    backgroundColor: withColorAlpha(
-      sourceColor,
-      theme.dark ? ICON_LAYER_ALPHA.semanticDark : ICON_LAYER_ALPHA.semantic,
-    ),
-    iconColor: sourceColor,
+    backgroundColor: withColorAlpha(sourceColor, alpha),
+    iconColor: readableContentColorForBackground(opaqueBackground, sourceColor),
   };
 }
 

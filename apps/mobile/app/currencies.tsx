@@ -39,26 +39,40 @@ export default function Currencies() {
 
   const baseCurrency = state.preferences.baseCurrency;
   const viewCurrency = state.preferences.displayCurrency ?? baseCurrency;
-  const currencies = enabledCurrencies(state);
+  const currencies = useMemo(() => enabledCurrencies(state), [state]);
   const currencyOptions = useMemo<OptionListItem[]>(
     () => buildSupportedCurrencyOptions([baseCurrency, viewCurrency]),
     [baseCurrency, viewCurrency],
   );
-  const addOptions = currencyOptions.map((option) => ({
-    ...option,
-    disabled: currencies.includes(option.value),
-  }));
-  const displayOptions = currencyOptions.map((option) => ({
-    ...option,
-    disabled: !currencies.includes(option.value),
-  }));
-  const rateCurrencies = currencies.filter((currency) => currency !== baseCurrency);
+  const addOptions = useMemo(
+    () =>
+      currencyOptions.map((option) => ({
+        ...option,
+        disabled: currencies.includes(option.value),
+      })),
+    [currencies, currencyOptions],
+  );
+  const displayOptions = useMemo(
+    () =>
+      currencyOptions.map((option) => ({
+        ...option,
+        disabled: !currencies.includes(option.value),
+      })),
+    [currencies, currencyOptions],
+  );
+  const rateCurrencies = useMemo(
+    () => currencies.filter((currency) => currency !== baseCurrency),
+    [baseCurrency, currencies],
+  );
 
   const chooseBaseCurrency = async (currency: string) => {
-    await mutate((draft) => {
-      setLedgerBaseCurrency(draft, currency);
-      setLedgerDisplayCurrency(draft, currency);
-    });
+    await mutate(
+      (draft) => {
+        setLedgerBaseCurrency(draft, currency);
+        setLedgerDisplayCurrency(draft, currency);
+      },
+      { slices: ['preferences', 'transactions'] },
+    );
     setSnackbar(`Default currency set to ${currency}`);
   };
 
@@ -91,13 +105,16 @@ export default function Currencies() {
     }
     const asOfDate = new Date().toISOString().slice(0, 10);
     const updatedAt = new Date().toISOString();
-    await mutate((draft) => {
-      setRate(draft, editingCurrency, baseCurrency, rate, asOfDate, {
-        source: 'manual',
-        provider: 'manual',
-        updatedAt,
-      });
-    });
+    await mutate(
+      (draft) => {
+        setRate(draft, editingCurrency, baseCurrency, rate, asOfDate, {
+          source: 'manual',
+          provider: 'manual',
+          updatedAt,
+        });
+      },
+      { slices: ['exchangeRates'] },
+    );
     setEditingCurrency(null);
     setSnackbar('Manual rate saved');
   };

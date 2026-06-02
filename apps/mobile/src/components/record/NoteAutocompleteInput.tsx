@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Text, TextInput, TouchableRipple, useTheme } from 'react-native-paper';
 import { PremiumTextInput, premiumSurfaceBorder } from '../AppKit';
+import { useDebouncedValue } from '../../useDebouncedValue';
 
 type NoteSuggestionSource = Pick<
   Transaction,
@@ -41,13 +42,16 @@ export function NoteAutocompleteInput({
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
   const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedValue = useDebouncedValue(value, 140);
   const suggestions = useMemo(
     () =>
-      noteSuggestionsFromTransactions(sources, value, {
-        excludeTransactionId,
-        limit: maxSuggestions,
-      }),
-    [excludeTransactionId, maxSuggestions, sources, value],
+      focused
+        ? noteSuggestionsFromTransactions(sources, debouncedValue, {
+            excludeTransactionId,
+            limit: maxSuggestions,
+          })
+        : [],
+    [debouncedValue, excludeTransactionId, focused, maxSuggestions, sources],
   );
   const showSuggestions = focused && suggestions.length > 0;
 

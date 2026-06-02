@@ -100,7 +100,6 @@ type WalletCsvProvisionPreview = {
     key: string;
     name: string;
     count: number;
-    kindLabel: string;
   }>;
 };
 
@@ -317,25 +316,30 @@ export default function ImportWalletCsv() {
     let stagedLinks: WalletCsvApprovalLinks | undefined;
     setImportBusy(true);
     try {
-      await mutate((draft) => {
-        stagedLinks = createStagedWalletCsvApprovals(
-          draft,
-          validAnalysis.plannedPayments,
-          stagedPlanInputs,
-          stagedLoanDrafts,
-        );
-        result = queueWalletCsvAnalysis(draft, validAnalysis, sourceFiles, undefined, {
-          plannedPayments: validAnalysis.plannedPayments,
-          ruleIdsByPlannedPaymentKey: {
-            ...approvedPlanRuleIds,
-            ...stagedLinks.ruleIdsByPlannedPaymentKey,
-          },
-          loanAccountIdsByPlannedPaymentKey: {
-            ...approvedLoanAccountIds,
-            ...stagedLinks.loanAccountIdsByPlannedPaymentKey,
-          },
-        });
-      });
+      await mutate(
+        (draft) => {
+          stagedLinks = createStagedWalletCsvApprovals(
+            draft,
+            validAnalysis.plannedPayments,
+            stagedPlanInputs,
+            stagedLoanDrafts,
+          );
+          result = queueWalletCsvAnalysis(draft, validAnalysis, sourceFiles, undefined, {
+            plannedPayments: validAnalysis.plannedPayments,
+            ruleIdsByPlannedPaymentKey: {
+              ...approvedPlanRuleIds,
+              ...stagedLinks.ruleIdsByPlannedPaymentKey,
+            },
+            loanAccountIdsByPlannedPaymentKey: {
+              ...approvedLoanAccountIds,
+              ...stagedLinks.loanAccountIdsByPlannedPaymentKey,
+            },
+          });
+        },
+        {
+          slices: ['preferences', 'accounts', 'captureCandidates', 'importBatches'],
+        },
+      );
       if (result) {
         if (stagedLinks) {
           setApprovedPlanRuleIds((current) => ({
@@ -435,9 +439,12 @@ export default function ImportWalletCsv() {
     setSnackbar('Creating Wallet accounts and categories...');
     let provision: WalletCsvProvisionSummary | undefined;
     try {
-      await mutate((draft) => {
-        provision = provisionWalletCsvEntities(draft, sourceFiles);
-      });
+      await mutate(
+        (draft) => {
+          provision = provisionWalletCsvEntities(draft, sourceFiles);
+        },
+        { slices: ['preferences', 'accounts', 'categories'] },
+      );
       if (provision) {
         setLastProvision(provision);
         setSnackbar(
@@ -768,10 +775,7 @@ export default function ImportWalletCsv() {
                           numberOfLines={3}
                           items={provisionPreview.categories
                             .slice(0, 18)
-                            .map(
-                              (category) =>
-                                `${category.name} / ${category.kindLabel} / ${category.count}`,
-                            )}
+                            .map((category) => `${category.name} / ${category.count}`)}
                         />
                         {provisionPreview.categories.length > 18 ? (
                           <Text
@@ -1816,10 +1820,7 @@ function buildAccountAuditRows(state: LedgerState, analysis: WalletCsvImportAnal
 
 function buildProvisionPreview(analysis: WalletCsvImportAnalysis): WalletCsvProvisionPreview {
   const accountRowsByName = new Map<string, typeof analysis.parsedRows>();
-  const categoriesByKey = new Map<
-    string,
-    { key: string; name: string; count: number; kindLabel: string }
-  >();
+  const categoriesByKey = new Map<string, { key: string; name: string; count: number }>();
 
   for (const row of analysis.parsedRows) {
     if (!row.accountId && row.accountName) {
@@ -1829,13 +1830,11 @@ function buildProvisionPreview(analysis: WalletCsvImportAnalysis): WalletCsvProv
     }
 
     if (!row.isTransfer && !row.categoryId && row.categoryName) {
-      const kindLabel = row.type === 'Income' ? 'Income' : 'Expense';
-      const key = `${kindLabel}:${row.categoryName}`;
+      const key = row.categoryName.trim().toLowerCase();
       const existing = categoriesByKey.get(key);
       categoriesByKey.set(key, {
         key,
         name: row.categoryName,
-        kindLabel,
         count: (existing?.count ?? 0) + 1,
       });
     }

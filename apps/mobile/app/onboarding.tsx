@@ -252,14 +252,17 @@ export default function Onboarding() {
     setError(null);
     setSaving(true);
     try {
-      await mutate((draft) => {
-        draft.preferences.profile = {
-          ...(draft.preferences.profile ?? { primaryUseCases: selectedUseCases }),
-          displayName: displayName.trim() || draft.preferences.profile?.displayName,
-          primaryUseCases: selectedUseCases,
-          onboardingCompletedAt: nowIso(),
-        };
-      });
+      await mutate(
+        (draft) => {
+          draft.preferences.profile = {
+            ...(draft.preferences.profile ?? { primaryUseCases: selectedUseCases }),
+            displayName: displayName.trim() || draft.preferences.profile?.displayName,
+            primaryUseCases: selectedUseCases,
+            onboardingCompletedAt: nowIso(),
+          };
+        },
+        { slices: ['preferences'] },
+      );
       await getWalletPermissionSetupStatus()
         .then((status) => markWalletPermissionSetupReviewed(user.id, status))
         .catch(() => undefined);
@@ -277,18 +280,21 @@ export default function Onboarding() {
   };
 
   const enableSmsAutoCapture = async () => {
-    await mutate((draft) => {
-      const current = normalizeAutoCapturePreferences(draft.preferences.autoCapture);
-      draft.preferences.autoCapture = normalizeAutoCapturePreferences({
-        ...current,
-        enabled: true,
-        sms: {
-          ...current.sms,
+    await mutate(
+      (draft) => {
+        const current = normalizeAutoCapturePreferences(draft.preferences.autoCapture);
+        draft.preferences.autoCapture = normalizeAutoCapturePreferences({
+          ...current,
           enabled: true,
-          backgroundEnabled: true,
-        },
-      });
-    });
+          sms: {
+            ...current.sms,
+            enabled: true,
+            backgroundEnabled: true,
+          },
+        });
+      },
+      { slices: ['preferences'] },
+    );
   };
 
   return (

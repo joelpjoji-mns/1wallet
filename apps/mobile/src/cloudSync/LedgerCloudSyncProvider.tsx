@@ -1,45 +1,54 @@
 import {
-    exportOneWalletArchive,
-    ledgerStateFromOneWalletArchive,
-    parseOneWalletArchive,
-    type OneWalletArchiveSummary,
-    type OneWalletArchiveV1,
+  exportOneWalletArchive,
+  ledgerStateFromOneWalletArchive,
+  parseOneWalletArchive,
+  type OneWalletArchiveSummary,
+  type OneWalletArchiveV1,
 } from '@1wallet/ledger/archive/onewallet';
 import { LEDGER_STATE_VERSION, type LedgerState } from '@1wallet/ledger/store/types';
 import { useLedger } from '@1wallet/state';
 import {
-    collection,
-    doc,
-    getDoc,
-    getDocs,
-    orderBy,
-    query,
-    serverTimestamp,
-    writeBatch,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  orderBy,
+  query,
+  serverTimestamp,
+  writeBatch,
 } from 'firebase/firestore';
 import {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-    type ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
 } from 'react';
 import { AppState } from 'react-native';
 import { useAuth } from '../auth';
 import { getFirebaseServices } from '../firebase/client';
 import {
-    loadCloudSyncMetadata,
-    saveCloudSyncMetadata,
-    savePreRestoreLedgerBackup,
-    type CloudSyncMetadata,
+  runAfterInteractionsWithTimeout,
+  type DeferredInteractionTask,
+} from '../interactionScheduler';
+import { perfNow, warnSlowOperation } from '../performance';
+import {
+  loadCloudSyncMetadata,
+  saveCloudSyncMetadata,
+  savePreRestoreLedgerBackup,
+  type CloudSyncMetadata,
 } from './storage';
 
 const WALLET_ID = 'default';
 const UPLOAD_DEBOUNCE_MS = 2500;
 const UPLOAD_RETRY_MS = 120000;
+const UPLOAD_RETRY_BASE_MS = 5000;
+const UPLOAD_RETRY_JITTER_MS = 1500;
+const UPLOAD_FAILURE_CIRCUIT_BREAKER_THRESHOLD = 5;
+const UPLOAD_CIRCUIT_BREAKER_MS = 30000;
 const SNAPSHOT_CHUNK_SIZE = 512 * 1024;
 
 type CloudSyncPhase = 'disabled' | 'idle' | 'checking' | 'restoring' | 'uploading' | 'error';
@@ -87,8 +96,12 @@ export function LedgerCloudSyncProvider({ children }: { children: ReactNode }) {
   const bootstrappedUserRef = useRef<string | null>(null);
   const bootstrapInFlightRef = useRef<Promise<void> | null>(null);
   const uploadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const retryTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const uploadInteractionTaskRef = useRef<DeferredInteractionTask | null>(null);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const uploadInFlightRef = useRef<Promise<void> | null>(null);
+  const uploadRetryAttemptRef = useRef(0);
+  const uploadFailureCountRef = useRef(0);
+  const uploadCircuitOpenUntilRef = useRef(0);
   const localClearInProgressRef = useRef(false);
   const phaseRef = useRef<CloudSyncPhase>(phase);
   latestStateRef.current = state;
@@ -107,8 +120,10 @@ export function LedgerCloudSyncProvider({ children }: { children: ReactNode }) {
       clearTimeout(uploadTimerRef.current);
       uploadTimerRef.current = null;
     }
+    uploadInteractionTaskRef.current?.cancel();
+    uploadInteractionTaskRef.current = null;
     if (retryTimerRef.current) {
-      clearInterval(retryTimerRef.current);
+      clearTimeout(retryTimerRef.current);
       retryTimerRef.current = null;
     }
   }, []);
@@ -143,9 +158,13 @@ export function LedgerCloudSyncProvider({ children }: { children: ReactNode }) {
       setError(null);
 
       const localArchive = exportOneWalletArchive(latestStateRef.current, { source: 'mobile' });
+      const comparableLocalArchive = exportOneWalletArchive(
+        ledgerStateForCloudUser(latestStateRef.current, uid),
+        { source: 'mobile' },
+      );
       const shouldKeepLocalBackup =
         walletHasUserData(latestStateRef.current) &&
-        localArchive.checksum !== wallet.latestSnapshotChecksum;
+        comparableLocalArchive.checksum !== wallet.latestSnapshotChecksum;
       const backupUri = shouldKeepLocalBackup
         ? await savePreRestoreLedgerBackup(uid, localArchive)
         : currentMetadata.lastRestoreBackupUri;
@@ -173,21 +192,70 @@ export function LedgerCloudSyncProvider({ children }: { children: ReactNode }) {
     [persistMetadata, replaceLedgerState, services],
   );
 
+  const markCloudSnapshotCurrent = useCallback(
+    async (
+      wallet: CloudWalletDocument,
+      uid: string,
+      archive: OneWalletArchiveV1,
+      currentMetadata: CloudSyncMetadata,
+    ) => {
+      const now = new Date().toISOString();
+      const nextMetadata: CloudSyncMetadata = {
+        ...currentMetadata,
+        userId: uid,
+        lastCloudRevision: wallet.cloudRevision,
+        lastLocalChecksum: archive.checksum,
+        lastSnapshotChecksum: archive.checksum,
+        lastSnapshotPath: wallet.latestSnapshotId,
+        lastPulledAt: currentMetadata.lastPulledAt ?? now,
+      };
+      await persistMetadata(nextMetadata);
+      setPhase('idle');
+      return nextMetadata;
+    },
+    [persistMetadata],
+  );
+
   const uploadSnapshot = useCallback(
     async (reason: 'auto' | 'seed') => {
       if (!services || !user || user.provider !== 'firebase') return;
       if (!ready) return;
+      if (reason === 'auto') {
+        if (
+          bootstrapInFlightRef.current ||
+          phaseRef.current === 'checking' ||
+          phaseRef.current === 'restoring'
+        ) {
+          setPendingUpload(true);
+          return;
+        }
+        if (uploadCircuitOpenUntilRef.current > Date.now()) {
+          setPendingUpload(true);
+          return;
+        }
+      }
       if (uploadInFlightRef.current) return uploadInFlightRef.current;
 
       const task = (async () => {
+        const stateStartedAt = perfNow();
         const stateToUpload = ledgerStateForCloudUser(latestStateRef.current, user.id);
+        warnSlowOperation('cloudSync.prepareState', stateStartedAt, 80, {
+          reason,
+          accounts: stateToUpload.accounts.length,
+          transactions: stateToUpload.transactions.length,
+        });
         if (!walletHasUserData(stateToUpload)) {
           setPendingUpload(false);
           return;
         }
 
         const currentMetadata = await ensureMetadata();
+        const archiveStartedAt = perfNow();
         const archive = exportOneWalletArchive(stateToUpload, { source: 'mobile' });
+        warnSlowOperation('cloudSync.exportArchive', archiveStartedAt, 80, {
+          reason,
+          checksum: archive.checksum,
+        });
         if (reason === 'auto' && currentMetadata.lastLocalChecksum === archive.checksum) {
           setPendingUpload(false);
           return;
@@ -205,8 +273,14 @@ export function LedgerCloudSyncProvider({ children }: { children: ReactNode }) {
         const now = new Date().toISOString();
         const revision = Date.now();
         const snapshotId = `${revision}-${currentMetadata.deviceId}`;
+        const stringifyStartedAt = perfNow();
         const snapshotContent = JSON.stringify(archive);
         const chunks = chunkString(snapshotContent, SNAPSHOT_CHUNK_SIZE);
+        warnSlowOperation('cloudSync.stringifySnapshot', stringifyStartedAt, 80, {
+          reason,
+          bytes: snapshotContent.length,
+          chunks: chunks.length,
+        });
         const snapshotDocument = doc(
           services.db,
           'users',
@@ -273,8 +347,16 @@ export function LedgerCloudSyncProvider({ children }: { children: ReactNode }) {
           lastSnapshotPath: snapshotId,
           lastPushedAt: now,
         });
+        uploadRetryAttemptRef.current = 0;
+        uploadFailureCountRef.current = 0;
+        uploadCircuitOpenUntilRef.current = 0;
         setPhase('idle');
       })().catch((err) => {
+        uploadRetryAttemptRef.current += 1;
+        uploadFailureCountRef.current += 1;
+        if (uploadFailureCountRef.current >= UPLOAD_FAILURE_CIRCUIT_BREAKER_THRESHOLD) {
+          uploadCircuitOpenUntilRef.current = Date.now() + UPLOAD_CIRCUIT_BREAKER_MS;
+        }
         setPendingUpload(true);
         setPhase('error');
         setError(errorMessage(err, 'Could not sync your wallet to Firebase.'));
@@ -296,6 +378,9 @@ export function LedgerCloudSyncProvider({ children }: { children: ReactNode }) {
 
     const task = (async () => {
       try {
+        if (uploadInFlightRef.current) {
+          await uploadInFlightRef.current.catch(() => undefined);
+        }
         setBootstrappedUserId(null);
         setPhase('checking');
         setError(null);
@@ -311,7 +396,29 @@ export function LedgerCloudSyncProvider({ children }: { children: ReactNode }) {
 
         const wallet = await readCloudWallet(user.id);
         if (wallet?.latestSnapshotId) {
-          await restoreCloudSnapshot(wallet, user.id, currentMetadata);
+          const localStateForCloudUser = ledgerStateForCloudUser(latestStateRef.current, user.id);
+          const localArchive = exportOneWalletArchive(localStateForCloudUser, { source: 'mobile' });
+          const localHasData = walletHasUserData(localStateForCloudUser);
+          const cloudChecksum = wallet.latestSnapshotChecksum;
+          const localMatchesCloud = Boolean(
+            cloudChecksum && localArchive.checksum === cloudChecksum,
+          );
+          const localMatchesLastKnown =
+            currentMetadata.lastLocalChecksum === localArchive.checksum ||
+            currentMetadata.lastSnapshotChecksum === localArchive.checksum;
+
+          if (localMatchesCloud) {
+            currentMetadata = await markCloudSnapshotCurrent(
+              wallet,
+              user.id,
+              localArchive,
+              currentMetadata,
+            );
+          } else if (localHasData && !localMatchesLastKnown) {
+            await uploadSnapshot('seed');
+          } else {
+            await restoreCloudSnapshot(wallet, user.id, currentMetadata);
+          }
         } else if (walletHasUserData(latestStateRef.current)) {
           await uploadSnapshot('seed');
         } else {
@@ -336,6 +443,7 @@ export function LedgerCloudSyncProvider({ children }: { children: ReactNode }) {
     enabled,
     ensureMetadata,
     persistMetadata,
+    markCloudSnapshotCurrent,
     readCloudWallet,
     ready,
     restoreCloudSnapshot,
@@ -406,13 +514,19 @@ export function LedgerCloudSyncProvider({ children }: { children: ReactNode }) {
     if (uploadTimerRef.current) clearTimeout(uploadTimerRef.current);
     uploadTimerRef.current = setTimeout(() => {
       uploadTimerRef.current = null;
-      void uploadSnapshot('auto').catch(() => undefined);
+      uploadInteractionTaskRef.current = runAfterInteractionsWithTimeout(() => {
+        uploadInteractionTaskRef.current = null;
+        void uploadSnapshot('auto').catch(() => undefined);
+      }, 1500);
     }, UPLOAD_DEBOUNCE_MS);
 
     return () => {
-      if (!uploadTimerRef.current) return;
-      clearTimeout(uploadTimerRef.current);
-      uploadTimerRef.current = null;
+      if (uploadTimerRef.current) {
+        clearTimeout(uploadTimerRef.current);
+        uploadTimerRef.current = null;
+      }
+      uploadInteractionTaskRef.current?.cancel();
+      uploadInteractionTaskRef.current = null;
     };
   }, [enabled, ready, state, uploadSnapshot, user]);
 
@@ -421,15 +535,25 @@ export function LedgerCloudSyncProvider({ children }: { children: ReactNode }) {
     if (localClearInProgressRef.current) return;
     if (!pendingUpload) return;
 
-    retryTimerRef.current = setInterval(() => {
-      if (!pendingUploadRef.current) return;
-      if (phaseRef.current === 'checking' || phaseRef.current === 'restoring') return;
-      void uploadSnapshot('auto').catch(() => undefined);
-    }, UPLOAD_RETRY_MS);
+    const circuitDelay = Math.max(0, uploadCircuitOpenUntilRef.current - Date.now());
+    const retryDelay = Math.min(
+      UPLOAD_RETRY_MS,
+      UPLOAD_RETRY_BASE_MS * 2 ** Math.min(uploadRetryAttemptRef.current, 5),
+    );
+    const jitter = Math.floor(Math.random() * UPLOAD_RETRY_JITTER_MS);
+    retryTimerRef.current = setTimeout(
+      () => {
+        retryTimerRef.current = null;
+        if (!pendingUploadRef.current) return;
+        if (phaseRef.current === 'checking' || phaseRef.current === 'restoring') return;
+        void uploadSnapshot('auto').catch(() => undefined);
+      },
+      Math.max(circuitDelay, retryDelay + jitter),
+    );
 
     return () => {
       if (!retryTimerRef.current) return;
-      clearInterval(retryTimerRef.current);
+      clearTimeout(retryTimerRef.current);
       retryTimerRef.current = null;
     };
   }, [enabled, pendingUpload, ready, uploadSnapshot, user]);

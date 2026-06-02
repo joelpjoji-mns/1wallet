@@ -559,8 +559,8 @@ export function provisionWalletCsvEntities(
   for (const row of rows) {
     if (row.isTransfer || !row.categoryName) continue;
     const kind = categoryKindFor(row);
-    const key = `${kind}:${normalizeName(row.categoryName)}`;
-    if (categoryKeys.has(key) || findCategory(state.categories, row.categoryName, kind)) continue;
+    const key = normalizeName(row.categoryName);
+    if (categoryKeys.has(key) || findCategory(state.categories, row.categoryName)) continue;
     createCategory(state, {
       name: row.categoryName,
       kind,
@@ -568,7 +568,7 @@ export function provisionWalletCsvEntities(
       color: kind === 'income' ? '#22C55E' : '#64748B',
     });
     categoryKeys.add(key);
-    categoryNames.push(`${row.categoryName} (${kind})`);
+    categoryNames.push(row.categoryName);
   }
 
   return {
@@ -654,9 +654,7 @@ function normalizeWalletCsvRow(
 function matchWalletCsvRow(state: LedgerState, row: WalletCsvParsedRow): WalletCsvParsedRow {
   const accountMatch = findAccountMatch(state.accounts, row.accountName);
   const account = accountMatch?.account;
-  const category = row.isTransfer
-    ? undefined
-    : findCategory(state.categories, row.categoryName, categoryKindFor(row));
+  const category = row.isTransfer ? undefined : findCategory(state.categories, row.categoryName);
   const warnings = [...row.warnings];
   if (!account) warnings.push(`unknown account: ${row.accountName}`);
   if (accountMatch && accountMatch.kind !== 'exact') {
@@ -1640,7 +1638,7 @@ function accountConfidenceBoost(match?: AccountMatchResult): number {
 function findCategory(
   categories: Category[],
   name: string,
-  kind: Category['kind'],
+  kind?: Category['kind'],
 ): Category | undefined {
   return findCategoryMatch(categories, name, kind)?.category;
 }
@@ -1655,12 +1653,14 @@ type CategoryMatchResult = {
 function findCategoryMatch(
   categories: Category[],
   name: string,
-  kind: Category['kind'],
+  kind?: Category['kind'],
 ): CategoryMatchResult | undefined {
   const normalized = normalizeName(name);
   if (!normalized) return undefined;
 
-  const eligible = categories.filter((category) => categoryAppliesToKind(category, kind));
+  const eligible = categories.filter((category) =>
+    kind ? categoryAppliesToKind(category, kind) : !category.isArchived,
+  );
   const exact = eligible.find((category) => normalizeName(category.name) === normalized);
   if (exact) return { category: exact, kind: 'exact', reason: 'same category name', score: 1 };
 
@@ -1683,7 +1683,7 @@ function findCategoryMatch(
     .map((category) => ({ category, score: categoryNameSimilarity(name, category.name) }))
     .filter((candidate) => candidate.score >= 0.78)
     .sort((left, right) => right.score - left.score);
-  const crossKind = findCrossKindCategoryMatch(categories, name, kind);
+  const crossKind = kind ? findCrossKindCategoryMatch(categories, name, kind) : undefined;
   const best = candidates[0];
   if (!best) return crossKind;
   const next = candidates[1];
@@ -1745,7 +1745,7 @@ function categoryAppliesToKind(category: Category, kind: Category['kind']): bool
   return !category.isArchived && (category.kind === kind || category.kind === 'system');
 }
 
-function taxonomyTemplateForCategoryName(name: string, kind: Category['kind']) {
+function taxonomyTemplateForCategoryName(name: string, kind?: Category['kind']) {
   return taxonomyTemplatesForCategoryName(name, kind)[0];
 }
 
