@@ -104,7 +104,7 @@ jobs:
   release:
     name: Build and publish APK
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'push'
     env:
       APK_PATH: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
       RELEASE_ARCHITECTURE: arm64-v8a
