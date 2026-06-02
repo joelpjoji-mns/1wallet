@@ -1,12 +1,14 @@
 import type { Money } from '@1wallet/domain/money';
 import { fromMinor, normalizeCurrencyCode, toMinor } from '@1wallet/domain/money';
 import type {
-    Account,
-    Category,
-    Transaction,
-    TransactionSplit,
-    TransactionType,
-    UUID,
+  Account,
+  CaptureCandidateStatus,
+  Category,
+  Transaction,
+  TransactionSplit,
+  TransactionSource,
+  TransactionType,
+  UUID,
 } from '@1wallet/domain/types';
 import type { LedgerState } from '../store/types';
 import { rateBetween } from './index';
@@ -16,11 +18,15 @@ export interface LedgerIndexes {
   categoriesById: Map<UUID, Category>;
   balancesByAccountId: Map<UUID, Money>;
   allTransactionsSorted: Transaction[];
+  transactionsByExternalRef: Map<string, Transaction>;
   transactionsByAccountId: Map<UUID, Transaction[]>;
   transactionsByCategoryId: Map<UUID, Transaction[]>;
   scheduledTransactions: Transaction[];
   scheduledTransactionsByAccountId: Map<UUID, Transaction[]>;
   splitsByTransactionId: Map<UUID, TransactionSplit[]>;
+  splitTotalsByTransactionId: Map<UUID, Money>;
+  captureCandidatesByStatus: Map<CaptureCandidateStatus, LedgerState['captureCandidates']>;
+  captureCandidatesBySource: Map<TransactionSource, LedgerState['captureCandidates']>;
 }
 
 const INFLOW_TYPES = new Set<TransactionType>([
@@ -49,6 +55,12 @@ export function buildLedgerIndexes(state: LedgerState): LedgerIndexes {
   const scheduledTransactions: Transaction[] = [];
   const scheduledTransactionsByAccountId = new Map<UUID, Transaction[]>();
   const splitsByTransactionId = new Map<UUID, TransactionSplit[]>();
+  const splitTotalsByTransactionId = new Map<UUID, Money>();
+  const captureCandidatesByStatus = new Map<
+    CaptureCandidateStatus,
+    LedgerState['captureCandidates']
+  >();
+  const captureCandidatesBySource = new Map<TransactionSource, LedgerState['captureCandidates']>();
 
   for (const account of state.accounts) {
     balancesByAccountId.set(account.id, {
@@ -58,8 +70,11 @@ export function buildLedgerIndexes(state: LedgerState): LedgerIndexes {
   }
 
   const allTransactionsSorted = [...state.transactions].sort(compareTransactionsDescending);
+  const transactionsByExternalRef = new Map<string, Transaction>();
 
   for (const transaction of allTransactionsSorted) {
+    if (transaction.externalRef)
+      transactionsByExternalRef.set(transaction.externalRef, transaction);
     pushMapItem(transactionsByAccountId, transaction.accountId, transaction);
     if (transaction.counterAccountId && transaction.counterAccountId !== transaction.accountId) {
       pushMapItem(transactionsByAccountId, transaction.counterAccountId, transaction);
@@ -79,12 +94,29 @@ export function buildLedgerIndexes(state: LedgerState): LedgerIndexes {
     }
   }
 
-  for (const split of state.transactionSplits)
+  for (const split of state.transactionSplits) {
     pushMapItem(splitsByTransactionId, split.transactionId, split);
+    const current = splitTotalsByTransactionId.get(split.transactionId);
+    splitTotalsByTransactionId.set(split.transactionId, {
+      amountMinor:
+        current && current.currency === split.amount.currency
+          ? current.amountMinor + split.amount.amountMinor
+          : split.amount.amountMinor,
+      currency: current?.currency ?? split.amount.currency,
+    });
+  }
   for (const splits of splitsByTransactionId.values()) {
     splits.sort(
       (left, right) => left.sortOrder - right.sortOrder || left.id.localeCompare(right.id),
     );
+  }
+
+  const captureCandidatesSorted = [...state.captureCandidates].sort(
+    compareCaptureCandidatesDescending,
+  );
+  for (const candidate of captureCandidatesSorted) {
+    pushMapItem(captureCandidatesByStatus, candidate.status, candidate);
+    pushMapItem(captureCandidatesBySource, candidate.source, candidate);
   }
 
   return {
@@ -92,11 +124,15 @@ export function buildLedgerIndexes(state: LedgerState): LedgerIndexes {
     categoriesById,
     balancesByAccountId,
     allTransactionsSorted,
+    transactionsByExternalRef,
     transactionsByAccountId,
     transactionsByCategoryId,
     scheduledTransactions,
     scheduledTransactionsByAccountId,
     splitsByTransactionId,
+    splitTotalsByTransactionId,
+    captureCandidatesByStatus,
+    captureCandidatesBySource,
   };
 }
 
@@ -185,6 +221,13 @@ function compareTransactionsDescending(left: Transaction, right: Transaction): n
 
 function compareTransactionsAscending(left: Transaction, right: Transaction): number {
   return left.occurredAt.localeCompare(right.occurredAt);
+}
+
+function compareCaptureCandidatesDescending(
+  left: LedgerState['captureCandidates'][number],
+  right: LedgerState['captureCandidates'][number],
+): number {
+  return left.createdAt < right.createdAt ? 1 : left.createdAt > right.createdAt ? -1 : 0;
 }
 
 function pushMapItem<TKey, TValue>(map: Map<TKey, TValue[]>, key: TKey, value: TValue): void {

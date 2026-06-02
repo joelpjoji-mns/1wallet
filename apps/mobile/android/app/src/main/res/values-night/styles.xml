@@ -8,8 +8,8 @@
     <item name="windowActionBar">false</item>
     <item name="android:windowNoTitle">true</item>
     <item name="android:windowActionBar">false</item>
-    <item name="android:windowLightStatusBar">false</item>
-    <item name="android:windowLightNavigationBar">false</item>
+    <item name="android:windowLightStatusBar">true</item>
+    <item name="android:windowLightNavigationBar">true</item>
     <item name="android:statusBarColor">@color/splashscreen_background</item>
     <item name="android:navigationBarColor">@color/splashscreen_background</item>
   </style>

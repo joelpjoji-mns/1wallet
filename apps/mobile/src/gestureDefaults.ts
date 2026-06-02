@@ -11,6 +11,14 @@ export const EDGE_DRAWER_GESTURE = {
   negativeFail: 8,
 } as const;
 
+export const HOME_DRAWER_GESTURE = {
+  slop: 7,
+  distance: 34,
+  velocity: 0.28,
+  failY: 44,
+  negativeFail: 6,
+} as const;
+
 export const DRAWER_DISMISS_GESTURE = {
   slop: 18,
   distance: 58,
@@ -37,7 +45,7 @@ export const ROW_DISMISS_GESTURE = {
 } as const;
 
 export const REORDER_GESTURE = {
-  activationDistance: 6,
+  activationDistance: 14,
   autoscrollThreshold: 120,
   autoscrollSpeed: 520,
   animationConfig: {

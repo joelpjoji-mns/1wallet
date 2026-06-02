@@ -1,21 +1,25 @@
 import { useLedger } from '@1wallet/state';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Button, Divider, Text } from 'react-native-paper';
 import { AppScreen, InfoRow, QuickLink, SectionCard } from '../src/components/AppKit';
 
 export default function Imports() {
-  const { state, reload, selectors } = useLedger();
-  const pending = selectors.queryCaptureCandidates(state, { status: 'pending' });
+  const { indexes, reload } = useLedger();
+  const { pending, approved, rejected } = useMemo(
+    () => ({
+      pending: indexes.captureCandidatesByStatus.get('pending') ?? [],
+      approved: indexes.captureCandidatesByStatus.get('approved') ?? [],
+      rejected: indexes.captureCandidatesByStatus.get('rejected') ?? [],
+    }),
+    [indexes.captureCandidatesByStatus],
+  );
 
   useFocusEffect(
     useCallback(() => {
       void reload().catch(() => undefined);
     }, [reload]),
   );
-  const approved = selectors.queryCaptureCandidates(state, { status: 'approved' });
-  const rejected = selectors.queryCaptureCandidates(state, { status: 'rejected' });
-
   return (
     <AppScreen
       title="Import & backup"
