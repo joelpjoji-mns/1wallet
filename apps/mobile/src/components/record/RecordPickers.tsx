@@ -4,35 +4,30 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import {
-    Appbar,
-    IconButton,
-    Portal,
-    Surface,
-    Text,
-    TouchableRipple,
-    useTheme,
+  Appbar,
+  IconButton,
+  Portal,
+  Surface,
+  Text,
+  TouchableRipple,
+  useTheme,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { accountTypeLabel, resolveAccountIconVisual } from '../../accountOptions';
 import { resolveCategoryIconVisual } from '../../categoryIcons';
 import {
-    buildCategoryTree,
-    categoryBreadcrumb,
-    categoryChildCount,
-    categoryLevel,
+  buildCategoryTree,
+  categoryBreadcrumb,
+  categoryChildCount,
+  categoryLevel,
 } from '../../categoryTree';
 import type { AppIconName } from '../../iconSystem';
 import { iconSurfaceForThemeTone } from '../../iconSystem';
 import { useBackLayer } from '../AppBackLayer';
 import { PremiumSearchInput, premiumFieldColors } from '../AppKit';
+import { useDebouncedValue } from '../../useDebouncedValue';
 
 type CategoryPickerKind = Extract<CategoryKind, 'expense' | 'income'>;
-
-const CATEGORY_FILTER_KINDS: CategoryPickerKind[] = ['expense', 'income'];
-const CATEGORY_KIND_META: Record<CategoryPickerKind, { label: string; description: string }> = {
-  expense: { label: 'Expense categories', description: 'Spending and outgoing records' },
-  income: { label: 'Income categories', description: 'Money-in records' },
-};
 
 export function AccountPickerOverlay({
   visible,
@@ -55,6 +50,7 @@ export function AccountPickerOverlay({
 }) {
   const theme = useTheme();
   const [query, setQuery] = useState('');
+  const debouncedQuery = useDebouncedValue(query, 120);
 
   useBackLayer(visible, onDismiss);
 
@@ -63,7 +59,7 @@ export function AccountPickerOverlay({
   }, [visible]);
 
   const filtered = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
+    const normalized = debouncedQuery.trim().toLowerCase();
     return accounts.filter((account) => {
       if (!normalized) return true;
       return [account.name, account.type, account.institution ?? '', account.groupName ?? '']
@@ -71,7 +67,7 @@ export function AccountPickerOverlay({
         .toLowerCase()
         .includes(normalized);
     });
-  }, [accounts, query]);
+  }, [accounts, debouncedQuery]);
 
   if (!visible) return null;
 
@@ -156,7 +152,7 @@ export function AccountPickerOverlay({
 
 export function CategoryPickerOverlay({
   visible,
-  kind,
+  kind: _kind,
   categories,
   selectedId,
   allowClear = true,
@@ -166,7 +162,7 @@ export function CategoryPickerOverlay({
   onSelect,
 }: {
   visible: boolean;
-  kind: CategoryPickerKind;
+  kind?: CategoryPickerKind;
   categories: Category[];
   selectedId?: string;
   allowClear?: boolean;
@@ -177,6 +173,7 @@ export function CategoryPickerOverlay({
 }) {
   const theme = useTheme();
   const [query, setQuery] = useState('');
+  const debouncedQuery = useDebouncedValue(query, 120);
   const [parentId, setParentId] = useState<string | undefined>();
 
   useEffect(() => {
@@ -187,25 +184,20 @@ export function CategoryPickerOverlay({
   }, [visible]);
 
   useEffect(() => {
-    setQuery('');
-    setParentId(undefined);
-  }, [kind]);
-
-  useEffect(() => {
     if (!parentId) return;
     const parentVisible = categories.some(
-      (category) => category.id === parentId && category.kind === kind && !category.isArchived,
+      (category) => category.id === parentId && !category.isArchived,
     );
     if (!parentVisible) setParentId(undefined);
-  }, [categories, kind, parentId]);
+  }, [categories, parentId]);
 
   const searchRows = useMemo(() => {
-    return buildCategoryTree(categories, { kind, query });
-  }, [categories, kind, query]);
+    return buildCategoryTree(categories, { query: debouncedQuery });
+  }, [categories, debouncedQuery]);
 
   const levelCategories = useMemo(() => {
-    return categoryLevel(categories, { kind, parentId });
-  }, [categories, kind, parentId]);
+    return categoryLevel(categories, { parentId });
+  }, [categories, parentId]);
 
   const currentParent = useMemo(() => {
     if (!parentId) return undefined;
@@ -404,7 +396,7 @@ export function CategoryPickerOverlay({
 
               {searchMode
                 ? searchRows.map((row) => {
-                    const childCount = categoryChildCount(categories, row.category.id, { kind });
+                    const childCount = categoryChildCount(categories, row.category.id);
                     return (
                       <CategoryPickerRow
                         key={row.category.id}
@@ -425,7 +417,7 @@ export function CategoryPickerOverlay({
                     );
                   })
                 : levelCategories.map((category) => {
-                    const childCount = categoryChildCount(categories, category.id, { kind });
+                    const childCount = categoryChildCount(categories, category.id);
                     return (
                       <CategoryPickerRow
                         key={category.id}
@@ -474,34 +466,32 @@ export function CategoryMultiPickerOverlay({
 }) {
   const theme = useTheme();
   const [query, setQuery] = useState('');
-  const [kind, setKind] = useState<CategoryPickerKind | undefined>();
+  const debouncedQuery = useDebouncedValue(query, 120);
   const [parentId, setParentId] = useState<string | undefined>();
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   useEffect(() => {
     if (!visible) {
       setQuery('');
-      setKind(undefined);
       setParentId(undefined);
     }
   }, [visible]);
 
   useEffect(() => {
-    if (!kind || !parentId) return;
+    if (!parentId) return;
     const parentVisible = categories.some(
-      (category) => category.id === parentId && category.kind === kind && !category.isArchived,
+      (category) => category.id === parentId && !category.isArchived,
     );
     if (!parentVisible) setParentId(undefined);
-  }, [categories, kind, parentId]);
+  }, [categories, parentId]);
 
   const searchMode = query.trim().length > 0;
   const searchRows = useMemo(() => {
-    return buildCategoryTree(categories, { query });
-  }, [categories, query]);
+    return buildCategoryTree(categories, { query: debouncedQuery });
+  }, [categories, debouncedQuery]);
   const levelCategories = useMemo(() => {
-    if (!kind) return [];
-    return categoryLevel(categories, { kind, parentId });
-  }, [categories, kind, parentId]);
+    return categoryLevel(categories, { parentId });
+  }, [categories, parentId]);
   const currentParent = useMemo(() => {
     if (!parentId) return undefined;
     return categories.find((category) => category.id === parentId);
@@ -521,13 +511,9 @@ export function CategoryMultiPickerOverlay({
       setParentId(currentParent.parentId);
       return true;
     }
-    if (kind) {
-      setKind(undefined);
-      return true;
-    }
     onDismiss();
     return true;
-  }, [currentParent, kind, onDismiss, searchMode]);
+  }, [currentParent, onDismiss, searchMode]);
 
   useBackLayer(visible, handleBack);
 
@@ -535,7 +521,6 @@ export function CategoryMultiPickerOverlay({
 
   const openCategory = (category: Category, childCount: number) => {
     if (childCount > 0) {
-      setKind(category.kind as CategoryPickerKind);
       setParentId(category.id);
       setQuery('');
       return;
@@ -543,9 +528,7 @@ export function CategoryMultiPickerOverlay({
     onToggleCategory(category);
   };
 
-  const title = searchMode
-    ? 'Search categories'
-    : (currentParent?.name ?? (kind ? CATEGORY_KIND_META[kind].label : 'Choose categories'));
+  const title = searchMode ? 'Search categories' : (currentParent?.name ?? 'Choose categories');
 
   return (
     <Portal>
@@ -597,7 +580,7 @@ export function CategoryMultiPickerOverlay({
               </View>
             ) : null}
             <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              {!searchMode && !kind ? (
+              {!searchMode && !currentParent ? (
                 <>
                   {onToggleUncategorized ? (
                     <CategoryMultiPickerSpecialRow
@@ -608,20 +591,6 @@ export function CategoryMultiPickerOverlay({
                       onPress={onToggleUncategorized}
                     />
                   ) : null}
-                  {CATEGORY_FILTER_KINDS.map((item) => {
-                    const meta = CATEGORY_KIND_META[item];
-                    const count = categoryLevel(categories, { kind: item }).length;
-                    return (
-                      <CategoryMultiPickerSpecialRow
-                        key={item}
-                        icon={item === 'income' ? 'bank-plus' : 'bank-minus'}
-                        title={meta.label}
-                        supporting={`${count} top-level ${count === 1 ? 'category' : 'categories'}`}
-                        selected={false}
-                        onPress={() => setKind(item)}
-                      />
-                    );
-                  })}
                 </>
               ) : null}
 
@@ -652,7 +621,7 @@ export function CategoryMultiPickerOverlay({
                 </View>
               ) : null}
 
-              {!searchMode && kind && levelCategories.length === 0 ? (
+              {!searchMode && levelCategories.length === 0 ? (
                 <View style={styles.emptyPickerState}>
                   <MaterialCommunityIcons
                     name="shape-outline"
@@ -667,9 +636,7 @@ export function CategoryMultiPickerOverlay({
 
               {searchMode
                 ? searchRows.map((row) => {
-                    const childCount = categoryChildCount(categories, row.category.id, {
-                      kind: row.category.kind,
-                    });
+                    const childCount = categoryChildCount(categories, row.category.id);
                     return (
                       <CategoryMultiPickerRow
                         key={row.category.id}
@@ -684,7 +651,7 @@ export function CategoryMultiPickerOverlay({
                     );
                   })
                 : levelCategories.map((category) => {
-                    const childCount = categoryChildCount(categories, category.id, { kind });
+                    const childCount = categoryChildCount(categories, category.id);
                     return (
                       <CategoryMultiPickerRow
                         key={category.id}
@@ -693,8 +660,7 @@ export function CategoryMultiPickerOverlay({
                         supporting={
                           childCount > 0
                             ? `${childCount} ${childCount === 1 ? 'subcategory' : 'subcategories'}`
-                            : (currentParent?.name ??
-                              CATEGORY_KIND_META[category.kind as CategoryPickerKind].label)
+                            : (currentParent?.name ?? 'Category')
                         }
                         selected={selectedIdSet.has(category.id)}
                         showChevron={childCount > 0}

@@ -1,3 +1,4 @@
+import { loanRuleOccurrenceAmounts } from '@1wallet/ledger/loans';
 import {
     futureRuleOccurrenceDates,
     plannedPaymentRuleStats,
@@ -19,13 +20,14 @@ export function plannedRuleProgressSummary(
   rule: FutureGenerationRule,
   stats: PlannedPaymentRuleStats = plannedPaymentRuleStats(state, rule),
 ): PlannedRuleProgressSummary {
+  const now = new Date();
   const actualCompletedOccurrences = Math.max(
     0,
     stats.posted + stats.voided + (rule.skippedOccurrences?.length ?? 0),
   );
   const completedOccurrences = Math.max(
     actualCompletedOccurrences,
-    elapsedRuleOccurrenceCount(rule, new Date()),
+    elapsedRuleOccurrenceCount(rule, now),
   );
   const totalOccurrences = plannedRuleTotalOccurrences(rule, completedOccurrences);
   const cappedCompleted =
@@ -43,15 +45,79 @@ export function plannedRuleProgressSummary(
     remainingAmount:
       remainingOccurrences === undefined
         ? undefined
-        : {
-            amountMinor: Math.max(0, remainingOccurrences * rule.amountMinor),
-            currency: rule.currency,
-          },
+        : remainingAmountForRule(state, rule, remainingOccurrences, now),
     progress: totalOccurrences
       ? Math.max(0, Math.min(1, cappedCompleted / totalOccurrences))
       : undefined,
     complete,
   };
+}
+
+function remainingAmountForRule(
+  state: LedgerState,
+  rule: FutureGenerationRule,
+  remainingOccurrences: number,
+  now: Date,
+): { amountMinor: number; currency: string } {
+  if (!isLoanRule(rule) || remainingOccurrences <= 0) {
+    return {
+      amountMinor: Math.max(0, remainingOccurrences * rule.amountMinor),
+      currency: rule.currency,
+    };
+  }
+
+  const dueDates = futureRuleOccurrenceDates(rule, {
+    now,
+    horizonEnd: remainingForecastHorizonEnd(rule, remainingOccurrences, now),
+    maxOccurrences: remainingOccurrences,
+  });
+
+  if (dueDates.length === 0) {
+    return {
+      amountMinor: Math.max(0, remainingOccurrences * rule.amountMinor),
+      currency: rule.currency,
+    };
+  }
+
+  const amountMinor = dueDates.reduce((total, dueOn) => {
+    const loanAmounts = loanRuleOccurrenceAmounts(state, rule, dueOn);
+    return total + Math.max(0, loanAmounts?.amountMinor ?? rule.amountMinor);
+  }, 0);
+  const missingOccurrences = Math.max(0, remainingOccurrences - dueDates.length);
+
+  return {
+    amountMinor: Math.max(0, amountMinor + missingOccurrences * rule.amountMinor),
+    currency: rule.currency,
+  };
+}
+
+function isLoanRule(rule: FutureGenerationRule): boolean {
+  return rule.type === 'loan_repayment' || (rule.kind as string | undefined) === 'loan_emi';
+}
+
+function remainingForecastHorizonEnd(
+  rule: FutureGenerationRule,
+  remainingOccurrences: number,
+  now: Date,
+): Date {
+  const endsOn = rule.endsOn ? localDateFromDateOnly(rule.endsOn) : undefined;
+  if (endsOn) return endsOn;
+
+  const interval = Math.max(1, rule.interval || 1);
+  const count = Math.max(1, remainingOccurrences + 2);
+  const today = startOfLocalDay(now);
+
+  switch (rule.frequency) {
+    case 'daily':
+      return addLocalDays(today, count * interval + 7);
+    case 'weekly':
+      return addLocalDays(today, count * interval * 7 + 14);
+    case 'yearly':
+      return addLocalMonths(today, count * interval * 12 + 12);
+    case 'monthly':
+    default:
+      return addLocalMonths(today, count * interval + 2);
+  }
 }
 
 function plannedRuleTotalOccurrences(
@@ -124,6 +190,14 @@ function startOfLocalDay(value: Date): Date {
 function addLocalDays(value: Date, days: number): Date {
   const next = new Date(value);
   next.setDate(next.getDate() + days);
+  return startOfLocalDay(next);
+}
+
+function addLocalMonths(value: Date, months: number): Date {
+  const next = new Date(value);
+  next.setDate(1);
+  next.setMonth(next.getMonth() + months);
+  next.setDate(1);
   return startOfLocalDay(next);
 }
 

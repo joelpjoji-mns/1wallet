@@ -65,14 +65,20 @@ export default function LoanForecast() {
   const theme = useTheme();
   const { state, selectors } = useLedger();
   const loans = useMemo(() => activeLoanAccounts(state), [state]);
-  const queryLoanIds = firstParamValue(loanIds)?.split(',').filter(Boolean) ?? [];
-  const [selectedLoanIds, setSelectedLoanIds] = useState<string[]>(queryLoanIds);
+  const queryLoanIds = useMemo(
+    () => firstParamValue(loanIds)?.split(',').filter(Boolean) ?? [],
+    [loanIds],
+  );
+  const [selectedLoanIds, setSelectedLoanIds] = useState<string[]>(() => queryLoanIds);
   const [picker, setPicker] = useState<ForecastPicker>(null);
   const [extraText, setExtraText] = useState('0');
   const [strategy, setStrategy] = useState<LoanPayoffStrategy>('equal');
   const viewCurrency = selectors.displayCurrency(state);
   const baseCurrency = state.preferences.baseCurrency;
-  const selectedIds = selectedLoanIds.length ? selectedLoanIds : loans.map((loan) => loan.id);
+  const selectedIds = useMemo(
+    () => (selectedLoanIds.length ? selectedLoanIds : loans.map((loan) => loan.id)),
+    [loans, selectedLoanIds],
+  );
   const extraMinor = toMinor(Math.max(0, parseAmount(extraText)), baseCurrency);
   const projection = useMemo(
     () =>
@@ -85,25 +91,30 @@ export default function LoanForecast() {
   );
   const selectedLabel =
     selectedIds.length === loans.length ? 'All loans' : `${selectedIds.length} selected`;
-  const displayedOutstanding = selectors.convertMoneyForDisplay(
-    state,
-    projection.outstanding,
-    viewCurrency,
-  );
-  const displayedMonthly = selectors.convertMoneyForDisplay(
-    state,
-    projection.monthlyPayment,
-    viewCurrency,
-  );
-  const displayedExtra = selectors.convertMoneyForDisplay(
-    state,
-    projection.extraMonthlyPayment,
-    viewCurrency,
-  );
-  const displayedSaved = selectors.convertMoneyForDisplay(
-    state,
-    projection.interestSaved,
-    viewCurrency,
+  const { displayedExtra, displayedMonthly, displayedOutstanding, displayedSaved } = useMemo(
+    () => ({
+      displayedExtra: selectors.convertMoneyForDisplay(
+        state,
+        projection.extraMonthlyPayment,
+        viewCurrency,
+      ),
+      displayedMonthly: selectors.convertMoneyForDisplay(
+        state,
+        projection.monthlyPayment,
+        viewCurrency,
+      ),
+      displayedOutstanding: selectors.convertMoneyForDisplay(
+        state,
+        projection.outstanding,
+        viewCurrency,
+      ),
+      displayedSaved: selectors.convertMoneyForDisplay(
+        state,
+        projection.interestSaved,
+        viewCurrency,
+      ),
+    }),
+    [projection, selectors, state, viewCurrency],
   );
 
   useEffect(() => {

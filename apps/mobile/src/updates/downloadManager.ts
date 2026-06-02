@@ -108,6 +108,10 @@ export async function removeDownloadedUpdate(localUri?: string | null): Promise<
   await FileSystem.deleteAsync(localUri, { idempotent: true }).catch(() => undefined);
 }
 
+export async function clearUpdateDownloadCache(): Promise<void> {
+  await FileSystem.deleteAsync(UPDATE_CACHE_DIRECTORY, { idempotent: true }).catch(() => undefined);
+}
+
 export function updateApkLocalUri(release: AppUpdateRelease): string {
   const fileName = sanitizeFileName(release.apk.fileName || `1wallet-${release.versionName}.apk`);
   return `${UPDATE_CACHE_DIRECTORY}${release.versionCode}-${fileName}`;

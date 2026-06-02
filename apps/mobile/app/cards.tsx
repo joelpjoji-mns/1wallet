@@ -1,7 +1,7 @@
 import { formatMoney, toMinor } from '@1wallet/domain/money';
 import {
-    createFutureGenerationRule,
-    forecastFutureRuleOccurrences,
+  createFutureGenerationRule,
+  forecastFutureRuleOccurrences,
 } from '@1wallet/ledger/rules/futureGeneration';
 import { indexedAccountBalance } from '@1wallet/ledger/services/indexes';
 import { useLedger } from '@1wallet/state';
@@ -10,25 +10,30 @@ import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { Button, Divider, ProgressBar, Snackbar, Text, useTheme } from 'react-native-paper';
 import {
-    AppScreen,
-    EmptyState,
-    InfoRow,
-    InlineMeta,
-    MetricTile,
-    SectionCard,
+  AppScreen,
+  EmptyState,
+  InfoRow,
+  InlineMeta,
+  MetricTile,
+  SectionCard,
 } from '../src/components/AppKit';
 
 export default function Cards() {
   const theme = useTheme();
   const { state, indexes, mutate } = useLedger();
   const [snackbar, setSnackbar] = useState<string | null>(null);
-  const cards = state.accounts.filter(
-    (account) => account.type === 'credit_card' && !account.isArchived,
+  const cards = useMemo(
+    () => state.accounts.filter((account) => account.type === 'credit_card' && !account.isArchived),
+    [state.accounts],
   );
-  const cardTransactions = indexes.allTransactionsSorted.filter((transaction) => {
-    const account = indexes.accountsById.get(transaction.accountId);
-    return account?.type === 'credit_card';
-  });
+  const cardTransactionCount = useMemo(
+    () =>
+      cards.reduce(
+        (count, card) => count + (indexes.transactionsByAccountId.get(card.id)?.length ?? 0),
+        0,
+      ),
+    [cards, indexes.transactionsByAccountId],
+  );
   const plannedCardPayments = useMemo(
     () =>
       forecastFutureRuleOccurrences(state, {
@@ -61,29 +66,33 @@ export default function Cards() {
       toMinor(5000, card.currency),
       Math.min(Math.abs(balance.amountMinor), toMinor(25000, card.currency)),
     );
-    await mutate((draft) => {
-      const existingRule = (draft.preferences.futureGenerationRules ?? []).some(
-        (rule) => rule.enabled && rule.type === 'card_payment' && rule.counterAccountId === card.id,
-      );
-      if (existingRule) return;
-      const dueAt = daysFromNow(2, 8);
-      createFutureGenerationRule(draft, {
-        name: `${card.name} payment`,
-        type: 'card_payment',
-        accountId: source.id,
-        counterAccountId: card.id,
-        amountMinor,
-        currency: card.currency,
-        frequency: 'monthly',
-        interval: 1,
-        dayOfMonth: dueAt.getDate(),
-        startsOn: dateOnly(dueAt),
-        postMode: 'manual',
-        enabled: true,
-        paymentMethod: 'Auto debit',
-        notes: `${card.name} card payment reminder`,
-      });
-    });
+    await mutate(
+      (draft) => {
+        const existingRule = (draft.preferences.futureGenerationRules ?? []).some(
+          (rule) =>
+            rule.enabled && rule.type === 'card_payment' && rule.counterAccountId === card.id,
+        );
+        if (existingRule) return;
+        const dueAt = daysFromNow(2, 8);
+        createFutureGenerationRule(draft, {
+          name: `${card.name} payment`,
+          type: 'card_payment',
+          accountId: source.id,
+          counterAccountId: card.id,
+          amountMinor,
+          currency: card.currency,
+          frequency: 'monthly',
+          interval: 1,
+          dayOfMonth: dueAt.getDate(),
+          startsOn: dateOnly(dueAt),
+          postMode: 'manual',
+          enabled: true,
+          paymentMethod: 'Auto debit',
+          notes: `${card.name} card payment reminder`,
+        });
+      },
+      { slices: ['preferences'] },
+    );
     setSnackbar('Card payment forecast added');
   };
 
@@ -100,7 +109,7 @@ export default function Cards() {
           <MetricTile label="Cards" value={String(cards.length)} icon="credit-card-outline" />
           <MetricTile
             label="Card records"
-            value={String(cardTransactions.length)}
+            value={String(cardTransactionCount)}
             icon="format-list-bulleted"
           />
           <MetricTile
@@ -184,10 +193,8 @@ export default function Cards() {
             />
           ) : (
             plannedCardPayments.slice(0, 5).map((payment, index) => {
-              const source = state.accounts.find((account) => account.id === payment.accountId);
-              const card = state.accounts.find(
-                (account) => account.id === payment.counterAccountId,
-              );
+              const source = indexes.accountsById.get(payment.accountId);
+              const card = indexes.accountsById.get(payment.counterAccountId ?? '');
               return (
                 <View key={payment.externalRef}>
                   <InfoRow

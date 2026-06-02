@@ -8,12 +8,15 @@ import {
     normalizeNotificationPreferences,
     type AppNotification,
 } from './notifications';
+import type { AppUpdateRelease } from './updates/types';
 
 const FINANCE_ALERTS_CHANNEL_ID = 'onewallet-finance-alerts';
-const MAX_NATIVE_NOTIFICATIONS_PER_SYNC = 4;
+const APP_UPDATES_CHANNEL_ID = 'onewallet-app-updates';
+const MAX_NATIVE_NOTIFICATIONS_PER_SYNC = 1;
 const inMemoryDeliveredIds = new Set<string>();
 let handlerConfigured = false;
 let channelConfigured = false;
+let updateChannelConfigured = false;
 
 export function configureNativeNotificationHandler() {
   if (handlerConfigured) return;
@@ -51,6 +54,7 @@ export async function deliverNativeNotificationInbox(
 
   const deliveredIds = new Set([...preferences.nativeDeliveredIds, ...inMemoryDeliveredIds]);
   const notifications = buildNotificationInbox(state, now)
+    .filter(isActionableNativeNotification)
     .filter((notification) => !notification.read && !deliveredIds.has(notification.id))
     .slice(0, MAX_NATIVE_NOTIFICATIONS_PER_SYNC);
 
@@ -72,6 +76,32 @@ export async function deliverNativeNotificationInbox(
   return nextDeliveredIds;
 }
 
+export async function deliverNativeUpdateNotification(release: AppUpdateRelease): Promise<boolean> {
+  configureNativeNotificationHandler();
+  if (!(await hasNativeNotificationPermission())) return false;
+
+  await ensureAppUpdatesChannel();
+  const title = release.mandatory ? '1wallet update required' : '1wallet update available';
+  const body = release.mandatory
+    ? `Version ${release.versionName} is ready and required for this app.`
+    : `Version ${release.versionName} is ready to download.`;
+
+  await Notifications.scheduleNotificationAsync({
+    identifier: nativeIdentifier(`update:${release.versionCode}`),
+    content: {
+      title,
+      body,
+      data: {
+        oneWalletNotificationId: `update:${release.versionCode}`,
+        oneWalletTargetType: 'route',
+        route: '/updates',
+      },
+    },
+    trigger: Platform.OS === 'android' ? { channelId: APP_UPDATES_CHANNEL_ID } : null,
+  });
+  return true;
+}
+
 async function ensureFinanceAlertsChannel() {
   if (Platform.OS !== 'android' || channelConfigured) return;
   channelConfigured = true;
@@ -81,6 +111,18 @@ async function ensureFinanceAlertsChannel() {
     showBadge: true,
     enableVibrate: true,
     vibrationPattern: [0, 180, 80, 180],
+  });
+}
+
+async function ensureAppUpdatesChannel() {
+  if (Platform.OS !== 'android' || updateChannelConfigured) return;
+  updateChannelConfigured = true;
+  await Notifications.setNotificationChannelAsync(APP_UPDATES_CHANNEL_ID, {
+    name: '1wallet app updates',
+    importance: Notifications.AndroidImportance.DEFAULT,
+    showBadge: true,
+    enableVibrate: true,
+    vibrationPattern: [0, 180],
   });
 }
 
@@ -113,6 +155,13 @@ function nativeNotificationData(notification: AppNotification): Record<string, s
     oneWalletTargetType: target.type,
     route: target.route,
   };
+}
+
+function isActionableNativeNotification(notification: AppNotification): boolean {
+  if (notification.channel === 'reviewQueue') return false;
+  if (notification.channel === 'imports') return false;
+  if (notification.channel === 'accounts') return notification.severity === 'critical';
+  return notification.severity === 'critical' || notification.severity === 'warning';
 }
 
 function openNativeNotificationTarget(data: Record<string, unknown>) {
