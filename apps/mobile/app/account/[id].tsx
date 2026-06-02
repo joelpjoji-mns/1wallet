@@ -1,62 +1,119 @@
 import { formatMoney } from '@1wallet/domain/money';
 import type { Account } from '@1wallet/domain/types';
 import {
-    buildAccountMatchIdentifiers,
-    buildAccountMessageSourceHints,
+  buildAccountMatchIdentifiers,
+  buildAccountMessageSourceHints,
 } from '@1wallet/ledger/capture/messages';
 import { indexedAccountBalance } from '@1wallet/ledger/services/indexes';
 import { useLedger } from '@1wallet/state';
 import { tokens } from '@1wallet/ui';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
 } from 'react-native';
-import { Appbar, HelperText, Snackbar, useTheme } from 'react-native-paper';
+import { Appbar, HelperText, useTheme } from 'react-native-paper';
 import {
-    ACCOUNT_COLOR_OPTIONS,
-    ACCOUNT_ICON_OPTIONS,
-    ACCOUNT_TYPE_OPTIONS,
-    accountIconForType,
-    accountTypeLabel,
-    DEFAULT_ACCOUNT_COLOR,
-    resolveAccountIconVisual,
+  ACCOUNT_COLOR_OPTIONS,
+  ACCOUNT_ICON_OPTIONS,
+  ACCOUNT_TYPE_OPTIONS,
+  accountIconForType,
+  accountTypeLabel,
+  DEFAULT_ACCOUNT_COLOR,
+  resolveAccountIconVisual,
 } from '../../src/accountOptions';
 import { goBackOrHome, PremiumTextInput, resolveAppIconName } from '../../src/components/AppKit';
 import {
-    ColorPickerIconPreview,
-    ColorPickerOverlay,
+  ColorPickerIconPreview,
+  ColorPickerOverlay,
 } from '../../src/components/ColorPickerOverlay';
 import { OptionListOverlay, OptionSelectorRow } from '../../src/components/OptionListOverlay';
 import { loanCadenceLabel } from '../../src/loans/loanUtils';
+import { useAutoSaveDraft } from '../../src/useAutoSaveDraft';
 
 type AccountPicker = 'type' | 'icon' | 'color' | null;
+type AccountProfileDraft = { name: string; institution: string };
+type AccountAutomationDraft = {
+  lastFour: string;
+  upiIds: string;
+  smsSenderIds: string;
+  emailDomains: string;
+};
+type NormalizedAccountAutomationDraft = {
+  lastFour: string;
+  upiIds: string[];
+  smsSenderIds: string[];
+  emailDomains: string[];
+};
 
 export default function AccountDetail() {
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { state, indexes, selectors, editAccount, removeAccount } = useLedger();
-  const acct = state.accounts.find((a) => a.id === id);
+  const { state, indexes, selectors, editAccount, removeAccount, saveError } = useLedger();
+  const acct = id ? indexes.accountsById.get(id) : undefined;
   const [picker, setPicker] = useState<AccountPicker>(null);
   const [nameDraft, setNameDraft] = useState('');
   const [institutionDraft, setInstitutionDraft] = useState('');
-  const [submitted, setSubmitted] = useState(false);
+  const [profileTouched, setProfileTouched] = useState(false);
+  const profileAccountIdRef = useRef<string | null>(null);
+  const savedProfileDraft = useMemo<AccountProfileDraft>(
+    () => ({ name: acct?.name ?? nameDraft, institution: acct?.institution ?? institutionDraft }),
+    [acct?.institution, acct?.name, institutionDraft, nameDraft],
+  );
+  const profileDraft = useMemo<AccountProfileDraft>(
+    () => ({ name: nameDraft, institution: institutionDraft }),
+    [institutionDraft, nameDraft],
+  );
+  const saveAccountProfile = useCallback(
+    async (nextProfile: AccountProfileDraft) => {
+      if (!acct) return;
+      await editAccount(acct.id, nextProfile);
+    },
+    [acct, editAccount],
+  );
+  const profileAutosave = useAutoSaveDraft<AccountProfileDraft>({
+    value: profileDraft,
+    savedValue: savedProfileDraft,
+    sourceKey: acct?.id,
+    save: saveAccountProfile,
+    disabled: !acct || !profileTouched,
+    normalize: normalizeAccountProfileDraft,
+    validate: (draft) => Boolean(draft.name),
+    isEqual: accountProfileDraftsEqual,
+  });
+  const accountBalance = acct ? indexedAccountBalance(indexes, acct) : undefined;
 
   useEffect(() => {
     if (!acct) return;
-    setNameDraft(acct.name);
-    setInstitutionDraft(acct.institution ?? '');
-    setSubmitted(false);
-  }, [acct]);
+    if (profileAccountIdRef.current !== acct.id) {
+      profileAccountIdRef.current = acct.id;
+      setNameDraft(acct.name);
+      setInstitutionDraft(acct.institution ?? '');
+      setProfileTouched(false);
+      return;
+    }
+    if (!profileTouched) {
+      setNameDraft(acct.name);
+      setInstitutionDraft(acct.institution ?? '');
+    }
+  }, [acct, profileTouched]);
+
+  useEffect(() => {
+    if (!acct || !profileTouched) return;
+    const normalizedDraft = normalizeAccountProfileDraft(profileDraft);
+    if (accountProfileDraftsEqual(normalizedDraft, savedProfileDraft)) {
+      setProfileTouched(false);
+    }
+  }, [acct, profileDraft, profileTouched, savedProfileDraft]);
 
   if (!acct) {
     return (
@@ -65,12 +122,10 @@ export default function AccountDetail() {
       </View>
     );
   }
-  const balance = indexedAccountBalance(indexes, acct);
+  const balance = accountBalance ?? indexedAccountBalance(indexes, acct);
   const viewCurrency = selectors.displayCurrency(state);
   const displayBalance = selectors.convertMoneyForDisplay(state, balance, viewCurrency);
-  const hasTransactions = state.transactions.some(
-    (transaction) => transaction.accountId === acct.id || transaction.counterAccountId === acct.id,
-  );
+  const hasTransactions = (indexes.transactionsByAccountId.get(acct.id)?.length ?? 0) > 0;
   const isLoanLike = acct.type === 'loan' || acct.type === 'overdraft' || acct.type === 'lent';
   const selectedIcon = resolveAppIconName(acct.icon, accountIconForType(acct.type));
   const typeVisual = resolveAccountIconVisual({
@@ -83,18 +138,11 @@ export default function AccountDetail() {
     icon: selectedIcon,
     color: acct.color,
   });
-  const profileChanged =
-    nameDraft.trim() !== acct.name || institutionDraft.trim() !== (acct.institution ?? '');
-
-  const saveProfile = async () => {
-    setSubmitted(true);
-    const name = nameDraft.trim();
-    if (!name) return;
-    await editAccount(acct.id, {
-      name,
-      institution: institutionDraft.trim(),
-    });
-  };
+  const profileStatusLabel = accountProfileStatusLabel(profileAutosave.status);
+  const profileError =
+    profileAutosave.status === 'error'
+      ? autosaveErrorMessage(profileAutosave.error, 'Could not update account details')
+      : saveError;
 
   const confirmDelete = () => {
     const title = hasTransactions ? 'Archive account?' : 'Delete account?';
@@ -162,17 +210,23 @@ export default function AccountDetail() {
             <Text style={[s.label, { color: theme.colors.onSurfaceVariant }]}>Name</Text>
             <PremiumTextInput
               value={nameDraft}
-              onChangeText={setNameDraft}
+              onChangeText={(value) => {
+                setProfileTouched(true);
+                setNameDraft(value);
+              }}
               placeholder="Account name"
             />
-            <HelperText type="error" visible={submitted && !nameDraft.trim()}>
+            <HelperText type="error" visible={profileTouched && !nameDraft.trim()}>
               Enter an account name.
             </HelperText>
 
             <Text style={[s.label, { color: theme.colors.onSurfaceVariant }]}>Institution</Text>
             <PremiumTextInput
               value={institutionDraft}
-              onChangeText={setInstitutionDraft}
+              onChangeText={(value) => {
+                setProfileTouched(true);
+                setInstitutionDraft(value);
+              }}
               placeholder="Bank, wallet, issuer"
             />
 
@@ -204,30 +258,14 @@ export default function AccountDetail() {
               iconColor={selectedVisual.iconColor}
               onPress={() => setPicker('color')}
             />
-
-            <Pressable
-              disabled={!profileChanged}
-              style={[
-                s.saveButton,
-                {
-                  backgroundColor: profileChanged
-                    ? theme.colors.primary
-                    : theme.colors.surfaceVariant,
-                },
-              ]}
-              onPress={() => void saveProfile()}
-            >
-              <Text
-                style={[
-                  s.saveButtonText,
-                  {
-                    color: profileChanged ? theme.colors.onPrimary : theme.colors.onSurfaceVariant,
-                  },
-                ]}
-              >
-                Save details
+            {profileStatusLabel ? (
+              <Text style={[s.helperText, { color: theme.colors.onSurfaceVariant }]}>
+                {profileStatusLabel}
               </Text>
-            </Pressable>
+            ) : null}
+            <HelperText type="error" visible={Boolean(profileError)}>
+              {profileError ?? ' '}
+            </HelperText>
           </View>
 
           {isLoanLike ? (
@@ -425,28 +463,82 @@ function AccountAutomationDetails({
   const [emailDomains, setEmailDomains] = useState(
     (account.messageSourceHints?.emailDomains ?? []).join(', '),
   );
-  const [saveMessageVisible, setSaveMessageVisible] = useState(false);
+  const [automationTouched, setAutomationTouched] = useState(false);
+  const automationAccountIdRef = useRef<string | null>(null);
+  const savedAutomationDraft = useMemo(() => accountAutomationDraftFromAccount(account), [account]);
+  const automationDraft = useMemo<AccountAutomationDraft>(
+    () => ({ lastFour, upiIds, smsSenderIds, emailDomains }),
+    [emailDomains, lastFour, smsSenderIds, upiIds],
+  );
+  const saveAutomation = useCallback(
+    async (draft: NormalizedAccountAutomationDraft) => {
+      const matchIdentifiers = buildAccountMatchIdentifiers({
+        accountType: account.type,
+        lastFour: draft.lastFour,
+        upiVpas: draft.upiIds,
+        existing: account.matchIdentifiers,
+      });
+      const messageSourceHints = buildAccountMessageSourceHints({
+        smsSenderIds: draft.smsSenderIds,
+        emailDomains: draft.emailDomains,
+        keywords: [account.institution, account.name].filter((value): value is string =>
+          Boolean(value),
+        ),
+      });
+      await onSave({
+        matchIdentifiers: matchIdentifiers.length ? matchIdentifiers : undefined,
+        messageSourceHints,
+      });
+    },
+    [account, onSave],
+  );
+  const automationAutosave = useAutoSaveDraft<
+    AccountAutomationDraft,
+    NormalizedAccountAutomationDraft
+  >({
+    value: automationDraft,
+    savedValue: savedAutomationDraft,
+    sourceKey: account.id,
+    save: saveAutomation,
+    disabled: !automationTouched,
+    normalize: normalizeAccountAutomationDraft,
+    isEqual: accountAutomationDraftsEqual,
+  });
+  const automationStatusLabel = accountProfileStatusLabel(automationAutosave.status);
+  const automationError =
+    automationAutosave.status === 'error'
+      ? autosaveErrorMessage(automationAutosave.error, 'Could not update matching details')
+      : null;
 
-  const save = async () => {
-    const matchIdentifiers = buildAccountMatchIdentifiers({
-      accountType: account.type,
-      lastFour,
-      upiVpas: splitList(upiIds),
-      existing: account.matchIdentifiers,
-    });
-    const messageSourceHints = buildAccountMessageSourceHints({
-      smsSenderIds: splitList(smsSenderIds),
-      emailDomains: splitList(emailDomains),
-      keywords: [account.institution, account.name].filter((value): value is string =>
-        Boolean(value),
-      ),
-    });
-    await onSave({
-      matchIdentifiers: matchIdentifiers.length ? matchIdentifiers : undefined,
-      messageSourceHints,
-    });
-    setSaveMessageVisible(true);
-  };
+  useEffect(() => {
+    if (automationAccountIdRef.current !== account.id) {
+      automationAccountIdRef.current = account.id;
+      setLastFour(savedAutomationDraft.lastFour);
+      setUpiIds(savedAutomationDraft.upiIds);
+      setSmsSenderIds(savedAutomationDraft.smsSenderIds);
+      setEmailDomains(savedAutomationDraft.emailDomains);
+      setAutomationTouched(false);
+      return;
+    }
+    if (!automationTouched) {
+      setLastFour(savedAutomationDraft.lastFour);
+      setUpiIds(savedAutomationDraft.upiIds);
+      setSmsSenderIds(savedAutomationDraft.smsSenderIds);
+      setEmailDomains(savedAutomationDraft.emailDomains);
+    }
+  }, [account.id, automationTouched, savedAutomationDraft]);
+
+  useEffect(() => {
+    if (!automationTouched) return;
+    if (
+      accountAutomationDraftsEqual(
+        normalizeAccountAutomationDraft(automationDraft),
+        normalizeAccountAutomationDraft(savedAutomationDraft),
+      )
+    ) {
+      setAutomationTouched(false);
+    }
+  }, [automationDraft, automationTouched, savedAutomationDraft]);
 
   return (
     <View
@@ -464,7 +556,10 @@ function AccountAutomationDetails({
       </Text>
       <PremiumTextInput
         value={lastFour}
-        onChangeText={setLastFour}
+        onChangeText={(value) => {
+          setAutomationTouched(true);
+          setLastFour(value);
+        }}
         keyboardType="number-pad"
         placeholder="1234"
       />
@@ -474,36 +569,48 @@ function AccountAutomationDetails({
       <Text style={[s.muted, { color: theme.colors.onSurfaceVariant }]}>UPI IDs from alerts</Text>
       <PremiumTextInput
         value={upiIds}
-        onChangeText={setUpiIds}
+        onChangeText={(value) => {
+          setAutomationTouched(true);
+          setUpiIds(value);
+        }}
         autoCapitalize="none"
         placeholder="name@bank, phone@upi"
       />
       <Text style={[s.muted, { color: theme.colors.onSurfaceVariant }]}>Saved SMS senders</Text>
       <PremiumTextInput
         value={smsSenderIds}
-        onChangeText={setSmsSenderIds}
+        onChangeText={(value) => {
+          setAutomationTouched(true);
+          setSmsSenderIds(value);
+        }}
         autoCapitalize="characters"
         placeholder="HDFCBK, MONZO"
       />
       <Text style={[s.muted, { color: theme.colors.onSurfaceVariant }]}>Saved email domains</Text>
       <PremiumTextInput
         value={emailDomains}
-        onChangeText={setEmailDomains}
+        onChangeText={(value) => {
+          setAutomationTouched(true);
+          setEmailDomains(value);
+        }}
         autoCapitalize="none"
         placeholder="alerts.bank.co.uk"
       />
-      <Pressable style={[s.saveButton, { backgroundColor: theme.colors.primary }]} onPress={save}>
-        <Text style={[s.saveButtonText, { color: theme.colors.onPrimary }]}>
-          Save matching details
-        </Text>
-      </Pressable>
-      <Snackbar
-        visible={saveMessageVisible}
-        onDismiss={() => setSaveMessageVisible(false)}
-        duration={2600}
-      >
-        Matching details saved
-      </Snackbar>
+      {automationStatusLabel ? (
+        <View style={s.autosaveStatusRow}>
+          <MaterialCommunityIcons
+            name={automationAutosave.status === 'saved' ? 'check' : 'sync'}
+            size={16}
+            color={theme.colors.onSurfaceVariant}
+          />
+          <Text style={[s.helperText, { color: theme.colors.onSurfaceVariant }]}>
+            {automationStatusLabel}
+          </Text>
+        </View>
+      ) : null}
+      <HelperText type="error" visible={Boolean(automationError)}>
+        {automationError ?? ' '}
+      </HelperText>
     </View>
   );
 }
@@ -579,11 +686,87 @@ function splitList(value: string): string[] {
     .filter(Boolean);
 }
 
+function accountAutomationDraftFromAccount(account: Account): AccountAutomationDraft {
+  return {
+    lastFour: lastFourFromAccount(account),
+    upiIds: identifierValues(account, 'upi_vpa').join(', '),
+    smsSenderIds: (account.messageSourceHints?.smsSenderIds ?? []).join(', '),
+    emailDomains: (account.messageSourceHints?.emailDomains ?? []).join(', '),
+  };
+}
+
+function normalizeAccountAutomationDraft(
+  draft: AccountAutomationDraft,
+): NormalizedAccountAutomationDraft {
+  return {
+    lastFour: normalizeLastFourDraft(draft.lastFour),
+    upiIds: normalizeUniqueList(draft.upiIds, (value) => value.toLowerCase()),
+    smsSenderIds: normalizeUniqueList(draft.smsSenderIds, (value) =>
+      value.toUpperCase().replace(/[^A-Z0-9]/g, ''),
+    ),
+    emailDomains: normalizeUniqueList(draft.emailDomains, normalizeEmailDomainDraft),
+  };
+}
+
+function normalizeLastFourDraft(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  return digits.length >= 4 ? digits.slice(-4) : '';
+}
+
+function normalizeUniqueList(value: string, normalize: (item: string) => string): string[] {
+  return Array.from(new Set(splitList(value).map(normalize).filter(Boolean)));
+}
+
+function normalizeEmailDomainDraft(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  const [, domain = normalized] = normalized.split('@');
+  return domain.replace(/^www\./, '');
+}
+
+function accountAutomationDraftsEqual(
+  left: NormalizedAccountAutomationDraft,
+  right: NormalizedAccountAutomationDraft,
+) {
+  return (
+    left.lastFour === right.lastFour &&
+    stringArraysEqual(left.upiIds, right.upiIds) &&
+    stringArraysEqual(left.smsSenderIds, right.smsSenderIds) &&
+    stringArraysEqual(left.emailDomains, right.emailDomains)
+  );
+}
+
+function stringArraysEqual(left: string[], right: string[]) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
 function optionLabel<TValue extends string>(
   options: readonly { value: TValue; label: string }[],
   value: TValue,
 ) {
   return options.find((option) => option.value === value)?.label ?? value;
+}
+
+function normalizeAccountProfileDraft(draft: AccountProfileDraft): AccountProfileDraft {
+  return {
+    name: draft.name.trim(),
+    institution: draft.institution.trim(),
+  };
+}
+
+function accountProfileDraftsEqual(left: AccountProfileDraft, right: AccountProfileDraft) {
+  return left.name === right.name && left.institution === right.institution;
+}
+
+function accountProfileStatusLabel(status: string) {
+  if (status === 'saving') return 'Saving...';
+  if (status === 'saved') return 'Saved';
+  return '';
+}
+
+function autosaveErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string' && error.trim()) return error;
+  return fallback;
 }
 
 const s = StyleSheet.create({
@@ -621,6 +804,12 @@ const s = StyleSheet.create({
     fontFamily: tokens.font.nativeFamily.regular,
     fontSize: tokens.font.size.sm,
     marginTop: -tokens.space.sm,
+  },
+  autosaveStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.space.xs,
+    minHeight: 20,
   },
   label: {
     fontFamily: tokens.font.nativeFamily.medium,

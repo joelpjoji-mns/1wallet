@@ -1,6 +1,6 @@
 packages:
-  - "apps/*"
-  - "packages/*"
+  - 'apps/*'
+  - 'packages/*'
 
 allowBuilds:
   '@firebase/util': true
@@ -10,9 +10,9 @@ allowBuilds:
   unrs-resolver: true
 
 overrides:
-  "@types/react": "^19.2.15"
-  "@types/react-dom": "^19.2.3"
+  '@types/react': '^19.2.15'
+  '@types/react-dom': '^19.2.3'
 
 patchedDependencies:
-  "@react-native-ml-kit/text-recognition@2.0.0": "patches/@react-native-ml-kit__text-recognition@2.0.0.patch"
-  "react-native-get-sms-android@2.1.0": "patches/react-native-get-sms-android@2.1.0.patch"
+  '@react-native-ml-kit/text-recognition@2.0.0': 'patches/@react-native-ml-kit__text-recognition@2.0.0.patch'
+  'react-native-get-sms-android@2.1.0': 'patches/react-native-get-sms-android@2.1.0.patch'

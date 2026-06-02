@@ -1,0 +1,44 @@
+name: Branch Policy
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - synchronize
+      - reopened
+    branches:
+      - main
+      - development
+
+permissions:
+  contents: read
+
+jobs:
+  source-branch:
+    name: Source branch policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate source branch
+        run: |
+          base="${{ github.base_ref }}"
+          head="${{ github.head_ref }}"
+          if [ "$base" = "development" ]; then
+            if [[ "$head" == feature/* || "$head" == bug/* ]]; then
+              echo "Branch policy ok: $head -> $base"
+              exit 0
+            fi
+            echo "::error::PRs into development must come from feature/* or bug/* branches. Current source: $head"
+            exit 1
+          fi
+
+          if [ "$base" = "main" ]; then
+            if [ "$head" = "development" ]; then
+              echo "Branch policy ok: $head -> $base"
+              exit 0
+            fi
+            echo "::error::PRs into main must come from development. Current source: $head"
+            exit 1
+          fi
+
+          echo "Branch policy ok: $head -> $base"

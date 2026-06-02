@@ -7,7 +7,7 @@ import { useLedger } from '@1wallet/state';
 import { tokens } from '@1wallet/ui';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState, type ComponentProps } from 'react';
+import { useMemo, useState, type ComponentProps } from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
     Divider,
@@ -63,7 +63,70 @@ export default function LoanDetail() {
   const [postponingOccurrence, setPostponingOccurrence] = useState<FutureRuleOccurrence | null>(
     null,
   );
-  const loan = state.accounts.find((account) => account.id === id);
+  const loan = useMemo(
+    () => state.accounts.find((account) => account.id === id),
+    [id, state.accounts],
+  );
+  const details = useMemo(
+    () => (loan ? (loan.loanDetails ?? fallbackLoanDetails(loan, indexes)) : undefined),
+    [indexes, loan],
+  );
+  const repaymentSourceAccount = useMemo(
+    () =>
+      details?.repaymentSourceAccountId
+        ? state.accounts.find((account) => account.id === details.repaymentSourceAccountId)
+        : undefined,
+    [details?.repaymentSourceAccountId, state.accounts],
+  );
+  const repaymentSourceVisual = repaymentSourceAccount
+    ? resolveAccountIconVisual(repaymentSourceAccount)
+    : undefined;
+  const balance = useMemo(
+    () => (loan ? indexedAccountBalance(indexes, loan) : undefined),
+    [indexes, loan],
+  );
+  const forecast = useMemo(
+    () =>
+      loan && details && balance ? buildLoanForecast(state, loan, details, balance) : undefined,
+    [balance, details, loan, state],
+  );
+  const viewCurrency = selectors.displayCurrency(state);
+  const displayOutstanding = useMemo(
+    () =>
+      forecast
+        ? selectors.convertMoneyForDisplay(state, forecast.outstanding, viewCurrency)
+        : undefined,
+    [forecast, selectors, state, viewCurrency],
+  );
+  const linkedRule = useMemo(
+    () => (loan ? findLinkedLoanRule(state, loan.id) : undefined),
+    [loan, state],
+  );
+  const linkedRuleProgress = useMemo(
+    () => (linkedRule ? plannedRuleProgressSummary(state, linkedRule) : undefined),
+    [linkedRule, state],
+  );
+  const forecastUpcoming = useMemo(
+    () => (loan ? loanForecastOccurrences(state, loan, 24) : []),
+    [loan, state],
+  );
+  const nextUpcoming = useMemo(
+    () =>
+      linkedRule
+        ? (nearestActionableOccurrence(state, linkedRule, PLAN_DETAIL_OCCURRENCE_LOOKUP_OPTIONS) ??
+          forecastUpcoming[0])
+        : forecastUpcoming[0],
+    [forecastUpcoming, linkedRule, state],
+  );
+  const records = useMemo(
+    () =>
+      loan
+        ? uniqueLoanRecords(
+            loanRecordItems(state, loan, 24).filter((record) => record.kind === 'transaction'),
+          )
+        : [],
+    [loan, state],
+  );
 
   if (!loan) {
     return (
@@ -78,29 +141,8 @@ export default function LoanDetail() {
       </AppScreen>
     );
   }
+  if (!details || !balance || !forecast || !displayOutstanding) return null;
 
-  const details = loan.loanDetails ?? fallbackLoanDetails(loan, indexes);
-  const repaymentSourceAccount = details.repaymentSourceAccountId
-    ? state.accounts.find((account) => account.id === details.repaymentSourceAccountId)
-    : undefined;
-  const repaymentSourceVisual = repaymentSourceAccount
-    ? resolveAccountIconVisual(repaymentSourceAccount)
-    : undefined;
-  const balance = indexedAccountBalance(indexes, loan);
-  const forecast = buildLoanForecast(state, loan, details, balance);
-  const viewCurrency = selectors.displayCurrency(state);
-  const displayOutstanding = selectors.convertMoneyForDisplay(
-    state,
-    forecast.outstanding,
-    viewCurrency,
-  );
-  const linkedRule = findLinkedLoanRule(state, loan.id);
-  const linkedRuleProgress = linkedRule ? plannedRuleProgressSummary(state, linkedRule) : undefined;
-  const forecastUpcoming = loanForecastOccurrences(state, loan, 24);
-  const nextUpcoming = linkedRule
-    ? (nearestActionableOccurrence(state, linkedRule, PLAN_DETAIL_OCCURRENCE_LOOKUP_OPTIONS) ??
-      forecastUpcoming[0])
-    : forecastUpcoming[0];
   const nextPrincipalMinor = nextUpcoming
     ? Math.max(
         0,
@@ -112,22 +154,22 @@ export default function LoanDetail() {
   const nextInterestMinor = nextUpcoming
     ? Math.max(0, nextUpcoming.amountMinor - nextPrincipalMinor)
     : 0;
-  const records = uniqueLoanRecords(
-    loanRecordItems(state, loan, 24).filter((record) => record.kind === 'transaction'),
-  );
   const confirmOccurrence = async (
     occurrence: FutureRuleOccurrence,
     overrides: Parameters<typeof confirmFutureRuleOccurrence>[3],
   ) => {
     let confirmed = false;
-    await mutate((draftState) => {
-      const currentRule = linkedRule
-        ? draftState.preferences.futureGenerationRules?.find((rule) => rule.id === linkedRule.id)
-        : undefined;
-      if (!currentRule) return;
-      confirmFutureRuleOccurrence(draftState, currentRule, occurrence, overrides);
-      confirmed = true;
-    });
+    await mutate(
+      (draftState) => {
+        const currentRule = linkedRule
+          ? draftState.preferences.futureGenerationRules?.find((rule) => rule.id === linkedRule.id)
+          : undefined;
+        if (!currentRule) return;
+        confirmFutureRuleOccurrence(draftState, currentRule, occurrence, overrides);
+        confirmed = true;
+      },
+      { slices: ['preferences', 'transactions', 'transactionSplits'] },
+    );
     setConfirmingOccurrence(null);
     setSnackbar(confirmed ? 'Repayment confirmed' : 'Nothing to confirm');
   };
@@ -137,40 +179,49 @@ export default function LoanDetail() {
     overrides: Parameters<typeof postponeFutureRuleOccurrence>[3],
   ) => {
     let postponed = false;
-    await mutate((draftState) => {
-      const currentRule = linkedRule
-        ? draftState.preferences.futureGenerationRules?.find((rule) => rule.id === linkedRule.id)
-        : undefined;
-      if (!currentRule) return;
-      postponeFutureRuleOccurrence(draftState, currentRule, occurrence, overrides);
-      postponed = true;
-    });
+    await mutate(
+      (draftState) => {
+        const currentRule = linkedRule
+          ? draftState.preferences.futureGenerationRules?.find((rule) => rule.id === linkedRule.id)
+          : undefined;
+        if (!currentRule) return;
+        postponeFutureRuleOccurrence(draftState, currentRule, occurrence, overrides);
+        postponed = true;
+      },
+      { slices: ['preferences'] },
+    );
     setPostponingOccurrence(null);
     setSnackbar(postponed ? 'Repayment postponed' : 'Nothing to postpone');
   };
 
   const dismissOccurrence = async (occurrence: FutureRuleOccurrence) => {
     let dismissed = false;
-    await mutate((draftState) => {
-      const currentRule = linkedRule
-        ? draftState.preferences.futureGenerationRules?.find((rule) => rule.id === linkedRule.id)
-        : undefined;
-      if (!currentRule) return;
-      dismissFutureRuleOccurrence(draftState, currentRule, occurrence.dueOn);
-      dismissed = true;
-    });
+    await mutate(
+      (draftState) => {
+        const currentRule = linkedRule
+          ? draftState.preferences.futureGenerationRules?.find((rule) => rule.id === linkedRule.id)
+          : undefined;
+        if (!currentRule) return;
+        dismissFutureRuleOccurrence(draftState, currentRule, occurrence.dueOn);
+        dismissed = true;
+      },
+      { slices: ['preferences'] },
+    );
     setSnackbar(dismissed ? 'Repayment dismissed' : 'Nothing to dismiss');
   };
 
   const restartLinkedPlan = async () => {
     let restartedId: string | undefined;
-    await mutate((draftState) => {
-      const currentRule = linkedRule
-        ? draftState.preferences.futureGenerationRules?.find((rule) => rule.id === linkedRule.id)
-        : undefined;
-      if (!currentRule) return;
-      restartedId = restartFutureRulePlan(draftState, currentRule).id;
-    });
+    await mutate(
+      (draftState) => {
+        const currentRule = linkedRule
+          ? draftState.preferences.futureGenerationRules?.find((rule) => rule.id === linkedRule.id)
+          : undefined;
+        if (!currentRule) return;
+        restartedId = restartFutureRulePlan(draftState, currentRule).id;
+      },
+      { slices: ['preferences'] },
+    );
     if (restartedId) router.push(`/recurring/${restartedId}` as never);
   };
 
@@ -362,6 +413,24 @@ function LoanHero({
   const rateLabel = `${details.interestRatePercent ?? 0}% ${details.interestRatePeriod ?? 'annual'}`;
   const principalProgress = loanPrincipalProgress(loan, accountBalance);
   const progressPercent = `${Math.round(principalProgress.progress * 100)}%`;
+  const amountLeftWithInterest = {
+    amountMinor: forecast.outstanding.amountMinor + forecast.totalInterest.amountMinor,
+    currency: forecast.outstanding.currency,
+  };
+  const startDate = details.disbursedOn ?? details.repaymentStartsOn ?? details.trackingStartsOn;
+  const startDateLabel = startDate ? dateLabel(startDate, state.preferences.locale) : 'Not set';
+  const endDateLabel = forecast.scheduleClosesOn
+    ? dateLabel(forecast.scheduleClosesOn, state.preferences.locale)
+    : 'Still open';
+  const paidInstallmentsLabel = String(Math.max(0, forecast.completedInstallments));
+  const remainingInstallmentsLabel =
+    forecast.remainingInstallments !== undefined
+      ? String(Math.max(0, forecast.remainingInstallments))
+      : 'Open';
+  const totalInstallmentsLabel =
+    forecast.totalInstallments !== undefined
+      ? String(Math.max(0, forecast.totalInstallments))
+      : 'Open';
 
   return (
     <View
@@ -431,6 +500,21 @@ function LoanHero({
           }
         />
         <HeroDetail
+          icon="wallet-outline"
+          label="Amount left (principal)"
+          value={formatMoney(outstanding, state.preferences.locale)}
+        />
+        <HeroDetail
+          icon="percent-outline"
+          label="Remaining interest"
+          value={formatMoney(forecast.totalInterest, state.preferences.locale)}
+        />
+        <HeroDetail
+          icon="cash-multiple"
+          label="Amount left + interest"
+          value={formatMoney(amountLeftWithInterest, state.preferences.locale)}
+        />
+        <HeroDetail
           icon="bank-transfer-out"
           label="EMI principal"
           value={
@@ -440,16 +524,20 @@ function LoanHero({
           }
         />
         <HeroDetail icon="percent-outline" label="Rate" value={rateLabel} />
+        <HeroDetail icon="calendar-start" label="Loan start" value={startDateLabel} />
         <HeroDetail
           icon="repeat"
           label="Cadence"
           value={loanCadenceLabel(details, state.preferences.locale)}
         />
+        <HeroDetail icon="check-circle-outline" label="Paid EMIs" value={paidInstallmentsLabel} />
         <HeroDetail
-          icon="wallet-outline"
-          label="Balance"
-          value={formatMoney(accountBalance, state.preferences.locale)}
+          icon="clock-outline"
+          label="Remaining EMIs"
+          value={remainingInstallmentsLabel}
         />
+        <HeroDetail icon="counter" label="Total EMIs" value={totalInstallmentsLabel} />
+        <HeroDetail icon="calendar-check-outline" label="End date" value={endDateLabel} />
         <HeroDetail
           icon={repaymentSourceIcon}
           label={loan.type === 'lent' ? 'Receive into' : 'Pay from'}

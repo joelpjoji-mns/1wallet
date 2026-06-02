@@ -31,11 +31,14 @@ export default function EditPlannedPayment() {
       return;
     }
 
-    await mutate((draftState) => {
-      const updatedRule = updateFutureGenerationRule(draftState, rule.id, result.input);
-      if (updatedRule) syncLoanDetailsFromRule(draftState, updatedRule);
-      removeUnpostedFutureScheduledRecordsForRule(draftState, rule.id);
-    });
+    await mutate(
+      (draftState) => {
+        const updatedRule = updateFutureGenerationRule(draftState, rule.id, result.input);
+        if (updatedRule) syncLoanDetailsFromRule(draftState, updatedRule);
+        removeUnpostedFutureScheduledRecordsForRule(draftState, rule.id);
+      },
+      { slices: ['preferences', 'accounts', 'transactions'] },
+    );
     router.replace(`/recurring/${rule.id}` as never);
   };
 

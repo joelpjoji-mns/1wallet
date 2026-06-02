@@ -82,9 +82,6 @@ export function buildNotificationInbox(state: LedgerState, now = new Date()): Ap
   const drafts: NotificationDraft[] = [];
   const nowIso = now.toISOString();
 
-  if (preferences.channels.reviewQueue) {
-    drafts.push(...reviewQueueNotifications(state));
-  }
   if (preferences.channels.scheduled) {
     drafts.push(...scheduledNotifications(state, now));
   }
@@ -93,12 +90,6 @@ export function buildNotificationInbox(state: LedgerState, now = new Date()): Ap
   }
   if (preferences.channels.goals) {
     drafts.push(...goalNotifications(state, now));
-  }
-  if (preferences.channels.accounts) {
-    drafts.push(...accountNotifications(state, nowIso));
-  }
-  if (preferences.channels.imports) {
-    drafts.push(...importNotifications(state));
   }
 
   const readIds = new Set(preferences.readIds);
@@ -167,37 +158,6 @@ export function snoozeNotification(state: LedgerState, notificationId: string, u
       [notificationId]: until.toISOString(),
     },
   };
-}
-
-function reviewQueueNotifications(state: LedgerState): NotificationDraft[] {
-  const pending = state.captureCandidates.filter((candidate) => candidate.status === 'pending');
-  if (pending.length === 0) return [];
-
-  const warningCount = pending.reduce(
-    (sum, candidate) => sum + (candidate.warnings?.length ?? 0),
-    0,
-  );
-  const newest = pending.reduce(
-    (latest, candidate) => (candidate.createdAt > latest ? candidate.createdAt : latest),
-    pending[0]?.createdAt ?? new Date().toISOString(),
-  );
-
-  return [
-    {
-      id: `review:${pending.length}:${warningCount}`,
-      channel: 'reviewQueue',
-      severity: warningCount > 0 ? 'warning' : 'info',
-      icon: warningCount > 0 ? 'robot-confused-outline' : 'robot-outline',
-      title: `${pending.length} capture${pending.length === 1 ? '' : 's'} need review`,
-      body:
-        warningCount > 0
-          ? `${warningCount} warning${warningCount === 1 ? '' : 's'} need a quick look before posting.`
-          : 'Approve imported, notification, email, or API captures before they hit the ledger.',
-      createdAt: newest,
-      badges: ['Review queue', `${pending.length} pending`],
-      target: { type: 'route', route: '/review' },
-    },
-  ];
 }
 
 function scheduledNotifications(state: LedgerState, now: Date): NotificationDraft[] {
@@ -314,97 +274,6 @@ function goalNotifications(state: LedgerState, now: Date): NotificationDraft[] {
       },
     ];
   });
-}
-
-function accountNotifications(state: LedgerState, nowIso: string): NotificationDraft[] {
-  const notifications: NotificationDraft[] = [];
-  const activeAccounts = state.accounts.filter((account) => !account.isArchived);
-  const creditCards = activeAccounts.filter((account) => account.type === 'credit_card');
-  const creditDebt = creditCards.reduce((sum, card) => {
-    const balance = accountBalanceForNotification(state, card);
-    return sum + Math.min(balance, 0);
-  }, 0);
-
-  if (creditDebt < 0) {
-    notifications.push({
-      id: 'cards:debt-summary',
-      channel: 'accounts',
-      severity: 'warning',
-      icon: 'credit-card-clock-outline',
-      title: 'Credit card balance waiting',
-      body: `${formatMoney({ amountMinor: Math.abs(creditDebt), currency: state.preferences.baseCurrency }, state.preferences.locale)} across ${creditCards.length} card${creditCards.length === 1 ? '' : 's'}.`,
-      createdAt: nowIso,
-      badges: ['Cards', `${creditCards.length} active`],
-      target: { type: 'route', route: '/cards' },
-    });
-  }
-
-  for (const account of activeAccounts) {
-    if (account.type === 'credit_card' || account.type === 'loan') continue;
-    const balance = accountBalanceForNotification(state, account);
-    if (balance >= 0) continue;
-    notifications.push({
-      id: `account:${account.id}:negative`,
-      channel: 'accounts',
-      severity: 'critical',
-      icon: account.type === 'bank' ? 'bank-outline' : 'wallet-outline',
-      title: `${account.name} is negative`,
-      body: `${formatMoney({ amountMinor: balance, currency: account.currency }, state.preferences.locale)} current balance.`,
-      createdAt: nowIso,
-      badges: ['Account', account.currency],
-      target: { type: 'account', accountId: account.id },
-    });
-  }
-
-  return notifications.slice(0, 8);
-}
-
-function importNotifications(state: LedgerState): NotificationDraft[] {
-  return state.importBatches
-    .filter((batch) => batch.warningCount > 0 || batch.duplicateCount > 0)
-    .slice(0, 5)
-    .map((batch) => ({
-      id: `import:${batch.id}:warnings`,
-      channel: 'imports' as const,
-      severity: batch.warningCount > 0 ? 'warning' : 'info',
-      icon: batch.warningCount > 0 ? 'file-alert-outline' : 'file-check-outline',
-      title: `${batch.name} needs review`,
-      body: `${batch.warningCount} warning${batch.warningCount === 1 ? '' : 's'}, ${batch.duplicateCount} duplicate${batch.duplicateCount === 1 ? '' : 's'}, ${batch.candidateCount} candidate${batch.candidateCount === 1 ? '' : 's'}.`,
-      createdAt: batch.updatedAt,
-      badges: [batch.status.replace(/_/g, ' ')],
-      target: { type: 'route' as const, route: '/imports' },
-    }));
-}
-
-function accountBalanceForNotification(state: LedgerState, account: Account): number {
-  let balance = account.openingBalance.amountMinor;
-  for (const transaction of state.transactions) {
-    if (transaction.status === 'scheduled' || transaction.status === 'void') continue;
-    if (transaction.accountId === account.id) {
-      balance += signedAmountForAccount(transaction, 'primary');
-    }
-    if (transaction.counterAccountId === account.id) {
-      balance += signedAmountForAccount(transaction, 'counter');
-    }
-  }
-  return balance;
-}
-
-function signedAmountForAccount(transaction: Transaction, side: 'primary' | 'counter'): number {
-  if (side === 'counter') return transaction.amount.amountMinor;
-  switch (transaction.type) {
-    case 'income':
-    case 'refund':
-    case 'interest_in':
-    case 'cashback':
-    case 'borrowed':
-    case 'investment_sell':
-      return transaction.amount.amountMinor;
-    case 'adjustment':
-      return transaction.amount.amountMinor;
-    default:
-      return -transaction.amount.amountMinor;
-  }
 }
 
 function compareNotifications(left: AppNotification, right: AppNotification): number {

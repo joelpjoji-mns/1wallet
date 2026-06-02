@@ -279,6 +279,29 @@ assert.equal(educationSummary.closesOn, '2038-03-05');
 assert.equal(educationSummary.outstanding.amountMinor, 14200000);
 assert.equal(educationSummary.progress, 38 / 180);
 
+const disbursalAnchoredSummary = loanScheduleSummary(
+  {
+    principal: { amountMinor: 12000000, currency: 'INR' },
+    disbursedOn: '2026-01-05',
+    repaymentStartsOn: '2026-03-05',
+    repaymentAmount: { amountMinor: 1000000, currency: 'INR' },
+    repaymentFrequency: 'monthly',
+    repaymentInterval: 1,
+    repaymentDayOfMonth: 5,
+    repaymentCount: 12,
+    interestRatePercent: 10,
+    interestRatePeriod: 'annual',
+    interestMethod: 'reducing_balance',
+  },
+  'INR',
+  '2026-03-05',
+);
+assert.equal(disbursalAnchoredSummary.startsOn, '2026-01-05');
+assert.equal(disbursalAnchoredSummary.completedInstallments, 2);
+assert.equal(disbursalAnchoredSummary.remainingInstallments, 10);
+assert.equal(disbursalAnchoredSummary.nextDueOn, '2026-03-05');
+assert.equal(disbursalAnchoredSummary.outstanding.amountMinor, 10000000);
+
 const educationTrackedDetails = {
   ...educationDetails,
   trackingStartsOn: '2026-06-05',

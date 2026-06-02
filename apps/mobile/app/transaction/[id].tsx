@@ -59,7 +59,6 @@ import {
     transactionAmountDisplay,
 } from '../../src/transactionDisplayAmounts';
 import {
-    categoryKindForTransactionType,
     isTransferTransactionType,
     TRANSACTION_TYPE_BUCKET_OPTIONS,
     transactionTypeBucket,
@@ -153,7 +152,6 @@ export default function TransactionDetail() {
     : undefined;
   const selectedType = transactionTypeOptionFor(type);
   const isTransfer = isTransferTransactionType(type);
-  const categoryKind = categoryKindForTransactionType(type);
   const selectedCategory = state.categories.find((category) => category.id === categoryId);
   const selectedCategoryPath = categoryBreadcrumb(state.categories, categoryId);
   const selectedCategoryVisual = selectedCategory
@@ -210,13 +208,7 @@ export default function TransactionDetail() {
     const nextType = transactionTypeForBucket(nextBucket);
     setType(nextType);
     const nextIsTransfer = isTransferTransactionType(nextType);
-    const nextCategoryKind = categoryKindForTransactionType(nextType);
-    const currentCategory = state.categories.find((category) => category.id === categoryId);
-    if (
-      nextIsTransfer ||
-      nextType === 'adjustment' ||
-      (currentCategory && currentCategory.kind !== nextCategoryKind)
-    ) {
+    if (nextIsTransfer || nextType === 'adjustment') {
       setCategoryId(undefined);
     }
     if (!nextIsTransfer) setCounterAccountId(undefined);
@@ -294,48 +286,51 @@ export default function TransactionDetail() {
         purchaseCurrency,
         postedCurrency,
       );
-      await mutate((draft) => {
-        const draftAccount = draft.accounts.find((account) => account.id === accountId);
-        if (!draftAccount) throw new Error('Pick an account');
-        const draftPostedCurrency = normalizeCurrencyCode(draftAccount.currency);
-        const draftPurchaseCurrency = normalizeCurrencyCode(
-          originalCurrency || draftPostedCurrency,
-        );
-        const draftForeignCurrency = resolveRecordCurrencyDraftForState({
-          state: draft,
-          originalAmountText: originalAmount,
-          purchaseCurrency: draftPurchaseCurrency,
-          postedCurrency: draftPostedCurrency,
-          fxRateText: originalFxRate,
-        });
-        if (draftForeignCurrency.needsRate) {
-          throw new Error(
-            `Add a ${draftPurchaseCurrency} to ${draftPostedCurrency} rate before saving.`,
+      await mutate(
+        (draft) => {
+          const draftAccount = draft.accounts.find((account) => account.id === accountId);
+          if (!draftAccount) throw new Error('Pick an account');
+          const draftPostedCurrency = normalizeCurrencyCode(draftAccount.currency);
+          const draftPurchaseCurrency = normalizeCurrencyCode(
+            originalCurrency || draftPostedCurrency,
           );
-        }
-        const originalMinor = draftForeignCurrency.originalAmountMinor;
-        updateTransaction(draft, tx.id, {
-          type,
-          accountId,
-          counterAccountId: isTransfer ? counterAccountId : null,
-          amountMinor:
-            draftForeignCurrency.postedAmountMinor ?? toMinor(saveAmount, draftAccount.currency),
-          currency: draftAccount.currency,
-          originalAmountMinor: originalMinor ?? null,
-          originalCurrency: originalMinor !== undefined ? draftPurchaseCurrency : null,
-          originalFxRate:
-            originalMinor !== undefined ? (draftForeignCurrency.fxRate ?? null) : null,
-          categoryId: isTransfer || type === 'adjustment' ? null : (categoryId ?? null),
-          occurredAt: dateTimeToIso(date, time, new Date(tx.occurredAt)),
-          locationLabel: locationLabel.trim() || null,
-          paymentMethod: paymentMethod.trim() || null,
-          notes: notes.trim() || null,
-          tags: tags.length > 0 ? tags : null,
-          isReimbursable,
-          isTaxDeductible,
-          isExcludedFromReports,
-        });
-      });
+          const draftForeignCurrency = resolveRecordCurrencyDraftForState({
+            state: draft,
+            originalAmountText: originalAmount,
+            purchaseCurrency: draftPurchaseCurrency,
+            postedCurrency: draftPostedCurrency,
+            fxRateText: originalFxRate,
+          });
+          if (draftForeignCurrency.needsRate) {
+            throw new Error(
+              `Add a ${draftPurchaseCurrency} to ${draftPostedCurrency} rate before saving.`,
+            );
+          }
+          const originalMinor = draftForeignCurrency.originalAmountMinor;
+          updateTransaction(draft, tx.id, {
+            type,
+            accountId,
+            counterAccountId: isTransfer ? counterAccountId : null,
+            amountMinor:
+              draftForeignCurrency.postedAmountMinor ?? toMinor(saveAmount, draftAccount.currency),
+            currency: draftAccount.currency,
+            originalAmountMinor: originalMinor ?? null,
+            originalCurrency: originalMinor !== undefined ? draftPurchaseCurrency : null,
+            originalFxRate:
+              originalMinor !== undefined ? (draftForeignCurrency.fxRate ?? null) : null,
+            categoryId: isTransfer || type === 'adjustment' ? null : (categoryId ?? null),
+            occurredAt: dateTimeToIso(date, time, new Date(tx.occurredAt)),
+            locationLabel: locationLabel.trim() || null,
+            paymentMethod: paymentMethod.trim() || null,
+            notes: notes.trim() || null,
+            tags: tags.length > 0 ? tags : null,
+            isReimbursable,
+            isTaxDeductible,
+            isExcludedFromReports,
+          });
+        },
+        { slices: ['transactions'] },
+      );
       goBackOrHome();
     } catch (error) {
       Alert.alert('Could not save transaction', (error as Error).message);
@@ -450,7 +445,7 @@ export default function TransactionDetail() {
                 label="Category"
                 value={selectedCategoryPath ?? selectedCategory?.name ?? 'Uncategorized'}
                 valueNumberOfLines={2}
-                supporting={selectedCategory ? selectedCategory.kind : 'Optional'}
+                supporting={selectedCategoryPath ?? 'Optional'}
                 onPress={() => setPickerMode('category')}
               />
             )}
@@ -579,7 +574,6 @@ export default function TransactionDetail() {
 
         <SectionCard title="Record metadata">
           <InfoRow label="Source" value={tx.source} />
-          <InfoRow label="Status" value={tx.status} />
           {tx.sourceConfidence !== undefined ? (
             <InfoRow label="Confidence" value={`${Math.round(tx.sourceConfidence)}%`} />
           ) : null}
@@ -641,7 +635,6 @@ export default function TransactionDetail() {
       />
       <RecordCategoryPickerOverlay
         visible={pickerMode === 'category' && type !== 'adjustment'}
-        kind={categoryKind}
         categories={state.categories}
         selectedId={categoryId}
         onDismiss={() => setPickerMode(null)}
@@ -686,7 +679,6 @@ function LinkedLoanRecordSection({
     <SectionCard title="Linked loan record">
       <InfoRow label={title} value={formatMoney(linked.amount, state.preferences.locale)} />
       <InfoRow label="Account" value={account?.name ?? 'Unknown account'} />
-      <InfoRow label="Status" value={linked.status} />
       <Button
         mode="contained-tonal"
         icon="open-in-new"

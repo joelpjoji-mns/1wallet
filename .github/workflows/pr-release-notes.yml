@@ -11,6 +11,7 @@ on:
       - unlabeled
     branches:
       - main
+      - development
 
 permissions:
   contents: read

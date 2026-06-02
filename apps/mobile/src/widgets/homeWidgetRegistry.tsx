@@ -1,24 +1,24 @@
 import type { Money } from '@1wallet/domain/money';
 import {
-    currencyDefinition,
-    formatMoney,
-    fromMinor,
-    minorUnitsFor,
-    normalizeCurrencyCode,
-    toMinor,
+  currencyDefinition,
+  formatMoney,
+  fromMinor,
+  minorUnitsFor,
+  normalizeCurrencyCode,
+  toMinor,
 } from '@1wallet/domain/money';
 import type { Account, Category, Transaction, TransactionType } from '@1wallet/domain/types';
 import {
-    FUTURE_RULE_REF_PREFIX,
-    forecastFutureRuleOccurrences,
-    futureRuleInterestExternalRef,
-    type FutureRuleOccurrence,
+  FUTURE_RULE_REF_PREFIX,
+  forecastFutureRuleOccurrences,
+  futureRuleInterestExternalRef,
+  type FutureRuleOccurrence,
 } from '@1wallet/ledger/rules/futureGeneration';
 import {
-    convertMoneyForDisplay,
-    displayCurrency,
-    enabledCurrencies,
-    rateBetween,
+  convertMoneyForDisplay,
+  displayCurrency,
+  enabledCurrencies,
+  rateBetween,
 } from '@1wallet/ledger/services';
 import type { LedgerIndexes } from '@1wallet/ledger/services/indexes';
 import { indexedAccountBalance } from '@1wallet/ledger/services/indexes';
@@ -29,27 +29,27 @@ import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    PanResponder,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    View,
-    type GestureResponderEvent,
-    type LayoutChangeEvent,
+  PanResponder,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+  type GestureResponderEvent,
+  type LayoutChangeEvent,
 } from 'react-native';
 import {
-    Chip,
-    Divider,
-    IconButton,
-    Modal,
-    Portal,
-    ProgressBar,
-    Surface,
-    Text,
-    TextInput,
-    TouchableRipple,
-    useTheme,
-    type MD3Theme,
+  Chip,
+  Divider,
+  IconButton,
+  Modal,
+  Portal,
+  ProgressBar,
+  Surface,
+  Text,
+  TextInput,
+  TouchableRipple,
+  useTheme,
+  type MD3Theme,
 } from 'react-native-paper';
 import { resolveCategoryIconVisual } from '../categoryIcons';
 import { categoryBreadcrumb } from '../categoryTree';
@@ -58,49 +58,49 @@ import { OptionListOverlay, type OptionListItem } from '../components/OptionList
 import { positiveAmountColor } from '../financeColors';
 import { numericMediumFontFamily } from '../fonts';
 import {
-    iconSurfaceForThemeTone,
-    iconTextColorForBackground,
-    insetIconSurfaceForBackground,
-    type IconSurfaceTone,
+  iconSurfaceForThemeTone,
+  iconTextColorForBackground,
+  insetIconSurfaceForBackground,
+  type IconSurfaceTone,
 } from '../iconSystem';
 import { transactionForRuleOccurrence } from '../plannedPayments/ruleActions';
 import { formatRecordDateLabel } from '../recordDateTime';
 import {
-    transactionAmountDisplay,
-    type TransactionAmountRowSide,
+  transactionAmountDisplay,
+  type TransactionAmountRowSide,
 } from '../transactionDisplayAmounts';
 import {
-    INCOME_TRANSACTION_TYPES as INFLOW_TYPES,
-    EXPENSE_TRANSACTION_TYPES as OUTFLOW_TYPES,
-    TRANSFER_TRANSACTION_TYPES as TRANSFER_TYPES,
-    transactionTypeIcon,
-    transactionTypeIconTone,
-    transactionTypeLabel,
+  INCOME_TRANSACTION_TYPES as INFLOW_TYPES,
+  EXPENSE_TRANSACTION_TYPES as OUTFLOW_TYPES,
+  TRANSFER_TRANSACTION_TYPES as TRANSFER_TYPES,
+  transactionTypeIcon,
+  transactionTypeIconTone,
+  transactionTypeLabel,
 } from '../transactionTypes';
 import {
-    HOME_WIDGET_REORDER_LONG_PRESS_DELAY_MS,
-    HomeWidgetReorderProvider,
-    HomeWidgetShell,
-    WidgetDateFilterButton,
-    WidgetDropdownButton,
-    WidgetEmpty,
-    useHomeWidgetReorderLongPress,
+  HOME_WIDGET_REORDER_LONG_PRESS_DELAY_MS,
+  HomeWidgetReorderProvider,
+  HomeWidgetShell,
+  WidgetDateFilterButton,
+  WidgetDropdownButton,
+  WidgetEmpty,
+  useHomeWidgetReorderLongPress,
 } from './HomeWidgetShell';
 import {
-    dateRangeForPreset,
-    dateRangeSubtitle,
-    filterTransactionsByPreset,
-    timestampInRange,
+  dateRangeForPreset,
+  dateRangeSubtitle,
+  filterTransactionsByPreset,
+  timestampInRange,
 } from './dateFilters';
 import {
-    BALANCE_HERO_DATE_PRESETS,
-    BALANCE_HERO_DEFAULT_DATE_PRESET,
-    CURRENCY_RATE_DATE_PRESETS,
-    HOME_WIDGET_DATE_LABELS,
-    HOME_WIDGET_META,
-    type HomeWidgetDatePreset,
-    type HomeWidgetId,
-    type HomeWidgetSize,
+  BALANCE_HERO_DATE_PRESETS,
+  BALANCE_HERO_DEFAULT_DATE_PRESET,
+  CURRENCY_RATE_DATE_PRESETS,
+  HOME_WIDGET_DATE_LABELS,
+  HOME_WIDGET_META,
+  type HomeWidgetDatePreset,
+  type HomeWidgetId,
+  type HomeWidgetSize,
 } from './homeWidgetTypes';
 
 type WidgetProps = {
@@ -115,6 +115,11 @@ type WidgetProps = {
 type WidgetShellProps = Omit<WidgetProps, 'id'>;
 type LedgerStateForWidget = ReturnType<typeof useLedger>['state'];
 type ExchangeRateForWidget = LedgerStateForWidget['exchangeRates'][number];
+type CashCurrencyBreakdownItem = {
+  amountMinor: number;
+  currency: string;
+  label: string;
+};
 
 const ACCOUNT_COLORS = tokens.color.accountPalette;
 const WALLET_RECONCILE_REF_PREFIX = 'wallet-snapshot-reconcile:';
@@ -125,9 +130,134 @@ const CURRENCY_DOT_SIZE = 9;
 const HOME_PLANNED_LOOKAHEAD_MONTHS = 24;
 const HOME_PLANNED_MAX_OCCURRENCES_PER_RULE = 240;
 const ACCOUNT_LIABILITY_TYPES = new Set<Account['type']>(['credit_card', 'loan', 'overdraft']);
+const ALL_ACCOUNTS_CACHE_KEY = '__all_accounts__';
+
+type PlannedTransactionCache = {
+  dayKey: string;
+  results: Map<string, Transaction[]>;
+  state: LedgerStateForWidget;
+};
+
+const plannedTransactionsCache = new WeakMap<LedgerIndexes, PlannedTransactionCache>();
 
 function balanceForAccount(indexes: LedgerIndexes, account: Account): Money {
   return indexedAccountBalance(indexes, account);
+}
+
+function cashCurrencyBalancesForAccount(indexes: LedgerIndexes, account: Account): Money[] {
+  if (account.type !== 'cash') return [];
+
+  const balancesByCurrency = new Map<string, Money>();
+  const addMoney = (money: Money | undefined, direction: -1 | 1) => {
+    if (!money || money.amountMinor === 0) return;
+    const currency = normalizeCurrencyCode(money.currency);
+    const current = balancesByCurrency.get(currency) ?? { amountMinor: 0, currency };
+    balancesByCurrency.set(currency, {
+      amountMinor: current.amountMinor + money.amountMinor * direction,
+      currency,
+    });
+  };
+
+  addMoney(account.openingBalance, 1);
+
+  for (const transaction of indexes.transactionsByAccountId.get(account.id) ?? []) {
+    if (transaction.status === 'scheduled' || transaction.status === 'void') continue;
+
+    if (transaction.accountId === account.id) {
+      const direction = cashTransactionDirection(transaction);
+      if (direction) addMoney(cashSourceTransactionMoney(transaction), direction);
+    }
+
+    if (TRANSFER_TYPES.has(transaction.type) && transaction.counterAccountId === account.id) {
+      addMoney(cashDestinationTransferMoney(transaction, account), 1);
+    }
+  }
+
+  return [...balancesByCurrency.values()]
+    .filter((money) => money.amountMinor !== 0)
+    .sort((left, right) => sortCashCurrencyBalance(account, left, right));
+}
+
+function cashTransactionDirection(transaction: Transaction): -1 | 1 | undefined {
+  if (INFLOW_TYPES.has(transaction.type) || transaction.type === 'adjustment') return 1;
+  if (OUTFLOW_TYPES.has(transaction.type) || TRANSFER_TYPES.has(transaction.type)) return -1;
+  return undefined;
+}
+
+function cashSourceTransactionMoney(transaction: Transaction): Money {
+  if (TRANSFER_TYPES.has(transaction.type)) return transaction.amount;
+  const originalCurrency = transaction.originalAmount
+    ? normalizeCurrencyCode(transaction.originalAmount.currency)
+    : undefined;
+  return originalCurrency && originalCurrency !== normalizeCurrencyCode(transaction.amount.currency)
+    ? transaction.originalAmount!
+    : transaction.amount;
+}
+
+function cashDestinationTransferMoney(transaction: Transaction, cashAccount: Account): Money {
+  if (!transaction.counterAmount) return transaction.amount;
+  const cashCurrency = normalizeCurrencyCode(cashAccount.currency);
+  const sourceCurrency = normalizeCurrencyCode(transaction.amount.currency);
+  const counterCurrency = normalizeCurrencyCode(transaction.counterAmount.currency);
+  return counterCurrency === cashCurrency && sourceCurrency !== cashCurrency
+    ? transaction.amount
+    : transaction.counterAmount;
+}
+
+function cashCurrencyBreakdownForAccount(
+  indexes: LedgerIndexes,
+  account: Account,
+  locale: string,
+): CashCurrencyBreakdownItem[] {
+  return cashCurrencyBalancesForAccount(indexes, account).map((money) => ({
+    amountMinor: money.amountMinor,
+    currency: money.currency,
+    label: formatCashCurrencyBreakdownAmount(money, locale),
+  }));
+}
+
+function cashCurrencyTotalForAccount(
+  state: LedgerStateForWidget,
+  indexes: LedgerIndexes,
+  account: Account,
+  currency: string,
+): Money | undefined {
+  const balances = cashCurrencyBalancesForAccount(indexes, account);
+  if (!balances.length) return undefined;
+  const normalizedCurrency = normalizeCurrencyCode(currency);
+  return {
+    amountMinor: balances.reduce(
+      (sum, money) => sum + convertMoneyForDisplay(state, money, normalizedCurrency).amountMinor,
+      0,
+    ),
+    currency: normalizedCurrency,
+  };
+}
+
+function sortCashCurrencyBalance(account: Account, left: Money, right: Money): number {
+  const accountCurrency = normalizeCurrencyCode(account.currency);
+  const leftIsAccountCurrency = normalizeCurrencyCode(left.currency) === accountCurrency;
+  const rightIsAccountCurrency = normalizeCurrencyCode(right.currency) === accountCurrency;
+  if (leftIsAccountCurrency !== rightIsAccountCurrency) return leftIsAccountCurrency ? -1 : 1;
+  return (
+    Math.abs(right.amountMinor) - Math.abs(left.amountMinor) ||
+    left.currency.localeCompare(right.currency)
+  );
+}
+
+function formatCashCurrencyBreakdownAmount(money: Money, locale: string): string {
+  try {
+    return new Intl.NumberFormat(locale, {
+      maximumFractionDigits: minorUnitsFor(money.currency),
+      minimumFractionDigits: 0,
+    }).format(fromMinor(money.amountMinor, money.currency));
+  } catch {
+    return formatMoney(money, locale);
+  }
+}
+
+function cashCurrencyInlineLabel(item: CashCurrencyBreakdownItem): string {
+  return `${currencyDefinition(item.currency).symbol} ${item.label}`;
 }
 
 function indexedTotalBalanceForHome(
@@ -184,6 +314,14 @@ function plannedTransactionsForSelectedAccount(
   indexes: LedgerIndexes,
   selectedAccountId?: string,
 ): Transaction[] {
+  const cacheKey = selectedAccountId ?? ALL_ACCOUNTS_CACHE_KEY;
+  const dayKey = startOfToday().toISOString().slice(0, 10);
+  const cached = plannedTransactionsCache.get(indexes);
+  if (cached?.state === state && cached.dayKey === dayKey) {
+    const cachedResult = cached.results.get(cacheKey);
+    if (cachedResult) return cachedResult;
+  }
+
   const records = new Map<string, Transaction>();
   const rawScheduled = selectedAccountId
     ? (indexes.scheduledTransactionsByAccountId.get(selectedAccountId) ?? [])
@@ -191,7 +329,7 @@ function plannedTransactionsForSelectedAccount(
 
   for (const transaction of rawScheduled) {
     if (isLinkedFutureInterestTransaction(transaction)) continue;
-    const normalized = homeTransactionFromScheduled(state, transaction);
+    const normalized = homeTransactionFromScheduled(state, indexes, transaction);
     records.set(plannedTransactionKey(normalized), normalized);
   }
 
@@ -213,15 +351,22 @@ function plannedTransactionsForSelectedAccount(
       records.delete(existing.id);
       continue;
     }
-    const transaction = homeTransactionFromOccurrence(state, occurrence, existing);
+    const transaction = homeTransactionFromOccurrence(state, indexes, occurrence, existing);
     records.delete(existing?.id ?? '');
     records.set(plannedTransactionKey(transaction), transaction);
   }
 
-  return Array.from(records.values())
+  const result = Array.from(records.values())
     .filter((transaction) => transaction.status === 'scheduled')
     .filter((transaction) => transactionMatchesAccount(transaction, selectedAccountId))
     .sort((left, right) => left.occurredAt.localeCompare(right.occurredAt));
+  const nextCache =
+    cached?.state === state && cached.dayKey === dayKey
+      ? cached
+      : { dayKey, results: new Map<string, Transaction[]>(), state };
+  nextCache.results.set(cacheKey, result);
+  plannedTransactionsCache.set(indexes, nextCache);
+  return result;
 }
 
 function plannedTransactionKey(transaction: Transaction): string {
@@ -247,21 +392,21 @@ function occurrenceMatchesAccount(
 }
 
 function linkedScheduledFutureInterestTransaction(
-  state: LedgerStateForWidget,
+  indexes: LedgerIndexes,
   transaction: Transaction,
 ): Transaction | undefined {
   if (!transaction.externalRef) return undefined;
   const interestRef = futureRuleInterestExternalRef(transaction.externalRef);
-  return state.transactions.find(
-    (item) => item.status === 'scheduled' && item.externalRef === interestRef,
-  );
+  const interest = indexes.transactionsByExternalRef.get(interestRef);
+  return interest?.status === 'scheduled' ? interest : undefined;
 }
 
 function homeTransactionFromScheduled(
   state: LedgerStateForWidget,
+  indexes: LedgerIndexes,
   transaction: Transaction,
 ): Transaction {
-  const interest = linkedScheduledFutureInterestTransaction(state, transaction);
+  const interest = linkedScheduledFutureInterestTransaction(indexes, transaction);
   if (!interest) return transaction;
   const amount = {
     amountMinor: transaction.amount.amountMinor + interest.amount.amountMinor,
@@ -278,10 +423,13 @@ function homeTransactionFromScheduled(
 
 function homeTransactionFromOccurrence(
   state: LedgerStateForWidget,
+  indexes: LedgerIndexes,
   occurrence: FutureRuleOccurrence,
   existing?: Transaction,
 ): Transaction {
-  const interest = existing ? linkedScheduledFutureInterestTransaction(state, existing) : undefined;
+  const interest = existing
+    ? linkedScheduledFutureInterestTransaction(indexes, existing)
+    : undefined;
   const amount = {
     amountMinor: existing
       ? existing.amount.amountMinor + (interest?.amount.amountMinor ?? 0)
@@ -509,22 +657,38 @@ function BalanceHeroWidget({
     ? datePreset
     : BALANCE_HERO_DEFAULT_DATE_PRESET;
   const selectedAccount = useMemo(
-    () =>
-      selectedAccountId
-        ? state.accounts.find((account) => account.id === selectedAccountId)
-        : undefined,
-    [selectedAccountId, state.accounts],
+    () => (selectedAccountId ? indexes.accountsById.get(selectedAccountId) : undefined),
+    [indexes.accountsById, selectedAccountId],
   );
-  const total = useMemo(
+  const enabledCurrencyCodes = useMemo(() => enabledCurrencies(state), [state]);
+  const total = useMemo(() => {
+    if (!selectedAccount) return indexedTotalBalanceForHome(state, indexes, viewCurrency);
+    if (selectedAccount.type === 'cash') {
+      return (
+        cashCurrencyTotalForAccount(state, indexes, selectedAccount, viewCurrency) ??
+        selectors.convertMoneyForDisplay(
+          state,
+          balanceForAccount(indexes, selectedAccount),
+          viewCurrency,
+        )
+      );
+    }
+    return selectors.convertMoneyForDisplay(
+      state,
+      balanceForAccount(indexes, selectedAccount),
+      viewCurrency,
+    );
+  }, [indexes, selectedAccount, selectors, state, viewCurrency]);
+  const cashCurrencyBreakdown = useMemo(
     () =>
-      selectedAccount
-        ? selectors.convertMoneyForDisplay(
-            state,
-            balanceForAccount(indexes, selectedAccount),
-            viewCurrency,
-          )
-        : indexedTotalBalanceForHome(state, indexes, viewCurrency),
-    [indexes, selectedAccount, selectors, state, viewCurrency],
+      selectedAccount?.type === 'cash'
+        ? cashCurrencyBreakdownForAccount(indexes, selectedAccount, state.preferences.locale)
+        : [],
+    [indexes, selectedAccount, state],
+  );
+  const cashCurrencyBreakdownLabel = useMemo(
+    () => cashCurrencyBreakdown.map(cashCurrencyInlineLabel).join(' | '),
+    [cashCurrencyBreakdown],
   );
   const flow = useMemo(
     () => cashflowForPreset(state, heroDatePreset, selectedAccountId, viewCurrency, indexes),
@@ -560,6 +724,17 @@ function BalanceHeroWidget({
           >
             {formatMoney(total, state.preferences.locale)}
           </Text>
+          {cashCurrencyBreakdownLabel ? (
+            <Text
+              variant="labelLarge"
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.72}
+              style={[styles.heroCashBreakdownText, { color: theme.colors.onSurfaceVariant }]}
+            >
+              {cashCurrencyBreakdownLabel}
+            </Text>
+          ) : null}
         </View>
         <View style={styles.heroActions}>
           <WidgetDateFilterButton
@@ -571,7 +746,7 @@ function BalanceHeroWidget({
           />
           <BalanceCurrencyButton
             value={viewCurrency}
-            currencies={enabledCurrencies(state)}
+            currencies={enabledCurrencyCodes}
             onChange={(currency) => void setDisplayCurrency(currency)}
           />
         </View>
@@ -703,11 +878,17 @@ function AccountGridWidget({ size, selectedAccountId, onSelectedAccountChange }:
         const color =
           account.color ?? ACCOUNT_COLORS[index % ACCOUNT_COLORS.length] ?? tokens.color.md3Primary;
         const balance = balanceForAccount(indexes, account);
-        const convertedBalance =
-          normalizeCurrencyCode(balance.currency) !== normalizeCurrencyCode(viewCurrency) &&
-          realRateBetween(state, balance.currency, viewCurrency)
+        const cashDisplayBalance =
+          account.type === 'cash'
+            ? cashCurrencyTotalForAccount(state, indexes, account, viewCurrency)
+            : undefined;
+        const convertedBalance = cashDisplayBalance
+          ? undefined
+          : normalizeCurrencyCode(balance.currency) !== normalizeCurrencyCode(viewCurrency) &&
+              realRateBetween(state, balance.currency, viewCurrency)
             ? convertMoneyForDisplay(state, balance, viewCurrency)
             : undefined;
+        const cashCurrencyBreakdown = cashCurrencyBreakdownForAccount(indexes, account, locale);
         const selected = account.id === instantSelectedAccountId;
         const dimmed = Boolean(instantSelectedAccountId && !selected);
         const tileColor = dimmed ? dimmedTileColor : color;
@@ -722,7 +903,8 @@ function AccountGridWidget({ size, selectedAccountId, onSelectedAccountChange }:
           accountId: account.id,
           accountName: account.name,
           accountIcon: resolveAppIconName(account.icon, iconForAccount(account.type)),
-          balanceLabel: formatMoney(balance, locale),
+          balanceLabel: formatMoney(cashDisplayBalance ?? balance, locale),
+          cashCurrencyBreakdown: cashCurrencyBreakdown.length ? cashCurrencyBreakdown : undefined,
           color: tileColor,
           compact: size === 'compact',
           contentColor,
@@ -810,11 +992,8 @@ function SummaryTilesWidget({
   const { state, indexes, selectors } = useLedger();
   const viewCurrency = selectors.displayCurrency(state);
   const selectedAccount = useMemo(
-    () =>
-      selectedAccountId
-        ? state.accounts.find((account) => account.id === selectedAccountId)
-        : undefined,
-    [selectedAccountId, state.accounts],
+    () => (selectedAccountId ? indexes.accountsById.get(selectedAccountId) : undefined),
+    [indexes.accountsById, selectedAccountId],
   );
   const netWorth = useMemo(
     () => indexedNetWorthForHome(state, indexes, viewCurrency),
@@ -1247,21 +1426,23 @@ function ReviewQueueWidget({
   onDatePresetChange,
   selectedAccountId,
 }: WidgetShellProps) {
-  const { state, selectors } = useLedger();
-  const range = dateRangeForPreset(datePreset);
-  const pending = selectors
-    .queryCaptureCandidates(state, { status: 'pending' })
-    .filter(
-      (candidate) =>
-        !selectedAccountId ||
-        candidate.suggestedAccountId === selectedAccountId ||
-        candidate.suggestedCounterAccountId === selectedAccountId,
-    )
-    .filter((candidate) => timestampInRange(candidate.createdAt, range));
-  const bySource = pending.reduce<Record<string, number>>((acc, item) => {
-    acc[item.source] = (acc[item.source] ?? 0) + 1;
-    return acc;
-  }, {});
+  const { indexes } = useLedger();
+  const range = useMemo(() => dateRangeForPreset(datePreset), [datePreset]);
+  const { bySource, pending } = useMemo(() => {
+    const pending = (indexes.captureCandidatesByStatus.get('pending') ?? [])
+      .filter(
+        (candidate) =>
+          !selectedAccountId ||
+          candidate.suggestedAccountId === selectedAccountId ||
+          candidate.suggestedCounterAccountId === selectedAccountId,
+      )
+      .filter((candidate) => timestampInRange(candidate.createdAt, range));
+    const bySource = pending.reduce<Record<string, number>>((acc, item) => {
+      acc[item.source] = (acc[item.source] ?? 0) + 1;
+      return acc;
+    }, {});
+    return { bySource, pending };
+  }, [indexes.captureCandidatesByStatus, range, selectedAccountId]);
 
   return (
     <HomeWidgetShell
@@ -1301,31 +1482,44 @@ function AutomationHealthWidget({
   selectedAccountId,
 }: WidgetShellProps) {
   const { state, indexes } = useLedger();
-  const pendingCaptures = state.captureCandidates.filter(
-    (candidate) =>
-      candidate.status === 'pending' &&
-      (!selectedAccountId ||
-        candidate.suggestedAccountId === selectedAccountId ||
-        candidate.suggestedCounterAccountId === selectedAccountId),
+  const pendingCaptures = useMemo(
+    () =>
+      (indexes.captureCandidatesByStatus.get('pending') ?? []).filter(
+        (candidate) =>
+          !selectedAccountId ||
+          candidate.suggestedAccountId === selectedAccountId ||
+          candidate.suggestedCounterAccountId === selectedAccountId,
+      ),
+    [indexes.captureCandidatesByStatus, selectedAccountId],
   );
-  const importWarnings = state.importBatches.reduce(
-    (sum, batch) => sum + batch.warningCount + batch.duplicateCount,
-    0,
+  const importWarnings = useMemo(
+    () =>
+      state.importBatches.reduce(
+        (sum, batch) => sum + batch.warningCount + batch.duplicateCount,
+        0,
+      ),
+    [state.importBatches],
   );
-  const scheduledWeek = plannedTransactionsForSelectedAccount(
-    state,
-    indexes,
-    selectedAccountId,
-  ).filter((transaction) => {
-    const days = dayOffsetFromToday(transaction.occurredAt);
-    return days >= 0 && days <= 7;
-  });
-  const matchedAccounts = state.accounts.filter(
-    (account) =>
-      (account.matchIdentifiers?.length ?? 0) > 0 ||
-      (account.messageSourceHints?.smsSenderIds?.length ?? 0) > 0 ||
-      (account.messageSourceHints?.emailDomains?.length ?? 0) > 0,
-  ).length;
+  const scheduledWeek = useMemo(
+    () =>
+      plannedTransactionsForSelectedAccount(state, indexes, selectedAccountId).filter(
+        (transaction) => {
+          const days = dayOffsetFromToday(transaction.occurredAt);
+          return days >= 0 && days <= 7;
+        },
+      ),
+    [indexes, selectedAccountId, state],
+  );
+  const matchedAccounts = useMemo(
+    () =>
+      state.accounts.filter(
+        (account) =>
+          (account.matchIdentifiers?.length ?? 0) > 0 ||
+          (account.messageSourceHints?.smsSenderIds?.length ?? 0) > 0 ||
+          (account.messageSourceHints?.emailDomains?.length ?? 0) > 0,
+      ).length,
+    [state.accounts],
+  );
 
   return (
     <HomeWidgetShell
@@ -1880,7 +2074,7 @@ function IncomeMixWidget({
       datePreset={datePreset}
       onDatePresetChange={onDatePresetChange}
       selectedAccountId={selectedAccountId}
-      emptyText="No income categories in this period."
+      emptyText="No income records in this period."
     />
   );
 }
@@ -1903,14 +2097,18 @@ function CategoryBreakdownWidget({
   const viewCurrency = displayCurrency(state);
   const [expandedCategoryKey, setExpandedCategoryKey] = useState<string>();
   const [selectedSubcategory, setSelectedSubcategory] = useState<TopCategorySubcategory>();
-  const categories = topCategoryDrilldownForPreset(
-    state,
-    datePreset,
-    kind,
-    selectedAccountId,
-    viewCurrency,
-    indexes,
-  ).slice(0, 5);
+  const categories = useMemo(
+    () =>
+      topCategoryDrilldownForPreset(
+        state,
+        datePreset,
+        kind,
+        selectedAccountId,
+        viewCurrency,
+        indexes,
+      ).slice(0, 5),
+    [datePreset, indexes, kind, selectedAccountId, state, viewCurrency],
+  );
   const closeSubcategoryRecords = () => setSelectedSubcategory(undefined);
 
   return (
@@ -2078,13 +2276,18 @@ function CurrencyValuesWidget({ size, datePreset, onDatePresetChange }: WidgetSh
     chartSourceCurrencies,
     rateDatePreset,
   );
-  const primaryTarget =
-    converterCurrencies.find(
-      (currency) => currency !== sourceCurrency && realRateBetween(state, sourceCurrency, currency),
-    ) ?? converterCurrencies.find((currency) => currency !== sourceCurrency);
-  const primaryRate = primaryTarget
-    ? realRateBetween(state, sourceCurrency, primaryTarget)
-    : undefined;
+  const primaryTarget = useMemo(
+    () =>
+      converterCurrencies.find(
+        (currency) =>
+          currency !== sourceCurrency && realRateBetween(state, sourceCurrency, currency),
+      ) ?? converterCurrencies.find((currency) => currency !== sourceCurrency),
+    [converterCurrencies, sourceCurrency, state],
+  );
+  const primaryRate = useMemo(
+    () => (primaryTarget ? realRateBetween(state, sourceCurrency, primaryTarget) : undefined),
+    [primaryTarget, sourceCurrency, state],
+  );
   const primaryTargetMoney =
     primaryTarget && primaryRate
       ? decimalToMoney(chartAmount * primaryRate.rate, primaryTarget)
@@ -2106,7 +2309,10 @@ function CurrencyValuesWidget({ size, datePreset, onDatePresetChange }: WidgetSh
     rateSeries?.lines.find((line) => line.sourceCurrency === sourceCurrency) ??
     rateSeries?.lines[0];
   const rateChange = primaryRateLine ? primaryRateLine.latest.rate - primaryRateLine.start.rate : 0;
-  const pickerOptions = currencyValuePickerOptions(state, converterCurrencies);
+  const pickerOptions = useMemo(
+    () => currencyValuePickerOptions(state, converterCurrencies),
+    [converterCurrencies, state],
+  );
   const hasAddableCurrency = pickerOptions.some((option) => !option.disabled);
   const hideRateTooltip = () => setSelectedRatePointKey(undefined);
 
@@ -3565,6 +3771,7 @@ type AccountTileProps = {
   accountName: string;
   accountIcon: ReturnType<typeof resolveAppIconName>;
   balanceLabel: string;
+  cashCurrencyBreakdown?: CashCurrencyBreakdownItem[];
   compact: boolean;
   color: string;
   contentColor: string;
@@ -3581,6 +3788,7 @@ function AccountTile({
   accountName,
   accountIcon,
   balanceLabel,
+  cashCurrencyBreakdown,
   compact,
   color,
   contentColor,
@@ -3591,9 +3799,15 @@ function AccountTile({
   onPressAccount,
 }: AccountTileProps) {
   const handlePress = useCallback(() => onPressAccount(accountId), [accountId, onPressAccount]);
-  const accessibilityLabel = convertedBalanceLabel
-    ? `${accountName}, ${balanceLabel}, ${convertedBalanceLabel}`
-    : `${accountName}, ${balanceLabel}`;
+  const cashBreakdownLabel = cashCurrencyBreakdown
+    ?.map(cashCurrencyInlineLabel)
+    .join(' | ');
+  const secondaryBalanceLabel = [convertedBalanceLabel, cashBreakdownLabel]
+    .filter(Boolean)
+    .join(' | ');
+  const accessibilityLabel = [accountName, balanceLabel, secondaryBalanceLabel]
+    .filter(Boolean)
+    .join(', ');
 
   return (
     <Pressable
@@ -3602,7 +3816,6 @@ function AccountTile({
       style={({ pressed }) => [
         styles.accountTile,
         compact && styles.accountTileCompact,
-        convertedBalanceLabel && styles.accountTileWithConvertedBalance,
         { backgroundColor: color },
         selected && [styles.selectedAccountTile, { borderColor: contentColor }],
         pressed && styles.pressedAccountTile,
@@ -3634,15 +3847,15 @@ function AccountTile({
         >
           {balanceLabel}
         </Text>
-        {convertedBalanceLabel ? (
+        {secondaryBalanceLabel ? (
           <Text
             variant="labelSmall"
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.72}
-            style={[styles.accountConvertedBalance, { color: contentColor }]}
+            style={[styles.accountSecondaryBalance, { color: contentColor }]}
           >
-            {convertedBalanceLabel}
+            {secondaryBalanceLabel}
           </Text>
         ) : null}
       </View>
@@ -3657,6 +3870,7 @@ const MemoizedAccountTile = memo(
     previous.accountName === next.accountName &&
     previous.accountIcon === next.accountIcon &&
     previous.balanceLabel === next.balanceLabel &&
+    previous.cashCurrencyBreakdown === next.cashCurrencyBreakdown &&
     previous.compact === next.compact &&
     previous.color === next.color &&
     previous.contentColor === next.contentColor &&
@@ -5259,6 +5473,13 @@ const styles = StyleSheet.create({
   heroCopy: { flexGrow: 1, flexShrink: 1, minWidth: 150, gap: tokens.space.xs },
   heroTitlePressArea: { alignSelf: 'flex-start' },
   heroAmount: { fontFamily: numericMediumFontFamily, fontWeight: '800' },
+  heroCashBreakdownText: {
+    fontFamily: numericMediumFontFamily,
+    fontWeight: '800',
+    letterSpacing: 0,
+    marginTop: -2,
+    opacity: 0.9,
+  },
   heroActions: {
     flexDirection: 'column',
     alignItems: 'flex-end',
@@ -5287,14 +5508,13 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     flexBasis: '31.7%',
     maxWidth: '31.7%',
-    height: 58,
+    height: 66,
     borderRadius: tokens.radius.md,
     borderWidth: 2,
     borderColor: 'transparent',
     overflow: 'hidden',
   },
-  accountTileCompact: { height: 48 },
-  accountTileWithConvertedBalance: { height: 66 },
+  accountTileCompact: { height: 58 },
   selectedAccountTile: {},
   pressedAccountTile: { transform: [{ scale: 0.985 }] },
   accountTileContent: {
@@ -5318,7 +5538,7 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     fontWeight: '700',
   },
-  accountConvertedBalance: {
+  accountSecondaryBalance: {
     fontFamily: numericMediumFontFamily,
     fontSize: 10,
     lineHeight: 12,

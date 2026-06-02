@@ -1,9 +1,47 @@
-name: Android Release
+name: Android Release Core
 
 on:
-  push:
-    branches:
-      - main
+  workflow_call:
+    inputs:
+      channel:
+        description: Update channel to publish
+        required: true
+        type: string
+      beta_number:
+        description: Deprecated. Beta releases now use a unique patch version such as 1.4.2-beta.
+        required: false
+        default: '1'
+        type: string
+      release_type:
+        description: Release type for update metadata
+        required: false
+        default: ''
+        type: string
+      mandatory:
+        description: Mark the in-app update as mandatory
+        required: false
+        default: false
+        type: boolean
+      features:
+        description: New feature changelog lines, one per line
+        required: false
+        default: ''
+        type: string
+      fixes:
+        description: Bug fix changelog lines, one per line
+        required: false
+        default: ''
+        type: string
+      notes:
+        description: Extra release notes, one per line
+        required: false
+        default: ''
+        type: string
+      publish_assets_repo:
+        description: Also mirror APK to APK_RELEASE_REPO
+        required: false
+        default: false
+        type: boolean
   workflow_dispatch:
     inputs:
       channel:
@@ -15,7 +53,7 @@ on:
           - beta
           - stable
       beta_number:
-        description: Beta sequence number. Used only when channel is beta.
+        description: Deprecated. Beta releases now use a unique patch version such as 1.4.2-beta.
         required: true
         default: '1'
         type: string
@@ -66,13 +104,13 @@ jobs:
   release:
     name: Build and publish APK
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[skip release]'))
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call'
     env:
       APK_PATH: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
       RELEASE_ARCHITECTURE: arm64-v8a
       ASSET_REPO: ${{ vars.APK_RELEASE_REPO }}
       FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID || 'wallet-1a5af' }}
-      UPDATE_CHANNEL: ${{ github.event_name == 'push' && 'stable' || inputs.channel || 'stable' }}
+      UPDATE_CHANNEL: ${{ inputs.channel || 'stable' }}
       PUBLISH_ASSET_REPO_INPUT: ${{ inputs.publish_assets_repo }}
       PUBLISH_ASSET_REPO_DEFAULT: ${{ vars.PUBLISH_APK_TO_ASSETS_REPO || 'false' }}
       RELEASE_TYPE: ${{ inputs.release_type }}
@@ -85,16 +123,16 @@ jobs:
 
       - name: Validate release trigger
         run: |
-          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$GITHUB_REF" != "refs/heads/main" ]; then
-            echo "::error::Stable releases only run from main."
-            exit 1
-          fi
           if [ "$UPDATE_CHANNEL" = "stable" ] && [ "$GITHUB_REF" != "refs/heads/main" ]; then
-            echo "::error::Stable releases must be dispatched from main. Use beta for feature branches."
+            echo "::error::Stable releases must run from main."
             exit 1
           fi
           if [ "$UPDATE_CHANNEL" = "beta" ] && [ "$GITHUB_REF" = "refs/heads/main" ]; then
-            echo "::error::Beta releases must be dispatched from a feature or PR branch, not main."
+            echo "::error::Beta releases must run from development, feature/*, or bug/*, not main."
+            exit 1
+          fi
+          if [ "$UPDATE_CHANNEL" = "beta" ] && [ "$GITHUB_REF" != "refs/heads/development" ] && [[ "$GITHUB_REF_NAME" != feature/* ]] && [[ "$GITHUB_REF_NAME" != bug/* ]]; then
+            echo "::error::Beta releases must run from development, feature/*, or bug/*."
             exit 1
           fi
           echo "Publishing $UPDATE_CHANNEL update metadata from $GITHUB_REF_NAME."
@@ -154,7 +192,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ "$UPDATE_CHANNEL" = "beta" ]; then
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] && [ "$UPDATE_CHANNEL" = "beta" ] && [ "$GITHUB_REF" != "refs/heads/development" ]; then
             gh pr list --repo "$GITHUB_REPOSITORY" --head "$GITHUB_REF_NAME" --state open --json number,title,body,url,labels --limit 1 > .tmp-pr.json || echo "[]" > .tmp-pr.json
           else
             gh api -H "Accept: application/vnd.github+json" \
@@ -238,6 +276,10 @@ jobs:
           git tag --force "$tag" "$target"
           git push --force origin "refs/tags/$tag"
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            if [ "${{ steps.info.outputs.prerelease }}" = "true" ]; then
+              echo "::error::Beta release $tag already exists. Bump the development beta patch version before publishing again."
+              exit 1
+            fi
             gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --target "$target" --title "$title" --notes-file .tmp-release-notes.md "${edit_flags[@]}"
           else
             gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$target" --title "$title" --notes-file .tmp-release-notes.md "${create_flags[@]}"
@@ -265,6 +307,10 @@ jobs:
           fi
           if [ "$publish_asset_repo" != "false" ] && [ -n "$ASSET_REPO" ]; then
             if gh release view "$tag" --repo "$ASSET_REPO" >/dev/null 2>&1; then
+              if [ "${{ steps.info.outputs.prerelease }}" = "true" ]; then
+                echo "::error::Beta release $tag already exists in $ASSET_REPO. Bump the development beta patch version before publishing again."
+                exit 1
+              fi
               gh release edit "$tag" --repo "$ASSET_REPO" --title "$title" --notes-file .tmp-release-notes.md "${edit_flags[@]}"
             else
               gh release create "$tag" --repo "$ASSET_REPO" --title "$title" --notes-file .tmp-release-notes.md "${create_flags[@]}"

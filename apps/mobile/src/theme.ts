@@ -1,6 +1,8 @@
 import type { ThemeAccentPreference, ThemePreference } from '@1wallet/ledger';
 import { tokens } from '@1wallet/ui';
 import { configureFonts, MD3DarkTheme, MD3LightTheme, type MD3Theme } from 'react-native-paper';
+import { withColorAlpha } from './colorAlpha';
+import { mixHexColors, readableTextColorForBackground } from './colorContrast';
 import { appFonts } from './fonts';
 import type { Material3Scheme } from './material3Theme';
 
@@ -49,6 +51,10 @@ type AppMaterialTheme = {
   dark: ColorScheme;
 };
 
+type AppPaperThemeOptions = {
+  customAccentColor?: string;
+};
+
 export type ResolvedThemeMode = 'light' | 'dark' | 'amoled';
 
 export const DEFAULT_THEME_SOURCE_COLOR = tokens.color.md3.light.primary;
@@ -74,8 +80,14 @@ const paperFonts = configureFonts({
   },
 });
 
-function createPaperTheme(base: MD3Theme, scheme: ColorScheme, amoled = false): MD3Theme {
-  const appScheme = amoled ? amoledScheme(scheme) : scheme;
+function createPaperTheme(
+  base: MD3Theme,
+  scheme: ColorScheme,
+  amoled = false,
+  options?: AppPaperThemeOptions,
+): MD3Theme {
+  const baseScheme = amoled ? amoledScheme(scheme) : scheme;
+  const appScheme = applyReadableThemeColors(baseScheme, base.dark || amoled, options);
   return {
     ...base,
     dark: base.dark || amoled,
@@ -144,13 +156,42 @@ function amoledScheme(scheme: ColorScheme): ColorScheme {
   };
 }
 
+function applyReadableThemeColors(
+  scheme: ColorScheme,
+  dark: boolean,
+  options?: AppPaperThemeOptions,
+): ColorScheme {
+  const customAccent = normalizeHexColor(options?.customAccentColor);
+  const primary = customAccent ?? scheme.primary;
+  const primaryContainer = customAccent
+    ? mixHexColors(
+        primary,
+        dark ? scheme.surfaceContainerHigh : scheme.surfaceContainerLowest,
+        dark ? 0.34 : 0.16,
+      )
+    : scheme.primaryContainer;
+  const outlineBase = readableTextColorForBackground(scheme.background);
+
+  return {
+    ...scheme,
+    primary,
+    onPrimary: readableTextColorForBackground(primary),
+    primaryContainer,
+    onPrimaryContainer: readableTextColorForBackground(primaryContainer),
+    inversePrimary: customAccent ?? scheme.inversePrimary,
+    outline: withColorAlpha(outlineBase, dark ? 0.62 : 0.46),
+    outlineVariant: withColorAlpha(outlineBase, dark ? 0.34 : 0.22),
+  };
+}
+
 export function createAppPaperTheme(
   mode: ResolvedThemeMode,
   materialTheme: AppMaterialTheme = fallbackMaterialTheme,
+  options?: AppPaperThemeOptions,
 ): MD3Theme {
-  if (mode === 'light') return createPaperTheme(MD3LightTheme, materialTheme.light);
-  if (mode === 'amoled') return createPaperTheme(MD3DarkTheme, materialTheme.dark, true);
-  return createPaperTheme(MD3DarkTheme, materialTheme.dark);
+  if (mode === 'light') return createPaperTheme(MD3LightTheme, materialTheme.light, false, options);
+  if (mode === 'amoled') return createPaperTheme(MD3DarkTheme, materialTheme.dark, true, options);
+  return createPaperTheme(MD3DarkTheme, materialTheme.dark, false, options);
 }
 
 const fallbackMaterialTheme = {

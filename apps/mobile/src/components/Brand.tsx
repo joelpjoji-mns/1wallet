@@ -26,23 +26,6 @@ type ResolvedLaunchPalette = LaunchPaletteBase & {
   stageBorder: string;
 };
 
-const DARK_LAUNCH_PALETTE: ResolvedLaunchPalette = {
-  ...launchPalette,
-  bandPrimary: 'rgba(49, 93, 168, 0.46)',
-  bandTertiary: 'rgba(13, 84, 55, 0.48)',
-  bandGold: 'rgba(223, 200, 148, 0.18)',
-  cardFill: 'rgba(244, 247, 251, 0.04)',
-  completedRail: 'rgba(155, 221, 181, 0.18)',
-  focusBorder: 'rgba(169, 199, 255, 0.28)',
-  focusFill: 'rgba(155, 221, 181, 0.08)',
-  haloFill: 'rgba(169, 199, 255, 0.08)',
-  markBackground: 'rgba(13, 22, 30, 0.94)',
-  markBorder: 'rgba(215, 227, 255, 0.32)',
-  markGlint: 'rgba(244, 247, 251, 0.11)',
-  progressTrack: 'rgba(215, 227, 255, 0.14)',
-  stageBorder: 'rgba(215, 227, 255, 0.18)',
-};
-
 const LAUNCH_STAGES: {
   id: LaunchStage;
   label: string;
@@ -140,7 +123,7 @@ export function BrandedLoadingState({
   useEffect(() => {
     const intro = Animated.timing(entrance, {
       toValue: 1,
-      duration: 760,
+      duration: 260,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     });
@@ -148,13 +131,13 @@ export function BrandedLoadingState({
       Animated.sequence([
         Animated.timing(breathe, {
           toValue: 1,
-          duration: 1400,
+          duration: 900,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(breathe, {
           toValue: 0,
-          duration: 1400,
+          duration: 900,
           easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
@@ -163,7 +146,7 @@ export function BrandedLoadingState({
     const progressSweep = Animated.loop(
       Animated.timing(sweep, {
         toValue: 1,
-        duration: 1600,
+        duration: 720,
         easing: Easing.inOut(Easing.cubic),
         useNativeDriver: true,
       }),
@@ -172,13 +155,13 @@ export function BrandedLoadingState({
       Animated.sequence([
         Animated.timing(drift, {
           toValue: 1,
-          duration: 4200,
+          duration: 2400,
           easing: Easing.inOut(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(drift, {
           toValue: 0,
-          duration: 4200,
+          duration: 2400,
           easing: Easing.inOut(Easing.cubic),
           useNativeDriver: true,
         }),
@@ -316,7 +299,7 @@ export function AnimatedBrandScene({
   useEffect(() => {
     const intro = Animated.timing(entrance, {
       toValue: 1,
-      duration: 760,
+      duration: 260,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     });
@@ -324,13 +307,13 @@ export function AnimatedBrandScene({
       Animated.sequence([
         Animated.timing(breathe, {
           toValue: 1,
-          duration: 1400,
+          duration: 900,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(breathe, {
           toValue: 0,
-          duration: 1400,
+          duration: 900,
           easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
@@ -339,7 +322,7 @@ export function AnimatedBrandScene({
     const progressSweep = Animated.loop(
       Animated.timing(sweep, {
         toValue: 1,
-        duration: 1600,
+        duration: 720,
         easing: Easing.inOut(Easing.cubic),
         useNativeDriver: true,
       }),
@@ -348,13 +331,13 @@ export function AnimatedBrandScene({
       Animated.sequence([
         Animated.timing(drift, {
           toValue: 1,
-          duration: 4200,
+          duration: 2400,
           easing: Easing.inOut(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(drift, {
           toValue: 0,
-          duration: 4200,
+          duration: 2400,
           easing: Easing.inOut(Easing.cubic),
           useNativeDriver: true,
         }),
@@ -396,7 +379,7 @@ export function AnimatedBrandScene({
             style={[
               brandStyles.launchHalo,
               {
-                borderColor: launchPalette.primary,
+                borderColor: palette.primary,
                 backgroundColor: palette.haloFill,
                 opacity: haloOpacity,
                 transform: [{ scale: haloScale }],
@@ -608,38 +591,50 @@ function LaunchBrandMark({
 function useResolvedLaunchPalette(): ResolvedLaunchPalette {
   const theme = useTheme();
   return useMemo(() => {
-    if (theme.dark) return DARK_LAUNCH_PALETTE;
+    const isDark = theme.dark;
+    const isAmoled = isDark && isTrueBlackColor(theme.colors.background);
+    const background = isAmoled ? '#000000' : isDark ? '#101214' : '#FFFFFF';
+    const backgroundDeep = isAmoled ? '#000000' : isDark ? '#07090C' : '#F7F9FC';
+    const surface = isAmoled ? '#050505' : isDark ? '#171A1F' : '#FFFFFF';
+    const surfaceRaised = isAmoled ? '#0B0B0B' : isDark ? '#20242A' : '#F9FBFE';
+    const neutralBandAlpha = isAmoled ? 0.026 : isDark ? 0.052 : 0.038;
+    const neutralPlateAlpha = isAmoled ? 0.038 : isDark ? 0.07 : 0.05;
+    const accentAlpha = isAmoled ? 0.11 : isDark ? 0.15 : 0.11;
 
     return {
-      background: theme.colors.background,
-      backgroundDeep: theme.colors.surface,
+      background,
+      backgroundDeep,
       primary: theme.colors.primary,
       primaryDeep: theme.colors.primaryContainer,
       tertiary: theme.colors.tertiary,
       tertiaryDeep: theme.colors.tertiaryContainer,
-      tertiaryText: theme.colors.onTertiaryContainer,
+      tertiaryText: theme.colors.onTertiary,
       gold: theme.colors.secondary,
       text: theme.colors.onBackground,
       mutedText: theme.colors.onSurfaceVariant,
-      rail: withColorAlpha(theme.colors.primary, 0.08),
-      railActive: withColorAlpha(theme.colors.primary, 0.14),
-      line: withColorAlpha(theme.colors.primary, 0.1),
-      lineStrong: withColorAlpha(theme.colors.tertiary, 0.16),
-      bandPrimary: withColorAlpha(theme.colors.primary, 0.08),
-      bandTertiary: withColorAlpha(theme.colors.tertiary, 0.08),
-      bandGold: withColorAlpha(theme.colors.secondary, 0.08),
-      cardFill: withColorAlpha(theme.colors.primary, 0.05),
-      completedRail: withColorAlpha(theme.colors.tertiary, 0.12),
-      focusBorder: withColorAlpha(theme.colors.primary, 0.18),
-      focusFill: withColorAlpha(theme.colors.tertiary, 0.06),
-      haloFill: withColorAlpha(theme.colors.primary, 0.06),
-      markBackground: withColorAlpha(theme.colors.surface, 0.96),
-      markBorder: withColorAlpha(theme.colors.outline, 0.28),
-      markGlint: withColorAlpha(theme.colors.onSurface, 0.08),
-      progressTrack: withColorAlpha(theme.colors.primary, 0.12),
-      stageBorder: withColorAlpha(theme.colors.outline, 0.22),
+      rail: withColorAlpha(theme.colors.onSurface, isDark ? 0.11 : 0.07),
+      railActive: withColorAlpha(theme.colors.primary, accentAlpha),
+      line: withColorAlpha(theme.colors.onSurface, isAmoled ? 0.08 : isDark ? 0.12 : 0.08),
+      lineStrong: withColorAlpha(theme.colors.onSurface, isAmoled ? 0.12 : isDark ? 0.16 : 0.12),
+      bandPrimary: withColorAlpha(theme.colors.onSurface, neutralBandAlpha),
+      bandTertiary: withColorAlpha(theme.colors.onSurface, neutralBandAlpha),
+      bandGold: withColorAlpha(theme.colors.onSurface, neutralBandAlpha * 0.72),
+      cardFill: surface,
+      completedRail: withColorAlpha(theme.colors.onSurface, isDark ? 0.14 : 0.09),
+      focusBorder: withColorAlpha(theme.colors.outline, isAmoled ? 0.2 : isDark ? 0.26 : 0.2),
+      focusFill: withColorAlpha(theme.colors.onSurface, neutralPlateAlpha),
+      haloFill: withColorAlpha(theme.colors.primary, isAmoled ? 0.045 : isDark ? 0.064 : 0.052),
+      markBackground: withColorAlpha(surfaceRaised, 0.98),
+      markBorder: withColorAlpha(theme.colors.outline, isDark ? 0.32 : 0.28),
+      markGlint: withColorAlpha(theme.colors.onSurface, isDark ? 0.11 : 0.08),
+      progressTrack: withColorAlpha(theme.colors.onSurface, isDark ? 0.12 : 0.08),
+      stageBorder: withColorAlpha(theme.colors.outline, isDark ? 0.22 : 0.22),
     };
   }, [theme]);
+}
+
+function isTrueBlackColor(color: string) {
+  return color.trim().toLowerCase() === '#000' || color.trim().toLowerCase() === '#000000';
 }
 
 export function RecoveryState({

@@ -16,32 +16,32 @@ const buildGradle = readFileSync(resolve(repoRoot, 'apps/mobile/android/app/buil
 const channel = normalizeChannel(args.channel ?? process.env.ONEWALLET_UPDATE_CHANNEL ?? 'stable');
 const sourceVersionName = appConfig.expo?.version;
 const sourceVersionCode = readVersionCode(buildGradle) ?? versionCodeFromSemver(sourceVersionName);
-const betaNumber = normalizeBetaNumber(
-  args['beta-number'] ?? process.env.ONEWALLET_BETA_NUMBER ?? '1',
-);
 const explicitVersionName = args['version-name'] ?? process.env.ONEWALLET_VERSION_NAME;
 const explicitVersionCode = args['version-code'] ?? process.env.ONEWALLET_VERSION_CODE;
-const versionName =
-  explicitVersionName ?? deriveVersionName(sourceVersionName, channel, betaNumber);
+const versionName = explicitVersionName ?? deriveVersionName(sourceVersionName, channel);
 const versionCode = explicitVersionCode
   ? normalizeVersionCode(explicitVersionCode, '--version-code')
-  : deriveVersionCode(sourceVersionCode, versionName, channel, betaNumber);
+  : deriveVersionCode(sourceVersionCode, versionName);
 
 if (!sourceVersionName) throw new Error('Could not read expo.version from apps/mobile/app.json.');
 if (!versionName) throw new Error('Could not determine Android versionName.');
 if (!versionCode) throw new Error('Could not determine Android versionCode.');
-if (channel === 'beta') assertBetaPatchVersion(versionName);
+if (channel === 'beta') assertBetaVersion(versionName, versionCode);
+if (channel === 'stable') assertStableVersion(versionName, versionCode);
+
+const releaseLabel = releaseDisplayLabel(versionName, channel);
+const assetLabel = releaseAssetLabel(versionName, channel);
 
 const info = {
   versionName,
   versionCode: String(versionCode),
   channel,
   tag: `android-${channel}-v${versionName}-${versionCode}`,
-  releaseTitle: `1Wallet Android ${versionName} ${channel === 'beta' ? 'Beta' : 'Stable'} (${versionCode})`,
+  releaseTitle: `1Wallet Android ${releaseLabel} (${versionCode})`,
   prerelease: String(channel === 'beta'),
   latest: String(channel === 'stable'),
-  apkFileName: `1wallet-${versionName}-${channel}-arm64-v8a.apk`,
-  manifestFileName: `1wallet-${versionName}-${channel}-update-manifest.json`,
+  apkFileName: `1wallet-${assetLabel}-arm64-v8a.apk`,
+  manifestFileName: `1wallet-${assetLabel}-update-manifest.json`,
 };
 
 if (args.output) {
@@ -73,50 +73,81 @@ function semverFromVersion(version) {
   };
 }
 
-function deriveVersionName(sourceVersionName, channel, betaNumber) {
+function deriveVersionName(sourceVersionName, channel) {
   if (!sourceVersionName) return null;
-  if (channel === 'stable' || sourceVersionName.includes('-')) return sourceVersionName;
-  assertBetaPatchVersion(sourceVersionName);
-  return `${sourceVersionName}-beta.${betaNumber}`;
+  if (channel === 'stable') return sourceVersionName;
+  if (sourceVersionName.includes('-')) return sourceVersionName;
+  return `${sourceVersionName}-beta`;
 }
 
-function deriveVersionCode(sourceVersionCode, versionName, channel, betaNumber) {
-  const baseVersionCode = sourceVersionCode ?? versionCodeFromSemver(versionName);
-  if (!baseVersionCode) return null;
-  if (channel === 'stable') return baseVersionCode;
-  assertBetaPatchVersion(versionName);
-  const betaVersionCode = baseVersionCode - 100 + betaNumber;
-  if (betaVersionCode <= 0 || betaVersionCode >= baseVersionCode) {
-    throw new Error(
-      'Could not derive a safe beta versionCode below the target stable versionCode.',
-    );
+function deriveVersionCode(sourceVersionCode, versionName) {
+  return versionCodeFromSemver(versionName) ?? sourceVersionCode ?? null;
+}
+
+function assertStableVersion(versionName, versionCode) {
+  if (versionName.includes('-')) {
+    throw new Error(`Stable releases must use a plain semantic version, not ${versionName}.`);
   }
-  return betaVersionCode;
-}
-
-function assertBetaPatchVersion(versionName) {
   const semver = semverFromVersion(versionName);
   if (!semver) throw new Error(`Could not parse semantic version: ${versionName}.`);
-  if (semver.patch === 0) {
+  if (semver.patch !== 0 && versionCode !== 1040100) {
     throw new Error(
-      `Beta releases must target a patch version greater than 0. Use ${semver.major}.${semver.minor}.1-beta.1 or later instead of ${semver.major}.${semver.minor}.0-beta.*.`,
+      `Planned stable releases must end in .0. Use ${semver.major}.${semver.minor + 1}.0 for the next stable release instead of ${versionName}.`,
     );
   }
+}
+
+function assertBetaVersion(versionName, versionCode) {
+  const semver = semverFromVersion(versionName);
+  if (!semver) throw new Error(`Could not parse semantic version: ${versionName}.`);
+  if (!/-beta$/.test(versionName)) {
+    throw new Error(`Beta releases must use the form 1.4.2-beta, not ${versionName}.`);
+  }
+  if (semver.patch === 0) {
+    throw new Error(
+      `Beta releases must target a patch version greater than 0. Use ${semver.major}.${semver.minor}.1-beta or later instead of ${semver.major}.${semver.minor}.0-beta.`,
+    );
+  }
+  if (versionCode < 1040200) {
+    throw new Error(
+      'The next beta must be 1.4.2-beta / 1040200 or later because stable 1.4.1 / 1040100 is already published.',
+    );
+  }
+}
+
+function releaseDisplayLabel(versionName, channel) {
+  if (channel === 'beta') return `${versionName.replace(/-beta$/, '')} Beta`;
+  return `${versionName} Stable`;
+}
+
+function releaseAssetLabel(versionName, channel) {
+  if (channel === 'beta' && /-beta$/.test(versionName)) return versionName;
+  return `${versionName}-${channel}`;
 }
 
 function runSelfTest() {
-  const stableVersionName = deriveVersionName('1.4.1', 'stable', 1);
-  const stableVersionCode = deriveVersionCode(1040100, stableVersionName, 'stable', 1);
-  if (stableVersionName !== '1.4.1' || stableVersionCode !== 1040100) {
-    throw new Error('Expected stable 1.4.1 to produce versionCode 1040100.');
+  const rescueVersionName = deriveVersionName('1.4.1', 'stable');
+  const rescueVersionCode = deriveVersionCode(1040100, rescueVersionName);
+  if (rescueVersionName !== '1.4.1' || rescueVersionCode !== 1040100) {
+    throw new Error('Expected rescue stable 1.4.1 to produce versionCode 1040100.');
   }
 
-  assertThrows(() => deriveVersionName('1.4.0', 'beta', 1), '1.4.0 beta');
+  const stableVersionName = deriveVersionName('1.5.0', 'stable');
+  const stableVersionCode = deriveVersionCode(1050000, stableVersionName);
+  if (stableVersionName !== '1.5.0' || stableVersionCode !== 1050000) {
+    throw new Error('Expected planned stable 1.5.0 to produce versionCode 1050000.');
+  }
 
-  const betaVersionName = deriveVersionName('1.4.2', 'beta', 1);
-  const betaVersionCode = deriveVersionCode(1040200, betaVersionName, 'beta', 1);
-  if (betaVersionName !== '1.4.2-beta.1' || betaVersionCode !== 1040101) {
-    throw new Error('Expected beta 1.4.2 to produce 1.4.2-beta.1 / 1040101.');
+  assertThrows(() => assertBetaVersion(deriveVersionName('1.4.0', 'beta'), 1040000), '1.4.0 beta');
+  assertThrows(() => assertBetaVersion(deriveVersionName('1.4.1', 'beta'), 1040100), '1.4.1 beta');
+  assertThrows(() => assertStableVersion('1.5.0-beta', 1050000), 'stable prerelease');
+  assertThrows(() => assertStableVersion('1.4.2', 1040200), 'planned stable patch');
+
+  const betaVersionName = deriveVersionName('1.4.2', 'beta');
+  const betaVersionCode = deriveVersionCode(1040200, betaVersionName);
+  assertBetaVersion(betaVersionName, betaVersionCode);
+  if (betaVersionName !== '1.4.2-beta' || betaVersionCode !== 1040200) {
+    throw new Error('Expected beta 1.4.2 to produce 1.4.2-beta / 1040200.');
   }
 }
 
@@ -133,14 +164,6 @@ function normalizeVersionCode(value, label) {
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed <= 0) {
     throw new Error(`${label} must be a positive integer.`);
-  }
-  return parsed;
-}
-
-function normalizeBetaNumber(value) {
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 99) {
-    throw new Error('--beta-number must be an integer from 1 to 99.');
   }
   return parsed;
 }
