@@ -1,9 +1,14 @@
 package com.joelpjoji.one.wallet
 
+import android.content.res.Configuration
+import android.graphics.Color
 import android.graphics.Rect
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.LayerDrawable
 import android.os.Build
 import android.os.Bundle
 import android.view.Display
+import android.view.Gravity
 import android.view.View
 
 import com.facebook.react.ReactActivity
@@ -12,18 +17,23 @@ import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnable
 import com.facebook.react.defaults.DefaultReactActivityDelegate
 
 import expo.modules.ReactActivityDelegateWrapper
+import java.io.File
+import org.json.JSONObject
 
 class MainActivity : ReactActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     // Keep Theme.App.SplashScreen from the manifest until React draws so the
     // themed launch surface stays visible during native and Metro startup.
+    applyCachedSplashTheme()
     super.onCreate(null)
+    OneWalletForegroundService.start(this)
     preferHighRefreshRate()
     installDrawerGestureExclusion()
   }
 
   override fun onResume() {
     super.onResume()
+    OneWalletForegroundService.start(this)
     preferHighRefreshRate()
   }
 
@@ -113,7 +123,71 @@ class MainActivity : ReactActivity() {
       .maxByOrNull { mode -> mode.refreshRate }
   }
 
+  @Suppress("DEPRECATION")
+  private fun applyCachedSplashTheme() {
+    val mode = cachedThemePreference().takeUnless { it == "system" } ?: systemSplashMode()
+    val backgroundColor = when (mode) {
+      "light" -> LIGHT_SPLASH_COLOR
+      "amoled" -> AMOLED_SPLASH_COLOR
+      else -> DARK_SPLASH_COLOR
+    }
+    window.setBackgroundDrawable(splashDrawable(backgroundColor))
+    window.statusBarColor = backgroundColor
+    window.navigationBarColor = backgroundColor
+    applyLightSystemBars(mode == "light")
+  }
+
+  private fun splashDrawable(backgroundColor: Int): LayerDrawable {
+    val logo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+      resources.getDrawable(R.drawable.splashscreen_image, theme)
+    } else {
+      @Suppress("DEPRECATION")
+      resources.getDrawable(R.drawable.splashscreen_image)
+    }
+    val drawable = LayerDrawable(arrayOf(ColorDrawable(backgroundColor), logo))
+    drawable.setLayerGravity(1, Gravity.CENTER)
+    return drawable
+  }
+
+  private fun cachedThemePreference(): String? {
+    val file = File(filesDir, THEME_PREFERENCE_FILE_NAME)
+    if (!file.isFile) return null
+    return runCatching {
+      val value = JSONObject(file.readText()).optString("theme")
+      value.takeIf { it == "system" || it == "light" || it == "dark" || it == "amoled" }
+    }.getOrNull()
+  }
+
+  private fun systemSplashMode(): String {
+    val nightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+    return if (nightMode == Configuration.UI_MODE_NIGHT_YES) "dark" else "light"
+  }
+
+  @Suppress("DEPRECATION")
+  private fun applyLightSystemBars(light: Boolean) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+
+    var flags = window.decorView.systemUiVisibility
+    flags = if (light) {
+      flags or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+    } else {
+      flags and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      flags = if (light) {
+        flags or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+      } else {
+        flags and View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
+      }
+    }
+    window.decorView.systemUiVisibility = flags
+  }
+
   companion object {
+    private const val THEME_PREFERENCE_FILE_NAME = "1wallet-theme-preference.json"
+    private val LIGHT_SPLASH_COLOR = Color.WHITE
+    private val DARK_SPLASH_COLOR = Color.rgb(16, 18, 20)
+    private val AMOLED_SPLASH_COLOR = Color.BLACK
     private const val DRAWER_GESTURE_EXCLUSION_WIDTH_DP = 32
     private const val DRAWER_GESTURE_EXCLUSION_HEIGHT_DP = 200
     private const val MIN_HIGH_REFRESH_RATE_HZ = 90f

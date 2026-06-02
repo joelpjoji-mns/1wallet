@@ -12,16 +12,16 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import {
-    Appbar,
-    Button,
-    Divider,
-    IconButton,
-    Modal,
-    Portal,
-    Surface,
-    Text,
-    TouchableRipple,
-    useTheme,
+  Appbar,
+  Button,
+  Divider,
+  IconButton,
+  Modal,
+  Portal,
+  Surface,
+  Text,
+  TouchableRipple,
+  useTheme,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { accountTypeLabel, resolveAccountIconVisual } from '../../src/accountOptions';
@@ -30,25 +30,29 @@ import { resolveCategoryIconVisual } from '../../src/categoryIcons';
 import { useBackLayer } from '../../src/components/AppBackLayer';
 import { useAppDrawer } from '../../src/components/AppDrawerHost';
 import {
-    AppMenuAction,
-    PremiumRow,
-    PremiumSearchInput,
-    TAB_BAR_OVERLAY_CLEARANCE,
+  AppMenuAction,
+  PremiumRow,
+  PremiumSearchInput,
+  TAB_BAR_OVERLAY_CLEARANCE,
 } from '../../src/components/AppKit';
 import {
-    OptionListOverlay,
-    OptionSelectorRow,
-    type OptionListItem,
+  OptionListOverlay,
+  OptionSelectorRow,
+  type OptionListItem,
 } from '../../src/components/OptionListOverlay';
 import { numericMediumFontFamily } from '../../src/fonts';
 import { iconSurfaceForThemeTone } from '../../src/iconSystem';
 import {
-    EXPENSE_TRANSACTION_TYPES as EXPENSE_TYPES,
-    INCOME_TRANSACTION_TYPES as INCOME_TYPES,
-    transactionTypeLabel,
+  runAfterInteractionsWithTimeout,
+  type DeferredInteractionTask,
+} from '../../src/interactionScheduler';
+import {
+  EXPENSE_TRANSACTION_TYPES as EXPENSE_TYPES,
+  INCOME_TRANSACTION_TYPES as INCOME_TYPES,
+  transactionTypeLabel,
 } from '../../src/transactionTypes';
 
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_ARROW_HIT_SLOP = { top: 14, bottom: 14, left: 18, right: 18 };
 const MAX_CALENDAR_OCCURRENCES_PER_RULE = 96;
 const MAX_BALANCE_OCCURRENCES_PER_RULE = 720;
@@ -114,7 +118,7 @@ export default function Calendar() {
   >();
   const [selectedDayKey, setSelectedDayKey] = useState<string | undefined>();
   const visibleMonthRef = useRef(visibleMonth);
-  const calculationFrameRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
+  const calculationTaskRef = useRef<DeferredInteractionTask | null>(null);
 
   const baseCurrency = state.preferences.baseCurrency;
   const locale = state.preferences.locale;
@@ -144,17 +148,18 @@ export default function Calendar() {
 
   useEffect(
     () => () => {
-      if (calculationFrameRef.current !== null) cancelAnimationFrame(calculationFrameRef.current);
+      calculationTaskRef.current?.cancel();
+      calculationTaskRef.current = null;
     },
     [],
   );
 
   const scheduleCalendarCalculation = useCallback((nextMonth: Date) => {
-    if (calculationFrameRef.current !== null) cancelAnimationFrame(calculationFrameRef.current);
-    calculationFrameRef.current = requestAnimationFrame(() => {
-      calculationFrameRef.current = null;
+    calculationTaskRef.current?.cancel();
+    calculationTaskRef.current = runAfterInteractionsWithTimeout(() => {
+      calculationTaskRef.current = null;
       setCalculationMonth(startOfMonth(nextMonth));
-    });
+    }, 220);
   }, []);
   const activeAccounts = useMemo(
     () =>
@@ -186,10 +191,7 @@ export default function Calendar() {
   const categories = useMemo(
     () =>
       state.categories
-        .filter(
-          (category) =>
-            !category.isArchived && (category.kind === 'expense' || category.kind === 'income'),
-        )
+        .filter((category) => !category.isArchived)
         .sort(
           (left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name),
         ),
@@ -209,7 +211,7 @@ export default function Calendar() {
         return {
           value: category.id,
           label: category.name,
-          description: `${category.kind} category`,
+          description: 'Category',
           icon: visual.icon,
           iconBackgroundColor: visual.backgroundColor,
           iconColor: visual.iconColor,
@@ -231,15 +233,6 @@ export default function Calendar() {
   const rulesById = useMemo(
     () => new Map((state.preferences.futureGenerationRules ?? []).map((rule) => [rule.id, rule])),
     [state.preferences.futureGenerationRules],
-  );
-  const realOccurrenceRefs = useMemo(
-    () =>
-      new Set(
-        state.transactions
-          .map((transaction) => transaction.externalRef)
-          .filter((externalRef): externalRef is string => Boolean(externalRef)),
-      ),
-    [state.transactions],
   );
   const balanceForecastWindowStart = useMemo(
     () => minDate(startOfDay(new Date()), calculationGridStart),
@@ -309,7 +302,7 @@ export default function Calendar() {
 
     for (const occurrence of calendarForecastOccurrences) {
       if (occurrence.occurredAt >= to || occurrence.occurredAt < from) continue;
-      if (realOccurrenceRefs.has(occurrence.externalRef)) continue;
+      if (indexes.transactionsByExternalRef.has(occurrence.externalRef)) continue;
       const rule = rulesById.get(occurrence.ruleId);
       if (!rule) continue;
       if (!isReportableForecastOccurrence(occurrence, state, selectedAccountIdSet)) continue;
@@ -349,7 +342,7 @@ export default function Calendar() {
     baseCurrency,
     calendarForecastOccurrences,
     rulesById,
-    realOccurrenceRefs,
+    indexes.transactionsByExternalRef,
     selectedAccountIdSet,
     selectedCategoryId,
     indexes.allTransactionsSorted,
@@ -399,7 +392,7 @@ export default function Calendar() {
         calculationMonthEnd,
         baseCurrency,
         balanceForecastOccurrences,
-        realOccurrenceRefs,
+        indexes.transactionsByExternalRef,
       )
     );
   }, [
@@ -407,7 +400,6 @@ export default function Calendar() {
     calculationMonthEnd,
     balanceForecastOccurrences,
     indexes,
-    realOccurrenceRefs,
     selectedAccountIds,
     state,
   ]);
@@ -996,11 +988,16 @@ function AccountFilterOverlay({
 }
 
 function buildCalendarDays(monthStart: Date): CalendarDay[] {
-  const startOffset = (monthStart.getDay() + 6) % 7;
+  const startOffset = monthStart.getDay();
   const gridStart = addDays(monthStart, -startOffset);
+  const nextMonthStart = addMonths(monthStart, 1);
+  const monthEnd = addDays(nextMonthStart, -1);
+  const endOffset = 6 - monthEnd.getDay();
+  const gridEnd = addDays(monthEnd, endOffset);
+  const dayCount = daysBetween(gridStart, gridEnd) + 1;
   const todayKey = dateKey(new Date());
 
-  return Array.from({ length: 42 }, (_, index) => {
+  return Array.from({ length: dayCount }, (_, index) => {
     const date = addDays(gridStart, index);
     const key = dateKey(date);
     return {
@@ -1144,7 +1141,7 @@ function virtualForecastDeltaForAccountsThroughDate(
   through: Date,
   currency: string,
   forecastOccurrences: FutureRuleOccurrence[],
-  realOccurrenceRefs: ReadonlySet<string>,
+  realOccurrenceRefs: { has(value: string): boolean },
 ): number {
   const selectedAccountIds = new Set(accountIds);
   const from = new Date();
@@ -1272,6 +1269,11 @@ function addDays(value: Date, days: number): Date {
   const next = new Date(value);
   next.setDate(next.getDate() + days);
   return next;
+}
+
+function daysBetween(start: Date, end: Date): number {
+  const msPerDay = 24 * 60 * 60 * 1000;
+  return Math.round((startOfDay(end).getTime() - startOfDay(start).getTime()) / msPerDay);
 }
 
 function startOfDay(value: Date): Date {

@@ -1,32 +1,26 @@
 import { formatMoney } from '@1wallet/domain/money';
-import type {
-    Account,
-    Category,
-    Transaction,
-    TransactionStatus,
-    TransactionType,
-} from '@1wallet/domain/types';
+import type { Account, Category, Transaction, TransactionType } from '@1wallet/domain/types';
 import { useLedger } from '@1wallet/state';
 import { tokens } from '@1wallet/ui';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { memo, useCallback, useDeferredValue, useMemo, useState, type ComponentProps } from 'react';
 import {
-    FlatList,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    View,
-    type ListRenderItem,
+  FlatList,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+  type ListRenderItem,
 } from 'react-native';
 import {
-    Appbar,
-    Chip,
-    Surface,
-    Text,
-    TouchableRipple,
-    useTheme,
-    type MD3Theme,
+  Appbar,
+  Chip,
+  Surface,
+  Text,
+  TouchableRipple,
+  useTheme,
+  type MD3Theme,
 } from 'react-native-paper';
 import { resolveAccountIconVisual } from '../../src/accountOptions';
 import { openAddRecord } from '../../src/addRecordNavigation';
@@ -34,11 +28,11 @@ import { resolveCategoryIconVisual } from '../../src/categoryIcons';
 import { categoryBreadcrumb, categoryDescendantIds } from '../../src/categoryTree';
 import { useAppDrawer } from '../../src/components/AppDrawerHost';
 import {
-    AppMenuAction,
-    EmptyState,
-    MetricTile,
-    PremiumSearchInput,
-    resolveAppIconName,
+  AppMenuAction,
+  EmptyState,
+  MetricTile,
+  PremiumSearchInput,
+  resolveAppIconName,
 } from '../../src/components/AppKit';
 import { OptionListOverlay, type OptionListItem } from '../../src/components/OptionListOverlay';
 import { CategoryMultiPickerOverlay } from '../../src/components/record/RecordPickers';
@@ -46,27 +40,27 @@ import { positiveAmountColor } from '../../src/financeColors';
 import { numericMediumFontFamily } from '../../src/fonts';
 import { iconSurfaceForThemeTone, type IconSurfaceTone } from '../../src/iconSystem';
 import { formatRecordDateLabel } from '../../src/recordDateTime';
+import { useDebouncedValue } from '../../src/useDebouncedValue';
 import {
-    signedTransactionAmount,
-    transactionAmountDisplay,
-    type TransactionAmountRowSide,
+  signedTransactionAmount,
+  transactionAmountDisplay,
+  type TransactionAmountRowSide,
 } from '../../src/transactionDisplayAmounts';
 import {
-    EXPENSE_TRANSACTION_TYPES as EXPENSE_TYPES,
-    INCOME_TRANSACTION_TYPES as INCOME_TYPES,
-    TRANSACTION_TYPE_BUCKET_OPTIONS,
-    TRANSFER_TRANSACTION_TYPES as TRANSFER_TYPES,
-    transactionTypeBucket,
-    transactionTypeIcon,
-    transactionTypeIconTone,
-    transactionTypeLabel,
-    type TransactionTypeBucket,
+  EXPENSE_TRANSACTION_TYPES as EXPENSE_TYPES,
+  INCOME_TRANSACTION_TYPES as INCOME_TYPES,
+  TRANSACTION_TYPE_BUCKET_OPTIONS,
+  TRANSFER_TRANSACTION_TYPES as TRANSFER_TYPES,
+  transactionTypeBucket,
+  transactionTypeIcon,
+  transactionTypeIconTone,
+  transactionTypeLabel,
+  type TransactionTypeBucket,
 } from '../../src/transactionTypes';
 
 type TypeFilter = 'all' | TransactionTypeBucket;
 type DateFilter = 'all' | 'this_month' | 'last_30_days' | 'this_year';
-type StatusFilter = 'all' | Exclude<TransactionStatus, 'scheduled'>;
-type FilterPicker = 'type' | 'account' | 'category' | 'date' | 'status' | null;
+type FilterPicker = 'type' | 'account' | 'category' | 'date' | null;
 type SearchSuggestion = {
   id: string;
   label: string;
@@ -77,6 +71,7 @@ type SearchSuggestion = {
 };
 const ALL_ACCOUNTS_VALUE = '__all_accounts';
 const DEFAULT_DATE_FILTER: DateFilter = 'this_year';
+const EMPTY_TRANSACTION_SEARCH_HAYSTACKS = new Map<string, string>();
 
 const TYPE_FILTER_OPTIONS: OptionListItem<TypeFilter>[] = [
   {
@@ -110,23 +105,6 @@ const DATE_FILTER_OPTIONS: OptionListItem<DateFilter>[] = [
   },
 ];
 
-const STATUS_FILTER_OPTIONS: OptionListItem<StatusFilter>[] = [
-  {
-    value: 'all',
-    label: 'All statuses',
-    description: 'Cleared, pending, and void records',
-    icon: 'list-status',
-  },
-  {
-    value: 'cleared',
-    label: 'Cleared',
-    description: 'Posted ledger records',
-    icon: 'check-circle-outline',
-  },
-  { value: 'pending', label: 'Pending', description: 'Waiting to clear', icon: 'clock-outline' },
-  { value: 'void', label: 'Void', description: 'Ignored or cancelled records', icon: 'cancel' },
-];
-
 export default function Transactions() {
   const theme = useTheme();
   const { openDrawer } = useAppDrawer();
@@ -137,10 +115,11 @@ export default function Transactions() {
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [includeUncategorizedCategory, setIncludeUncategorizedCategory] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilter>(DEFAULT_DATE_FILTER);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [filterPicker, setFilterPicker] = useState<FilterPicker>(null);
   const [searchFocused, setSearchFocused] = useState(false);
-  const deferredQuery = useDeferredValue(query);
+  const debouncedQuery = useDebouncedValue(query, 120);
+  const deferredQuery = useDeferredValue(debouncedQuery);
+  const normalizedSearchQuery = useMemo(() => deferredQuery.trim().toLowerCase(), [deferredQuery]);
 
   const accountOptions = useMemo<OptionListItem<string>[]>(
     () => [
@@ -186,7 +165,6 @@ export default function Transactions() {
           ? 'Uncategorized'
           : `${selectedCategoryFilterCount} categories`;
   const selectedDateFilter = optionLabel(DATE_FILTER_OPTIONS, dateFilter);
-  const selectedStatusFilter = optionLabel(STATUS_FILTER_OPTIONS, statusFilter);
   const selectedAccountId = accountFilter === ALL_ACCOUNTS_VALUE ? undefined : accountFilter;
   const categoryFilterActive = selectedCategoryFilterCount > 0;
   const selectedCategoryMatchIds = useMemo(() => {
@@ -215,8 +193,7 @@ export default function Transactions() {
     typeFilter !== 'all' ||
     accountFilter !== ALL_ACCOUNTS_VALUE ||
     categoryFilterActive ||
-    dateFilter !== DEFAULT_DATE_FILTER ||
-    statusFilter !== 'all';
+    dateFilter !== DEFAULT_DATE_FILTER;
 
   const clearFilters = () => {
     setQuery('');
@@ -224,12 +201,18 @@ export default function Transactions() {
     setAccountFilter(ALL_ACCOUNTS_VALUE);
     clearCategoryFilters();
     setDateFilter(DEFAULT_DATE_FILTER);
-    setStatusFilter('all');
   };
 
   const dateBounds = useMemo(() => dateBoundsForFilter(dateFilter), [dateFilter]);
+  const rowDisplayKey = useMemo(() => transactionRowDisplayKey(state), [state]);
+  const transactionSearchHaystacks = useMemo(
+    () =>
+      normalizedSearchQuery
+        ? buildTransactionSearchHaystacks(indexes.allTransactionsSorted, indexes)
+        : EMPTY_TRANSACTION_SEARCH_HAYSTACKS,
+    [indexes, normalizedSearchQuery],
+  );
   const transactions = useMemo(() => {
-    const normalizedQuery = deferredQuery.trim().toLowerCase();
     const sourceTransactions =
       accountFilter === ALL_ACCOUNTS_VALUE
         ? indexes.allTransactionsSorted
@@ -253,44 +236,19 @@ export default function Transactions() {
           return false;
         }
       }
-      if (statusFilter !== 'all' && transaction.status !== statusFilter) return false;
       if (!matchesDateFilter(transaction, dateBounds)) return false;
-      if (!normalizedQuery) return true;
-
-      const account = indexes.accountsById.get(transaction.accountId);
-      const counterAccount = transaction.counterAccountId
-        ? indexes.accountsById.get(transaction.counterAccountId)
-        : undefined;
-      const category = transaction.categoryId
-        ? indexes.categoriesById.get(transaction.categoryId)
-        : undefined;
-      const haystack = [
-        transaction.type,
-        transactionTypeLabel(transaction.type),
-        transaction.status,
-        transaction.source,
-        transaction.notes,
-        transaction.paymentMethod,
-        transaction.tags?.join(' '),
-        account?.name,
-        counterAccount?.name,
-        category?.name,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-
-      return haystack.includes(normalizedQuery);
+      if (!normalizedSearchQuery) return true;
+      return (transactionSearchHaystacks.get(transaction.id) ?? '').includes(normalizedSearchQuery);
     });
   }, [
     accountFilter,
     categoryFilterActive,
     dateBounds,
-    deferredQuery,
     includeUncategorizedCategory,
     indexes,
+    normalizedSearchQuery,
     selectedCategoryMatchIds,
-    statusFilter,
+    transactionSearchHaystacks,
     typeFilter,
   ]);
 
@@ -317,21 +275,22 @@ export default function Transactions() {
       ),
     };
   }, [selectors, state, transactions, viewCurrency]);
-  const pending = useMemo(
-    () => transactions.filter((transaction) => transaction.status === 'pending').length,
-    [transactions],
-  );
   const searchSuggestions = useMemo(
-    () => buildSearchSuggestions(state, indexes.allTransactionsSorted, query),
-    [indexes.allTransactionsSorted, query, state],
+    () =>
+      searchFocused || normalizedSearchQuery
+        ? buildSearchSuggestions(state, indexes.allTransactionsSorted, deferredQuery)
+        : [],
+    [deferredQuery, indexes.allTransactionsSorted, normalizedSearchQuery, searchFocused, state],
   );
   const showSuggestions =
     (searchFocused || query.trim().length > 0) && searchSuggestions.length > 0;
   const visibleResultCount = transactions.length;
-  const totalResultCount = indexes.allTransactionsSorted.filter(
-    (transaction) => transaction.status !== 'scheduled',
-  ).length;
-  const rowDisplayKey = useMemo(() => transactionRowDisplayKey(state), [state]);
+  const totalResultCount = useMemo(
+    () =>
+      indexes.allTransactionsSorted.filter((transaction) => transaction.status !== 'scheduled')
+        .length,
+    [indexes.allTransactionsSorted],
+  );
   const openTransaction = useCallback((transactionId: string) => {
     router.push(`/transaction/${transactionId}` as never);
   }, []);
@@ -455,13 +414,6 @@ export default function Transactions() {
                   active={categoryFilterActive}
                   onPress={() => setFilterPicker('category')}
                 />
-                <FilterToolbarButton
-                  label="Status"
-                  value={selectedStatusFilter}
-                  icon="list-status"
-                  active={statusFilter !== 'all'}
-                  onPress={() => setFilterPicker('status')}
-                />
               </View>
             </Surface>
             <View style={styles.metricGrid}>
@@ -480,14 +432,6 @@ export default function Transactions() {
                 tone="danger"
                 compact
                 onPress={() => setTypeFilter('expense')}
-              />
-              <MetricTile
-                label="Pending"
-                value={String(pending)}
-                icon="clock-outline"
-                tone={pending ? 'warning' : 'default'}
-                compact
-                onPress={() => setStatusFilter('pending')}
               />
             </View>
           </View>
@@ -551,18 +495,6 @@ export default function Transactions() {
         onDismiss={() => setFilterPicker(null)}
         onSelect={(option) => {
           setDateFilter(option.value);
-          setFilterPicker(null);
-        }}
-      />
-      <OptionListOverlay
-        visible={filterPicker === 'status'}
-        title="Choose status"
-        options={STATUS_FILTER_OPTIONS}
-        selectedValue={statusFilter}
-        searchable={false}
-        onDismiss={() => setFilterPicker(null)}
-        onSelect={(option) => {
-          setStatusFilter(option.value);
           setFilterPicker(null);
         }}
       />
@@ -679,6 +611,40 @@ function SearchSuggestionChip({
   );
 }
 
+function buildTransactionSearchHaystacks(
+  transactions: Transaction[],
+  indexes: LedgerIndexSnapshot,
+): Map<string, string> {
+  const haystacks = new Map<string, string>();
+  for (const transaction of transactions) {
+    const account = indexes.accountsById.get(transaction.accountId);
+    const counterAccount = transaction.counterAccountId
+      ? indexes.accountsById.get(transaction.counterAccountId)
+      : undefined;
+    const category = transaction.categoryId
+      ? indexes.categoriesById.get(transaction.categoryId)
+      : undefined;
+    haystacks.set(
+      transaction.id,
+      [
+        transaction.type,
+        transactionTypeLabel(transaction.type),
+        transaction.source,
+        transaction.notes,
+        transaction.paymentMethod,
+        transaction.tags?.join(' '),
+        account?.name,
+        counterAccount?.name,
+        category?.name,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase(),
+    );
+  }
+  return haystacks;
+}
+
 function buildSearchSuggestions(
   state: ReturnType<typeof useLedger>['state'],
   transactions: Transaction[],
@@ -724,7 +690,7 @@ function buildSearchSuggestions(
     push({
       id: `category:${category.id}`,
       label: categoryBreadcrumb(state.categories, category.id) ?? category.name,
-      description: `${category.kind} category`,
+      description: 'Category',
       icon: visual.icon,
       iconBackgroundColor: visual.backgroundColor,
       iconColor: visual.iconColor,
@@ -1094,7 +1060,6 @@ function transactionRowMeta(
 
 function transactionRowSecondaryMeta(transaction: Transaction): string {
   const parts: string[] = [];
-  if (transaction.status !== 'cleared') parts.push(transaction.status);
   if (transaction.paymentMethod) parts.push(transaction.paymentMethod);
   if (transaction.tags?.length) parts.push(transaction.tags.slice(0, 2).join(', '));
   if (transaction.notes?.trim()) parts.push(transaction.notes.trim());

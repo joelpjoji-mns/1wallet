@@ -2,21 +2,21 @@ import type { Money } from '@1wallet/domain/money';
 import { formatMoney, fromMinor, toMinor } from '@1wallet/domain/money';
 import type { Account, Transaction, TransactionType } from '@1wallet/domain/types';
 import {
-    buildLoanPayoffProjection,
-    findLinkedLoanRule,
-    type LoanPayoffProjection,
+  buildLoanPayoffProjection,
+  findLinkedLoanRule,
+  type LoanPayoffProjection,
 } from '@1wallet/ledger/loans';
 import {
-    forecastFutureRuleOccurrences,
-    plannedPaymentKindForRule,
-    type FutureRuleOccurrence,
+  forecastFutureRuleOccurrences,
+  plannedPaymentKindForRule,
+  type FutureRuleOccurrence,
 } from '@1wallet/ledger/rules/futureGeneration';
 import type { BudgetStatus, GoalStatus } from '@1wallet/ledger/services';
 import {
-    accountBalance,
-    convertMoneyForDisplay,
-    monthRange,
-    simulatePrepayment,
+  accountBalance,
+  convertMoneyForDisplay,
+  monthRange,
+  simulatePrepayment,
 } from '@1wallet/ledger/services';
 import type { LedgerIndexes } from '@1wallet/ledger/services/indexes';
 import { indexedAccountBalance } from '@1wallet/ledger/services/indexes';
@@ -25,32 +25,33 @@ import { useLedger } from '@1wallet/state';
 import { tokens } from '@1wallet/ui';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import {
-    Appbar,
-    Button,
-    Divider,
-    ProgressBar,
-    Text,
-    TouchableRipple,
-    useTheme,
+  Appbar,
+  Button,
+  Divider,
+  ProgressBar,
+  Text,
+  TouchableRipple,
+  useTheme,
 } from 'react-native-paper';
 import { accountTypeLabel } from '../../src/accountOptions';
 import { useAppDrawer } from '../../src/components/AppDrawerHost';
 import {
-    AppMenuAction,
-    EmptyState,
-    InfoRow,
-    MetricTile,
-    PremiumTextInput,
-    SectionCard,
-    type AppIconName,
+  AppMenuAction,
+  EmptyState,
+  InfoRow,
+  MetricTile,
+  PremiumTextInput,
+  SectionCard,
+  type AppIconName,
 } from '../../src/components/AppKit';
 import { numericMediumFontFamily } from '../../src/fonts';
 import { iconSurfaceForThemeTone } from '../../src/iconSystem';
 import { loanScheduleCloseLabel, monthsLabel } from '../../src/loans/loanUtils';
 import { transactionTypeIcon, transactionTypeIconTone } from '../../src/transactionTypes';
+import { useDebouncedValue } from '../../src/useDebouncedValue';
 
 type RowTone = 'default' | 'positive' | 'danger' | 'warning';
 
@@ -119,11 +120,13 @@ export default function Planner() {
   const { openDrawer } = useAppDrawer();
   const { state, indexes, selectors } = useLedger();
   const [extraDebtText, setExtraDebtText] = useState('0');
+  const debouncedExtraDebtText = useDebouncedValue(extraDebtText, 180);
+  const deferredExtraDebtText = useDeferredValue(debouncedExtraDebtText);
   const budgets = useMemo(() => selectors.budgetStatuses(state), [selectors, state]);
   const goals = useMemo(() => selectors.goalStatuses(state), [selectors, state]);
   const viewCurrency = selectors.displayCurrency(state);
   const extraDebtMinor = toMinor(
-    Math.max(0, parseAmount(extraDebtText)),
+    Math.max(0, parseAmount(deferredExtraDebtText)),
     state.preferences.baseCurrency,
   );
   const planner = useMemo(
@@ -134,10 +137,16 @@ export default function Planner() {
     () => buildLoanPayoffProjection(state, { extraMonthlyPaymentMinor: extraDebtMinor }),
     [extraDebtMinor, state],
   );
-  const displayedFreeToAllocate = selectors.convertMoneyForDisplay(
-    state,
-    planner.freeToAllocate,
-    viewCurrency,
+  const { displayedFreeToAllocate, displayedIncome } = useMemo(
+    () => ({
+      displayedFreeToAllocate: selectors.convertMoneyForDisplay(
+        state,
+        planner.freeToAllocate,
+        viewCurrency,
+      ),
+      displayedIncome: selectors.convertMoneyForDisplay(state, planner.income, viewCurrency),
+    }),
+    [planner.freeToAllocate, planner.income, selectors, state, viewCurrency],
   );
 
   return (
@@ -163,10 +172,7 @@ export default function Planner() {
           <View style={styles.metricGrid}>
             <MetricTile
               label="Income"
-              value={formatMoney(
-                selectors.convertMoneyForDisplay(state, planner.income, viewCurrency),
-                state.preferences.locale,
-              )}
+              value={formatMoney(displayedIncome, state.preferences.locale)}
               icon="cash-plus"
               tone="positive"
             />

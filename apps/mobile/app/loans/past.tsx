@@ -10,10 +10,10 @@ import { Button, Surface, Text, useTheme } from 'react-native-paper';
 import { resolveAccountIconVisual } from '../../src/accountOptions';
 import { AppScreen, EmptyState, InlineMeta, SectionCard } from '../../src/components/AppKit';
 import {
-  loanKindLabel,
-  loanListItems,
-  loanPrincipalProgress,
-  type LoanListItem,
+    loanKindLabel,
+    loanListItems,
+    loanPrincipalProgress,
+    type LoanListItem,
 } from '../../src/loans/loanUtils';
 import { plannedRuleProgressSummary } from '../../src/plannedPayments/progress';
 import { restartFutureRulePlan } from '../../src/plannedPayments/ruleActions';
@@ -34,13 +34,16 @@ export default function PastPlannedLoans() {
       return;
     }
     let restartedId: string | undefined;
-    await mutate((draftState) => {
-      const currentRule = draftState.preferences.futureGenerationRules?.find(
-        (rule) => rule.id === item.linkedRule?.id,
-      );
-      if (!currentRule) return;
-      restartedId = restartFutureRulePlan(draftState, currentRule).id;
-    });
+    await mutate(
+      (draftState) => {
+        const currentRule = draftState.preferences.futureGenerationRules?.find(
+          (rule) => rule.id === item.linkedRule?.id,
+        );
+        if (!currentRule) return;
+        restartedId = restartFutureRulePlan(draftState, currentRule).id;
+      },
+      { slices: ['preferences'] },
+    );
     if (restartedId) router.push(`/recurring/${restartedId}` as never);
   };
 

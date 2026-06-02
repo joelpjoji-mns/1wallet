@@ -64,18 +64,21 @@ export default function PermissionsSetup() {
     : 'Allow SMS';
 
   const enableSmsAutoCapture = async () => {
-    await mutate((draft) => {
-      const current = normalizeAutoCapturePreferences(draft.preferences.autoCapture);
-      draft.preferences.autoCapture = normalizeAutoCapturePreferences({
-        ...current,
-        enabled: true,
-        sms: {
-          ...current.sms,
+    await mutate(
+      (draft) => {
+        const current = normalizeAutoCapturePreferences(draft.preferences.autoCapture);
+        draft.preferences.autoCapture = normalizeAutoCapturePreferences({
+          ...current,
           enabled: true,
-          backgroundEnabled: true,
-        },
-      });
-    });
+          sms: {
+            ...current.sms,
+            enabled: true,
+            backgroundEnabled: true,
+          },
+        });
+      },
+      { slices: ['preferences'] },
+    );
   };
 
   const requestSmsAccess = async () => {

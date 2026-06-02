@@ -16,7 +16,6 @@ import { CategoryPickerOverlay } from '../components/record/RecordPickers';
 import {
     categoryApplies,
     categoryDisplayName,
-    categoryKindForPlanKind,
     plannedKindMeta,
     requiresCounterAccount,
     transactionTypeForPlannedKind,
@@ -349,7 +348,6 @@ export function PlannedPaymentEditor({
       />
       <CategoryPickerOverlay
         visible={picker === 'category'}
-        kind={categoryKindForPlanKind(draft.kind)}
         categories={state.categories}
         selectedId={draft.categoryId}
         onDismiss={() => setPicker(null)}

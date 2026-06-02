@@ -194,7 +194,7 @@ export interface LedgerStore {
   clear(): Promise<void>;
 }
 
-export const LEDGER_STATE_VERSION = 12;
+export const LEDGER_STATE_VERSION = 13;
 
 export function emptyState(userId: UUID, baseCurrency = 'INR'): LedgerState {
   const normalizedBaseCurrency = normalizeCurrencyCode(baseCurrency);
@@ -321,12 +321,12 @@ export function defaultNotificationPreferences(): NotificationPreferences {
     enabled: true,
     pushEnabled: false,
     channels: {
-      reviewQueue: true,
+      reviewQueue: false,
       scheduled: true,
       budgets: true,
       goals: true,
-      accounts: true,
-      imports: true,
+      accounts: false,
+      imports: false,
     },
     quietHours: { enabled: false, start: '22:00', end: '07:00' },
     readIds: [],

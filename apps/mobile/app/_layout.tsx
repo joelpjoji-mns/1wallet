@@ -1,3 +1,4 @@
+import type { ThemePreference } from '@1wallet/ledger';
 import { LedgerProvider, useLedger } from '@1wallet/state';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -11,7 +12,16 @@ import {
   type ErrorInfo,
   type ReactNode,
 } from 'react';
-import { AppState, Button, StatusBar, StyleSheet, Text, View, useColorScheme } from 'react-native';
+import {
+  AppState,
+  Button,
+  InteractionManager,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+  useColorScheme,
+} from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -29,22 +39,29 @@ import {
 } from '../src/nativeNotifications';
 import { normalizeNotificationPreferences } from '../src/notifications';
 import { ledgerStore } from '../src/storage';
+import { runMobileStorageMaintenance } from '../src/storageMaintenance';
 import {
   DEFAULT_THEME_SOURCE_COLOR,
   createAppPaperTheme,
   normalizeThemeAccentPreference,
   resolveThemeMode,
 } from '../src/theme';
+import {
+  loadCachedThemePreference,
+  saveCachedThemePreference,
+} from '../src/themePreferenceStorage';
 import { AppUpdateProvider } from '../src/updates/AppUpdateProvider';
 
-const SCREEN_TRANSITION_DURATION_MS = 260;
+const SCREEN_TRANSITION_DURATION_MS = 0;
 const ANDROID_WIDGET_SYNC_DEBOUNCE_MS = 3000;
 const APP_RESUME_REFRESH_SETTLE_MS = 1500;
+const STARTUP_LOADING_SHOW_DELAY_MS = 1200;
+const STARTUP_READY_STAGE_MS = 80;
 const STARTUP_RECOVERY_TIMEOUT_MS = 15000;
 const MODAL_SCREEN_OPTIONS = {
   headerShown: false,
   presentation: 'modal' as const,
-  animation: 'slide_from_bottom' as const,
+  animation: 'none' as const,
   animationDuration: SCREEN_TRANSITION_DURATION_MS,
   animationTypeForReplace: 'push' as const,
   gestureDirection: 'vertical' as const,
@@ -59,6 +76,8 @@ const ADD_RECORD_SCREEN_OPTIONS = {
   contentStyle: { backgroundColor: 'transparent' },
   gestureEnabled: false,
 };
+
+type StartupStage = 'session' | 'wallet' | 'sync';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -88,6 +107,9 @@ function ThemedNavigation() {
   const { loading: authLoading, error: authError, retry: retryAuth } = useAuth();
   const [startupRecoveryTimedOut, setStartupRecoveryTimedOut] = useState(false);
   const [startupRetryKey, setStartupRetryKey] = useState(0);
+  const [layoutReady, setLayoutReady] = useState(false);
+  const [cachedThemeLoaded, setCachedThemeLoaded] = useState(false);
+  const [cachedThemePreference, setCachedThemePreference] = useState<ThemePreference | undefined>();
   const splashHiddenRef = useRef(false);
   const startup = useStartupSequence({
     authLoading,
@@ -105,17 +127,23 @@ function ThemedNavigation() {
     [accentPreference.customColor, accentPreference.source],
   );
   const { theme: materialTheme } = useMaterial3Theme(materialThemeOptions);
+  const themePreference = ready ? state.preferences.theme : cachedThemePreference;
   const mode = resolveThemeMode(
-    state.preferences.theme,
+    themePreference,
     systemScheme === 'light' || systemScheme === 'dark' ? systemScheme : null,
   );
-  const theme = useMemo(() => createAppPaperTheme(mode, materialTheme), [materialTheme, mode]);
-  const startupLoading = !authError && !ledgerError && !startup.complete;
-  const startupRecoveryActive = startupLoading && startupRecoveryTimedOut;
-  const startupLoadingStage = ready ? 'session' : 'wallet';
-  const startupLoadingMessage = ready ? 'Checking your secure session' : 'Restoring your wallet';
+  const theme = useMemo(
+    () =>
+      createAppPaperTheme(mode, materialTheme, {
+        customAccentColor:
+          accentPreference.source === 'custom' ? accentPreference.customColor : undefined,
+      }),
+    [accentPreference.customColor, accentPreference.source, materialTheme, mode],
+  );
+  const startupPending = !authError && !ledgerError && startup.pending;
+  const startupRecoveryActive = startupPending && startupRecoveryTimedOut;
 
-  const hideNativeSplashAfterLayout = useCallback(() => {
+  const hideNativeSplash = useCallback(() => {
     if (splashHiddenRef.current) return;
     splashHiddenRef.current = true;
     requestAnimationFrame(() => {
@@ -123,8 +151,37 @@ function ThemedNavigation() {
     });
   }, []);
 
+  const handleRootLayout = useCallback(() => {
+    setLayoutReady(true);
+  }, []);
+
   useEffect(() => {
-    if (!startupLoading) {
+    let mounted = true;
+    void loadCachedThemePreference()
+      .then((preference) => {
+        if (mounted) setCachedThemePreference(preference);
+      })
+      .finally(() => {
+        if (mounted) setCachedThemeLoaded(true);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    setCachedThemePreference(state.preferences.theme);
+    void saveCachedThemePreference(state.preferences.theme).catch(() => undefined);
+  }, [ready, state.preferences.theme]);
+
+  useEffect(() => {
+    if (!layoutReady || !cachedThemeLoaded) return;
+    hideNativeSplash();
+  }, [cachedThemeLoaded, hideNativeSplash, layoutReady]);
+
+  useEffect(() => {
+    if (!startupPending) {
       setStartupRecoveryTimedOut(false);
       return;
     }
@@ -133,7 +190,7 @@ function ThemedNavigation() {
       setStartupRecoveryTimedOut(true);
     }, STARTUP_RECOVERY_TIMEOUT_MS);
     return () => clearTimeout(timeout);
-  }, [startupLoading, startupRetryKey]);
+  }, [startupPending, startupRetryKey]);
 
   const retryStartup = useCallback(() => {
     setStartupRecoveryTimedOut(false);
@@ -145,7 +202,7 @@ function ThemedNavigation() {
   return (
     <PaperProvider theme={theme}>
       <View
-        onLayout={hideNativeSplashAfterLayout}
+        onLayout={handleRootLayout}
         style={[styles.appShell, { backgroundColor: theme.colors.background }]}
       >
         <StatusBar
@@ -155,6 +212,7 @@ function ThemedNavigation() {
         />
         <LedgerPersistenceLifecycle />
         <LedgerUserLinkLifecycle />
+        <MobileStorageMaintenance enabled={startup.complete && !authError && !ledgerError} />
         <AndroidSmsCapturePreferenceSync />
         <AndroidHomeWidgetSync />
         <NativeNotificationSync />
@@ -183,8 +241,10 @@ function ThemedNavigation() {
             secondaryActionLabel="Reset local wallet"
             onSecondaryAction={() => void reset()}
           />
-        ) : startupLoading ? (
-          <BrandedLoadingState stage={startupLoadingStage} message={startupLoadingMessage} />
+        ) : startup.showLoader ? (
+          <BrandedLoadingState stage={startup.stage} message={startup.message} />
+        ) : !startup.complete ? (
+          <BrandedLoadingState stage={startup.stage} message={startup.message} />
         ) : (
           <AppBackLayerProvider>
             <AppDrawerHost>
@@ -194,7 +254,7 @@ function ThemedNavigation() {
                   headerTitleStyle: { color: theme.colors.onSurface, fontWeight: '600' },
                   headerTintColor: theme.colors.onSurface,
                   contentStyle: { backgroundColor: theme.colors.background },
-                  animation: 'slide_from_right',
+                  animation: 'none',
                   animationDuration: SCREEN_TRANSITION_DURATION_MS,
                   animationTypeForReplace: 'push',
                   fullScreenGestureEnabled: true,
@@ -251,6 +311,29 @@ function ThemedNavigation() {
   );
 }
 
+function MobileStorageMaintenance({ enabled }: { enabled: boolean }) {
+  const startedRef = useRef(false);
+
+  useEffect(() => {
+    if (!enabled || startedRef.current) return;
+    startedRef.current = true;
+    const timeout = setTimeout(() => {
+      InteractionManager.runAfterInteractions(() => {
+        void runMobileStorageMaintenance()
+          .then((summary) => {
+            console.info('1Wallet storage maintenance completed', summary);
+          })
+          .catch((error) => {
+            console.warn('1Wallet storage maintenance failed', error);
+          });
+      });
+    }, 1800);
+    return () => clearTimeout(timeout);
+  }, [enabled]);
+
+  return null;
+}
+
 function useStartupSequence({
   authLoading,
   disabled,
@@ -262,10 +345,83 @@ function useStartupSequence({
   hasLocalWalletData: boolean;
   walletReady: boolean;
 }) {
-  const complete = disabled || (walletReady && (hasLocalWalletData || !authLoading));
+  const pendingStage = startupStageForPending({ authLoading, hasLocalWalletData, walletReady });
+  const rawComplete = disabled || (walletReady && (hasLocalWalletData || !authLoading));
+  const [displayComplete, setDisplayComplete] = useState(rawComplete);
+  const [showLoader, setShowLoader] = useState(false);
+  const [stage, setStage] = useState<StartupStage>(pendingStage);
 
-  return { complete };
+  useEffect(() => {
+    if (disabled) {
+      setStage('sync');
+      setShowLoader(false);
+      setDisplayComplete(true);
+      return;
+    }
+
+    if (!rawComplete) {
+      setDisplayComplete(false);
+      setStage((current) => maxStartupStage(current, pendingStage));
+      if (showLoader) return;
+
+      const timeout = setTimeout(() => {
+        setShowLoader(true);
+      }, STARTUP_LOADING_SHOW_DELAY_MS);
+      return () => clearTimeout(timeout);
+    }
+
+    setStage('sync');
+    if (!showLoader) {
+      setDisplayComplete(true);
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      setShowLoader(false);
+      setDisplayComplete(true);
+    }, STARTUP_READY_STAGE_MS);
+    return () => clearTimeout(timeout);
+  }, [disabled, pendingStage, rawComplete, showLoader]);
+
+  return {
+    complete: displayComplete,
+    pending: !disabled && !rawComplete,
+    showLoader: showLoader && !displayComplete,
+    stage,
+    message: startupStageMessage(stage),
+  };
 }
+
+function startupStageForPending({
+  authLoading,
+  hasLocalWalletData,
+  walletReady,
+}: {
+  authLoading: boolean;
+  hasLocalWalletData: boolean;
+  walletReady: boolean;
+}): StartupStage {
+  if (authLoading && !hasLocalWalletData && !walletReady) return 'session';
+  if (!walletReady) return 'wallet';
+  if (authLoading && !hasLocalWalletData) return 'session';
+  return 'sync';
+}
+
+function maxStartupStage(left: StartupStage, right: StartupStage): StartupStage {
+  return STARTUP_STAGE_INDEX[left] >= STARTUP_STAGE_INDEX[right] ? left : right;
+}
+
+function startupStageMessage(stage: StartupStage) {
+  if (stage === 'session') return 'Checking your secure session';
+  if (stage === 'wallet') return 'Restoring your wallet';
+  return 'Wallet ready';
+}
+
+const STARTUP_STAGE_INDEX: Record<StartupStage, number> = {
+  session: 0,
+  wallet: 1,
+  sync: 2,
+};
 
 function NativeNotificationSync() {
   const { state, ready, mutate } = useLedger();
@@ -278,13 +434,16 @@ function NativeNotificationSync() {
     void deliverNativeNotificationInbox(state)
       .then((deliveredIds) => {
         if (cancelled || deliveredIds.length === 0) return;
-        void mutate((draft) => {
-          const settings = normalizeNotificationPreferences(draft.preferences.notifications);
-          const nativeDeliveredIds = Array.from(
-            new Set([...settings.nativeDeliveredIds, ...deliveredIds]),
-          ).slice(-200);
-          draft.preferences.notifications = { ...settings, nativeDeliveredIds };
-        });
+        void mutate(
+          (draft) => {
+            const settings = normalizeNotificationPreferences(draft.preferences.notifications);
+            const nativeDeliveredIds = Array.from(
+              new Set([...settings.nativeDeliveredIds, ...deliveredIds]),
+            ).slice(-200);
+            draft.preferences.notifications = { ...settings, nativeDeliveredIds };
+          },
+          { slices: ['preferences'] },
+        );
       })
       .catch(() => undefined);
 
@@ -395,10 +554,15 @@ function AndroidHomeWidgetSync() {
 
 function AndroidSmsCapturePreferenceSync() {
   const { state, ready } = useLedger();
+  const latestStateRef = useRef(state);
+
+  useEffect(() => {
+    latestStateRef.current = state;
+  }, [state]);
 
   useEffect(() => {
     if (!ready) return;
-    void syncAndroidSmsCapturePreferences(state).catch(() => undefined);
+    void syncAndroidSmsCapturePreferences(latestStateRef.current).catch(() => undefined);
   }, [ready, state.preferences.autoCapture]);
 
   return null;
