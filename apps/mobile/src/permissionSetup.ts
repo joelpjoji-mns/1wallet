@@ -1,10 +1,9 @@
 import * as SecureStore from 'expo-secure-store';
 import {
-    getAndroidLocationPermissionStatus,
-    getAndroidNotificationPermissionStatus,
     getDeviceCameraPermissionStatus,
+    getDeviceNotificationPermissionStatus,
     getDevicePhotoLibraryPermissionStatus,
-    type AndroidRuntimePermissionStatus,
+    type DeviceRuntimePermissionStatus,
 } from './androidPermissions';
 import { getAndroidSmsPermissionState, type AndroidSmsPermissionState } from './androidSmsInbox';
 
@@ -12,21 +11,19 @@ const PERMISSION_REVIEW_KEY_PREFIX = '1wallet.permission-setup.review.v1.';
 
 export type WalletPermissionSetupStatus = {
   sms: AndroidSmsPermissionState;
-  notifications: AndroidRuntimePermissionStatus;
-  camera: AndroidRuntimePermissionStatus;
-  photos: AndroidRuntimePermissionStatus;
-  location: AndroidRuntimePermissionStatus;
+  notifications: DeviceRuntimePermissionStatus;
+  camera: DeviceRuntimePermissionStatus;
+  photos: DeviceRuntimePermissionStatus;
 };
 
 export async function getWalletPermissionSetupStatus(): Promise<WalletPermissionSetupStatus> {
-  const [sms, notifications, camera, photos, location] = await Promise.all([
+  const [sms, notifications, camera, photos] = await Promise.all([
     getAndroidSmsPermissionState(),
-    getAndroidNotificationPermissionStatus(),
+    getDeviceNotificationPermissionStatus(),
     getDeviceCameraPermissionStatus(),
     getDevicePhotoLibraryPermissionStatus(),
-    getAndroidLocationPermissionStatus(),
   ]);
-  return { sms, notifications, camera, photos, location };
+  return { sms, notifications, camera, photos };
 }
 
 export function isWalletPermissionSetupReady(status: WalletPermissionSetupStatus): boolean {
@@ -34,8 +31,7 @@ export function isWalletPermissionSetupReady(status: WalletPermissionSetupStatus
     smsPermissionReady(status.sms) &&
     runtimePermissionReady(status.notifications) &&
     runtimePermissionReady(status.camera) &&
-    runtimePermissionReady(status.photos) &&
-    runtimePermissionReady(status.location)
+    runtimePermissionReady(status.photos)
   );
 }
 
@@ -69,7 +65,6 @@ export function walletPermissionSetupSignature(status: WalletPermissionSetupStat
     `notifications:${status.notifications}`,
     `camera:${status.camera}`,
     `photos:${status.photos}`,
-    `location:${status.location}`,
   ].join('|');
 }
 
@@ -77,7 +72,7 @@ function smsPermissionReady(status: AndroidSmsPermissionState): boolean {
   return status.overall === 'granted' || status.overall === 'unavailable';
 }
 
-function runtimePermissionReady(status: AndroidRuntimePermissionStatus): boolean {
+function runtimePermissionReady(status: DeviceRuntimePermissionStatus): boolean {
   return status === 'granted' || status === 'unavailable';
 }
 

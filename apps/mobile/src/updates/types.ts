@@ -1,4 +1,7 @@
-export const APP_UPDATE_PLATFORM = 'android';
+import { Platform } from 'react-native';
+
+export type AppUpdatePlatform = 'android' | 'ios';
+export const APP_UPDATE_PLATFORM: AppUpdatePlatform = Platform.OS === 'ios' ? 'ios' : 'android';
 export const UPDATE_CHANNELS = ['stable', 'beta'] as const;
 export type UpdateChannel = (typeof UPDATE_CHANNELS)[number];
 export const DEFAULT_UPDATE_CHANNEL: UpdateChannel = 'stable';
@@ -6,13 +9,13 @@ export const UPDATE_METADATA_ROOT = 'appUpdates';
 
 export type UpdateReleaseType = 'major' | 'minor' | 'patch';
 export type UpdateRequirement = 'mandatory' | 'optional';
-export type UpdateArtifactKind = 'apk' | 'js';
+export type UpdateArtifactKind = 'apk' | 'app-store' | 'js';
 
 export type InstalledAppVersion = {
   versionName: string;
   versionCode: number;
   runtimeVersion: string;
-  platform: typeof APP_UPDATE_PLATFORM;
+  platform: AppUpdatePlatform;
 };
 
 export type UpdateChangelog = {
@@ -31,9 +34,18 @@ export type UpdateApkMetadata = {
   estimatedDownloadSeconds?: number;
 };
 
-export type AppUpdateRelease = {
+export type UpdateIosMetadata = {
+  appStoreUrl?: string;
+  testFlightUrl?: string;
+  buildUrl?: string;
+  appStoreId?: string;
+  bundleIdentifier?: string;
+  minimumOsVersion?: string;
+};
+
+export type AppUpdateReleaseBase = {
   id: string;
-  platform: typeof APP_UPDATE_PLATFORM;
+  platform: AppUpdatePlatform;
   channel: UpdateChannel;
   status: 'published';
   versionName: string;
@@ -45,8 +57,19 @@ export type AppUpdateRelease = {
   minimumSupportedVersionCode: number;
   publishedAt: string;
   changelog: UpdateChangelog;
+};
+
+export type AndroidAppUpdateRelease = AppUpdateReleaseBase & {
+  platform: 'android';
   apk: UpdateApkMetadata;
 };
+
+export type IosAppUpdateRelease = AppUpdateReleaseBase & {
+  platform: 'ios';
+  ios: UpdateIosMetadata;
+};
+
+export type AppUpdateRelease = AndroidAppUpdateRelease | IosAppUpdateRelease;
 
 export type UpdateCheckOutcome =
   | { status: 'not-configured'; message: string }

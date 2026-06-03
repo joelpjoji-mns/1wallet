@@ -4,8 +4,10 @@
 
 ## Release Scope
 
-- [ ] Stable release after merge to `main`
-- [ ] Beta release for testing before merge
+- [ ] Android stable release after merge to `main`
+- [ ] Android beta release for testing before merge
+- [ ] iOS stable release after merge to `main`
+- [ ] iOS beta release for testing before merge
 - [ ] Skip release (`skip-release` label required)
 
 ## Release Notes

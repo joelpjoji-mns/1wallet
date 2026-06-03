@@ -5,6 +5,8 @@ const { getDefaultConfig } = require('expo/metro-config');
 const projectRoot = fs.existsSync(path.join(process.cwd(), 'app.json')) ? process.cwd() : __dirname;
 const workspaceRoot = path.resolve(projectRoot, '../..');
 const packagesRoot = path.resolve(workspaceRoot, 'packages');
+const projectNodeModules = path.resolve(projectRoot, 'node_modules');
+const realProjectNodeModules = fs.realpathSync(projectNodeModules);
 const workspaceNodeModules = path.resolve(workspaceRoot, 'node_modules');
 const realWorkspaceNodeModules = fs.realpathSync(workspaceNodeModules);
 const config = getDefaultConfig(projectRoot);
@@ -27,12 +29,19 @@ config.serializer.getModulesRunBeforeMainModule = (...args) => {
 };
 
 config.watchFolders = Array.from(
-  new Set([workspaceRoot, packagesRoot, workspaceNodeModules, realWorkspaceNodeModules]),
+  new Set([
+    workspaceRoot,
+    packagesRoot,
+    projectNodeModules,
+    realProjectNodeModules,
+    workspaceNodeModules,
+    realWorkspaceNodeModules,
+  ]),
 );
 config.resolver.unstable_enableSymlinks = true;
-config.resolver.disableHierarchicalLookup = true;
+config.resolver.disableHierarchicalLookup = false;
 config.resolver.nodeModulesPaths = Array.from(
-  new Set([workspaceNodeModules, realWorkspaceNodeModules]),
+  new Set([projectNodeModules, realProjectNodeModules, workspaceNodeModules, realWorkspaceNodeModules]),
 );
 
 const workspaceSourceRoots = [

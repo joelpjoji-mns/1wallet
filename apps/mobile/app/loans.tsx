@@ -59,7 +59,7 @@ export default function Loans() {
       outstandingMinor += Math.abs(
         selectors.convertMoneyForDisplay(
           state,
-          { amountMinor: Math.abs(item.balance.amountMinor), currency: item.balance.currency },
+          item.forecast.outstanding,
           viewCurrency,
         ).amountMinor,
       );
@@ -224,7 +224,7 @@ function LoanAccountRow({
   const visual = resolveAccountIconVisual(loan);
   const displayBalance = selectors.convertMoneyForDisplay(
     state,
-    { amountMinor: Math.abs(item.balance.amountMinor), currency: item.balance.currency },
+    item.forecast.outstanding,
     viewCurrency,
   );
   const payment = loan.loanDetails?.repaymentAmount;

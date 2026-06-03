@@ -194,7 +194,7 @@ export interface LedgerStore {
   clear(): Promise<void>;
 }
 
-export const LEDGER_STATE_VERSION = 13;
+export const LEDGER_STATE_VERSION = 14;
 
 export function emptyState(userId: UUID, baseCurrency = 'INR'): LedgerState {
   const normalizedBaseCurrency = normalizeCurrencyCode(baseCurrency);

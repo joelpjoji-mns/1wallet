@@ -100,7 +100,7 @@ function PastLoanPlanRow({
   const viewCurrency = selectors.displayCurrency(state);
   const displayBalance = selectors.convertMoneyForDisplay(
     state,
-    { amountMinor: Math.abs(item.balance.amountMinor), currency: item.balance.currency },
+    item.forecast.outstanding,
     viewCurrency,
   );
   const balanceLabel = item.paidOff

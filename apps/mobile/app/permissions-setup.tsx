@@ -5,12 +5,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import { Button, Divider, HelperText, Text, useTheme } from 'react-native-paper';
 import {
-    openAndroidAppSettings,
-    requestAndroidLocationPermission,
-    requestAndroidNotificationPermission,
+    openDeviceAppSettings,
     requestDeviceCameraPermission,
+    requestDeviceNotificationPermission,
     requestDevicePhotoLibraryPermission,
-    type AndroidRuntimePermissionStatus,
+    type DeviceRuntimePermissionStatus,
 } from '../src/androidPermissions';
 import {
     requestAndroidSmsPermission,
@@ -25,7 +24,7 @@ import {
     type WalletPermissionSetupStatus,
 } from '../src/permissionSetup';
 
-type PermissionBusy = 'sms' | 'notifications' | 'camera' | 'photos' | 'location' | null;
+type PermissionBusy = 'sms' | 'notifications' | 'camera' | 'photos' | null;
 
 export default function PermissionsSetup() {
   const theme = useTheme();
@@ -52,16 +51,18 @@ export default function PermissionsSetup() {
   if (!user) return <Redirect href={'/login' as never} />;
   if (state.accounts.length === 0) return <Redirect href={'/' as never} />;
 
-  const smsReady = status?.sms.overall === 'granted' || status?.sms.overall === 'unavailable';
+  const smsUnavailable = status?.sms.overall === 'unavailable';
+  const smsReady = status?.sms.overall === 'granted';
   const notificationReady = runtimePermissionReady(status?.notifications);
   const cameraReady = runtimePermissionReady(status?.camera);
   const photoLibraryReady = runtimePermissionReady(status?.photos);
-  const locationReady = runtimePermissionReady(status?.location);
   const smsButtonLabel = smsReady
     ? autoCapture.sms.backgroundEnabled
       ? 'SMS ready'
       : 'Turn on capture'
-    : 'Allow SMS';
+    : smsUnavailable
+      ? 'Android only'
+      : 'Allow SMS';
 
   const enableSmsAutoCapture = async () => {
     await mutate(
@@ -106,7 +107,7 @@ export default function PermissionsSetup() {
   const requestNotifications = async () => {
     setPermissionBusy('notifications');
     try {
-      const nextStatus = await requestAndroidNotificationPermission();
+      const nextStatus = await requestDeviceNotificationPermission();
       await refreshPermissions();
       if (nextStatus !== 'granted' && nextStatus !== 'unavailable') {
         showNotificationPermissionAlert(nextStatus);
@@ -148,21 +149,6 @@ export default function PermissionsSetup() {
     }
   };
 
-  const requestLocation = async () => {
-    setPermissionBusy('location');
-    try {
-      const nextStatus = await requestAndroidLocationPermission();
-      await refreshPermissions();
-      if (nextStatus !== 'granted' && nextStatus !== 'unavailable') {
-        showRuntimePermissionAlert('Location', nextStatus);
-      }
-    } catch (err) {
-      Alert.alert('Location permission failed', permissionErrorMessage(err));
-    } finally {
-      setPermissionBusy(null);
-    }
-  };
-
   const finish = async () => {
     setSaving(true);
     setError(null);
@@ -192,10 +178,14 @@ export default function PermissionsSetup() {
         />
         <Button
           mode={smsReady && autoCapture.sms.backgroundEnabled ? 'outlined' : 'contained'}
-          icon={smsReady ? 'check-circle-outline' : 'message-processing-outline'}
+          icon={smsReady || smsUnavailable ? 'check-circle-outline' : 'message-processing-outline'}
           onPress={() => void requestSmsAccess()}
           loading={permissionBusy === 'sms'}
-          disabled={permissionBusy !== null || (smsReady && autoCapture.sms.backgroundEnabled)}
+          disabled={
+            permissionBusy !== null ||
+            smsUnavailable ||
+            (smsReady && autoCapture.sms.backgroundEnabled)
+          }
           contentStyle={styles.buttonContent}
         >
           {smsButtonLabel}
@@ -221,13 +211,21 @@ export default function PermissionsSetup() {
         <InfoRow
           icon="battery-heart-outline"
           label="Battery behavior"
-          value={autoCapture.sms.backgroundEnabled ? 'Background on' : 'Needs SMS'}
-          tone={autoCapture.sms.backgroundEnabled ? 'positive' : 'warning'}
+          value={
+            smsUnavailable
+              ? 'Android only'
+              : autoCapture.sms.backgroundEnabled
+                ? 'Background on'
+                : 'Needs SMS'
+          }
+          tone={
+            smsUnavailable ? 'default' : autoCapture.sms.backgroundEnabled ? 'positive' : 'warning'
+          }
         />
         <Button
           mode="outlined"
           icon="cog-outline"
-          onPress={() => void openAndroidAppSettings()}
+          onPress={() => void openDeviceAppSettings()}
           contentStyle={styles.buttonContent}
         >
           Open app settings
@@ -277,26 +275,6 @@ export default function PermissionsSetup() {
         >
           {photoLibraryReady ? 'Photos ready' : 'Allow photos'}
         </Button>
-        <Divider />
-        <InfoRow
-          icon="map-marker-outline"
-          label="Location"
-          value={runtimePermissionLabel(status?.location)}
-          tone={runtimePermissionTone(status?.location)}
-        />
-        <Text variant="bodySmall" style={[styles.reason, { color: theme.colors.onSurfaceVariant }]}>
-          Why: tag where a transaction or receipt happened when you choose to save place details.
-        </Text>
-        <Button
-          mode={locationReady ? 'outlined' : 'contained'}
-          icon={locationReady ? 'check-circle-outline' : 'map-marker-outline'}
-          onPress={() => void requestLocation()}
-          loading={permissionBusy === 'location'}
-          disabled={permissionBusy !== null || locationReady}
-          contentStyle={styles.buttonContent}
-        >
-          {locationReady ? 'Location ready' : 'Allow location'}
-        </Button>
       </SectionCard>
 
       <HelperText type="error" visible={Boolean(error)}>
@@ -335,7 +313,7 @@ function smsPermissionTone(
   return 'warning';
 }
 
-function runtimePermissionLabel(status?: AndroidRuntimePermissionStatus) {
+function runtimePermissionLabel(status?: DeviceRuntimePermissionStatus) {
   if (!status) return 'Checking';
   if (status === 'granted') return 'Granted';
   if (status === 'blocked') return 'Blocked';
@@ -344,7 +322,7 @@ function runtimePermissionLabel(status?: AndroidRuntimePermissionStatus) {
 }
 
 function runtimePermissionTone(
-  status?: AndroidRuntimePermissionStatus,
+  status?: DeviceRuntimePermissionStatus,
 ): 'default' | 'positive' | 'warning' | 'danger' {
   if (!status || status === 'unavailable') return 'default';
   if (status === 'granted') return 'positive';
@@ -352,24 +330,24 @@ function runtimePermissionTone(
   return 'warning';
 }
 
-function runtimePermissionReady(status?: AndroidRuntimePermissionStatus) {
+function runtimePermissionReady(status?: DeviceRuntimePermissionStatus) {
   return status === 'granted' || status === 'unavailable';
 }
 
 function showRuntimePermissionAlert(
-  label: 'Camera' | 'Photos' | 'Location',
-  status: AndroidRuntimePermissionStatus,
+  label: 'Camera' | 'Photos',
+  status: DeviceRuntimePermissionStatus,
 ) {
   const blocked = status === 'blocked';
   Alert.alert(
     blocked ? `${label} permission is blocked` : `${label} permission not granted`,
     blocked
-      ? `Open Android settings and allow ${label.toLowerCase()} permission for 1wallet.`
-      : `You can continue now and allow ${label.toLowerCase()} permission later from Android settings.`,
+      ? `Open app settings and allow ${label.toLowerCase()} permission for 1wallet.`
+      : `You can continue now and allow ${label.toLowerCase()} permission later from app settings.`,
     blocked
       ? [
           { text: 'Not now', style: 'cancel' },
-          { text: 'Open settings', onPress: () => void openAndroidAppSettings() },
+          { text: 'Open settings', onPress: () => void openDeviceAppSettings() },
         ]
       : [{ text: 'OK' }],
   );
@@ -380,28 +358,28 @@ function showSmsPermissionAlert(status: AndroidSmsPermissionStatus) {
   Alert.alert(
     blocked ? 'SMS permission is blocked' : 'SMS permission not granted',
     blocked
-      ? 'Open Android settings and allow SMS permissions for 1wallet.'
+      ? 'Open app settings and allow SMS permissions for 1wallet on Android.'
       : 'You can continue now and allow SMS capture later from Auto Capture.',
     blocked
       ? [
           { text: 'Not now', style: 'cancel' },
-          { text: 'Open settings', onPress: () => void openAndroidAppSettings() },
+          { text: 'Open settings', onPress: () => void openDeviceAppSettings() },
         ]
       : [{ text: 'OK' }],
   );
 }
 
-function showNotificationPermissionAlert(status: AndroidRuntimePermissionStatus) {
+function showNotificationPermissionAlert(status: DeviceRuntimePermissionStatus) {
   const blocked = status === 'blocked';
   Alert.alert(
     blocked ? 'Notifications are blocked' : 'Notifications not granted',
     blocked
-      ? 'Open Android settings and allow notifications for 1wallet.'
-      : 'You can continue now and allow notifications later from Android settings.',
+      ? 'Open app settings and allow notifications for 1wallet.'
+      : 'You can continue now and allow notifications later from app settings.',
     blocked
       ? [
           { text: 'Not now', style: 'cancel' },
-          { text: 'Open settings', onPress: () => void openAndroidAppSettings() },
+          { text: 'Open settings', onPress: () => void openDeviceAppSettings() },
         ]
       : [{ text: 'OK' }],
   );

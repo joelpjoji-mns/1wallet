@@ -270,7 +270,7 @@ export default function NewLoan() {
       return;
     }
     if (!emiMinor) {
-      setSnackbar('Enter the principal EMI amount');
+      setSnackbar('Enter the EMI amount');
       return;
     }
     if (outstandingMinor > principalMinor) {
@@ -285,8 +285,11 @@ export default function NewLoan() {
     let createdLoanId: string | undefined;
     await mutate(
       (draft) => {
+        const openingPrincipalMinor = accountType === 'lent' ? principalMinor : -principalMinor;
+        const openingOutstandingMinor =
+          accountType === 'lent' ? outstandingMinor : -outstandingMinor;
         const openingBalanceMinor =
-          setupMode === 'backfill_paid' ? -principalMinor : -outstandingMinor;
+          setupMode === 'backfill_paid' ? openingPrincipalMinor : openingOutstandingMinor;
         const loan = createAccount(draft, {
           name: cleanName,
           type: accountType,
@@ -309,7 +312,8 @@ export default function NewLoan() {
             principalMinor,
             sourceAccountId: source.id,
             emiMinor,
-            startsOn: loanStartedOn,
+            disbursedOn: loanStartedOn,
+            repaymentStartsOn: loanStartedOn,
             trackingStartsOn: loanStartedOn,
             remainingCount: paid + remaining,
             paid: 0,
@@ -323,21 +327,38 @@ export default function NewLoan() {
             currency,
           });
           for (const row of forecast.rows.slice(0, paid)) {
-            createTransaction(draft, {
+            const externalRef = `loan-backfill-v1:${loan.id}:${row.dueAt}`;
+            const loanIsLent = loan.type === 'lent';
+            const emi = createTransaction(draft, {
               type: 'loan_repayment',
               status: 'cleared',
               source: 'manual',
-              accountId: source.id,
-              counterAccountId: loan.id,
+              accountId: loanIsLent ? loan.id : source.id,
+              counterAccountId: loanIsLent ? source.id : loan.id,
               amountMinor: row.payment.amountMinor,
               currency,
-              counterAmountMinor: row.principal.amountMinor || undefined,
-              counterCurrency: row.principal.amountMinor ? currency : undefined,
+              counterAmountMinor: row.payment.amountMinor,
+              counterCurrency: currency,
               occurredAt: withHour(row.dueAt, 8),
-              paymentMethod: 'Auto debit',
+              paymentMethod: loanIsLent ? 'Repayment received' : 'Auto debit',
               notes: `${loan.name} backfilled EMI #${row.installment}`,
-              externalRef: `loan-backfill-v1:${loan.id}:${row.dueAt}`,
+              externalRef,
             });
+            if (row.interest.amountMinor > 0) {
+              createTransaction(draft, {
+                type: loanIsLent ? 'interest_in' : 'interest_out',
+                status: 'cleared',
+                source: 'manual',
+                accountId: loan.id,
+                amountMinor: row.interest.amountMinor,
+                currency,
+                occurredAt: withHour(row.dueAt, 8),
+                paymentMethod: loanIsLent ? 'Repayment received' : 'Auto debit',
+                notes: `${loan.name} backfilled interest #${row.installment}`,
+                originalTransactionId: emi.id,
+                externalRef: `${externalRef}:interest`,
+              });
+            }
           }
         }
 
@@ -346,7 +367,8 @@ export default function NewLoan() {
           principalMinor,
           sourceAccountId: source.id,
           emiMinor,
-          startsOn: loanStartedOn,
+          disbursedOn: loanStartedOn,
+          repaymentStartsOn: paid > 0 ? loanStartedOn : nextEmiOn,
           trackingStartsOn: nextEmiOn,
           remainingCount: paid + remaining,
           paid,
@@ -470,7 +492,7 @@ export default function NewLoan() {
           ) : null}
           <View style={styles.row}>
             <MoneyInput
-              label="Principal EMI"
+              label="EMI"
               value={emiAmount}
               currency={currency}
               onChangeText={setEmiAmount}
@@ -677,7 +699,8 @@ function buildLoanDetails(
     principalMinor: number;
     sourceAccountId: string;
     emiMinor: number;
-    startsOn: string;
+    disbursedOn: string;
+    repaymentStartsOn: string;
     trackingStartsOn: string;
     remainingCount: number;
     paid: number;
@@ -690,13 +713,13 @@ function buildLoanDetails(
   return {
     loanKind: input.loanKind,
     principal: { amountMinor: input.principalMinor, currency: loan.currency },
-    disbursedOn: input.startsOn,
+    disbursedOn: input.disbursedOn,
     interestRatePercent: Math.max(0, Number(input.rate) || 0),
     interestRatePeriod: input.ratePeriod,
     interestMethod: input.interestMethod,
     repaymentSourceAccountId: input.sourceAccountId,
     repaymentAmount: { amountMinor: input.emiMinor, currency: loan.currency },
-    repaymentStartsOn: input.startsOn,
+    repaymentStartsOn: input.repaymentStartsOn,
     repaymentFrequency: 'monthly',
     repaymentInterval: 1,
     repaymentDayOfMonth: dateDay(input.trackingStartsOn),
