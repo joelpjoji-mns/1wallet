@@ -35,9 +35,6 @@
         "backgroundColor": "#315DA8"
       }
     },
-    "web": {
-      "bundler": "metro"
-    },
     "plugins": [
       "expo-router",
       "expo-notifications",

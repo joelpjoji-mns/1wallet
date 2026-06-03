@@ -5,7 +5,6 @@
 Current and recommended stack:
 
 - Mobile app: React Native with Expo development builds
-- Web app: Next.js
 - Shared language: TypeScript
 - Current data path: local-first ledger packages and local persistence
 - Backend path: Firebase Auth with Google sign-in, Firestore sync metadata, and chunked Firestore ledger snapshots
@@ -18,20 +17,18 @@ The mobile app remains local-first: screens read and write the device ledger, no
 
 ### React Native over Flutter
 
-Choose React Native if the web app matters as a real product surface.
+Choose React Native because the current product priority is Android/mobile delivery with shared TypeScript business logic.
 
 Why:
 
-- Shared TypeScript domain logic across mobile and web
-- Better path to a serious web app through Next.js
+- Shared TypeScript domain logic across app and packages
 - Easier reuse of validation, business logic, and reporting models
-- Strong ecosystem for forms, charts, auth, and admin surfaces
+- Strong ecosystem for forms, charts, auth, and mobile app surfaces
 - Android-specific native integrations remain possible when needed
 
 Choose Flutter only if:
 
-- You want the web app to be secondary
-- You want a single UI layer more than a strong web product
+- You want a single UI layer more than the current Expo/React Native ecosystem
 - You are comfortable investing in Dart across the whole stack
 
 ### Firebase as the production sync layer
@@ -44,7 +41,7 @@ Rules for this product shape:
 - Store the validated ledger archive as chunked Firestore snapshot documents so the first sync slice works on Firebase Spark
 - Save a local pre-restore backup before cloud data replaces device data
 - Treat full entity-level merge as a later phase once the snapshot sync foundation is stable
-- Keep Supabase/Postgres docs as a possible analytics or companion-web reference, not the current runtime backend
+- Keep Supabase/Postgres docs as a possible analytics/reference backend, not the current runtime backend
 
 ## Platform constraints
 
@@ -74,7 +71,6 @@ flowchart LR
   G --> H[Firebase Auth]
   G --> I[Firestore Sync Metadata]
   G --> J[Firestore Ledger Snapshot Chunks]
-  K[Web App] -. future companion .-> I
 ```
 
 ## Monorepo layout
@@ -82,7 +78,6 @@ flowchart LR
 ```text
 apps/
   mobile/
-  web/
 packages/
   config/
   ui/
@@ -200,9 +195,9 @@ packages/
 - Rules engine
 - Review queue
 
-### Phase 4: Companion web app
+### Phase 4: Mobile hardening and reporting
 
-- Reporting
-- Bulk management
-- Import center
-- Settings and admin
+- Deeper mobile reports
+- Import center polish
+- Review and reconciliation workflows
+- Settings and maintenance tools

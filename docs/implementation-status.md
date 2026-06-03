@@ -5,7 +5,6 @@ This file separates the current repository state from the broader product, archi
 ## Current Product Surface
 
 - Mobile app is the primary working surface under `apps/mobile`.
-- Web app exists as a companion surface under `apps/web`, but mobile leads product validation.
 - The ledger is local-first today through `@1wallet/ledger` and `@1wallet/state`.
 - Supabase/Postgres docs and migrations describe the future cloud-sync target, not the active storage path.
 - The current app handbook lives at [app/README.md](app/README.md), with route inventory, feature catalog, user flows, scenario matrices, business rules, and QA status.
