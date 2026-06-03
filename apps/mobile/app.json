@@ -2,7 +2,7 @@
   "expo": {
     "name": "1wallet",
     "slug": "1wallet",
-    "version": "1.5.3",
+    "version": "1.6.0",
     "orientation": "portrait",
     "icon": "./assets/brand/icon.png",
     "scheme": "onewallet",
@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.joelpjoji.one.wallet",
-      "buildNumber": "1050300",
+      "buildNumber": "1060000",
       "deploymentTarget": "16.4",
       "usesIcloudStorage": false,
       "infoPlist": {
