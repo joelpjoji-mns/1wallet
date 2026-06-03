@@ -23,8 +23,6 @@
         "READ_SMS",
         "RECEIVE_SMS",
         "WAKE_LOCK",
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
         "READ_MEDIA_IMAGES",
         "READ_MEDIA_VISUAL_USER_SELECTED",
         "READ_EXTERNAL_STORAGE",
