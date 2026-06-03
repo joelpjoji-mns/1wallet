@@ -3,11 +3,11 @@ import type { Transaction } from '@1wallet/domain/types';
 import { findLoanAccountForRule, syncLoanDetailsFromRule } from '@1wallet/ledger/loans';
 import type { FutureRuleOccurrence } from '@1wallet/ledger/rules/futureGeneration';
 import {
-    deleteFutureGenerationRule,
-    plannedPaymentKindForRule,
-    plannedPaymentPostModeForRule,
-    plannedPaymentRuleStats,
-    updateFutureGenerationRule,
+  deleteFutureGenerationRule,
+  plannedPaymentKindForRule,
+  plannedPaymentPostModeForRule,
+  plannedPaymentRuleStats,
+  updateFutureGenerationRule,
 } from '@1wallet/ledger/rules/futureGeneration';
 import type { FutureGenerationRule, LedgerState } from '@1wallet/ledger/store/types';
 import { useLedger } from '@1wallet/state';
@@ -16,61 +16,61 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
-    Button,
-    Divider,
-    ProgressBar,
-    Snackbar,
-    Surface,
-    Text,
-    TouchableRipple,
-    useTheme,
+  Button,
+  Divider,
+  ProgressBar,
+  Snackbar,
+  Surface,
+  Text,
+  TouchableRipple,
+  useTheme,
 } from 'react-native-paper';
 import { resolveAccountIconVisual } from '../../src/accountOptions';
 import {
-    AppScreen,
-    EmptyState,
-    InfoRow,
-    InlineMeta,
-    SectionCard,
-    resolveAppIconName,
-    type AppIconName,
+  AppScreen,
+  EmptyState,
+  InfoRow,
+  InlineMeta,
+  SectionCard,
+  resolveAppIconName,
+  type AppIconName,
 } from '../../src/components/AppKit';
 import { positiveAmountColor } from '../../src/financeColors';
 import { iconSurfaceForThemeTone } from '../../src/iconSystem';
 import { linkedLoanInterestTransaction, loanRepaymentBreakdown } from '../../src/loans/loanUtils';
 import {
-    PLANNED_PAYMENT_ICON_FOREGROUND_COLOR,
-    accountName,
-    categoryApplies,
-    categoryDisplayName,
-    categoryForRule,
-    dueLabel,
-    plannedKindMeta,
-    plannedPaymentAmountColor,
-    plannedPaymentCategorySummary,
-    plannedPaymentEndSummary,
-    plannedPaymentRecurrenceSummary,
-    plannedPaymentTileIcon,
-    plannedPaymentTileIconBackgroundColor,
+  PLANNED_PAYMENT_ICON_FOREGROUND_COLOR,
+  accountName,
+  categoryApplies,
+  categoryDisplayName,
+  categoryForRule,
+  dueLabel,
+  plannedKindMeta,
+  plannedPaymentAmountColor,
+  plannedPaymentCategorySummary,
+  plannedPaymentEndSummary,
+  plannedPaymentRecurrenceSummary,
+  plannedPaymentTileIcon,
+  plannedPaymentTileIconBackgroundColor,
 } from '../../src/plannedPayments/display';
 import { OccurrenceConfirmDialog } from '../../src/plannedPayments/OccurrenceConfirmDialog';
 import { OccurrencePostponeDialog } from '../../src/plannedPayments/OccurrencePostponeDialog';
 import { plannedRuleProgressSummary } from '../../src/plannedPayments/progress';
 import {
-    PLAN_DETAIL_OCCURRENCE_LOOKUP_OPTIONS,
-    confirmFutureRuleOccurrence,
-    confirmedTransactionsForRule,
-    dismissFutureRuleOccurrence,
-    nearestActionableOccurrence,
-    postponeFutureRuleOccurrence,
-    removeUnpostedFutureScheduledRecordsForRule,
-    restartFutureRulePlan,
+  PLAN_DETAIL_OCCURRENCE_LOOKUP_OPTIONS,
+  confirmFutureRuleOccurrence,
+  confirmedTransactionsForRule,
+  dismissFutureRuleOccurrence,
+  nearestActionableOccurrence,
+  postponeFutureRuleOccurrence,
+  removeUnpostedFutureScheduledRecordsForRule,
+  restartFutureRulePlan,
 } from '../../src/plannedPayments/ruleActions';
 import { transactionTypeBucket } from '../../src/transactionTypes';
 
 export default function PlannedPaymentDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { state, mutate } = useLedger();
+  const { state, indexes, mutate } = useLedger();
   const [snackbar, setSnackbar] = useState<string | null>(null);
   const [confirmingOccurrence, setConfirmingOccurrence] = useState<FutureRuleOccurrence | null>(
     null,
@@ -264,6 +264,7 @@ export default function PlannedPaymentDetail() {
         rule={rule}
         occurrence={confirmingOccurrence ?? undefined}
         state={state}
+        indexes={indexes}
         title="Confirm occurrence"
         confirmLabel="Confirm"
         onDismiss={() => setConfirmingOccurrence(null)}
@@ -491,15 +492,19 @@ function loanOccurrenceEmiAmount(
   };
 }
 
-function loanOccurrenceInterestAmount(
-  occurrence: FutureRuleOccurrence,
-): { amountMinor: number; currency: string } {
+function loanOccurrenceInterestAmount(occurrence: FutureRuleOccurrence): {
+  amountMinor: number;
+  currency: string;
+} {
   const principalMinor = Math.max(
     0,
     occurrence.principalAmountMinor ?? occurrence.counterAmountMinor ?? occurrence.amountMinor,
   );
   return {
-    amountMinor: Math.max(0, occurrence.interestAmountMinor ?? occurrence.amountMinor - principalMinor),
+    amountMinor: Math.max(
+      0,
+      occurrence.interestAmountMinor ?? occurrence.amountMinor - principalMinor,
+    ),
     currency: occurrence.interestCurrency ?? occurrence.currency,
   };
 }
@@ -562,10 +567,7 @@ function OccurrenceCard({
         iconBackgroundColor={occurrenceIconBackgroundColor}
         iconColor={PLANNED_PAYMENT_ICON_FOREGROUND_COLOR}
         label={isLoanRepayment ? 'EMI' : 'Amount'}
-        value={formatMoney(
-          isLoanRepayment ? emiAmount : totalAmount,
-          state.preferences.locale,
-        )}
+        value={formatMoney(isLoanRepayment ? emiAmount : totalAmount, state.preferences.locale)}
       />
       {isLoanRepayment ? (
         <>
