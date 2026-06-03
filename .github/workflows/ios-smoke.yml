@@ -47,11 +47,11 @@ jobs:
 
       - name: Validate iOS JavaScript bundle
         working-directory: apps/mobile
-        run: pnpm exec expo export --platform ios --output-dir .tmp-ios-export
+        run: pnpm --config.auto-install-peers=false --config.node-linker=hoisted exec expo export --platform ios --output-dir .tmp-ios-export
 
       - name: Prebuild iOS project
         working-directory: apps/mobile
-        run: pnpm exec expo prebuild --platform ios
+        run: pnpm --config.auto-install-peers=false --config.node-linker=hoisted exec expo prebuild --platform ios
 
       - name: Build iOS simulator app
         working-directory: apps/mobile/ios
