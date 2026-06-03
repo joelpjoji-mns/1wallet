@@ -7,14 +7,23 @@
     "icon": "./assets/brand/icon.png",
     "scheme": "onewallet",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/brand/splash-native.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#FFFFFF"
-    },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.joelpjoji.one.wallet"
+      "bundleIdentifier": "com.joelpjoji.one.wallet",
+      "buildNumber": "1050300",
+      "deploymentTarget": "15.1",
+      "usesIcloudStorage": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow 1wallet to scan receipt and bill photos.",
+        "NSPhotoLibraryUsageDescription": "Allow 1wallet to choose receipt and bill images from your photos.",
+        "NSPhotoLibraryAddUsageDescription": "Allow 1wallet to save exported backup files when you choose to share them.",
+        "NSUserNotificationsUsageDescription": "Allow 1wallet to show review, reminder, update, and wallet alerts."
+      },
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.com.joelpjoji.one.wallet"
+        ]
+      }
     },
     "android": {
       "package": "com.joelpjoji.one.wallet",
@@ -57,6 +66,14 @@
             "./assets/fonts/RobotoMono-Regular.ttf",
             "./assets/fonts/RobotoMono-Medium.ttf"
           ]
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/brand/splash-native.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#FFFFFF"
         }
       ],
       "expo-updates",

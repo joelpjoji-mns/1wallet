@@ -4,7 +4,7 @@ import { useLedger } from '@1wallet/state';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import {
   Button,
   Dialog,
@@ -17,10 +17,10 @@ import {
   useTheme,
 } from 'react-native-paper';
 import {
-  getAndroidNotificationPermissionStatus,
-  openAndroidAppSettings,
-  requestAndroidNotificationPermission,
-  type AndroidRuntimePermissionStatus,
+  getDeviceNotificationPermissionStatus,
+  openDeviceAppSettings,
+  requestDeviceNotificationPermission,
+  type DeviceRuntimePermissionStatus,
 } from '../src/androidPermissions';
 import { useAuth } from '../src/auth';
 import {
@@ -77,7 +77,7 @@ const THEME_OPTIONS: OptionListItem<ThemePreference>[] = [
   {
     value: 'system',
     label: 'System',
-    description: 'Follow Android light or dark mode',
+    description: 'Follow device light or dark mode',
     icon: 'theme-light-dark',
   },
   {
@@ -227,7 +227,7 @@ export default function Settings() {
   const [resetVisible, setResetVisible] = useState(false);
   const [snackbar, setSnackbar] = useState<string | null>(null);
   const [pushPermissionStatus, setPushPermissionStatus] =
-    useState<AndroidRuntimePermissionStatus>('unavailable');
+    useState<DeviceRuntimePermissionStatus>('unavailable');
   const notificationSettings = normalizeNotificationPreferences(state.preferences.notifications);
   const notifications = useMemo(() => buildNotificationInbox(state), [state]);
   const unreadNotifications = useMemo(
@@ -279,7 +279,7 @@ export default function Settings() {
 
   useEffect(() => {
     let mounted = true;
-    void getAndroidNotificationPermissionStatus().then((status) => {
+    void getDeviceNotificationPermissionStatus().then((status) => {
       if (mounted) setPushPermissionStatus(status);
     });
     return () => {
@@ -365,12 +365,12 @@ export default function Settings() {
 
   const setPushNotificationsEnabled = async (enabled: boolean) => {
     if (enabled) {
-      const status = await requestAndroidNotificationPermission();
+      const status = await requestDeviceNotificationPermission();
       setPushPermissionStatus(status);
       if (status !== 'granted') {
         saveMessage(
           status === 'blocked'
-            ? 'Enable notification permission in Android settings'
+            ? 'Enable notification permission in app settings'
             : 'Notification permission not granted',
         );
         return;
@@ -386,7 +386,7 @@ export default function Settings() {
       },
       { slices: ['preferences'] },
     );
-    saveMessage(enabled ? 'Android notifications enabled' : 'Android notifications paused');
+    saveMessage(enabled ? 'Notifications enabled' : 'Notifications paused');
   };
 
   const setQuietHoursEnabled = async (enabled: boolean) => {
@@ -561,8 +561,8 @@ export default function Settings() {
           <InfoRow
             icon="message-text-outline"
             label="Auto Capture"
-            value="SMS ready"
-            tone="positive"
+            value={Platform.OS === 'android' ? 'SMS ready' : 'Android only'}
+            tone={Platform.OS === 'android' ? 'positive' : 'default'}
           />
           <InfoRow icon="file-table-outline" label="CSV imports" value="Ready" tone="positive" />
           <Button
@@ -590,7 +590,7 @@ export default function Settings() {
 
         <SectionCard
           title="Notifications"
-          subtitle="Actionable Android alerts for updates and time-sensitive wallet items."
+          subtitle="Actionable native alerts for updates and time-sensitive wallet items."
         >
           <View style={styles.switchRow}>
             <View style={styles.switchCopy}>
@@ -608,9 +608,9 @@ export default function Settings() {
           <Divider />
           <View style={styles.switchRow}>
             <View style={styles.switchCopy}>
-              <Text variant="titleSmall">Android notifications</Text>
+              <Text variant="titleSmall">Device notifications</Text>
               <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                {notificationPermissionLabel(pushPermissionStatus)} Updates use Android alerts when
+                {notificationPermissionLabel(pushPermissionStatus)} Updates use native alerts when
                 permission is granted.
               </Text>
             </View>
@@ -624,9 +624,9 @@ export default function Settings() {
             <Button
               mode="contained-tonal"
               icon="cellphone-cog"
-              onPress={() => void openAndroidAppSettings()}
+              onPress={() => void openDeviceAppSettings()}
             >
-              Open Android settings
+              Open app settings
             </Button>
           ) : null}
           <Divider />
@@ -838,11 +838,11 @@ function authModeLabel(provider: ReturnType<typeof useAuth>['authProvider']): st
   return 'Local dev';
 }
 
-function notificationPermissionLabel(status: AndroidRuntimePermissionStatus): string {
-  if (status === 'granted') return 'Native alerts can appear in Android notifications.';
-  if (status === 'blocked') return 'Android permission is blocked for this app.';
-  if (status === 'denied') return 'Android permission is needed for native alerts.';
-  return 'Native alerts are available on Android devices.';
+function notificationPermissionLabel(status: DeviceRuntimePermissionStatus): string {
+  if (status === 'granted') return 'Native alerts can appear on this device.';
+  if (status === 'blocked') return 'Notification permission is blocked for this app.';
+  if (status === 'denied') return 'Notification permission is needed for native alerts.';
+  return 'Native alerts are not required on this device.';
 }
 
 function normalizeStartDayDraft(draft: StartDayDraft): NormalizedStartDayDraft {

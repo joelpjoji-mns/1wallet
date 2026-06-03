@@ -5,13 +5,14 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = parseArgs(process.argv.slice(2));
-const apk = requiredPath(args.apk, '--apk');
+const platform = normalizePlatform(args.platform ?? 'android');
+const apk = platform === 'android' ? requiredPath(args.apk, '--apk') : null;
 const versionName = requiredValue(args.version, '--version');
 const versionCode = numberValue(
   args['version-code'] ?? versionCodeFromSemver(versionName),
   '--version-code',
 );
-const downloadUrl = requiredValue(args.url, '--url');
+const downloadUrl = platform === 'android' ? requiredValue(args.url, '--url') : undefined;
 const channel = args.channel ?? 'stable';
 const releaseType = args['release-type'] ?? inferReleaseType(versionName);
 const mandatory = args.mandatory === 'true';
@@ -19,11 +20,11 @@ const runtimeVersion = args.runtime ?? versionName;
 const minimumSupportedVersionCode = Number(args['minimum-supported-version-code'] ?? 0);
 const architecture = args.architecture ?? 'arm64-v8a';
 const publishedAt = args['published-at'] ?? new Date().toISOString();
-const fileName = args['file-name'] ?? apk.split(/[\\/]/).pop() ?? '1wallet-update.apk';
+const fileName = apk ? (args['file-name'] ?? apk.split(/[\\/]/).pop() ?? '1wallet-update.apk') : null;
 const outputPath = args.output ? resolve(repoRoot, args.output) : null;
 const changelog = args['changelog-json'] ? readChangelogFile(args['changelog-json']) : null;
-const releasePath = `appUpdates/android/releases/${versionCode}`;
-const channelPath = `appUpdates/android/channels/${channel}`;
+const releasePath = `appUpdates/${platform}/releases/${versionCode}`;
+const channelPath = `appUpdates/${platform}/channels/${channel}`;
 
 if (!['major', 'minor', 'patch'].includes(releaseType)) {
   throw new Error('--release-type must be one of major, minor, patch.');
@@ -35,10 +36,8 @@ if (!Number.isInteger(minimumSupportedVersionCode) || minimumSupportedVersionCod
   throw new Error('--minimum-supported-version-code must be a non-negative integer.');
 }
 
-const sizeBytes = statSync(apk).size;
-const sha256 = createHash('sha256').update(readFileSync(apk)).digest('hex');
-const release = {
-  platform: 'android',
+const baseRelease = {
+  platform,
   channel,
   status: 'published',
   versionName,
@@ -54,23 +53,25 @@ const release = {
     bugFixes: [...(changelog?.bugFixes ?? []), ...listValues(args.fix)],
     notes: [...(changelog?.notes ?? []), ...listValues(args.note)],
   },
-  apk: {
-    downloadUrl,
-    fileName,
-    sizeBytes,
-    sha256,
-    architecture,
-    minSdk: Number(args['min-sdk'] ?? 24),
-    estimatedDownloadSeconds: args.eta ? Number(args.eta) : undefined,
-  },
 };
+
+const release =
+  platform === 'android'
+    ? {
+        ...baseRelease,
+        apk: buildApkMetadata({ apk, downloadUrl, fileName, architecture }),
+      }
+    : {
+        ...baseRelease,
+        ios: buildIosMetadata(args),
+      };
 const releaseFeed = buildReleaseFeed(release, releasePath);
 const manifest = {
   releasePath,
   release,
   channelPath,
   channel: {
-    platform: 'android',
+    platform,
     channel,
     status: 'published',
     latestVersionCode: versionCode,
@@ -132,6 +133,46 @@ function numberValue(value, label) {
   return parsed;
 }
 
+function buildApkMetadata({ apk, downloadUrl, fileName, architecture }) {
+  const sizeBytes = statSync(apk).size;
+  const sha256 = createHash('sha256').update(readFileSync(apk)).digest('hex');
+  return {
+    downloadUrl,
+    fileName,
+    sizeBytes,
+    sha256,
+    architecture,
+    minSdk: Number(args['min-sdk'] ?? 24),
+    estimatedDownloadSeconds: args.eta ? Number(args.eta) : undefined,
+  };
+}
+
+function buildIosMetadata(args) {
+  const metadata = {
+    appStoreUrl: optionalHttpUrl(args['app-store-url'], '--app-store-url'),
+    testFlightUrl: optionalHttpUrl(args['testflight-url'], '--testflight-url'),
+    buildUrl: optionalHttpUrl(args['build-url'], '--build-url'),
+    appStoreId: optionalValue(args['app-store-id']),
+    bundleIdentifier: optionalValue(args['bundle-identifier']),
+    minimumOsVersion: optionalValue(args['minimum-os-version']),
+  };
+  if (!metadata.appStoreUrl && !metadata.testFlightUrl && !metadata.buildUrl) {
+    throw new Error('iOS manifests require --app-store-url, --testflight-url, or --build-url.');
+  }
+  return metadata;
+}
+
+function optionalValue(value) {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function optionalHttpUrl(value, label) {
+  const raw = optionalValue(value);
+  if (!raw) return undefined;
+  if (!/^https?:\/\//i.test(raw)) throw new Error(`${label} must be an HTTP(S) URL.`);
+  return raw;
+}
+
 function versionCodeFromSemver(version) {
   const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version);
   if (!match) return undefined;
@@ -165,7 +206,7 @@ function listValues(value) {
 function buildReleaseFeed(release, releasePath) {
   const id = releaseFeedId(release.versionCode, release.channel, release.versionName);
   return {
-    path: `appUpdates/android/releaseFeed/${id}`,
+    path: `appUpdates/${release.platform}/releaseFeed/${id}`,
     data: {
       platform: release.platform,
       channel: release.channel,
@@ -174,9 +215,21 @@ function buildReleaseFeed(release, releasePath) {
       versionCode: release.versionCode,
       releasePath,
       publishedAt: release.publishedAt,
-      title: `1Wallet Android ${release.versionName} ${release.channel === 'beta' ? 'Beta' : 'Stable'} (${release.versionCode})`,
+      title: `1Wallet ${platformLabel(release.platform)} ${release.versionName} ${release.channel === 'beta' ? 'Beta' : 'Stable'} (${release.versionCode})`,
     },
   };
+}
+
+function normalizePlatform(value) {
+  const platform = String(value ?? '')
+    .trim()
+    .toLowerCase();
+  if (platform === 'android' || platform === 'ios') return platform;
+  throw new Error(`Unsupported platform: ${value}. Expected android or ios.`);
+}
+
+function platformLabel(value) {
+  return value === 'ios' ? 'iOS' : 'Android';
 }
 
 function releaseFeedId(versionCode, channel, versionName) {

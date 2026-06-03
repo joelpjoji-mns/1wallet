@@ -9,7 +9,7 @@ import {
     useState,
     type ReactNode,
 } from 'react';
-import { AppState, type AppStateStatus } from 'react-native';
+import { AppState, Linking, type AppStateStatus } from 'react-native';
 import { deliverNativeUpdateNotification } from '../nativeNotifications';
 import {
     createApkDownloadTask,
@@ -18,7 +18,7 @@ import {
     type UpdateDownloadTask,
 } from './downloadManager';
 import { checkForJsUpdate, fetchJsUpdate, reloadIntoJsUpdate } from './expoOta';
-import { checkForAndroidUpdate, fetchPublishedAndroidReleaseByCode } from './firebaseUpdates';
+import { checkForAppUpdate, fetchPublishedReleaseByCode } from './firebaseUpdates';
 import { canRequestPackageInstalls, installApk, openInstallSettings } from './nativeInstaller';
 import {
     DEFAULT_UPDATE_CHANNEL,
@@ -120,17 +120,18 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
         message: manual ? 'Checking for updates...' : previous.message,
       }));
 
-      const [androidOutcome, jsUpdate, installedRelease] = await Promise.all([
-        checkForAndroidUpdate(current, selectedChannel),
+      const [nativeOutcome, jsUpdate, installedRelease] = await Promise.all([
+        checkForAppUpdate(current, selectedChannel),
         checkForJsUpdate(),
         fetchInstalledRelease(current.versionCode),
       ]);
 
-      if (androidOutcome.status === 'available') {
+      if (nativeOutcome.status === 'available') {
         const downloaded =
+          nativeOutcome.release.platform === 'android' &&
           state.downloaded &&
-          state.downloaded.channel === androidOutcome.release.channel &&
-          state.downloaded.versionCode === androidOutcome.release.versionCode
+          state.downloaded.channel === nativeOutcome.release.channel &&
+          state.downloaded.versionCode === nativeOutcome.release.versionCode
             ? state.downloaded
             : null;
         const nextStatus = downloaded ? 'downloaded' : 'available';
@@ -139,24 +140,24 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
           channel: selectedChannel,
           current,
           installedRelease,
-          release: androidOutcome.release,
+          release: nativeOutcome.release,
           downloaded,
           download: null,
           jsUpdate,
-          lastCheckedAt: androidOutcome.checkedAt,
+          lastCheckedAt: nativeOutcome.checkedAt,
           message: downloaded ? 'Update downloaded successfully' : undefined,
         };
         setState(nextState);
         await writeStoredState({
           channel: selectedChannel,
-          lastCheckedAt: androidOutcome.checkedAt,
+          lastCheckedAt: nativeOutcome.checkedAt,
           downloaded,
         });
-        await notifyNativeUpdateAvailable(androidOutcome.release, nativeUpdateNotificationKeyRef);
+        await notifyNativeUpdateAvailable(nativeOutcome.release, nativeUpdateNotificationKeyRef);
         return;
       }
 
-      if (androidOutcome.status === 'error') {
+      if (nativeOutcome.status === 'error') {
         const downloaded = state.downloaded?.channel === selectedChannel ? state.downloaded : null;
         setState((previous) => ({
           ...previous,
@@ -167,19 +168,19 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
           release: null,
           download: null,
           jsUpdate,
-          lastCheckedAt: androidOutcome.checkedAt,
-          error: androidOutcome.message,
-          message: androidOutcome.message,
+          lastCheckedAt: nativeOutcome.checkedAt,
+          error: nativeOutcome.message,
+          message: nativeOutcome.message,
         }));
         await writeStoredState({
           channel: selectedChannel,
-          lastCheckedAt: androidOutcome.checkedAt,
+          lastCheckedAt: nativeOutcome.checkedAt,
           downloaded,
         });
         return;
       }
 
-      if (androidOutcome.status === 'not-configured') {
+      if (nativeOutcome.status === 'not-configured') {
         const checkedAt = new Date().toISOString();
         const nextStatus = jsUpdate.available ? 'js-update-ready' : 'up-to-date';
         setState((previous) => ({
@@ -193,7 +194,7 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
           download: null,
           jsUpdate,
           lastCheckedAt: checkedAt,
-          message: jsUpdate.available ? 'JavaScript update available' : androidOutcome.message,
+          message: jsUpdate.available ? 'JavaScript update available' : nativeOutcome.message,
           error: undefined,
         }));
         await writeStoredState({
@@ -206,7 +207,7 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
 
       const nextStatus = jsUpdate.available ? 'js-update-ready' : 'up-to-date';
       const aheadRelease =
-        androidOutcome.status === 'ahead-of-channel' ? androidOutcome.release : null;
+        nativeOutcome.status === 'ahead-of-channel' ? nativeOutcome.release : null;
       setState((previous) => ({
         ...previous,
         channel: selectedChannel,
@@ -217,7 +218,7 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
         downloaded: null,
         download: null,
         jsUpdate,
-        lastCheckedAt: androidOutcome.checkedAt,
+        lastCheckedAt: nativeOutcome.checkedAt,
         message: aheadRelease
           ? aheadOfChannelMessage(selectedChannel, current.versionCode, aheadRelease.versionCode)
           : jsUpdate.available
@@ -227,7 +228,7 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
       }));
       await writeStoredState({
         channel: selectedChannel,
-        lastCheckedAt: androidOutcome.checkedAt,
+        lastCheckedAt: nativeOutcome.checkedAt,
         downloaded: null,
       });
     },
@@ -268,6 +269,26 @@ export function AppUpdateProvider({ children }: { children: ReactNode }) {
   const downloadUpdate = useCallback(async () => {
     const release = state.release;
     if (!release) return;
+    if (release.platform === 'ios') {
+      const url = iosReleaseUrl(release);
+      if (!url) {
+        setState((previous) => ({
+          ...previous,
+          status: 'error',
+          error: 'This iOS release does not include an App Store or TestFlight link yet.',
+          message: 'This iOS release does not include an App Store or TestFlight link yet.',
+        }));
+        return;
+      }
+      setState((previous) => ({
+        ...previous,
+        status: 'available',
+        error: undefined,
+        message: release.channel === 'beta' ? 'Opening TestFlight...' : 'Opening App Store...',
+      }));
+      await Linking.openURL(url);
+      return;
+    }
 
     await removeDownloadedUpdate(state.downloaded?.localUri);
     setState((previous) => ({
@@ -479,10 +500,18 @@ function drawerBadgeForState(state: AppUpdateState): string | undefined {
 
 async function fetchInstalledRelease(versionCode: number): Promise<AppUpdateRelease | null> {
   try {
-    return await fetchPublishedAndroidReleaseByCode(versionCode);
+    return await fetchPublishedReleaseByCode(versionCode);
   } catch {
     return null;
   }
+}
+
+function iosReleaseUrl(release: AppUpdateRelease): string | undefined {
+  if (release.platform !== 'ios') return undefined;
+  if (release.channel === 'beta') {
+    return release.ios.testFlightUrl ?? release.ios.buildUrl ?? release.ios.appStoreUrl;
+  }
+  return release.ios.appStoreUrl ?? release.ios.buildUrl ?? release.ios.testFlightUrl;
 }
 
 function aheadOfChannelMessage(

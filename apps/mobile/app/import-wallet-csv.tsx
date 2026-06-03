@@ -289,7 +289,7 @@ export default function ImportWalletCsv() {
         })),
       );
       if (files.length === 0) {
-        setFileLoadError('The Android file picker did not return a file.');
+        setFileLoadError('The file picker did not return a file.');
         setSnackbar('No CSV file was returned by the picker.');
         return;
       }

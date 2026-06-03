@@ -6,21 +6,23 @@ import {
   UPDATE_METADATA_ROOT,
   isUpdateChannel,
   type AppUpdateRelease,
+  type UpdateApkMetadata,
   type InstalledAppVersion,
   type UpdateChangelog,
   type UpdateChannel,
   type UpdateCheckOutcome,
+  type UpdateIosMetadata,
   type UpdateReleaseType,
 } from './types';
 import { inferReleaseType, isReleaseNewerThanInstalled } from './version';
 
-export async function checkForAndroidUpdate(
+export async function checkForAppUpdate(
   current: InstalledAppVersion,
   channel: UpdateChannel = DEFAULT_UPDATE_CHANNEL,
 ): Promise<UpdateCheckOutcome> {
   const checkedAt = new Date().toISOString();
   try {
-    const release = await fetchLatestPublishedAndroidRelease(channel);
+    const release = await fetchLatestPublishedRelease(channel);
     if (!release) {
       return { status: 'up-to-date', checkedAt, current };
     }
@@ -43,14 +45,27 @@ export async function checkForAndroidUpdate(
   }
 }
 
-export async function fetchLatestPublishedAndroidRelease(
+export async function checkForAndroidUpdate(
+  current: InstalledAppVersion,
+  channel: UpdateChannel = DEFAULT_UPDATE_CHANNEL,
+): Promise<UpdateCheckOutcome> {
+  return checkForAppUpdate(current, channel);
+}
+
+export async function fetchLatestPublishedRelease(
   channel: UpdateChannel = DEFAULT_UPDATE_CHANNEL,
 ): Promise<AppUpdateRelease | null> {
   const db = getUpdateFirestore();
   return fetchChannelRelease(db, channel);
 }
 
-export async function fetchPublishedAndroidReleaseByCode(
+export async function fetchLatestPublishedAndroidRelease(
+  channel: UpdateChannel = DEFAULT_UPDATE_CHANNEL,
+): Promise<AppUpdateRelease | null> {
+  return fetchLatestPublishedRelease(channel);
+}
+
+export async function fetchPublishedReleaseByCode(
   versionCode: number,
 ): Promise<AppUpdateRelease | null> {
   if (!Number.isInteger(versionCode) || versionCode <= 0) return null;
@@ -65,6 +80,12 @@ export async function fetchPublishedAndroidReleaseByCode(
   const releaseSnapshot = await getDoc(releaseRef);
   if (!releaseSnapshot.exists()) return null;
   return parseReleaseDocument(releaseSnapshot.id, releaseSnapshot.data());
+}
+
+export async function fetchPublishedAndroidReleaseByCode(
+  versionCode: number,
+): Promise<AppUpdateRelease | null> {
+  return fetchPublishedReleaseByCode(versionCode);
 }
 
 function getUpdateFirestore(): Firestore {
@@ -104,14 +125,14 @@ async function fetchChannelRelease(db: Firestore, channel: UpdateChannel) {
 function parseReleaseDocument(id: string, data: DocumentData): AppUpdateRelease | null {
   const versionName = stringValue(data.versionName);
   const versionCode = numberValue(data.versionCode);
-  const apk = parseApkMetadata(data.apk);
-  if (!versionName || !versionCode || !apk) return null;
+  if (!versionName || !versionCode) return null;
 
   const status = stringValue(data.status);
   if (status !== 'published') return null;
 
   const platform = stringValue(data.platform) ?? APP_UPDATE_PLATFORM;
   if (platform !== APP_UPDATE_PLATFORM) return null;
+  if (platform !== 'android' && platform !== 'ios') return null;
 
   const channel = updateChannelValue(data.channel) ?? DEFAULT_UPDATE_CHANNEL;
   const runtimeVersion = stringValue(data.runtimeVersion) ?? versionName;
@@ -119,30 +140,40 @@ function parseReleaseDocument(id: string, data: DocumentData): AppUpdateRelease 
   const releaseType = releaseTypeValue(data.releaseType) ?? inferReleaseType('0.0.0', versionName);
   const minimumSupportedVersionCode = numberValue(data.minimumSupportedVersionCode) ?? 0;
   const publishedAt = timestampValue(data.publishedAt) ?? new Date().toISOString();
+  const requirement = mandatory ? ('mandatory' as const) : ('optional' as const);
 
-  return {
+  const base = {
     id,
-    platform: APP_UPDATE_PLATFORM,
+    platform,
     channel,
-    status: 'published',
+    status: 'published' as const,
     versionName,
     versionCode,
     runtimeVersion,
     releaseType,
-    requirement: mandatory ? 'mandatory' : 'optional',
+    requirement,
     mandatory,
     minimumSupportedVersionCode,
     publishedAt,
     changelog: parseChangelog(data.changelog),
-    apk,
   };
+
+  if (platform === 'android') {
+    const apk = parseApkMetadata(data.apk);
+    if (!apk) return null;
+    return { ...base, platform: 'android', apk };
+  }
+
+  const ios = parseIosMetadata(data.ios);
+  if (!ios) return null;
+  return { ...base, platform: 'ios', ios };
 }
 
 function updateChannelValue(value: unknown): UpdateChannel | null {
   return isUpdateChannel(value) ? value : null;
 }
 
-function parseApkMetadata(value: unknown): AppUpdateRelease['apk'] | null {
+function parseApkMetadata(value: unknown): UpdateApkMetadata | null {
   if (!isRecord(value)) return null;
   const downloadUrl = stringValue(value.downloadUrl);
   const fileName = stringValue(value.fileName) ?? '1wallet-update.apk';
@@ -159,6 +190,23 @@ function parseApkMetadata(value: unknown): AppUpdateRelease['apk'] | null {
     architecture,
     minSdk: numberValue(value.minSdk) ?? undefined,
     estimatedDownloadSeconds: numberValue(value.estimatedDownloadSeconds) ?? undefined,
+  };
+}
+
+function parseIosMetadata(value: unknown): UpdateIosMetadata | null {
+  if (!isRecord(value)) return null;
+  const appStoreUrl = stringValue(value.appStoreUrl) ?? undefined;
+  const testFlightUrl = stringValue(value.testFlightUrl) ?? undefined;
+  const buildUrl = stringValue(value.buildUrl) ?? undefined;
+  if (![appStoreUrl, testFlightUrl, buildUrl].some((url) => url && isHttpUrl(url))) return null;
+
+  return {
+    appStoreUrl: appStoreUrl && isHttpUrl(appStoreUrl) ? appStoreUrl : undefined,
+    testFlightUrl: testFlightUrl && isHttpUrl(testFlightUrl) ? testFlightUrl : undefined,
+    buildUrl: buildUrl && isHttpUrl(buildUrl) ? buildUrl : undefined,
+    appStoreId: stringValue(value.appStoreId) ?? undefined,
+    bundleIdentifier: stringValue(value.bundleIdentifier) ?? undefined,
+    minimumOsVersion: stringValue(value.minimumOsVersion) ?? undefined,
   };
 }
 

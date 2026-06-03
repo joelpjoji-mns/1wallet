@@ -13,9 +13,13 @@ if (args['self-test']) {
 
 const appConfig = JSON.parse(readFileSync(resolve(repoRoot, 'apps/mobile/app.json'), 'utf8'));
 const buildGradle = readFileSync(resolve(repoRoot, 'apps/mobile/android/app/build.gradle'), 'utf8');
+const platform = normalizePlatform(args.platform ?? process.env.ONEWALLET_RELEASE_PLATFORM ?? 'android');
 const channel = normalizeChannel(args.channel ?? process.env.ONEWALLET_UPDATE_CHANNEL ?? 'stable');
 const sourceVersionName = appConfig.expo?.version;
-const sourceVersionCode = readVersionCode(buildGradle) ?? versionCodeFromSemver(sourceVersionName);
+const sourceVersionCode =
+  platform === 'ios'
+    ? readIosBuildNumber(appConfig) ?? versionCodeFromSemver(sourceVersionName)
+    : readVersionCode(buildGradle) ?? versionCodeFromSemver(sourceVersionName);
 const explicitVersionName = args['version-name'] ?? process.env.ONEWALLET_VERSION_NAME;
 const explicitVersionCode = args['version-code'] ?? process.env.ONEWALLET_VERSION_CODE;
 const versionName = explicitVersionName ?? deriveVersionName(sourceVersionName, channel);
@@ -24,8 +28,8 @@ const versionCode = explicitVersionCode
   : deriveVersionCode(sourceVersionCode, versionName);
 
 if (!sourceVersionName) throw new Error('Could not read expo.version from apps/mobile/app.json.');
-if (!versionName) throw new Error('Could not determine Android versionName.');
-if (!versionCode) throw new Error('Could not determine Android versionCode.');
+if (!versionName) throw new Error(`Could not determine ${platformLabel(platform)} versionName.`);
+if (!versionCode) throw new Error(`Could not determine ${platformLabel(platform)} versionCode.`);
 if (channel === 'beta') assertBetaVersion(versionName, versionCode);
 if (channel === 'stable') assertStableVersion(versionName, versionCode);
 
@@ -33,14 +37,19 @@ const releaseLabel = releaseDisplayLabel(versionName, channel);
 const assetLabel = releaseAssetLabel(versionName, channel);
 
 const info = {
+  platform,
   versionName,
   versionCode: String(versionCode),
+  buildNumber: String(versionCode),
   channel,
-  tag: `android-${channel}-v${versionName}-${versionCode}`,
-  releaseTitle: `1Wallet Android ${releaseLabel} (${versionCode})`,
+  tag: `${platform}-${channel}-v${versionName}-${versionCode}`,
+  releaseTitle: `1Wallet ${platformLabel(platform)} ${releaseLabel} (${versionCode})`,
   prerelease: String(channel === 'beta'),
   latest: String(channel === 'stable'),
   apkFileName: `1wallet-${assetLabel}-arm64-v8a.apk`,
+  ipaFileName: `1wallet-${assetLabel}.ipa`,
+  artifactFileName:
+    platform === 'ios' ? `1wallet-${assetLabel}.ipa` : `1wallet-${assetLabel}-arm64-v8a.apk`,
   manifestFileName: `1wallet-${assetLabel}-update-manifest.json`,
 };
 
@@ -55,6 +64,12 @@ function readVersionCode(value) {
   const line = value.split(/\r?\n/).find((item) => item.includes('appVersionCode')) ?? '';
   const match = /'([0-9]+)'/.exec(line);
   return match ? Number(match[1]) : null;
+}
+
+function readIosBuildNumber(config) {
+  const raw = config.expo?.ios?.buildNumber;
+  const parsed = Number(raw);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 function versionCodeFromSemver(version) {
@@ -174,6 +189,18 @@ function normalizeChannel(value) {
     .toLowerCase();
   if (channel === 'stable' || channel === 'beta') return channel;
   throw new Error(`Unsupported update channel: ${value}. Expected stable or beta.`);
+}
+
+function normalizePlatform(value) {
+  const platform = String(value ?? '')
+    .trim()
+    .toLowerCase();
+  if (platform === 'android' || platform === 'ios') return platform;
+  throw new Error(`Unsupported release platform: ${value}. Expected android or ios.`);
+}
+
+function platformLabel(value) {
+  return value === 'ios' ? 'iOS' : 'Android';
 }
 
 function parseArgs(values) {
