@@ -1,6 +1,6 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { sha256File } from './nativeInstaller';
-import type { AppUpdateRelease, DownloadedUpdate, UpdateDownloadSnapshot } from './types';
+import type { AndroidAppUpdateRelease, DownloadedUpdate, UpdateDownloadSnapshot } from './types';
 
 const UPDATE_CACHE_DIRECTORY = `${FileSystem.cacheDirectory ?? FileSystem.documentDirectory}1wallet-updates/`;
 const MIN_FREE_SPACE_BUFFER_BYTES = 50 * 1024 * 1024;
@@ -25,7 +25,7 @@ export type UpdateDownloadTask = {
 };
 
 export function createApkDownloadTask(
-  release: AppUpdateRelease,
+  release: AndroidAppUpdateRelease,
   onProgress: (progress: UpdateDownloadSnapshot) => void,
 ): UpdateDownloadTask {
   let cancelled = false;
@@ -112,7 +112,7 @@ export async function clearUpdateDownloadCache(): Promise<void> {
   await FileSystem.deleteAsync(UPDATE_CACHE_DIRECTORY, { idempotent: true }).catch(() => undefined);
 }
 
-export function updateApkLocalUri(release: AppUpdateRelease): string {
+export function updateApkLocalUri(release: AndroidAppUpdateRelease): string {
   const fileName = sanitizeFileName(release.apk.fileName || `1wallet-${release.versionName}.apk`);
   return `${UPDATE_CACHE_DIRECTORY}${release.versionCode}-${fileName}`;
 }

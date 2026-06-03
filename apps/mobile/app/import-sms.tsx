@@ -1,21 +1,21 @@
 import { formatMoney } from '@1wallet/domain/money';
 import type { AccountMessageHint, CategoryKind } from '@1wallet/domain/types';
 import type {
-  TransactionMessageCaptureResult,
-  TransactionMessageSource,
+    TransactionMessageCaptureResult,
+    TransactionMessageSource,
 } from '@1wallet/ledger/capture/messages';
 import {
-  createMessageCategoryRule,
-  deleteMessageCategoryRule,
-  messageHintSuggestionsForAccount,
-  parseTransactionMessage,
-  processTransactionMessageCapture,
-  updateMessageCategoryRule,
+    createMessageCategoryRule,
+    deleteMessageCategoryRule,
+    messageHintSuggestionsForAccount,
+    parseTransactionMessage,
+    processTransactionMessageCapture,
+    updateMessageCategoryRule,
 } from '@1wallet/ledger/capture/messages';
 import { createCaptureCandidate, mergeAcceptedMessageAccountHints } from '@1wallet/ledger/services';
 import {
-  normalizeAutoCapturePreferences,
-  type MessageCategoryKeywordRule,
+    normalizeAutoCapturePreferences,
+    type MessageCategoryKeywordRule,
 } from '@1wallet/ledger/store/types';
 import { useLedger } from '@1wallet/state';
 import { tokens } from '@1wallet/ui';
@@ -25,27 +25,27 @@ import { Alert, Linking, Platform, StyleSheet, View } from 'react-native';
 import { Button, Chip, Divider, Switch, Text, useTheme } from 'react-native-paper';
 import { resolveAccountIconVisual } from '../src/accountOptions';
 import {
-  getAndroidSmsPermissionState,
-  isAndroidSmsInboxAvailable,
-  readAndroidSmsInbox,
-  requestAndroidSmsPermission,
-  type AndroidSmsPermissionState,
-  type AndroidSmsPermissionStatus,
+    getAndroidSmsPermissionState,
+    isAndroidSmsInboxAvailable,
+    readAndroidSmsInbox,
+    requestAndroidSmsPermission,
+    type AndroidSmsPermissionState,
+    type AndroidSmsPermissionStatus,
 } from '../src/androidSmsInbox';
 import { categoryBreadcrumb } from '../src/categoryTree';
 import {
-  AppScreen,
-  EmptyState,
-  InfoRow,
-  InlineMeta,
-  PremiumTextInput,
-  SectionCard,
+    AppScreen,
+    EmptyState,
+    InfoRow,
+    InlineMeta,
+    PremiumTextInput,
+    SectionCard,
 } from '../src/components/AppKit';
 import { DateOnlyPickerField } from '../src/components/DateOnlyPickerField';
 import {
-  OptionListOverlay,
-  OptionSelectorRow,
-  type OptionListItem,
+    OptionListOverlay,
+    OptionSelectorRow,
+    type OptionListItem,
 } from '../src/components/OptionListOverlay';
 import { CategoryPickerOverlay } from '../src/components/record/RecordPickers';
 import { RecordSelectorRow } from '../src/components/record/RecordSelectorRow';
@@ -102,6 +102,7 @@ export default function SmsImport() {
   const [ruleCategoryId, setRuleCategoryId] = useState<string | undefined>();
   const [rulePickerMode, setRulePickerMode] = useState<RulePickerMode>(null);
   const smsInboxAvailable = isAndroidSmsInboxAvailable();
+  const smsCaptureUnavailable = Platform.OS !== 'android';
   const messageCategoryRules = state.preferences.messageCategoryRules ?? [];
   const pendingReviewCount = useMemo(
     () => indexes.captureCandidatesByStatus.get('pending')?.length ?? 0,
@@ -260,6 +261,10 @@ export default function SmsImport() {
     smsBackgroundEnabled?: boolean;
   }) => {
     const enablingSmsCapture = patch.smsEnabled === true || patch.smsBackgroundEnabled === true;
+    if (enablingSmsCapture && smsCaptureUnavailable) {
+      Alert.alert('SMS capture unavailable', 'SMS capture is available on Android only.');
+      return;
+    }
     if (enablingSmsCapture && Platform.OS === 'android') {
       const permission = await requestAndroidSmsPermission();
       await refreshSmsPermissionState();
@@ -289,6 +294,10 @@ export default function SmsImport() {
   };
 
   const requestSmsPermissions = async () => {
+    if (smsCaptureUnavailable) {
+      Alert.alert('SMS capture unavailable', 'SMS capture is available on Android only.');
+      return;
+    }
     const permission = await requestAndroidSmsPermission();
     await refreshSmsPermissionState();
     if (permission === 'granted') {
@@ -300,6 +309,7 @@ export default function SmsImport() {
   };
 
   const enableSmsAutoCapture = async () => {
+    if (smsCaptureUnavailable) return;
     await mutate(
       (draft) => {
         const current = normalizeAutoCapturePreferences(draft.preferences.autoCapture);
@@ -546,11 +556,14 @@ export default function SmsImport() {
           <View style={s.fill}>
             <Text variant="titleSmall">SMS capture</Text>
             <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-              Uses read access only; 1wallet is not the default SMS app.
+              {smsCaptureUnavailable
+                ? 'SMS capture is available on Android only.'
+                : 'Uses read access only; 1wallet is not the default SMS app.'}
             </Text>
           </View>
           <Switch
-            value={autoCapture.sms.enabled}
+            disabled={smsCaptureUnavailable}
+            value={smsCaptureUnavailable ? false : autoCapture.sms.enabled}
             onValueChange={(smsEnabled) => void updateAutoCapture({ smsEnabled })}
           />
         </View>
@@ -559,11 +572,14 @@ export default function SmsImport() {
           <View style={s.fill}>
             <Text variant="titleSmall">Background monitoring</Text>
             <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-              Handles new transaction-looking SMS without opening an inbox view.
+              {smsCaptureUnavailable
+                ? 'New SMS monitoring is available on Android only.'
+                : 'Handles new transaction-looking SMS without opening an inbox view.'}
             </Text>
           </View>
           <Switch
-            value={autoCapture.sms.backgroundEnabled}
+            disabled={smsCaptureUnavailable}
+            value={smsCaptureUnavailable ? false : autoCapture.sms.backgroundEnabled}
             onValueChange={(smsBackgroundEnabled) =>
               void updateAutoCapture({ smsBackgroundEnabled })
             }

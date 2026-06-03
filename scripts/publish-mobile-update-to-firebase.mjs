@@ -23,13 +23,20 @@ if (!manifest?.releasePath || !manifest?.channelPath || !manifest?.release || !m
 }
 
 const token = await getFirebaseAccessToken();
+const platform = manifest.release.platform ?? manifest.channel.platform ?? 'android';
 const apk = manifest.release.apk ?? {};
 const channel = manifest.release.channel ?? manifest.channel.channel ?? 'stable';
 const versionCode = manifest.release.versionCode;
-const fileName = apk.fileName ?? apkPath.split(/[\\/]/).pop() ?? '1wallet-update.apk';
+const fileName =
+  apk.fileName ?? (apkPath ? apkPath.split(/[\\/]/).pop() : null) ?? '1wallet-update.apk';
 let objectName;
+if (platform !== 'android' && !skipUpload) {
+  throw new Error(
+    'Only Android APK manifests can upload binaries. Use --skip-upload for iOS metadata.',
+  );
+}
 if (!skipUpload) {
-  objectName = `mobile-updates/android/${channel}/${versionCode}/${fileName}`;
+  objectName = `mobile-updates/${platform}/${channel}/${versionCode}/${fileName}`;
   const downloadToken = randomUUID();
   const sizeBytes = statSync(apkPath).size;
   if (createBucketLocation) {
@@ -49,8 +56,17 @@ if (!skipUpload) {
     fileName,
     sizeBytes,
   };
-} else if (typeof manifest.release.apk?.downloadUrl !== 'string') {
+} else if (platform === 'android' && typeof manifest.release.apk?.downloadUrl !== 'string') {
   throw new Error('--skip-upload requires manifest.release.apk.downloadUrl.');
+} else if (
+  platform === 'ios' &&
+  ![
+    manifest.release.ios?.appStoreUrl,
+    manifest.release.ios?.testFlightUrl,
+    manifest.release.ios?.buildUrl,
+  ].some((url) => typeof url === 'string' && url.trim())
+) {
+  throw new Error('--skip-upload iOS manifests require an App Store, TestFlight, or build URL.');
 }
 
 await writeFirestoreDocument({
@@ -197,7 +213,7 @@ function buildReleaseFeed(manifest) {
   const release = manifest.release;
   const id = releaseFeedId(release.versionCode, release.channel, release.versionName);
   return {
-    path: `appUpdates/android/releaseFeed/${id}`,
+    path: `appUpdates/${release.platform ?? 'android'}/releaseFeed/${id}`,
     data: {
       platform: release.platform ?? 'android',
       channel: release.channel,
@@ -206,9 +222,13 @@ function buildReleaseFeed(manifest) {
       versionCode: release.versionCode,
       releasePath: manifest.releasePath,
       publishedAt: release.publishedAt,
-      title: `1Wallet Android ${release.versionName} ${release.channel === 'beta' ? 'Beta' : 'Stable'} (${release.versionCode})`,
+      title: `1Wallet ${platformLabel(release.platform ?? 'android')} ${release.versionName} ${release.channel === 'beta' ? 'Beta' : 'Stable'} (${release.versionCode})`,
     },
   };
+}
+
+function platformLabel(value) {
+  return value === 'ios' ? 'iOS' : 'Android';
 }
 
 function releaseFeedId(versionCode, channel, versionName) {

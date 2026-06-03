@@ -2,7 +2,7 @@ import type { LedgerState } from '@1wallet/ledger/store/types';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { Platform } from 'react-native';
-import { getAndroidNotificationPermissionStatus } from './androidPermissions';
+import { getDeviceNotificationPermissionStatus } from './androidPermissions';
 import {
     buildNotificationInbox,
     normalizeNotificationPreferences,
@@ -127,11 +127,7 @@ async function ensureAppUpdatesChannel() {
 }
 
 async function hasNativeNotificationPermission(): Promise<boolean> {
-  if (Platform.OS === 'android') {
-    return (await getAndroidNotificationPermissionStatus()) === 'granted';
-  }
-  const permissions = await Notifications.getPermissionsAsync();
-  return permissions.granted;
+  return (await getDeviceNotificationPermissionStatus()) === 'granted';
 }
 
 function nativeNotificationData(notification: AppNotification): Record<string, string> {
