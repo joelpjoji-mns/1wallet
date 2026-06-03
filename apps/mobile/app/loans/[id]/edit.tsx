@@ -1,23 +1,23 @@
 import { toMinor } from '@1wallet/domain/money';
 import type {
-  LoanInterestMethod,
-  LoanInterestRatePeriod,
-  LoanKind,
-  RecurrenceFrequency,
+    LoanInterestMethod,
+    LoanInterestRatePeriod,
+    LoanKind,
+    RecurrenceFrequency,
 } from '@1wallet/domain/types';
 import {
-  buildLoanForecast,
-  buildLoanPlannedPaymentInput,
-  completedLoanInstallmentCount,
-  deriveLoanOutstandingPrincipal,
-  dueDateForInstallment,
-  findLinkedLoanRule,
-  legacyLoanPlanRefPrefix,
-  loanOpeningBalanceMinorForOutstanding,
+    buildLoanForecast,
+    buildLoanPlannedPaymentInput,
+    completedLoanInstallmentCount,
+    deriveLoanOutstandingPrincipal,
+    dueDateForInstallment,
+    findLinkedLoanRule,
+    legacyLoanPlanRefPrefix,
+    loanOpeningBalanceMinorForOutstanding,
 } from '@1wallet/ledger/loans';
 import {
-  createFutureGenerationRule,
-  updateFutureGenerationRule,
+    createFutureGenerationRule,
+    updateFutureGenerationRule,
 } from '@1wallet/ledger/rules/futureGeneration';
 import { updateAccount } from '@1wallet/ledger/services';
 import { indexedAccountBalance } from '@1wallet/ledger/services/indexes';
@@ -29,28 +29,28 @@ import { StyleSheet, Switch, View } from 'react-native';
 import { Button, Snackbar, Text, useTheme } from 'react-native-paper';
 import { accountTypeLabel, resolveAccountIconVisual } from '../../../src/accountOptions';
 import {
-  AppScreen,
-  EmptyState,
-  InfoRow,
-  PremiumTextInput,
-  SectionCard,
+    AppScreen,
+    EmptyState,
+    InfoRow,
+    PremiumTextInput,
+    SectionCard,
 } from '../../../src/components/AppKit';
 import { DateOnlyPickerField } from '../../../src/components/DateOnlyPickerField';
 import { OptionListOverlay, OptionSelectorRow } from '../../../src/components/OptionListOverlay';
 import {
-  FREQUENCY_OPTIONS,
-  INTEREST_METHOD_OPTIONS,
-  LOAN_KIND_OPTIONS,
-  RATE_PERIOD_OPTIONS,
-  buildDraftLoanDetails,
-  defaultLoanKind,
-  formatInputAmount,
-  isValidIsoDate,
-  loanScheduleCloseLabel,
-  optionLabel,
-  parseAmount,
-  repaymentSourceAccounts,
-  todayIso,
+    FREQUENCY_OPTIONS,
+    INTEREST_METHOD_OPTIONS,
+    LOAN_KIND_OPTIONS,
+    RATE_PERIOD_OPTIONS,
+    buildDraftLoanDetails,
+    defaultLoanKind,
+    formatInputAmount,
+    isValidIsoDate,
+    loanScheduleCloseLabel,
+    optionLabel,
+    parseAmount,
+    repaymentSourceAccounts,
+    todayIso,
 } from '../../../src/loans/loanUtils';
 import { removeUnpostedFutureScheduledRecordsForRule } from '../../../src/plannedPayments/ruleActions';
 
@@ -85,6 +85,7 @@ export default function LoanEdit() {
   const [rate, setRate] = useState('0');
   const [ratePeriod, setRatePeriod] = useState<LoanInterestRatePeriod>('annual');
   const [interestMethod, setInterestMethod] = useState<LoanInterestMethod>('reducing_balance');
+  const [loanStartOn, setLoanStartOn] = useState(todayIso());
   const [startsOn, setStartsOn] = useState(todayIso());
   const [frequency, setFrequency] = useState<RecurrenceFrequency>('monthly');
   const [interval, setInterval] = useState('1');
@@ -118,7 +119,8 @@ export default function LoanEdit() {
     const balance = indexedAccountBalance(indexes, loan);
     const outstandingMinor = Math.abs(balance.amountMinor || details?.principal?.amountMinor || 0);
     const scheduleStart =
-      details?.disbursedOn ?? details?.repaymentStartsOn ?? details?.trackingStartsOn ?? todayIso();
+      details?.repaymentStartsOn ?? details?.trackingStartsOn ?? details?.disbursedOn ?? todayIso();
+    const disbursedOn = details?.disbursedOn ?? scheduleStart;
     const cadenceFrequency = details?.repaymentFrequency ?? 'monthly';
     const cadenceInterval = String(details?.repaymentInterval ?? 1);
     const cadenceDayOfMonth = String(details?.repaymentDayOfMonth ?? new Date().getDate());
@@ -160,6 +162,7 @@ export default function LoanEdit() {
     setRate(String(details?.interestRatePercent ?? 0));
     setRatePeriod(details?.interestRatePeriod ?? 'annual');
     setInterestMethod(details?.interestMethod ?? 'reducing_balance');
+    setLoanStartOn(disbursedOn);
     setStartsOn(scheduleStart);
     setFrequency(cadenceFrequency);
     setInterval(cadenceInterval);
@@ -224,7 +227,7 @@ export default function LoanEdit() {
             rate,
             ratePeriod,
             interestMethod,
-            disbursedOn: startsOn,
+            disbursedOn: loanStartOn,
             startsOn,
             frequency,
             interval,
@@ -246,6 +249,7 @@ export default function LoanEdit() {
       interval,
       loan,
       loanKind,
+      loanStartOn,
       payment,
       paidInstallments,
       principal,
@@ -484,8 +488,12 @@ export default function LoanEdit() {
       setSnackbar('Paid EMIs cannot exceed total installments');
       return;
     }
+    if (!isValidIsoDate(draftDetails.disbursedOn)) {
+      setSnackbar('Enter a valid loan start date');
+      return;
+    }
     if (!isValidIsoDate(draftDetails.repaymentStartsOn)) {
-      setSnackbar('Enter a valid start date');
+      setSnackbar('Enter a valid first EMI date');
       return;
     }
 
@@ -591,7 +599,7 @@ export default function LoanEdit() {
           </View>
           <View style={styles.twoColumn}>
             <MoneyField
-              label="Principal EMI"
+              label="EMI"
               value={payment}
               onChangeText={handlePaymentChange}
               currency={loan.currency}
@@ -638,6 +646,15 @@ export default function LoanEdit() {
           <View style={styles.twoColumn}>
             <DateOnlyPickerField
               label="Loan start date"
+              value={loanStartOn}
+              onChange={(nextValue) => {
+                setLoanStartOn(nextValue);
+                setManualInterestTiles(false);
+              }}
+              style={styles.flexField}
+            />
+            <DateOnlyPickerField
+              label="First EMI date"
               value={startsOn}
               onChange={(nextValue) => {
                 setStartsOn(nextValue);
@@ -645,6 +662,8 @@ export default function LoanEdit() {
               }}
               style={styles.flexField}
             />
+          </View>
+          <View style={styles.twoColumn}>
             <PremiumTextInput
               mode="outlined"
               label="Day"

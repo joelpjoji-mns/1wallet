@@ -1,24 +1,24 @@
 import { fromMinor, toMinor, type Money } from '@1wallet/domain/money';
 import type {
-    Account,
-    AccountLoanDetails,
-    LoanInterestMethod,
-    LoanInterestRatePeriod,
-    LoanKind,
-    RecurrenceFrequency,
-    Transaction,
+  Account,
+  AccountLoanDetails,
+  LoanInterestMethod,
+  LoanInterestRatePeriod,
+  LoanKind,
+  RecurrenceFrequency,
+  Transaction,
 } from '@1wallet/domain/types';
 import {
-    buildLoanForecast,
-    findLinkedLoanRule,
-    isLoanAccountType,
-    loanScheduleSummary,
-    type LoanForecast,
+  buildLoanForecast,
+  findLinkedLoanRule,
+  isLoanAccountType,
+  loanScheduleSummary,
+  type LoanForecast,
 } from '@1wallet/ledger/loans';
 import {
-    forecastFutureRuleOccurrences,
-    futureRuleInterestExternalRef,
-    type FutureRuleOccurrence,
+  forecastFutureRuleOccurrences,
+  futureRuleInterestExternalRef,
+  type FutureRuleOccurrence,
 } from '@1wallet/ledger/rules/futureGeneration';
 import { indexedAccountBalance, type LedgerIndexes } from '@1wallet/ledger/services/indexes';
 import type { FutureGenerationRule, LedgerState } from '@1wallet/ledger/store/types';
@@ -26,8 +26,8 @@ import { accountIconForType, accountTypeLabel } from '../accountOptions';
 import type { AppIconName } from '../components/AppKit';
 import type { OptionListItem } from '../components/OptionListOverlay';
 import {
-    nearestActionableOccurrence,
-    PLAN_DETAIL_OCCURRENCE_LOOKUP_OPTIONS,
+  nearestActionableOccurrence,
+  PLAN_DETAIL_OCCURRENCE_LOOKUP_OPTIONS,
 } from '../plannedPayments/ruleActions';
 
 export const LOAN_ACCOUNT_TYPES = new Set<Account['type']>(['loan', 'overdraft', 'lent']);
@@ -288,7 +288,11 @@ export function loanListItems(
 
 function isPaidOffLoanItem(item: LoanListItem): boolean {
   const progress = loanPrincipalProgress(item.loan, item.balance);
-  return progress.total.amountMinor > 0 && progress.progress >= 1 && item.balance.amountMinor === 0;
+  return (
+    progress.total.amountMinor > 0 &&
+    progress.progress >= 1 &&
+    item.forecast.outstanding.amountMinor === 0
+  );
 }
 
 export function fallbackLoanDetails(loan: Account, indexes: LedgerIndexes): AccountLoanDetails {
@@ -360,6 +364,48 @@ export function linkedLoanInterestTransaction(
   });
 }
 
+export function loanRepaymentBreakdown(
+  loan: Account,
+  transaction: Transaction,
+  interestTransaction?: Transaction,
+): { total: Money; principal: Money; interest?: Money } {
+  const linkedInterest = interestTransaction?.amount;
+  const usesLoanInterestAccount = Boolean(
+    interestTransaction && interestTransaction.accountId === loan.id,
+  );
+  if (usesLoanInterestAccount) {
+    const interestMinor = Math.max(0, linkedInterest?.amountMinor ?? 0);
+    return {
+      total: transaction.amount,
+      principal: {
+        amountMinor: Math.max(0, transaction.amount.amountMinor - interestMinor),
+        currency: transaction.amount.currency,
+      },
+      interest: linkedInterest,
+    };
+  }
+
+  const principal = transaction.counterAmount ?? transaction.amount;
+  const impliedInterestMinor = Math.max(
+    0,
+    transaction.amount.amountMinor -
+      (transaction.counterAmount?.amountMinor ?? transaction.amount.amountMinor),
+  );
+  const interest =
+    linkedInterest ??
+    (impliedInterestMinor > 0
+      ? { amountMinor: impliedInterestMinor, currency: transaction.amount.currency }
+      : undefined);
+  const total = interest
+    ? {
+        amountMinor: transaction.amount.amountMinor + interest.amountMinor,
+        currency: transaction.amount.currency,
+      }
+    : transaction.amount;
+
+  return { total, principal, interest };
+}
+
 export function loanRecordItems(
   state: LedgerState,
   loan: Account,
@@ -371,43 +417,27 @@ export function loanRecordItems(
   );
   const transactionItems = postedTransactions.map((transaction): LoanRecordItem => {
     const interestTransaction = linkedLoanInterestTransaction(state, transaction);
-    const principal = transaction.counterAmount ?? transaction.amount;
-    const impliedInterestMinor = Math.max(
-      0,
-      transaction.amount.amountMinor -
-        (transaction.counterAmount?.amountMinor ?? transaction.amount.amountMinor),
-    );
-    const interest =
-      interestTransaction?.amount ??
-      (impliedInterestMinor > 0
-        ? { amountMinor: impliedInterestMinor, currency: transaction.amount.currency }
-        : undefined);
-    const total = interestTransaction
-      ? {
-          amountMinor: transaction.amount.amountMinor + interestTransaction.amount.amountMinor,
-          currency: transaction.amount.currency,
-        }
-      : transaction.amount;
+    const breakdown = loanRepaymentBreakdown(loan, transaction, interestTransaction);
 
     return {
       key: transaction.id,
       kind: 'transaction',
       occurredAt: transaction.occurredAt,
       status: transaction.status,
-      total,
-      principal,
-      interest,
+      total: breakdown.total,
+      principal: breakdown.principal,
+      interest: breakdown.interest,
       transaction,
       interestTransaction,
     };
   });
 
-  const existingOccurrenceRefs = new Set(
-    transactions.map((transaction) => transaction.externalRef).filter(Boolean),
-  );
-  const existingOccurrenceDates = new Set(
-    transactions.map((transaction) => dateOnly(transaction.occurredAt)),
-  );
+  const existingOccurrenceRefs = new Set<string>();
+  const existingOccurrenceDates = new Set<string>();
+  for (const transaction of transactions) {
+    if (transaction.externalRef) existingOccurrenceRefs.add(transaction.externalRef);
+    existingOccurrenceDates.add(dateOnly(transaction.occurredAt));
+  }
   const forecastItems = loanForecastOccurrences(state, loan, horizonMonths)
     .filter(
       (occurrence) =>
@@ -621,7 +651,7 @@ function dateOnly(value: string): string {
 }
 
 export function dueLabel(iso: string, now = new Date()): string {
-  const due = startOfDay(new Date(iso));
+  const due = startOfDay(parseLocalDateValue(iso));
   const today = startOfDay(now);
   const days = Math.round((due.getTime() - today.getTime()) / 86_400_000);
   if (days < 0) return `Overdue by ${dayCountLabel(Math.abs(days))}`;
@@ -635,7 +665,7 @@ function dayCountLabel(days: number): string {
 }
 
 export function dateLabel(iso: string, locale: string): string {
-  const date = new Date(iso);
+  const date = parseLocalDateValue(iso);
   if (Number.isNaN(date.getTime())) return iso;
   return date.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
 }
@@ -650,8 +680,8 @@ export function monthsLabel(months?: number): string {
 }
 
 export function calendarDurationLabel(from: Date | string, to: Date | string): string {
-  const fromDate = startOfDay(typeof from === 'string' ? new Date(from) : from);
-  const toDate = startOfDay(typeof to === 'string' ? new Date(to) : to);
+  const fromDate = startOfDay(typeof from === 'string' ? parseLocalDateValue(from) : from);
+  const toDate = startOfDay(typeof to === 'string' ? parseLocalDateValue(to) : to);
   if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) return '';
   if (toDate.getTime() < fromDate.getTime()) return 'Closed';
 
@@ -666,22 +696,37 @@ export function calendarDurationLabel(from: Date | string, to: Date | string): s
 
 function dateDay(value?: string): number | undefined {
   if (!value) return undefined;
-  const date = new Date(value);
+  const date = parseLocalDateValue(value);
   return Number.isNaN(date.getTime()) ? undefined : date.getDate();
 }
 
 function weekdayLabel(value: string | undefined, locale: string): string {
   if (!value) return 'start day';
-  const date = new Date(value);
+  const date = parseLocalDateValue(value);
   if (Number.isNaN(date.getTime())) return 'start day';
   return date.toLocaleDateString(locale, { weekday: 'short' });
 }
 
 function monthDayLabel(value: string | undefined, locale: string): string {
   if (!value) return 'start date';
-  const date = new Date(value);
+  const date = parseLocalDateValue(value);
   if (Number.isNaN(date.getTime())) return 'start date';
   return date.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
+}
+
+function parseLocalDateValue(value: string): Date {
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(value);
+  if (!match) return new Date(value);
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!year || !month || !day) return new Date(value);
+  const timeIndex = value.indexOf('T');
+  if (timeIndex >= 0) {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? new Date(year, month - 1, day) : parsed;
+  }
+  return new Date(year, month - 1, day);
 }
 
 export function addMonthsKeepingDay(value: Date, months: number): Date {

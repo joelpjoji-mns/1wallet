@@ -35,7 +35,6 @@ process.env.JAVA_TOOL_OPTIONS = appendEnvFlag(
   process.env.JAVA_TOOL_OPTIONS,
   '--enable-native-access=ALL-UNNAMED',
 );
-process.env.NODE_OPTIONS = appendEnvFlag(process.env.NODE_OPTIONS, '--preserve-symlinks');
 
 for (const [key, nextValue] of Object.entries(signing)) {
   if (!process.env[key] && value(nextValue)) process.env[key] = nextValue.trim();

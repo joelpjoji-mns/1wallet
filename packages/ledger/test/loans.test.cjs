@@ -24,16 +24,19 @@ const {
   completedLoanInstallmentCount,
   createAccount,
   createFutureGenerationRule,
+  createTransaction,
   deriveLoanOutstandingPrincipal,
   dueDateForInstallment,
   emptyState,
   findLinkedLoanRule,
   forecastFutureRuleOccurrences,
   futureRuleInterestExternalRef,
+  LEDGER_STATE_VERSION,
   loanOpeningBalanceMinorForOutstanding,
   loanRuleOccurrenceAmounts,
   loanScheduleSummary,
   loanRuleTag,
+  normalizeLedgerState,
   plannedPaymentRuleStats,
   postDueFutureRuleTransactions,
   syncLoanDetailsFromRule,
@@ -116,7 +119,7 @@ assert.deepEqual(loanRuleOccurrenceAmounts(state, rule, '2026-06-05'), {
   interestCurrency: 'INR',
   loanAccountId: loan.id,
   loanIsLent: false,
-  counterAmountMinor: 1000000,
+  counterAmountMinor: 1090000,
   counterCurrency: 'INR',
 });
 
@@ -132,7 +135,7 @@ assert.equal(occurrences[0].type, 'loan_repayment');
 assert.equal(occurrences[0].amountMinor, 1090000);
 assert.equal(occurrences[0].principalAmountMinor, 1000000);
 assert.equal(occurrences[0].interestAmountMinor, 90000);
-assert.equal(occurrences[0].counterAmountMinor, 1000000);
+assert.equal(occurrences[0].counterAmountMinor, 1090000);
 assert.equal(state.transactions.length, 0);
 assert.equal(accountBalance(state, bank.id).amountMinor, 5000000);
 assert.equal(accountBalance(state, loan.id).amountMinor, -9000000);
@@ -150,8 +153,8 @@ const emi = state.transactions.find(
 assert.ok(emi);
 assert.equal(emi.status, 'cleared');
 assert.equal(emi.type, 'loan_repayment');
-assert.equal(emi.amount.amountMinor, 1000000);
-assert.equal(emi.counterAmount.amountMinor, 1000000);
+assert.equal(emi.amount.amountMinor, 1090000);
+assert.equal(emi.counterAmount.amountMinor, 1090000);
 const interest = state.transactions.find(
   (transaction) =>
     transaction.externalRef ===
@@ -160,7 +163,7 @@ const interest = state.transactions.find(
 assert.ok(interest);
 assert.equal(interest.status, 'cleared');
 assert.equal(interest.type, 'interest_out');
-assert.equal(interest.accountId, bank.id);
+assert.equal(interest.accountId, loan.id);
 assert.equal(interest.amount.amountMinor, 90000);
 assert.equal(interest.originalTransactionId, emi.id);
 assert.equal(accountBalance(state, bank.id).amountMinor, 3910000);
@@ -177,6 +180,63 @@ assert.equal(
   state.transactions.filter((transaction) => transaction.recurringTemplateId === rule.id).length,
   2,
 );
+
+const legacyState = emptyState('legacy-loan-user', 'INR');
+legacyState.version = 13;
+const legacyBank = createAccount(legacyState, {
+  name: 'Legacy Bank',
+  type: 'bank',
+  currency: 'INR',
+  openingBalanceMinor: 5000000,
+});
+const legacyLoan = createAccount(legacyState, {
+  name: 'Legacy Loan',
+  type: 'loan',
+  currency: 'INR',
+  openingBalanceMinor: -9000000,
+});
+const legacyEmi = createTransaction(legacyState, {
+  type: 'loan_repayment',
+  status: 'cleared',
+  source: 'manual',
+  accountId: legacyBank.id,
+  counterAccountId: legacyLoan.id,
+  amountMinor: 1000000,
+  currency: 'INR',
+  counterAmountMinor: 1000000,
+  counterCurrency: 'INR',
+  occurredAt: '2026-06-05T08:00:00.000Z',
+  externalRef: 'future-rule-v1:legacy-rule:2026-06-05',
+});
+createTransaction(legacyState, {
+  type: 'interest_out',
+  status: 'cleared',
+  source: 'manual',
+  accountId: legacyBank.id,
+  amountMinor: 90000,
+  currency: 'INR',
+  occurredAt: '2026-06-05T08:00:00.000Z',
+  originalTransactionId: legacyEmi.id,
+  externalRef: futureRuleInterestExternalRef(legacyEmi.externalRef),
+});
+assert.equal(accountBalance(legacyState, legacyBank.id).amountMinor, 3910000);
+assert.equal(accountBalance(legacyState, legacyLoan.id).amountMinor, -8000000);
+const migratedLegacyState = normalizeLedgerState(legacyState);
+assert.equal(migratedLegacyState.version, LEDGER_STATE_VERSION);
+const migratedLegacyEmi = migratedLegacyState.transactions.find(
+  (transaction) => transaction.id === legacyEmi.id,
+);
+const migratedLegacyInterest = migratedLegacyState.transactions.find(
+  (transaction) => transaction.originalTransactionId === legacyEmi.id,
+);
+assert.ok(migratedLegacyEmi);
+assert.equal(migratedLegacyEmi.amount.amountMinor, 1090000);
+assert.equal(migratedLegacyEmi.counterAmount.amountMinor, 1090000);
+assert.ok(migratedLegacyInterest);
+assert.equal(migratedLegacyInterest.accountId, legacyLoan.id);
+assert.equal(accountBalance(migratedLegacyState, legacyBank.id).amountMinor, 3910000);
+assert.equal(accountBalance(migratedLegacyState, legacyLoan.id).amountMinor, -8000000);
+
 const correctedLoanOpening = loanOpeningBalanceMinorForOutstanding(state, loan, {
   amountMinor: 8500000,
   currency: 'INR',
@@ -218,8 +278,8 @@ const lentEmi = lentState.transactions.find(
   (transaction) => transaction.externalRef === `future-rule-v1:${lentRule.id}:2026-06-05`,
 );
 assert.ok(lentEmi);
-assert.equal(lentEmi.amount.amountMinor, 1000000);
-assert.equal(lentEmi.counterAmount.amountMinor, 1000000);
+assert.equal(lentEmi.amount.amountMinor, 1090000);
+assert.equal(lentEmi.counterAmount.amountMinor, 1090000);
 const lentInterest = lentState.transactions.find(
   (transaction) =>
     transaction.externalRef ===
@@ -227,7 +287,7 @@ const lentInterest = lentState.transactions.find(
 );
 assert.ok(lentInterest);
 assert.equal(lentInterest.type, 'interest_in');
-assert.equal(lentInterest.accountId, lentBank.id);
+assert.equal(lentInterest.accountId, lentLoan.id);
 assert.equal(lentInterest.amount.amountMinor, 90000);
 assert.equal(lentInterest.originalTransactionId, lentEmi.id);
 assert.equal(accountBalance(lentState, lentLoan.id).amountMinor, 8000000);
@@ -279,28 +339,77 @@ assert.equal(educationSummary.closesOn, '2038-03-05');
 assert.equal(educationSummary.outstanding.amountMinor, 14200000);
 assert.equal(educationSummary.progress, 38 / 180);
 
+const disbursalBeforeFirstEmiDetails = {
+  principal: { amountMinor: 12000000, currency: 'INR' },
+  disbursedOn: '2026-01-05',
+  repaymentStartsOn: '2026-03-05',
+  repaymentAmount: { amountMinor: 1000000, currency: 'INR' },
+  repaymentFrequency: 'monthly',
+  repaymentInterval: 1,
+  repaymentDayOfMonth: 5,
+  repaymentCount: 12,
+  interestRatePercent: 10,
+  interestRatePeriod: 'annual',
+  interestMethod: 'reducing_balance',
+};
 const disbursalAnchoredSummary = loanScheduleSummary(
-  {
-    principal: { amountMinor: 12000000, currency: 'INR' },
-    disbursedOn: '2026-01-05',
-    repaymentStartsOn: '2026-03-05',
-    repaymentAmount: { amountMinor: 1000000, currency: 'INR' },
-    repaymentFrequency: 'monthly',
-    repaymentInterval: 1,
-    repaymentDayOfMonth: 5,
-    repaymentCount: 12,
-    interestRatePercent: 10,
-    interestRatePeriod: 'annual',
-    interestMethod: 'reducing_balance',
-  },
+  disbursalBeforeFirstEmiDetails,
   'INR',
   '2026-03-05',
 );
-assert.equal(disbursalAnchoredSummary.startsOn, '2026-01-05');
-assert.equal(disbursalAnchoredSummary.completedInstallments, 2);
-assert.equal(disbursalAnchoredSummary.remainingInstallments, 10);
+assert.equal(disbursalAnchoredSummary.startsOn, '2026-03-05');
+assert.equal(disbursalAnchoredSummary.completedInstallments, 0);
+assert.equal(disbursalAnchoredSummary.remainingInstallments, 12);
 assert.equal(disbursalAnchoredSummary.nextDueOn, '2026-03-05');
-assert.equal(disbursalAnchoredSummary.outstanding.amountMinor, 10000000);
+assert.equal(disbursalAnchoredSummary.outstanding.amountMinor, 12000000);
+
+const disbursalState = emptyState('loan-disbursal-user', 'INR');
+const disbursalBank = createAccount(disbursalState, {
+  name: 'Disbursal Bank',
+  type: 'bank',
+  currency: 'INR',
+  openingBalanceMinor: 0,
+});
+const disbursalLoan = createAccount(disbursalState, {
+  name: 'Disbursal Gap Loan',
+  type: 'loan',
+  currency: 'INR',
+  openingBalanceMinor: -12000000,
+  loanDetails: {
+    ...disbursalBeforeFirstEmiDetails,
+    repaymentSourceAccountId: disbursalBank.id,
+  },
+});
+const disbursalRuleInput = buildLoanPlannedPaymentInput(
+  disbursalLoan,
+  disbursalLoan.loanDetails,
+);
+assert.ok(disbursalRuleInput);
+assert.equal(disbursalRuleInput.startsOn, '2026-03-05');
+assert.deepEqual(disbursalRuleInput.skippedOccurrences, undefined);
+const disbursalRule = createFutureGenerationRule(disbursalState, disbursalRuleInput);
+const disbursalForecast = buildLoanForecast(
+  disbursalState,
+  disbursalLoan,
+  disbursalLoan.loanDetails,
+);
+assert.equal(disbursalForecast.rows[0].dueAt, '2026-03-05');
+assert.equal(disbursalForecast.rows[0].principal.amountMinor, 1000000);
+assert.equal(disbursalForecast.rows[0].interest.amountMinor, 196667);
+assert.equal(disbursalForecast.rows[0].payment.amountMinor, 1196667);
+assert.equal(disbursalForecast.rows[0].balanceAfter.amountMinor, 11000000);
+assert.deepEqual(loanRuleOccurrenceAmounts(disbursalState, disbursalRule, '2026-03-05'), {
+  amountMinor: 1196667,
+  currency: 'INR',
+  principalAmountMinor: 1000000,
+  principalCurrency: 'INR',
+  interestAmountMinor: 196667,
+  interestCurrency: 'INR',
+  loanAccountId: disbursalLoan.id,
+  loanIsLent: false,
+  counterAmountMinor: 1196667,
+  counterCurrency: 'INR',
+});
 
 const educationTrackedDetails = {
   ...educationDetails,
@@ -320,6 +429,72 @@ assert.equal(educationForecast.remainingInstallments, 142);
 assert.equal(educationForecast.rows[0].dueAt, '2026-06-05');
 assert.equal(educationForecast.scheduleClosesOn, '2038-03-05');
 assert.equal(educationForecast.outstanding.amountMinor, 14200000);
+
+const staleImportedEducationDetails = {
+  ...educationDetails,
+  repaymentStartsOn: '2023-03-05',
+  trackingStartsOn: '2026-06-05',
+  paidInstallmentsBeforeTracking: 21,
+};
+const staleImportedSummary = loanScheduleSummary(
+  staleImportedEducationDetails,
+  'INR',
+  '2026-06-02',
+);
+assert.equal(staleImportedSummary.completedInstallments, 39);
+assert.equal(staleImportedSummary.remainingInstallments, 141);
+assert.equal(staleImportedSummary.nextDueOn, '2026-06-05');
+assert.equal(staleImportedSummary.outstanding.amountMinor, 14100000);
+
+const staleImportedWithoutExplicitRepaymentStart = {
+  ...educationDetails,
+  disbursedOn: '2023-03-05',
+  repaymentStartsOn: undefined,
+  trackingStartsOn: '2026-06-05',
+  paidInstallmentsBeforeTracking: 21,
+};
+const staleFallbackSummary = loanScheduleSummary(
+  staleImportedWithoutExplicitRepaymentStart,
+  'INR',
+  '2026-06-02',
+);
+assert.equal(staleFallbackSummary.startsOn, '2023-03-05');
+assert.equal(staleFallbackSummary.completedInstallments, 39);
+assert.equal(staleFallbackSummary.remainingInstallments, 141);
+
+const staleFallbackState = emptyState('loan-stale-fallback-user', 'INR');
+const staleFallbackLoan = createAccount(staleFallbackState, {
+  name: 'Imported Start Fallback Loan',
+  type: 'loan',
+  currency: 'INR',
+  openingBalanceMinor: -14100000,
+  loanDetails: staleImportedWithoutExplicitRepaymentStart,
+});
+const staleFallbackForecast = buildLoanForecast(
+  staleFallbackState,
+  staleFallbackLoan,
+  staleImportedWithoutExplicitRepaymentStart,
+);
+assert.equal(staleFallbackForecast.completedInstallments, 39);
+assert.equal(staleFallbackForecast.remainingInstallments, 141);
+assert.equal(staleFallbackForecast.outstanding.amountMinor, 14100000);
+
+const staleImportedWithTrackingRepaymentStart = {
+  ...educationDetails,
+  disbursedOn: '2023-03-05',
+  repaymentStartsOn: '2026-06-05',
+  trackingStartsOn: '2026-06-05',
+  paidInstallmentsBeforeTracking: 21,
+};
+const staleTrackingStartSummary = loanScheduleSummary(
+  staleImportedWithTrackingRepaymentStart,
+  'INR',
+  '2026-06-02',
+);
+assert.equal(staleTrackingStartSummary.startsOn, '2023-03-05');
+assert.equal(staleTrackingStartSummary.completedInstallments, 39);
+assert.equal(staleTrackingStartSummary.remainingInstallments, 141);
+assert.equal(staleTrackingStartSummary.outstanding.amountMinor, 14100000);
 
 const partialState = emptyState('loan-partial-user', 'INR');
 const partialLoan = createAccount(partialState, {
