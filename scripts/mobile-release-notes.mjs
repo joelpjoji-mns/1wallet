@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = parseArgs(process.argv.slice(2));
+const platform = normalizePlatform(args.platform ?? 'android');
 const explicit = {
   newFeatures: listValues(args.feature),
   bugFixes: listValues(args.fix),
@@ -12,7 +13,7 @@ const explicit = {
 const pr = readPullRequest(args['pr-json']);
 const parsed = parsePullRequestBody(pr?.body ?? '');
 const commits = readCommitLog(args['commit-log']);
-const title = pr?.title || commits[0] || 'Android app update';
+const title = pr?.title || commits[0] || `${platformLabel(platform)} app update`;
 const changelog = {
   newFeatures: mergeItems(explicit.newFeatures, parsed.newFeatures),
   bugFixes: mergeItems(explicit.bugFixes, parsed.bugFixes),
@@ -38,7 +39,7 @@ const output = {
   source: pr ? { type: 'pull_request', number: pr.number, url: pr.url } : { type: 'commits' },
   ...changelog,
 };
-const markdown = renderMarkdown(output, args.version, args['version-code']);
+const markdown = renderMarkdown(output, args.version, args['version-code'], platform);
 
 if (args.output)
   writeFileSync(resolve(repoRoot, args.output), `${JSON.stringify(output, null, 2)}\n`);
@@ -91,8 +92,10 @@ function sectionForHeading(value) {
   return null;
 }
 
-function renderMarkdown(changelog, versionName, versionCode) {
-  const title = versionName ? `1Wallet Android ${versionName} (${versionCode})` : changelog.title;
+function renderMarkdown(changelog, versionName, versionCode, platform) {
+  const title = versionName
+    ? `1Wallet ${platformLabel(platform)} ${versionName} (${versionCode})`
+    : changelog.title;
   return [
     `# ${title}`,
     '',
@@ -102,6 +105,18 @@ function renderMarkdown(changelog, versionName, versionCode) {
   ]
     .filter(Boolean)
     .join('\n');
+}
+
+function normalizePlatform(value) {
+  const platform = String(value ?? '')
+    .trim()
+    .toLowerCase();
+  if (platform === 'android' || platform === 'ios') return platform;
+  throw new Error(`Unsupported release platform: ${value}. Expected android or ios.`);
+}
+
+function platformLabel(value) {
+  return value === 'ios' ? 'iOS' : 'Android';
 }
 
 function renderSection(title, items) {

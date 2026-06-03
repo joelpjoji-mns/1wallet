@@ -32,14 +32,14 @@ import {
     resolveAccountIconVisual,
 } from '../src/accountOptions';
 import {
-    getAndroidNotificationPermissionStatus,
+  getDeviceNotificationPermissionStatus,
     getDeviceCameraPermissionStatus,
     getDevicePhotoLibraryPermissionStatus,
-    openAndroidAppSettings,
-    requestAndroidNotificationPermission,
+  openDeviceAppSettings,
+  requestDeviceNotificationPermission,
     requestDeviceCameraPermission,
     requestDevicePhotoLibraryPermission,
-    type AndroidRuntimePermissionStatus,
+  type DeviceRuntimePermissionStatus,
 } from '../src/androidPermissions';
 import {
     getAndroidSmsPermissionState,
@@ -798,11 +798,11 @@ function PermissionsStep({
   const theme = useTheme();
   const [smsPermission, setSmsPermission] = useState<AndroidSmsPermissionState | undefined>();
   const [notificationStatus, setNotificationStatus] = useState<
-    AndroidRuntimePermissionStatus | undefined
+    DeviceRuntimePermissionStatus | undefined
   >();
-  const [cameraStatus, setCameraStatus] = useState<AndroidRuntimePermissionStatus | undefined>();
+  const [cameraStatus, setCameraStatus] = useState<DeviceRuntimePermissionStatus | undefined>();
   const [photoLibraryStatus, setPhotoLibraryStatus] = useState<
-    AndroidRuntimePermissionStatus | undefined
+    DeviceRuntimePermissionStatus | undefined
   >();
   const [permissionBusy, setPermissionBusy] = useState<
     'sms' | 'notifications' | 'camera' | 'photos' | null
@@ -812,7 +812,7 @@ function PermissionsStep({
     const [nextSmsPermission, nextNotificationStatus, nextCameraStatus, nextPhotoLibraryStatus] =
       await Promise.all([
         getAndroidSmsPermissionState(),
-        getAndroidNotificationPermissionStatus(),
+        getDeviceNotificationPermissionStatus(),
         getDeviceCameraPermissionStatus(),
         getDevicePhotoLibraryPermissionStatus(),
       ]);
@@ -832,6 +832,7 @@ function PermissionsStep({
     void refreshPermissions().catch(() => undefined);
   }, [refreshPermissions]);
 
+  const smsUnavailable = smsPermission?.overall === 'unavailable';
   const smsReady = smsPermission?.overall === 'granted';
   const notificationReady =
     notificationStatus === 'granted' || notificationStatus === 'unavailable';
@@ -841,6 +842,8 @@ function PermissionsStep({
     ? smsBackgroundEnabled
       ? 'SMS ready'
       : 'Turn on capture'
+    : smsUnavailable
+      ? 'Android only'
     : 'Allow SMS';
 
   const requestSmsAccess = async () => {
@@ -867,7 +870,7 @@ function PermissionsStep({
   const requestNotifications = async () => {
     setPermissionBusy('notifications');
     try {
-      const status = await requestAndroidNotificationPermission();
+      const status = await requestDeviceNotificationPermission();
       await refreshPermissions();
       if (status !== 'granted' && status !== 'unavailable') {
         showOnboardingNotificationPermissionAlert(status);
@@ -938,10 +941,10 @@ function PermissionsStep({
           />
           <Button
             mode={smsReady && smsBackgroundEnabled ? 'outlined' : 'contained'}
-            icon={smsReady ? 'check-circle-outline' : 'message-processing-outline'}
+            icon={smsReady || smsUnavailable ? 'check-circle-outline' : 'message-processing-outline'}
             onPress={() => void requestSmsAccess()}
             loading={permissionBusy === 'sms'}
-            disabled={permissionBusy !== null || (smsReady && smsBackgroundEnabled)}
+            disabled={permissionBusy !== null || smsUnavailable || (smsReady && smsBackgroundEnabled)}
             contentStyle={s.buttonContent}
           >
             {smsButtonLabel}
@@ -967,13 +970,13 @@ function PermissionsStep({
           <InfoRow
             icon="battery-heart-outline"
             label="Battery behavior"
-            value={smsBackgroundEnabled ? 'Background on' : 'Needs SMS'}
-            tone={smsBackgroundEnabled ? 'positive' : 'warning'}
+            value={smsUnavailable ? 'Android only' : smsBackgroundEnabled ? 'Background on' : 'Needs SMS'}
+            tone={smsUnavailable ? 'default' : smsBackgroundEnabled ? 'positive' : 'warning'}
           />
           <Button
             mode="outlined"
             icon="cog-outline"
-            onPress={() => void openAndroidAppSettings()}
+            onPress={() => void openDeviceAppSettings()}
             contentStyle={s.buttonContent}
           >
             Open app settings
@@ -1065,7 +1068,7 @@ function smsPermissionTone(
   return 'warning';
 }
 
-function runtimePermissionLabel(status?: AndroidRuntimePermissionStatus) {
+function runtimePermissionLabel(status?: DeviceRuntimePermissionStatus) {
   if (!status) return 'Checking';
   if (status === 'granted') return 'Granted';
   if (status === 'blocked') return 'Blocked';
@@ -1074,7 +1077,7 @@ function runtimePermissionLabel(status?: AndroidRuntimePermissionStatus) {
 }
 
 function runtimePermissionTone(
-  status?: AndroidRuntimePermissionStatus,
+  status?: DeviceRuntimePermissionStatus,
 ): 'default' | 'positive' | 'warning' | 'danger' {
   if (!status || status === 'unavailable') return 'default';
   if (status === 'granted') return 'positive';
@@ -1082,24 +1085,24 @@ function runtimePermissionTone(
   return 'warning';
 }
 
-function permissionReady(status?: AndroidRuntimePermissionStatus) {
+function permissionReady(status?: DeviceRuntimePermissionStatus) {
   return status === 'granted' || status === 'unavailable';
 }
 
 function showOnboardingRuntimePermissionAlert(
   label: 'Camera' | 'Photos',
-  status: AndroidRuntimePermissionStatus,
+  status: DeviceRuntimePermissionStatus,
 ) {
   const blocked = status === 'blocked';
   Alert.alert(
     blocked ? `${label} permission is blocked` : `${label} permission not granted`,
     blocked
-      ? `Open Android settings and allow ${label.toLowerCase()} permission for 1wallet.`
-      : `You can continue now and allow ${label.toLowerCase()} permission later from Android settings.`,
+      ? `Open app settings and allow ${label.toLowerCase()} permission for 1wallet.`
+      : `You can continue now and allow ${label.toLowerCase()} permission later from app settings.`,
     blocked
       ? [
           { text: 'Not now', style: 'cancel' },
-          { text: 'Open settings', onPress: () => void openAndroidAppSettings() },
+          { text: 'Open settings', onPress: () => void openDeviceAppSettings() },
         ]
       : [{ text: 'OK' }],
   );
@@ -1110,28 +1113,28 @@ function showOnboardingSmsPermissionAlert(status: AndroidSmsPermissionStatus) {
   Alert.alert(
     blocked ? 'SMS permission is blocked' : 'SMS permission not granted',
     blocked
-      ? 'Open Android settings and allow SMS permissions for 1wallet.'
+      ? 'Open app settings and allow SMS permissions for 1wallet on Android.'
       : 'You can continue now and allow SMS capture later from Auto Capture.',
     blocked
       ? [
           { text: 'Not now', style: 'cancel' },
-          { text: 'Open settings', onPress: () => void openAndroidAppSettings() },
+          { text: 'Open settings', onPress: () => void openDeviceAppSettings() },
         ]
       : [{ text: 'OK' }],
   );
 }
 
-function showOnboardingNotificationPermissionAlert(status: AndroidRuntimePermissionStatus) {
+function showOnboardingNotificationPermissionAlert(status: DeviceRuntimePermissionStatus) {
   const blocked = status === 'blocked';
   Alert.alert(
     blocked ? 'Notifications are blocked' : 'Notifications not granted',
     blocked
-      ? 'Open Android settings and allow notifications for 1wallet.'
-      : 'You can continue now and allow notifications later from Android settings.',
+      ? 'Open app settings and allow notifications for 1wallet.'
+      : 'You can continue now and allow notifications later from app settings.',
     blocked
       ? [
           { text: 'Not now', style: 'cancel' },
-          { text: 'Open settings', onPress: () => void openAndroidAppSettings() },
+          { text: 'Open settings', onPress: () => void openDeviceAppSettings() },
         ]
       : [{ text: 'OK' }],
   );

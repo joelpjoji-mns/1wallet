@@ -17,7 +17,7 @@ The mobile app remains local-first: screens read and write the device ledger, no
 
 ### React Native over Flutter
 
-Choose React Native because the current product priority is Android/mobile delivery with shared TypeScript business logic.
+Choose React Native because the current product priority is cross-platform mobile delivery with shared TypeScript business logic.
 
 Why:
 
@@ -49,11 +49,13 @@ Rules for this product shape:
 
 - Do not design around inbox-style SMS access on iPhone
 - Use manual entry, CSV imports, bank statement imports, email parsing, and shared logic instead
+- Ship native updates through TestFlight/App Store metadata and reserve OTA for JavaScript/assets-only changes
 
 ### Android
 
 - Start with notification-based capture and import-based capture
 - Treat SMS parsing as optional and validate current Play policy before shipping it broadly
+- APK in-app updates can be downloaded and verified by the app, but installation still requires the Android system installer confirmation
 - Even when automated capture is enabled, route low-confidence matches into a review queue
 - Match SMS, email, and notification transactions through safe account hints: last 4 digits, UPI IDs, sender IDs, email domains, and institution aliases; never require or store full card/account numbers
 - Keep region-specific parser rules modular. The first ruleset should cover common Indian INR alerts and UK GBP card/account alerts, with ambiguous matches staying in review

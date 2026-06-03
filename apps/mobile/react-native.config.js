@@ -13,5 +13,10 @@ module.exports = {
     'react-native-screens': {
       root: path.join(workspaceNodeModules, 'react-native-screens'),
     },
+    'react-native-get-sms-android': {
+      platforms: {
+        ios: null,
+      },
+    },
   },
 };

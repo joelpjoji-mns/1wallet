@@ -5,10 +5,10 @@ import { Button, Divider, Text, useTheme } from 'react-native-paper';
 import {
     getDeviceCameraPermissionStatus,
     getDevicePhotoLibraryPermissionStatus,
-    openAndroidAppSettings,
+    openDeviceAppSettings,
     requestDeviceCameraPermission,
     requestDevicePhotoLibraryPermission,
-    type AndroidRuntimePermissionStatus,
+    type DeviceRuntimePermissionStatus,
 } from '../src/androidPermissions';
 import { AppScreen, InfoRow, SectionCard } from '../src/components/AppKit';
 
@@ -16,8 +16,8 @@ type PermissionBusyState = 'camera' | 'photos' | null;
 
 export default function DevicePermissions() {
   const theme = useTheme();
-  const [cameraStatus, setCameraStatus] = useState<AndroidRuntimePermissionStatus>();
-  const [photoLibraryStatus, setPhotoLibraryStatus] = useState<AndroidRuntimePermissionStatus>();
+  const [cameraStatus, setCameraStatus] = useState<DeviceRuntimePermissionStatus>();
+  const [photoLibraryStatus, setPhotoLibraryStatus] = useState<DeviceRuntimePermissionStatus>();
   const [permissionBusy, setPermissionBusy] = useState<PermissionBusyState>(null);
 
   const refreshPermissions = useCallback(async () => {
@@ -36,7 +36,7 @@ export default function DevicePermissions() {
   const requestPermission = async (
     permission: Exclude<PermissionBusyState, null>,
     label: 'Camera' | 'Photos',
-    request: () => Promise<AndroidRuntimePermissionStatus>,
+    request: () => Promise<DeviceRuntimePermissionStatus>,
   ) => {
     setPermissionBusy(permission);
     try {
@@ -105,14 +105,14 @@ export default function DevicePermissions() {
         </Button>
       </SectionCard>
 
-      <Button mode="outlined" icon="cog-outline" onPress={() => void openAndroidAppSettings()}>
+      <Button mode="outlined" icon="cog-outline" onPress={() => void openDeviceAppSettings()}>
         Open app settings
       </Button>
     </AppScreen>
   );
 }
 
-function permissionLabel(status?: AndroidRuntimePermissionStatus) {
+function permissionLabel(status?: DeviceRuntimePermissionStatus) {
   if (!status) return 'Checking';
   if (status === 'granted') return 'Granted';
   if (status === 'blocked') return 'Blocked';
@@ -121,7 +121,7 @@ function permissionLabel(status?: AndroidRuntimePermissionStatus) {
 }
 
 function permissionTone(
-  status?: AndroidRuntimePermissionStatus,
+  status?: DeviceRuntimePermissionStatus,
 ): 'default' | 'positive' | 'warning' | 'danger' {
   if (!status || status === 'unavailable') return 'default';
   if (status === 'granted') return 'positive';
@@ -129,21 +129,21 @@ function permissionTone(
   return 'warning';
 }
 
-function permissionReady(status?: AndroidRuntimePermissionStatus) {
+function permissionReady(status?: DeviceRuntimePermissionStatus) {
   return status === 'granted' || status === 'unavailable';
 }
 
-function showPermissionAlert(label: 'Camera' | 'Photos', status: AndroidRuntimePermissionStatus) {
+function showPermissionAlert(label: 'Camera' | 'Photos', status: DeviceRuntimePermissionStatus) {
   const blocked = status === 'blocked';
   Alert.alert(
     blocked ? `${label} permission is blocked` : `${label} permission not granted`,
     blocked
-      ? `Open Android settings and allow ${label.toLowerCase()} permission for 1wallet.`
-      : `You can allow ${label.toLowerCase()} permission later from Android settings.`,
+      ? `Open app settings and allow ${label.toLowerCase()} permission for 1wallet.`
+      : `You can allow ${label.toLowerCase()} permission later from app settings.`,
     blocked
       ? [
           { text: 'Not now', style: 'cancel' },
-          { text: 'Open settings', onPress: () => void openAndroidAppSettings() },
+          { text: 'Open settings', onPress: () => void openDeviceAppSettings() },
         ]
       : [{ text: 'OK' }],
   );

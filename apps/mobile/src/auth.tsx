@@ -26,7 +26,11 @@ import {
     useState,
     type ReactNode,
 } from 'react';
-import { firebaseGoogleAuthConfig, getFirebaseServices } from './firebase/client';
+import {
+  firebaseGoogleAuthConfig,
+  getFirebaseServices,
+  googleClientIdForPlatform,
+} from './firebase/client';
 
 export type AuthProviderKind = 'firebase' | 'supabase' | 'local';
 
@@ -128,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     !debugDataPreviewEnabled &&
     firebaseServices &&
     googleConfig.webClientId &&
-    googleConfig.androidClientId,
+    googleClientIdForPlatform(googleConfig),
   );
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);

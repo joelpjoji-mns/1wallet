@@ -39,6 +39,8 @@ export default function UpdatesScreen() {
   const currentChannelLabel = installedRelease ? channelLabel(installedRelease.channel) : 'Unknown';
   const progress = state.download?.progress ?? 0;
   const hasNativeUpdate = Boolean(release);
+  const hasAndroidUpdate = release?.platform === 'android';
+  const hasIosUpdate = release?.platform === 'ios';
   const isBusy =
     state.status === 'checking' || state.status === 'downloading' || state.status === 'installing';
 
@@ -130,18 +132,28 @@ export default function UpdatesScreen() {
                 value={`${formatReleaseType(release.releaseType)} / ${release.mandatory ? 'Mandatory' : 'Optional'}`}
                 tone={release.mandatory ? 'warning' : 'default'}
               />
-              <InfoRow
-                icon="database-arrow-down-outline"
-                label="Download size"
-                value={formatBytes(release.apk.sizeBytes)}
-              />
-              <InfoRow
-                icon="timer-outline"
-                label="Estimated time"
-                value={formatEta(
-                  state.download?.etaSeconds ?? release.apk.estimatedDownloadSeconds,
-                )}
-              />
+              {release.platform === 'android' ? (
+                <>
+                  <InfoRow
+                    icon="database-arrow-down-outline"
+                    label="Download size"
+                    value={formatBytes(release.apk.sizeBytes)}
+                  />
+                  <InfoRow
+                    icon="timer-outline"
+                    label="Estimated time"
+                    value={formatEta(
+                      state.download?.etaSeconds ?? release.apk.estimatedDownloadSeconds,
+                    )}
+                  />
+                </>
+              ) : (
+                <InfoRow
+                  icon={release.channel === 'beta' ? 'test-tube' : 'storefront-outline'}
+                  label="Install source"
+                  value={release.channel === 'beta' ? 'TestFlight' : 'App Store'}
+                />
+              )}
             </>
           ) : null}
           <InfoRow
@@ -151,7 +163,7 @@ export default function UpdatesScreen() {
           />
         </SectionCard>
 
-        {state.status === 'downloading' ? (
+        {state.status === 'downloading' && release?.platform === 'android' ? (
           <SectionCard title="Download" compact>
             <View style={styles.progressHeader}>
               <Text variant="labelLarge">Downloading update...</Text>
@@ -162,7 +174,7 @@ export default function UpdatesScreen() {
             <ProgressBar progress={progress} style={styles.progress} />
             <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
               {formatBytes(state.download?.bytesWritten ?? 0)} of{' '}
-              {formatBytes(state.download?.bytesExpected ?? release?.apk.sizeBytes ?? 0)} /{' '}
+              {formatBytes(state.download?.bytesExpected ?? release.apk.sizeBytes)} /{' '}
               {formatEta(state.download?.etaSeconds)} left
             </Text>
             <Button mode="outlined" icon="close" onPress={() => void updates.cancelDownload()}>
@@ -206,14 +218,14 @@ export default function UpdatesScreen() {
           {release && state.status !== 'downloading' && state.status !== 'downloaded' ? (
             <Button
               mode="contained"
-              icon="download"
+              icon={hasIosUpdate ? 'open-in-new' : 'download'}
               disabled={isBusy}
               onPress={() => void updates.downloadUpdate()}
             >
-              Update app
+              {hasIosUpdate ? 'Open update' : 'Update app'}
             </Button>
           ) : null}
-          {release && state.status === 'downloaded' ? (
+          {hasAndroidUpdate && state.status === 'downloaded' ? (
             <Button
               mode="contained"
               icon="package-up"
@@ -301,9 +313,9 @@ function statusBody(status: string, hasUpdate: boolean, message?: string, error?
   if (status === 'checking') return 'Checking the latest published release.';
   if (status === 'downloading') return 'Downloading update...';
   if (status === 'downloaded') return 'Install the downloaded update when ready.';
-  if (status === 'installing') return 'Android will ask you to confirm the installation.';
+  if (status === 'installing') return 'The platform installer will ask you to confirm.';
   if (status === 'ahead-of-channel') {
-    return 'A newer release on this channel is needed before Android can move this device.';
+    return 'A newer release on this channel is needed before this device can move forward.';
   }
   if (status === 'cancelled') return 'Update cancelled';
   if (hasUpdate) return 'A newer 1wallet release is ready for this device.';
