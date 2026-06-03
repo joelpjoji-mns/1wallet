@@ -7,9 +7,9 @@ import {
   type UpdateReleaseType,
 } from './types';
 
-const FALLBACK_VERSION_NAME = '1.5.3';
-const FALLBACK_VERSION_CODE = 1050300;
-const FALLBACK_RUNTIME_VERSION = '1.5.3';
+const FALLBACK_VERSION_NAME = '1.6.0';
+const FALLBACK_VERSION_CODE = 1060000;
+const FALLBACK_RUNTIME_VERSION = '1.6.0';
 
 type Semver = {
   major: number;
