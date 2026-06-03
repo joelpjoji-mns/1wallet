@@ -34,126 +34,209 @@ export default function Home(): ReactElement {
   const pendingCaptures = selectors.queryCaptureCandidates(state, { status: 'pending' });
 
   return (
-    <div style={{ display: 'grid', gap: tokens.space.lg, maxWidth: 1100 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: tokens.space.lg }}>
-        <Card title="Total balance">
-          <button onClick={() => void cycleDisplayCurrency()} style={currencyButtonStyle}>
-            {viewCurrency}
-          </button>
-          <p style={{ fontSize: 32, margin: 0, fontWeight: 700 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.space.xl, width: '100%' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 32, fontWeight: 700 }}>Dashboard</h1>
+          <p style={{ margin: 0, color: 'var(--color-on-surface-variant)' }}>
+            Welcome back to your overview.
+          </p>
+        </div>
+        <button
+          onClick={() => void cycleDisplayCurrency()}
+          style={{
+            padding: `${tokens.space.sm}px ${tokens.space.md}px`,
+            borderRadius: tokens.radius.pill,
+            border: `1px solid var(--color-outline-variant)`,
+            background: 'var(--color-surface)',
+            color: 'var(--color-primary)',
+            fontWeight: 700,
+            cursor: 'pointer',
+            transition: 'background-color 0.2s',
+          }}
+          onMouseOver={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-surface-high)')}
+          onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-surface)')}
+        >
+          Currency: {viewCurrency}
+        </button>
+      </div>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: tokens.space.lg,
+        }}
+      >
+        <Card>
+          <span style={{ color: 'var(--color-on-surface-variant)', fontSize: tokens.font.size.sm }}>
+            Total Balance
+          </span>
+          <span style={{ fontSize: 36, fontWeight: 800 }}>
             {formatMoney(total, state.preferences.locale)}
-          </p>
+          </span>
         </Card>
-        <Card title="Net worth">
-          <p style={{ fontSize: 32, margin: 0, fontWeight: 700 }}>
+
+        <Card>
+          <span style={{ color: 'var(--color-on-surface-variant)', fontSize: tokens.font.size.sm }}>
+            Net Worth
+          </span>
+          <span style={{ fontSize: 36, fontWeight: 800 }}>
             {formatMoney(nw.total, state.preferences.locale)}
-          </p>
-          <p style={{ color: tokens.color.inkMuted, margin: 0 }}>
-            Assets {formatMoney(nw.assets, state.preferences.locale)} · Liab{' '}
-            {formatMoney(nw.liabilities, state.preferences.locale)}
-          </p>
+          </span>
+          <div
+            style={{ display: 'flex', justifyContent: 'space-between', marginTop: tokens.space.sm }}
+          >
+            <span style={{ fontSize: tokens.font.size.sm, color: 'var(--color-positive)' }}>
+              Assets: {formatMoney(nw.assets, state.preferences.locale)}
+            </span>
+            <span style={{ fontSize: tokens.font.size.sm, color: 'var(--color-warning)' }}>
+              Liab: {formatMoney(nw.liabilities, state.preferences.locale)}
+            </span>
+          </div>
         </Card>
-        <Card title="This month">
-          <p style={{ margin: 0, color: tokens.color.positive }}>
-            +{formatMoney(displayFlow.income, state.preferences.locale)}
-          </p>
-          <p style={{ margin: 0, color: tokens.color.overspend }}>
-            −{formatMoney(displayFlow.expense, state.preferences.locale)}
-          </p>
-          <p
+
+        <Card>
+          <span style={{ color: 'var(--color-on-surface-variant)', fontSize: tokens.font.size.sm }}>
+            This Month
+          </span>
+          <div
+            style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: tokens.space.sm }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--color-positive)' }}>
+                +{formatMoney(displayFlow.income, state.preferences.locale)}
+              </span>
+              <span style={{ color: 'var(--color-error)' }}>
+                −{formatMoney(displayFlow.expense, state.preferences.locale)}
+              </span>
+            </div>
+            <span
+              style={{
+                fontWeight: 700,
+                color:
+                  displayFlow.net.amountMinor >= 0 ? 'var(--color-positive)' : 'var(--color-error)',
+              }}
+            >
+              Net: {formatMoney(displayFlow.net, state.preferences.locale)}
+            </span>
+          </div>
+        </Card>
+
+        <Card>
+          <span style={{ color: 'var(--color-on-surface-variant)', fontSize: tokens.font.size.sm }}>
+            Review Queue
+          </span>
+          <span
             style={{
-              margin: 0,
-              fontWeight: 700,
-              color:
-                displayFlow.net.amountMinor >= 0 ? tokens.color.positive : tokens.color.overspend,
+              fontSize: 36,
+              fontWeight: 800,
+              color: pendingCaptures.length > 0 ? 'var(--color-primary)' : 'inherit',
             }}
           >
-            Net {formatMoney(displayFlow.net, state.preferences.locale)}
-          </p>
-        </Card>
-        <Card title="Review queue">
-          <p style={{ fontSize: 32, margin: 0, fontWeight: 700 }}>{pendingCaptures.length}</p>
-          <p style={{ color: tokens.color.inkMuted, margin: 0 }}>capture candidates waiting</p>
+            {pendingCaptures.length}
+          </span>
+          <span style={{ fontSize: tokens.font.size.sm, color: 'var(--color-on-surface-variant)' }}>
+            Pending items
+          </span>
         </Card>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: tokens.space.lg }}>
-        <Card title="Top categories">
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+          gap: tokens.space.lg,
+        }}
+      >
+        <Card title="Top Spending">
           {top.length === 0 ? (
-            <p style={{ color: tokens.color.inkMuted }}>No spending yet.</p>
+            <p style={{ color: 'var(--color-on-surface-variant)' }}>No spending yet.</p>
           ) : (
-            top.map((c) => (
-              <div
-                key={c.categoryId ?? c.categoryName}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  padding: `${tokens.space.sm}px 0`,
-                  borderBottom: `1px solid ${tokens.color.border}`,
-                }}
-              >
-                <span>{c.categoryName}</span>
-                <strong>{formatMoney(c.amount, state.preferences.locale)}</strong>
-              </div>
-            ))
+            <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.space.md }}>
+              {top.map((c) => (
+                <div
+                  key={c.categoryId ?? c.categoryName}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    padding: `${tokens.space.xs}px 0`,
+                  }}
+                >
+                  <span style={{ fontWeight: 500 }}>{c.categoryName}</span>
+                  <span style={{ fontWeight: 700 }}>
+                    {formatMoney(c.amount, state.preferences.locale)}
+                  </span>
+                </div>
+              ))}
+            </div>
           )}
         </Card>
 
         <Card title="Budgets">
           {budgets.length === 0 ? (
-            <p style={{ color: tokens.color.inkMuted }}>No budgets yet.</p>
+            <p style={{ color: 'var(--color-on-surface-variant)' }}>No active budgets.</p>
           ) : (
-            budgets.map((b) => (
-              <div key={b.budgetId} style={{ padding: `${tokens.space.sm}px 0` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>{b.name}</span>
-                  <span style={{ color: b.isOver ? tokens.color.overspend : tokens.color.ink }}>
-                    {Math.round(b.share * 100)}%
-                  </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.space.md }}>
+              {budgets.map((b) => (
+                <div
+                  key={b.budgetId}
+                  style={{ display: 'flex', flexDirection: 'column', gap: tokens.space.xs }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontWeight: 500 }}>{b.name}</span>
+                    <span
+                      style={{
+                        color: b.isOver ? 'var(--color-error)' : 'inherit',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {Math.round(b.share * 100)}%
+                    </span>
+                  </div>
+                  <Bar share={Math.min(b.share, 1.2)} over={b.isOver} />
                 </div>
-                <Bar share={Math.min(b.share, 1.2)} over={b.isOver} />
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </Card>
 
         <Card title="Goals">
           {goals.length === 0 ? (
-            <p style={{ color: tokens.color.inkMuted }}>No goals yet.</p>
+            <p style={{ color: 'var(--color-on-surface-variant)' }}>No active goals.</p>
           ) : (
-            goals.map((g) => (
-              <div key={g.goalId} style={{ padding: `${tokens.space.sm}px 0` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>{g.name}</span>
-                  <span>{Math.round(g.share * 100)}%</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.space.md }}>
+              {goals.map((g) => (
+                <div
+                  key={g.goalId}
+                  style={{ display: 'flex', flexDirection: 'column', gap: tokens.space.xs }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontWeight: 500 }}>{g.name}</span>
+                    <span style={{ fontWeight: 600 }}>{Math.round(g.share * 100)}%</span>
+                  </div>
+                  <Bar share={Math.min(g.share, 1)} />
+                  {g.monthlyRequired && (
+                    <span
+                      style={{
+                        color: 'var(--color-on-surface-variant)',
+                        fontSize: tokens.font.size.xs,
+                      }}
+                    >
+                      Save{' '}
+                      {formatMoney(
+                        selectors.convertMoneyForDisplay(state, g.monthlyRequired, viewCurrency),
+                        state.preferences.locale,
+                      )}{' '}
+                      / month
+                    </span>
+                  )}
                 </div>
-                <Bar share={Math.min(g.share, 1)} />
-                {g.monthlyRequired && (
-                  <p style={{ color: tokens.color.inkMuted, margin: '4px 0 0', fontSize: 13 }}>
-                    Save{' '}
-                    {formatMoney(
-                      selectors.convertMoneyForDisplay(state, g.monthlyRequired, viewCurrency),
-                      state.preferences.locale,
-                    )}{' '}
-                    / month
-                  </p>
-                )}
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </Card>
       </div>
     </div>
   );
 }
-
-const currencyButtonStyle = {
-  float: 'right' as const,
-  padding: `${tokens.space.xs}px ${tokens.space.sm}px`,
-  borderRadius: tokens.radius.pill,
-  border: `1px solid ${tokens.color.border}`,
-  background: tokens.color.surface,
-  color: tokens.color.primary,
-  fontWeight: 700,
-  cursor: 'pointer',
-};

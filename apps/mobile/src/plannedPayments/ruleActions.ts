@@ -256,17 +256,26 @@ function occurrenceFromScheduledTransaction(
   transaction: Transaction,
 ): FutureRuleOccurrence {
   const interestTransaction = linkedScheduledInterestTransaction(state, transaction);
+  const includeLegacyInterest = Boolean(
+    interestTransaction &&
+      occurrence.loanAccountId &&
+      interestTransaction.accountId !== occurrence.loanAccountId,
+  );
   const interestAmountMinor =
     interestTransaction?.amount.amountMinor ?? occurrence.interestAmountMinor;
   const principalAmountMinor =
-    transaction.counterAmount?.amountMinor ?? occurrence.principalAmountMinor;
+    occurrence.type === 'loan_repayment' && occurrence.principalAmountMinor !== undefined
+      ? occurrence.principalAmountMinor
+      : (transaction.counterAmount?.amountMinor ?? occurrence.principalAmountMinor);
   return {
     ...occurrence,
     occurredAt: transaction.occurredAt,
     accountId: transaction.accountId,
     counterAccountId: transaction.counterAccountId,
     categoryId: transaction.categoryId,
-    amountMinor: transaction.amount.amountMinor + (interestTransaction?.amount.amountMinor ?? 0),
+    amountMinor:
+      transaction.amount.amountMinor +
+      (includeLegacyInterest ? (interestTransaction?.amount.amountMinor ?? 0) : 0),
     currency: transaction.amount.currency,
     principalAmountMinor,
     principalCurrency: transaction.counterAmount?.currency ?? occurrence.principalCurrency,

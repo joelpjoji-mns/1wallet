@@ -4,10 +4,12 @@ import { formatMoney, toMinor } from '@1wallet/domain/money';
 import { uid } from '@1wallet/ledger/id';
 import { useLedger } from '@1wallet/state';
 import { tokens } from '@1wallet/ui';
-import type { CSSProperties, FormEvent, ReactElement } from 'react';
+import type { FormEvent, ReactElement } from 'react';
 import { useState } from 'react';
 import { Bar } from '../../components/Bar';
 import { Card } from '../../components/Card';
+import { Button } from '../../components/Button';
+import { Input, Select } from '../../components/Input';
 
 export default function PlannerPage(): ReactElement {
   const { state, ready, mutate, selectors } = useLedger();
@@ -70,145 +72,173 @@ export default function PlannerPage(): ReactElement {
   };
 
   return (
-    <div style={{ display: 'grid', gap: tokens.space.lg, maxWidth: 900 }}>
-      <Card title="New budget">
-        <form onSubmit={addBudget} style={{ display: 'flex', gap: tokens.space.sm }}>
-          <select
-            value={budgetCat}
-            onChange={(e) => setBudgetCat(e.target.value)}
-            style={inputStyle}
-          >
-            <option value="">Category…</option>
-            {expenseCats.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <input
-            value={budgetAmt}
-            onChange={(e) => setBudgetAmt(e.target.value)}
-            placeholder={`Monthly limit (${base})`}
-            style={inputStyle}
-            inputMode="decimal"
-          />
-          <button type="submit" style={btnStyle}>
-            Add budget
-          </button>
-        </form>
-      </Card>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.space.xl, width: '100%' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 32, fontWeight: 700 }}>Planner</h1>
+          <p style={{ margin: 0, color: 'var(--color-on-surface-variant)' }}>
+            Set budgets and track your goals.
+          </p>
+        </div>
+      </div>
 
-      <Card title="Budgets">
-        {budgets.length === 0 ? (
-          <p style={{ color: tokens.color.inkMuted }}>No budgets yet.</p>
-        ) : (
-          budgets.map((b) => (
-            <div key={b.budgetId} style={{ padding: `${tokens.space.sm}px 0` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>{b.name}</span>
-                <span>
-                  {formatMoney(
-                    selectors.convertMoneyForDisplay(state, b.spent, viewCurrency),
-                    state.preferences.locale,
-                  )}{' '}
-                  /{' '}
-                  {formatMoney(
-                    selectors.convertMoneyForDisplay(state, b.limit, viewCurrency),
-                    state.preferences.locale,
-                  )}
-                </span>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+          gap: tokens.space.lg,
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.space.lg }}>
+          <Card title="New Budget">
+            <form
+              onSubmit={addBudget}
+              style={{ display: 'flex', flexDirection: 'column', gap: tokens.space.md }}
+            >
+              <Select
+                label="Category"
+                value={budgetCat}
+                onChange={(e) => setBudgetCat(e.target.value)}
+              >
+                <option value="">Select Category…</option>
+                {expenseCats.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </Select>
+              <Input
+                label={`Monthly Limit (${base})`}
+                value={budgetAmt}
+                onChange={(e) => setBudgetAmt(e.target.value)}
+                placeholder="0.00"
+                inputMode="decimal"
+              />
+              <Button type="submit" style={{ alignSelf: 'flex-start' }}>
+                Add Budget
+              </Button>
+            </form>
+          </Card>
+
+          <Card title="Budgets">
+            {budgets.length === 0 ? (
+              <p style={{ color: 'var(--color-on-surface-variant)' }}>No budgets yet.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.space.md }}>
+                {budgets.map((b) => (
+                  <div
+                    key={b.budgetId}
+                    style={{ display: 'flex', flexDirection: 'column', gap: tokens.space.xs }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontWeight: 500 }}>{b.name}</span>
+                      <span style={{ fontWeight: 600 }}>
+                        {formatMoney(
+                          selectors.convertMoneyForDisplay(state, b.spent, viewCurrency),
+                          state.preferences.locale,
+                        )}{' '}
+                        <span style={{ color: 'var(--color-on-surface-variant)', fontWeight: 400 }}>
+                          /
+                        </span>{' '}
+                        {formatMoney(
+                          selectors.convertMoneyForDisplay(state, b.limit, viewCurrency),
+                          state.preferences.locale,
+                        )}
+                      </span>
+                    </div>
+                    <Bar share={Math.min(b.share, 1.2)} over={b.isOver} />
+                  </div>
+                ))}
               </div>
-              <Bar share={Math.min(b.share, 1.2)} over={b.isOver} />
-            </div>
-          ))
-        )}
-      </Card>
+            )}
+          </Card>
+        </div>
 
-      <Card title="New goal">
-        <form
-          onSubmit={addGoal}
-          style={{ display: 'flex', gap: tokens.space.sm, flexWrap: 'wrap' }}
-        >
-          <input
-            value={goalName}
-            onChange={(e) => setGoalName(e.target.value)}
-            placeholder="Goal name"
-            style={inputStyle}
-          />
-          <input
-            value={goalAmt}
-            onChange={(e) => setGoalAmt(e.target.value)}
-            placeholder={`Target (${base})`}
-            style={inputStyle}
-            inputMode="decimal"
-          />
-          <input
-            value={goalDate}
-            onChange={(e) => setGoalDate(e.target.value)}
-            placeholder="YYYY-MM-DD"
-            style={inputStyle}
-          />
-          <button type="submit" style={btnStyle}>
-            Add goal
-          </button>
-        </form>
-      </Card>
-
-      <Card title="Goals">
-        {goals.length === 0 ? (
-          <p style={{ color: tokens.color.inkMuted }}>No goals yet.</p>
-        ) : (
-          goals.map((g) => (
-            <div key={g.goalId} style={{ padding: `${tokens.space.sm}px 0` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>{g.name}</span>
-                <span>
-                  {formatMoney(
-                    selectors.convertMoneyForDisplay(state, g.saved, viewCurrency),
-                    state.preferences.locale,
-                  )}{' '}
-                  /{' '}
-                  {formatMoney(
-                    selectors.convertMoneyForDisplay(state, g.target, viewCurrency),
-                    state.preferences.locale,
-                  )}
-                </span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.space.lg }}>
+          <Card title="New Goal">
+            <form
+              onSubmit={addGoal}
+              style={{ display: 'flex', flexDirection: 'column', gap: tokens.space.md }}
+            >
+              <Input
+                label="Goal Name"
+                value={goalName}
+                onChange={(e) => setGoalName(e.target.value)}
+                placeholder="e.g. New Car"
+              />
+              <div
+                style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: tokens.space.md }}
+              >
+                <Input
+                  label={`Target Amount (${base})`}
+                  value={goalAmt}
+                  onChange={(e) => setGoalAmt(e.target.value)}
+                  placeholder="0.00"
+                  inputMode="decimal"
+                />
+                <Input
+                  label="Target Date"
+                  value={goalDate}
+                  onChange={(e) => setGoalDate(e.target.value)}
+                  placeholder="YYYY-MM-DD"
+                  type="date"
+                />
               </div>
-              <Bar share={Math.min(g.share, 1)} />
-              {g.monthlyRequired && (
-                <p style={{ color: tokens.color.inkMuted, margin: '4px 0 0', fontSize: 13 }}>
-                  Save{' '}
-                  {formatMoney(
-                    selectors.convertMoneyForDisplay(state, g.monthlyRequired, viewCurrency),
-                    state.preferences.locale,
-                  )}{' '}
-                  / month
-                </p>
-              )}
-            </div>
-          ))
-        )}
-      </Card>
+              <Button type="submit" style={{ alignSelf: 'flex-start' }}>
+                Add Goal
+              </Button>
+            </form>
+          </Card>
+
+          <Card title="Goals">
+            {goals.length === 0 ? (
+              <p style={{ color: 'var(--color-on-surface-variant)' }}>No goals yet.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.space.md }}>
+                {goals.map((g) => (
+                  <div
+                    key={g.goalId}
+                    style={{ display: 'flex', flexDirection: 'column', gap: tokens.space.xs }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontWeight: 500 }}>{g.name}</span>
+                      <span style={{ fontWeight: 600 }}>
+                        {formatMoney(
+                          selectors.convertMoneyForDisplay(state, g.saved, viewCurrency),
+                          state.preferences.locale,
+                        )}{' '}
+                        <span style={{ color: 'var(--color-on-surface-variant)', fontWeight: 400 }}>
+                          /
+                        </span>{' '}
+                        {formatMoney(
+                          selectors.convertMoneyForDisplay(state, g.target, viewCurrency),
+                          state.preferences.locale,
+                        )}
+                      </span>
+                    </div>
+                    <Bar share={Math.min(g.share, 1)} />
+                    {g.monthlyRequired && (
+                      <span
+                        style={{
+                          color: 'var(--color-on-surface-variant)',
+                          fontSize: tokens.font.size.xs,
+                        }}
+                      >
+                        Save{' '}
+                        {formatMoney(
+                          selectors.convertMoneyForDisplay(state, g.monthlyRequired, viewCurrency),
+                          state.preferences.locale,
+                        )}{' '}
+                        / month
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
-
-const inputStyle: CSSProperties = {
-  padding: tokens.space.md,
-  fontSize: tokens.font.size.md,
-  borderRadius: tokens.radius.md,
-  border: `1px solid ${tokens.color.border}`,
-  background: tokens.color.surface,
-  flex: 1,
-  minWidth: 140,
-};
-
-const btnStyle: CSSProperties = {
-  padding: `${tokens.space.md}px ${tokens.space.lg}px`,
-  background: tokens.color.primary,
-  color: '#fff',
-  fontWeight: 600,
-  border: 'none',
-  borderRadius: tokens.radius.md,
-  cursor: 'pointer',
-};
