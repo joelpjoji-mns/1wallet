@@ -42,6 +42,18 @@ jobs:
           node-version: 24
           cache: pnpm
 
+      - name: Select Xcode with Swift 6.2
+        run: |
+          xcode_path="$(find /Applications -maxdepth 1 -name 'Xcode_26*.app' -print | sort | tail -n 1)"
+          if [ -z "$xcode_path" ]; then
+            echo "::error::Expo SDK 56 iOS native builds require Swift 6.2, but no Xcode 26+ installation was found."
+            ls -1 /Applications | grep '^Xcode' || true
+            exit 1
+          fi
+          sudo xcode-select -s "$xcode_path/Contents/Developer"
+          xcodebuild -version
+          swift --version
+
       - name: Install dependencies
         run: pnpm --config.auto-install-peers=false --config.node-linker=hoisted install --frozen-lockfile
 
