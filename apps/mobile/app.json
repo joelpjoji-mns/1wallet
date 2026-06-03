@@ -11,7 +11,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.joelpjoji.one.wallet",
       "buildNumber": "1050300",
-      "deploymentTarget": "15.1",
+      "deploymentTarget": "15.5",
       "usesIcloudStorage": false,
       "infoPlist": {
         "NSCameraUsageDescription": "Allow 1wallet to scan receipt and bill photos.",
