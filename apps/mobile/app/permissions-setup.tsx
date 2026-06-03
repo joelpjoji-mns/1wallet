@@ -5,11 +5,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import { Button, Divider, HelperText, Text, useTheme } from 'react-native-paper';
 import {
-  openDeviceAppSettings,
-  requestDeviceNotificationPermission,
+    openDeviceAppSettings,
     requestDeviceCameraPermission,
+    requestDeviceNotificationPermission,
     requestDevicePhotoLibraryPermission,
-  type DeviceRuntimePermissionStatus,
+    type DeviceRuntimePermissionStatus,
 } from '../src/androidPermissions';
 import {
     requestAndroidSmsPermission,
@@ -62,7 +62,7 @@ export default function PermissionsSetup() {
       : 'Turn on capture'
     : smsUnavailable
       ? 'Android only'
-    : 'Allow SMS';
+      : 'Allow SMS';
 
   const enableSmsAutoCapture = async () => {
     await mutate(
@@ -211,8 +211,16 @@ export default function PermissionsSetup() {
         <InfoRow
           icon="battery-heart-outline"
           label="Battery behavior"
-          value={smsUnavailable ? 'Android only' : autoCapture.sms.backgroundEnabled ? 'Background on' : 'Needs SMS'}
-          tone={smsUnavailable ? 'default' : autoCapture.sms.backgroundEnabled ? 'positive' : 'warning'}
+          value={
+            smsUnavailable
+              ? 'Android only'
+              : autoCapture.sms.backgroundEnabled
+                ? 'Background on'
+                : 'Needs SMS'
+          }
+          tone={
+            smsUnavailable ? 'default' : autoCapture.sms.backgroundEnabled ? 'positive' : 'warning'
+          }
         />
         <Button
           mode="outlined"

@@ -4,9 +4,9 @@ import { StyleSheet, View } from 'react-native';
 import { Button, ProgressBar, Snackbar, Text, useTheme } from 'react-native-paper';
 import { AppScreen, InfoRow, SectionCard } from '../src/components/AppKit';
 import {
-  OptionListOverlay,
-  OptionSelectorRow,
-  type OptionListItem,
+    OptionListOverlay,
+    OptionSelectorRow,
+    type OptionListItem,
 } from '../src/components/OptionListOverlay';
 import { APP_ICONS } from '../src/iconSystem';
 import { useAppUpdate } from '../src/updates/AppUpdateProvider';

@@ -1,7 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import {
-    getDeviceNotificationPermissionStatus,
     getDeviceCameraPermissionStatus,
+    getDeviceNotificationPermissionStatus,
     getDevicePhotoLibraryPermissionStatus,
     type DeviceRuntimePermissionStatus,
 } from './androidPermissions';

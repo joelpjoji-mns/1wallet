@@ -6,47 +6,47 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import {
-  Button,
-  Dialog,
-  Divider,
-  HelperText,
-  Portal,
-  Snackbar,
-  Switch,
-  Text,
-  useTheme,
+    Button,
+    Dialog,
+    Divider,
+    HelperText,
+    Portal,
+    Snackbar,
+    Switch,
+    Text,
+    useTheme,
 } from 'react-native-paper';
 import {
-  getDeviceNotificationPermissionStatus,
-  openDeviceAppSettings,
-  requestDeviceNotificationPermission,
-  type DeviceRuntimePermissionStatus,
+    getDeviceNotificationPermissionStatus,
+    openDeviceAppSettings,
+    requestDeviceNotificationPermission,
+    type DeviceRuntimePermissionStatus,
 } from '../src/androidPermissions';
 import { useAuth } from '../src/auth';
 import {
-  AppScreen,
-  InfoRow,
-  PremiumTextInput,
-  QuickLink,
-  SectionCard,
-  type AppIconName,
+    AppScreen,
+    InfoRow,
+    PremiumTextInput,
+    QuickLink,
+    SectionCard,
+    type AppIconName,
 } from '../src/components/AppKit';
 import {
-  OptionListOverlay,
-  OptionSelectorRow,
-  type OptionListItem,
+    OptionListOverlay,
+    OptionSelectorRow,
+    type OptionListItem,
 } from '../src/components/OptionListOverlay';
 import { ThemeAccentPicker } from '../src/components/ThemeAccentPicker';
 import { buildEnabledCurrencyOptions, currencyOptionIcon } from '../src/currencyOptions';
 import {
-  buildNotificationInbox,
-  normalizeNotificationPreferences,
-  type AppNotificationChannel,
+    buildNotificationInbox,
+    normalizeNotificationPreferences,
+    type AppNotificationChannel,
 } from '../src/notifications';
 import {
-  DEFAULT_CUSTOM_ACCENT_COLOR,
-  normalizeHexColor,
-  normalizeThemeAccentPreference,
+    DEFAULT_CUSTOM_ACCENT_COLOR,
+    normalizeHexColor,
+    normalizeThemeAccentPreference,
 } from '../src/theme';
 import { saveCachedThemePreference } from '../src/themePreferenceStorage';
 import { useAutoSaveDraft } from '../src/useAutoSaveDraft';

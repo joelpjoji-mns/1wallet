@@ -27,9 +27,9 @@ import {
     type ReactNode,
 } from 'react';
 import {
-  firebaseGoogleAuthConfig,
-  getFirebaseServices,
-  googleClientIdForPlatform,
+    firebaseGoogleAuthConfig,
+    getFirebaseServices,
+    googleClientIdForPlatform,
 } from './firebase/client';
 
 export type AuthProviderKind = 'firebase' | 'supabase' | 'local';
