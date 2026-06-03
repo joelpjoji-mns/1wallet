@@ -154,7 +154,7 @@ const MANAGEMENT_LINKS = [
   },
   {
     title: 'Device permissions',
-    body: 'Camera, photos, and location access with a clear reason for each prompt.',
+    body: 'Camera and photos access with a clear reason for each prompt.',
     icon: 'shield-check-outline',
     route: '/device-permissions',
   },
