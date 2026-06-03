@@ -80,5 +80,27 @@ jobs:
             -configuration Debug \
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/ios-derived \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+      - name: Launch iOS simulator app
+        working-directory: apps/mobile/ios
+        run: |
+          app_path="$(find build/ios-derived/Build/Products/Debug-iphonesimulator -maxdepth 2 -type d -name '*.app' -print -quit)"
+          if [ -z "$app_path" ]; then
+            echo "::error::No simulator .app bundle was produced by xcodebuild."
+            exit 1
+          fi
+
+          simulator_id="$(xcrun simctl list devices available -j | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => { const data = JSON.parse(input); const devices = Object.values(data.devices || {}).flat(); const device = devices.find(candidate => candidate.isAvailable && candidate.name.includes('iPhone')); if (!device) process.exit(1); process.stdout.write(device.udid); });")"
+          if [ -z "$simulator_id" ]; then
+            echo "::error::No available iPhone simulator was found."
+            xcrun simctl list devices available
+            exit 1
+          fi
+
+          xcrun simctl boot "$simulator_id" || true
+          xcrun simctl bootstatus "$simulator_id" -b
+          xcrun simctl install "$simulator_id" "$app_path"
+          xcrun simctl launch "$simulator_id" com.joelpjoji.one.wallet
