@@ -655,10 +655,16 @@ function overridesFromScheduledTransaction(
   transaction: Transaction,
 ): PostFutureRuleOccurrenceOverrides {
   const interestTransaction = scheduledLoanInterestTransaction(state, transaction);
+  const loanAccountId = loanAccountIdForTransaction(state, transaction);
+  const includeLegacyInterest = Boolean(
+    interestTransaction && loanAccountId && interestTransaction.accountId !== loanAccountId,
+  );
   return {
     accountId: transaction.accountId,
     counterAccountId: transaction.counterAccountId,
-    amountMinor: transaction.amount.amountMinor + (interestTransaction?.amount.amountMinor ?? 0),
+    amountMinor:
+      transaction.amount.amountMinor +
+      (includeLegacyInterest ? (interestTransaction?.amount.amountMinor ?? 0) : 0),
     currency: transaction.amount.currency,
     occurredAt: transaction.occurredAt,
     paymentMethod: transaction.paymentMethod ?? null,
@@ -676,6 +682,24 @@ function scheduledLoanInterestTransaction(
   return state.transactions.find(
     (transaction) => transaction.status === 'scheduled' && transaction.externalRef === interestRef,
   );
+}
+
+function loanAccountIdForTransaction(
+  state: LedgerState,
+  transaction: Transaction,
+): UUID | undefined {
+  const account = state.accounts.find((item) => item.id === transaction.accountId);
+  if (account && isLoanAccountTypeForRule(account.type)) return account.id;
+  const counterAccount = transaction.counterAccountId
+    ? state.accounts.find((item) => item.id === transaction.counterAccountId)
+    : undefined;
+  return counterAccount && isLoanAccountTypeForRule(counterAccount.type)
+    ? counterAccount.id
+    : undefined;
+}
+
+function isLoanAccountTypeForRule(type: string): boolean {
+  return type === 'loan' || type === 'overdraft' || type === 'lent';
 }
 
 function ensureRuleStore(state: LedgerState): FutureGenerationRule[] {
@@ -764,7 +788,9 @@ function postLoanRuleOccurrence(
     ),
   );
   const interestMinor = Math.min(input.amountMinor, forecastInterestMinor);
-  const principalMinor = Math.max(0, input.amountMinor - interestMinor);
+  const totalMinor = input.amountMinor;
+  const loanAccountId =
+    occurrence.loanAccountId ?? (occurrence.loanIsLent ? input.accountId : input.counterAccountId);
 
   const primary = upsertFutureRuleTransaction(state, rule, occurrence, {
     type: 'loan_repayment',
@@ -772,10 +798,10 @@ function postLoanRuleOccurrence(
     source: 'rule',
     accountId: input.accountId,
     counterAccountId: input.counterAccountId,
-    amountMinor: principalMinor > 0 ? principalMinor : input.amountMinor,
+    amountMinor: totalMinor,
     currency: input.currency,
-    counterAmountMinor: principalMinor > 0 ? principalMinor : undefined,
-    counterCurrency: occurrence.principalCurrency ?? occurrence.counterCurrency ?? input.currency,
+    counterAmountMinor: totalMinor,
+    counterCurrency: occurrence.counterCurrency ?? input.currency,
     categoryId: undefined,
     occurredAt: input.occurredAt,
     paymentMethod: input.paymentMethod ?? undefined,
@@ -786,11 +812,11 @@ function postLoanRuleOccurrence(
   });
 
   upsertLoanInterestTransaction(state, rule, occurrence, primary, {
-    amountMinor: principalMinor > 0 ? interestMinor : 0,
+    amountMinor: interestMinor,
     currency: occurrence.interestCurrency ?? input.currency,
     occurredAt: input.occurredAt,
     status: input.status,
-    accountId: occurrence.loanIsLent ? input.counterAccountId : input.accountId,
+    accountId: loanAccountId,
     type: occurrence.loanIsLent ? 'interest_in' : 'interest_out',
     notes: `${rule.name} interest`,
     tags: input.tags ?? undefined,

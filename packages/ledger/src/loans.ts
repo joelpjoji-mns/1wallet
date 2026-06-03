@@ -206,7 +206,7 @@ export function syncLoanDetailsFromRule(
     repaymentEndsOn: rule.endsOn,
     autoCreateScheduledRecords: rule.enabled,
     trackingStartsOn: syncedTrackingStartsOn,
-    repaymentStartsOn: existingDetails.repaymentStartsOn ?? rule.startsOn,
+    repaymentStartsOn: rule.startsOn,
     linkedPlannedPaymentRuleId: rule.id,
     notes: rule.notes ?? existingDetails.notes,
   };
@@ -264,7 +264,7 @@ export function buildLoanPlannedPaymentInput(
     frequency: details.repaymentFrequency ?? 'monthly',
     interval: details.repaymentInterval ?? 1,
     dayOfMonth: details.repaymentDayOfMonth,
-    startsOn: loanScheduleStartsOn(details),
+    startsOn: loanRepaymentStartsOn(details),
     endsOn: details.repaymentEndsOn,
     occurrences: details.repaymentCount,
     skippedOccurrences: completedLoanOccurrenceDates(details),
@@ -296,7 +296,7 @@ export function buildLoanForecast(
   const totalInstallments = loanTotalInstallmentCount(details);
   const countLimit = totalInstallments ?? 600;
   const end = details.repaymentEndsOn ? parseDateOnly(details.repaymentEndsOn) : undefined;
-  const scheduleStartsOn = loanScheduleStartsOn(details);
+  const scheduleStartsOn = loanRepaymentStartsOn(details);
   const startsOn = loanForecastStartsOn(details);
   const completedInstallments = totalInstallments
     ? Math.min(completedLoanInstallmentCount(details, startsOn), totalInstallments)
@@ -347,7 +347,14 @@ export function buildLoanForecast(
     );
     if (end && due > end) break;
     const interestBase = details.interestMethod === 'flat' ? principalMinor : balance;
-    const interest = Math.max(0, Math.round(interestBase * ratePerPayment));
+    const interestPeriods = interestPeriodsForInstallment(
+      details,
+      installmentIndex,
+      due,
+      frequency,
+      interval,
+    );
+    const interest = Math.max(0, Math.round(interestBase * ratePerPayment * interestPeriods));
     const principalPaid = Math.max(0, Math.min(principalPaymentMinor, balance));
     const payment = principalPaid + interest;
     balance = Math.max(0, balance - principalPaid);
@@ -390,7 +397,7 @@ export function loanScheduleSummary(
   currency: string,
   asOf: string | Date = new Date(),
 ): LoanScheduleSummary {
-  const startsOn = loanScheduleStartsOn(details);
+  const startsOn = loanRepaymentStartsOn(details);
   const trackingStartsOn = loanForecastStartsOn(details);
   const totalInstallments = loanTotalInstallmentCount(details);
   const completedInstallments = totalInstallments
@@ -442,17 +449,27 @@ export function completedLoanInstallmentCount(
     details.paidInstallmentsBeforeTracking === undefined
       ? undefined
       : normalizeInstallmentCount(details.paidInstallmentsBeforeTracking);
-  const startsOn = loanScheduleStartsOn(details);
+  const startsOn = loanRepaymentStartsOn(details);
   const asOfDate = parseDateInput(asOf);
   if (!isValidDateOnly(startsOn) || !asOfDate) return existingPaid ?? 0;
 
   const frequency = details.repaymentFrequency ?? 'monthly';
   const interval = Math.max(1, details.repaymentInterval ?? 1);
   const countLimit = loanTotalInstallmentCount(details) ?? 1200;
+  const scheduledCompleted = countInstallmentsBefore(
+    startsOn,
+    asOfDate,
+    countLimit,
+    frequency,
+    interval,
+    details.repaymentDayOfMonth,
+  );
   if (existingPaid !== undefined) {
     const trackingStartsOn = loanForecastStartsOn(details);
     const trackingStartDate = parseDateOnly(trackingStartsOn);
-    if (!trackingStartDate || !isValidDateOnly(trackingStartsOn)) return existingPaid;
+    if (!trackingStartDate || !isValidDateOnly(trackingStartsOn)) {
+      return Math.min(countLimit, Math.max(existingPaid, scheduledCompleted));
+    }
     const elapsedSinceTracking = countInstallmentsBefore(
       trackingStartsOn,
       asOfDate,
@@ -461,21 +478,36 @@ export function completedLoanInstallmentCount(
       interval,
       details.repaymentDayOfMonth,
     );
-    return Math.min(countLimit, existingPaid + elapsedSinceTracking);
+    return Math.min(countLimit, Math.max(scheduledCompleted, existingPaid + elapsedSinceTracking));
   }
 
-  return countInstallmentsBefore(
-    startsOn,
-    asOfDate,
-    countLimit,
-    frequency,
-    interval,
-    details.repaymentDayOfMonth,
-  );
+  return scheduledCompleted;
 }
 
 export function loanScheduleStartsOn(details: AccountLoanDetails): string {
-  return details.disbursedOn ?? details.repaymentStartsOn ?? details.trackingStartsOn ?? todayIso();
+  return loanRepaymentStartsOn(details);
+}
+
+export function loanRepaymentStartsOn(details: AccountLoanDetails): string {
+  if (
+    details.paidInstallmentsBeforeTracking !== undefined &&
+    details.disbursedOn &&
+    details.repaymentStartsOn &&
+    details.trackingStartsOn &&
+    isValidDateOnly(details.disbursedOn) &&
+    isValidDateOnly(details.repaymentStartsOn) &&
+    isValidDateOnly(details.trackingStartsOn) &&
+    details.disbursedOn < details.repaymentStartsOn &&
+    details.repaymentStartsOn >= details.trackingStartsOn
+  ) {
+    return details.disbursedOn;
+  }
+
+  return details.repaymentStartsOn ?? details.disbursedOn ?? details.trackingStartsOn ?? todayIso();
+}
+
+export function loanAccrualStartsOn(details: AccountLoanDetails): string {
+  return details.disbursedOn ?? loanRepaymentStartsOn(details);
 }
 
 export function loanTotalInstallmentCount(details: AccountLoanDetails): number | undefined {
@@ -486,7 +518,7 @@ export function loanTotalInstallmentCount(details: AccountLoanDetails): number |
 
 export function loanScheduleCloseDate(details: AccountLoanDetails): string | undefined {
   const totalInstallments = loanTotalInstallmentCount(details);
-  const startsOn = loanScheduleStartsOn(details);
+  const startsOn = loanRepaymentStartsOn(details);
   if (!totalInstallments || !isValidDateOnly(startsOn)) return details.repaymentEndsOn;
   return toDateOnly(
     dueDateForInstallment(
@@ -505,7 +537,7 @@ function completedLoanOccurrenceDates(details: AccountLoanDetails): string[] | u
     loanForecastStartsOn(details),
   );
   if (completedInstallments <= 0) return undefined;
-  const startsOn = loanScheduleStartsOn(details);
+  const startsOn = loanRepaymentStartsOn(details);
   if (!isValidDateOnly(startsOn)) return undefined;
   const frequency = details.repaymentFrequency ?? 'monthly';
   const interval = Math.max(1, details.repaymentInterval ?? 1);
@@ -520,7 +552,7 @@ export function nextLoanInstallmentDueOn(
   details: AccountLoanDetails,
   asOf: string | Date = new Date(),
 ): string | undefined {
-  const startsOn = loanScheduleStartsOn(details);
+  const startsOn = loanRepaymentStartsOn(details);
   const asOfDate = parseDateInput(asOf);
   if (!isValidDateOnly(startsOn) || !asOfDate) return undefined;
   const totalInstallments = loanTotalInstallmentCount(details);
@@ -716,15 +748,42 @@ export function loanRuleOccurrenceAmounts(
     loanAccountId: loan.id,
     loanIsLent: loan.type === 'lent',
   };
-  if (principalAmountMinor > 0) {
-    result.counterAmountMinor = principalAmountMinor;
+  if (row.payment.amountMinor > 0) {
+    result.counterAmountMinor = row.payment.amountMinor;
     result.counterCurrency = loan.currency;
   }
   return result;
 }
 
 export function loanForecastStartsOn(details: AccountLoanDetails): string {
-  return details.trackingStartsOn ?? details.repaymentStartsOn ?? details.disbursedOn ?? todayIso();
+  return details.trackingStartsOn ?? loanRepaymentStartsOn(details);
+}
+
+function interestPeriodsForInstallment(
+  details: AccountLoanDetails,
+  installmentIndex: number,
+  due: Date,
+  frequency: RecurrenceFrequency,
+  interval: number,
+): number {
+  if (installmentIndex > 0) return 1;
+
+  const accrualStart = parseDateOnly(loanAccrualStartsOn(details));
+  const repaymentStart = parseDateOnly(loanRepaymentStartsOn(details));
+  if (!accrualStart || !repaymentStart || accrualStart >= repaymentStart) return 1;
+
+  const elapsedDays = Math.max(0, daysBetween(accrualStart, due));
+  if (elapsedDays <= 0) return 1;
+
+  return elapsedDays / interestPeriodDays(frequency, interval);
+}
+
+function interestPeriodDays(frequency: RecurrenceFrequency, interval: number): number {
+  const normalizedInterval = Math.max(1, interval || 1);
+  if (frequency === 'daily') return normalizedInterval;
+  if (frequency === 'weekly') return normalizedInterval * 7;
+  if (frequency === 'yearly') return normalizedInterval * 365;
+  return normalizedInterval * 30;
 }
 
 export function dueDateForInstallment(
@@ -930,6 +989,14 @@ function addMonthsClamped(date: Date, months: number, dayOfMonth: number): Date 
 
 function daysInMonth(date: Date): number {
   return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+}
+
+function daysBetween(left: Date, right: Date): number {
+  return localDayOrdinal(right) - localDayOrdinal(left);
+}
+
+function localDayOrdinal(date: Date): number {
+  return Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000);
 }
 
 function startOfDay(date: Date): Date {

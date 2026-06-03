@@ -10,45 +10,45 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState, type ComponentProps } from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
-    Divider,
-    ProgressBar,
-    Snackbar,
-    Text,
-    TouchableRipple,
-    useTheme,
+  Divider,
+  ProgressBar,
+  Snackbar,
+  Text,
+  TouchableRipple,
+  useTheme,
 } from 'react-native-paper';
 import { accountTypeLabel, resolveAccountIconVisual } from '../../src/accountOptions';
 import {
-    AppScreen,
-    EmptyState,
-    InfoRow,
-    InlineMeta,
-    SectionCard,
-    type AppIconName,
+  AppScreen,
+  EmptyState,
+  InfoRow,
+  InlineMeta,
+  SectionCard,
+  type AppIconName,
 } from '../../src/components/AppKit';
 import { iconSurfaceForThemeTone } from '../../src/iconSystem';
 import {
-    dateLabel,
-    dueLabel,
-    fallbackLoanDetails,
-    loanCadenceLabel,
-    loanForecastOccurrences,
-    loanKindLabel,
-    loanPrincipalProgress,
-    loanRecordItems,
-    loanScheduleCloseLabel,
-    type LoanRecordItem,
+  dateLabel,
+  dueLabel,
+  fallbackLoanDetails,
+  loanCadenceLabel,
+  loanForecastOccurrences,
+  loanKindLabel,
+  loanPrincipalProgress,
+  loanRecordItems,
+  loanScheduleCloseLabel,
+  type LoanRecordItem,
 } from '../../src/loans/loanUtils';
 import { OccurrenceConfirmDialog } from '../../src/plannedPayments/OccurrenceConfirmDialog';
 import { OccurrencePostponeDialog } from '../../src/plannedPayments/OccurrencePostponeDialog';
 import { plannedRuleProgressSummary } from '../../src/plannedPayments/progress';
 import {
-    PLAN_DETAIL_OCCURRENCE_LOOKUP_OPTIONS,
-    confirmFutureRuleOccurrence,
-    dismissFutureRuleOccurrence,
-    nearestActionableOccurrence,
-    postponeFutureRuleOccurrence,
-    restartFutureRulePlan,
+  PLAN_DETAIL_OCCURRENCE_LOOKUP_OPTIONS,
+  confirmFutureRuleOccurrence,
+  dismissFutureRuleOccurrence,
+  nearestActionableOccurrence,
+  postponeFutureRuleOccurrence,
+  restartFutureRulePlan,
 } from '../../src/plannedPayments/ruleActions';
 
 type MaterialIconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
@@ -146,8 +146,8 @@ export default function LoanDetail() {
   const nextPrincipalMinor = nextUpcoming
     ? Math.max(
         0,
-        nextUpcoming.counterAmountMinor ??
-          nextUpcoming.principalAmountMinor ??
+        nextUpcoming.principalAmountMinor ??
+          nextUpcoming.counterAmountMinor ??
           nextUpcoming.amountMinor,
       )
     : 0;
@@ -277,30 +277,28 @@ export default function LoanDetail() {
               />
               <InfoRow
                 icon="cash-multiple"
-                label="Amount"
+                label="EMI"
                 value={formatMoney(
-                  { amountMinor: nextUpcoming.amountMinor, currency: nextUpcoming.currency },
+                  {
+                    amountMinor: nextPrincipalMinor || nextUpcoming.amountMinor,
+                    currency: nextUpcoming.counterCurrency ?? loan.currency,
+                  },
                   state.preferences.locale,
                 )}
               />
-              {nextPrincipalMinor ? (
-                <InfoRow
-                  icon="bank-transfer-out"
-                  label="Principal split"
-                  value={formatMoney(
-                    {
-                      amountMinor: nextPrincipalMinor,
-                      currency: nextUpcoming.counterCurrency ?? loan.currency,
-                    },
-                    state.preferences.locale,
-                  )}
-                />
-              ) : null}
               <InfoRow
                 icon="percent-outline"
-                label="Interest"
+                label="Interest debit"
                 value={formatMoney(
                   { amountMinor: nextInterestMinor, currency: nextUpcoming.currency },
+                  state.preferences.locale,
+                )}
+              />
+              <InfoRow
+                icon="cash-plus"
+                label="Total"
+                value={formatMoney(
+                  { amountMinor: nextUpcoming.amountMinor, currency: nextUpcoming.currency },
                   state.preferences.locale,
                 )}
               />
@@ -362,6 +360,7 @@ export default function LoanDetail() {
         rule={linkedRule}
         occurrence={confirmingOccurrence ?? undefined}
         state={state}
+        indexes={indexes}
         title="Confirm repayment"
         confirmLabel="Record repayment"
         onDismiss={() => setConfirmingOccurrence(null)}
@@ -516,7 +515,7 @@ function LoanHero({
         />
         <HeroDetail
           icon="bank-transfer-out"
-          label="EMI principal"
+          label="EMI"
           value={
             details.repaymentAmount
               ? formatMoney(details.repaymentAmount, state.preferences.locale)
@@ -590,6 +589,10 @@ function LoanRecordRow({ record }: { record: LoanRecordItem }) {
   const { state } = useLedger();
   const iconSurface = iconSurfaceForThemeTone(theme, 'loan');
   const meta = record.transaction?.paymentMethod ?? record.transaction?.source ?? 'Record';
+  const emi = record.principal ?? record.total;
+  const interest = record.interest ?? { amountMinor: 0, currency: record.total.currency };
+  const statusLabel =
+    record.kind === 'forecast' ? 'Forecast' : record.status === 'pending' ? 'Pending' : 'Paid';
   const content = (
     <View style={styles.recordInner}>
       <View style={[styles.recordIcon, { backgroundColor: iconSurface.backgroundColor }]}>
@@ -607,22 +610,34 @@ function LoanRecordRow({ record }: { record: LoanRecordItem }) {
           {meta}
         </Text>
         <InlineMeta
-          numberOfLines={2}
-          items={[
-            record.principal
-              ? `P ${formatMoney(record.principal, state.preferences.locale)}`
-              : null,
-            record.interest ? `I ${formatMoney(record.interest, state.preferences.locale)}` : null,
-            record.interestTransaction ? 'Linked interest' : null,
-          ]}
+          numberOfLines={1}
+          items={[statusLabel, record.interestTransaction ? 'Linked interest' : null]}
         />
       </View>
       <View style={styles.recordAmountBlock}>
         <Text variant="labelLarge" numberOfLines={1} style={styles.moneyText}>
-          {formatMoney(record.total, state.preferences.locale)}
+          {formatMoney(emi, state.preferences.locale)}
         </Text>
-        <Text variant="labelSmall" numberOfLines={1} style={{ color: theme.colors.primary }}>
-          Paid
+        <Text
+          variant="labelSmall"
+          numberOfLines={1}
+          style={[styles.recordAmountLabel, { color: theme.colors.primary }]}
+        >
+          EMI
+        </Text>
+        <Text
+          variant="labelSmall"
+          numberOfLines={1}
+          style={[styles.recordAmountMeta, { color: theme.colors.onSurfaceVariant }]}
+        >
+          Interest debit {formatMoney(interest, state.preferences.locale)}
+        </Text>
+        <Text
+          variant="labelSmall"
+          numberOfLines={1}
+          style={[styles.recordAmountMeta, { color: theme.colors.onSurfaceVariant }]}
+        >
+          Total {formatMoney(record.total, state.preferences.locale)}
         </Text>
       </View>
     </View>
@@ -815,13 +830,13 @@ const styles = StyleSheet.create({
   },
   recordRow: { borderRadius: tokens.radius.md, overflow: 'hidden' },
   recordInner: {
-    minHeight: 56,
+    minHeight: 72,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.space.sm,
     paddingVertical: tokens.space.sm,
   },
-  recordAmountBlock: { alignItems: 'flex-end', flexShrink: 0, gap: 4, minWidth: 118 },
+  recordAmountBlock: { alignItems: 'flex-end', flexShrink: 0, gap: 2, minWidth: 136 },
   recordIcon: {
     width: 34,
     height: 34,
@@ -831,4 +846,6 @@ const styles = StyleSheet.create({
   },
   strongText: { fontWeight: '800' },
   moneyText: { fontWeight: '800', textAlign: 'right' },
+  recordAmountLabel: { fontWeight: '700' },
+  recordAmountMeta: { textAlign: 'right', fontWeight: '600' },
 });
