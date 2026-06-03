@@ -20,7 +20,9 @@ const runtimeVersion = args.runtime ?? versionName;
 const minimumSupportedVersionCode = Number(args['minimum-supported-version-code'] ?? 0);
 const architecture = args.architecture ?? 'arm64-v8a';
 const publishedAt = args['published-at'] ?? new Date().toISOString();
-const fileName = apk ? (args['file-name'] ?? apk.split(/[\\/]/).pop() ?? '1wallet-update.apk') : null;
+const fileName = apk
+  ? (args['file-name'] ?? apk.split(/[\\/]/).pop() ?? '1wallet-update.apk')
+  : null;
 const outputPath = args.output ? resolve(repoRoot, args.output) : null;
 const changelog = args['changelog-json'] ? readChangelogFile(args['changelog-json']) : null;
 const releasePath = `appUpdates/${platform}/releases/${versionCode}`;

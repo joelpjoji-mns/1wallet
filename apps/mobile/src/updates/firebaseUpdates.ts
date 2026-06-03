@@ -1,18 +1,18 @@
 import { doc, getDoc, type DocumentData, type Firestore } from 'firebase/firestore';
 import { getFirebaseServices } from '../firebase/client';
 import {
-  APP_UPDATE_PLATFORM,
-  DEFAULT_UPDATE_CHANNEL,
-  UPDATE_METADATA_ROOT,
-  isUpdateChannel,
-  type AppUpdateRelease,
-  type UpdateApkMetadata,
-  type InstalledAppVersion,
-  type UpdateChangelog,
-  type UpdateChannel,
-  type UpdateCheckOutcome,
-  type UpdateIosMetadata,
-  type UpdateReleaseType,
+    APP_UPDATE_PLATFORM,
+    DEFAULT_UPDATE_CHANNEL,
+    UPDATE_METADATA_ROOT,
+    isUpdateChannel,
+    type AppUpdateRelease,
+    type InstalledAppVersion,
+    type UpdateApkMetadata,
+    type UpdateChangelog,
+    type UpdateChannel,
+    type UpdateCheckOutcome,
+    type UpdateIosMetadata,
+    type UpdateReleaseType,
 } from './types';
 import { inferReleaseType, isReleaseNewerThanInstalled } from './version';
 

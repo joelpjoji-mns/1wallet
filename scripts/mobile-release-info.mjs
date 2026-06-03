@@ -13,13 +13,15 @@ if (args['self-test']) {
 
 const appConfig = JSON.parse(readFileSync(resolve(repoRoot, 'apps/mobile/app.json'), 'utf8'));
 const buildGradle = readFileSync(resolve(repoRoot, 'apps/mobile/android/app/build.gradle'), 'utf8');
-const platform = normalizePlatform(args.platform ?? process.env.ONEWALLET_RELEASE_PLATFORM ?? 'android');
+const platform = normalizePlatform(
+  args.platform ?? process.env.ONEWALLET_RELEASE_PLATFORM ?? 'android',
+);
 const channel = normalizeChannel(args.channel ?? process.env.ONEWALLET_UPDATE_CHANNEL ?? 'stable');
 const sourceVersionName = appConfig.expo?.version;
 const sourceVersionCode =
   platform === 'ios'
-    ? readIosBuildNumber(appConfig) ?? versionCodeFromSemver(sourceVersionName)
-    : readVersionCode(buildGradle) ?? versionCodeFromSemver(sourceVersionName);
+    ? (readIosBuildNumber(appConfig) ?? versionCodeFromSemver(sourceVersionName))
+    : (readVersionCode(buildGradle) ?? versionCodeFromSemver(sourceVersionName));
 const explicitVersionName = args['version-name'] ?? process.env.ONEWALLET_VERSION_NAME;
 const explicitVersionCode = args['version-code'] ?? process.env.ONEWALLET_VERSION_CODE;
 const versionName = explicitVersionName ?? deriveVersionName(sourceVersionName, channel);

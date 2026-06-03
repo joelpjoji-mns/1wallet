@@ -1,21 +1,21 @@
 import { formatMoney } from '@1wallet/domain/money';
 import type { AccountMessageHint, CategoryKind } from '@1wallet/domain/types';
 import type {
-  TransactionMessageCaptureResult,
-  TransactionMessageSource,
+    TransactionMessageCaptureResult,
+    TransactionMessageSource,
 } from '@1wallet/ledger/capture/messages';
 import {
-  createMessageCategoryRule,
-  deleteMessageCategoryRule,
-  messageHintSuggestionsForAccount,
-  parseTransactionMessage,
-  processTransactionMessageCapture,
-  updateMessageCategoryRule,
+    createMessageCategoryRule,
+    deleteMessageCategoryRule,
+    messageHintSuggestionsForAccount,
+    parseTransactionMessage,
+    processTransactionMessageCapture,
+    updateMessageCategoryRule,
 } from '@1wallet/ledger/capture/messages';
 import { createCaptureCandidate, mergeAcceptedMessageAccountHints } from '@1wallet/ledger/services';
 import {
-  normalizeAutoCapturePreferences,
-  type MessageCategoryKeywordRule,
+    normalizeAutoCapturePreferences,
+    type MessageCategoryKeywordRule,
 } from '@1wallet/ledger/store/types';
 import { useLedger } from '@1wallet/state';
 import { tokens } from '@1wallet/ui';
@@ -25,27 +25,27 @@ import { Alert, Linking, Platform, StyleSheet, View } from 'react-native';
 import { Button, Chip, Divider, Switch, Text, useTheme } from 'react-native-paper';
 import { resolveAccountIconVisual } from '../src/accountOptions';
 import {
-  getAndroidSmsPermissionState,
-  isAndroidSmsInboxAvailable,
-  readAndroidSmsInbox,
-  requestAndroidSmsPermission,
-  type AndroidSmsPermissionState,
-  type AndroidSmsPermissionStatus,
+    getAndroidSmsPermissionState,
+    isAndroidSmsInboxAvailable,
+    readAndroidSmsInbox,
+    requestAndroidSmsPermission,
+    type AndroidSmsPermissionState,
+    type AndroidSmsPermissionStatus,
 } from '../src/androidSmsInbox';
 import { categoryBreadcrumb } from '../src/categoryTree';
 import {
-  AppScreen,
-  EmptyState,
-  InfoRow,
-  InlineMeta,
-  PremiumTextInput,
-  SectionCard,
+    AppScreen,
+    EmptyState,
+    InfoRow,
+    InlineMeta,
+    PremiumTextInput,
+    SectionCard,
 } from '../src/components/AppKit';
 import { DateOnlyPickerField } from '../src/components/DateOnlyPickerField';
 import {
-  OptionListOverlay,
-  OptionSelectorRow,
-  type OptionListItem,
+    OptionListOverlay,
+    OptionSelectorRow,
+    type OptionListItem,
 } from '../src/components/OptionListOverlay';
 import { CategoryPickerOverlay } from '../src/components/record/RecordPickers';
 import { RecordSelectorRow } from '../src/components/record/RecordSelectorRow';

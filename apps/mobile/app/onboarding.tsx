@@ -32,14 +32,14 @@ import {
     resolveAccountIconVisual,
 } from '../src/accountOptions';
 import {
-  getDeviceNotificationPermissionStatus,
     getDeviceCameraPermissionStatus,
+    getDeviceNotificationPermissionStatus,
     getDevicePhotoLibraryPermissionStatus,
-  openDeviceAppSettings,
-  requestDeviceNotificationPermission,
+    openDeviceAppSettings,
     requestDeviceCameraPermission,
+    requestDeviceNotificationPermission,
     requestDevicePhotoLibraryPermission,
-  type DeviceRuntimePermissionStatus,
+    type DeviceRuntimePermissionStatus,
 } from '../src/androidPermissions';
 import {
     getAndroidSmsPermissionState,
@@ -844,7 +844,7 @@ function PermissionsStep({
       : 'Turn on capture'
     : smsUnavailable
       ? 'Android only'
-    : 'Allow SMS';
+      : 'Allow SMS';
 
   const requestSmsAccess = async () => {
     if (smsReady) {
@@ -941,10 +941,14 @@ function PermissionsStep({
           />
           <Button
             mode={smsReady && smsBackgroundEnabled ? 'outlined' : 'contained'}
-            icon={smsReady || smsUnavailable ? 'check-circle-outline' : 'message-processing-outline'}
+            icon={
+              smsReady || smsUnavailable ? 'check-circle-outline' : 'message-processing-outline'
+            }
             onPress={() => void requestSmsAccess()}
             loading={permissionBusy === 'sms'}
-            disabled={permissionBusy !== null || smsUnavailable || (smsReady && smsBackgroundEnabled)}
+            disabled={
+              permissionBusy !== null || smsUnavailable || (smsReady && smsBackgroundEnabled)
+            }
             contentStyle={s.buttonContent}
           >
             {smsButtonLabel}
@@ -970,7 +974,9 @@ function PermissionsStep({
           <InfoRow
             icon="battery-heart-outline"
             label="Battery behavior"
-            value={smsUnavailable ? 'Android only' : smsBackgroundEnabled ? 'Background on' : 'Needs SMS'}
+            value={
+              smsUnavailable ? 'Android only' : smsBackgroundEnabled ? 'Background on' : 'Needs SMS'
+            }
             tone={smsUnavailable ? 'default' : smsBackgroundEnabled ? 'positive' : 'warning'}
           />
           <Button

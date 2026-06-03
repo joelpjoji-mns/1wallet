@@ -27,10 +27,13 @@ const platform = manifest.release.platform ?? manifest.channel.platform ?? 'andr
 const apk = manifest.release.apk ?? {};
 const channel = manifest.release.channel ?? manifest.channel.channel ?? 'stable';
 const versionCode = manifest.release.versionCode;
-const fileName = apk.fileName ?? (apkPath ? apkPath.split(/[\\/]/).pop() : null) ?? '1wallet-update.apk';
+const fileName =
+  apk.fileName ?? (apkPath ? apkPath.split(/[\\/]/).pop() : null) ?? '1wallet-update.apk';
 let objectName;
 if (platform !== 'android' && !skipUpload) {
-  throw new Error('Only Android APK manifests can upload binaries. Use --skip-upload for iOS metadata.');
+  throw new Error(
+    'Only Android APK manifests can upload binaries. Use --skip-upload for iOS metadata.',
+  );
 }
 if (!skipUpload) {
   objectName = `mobile-updates/${platform}/${channel}/${versionCode}/${fileName}`;
