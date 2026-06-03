@@ -1,9 +1,9 @@
 import * as SecureStore from 'expo-secure-store';
 import {
-    getAndroidNotificationPermissionStatus,
     getDeviceCameraPermissionStatus,
+    getDeviceNotificationPermissionStatus,
     getDevicePhotoLibraryPermissionStatus,
-    type AndroidRuntimePermissionStatus,
+    type DeviceRuntimePermissionStatus,
 } from './androidPermissions';
 import { getAndroidSmsPermissionState, type AndroidSmsPermissionState } from './androidSmsInbox';
 
@@ -11,15 +11,15 @@ const PERMISSION_REVIEW_KEY_PREFIX = '1wallet.permission-setup.review.v1.';
 
 export type WalletPermissionSetupStatus = {
   sms: AndroidSmsPermissionState;
-  notifications: AndroidRuntimePermissionStatus;
-  camera: AndroidRuntimePermissionStatus;
-  photos: AndroidRuntimePermissionStatus;
+  notifications: DeviceRuntimePermissionStatus;
+  camera: DeviceRuntimePermissionStatus;
+  photos: DeviceRuntimePermissionStatus;
 };
 
 export async function getWalletPermissionSetupStatus(): Promise<WalletPermissionSetupStatus> {
   const [sms, notifications, camera, photos] = await Promise.all([
     getAndroidSmsPermissionState(),
-    getAndroidNotificationPermissionStatus(),
+    getDeviceNotificationPermissionStatus(),
     getDeviceCameraPermissionStatus(),
     getDevicePhotoLibraryPermissionStatus(),
   ]);
@@ -72,7 +72,7 @@ function smsPermissionReady(status: AndroidSmsPermissionState): boolean {
   return status.overall === 'granted' || status.overall === 'unavailable';
 }
 
-function runtimePermissionReady(status: AndroidRuntimePermissionStatus): boolean {
+function runtimePermissionReady(status: DeviceRuntimePermissionStatus): boolean {
   return status === 'granted' || status === 'unavailable';
 }
 
