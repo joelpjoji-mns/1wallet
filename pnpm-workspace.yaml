@@ -15,4 +15,5 @@ overrides:
 
 patchedDependencies:
   '@react-native-ml-kit/text-recognition@2.0.0': 'patches/@react-native-ml-kit__text-recognition@2.0.0.patch'
+  expo-modules-autolinking@56.0.14: patches/expo-modules-autolinking@56.0.14.patch
   'react-native-get-sms-android@2.1.0': 'patches/react-native-get-sms-android@2.1.0.patch'
