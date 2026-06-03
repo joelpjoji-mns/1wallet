@@ -5,11 +5,7 @@ import {
   ledgerStateFromOneWalletArchive,
   parseOneWalletArchive,
 } from '@1wallet/ledger/archive/onewallet';
-import type {
-  OneWalletArchiveSummary,
-  OneWalletArchiveV1,
-} from '@1wallet/ledger/archive/onewallet';
-import { LEDGER_STATE_VERSION, type LedgerState } from '@1wallet/ledger/store/types';
+import type { OneWalletArchiveSummary } from '@1wallet/ledger/archive/onewallet';
 import { useLedger } from '@1wallet/state';
 import {
   collection,
@@ -70,12 +66,11 @@ const CloudSyncContext = createContext<CloudSyncContextValue | undefined>(undefi
 
 export function CloudSyncProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const { state, ready, replaceLedgerState, flushSaves } = useLedger();
+  const { state, ready, replaceLedgerState } = useLedger();
 
   const [phase, setPhase] = useState<CloudSyncPhase>('disabled');
   const [error, setError] = useState<string | null>(null);
   const [pendingUpload, setPendingUpload] = useState(false);
-  const [metadata, setMetadata] = useState<CloudSyncMetadata | null>(null);
 
   const enabled = Boolean(db && user?.provider === 'firebase');
 
@@ -104,7 +99,6 @@ export function CloudSyncProvider({ children }: { children: ReactNode }) {
 
   const persistMetadata = useCallback((newMeta: CloudSyncMetadata) => {
     localStorage.setItem('1wallet.sync.metadata', JSON.stringify(newMeta));
-    setMetadata(newMeta);
   }, []);
 
   const bootstrap = useCallback(async () => {
