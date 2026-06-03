@@ -32,12 +32,10 @@ import {
     resolveAccountIconVisual,
 } from '../src/accountOptions';
 import {
-    getAndroidLocationPermissionStatus,
     getAndroidNotificationPermissionStatus,
     getDeviceCameraPermissionStatus,
     getDevicePhotoLibraryPermissionStatus,
     openAndroidAppSettings,
-    requestAndroidLocationPermission,
     requestAndroidNotificationPermission,
     requestDeviceCameraPermission,
     requestDevicePhotoLibraryPermission,
@@ -806,38 +804,27 @@ function PermissionsStep({
   const [photoLibraryStatus, setPhotoLibraryStatus] = useState<
     AndroidRuntimePermissionStatus | undefined
   >();
-  const [locationStatus, setLocationStatus] = useState<
-    AndroidRuntimePermissionStatus | undefined
-  >();
   const [permissionBusy, setPermissionBusy] = useState<
-    'sms' | 'notifications' | 'camera' | 'photos' | 'location' | null
+    'sms' | 'notifications' | 'camera' | 'photos' | null
   >(null);
 
   const refreshPermissions = useCallback(async () => {
-    const [
-      nextSmsPermission,
-      nextNotificationStatus,
-      nextCameraStatus,
-      nextPhotoLibraryStatus,
-      nextLocationStatus,
-    ] = await Promise.all([
-      getAndroidSmsPermissionState(),
-      getAndroidNotificationPermissionStatus(),
-      getDeviceCameraPermissionStatus(),
-      getDevicePhotoLibraryPermissionStatus(),
-      getAndroidLocationPermissionStatus(),
-    ]);
+    const [nextSmsPermission, nextNotificationStatus, nextCameraStatus, nextPhotoLibraryStatus] =
+      await Promise.all([
+        getAndroidSmsPermissionState(),
+        getAndroidNotificationPermissionStatus(),
+        getDeviceCameraPermissionStatus(),
+        getDevicePhotoLibraryPermissionStatus(),
+      ]);
     setSmsPermission(nextSmsPermission);
     setNotificationStatus(nextNotificationStatus);
     setCameraStatus(nextCameraStatus);
     setPhotoLibraryStatus(nextPhotoLibraryStatus);
-    setLocationStatus(nextLocationStatus);
     return {
       smsPermission: nextSmsPermission,
       notificationStatus: nextNotificationStatus,
       cameraStatus: nextCameraStatus,
       photoLibraryStatus: nextPhotoLibraryStatus,
-      locationStatus: nextLocationStatus,
     };
   }, []);
 
@@ -850,7 +837,6 @@ function PermissionsStep({
     notificationStatus === 'granted' || notificationStatus === 'unavailable';
   const cameraReady = permissionReady(cameraStatus);
   const photoLibraryReady = permissionReady(photoLibraryStatus);
-  const locationReady = permissionReady(locationStatus);
   const smsButtonLabel = smsReady
     ? smsBackgroundEnabled
       ? 'SMS ready'
@@ -921,21 +907,6 @@ function PermissionsStep({
       }
     } catch (err) {
       Alert.alert('Photos permission failed', err instanceof Error ? err.message : String(err));
-    } finally {
-      setPermissionBusy(null);
-    }
-  };
-
-  const requestLocation = async () => {
-    setPermissionBusy('location');
-    try {
-      const status = await requestAndroidLocationPermission();
-      await refreshPermissions();
-      if (status !== 'granted' && status !== 'unavailable') {
-        showOnboardingRuntimePermissionAlert('Location', status);
-      }
-    } catch (err) {
-      Alert.alert('Location permission failed', err instanceof Error ? err.message : String(err));
     } finally {
       setPermissionBusy(null);
     }
@@ -1058,29 +1029,6 @@ function PermissionsStep({
           >
             {photoLibraryReady ? 'Photos ready' : 'Allow photos'}
           </Button>
-          <Divider />
-          <InfoRow
-            icon="map-marker-outline"
-            label="Location"
-            value={runtimePermissionLabel(locationStatus)}
-            tone={runtimePermissionTone(locationStatus)}
-          />
-          <Text
-            variant="bodySmall"
-            style={[s.permissionReason, { color: theme.colors.onSurfaceVariant }]}
-          >
-            Why: tag where a transaction or receipt happened when you choose to save place details.
-          </Text>
-          <Button
-            mode={locationReady ? 'outlined' : 'contained'}
-            icon={locationReady ? 'check-circle-outline' : 'map-marker-outline'}
-            onPress={() => void requestLocation()}
-            loading={permissionBusy === 'location'}
-            disabled={permissionBusy !== null || locationReady}
-            contentStyle={s.buttonContent}
-          >
-            {locationReady ? 'Location ready' : 'Allow location'}
-          </Button>
         </SectionCard>
 
         <HelperText type="error" visible={Boolean(error)}>
@@ -1139,7 +1087,7 @@ function permissionReady(status?: AndroidRuntimePermissionStatus) {
 }
 
 function showOnboardingRuntimePermissionAlert(
-  label: 'Camera' | 'Photos' | 'Location',
+  label: 'Camera' | 'Photos',
   status: AndroidRuntimePermissionStatus,
 ) {
   const blocked = status === 'blocked';

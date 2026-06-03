@@ -3,35 +3,30 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert, StyleSheet } from 'react-native';
 import { Button, Divider, Text, useTheme } from 'react-native-paper';
 import {
-    getAndroidLocationPermissionStatus,
     getDeviceCameraPermissionStatus,
     getDevicePhotoLibraryPermissionStatus,
     openAndroidAppSettings,
-    requestAndroidLocationPermission,
     requestDeviceCameraPermission,
     requestDevicePhotoLibraryPermission,
     type AndroidRuntimePermissionStatus,
 } from '../src/androidPermissions';
 import { AppScreen, InfoRow, SectionCard } from '../src/components/AppKit';
 
-type PermissionBusyState = 'camera' | 'photos' | 'location' | null;
+type PermissionBusyState = 'camera' | 'photos' | null;
 
 export default function DevicePermissions() {
   const theme = useTheme();
   const [cameraStatus, setCameraStatus] = useState<AndroidRuntimePermissionStatus>();
   const [photoLibraryStatus, setPhotoLibraryStatus] = useState<AndroidRuntimePermissionStatus>();
-  const [locationStatus, setLocationStatus] = useState<AndroidRuntimePermissionStatus>();
   const [permissionBusy, setPermissionBusy] = useState<PermissionBusyState>(null);
 
   const refreshPermissions = useCallback(async () => {
-    const [nextCameraStatus, nextPhotoLibraryStatus, nextLocationStatus] = await Promise.all([
+    const [nextCameraStatus, nextPhotoLibraryStatus] = await Promise.all([
       getDeviceCameraPermissionStatus(),
       getDevicePhotoLibraryPermissionStatus(),
-      getAndroidLocationPermissionStatus(),
     ]);
     setCameraStatus(nextCameraStatus);
     setPhotoLibraryStatus(nextPhotoLibraryStatus);
-    setLocationStatus(nextLocationStatus);
   }, []);
 
   useEffect(() => {
@@ -40,7 +35,7 @@ export default function DevicePermissions() {
 
   const requestPermission = async (
     permission: Exclude<PermissionBusyState, null>,
-    label: 'Camera' | 'Photos' | 'Location',
+    label: 'Camera' | 'Photos',
     request: () => Promise<AndroidRuntimePermissionStatus>,
   ) => {
     setPermissionBusy(permission);
@@ -59,7 +54,6 @@ export default function DevicePermissions() {
 
   const cameraReady = permissionReady(cameraStatus);
   const photoLibraryReady = permissionReady(photoLibraryStatus);
-  const locationReady = permissionReady(locationStatus);
 
   return (
     <AppScreen
@@ -109,29 +103,6 @@ export default function DevicePermissions() {
         >
           {photoLibraryReady ? 'Photos ready' : 'Allow photos'}
         </Button>
-
-        <Divider />
-
-        <InfoRow
-          icon="map-marker-outline"
-          label="Location"
-          value={permissionLabel(locationStatus)}
-          tone={permissionTone(locationStatus)}
-        />
-        <Text variant="bodySmall" style={[styles.reason, { color: theme.colors.onSurfaceVariant }]}>
-          Why: tag where a transaction or receipt happened when you choose to save place details.
-        </Text>
-        <Button
-          mode={locationReady ? 'outlined' : 'contained'}
-          icon={locationReady ? 'check-circle-outline' : 'map-marker-outline'}
-          onPress={() =>
-            void requestPermission('location', 'Location', requestAndroidLocationPermission)
-          }
-          loading={permissionBusy === 'location'}
-          disabled={permissionBusy !== null || locationReady}
-        >
-          {locationReady ? 'Location ready' : 'Allow location'}
-        </Button>
       </SectionCard>
 
       <Button mode="outlined" icon="cog-outline" onPress={() => void openAndroidAppSettings()}>
@@ -162,10 +133,7 @@ function permissionReady(status?: AndroidRuntimePermissionStatus) {
   return status === 'granted' || status === 'unavailable';
 }
 
-function showPermissionAlert(
-  label: 'Camera' | 'Photos' | 'Location',
-  status: AndroidRuntimePermissionStatus,
-) {
+function showPermissionAlert(label: 'Camera' | 'Photos', status: AndroidRuntimePermissionStatus) {
   const blocked = status === 'blocked';
   Alert.alert(
     blocked ? `${label} permission is blocked` : `${label} permission not granted`,

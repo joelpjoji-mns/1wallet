@@ -6,7 +6,6 @@ import { Alert, StyleSheet, View } from 'react-native';
 import { Button, Divider, HelperText, Text, useTheme } from 'react-native-paper';
 import {
     openAndroidAppSettings,
-    requestAndroidLocationPermission,
     requestAndroidNotificationPermission,
     requestDeviceCameraPermission,
     requestDevicePhotoLibraryPermission,
@@ -25,7 +24,7 @@ import {
     type WalletPermissionSetupStatus,
 } from '../src/permissionSetup';
 
-type PermissionBusy = 'sms' | 'notifications' | 'camera' | 'photos' | 'location' | null;
+type PermissionBusy = 'sms' | 'notifications' | 'camera' | 'photos' | null;
 
 export default function PermissionsSetup() {
   const theme = useTheme();
@@ -56,7 +55,6 @@ export default function PermissionsSetup() {
   const notificationReady = runtimePermissionReady(status?.notifications);
   const cameraReady = runtimePermissionReady(status?.camera);
   const photoLibraryReady = runtimePermissionReady(status?.photos);
-  const locationReady = runtimePermissionReady(status?.location);
   const smsButtonLabel = smsReady
     ? autoCapture.sms.backgroundEnabled
       ? 'SMS ready'
@@ -143,21 +141,6 @@ export default function PermissionsSetup() {
       }
     } catch (err) {
       Alert.alert('Photos permission failed', permissionErrorMessage(err));
-    } finally {
-      setPermissionBusy(null);
-    }
-  };
-
-  const requestLocation = async () => {
-    setPermissionBusy('location');
-    try {
-      const nextStatus = await requestAndroidLocationPermission();
-      await refreshPermissions();
-      if (nextStatus !== 'granted' && nextStatus !== 'unavailable') {
-        showRuntimePermissionAlert('Location', nextStatus);
-      }
-    } catch (err) {
-      Alert.alert('Location permission failed', permissionErrorMessage(err));
     } finally {
       setPermissionBusy(null);
     }
@@ -277,26 +260,6 @@ export default function PermissionsSetup() {
         >
           {photoLibraryReady ? 'Photos ready' : 'Allow photos'}
         </Button>
-        <Divider />
-        <InfoRow
-          icon="map-marker-outline"
-          label="Location"
-          value={runtimePermissionLabel(status?.location)}
-          tone={runtimePermissionTone(status?.location)}
-        />
-        <Text variant="bodySmall" style={[styles.reason, { color: theme.colors.onSurfaceVariant }]}>
-          Why: tag where a transaction or receipt happened when you choose to save place details.
-        </Text>
-        <Button
-          mode={locationReady ? 'outlined' : 'contained'}
-          icon={locationReady ? 'check-circle-outline' : 'map-marker-outline'}
-          onPress={() => void requestLocation()}
-          loading={permissionBusy === 'location'}
-          disabled={permissionBusy !== null || locationReady}
-          contentStyle={styles.buttonContent}
-        >
-          {locationReady ? 'Location ready' : 'Allow location'}
-        </Button>
       </SectionCard>
 
       <HelperText type="error" visible={Boolean(error)}>
@@ -357,7 +320,7 @@ function runtimePermissionReady(status?: AndroidRuntimePermissionStatus) {
 }
 
 function showRuntimePermissionAlert(
-  label: 'Camera' | 'Photos' | 'Location',
+  label: 'Camera' | 'Photos',
   status: AndroidRuntimePermissionStatus,
 ) {
   const blocked = status === 'blocked';

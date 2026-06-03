@@ -1,6 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
 import {
-    getAndroidLocationPermissionStatus,
     getAndroidNotificationPermissionStatus,
     getDeviceCameraPermissionStatus,
     getDevicePhotoLibraryPermissionStatus,
@@ -15,18 +14,16 @@ export type WalletPermissionSetupStatus = {
   notifications: AndroidRuntimePermissionStatus;
   camera: AndroidRuntimePermissionStatus;
   photos: AndroidRuntimePermissionStatus;
-  location: AndroidRuntimePermissionStatus;
 };
 
 export async function getWalletPermissionSetupStatus(): Promise<WalletPermissionSetupStatus> {
-  const [sms, notifications, camera, photos, location] = await Promise.all([
+  const [sms, notifications, camera, photos] = await Promise.all([
     getAndroidSmsPermissionState(),
     getAndroidNotificationPermissionStatus(),
     getDeviceCameraPermissionStatus(),
     getDevicePhotoLibraryPermissionStatus(),
-    getAndroidLocationPermissionStatus(),
   ]);
-  return { sms, notifications, camera, photos, location };
+  return { sms, notifications, camera, photos };
 }
 
 export function isWalletPermissionSetupReady(status: WalletPermissionSetupStatus): boolean {
@@ -34,8 +31,7 @@ export function isWalletPermissionSetupReady(status: WalletPermissionSetupStatus
     smsPermissionReady(status.sms) &&
     runtimePermissionReady(status.notifications) &&
     runtimePermissionReady(status.camera) &&
-    runtimePermissionReady(status.photos) &&
-    runtimePermissionReady(status.location)
+    runtimePermissionReady(status.photos)
   );
 }
 
@@ -69,7 +65,6 @@ export function walletPermissionSetupSignature(status: WalletPermissionSetupStat
     `notifications:${status.notifications}`,
     `camera:${status.camera}`,
     `photos:${status.photos}`,
-    `location:${status.location}`,
   ].join('|');
 }
 
