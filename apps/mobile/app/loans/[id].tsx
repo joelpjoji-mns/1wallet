@@ -360,6 +360,7 @@ export default function LoanDetail() {
         rule={linkedRule}
         occurrence={confirmingOccurrence ?? undefined}
         state={state}
+        indexes={indexes}
         title="Confirm repayment"
         confirmLabel="Record repayment"
         onDismiss={() => setConfirmingOccurrence(null)}
@@ -610,10 +611,7 @@ function LoanRecordRow({ record }: { record: LoanRecordItem }) {
         </Text>
         <InlineMeta
           numberOfLines={1}
-          items={[
-            statusLabel,
-            record.interestTransaction ? 'Linked interest' : null,
-          ]}
+          items={[statusLabel, record.interestTransaction ? 'Linked interest' : null]}
         />
       </View>
       <View style={styles.recordAmountBlock}>

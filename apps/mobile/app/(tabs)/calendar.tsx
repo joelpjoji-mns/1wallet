@@ -3,8 +3,8 @@ import { formatMoney, fromMinor } from '@1wallet/domain/money';
 import type { Account, Category, Transaction } from '@1wallet/domain/types';
 import type { FutureRuleOccurrence } from '@1wallet/ledger/rules/futureGeneration';
 import {
-    forecastFutureRuleOccurrences,
-    futureRuleInterestExternalRef,
+  forecastFutureRuleOccurrences,
+  futureRuleInterestExternalRef,
 } from '@1wallet/ledger/rules/futureGeneration';
 import { rateBetween } from '@1wallet/ledger/services';
 import type { FutureGenerationRule } from '@1wallet/ledger/store/types';
@@ -15,16 +15,16 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import {
-    Appbar,
-    Button,
-    Divider,
-    IconButton,
-    Modal,
-    Portal,
-    Surface,
-    Text,
-    TouchableRipple,
-    useTheme,
+  Appbar,
+  Button,
+  Divider,
+  IconButton,
+  Modal,
+  Portal,
+  Surface,
+  Text,
+  TouchableRipple,
+  useTheme,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { accountTypeLabel, resolveAccountIconVisual } from '../../src/accountOptions';
@@ -33,26 +33,26 @@ import { resolveCategoryIconVisual } from '../../src/categoryIcons';
 import { useBackLayer } from '../../src/components/AppBackLayer';
 import { useAppDrawer } from '../../src/components/AppDrawerHost';
 import {
-    AppMenuAction,
-    PremiumRow,
-    PremiumSearchInput,
-    TAB_BAR_OVERLAY_CLEARANCE,
+  AppMenuAction,
+  PremiumRow,
+  PremiumSearchInput,
+  TAB_BAR_OVERLAY_CLEARANCE,
 } from '../../src/components/AppKit';
 import {
-    OptionListOverlay,
-    OptionSelectorRow,
-    type OptionListItem,
+  OptionListOverlay,
+  OptionSelectorRow,
+  type OptionListItem,
 } from '../../src/components/OptionListOverlay';
 import { numericMediumFontFamily } from '../../src/fonts';
 import { iconSurfaceForThemeTone } from '../../src/iconSystem';
 import {
-    runAfterInteractionsWithTimeout,
-    type DeferredInteractionTask,
+  runAfterInteractionsWithTimeout,
+  type DeferredInteractionTask,
 } from '../../src/interactionScheduler';
 import {
-    EXPENSE_TRANSACTION_TYPES as EXPENSE_TYPES,
-    INCOME_TRANSACTION_TYPES as INCOME_TYPES,
-    transactionTypeLabel,
+  EXPENSE_TRANSACTION_TYPES as EXPENSE_TYPES,
+  INCOME_TRANSACTION_TYPES as INCOME_TYPES,
+  transactionTypeLabel,
 } from '../../src/transactionTypes';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -85,6 +85,7 @@ type DaySummary = {
   expenseMinor: number;
   plannedIncomeMinor: number;
   plannedExpenseMinor: number;
+  plannedCount: number;
   transactions: DayTransaction[];
 };
 type CalendarDay = {
@@ -302,6 +303,7 @@ export default function Calendar() {
       if (kind === 'expense') summary.expenseMinor += amountMinor;
       if (planned && kind === 'income') summary.plannedIncomeMinor += amountMinor;
       if (planned && kind === 'expense') summary.plannedExpenseMinor += amountMinor;
+      if (planned) summary.plannedCount += 1;
       summary.transactions.push({ source: 'transaction', transaction, amountMinor, kind, planned });
       summaries.set(key, summary);
     }
@@ -330,6 +332,7 @@ export default function Calendar() {
       if (kind === 'expense') summary.expenseMinor += amountMinor;
       if (kind === 'income') summary.plannedIncomeMinor += amountMinor;
       if (kind === 'expense') summary.plannedExpenseMinor += amountMinor;
+      summary.plannedCount += 1;
       summary.transactions.push({
         source: 'forecast',
         occurrence,
@@ -368,8 +371,7 @@ export default function Calendar() {
           expenseMinor: totals.expenseMinor + summary.expenseMinor,
           plannedIncomeMinor: totals.plannedIncomeMinor + summary.plannedIncomeMinor,
           plannedExpenseMinor: totals.plannedExpenseMinor + summary.plannedExpenseMinor,
-          plannedCount:
-            totals.plannedCount + summary.transactions.filter((entry) => entry.planned).length,
+          plannedCount: totals.plannedCount + summary.plannedCount,
           count: totals.count + summary.transactions.length,
         };
       },
@@ -1092,8 +1094,7 @@ function amountForCategoryFilter(
 ): number {
   const transactionBaseMinor = calendarTransactionBaseMinor(transaction, state, baseCurrency);
   if (!selectedCategoryId) return transactionBaseMinor;
-  if (transaction.categoryId === selectedCategoryId)
-    return transactionBaseMinor;
+  if (transaction.categoryId === selectedCategoryId) return transactionBaseMinor;
 
   const splitMinor = splitTotalsByTransaction.get(transaction.id)?.get(selectedCategoryId) ?? 0;
   if (splitMinor <= 0 || transaction.amount.amountMinor === 0) return 0;
@@ -1123,7 +1124,10 @@ function calendarTransactionBaseMinor(
   const usesLoanInterestAccount = Boolean(interest && loan && interest.accountId === loan.id);
   const principal = usesLoanInterestAccount
     ? {
-        amountMinor: Math.max(0, transaction.amount.amountMinor - (interest?.amount.amountMinor ?? 0)),
+        amountMinor: Math.max(
+          0,
+          transaction.amount.amountMinor - (interest?.amount.amountMinor ?? 0),
+        ),
         currency: transaction.amount.currency,
       }
     : (transaction.counterAmount ?? transaction.amount);
@@ -1344,6 +1348,7 @@ function emptyDaySummary(): DaySummary {
     expenseMinor: 0,
     plannedIncomeMinor: 0,
     plannedExpenseMinor: 0,
+    plannedCount: 0,
     transactions: [],
   };
 }

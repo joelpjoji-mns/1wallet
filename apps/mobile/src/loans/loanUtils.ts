@@ -1,24 +1,24 @@
 import { fromMinor, toMinor, type Money } from '@1wallet/domain/money';
 import type {
-    Account,
-    AccountLoanDetails,
-    LoanInterestMethod,
-    LoanInterestRatePeriod,
-    LoanKind,
-    RecurrenceFrequency,
-    Transaction,
+  Account,
+  AccountLoanDetails,
+  LoanInterestMethod,
+  LoanInterestRatePeriod,
+  LoanKind,
+  RecurrenceFrequency,
+  Transaction,
 } from '@1wallet/domain/types';
 import {
-    buildLoanForecast,
-    findLinkedLoanRule,
-    isLoanAccountType,
-    loanScheduleSummary,
-    type LoanForecast,
+  buildLoanForecast,
+  findLinkedLoanRule,
+  isLoanAccountType,
+  loanScheduleSummary,
+  type LoanForecast,
 } from '@1wallet/ledger/loans';
 import {
-    forecastFutureRuleOccurrences,
-    futureRuleInterestExternalRef,
-    type FutureRuleOccurrence,
+  forecastFutureRuleOccurrences,
+  futureRuleInterestExternalRef,
+  type FutureRuleOccurrence,
 } from '@1wallet/ledger/rules/futureGeneration';
 import { indexedAccountBalance, type LedgerIndexes } from '@1wallet/ledger/services/indexes';
 import type { FutureGenerationRule, LedgerState } from '@1wallet/ledger/store/types';
@@ -26,8 +26,8 @@ import { accountIconForType, accountTypeLabel } from '../accountOptions';
 import type { AppIconName } from '../components/AppKit';
 import type { OptionListItem } from '../components/OptionListOverlay';
 import {
-    nearestActionableOccurrence,
-    PLAN_DETAIL_OCCURRENCE_LOOKUP_OPTIONS,
+  nearestActionableOccurrence,
+  PLAN_DETAIL_OCCURRENCE_LOOKUP_OPTIONS,
 } from '../plannedPayments/ruleActions';
 
 export const LOAN_ACCOUNT_TYPES = new Set<Account['type']>(['loan', 'overdraft', 'lent']);
@@ -370,7 +370,9 @@ export function loanRepaymentBreakdown(
   interestTransaction?: Transaction,
 ): { total: Money; principal: Money; interest?: Money } {
   const linkedInterest = interestTransaction?.amount;
-  const usesLoanInterestAccount = Boolean(interestTransaction && interestTransaction.accountId === loan.id);
+  const usesLoanInterestAccount = Boolean(
+    interestTransaction && interestTransaction.accountId === loan.id,
+  );
   if (usesLoanInterestAccount) {
     const interestMinor = Math.max(0, linkedInterest?.amountMinor ?? 0);
     return {
@@ -430,12 +432,12 @@ export function loanRecordItems(
     };
   });
 
-  const existingOccurrenceRefs = new Set(
-    transactions.map((transaction) => transaction.externalRef).filter(Boolean),
-  );
-  const existingOccurrenceDates = new Set(
-    transactions.map((transaction) => dateOnly(transaction.occurredAt)),
-  );
+  const existingOccurrenceRefs = new Set<string>();
+  const existingOccurrenceDates = new Set<string>();
+  for (const transaction of transactions) {
+    if (transaction.externalRef) existingOccurrenceRefs.add(transaction.externalRef);
+    existingOccurrenceDates.add(dateOnly(transaction.occurredAt));
+  }
   const forecastItems = loanForecastOccurrences(state, loan, horizonMonths)
     .filter(
       (occurrence) =>
