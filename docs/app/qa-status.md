@@ -79,7 +79,6 @@ Validated in that run:
 - OCR field extraction from receipts is not complete; receipt capture/attachment paths exist.
 - Native bank/open-banking sync is not implemented. Import and capture flows are the current ingestion path.
 - Android SMS capture is local-only and permission-gated; Play Store distribution requires policy review.
-- Web app exists as a companion surface and should not be treated as complete mobile parity.
 - Backup/export/restore specs beyond local snapshot/device data workflows need more formal documentation.
 
 ## Recommended Next QA Passes

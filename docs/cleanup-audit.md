@@ -29,8 +29,6 @@ Removed from the index and disk:
 - `apps/mobile/android/app/build/`
 - `apps/mobile/android/build/`
 - `apps/mobile/.expo/`
-- `apps/web/.next/`
-- `apps/web/.turbo/`
 - Package `.turbo/` folders
 - Package `dist/` folders
 - Loose generated `*.tsbuildinfo`, `.tmp-*.json`, and `expo-env.d.ts` files outside `node_modules`
@@ -49,7 +47,6 @@ Left intentionally untouched:
 The inventory marks these as keep-worthy even when normal import references are low:
 
 - Expo Router files under `apps/mobile/app/**`.
-- Next app routes under `apps/web/src/app/**`.
 - Android native classes under `apps/mobile/android/app/src/main/java/**`.
 - Tooling/config files such as Metro, Babel, Expo, Turbo, TypeScript, and package manifests.
 - `patches/react-native-get-sms-android@2.1.0.patch`, because `pnpm` references it.

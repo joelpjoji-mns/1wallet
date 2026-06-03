@@ -569,31 +569,6 @@ Conventions:
 
 ---
 
-## 12. Web app layout
-
-```
-+--------------------------------------------------+
-| 1wallet   [ Search.................. ]   user  v |
-|--------------------------------------------------|
-| [ Home ]                                         |
-| [ Txns ]    | DASHBOARD                          |
-| [ Plan ]    |  +------+ +------+ +------+        |
-| [ Acct ]    |  | NW   | | CF   | | Goals|        |
-| [ Repo ]    |  +------+ +------+ +------+        |
-| [ Imp  ]    |                                    |
-| [ Rules]    |  +-------------------------+       |
-| [ Set  ]    |  | Budgets                 |       |
-|             |  +-------------------------+       |
-|             |  | Upcoming dues           |       |
-|             |  +-------------------------+       |
-|             |  | Reports / charts        |       |
-+--------------------------------------------------+
-```
-
-Use the web app for: bulk edits, import center, rules editor, deep reports, settings, multi-month planning, reconciliation.
-
----
-
 ## Screen build order
 
 1. Onboarding (sign in, currency, accounts, categories)
@@ -607,4 +582,3 @@ Use the web app for: bulk edits, import center, rules editor, deep reports, sett
 9. Reports
 10. Settings
 11. OS-level home-screen widgets
-12. Web app dashboard and import center
