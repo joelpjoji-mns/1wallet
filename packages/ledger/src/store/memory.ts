@@ -2,11 +2,11 @@ import { fromMinor, normalizeCurrencyCode, toMinor } from '@1wallet/domain/money
 import { uid } from '../id';
 import type { ExchangeRateRecord, LedgerState, LedgerStore } from './types';
 import {
-  LEDGER_STATE_VERSION,
-  defaultNotificationPreferences,
-  emptyState,
-  normalizeAutoCapturePreferences,
-  normalizeUserProfilePreferences,
+    LEDGER_STATE_VERSION,
+    defaultNotificationPreferences,
+    emptyState,
+    normalizeAutoCapturePreferences,
+    normalizeUserProfilePreferences,
 } from './types';
 
 const LEGACY_AXIS_FOREX_TOTALS_NOTE =
@@ -115,8 +115,13 @@ export function normalizeLedgerState(state: Partial<LedgerState>): LedgerState {
   const baseCurrency = normalizeCurrencyCode(
     state.preferences?.baseCurrency ?? fresh.preferences.baseCurrency,
   );
-  const transactions = removeGeneratedScheduledTransactions(
+  const repairedTransactions = removeGeneratedScheduledTransactions(
     repairForeignPostedAmounts(state.transactions ?? [], baseCurrency, exchangeRates),
+  );
+  const transactions = migrateLoanInterestPairsToLoanAccounts(
+    repairedTransactions,
+    accounts,
+    state.version,
   );
   const captureCandidates = compactReviewedCaptureCandidates(state.captureCandidates ?? []);
   const displayCurrency = normalizeCurrencyCode(state.preferences?.displayCurrency ?? baseCurrency);
@@ -247,6 +252,117 @@ function removeGeneratedScheduledTransactions(
     if (transaction.externalRef?.startsWith('recurring-schedule-v1:')) return false;
     return true;
   });
+}
+
+function migrateLoanInterestPairsToLoanAccounts(
+  transactions: LedgerState['transactions'],
+  accounts: LedgerState['accounts'],
+  sourceVersion?: number,
+): LedgerState['transactions'] {
+  if (typeof sourceVersion === 'number' && sourceVersion >= 14) return transactions;
+
+  const accountById = new Map(accounts.map((account) => [account.id, account]));
+  const next = transactions.map((transaction) => ({
+    ...transaction,
+    amount: { ...transaction.amount },
+    baseAmount: { ...transaction.baseAmount },
+    originalAmount: transaction.originalAmount ? { ...transaction.originalAmount } : undefined,
+    counterAmount: transaction.counterAmount ? { ...transaction.counterAmount } : undefined,
+  }));
+  const byExternalRef = new Map(
+    next
+      .filter((transaction) => transaction.externalRef)
+      .map((transaction) => [transaction.externalRef as string, transaction]),
+  );
+
+  for (const repayment of next) {
+    if (repayment.type !== 'loan_repayment') continue;
+    if (repayment.status === 'scheduled' || repayment.status === 'void') continue;
+    const loan = loanAccountForRepayment(repayment, accountById);
+    if (!loan) continue;
+
+    const interest = linkedLoanInterestForMigration(repayment, next, byExternalRef);
+    if (!interest || interest.status === 'scheduled' || interest.status === 'void') continue;
+    if (interest.accountId === loan.id) continue;
+    if (!canMigrateLoanInterestPair(repayment, interest, loan)) continue;
+
+    repayment.amount = {
+      amountMinor: repayment.amount.amountMinor + interest.amount.amountMinor,
+      currency: repayment.amount.currency,
+    };
+    if (repayment.baseAmount.currency === interest.baseAmount.currency) {
+      repayment.baseAmount = {
+        amountMinor: repayment.baseAmount.amountMinor + interest.baseAmount.amountMinor,
+        currency: repayment.baseAmount.currency,
+      };
+    }
+    repayment.counterAmount = {
+      amountMinor: (repayment.counterAmount?.amountMinor ?? repayment.amount.amountMinor - interest.amount.amountMinor) +
+        interest.amount.amountMinor,
+      currency: repayment.counterAmount?.currency ?? loan.currency,
+    };
+    interest.accountId = loan.id;
+  }
+
+  return next;
+}
+
+function loanAccountForRepayment(
+  transaction: LedgerState['transactions'][number],
+  accountById: Map<string, LedgerState['accounts'][number]>,
+): LedgerState['accounts'][number] | undefined {
+  const account = accountById.get(transaction.accountId);
+  if (account && isLoanAccountType(account.type)) return account;
+  const counterAccount = transaction.counterAccountId
+    ? accountById.get(transaction.counterAccountId)
+    : undefined;
+  return counterAccount && isLoanAccountType(counterAccount.type) ? counterAccount : undefined;
+}
+
+function linkedLoanInterestForMigration(
+  repayment: LedgerState['transactions'][number],
+  transactions: LedgerState['transactions'],
+  byExternalRef: Map<string, LedgerState['transactions'][number]>,
+): LedgerState['transactions'][number] | undefined {
+  const externalRef = repayment.externalRef ? `${repayment.externalRef}:interest` : undefined;
+  if (externalRef) {
+    const linked = byExternalRef.get(externalRef);
+    if (linked && isLoanInterestTransaction(linked)) return linked;
+  }
+  return transactions.find(
+    (transaction) =>
+      transaction.originalTransactionId === repayment.id && isLoanInterestTransaction(transaction),
+  );
+}
+
+function canMigrateLoanInterestPair(
+  repayment: LedgerState['transactions'][number],
+  interest: LedgerState['transactions'][number],
+  loan: LedgerState['accounts'][number],
+): boolean {
+  if (!isLoanInterestTransaction(interest)) return false;
+  if (interest.amount.amountMinor <= 0) return false;
+  if (normalizeCurrencyCode(repayment.amount.currency) !== normalizeCurrencyCode(interest.amount.currency)) {
+    return false;
+  }
+  if (normalizeCurrencyCode(loan.currency) !== normalizeCurrencyCode(interest.amount.currency)) {
+    return false;
+  }
+  if (
+    repayment.counterAmount &&
+    normalizeCurrencyCode(repayment.counterAmount.currency) !== normalizeCurrencyCode(interest.amount.currency)
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function isLoanInterestTransaction(transaction: LedgerState['transactions'][number]): boolean {
+  return transaction.type === 'interest_in' || transaction.type === 'interest_out';
+}
+
+function isLoanAccountType(type: string): boolean {
+  return type === 'loan' || type === 'overdraft' || type === 'lent';
 }
 
 function repairForeignPostedAmounts(

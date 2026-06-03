@@ -6,7 +6,7 @@ The mobile app is the active product surface today. The current ledger runs thro
 
 ## Product direction
 
-- Mobile-first personal finance app with a web companion.
+- Mobile-first personal finance app focused on Android and iOS delivery.
 - Multi-account support for cash, bank accounts, wallets, credit cards, loans, and savings pots.
 - Track expenses, income, transfers, budgets, recurring bills, EMIs, and savings goals.
 - Assist transaction capture through manual entry, imports, Android notifications, and policy-safe automation.
@@ -15,14 +15,13 @@ The mobile app is the active product surface today. The current ledger runs thro
 ## Recommended stack
 
 - Mobile: React Native with Expo development builds and TypeScript
-- Web: Next.js with TypeScript
 - Current data path: local-first ledger state with shared domain, ledger, state, validation, and UI packages
 - Sync/backend path: Firebase Auth and Firestore metadata plus chunked ledger snapshots
 - Shared code: Turborepo monorepo with TypeScript packages
 
 ## Why this direction
 
-- React Native plus Next.js is a better fit than Flutter if the web app will matter, not just exist.
+- React Native with Expo keeps Android delivery fast while preserving shared TypeScript business logic.
 - Local-first state keeps daily mobile use fast and offline-friendly.
 - Firebase handles account identity and restore without making every screen depend on online database reads.
 
@@ -30,6 +29,7 @@ The mobile app is the active product surface today. The current ledger runs thro
 
 - iPhone apps cannot read the user's SMS inbox directly.
 - On Android, automated transaction capture should start with notification parsing and import flows.
+- On iOS, SMS capture is unavailable; use manual entry, CSV imports, statement imports, and shared review flows.
 - SMS parsing should be treated as optional and reviewed against current Play policy before release.
 
 ## Docs
@@ -49,7 +49,6 @@ The mobile app is the active product surface today. The current ledger runs thro
 ```text
 apps/
   mobile/           # Expo + React Native app
-  web/              # Next.js web app
 packages/
   config/           # Shared configuration
   domain/           # Types and money math
@@ -65,14 +64,13 @@ firebase/
 
 ## Getting started
 
-Prereqs: Node 20+, pnpm 11+, Android tooling for mobile release builds, and optionally the Supabase CLI for future backend work.
+Prereqs: Node 20+, pnpm 11+, Android tooling for Android release builds, EAS credentials for iOS builds, and optionally the Supabase CLI for future backend work.
 
 ```powershell
 pnpm install
 pnpm typecheck
 pnpm test
 pnpm --filter @1wallet/mobile dev   # Expo
-pnpm --filter @1wallet/web dev      # Next.js
 # Optional local Firebase emulators after Firebase config is set:
 firebase emulators:start
 ```
@@ -81,4 +79,4 @@ firebase emulators:start
 
 1. Keep the mobile ledger, Add Record, automation, notifications, and currency flows covered by focused QA runs.
 2. Tighten cloud-sync boundaries before moving beyond snapshot restore/upload into full entity-level merge.
-3. Continue visual polish and release validation on Android before expanding the web companion.
+3. Continue visual polish and release validation on Android and iOS.

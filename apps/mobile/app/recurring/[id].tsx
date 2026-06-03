@@ -1,6 +1,6 @@
 import { formatMoney } from '@1wallet/domain/money';
 import type { Transaction } from '@1wallet/domain/types';
-import { syncLoanDetailsFromRule } from '@1wallet/ledger/loans';
+import { findLoanAccountForRule, syncLoanDetailsFromRule } from '@1wallet/ledger/loans';
 import type { FutureRuleOccurrence } from '@1wallet/ledger/rules/futureGeneration';
 import {
   deleteFutureGenerationRule,
@@ -37,7 +37,7 @@ import {
 } from '../../src/components/AppKit';
 import { positiveAmountColor } from '../../src/financeColors';
 import { iconSurfaceForThemeTone } from '../../src/iconSystem';
-import { linkedLoanInterestTransaction } from '../../src/loans/loanUtils';
+import { linkedLoanInterestTransaction, loanRepaymentBreakdown } from '../../src/loans/loanUtils';
 import {
   PLANNED_PAYMENT_ICON_FOREGROUND_COLOR,
   accountName,
@@ -70,7 +70,7 @@ import { transactionTypeBucket } from '../../src/transactionTypes';
 
 export default function PlannedPaymentDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { state, mutate } = useLedger();
+  const { state, indexes, mutate } = useLedger();
   const [snackbar, setSnackbar] = useState<string | null>(null);
   const [confirmingOccurrence, setConfirmingOccurrence] = useState<FutureRuleOccurrence | null>(
     null,
@@ -264,6 +264,7 @@ export default function PlannedPaymentDetail() {
         rule={rule}
         occurrence={confirmingOccurrence ?? undefined}
         state={state}
+        indexes={indexes}
         title="Confirm occurrence"
         confirmLabel="Confirm"
         onDismiss={() => setConfirmingOccurrence(null)}
@@ -321,10 +322,7 @@ function PlanHero({
   const remainingAmountLabel = progressSummary.remainingAmount
     ? formatMoney(progressSummary.remainingAmount, state.preferences.locale)
     : 'Open ended';
-  const displayAmount = {
-    amountMinor: occurrence?.amountMinor ?? rule.amountMinor,
-    currency: occurrence?.currency ?? rule.currency,
-  };
+  const displayAmount = planHeroDisplayAmount(rule, occurrence);
   return (
     <Surface
       style={[
@@ -470,6 +468,47 @@ function remainingOccurrenceLabel(
   return `${remainingOccurrences} ${remainingOccurrences === 1 ? 'EMI' : 'EMIs'}`;
 }
 
+function planHeroDisplayAmount(
+  rule: FutureGenerationRule,
+  occurrence?: FutureRuleOccurrence,
+): { amountMinor: number; currency: string } {
+  if (rule.type === 'loan_repayment') return loanOccurrenceEmiAmount(rule, occurrence);
+  return {
+    amountMinor: occurrence?.amountMinor ?? rule.amountMinor,
+    currency: occurrence?.currency ?? rule.currency,
+  };
+}
+
+function loanOccurrenceEmiAmount(
+  rule: FutureGenerationRule,
+  occurrence?: FutureRuleOccurrence,
+): { amountMinor: number; currency: string } {
+  return {
+    amountMinor: Math.max(
+      0,
+      occurrence?.principalAmountMinor ?? occurrence?.counterAmountMinor ?? rule.amountMinor,
+    ),
+    currency: occurrence?.principalCurrency ?? occurrence?.counterCurrency ?? rule.currency,
+  };
+}
+
+function loanOccurrenceInterestAmount(occurrence: FutureRuleOccurrence): {
+  amountMinor: number;
+  currency: string;
+} {
+  const principalMinor = Math.max(
+    0,
+    occurrence.principalAmountMinor ?? occurrence.counterAmountMinor ?? occurrence.amountMinor,
+  );
+  return {
+    amountMinor: Math.max(
+      0,
+      occurrence.interestAmountMinor ?? occurrence.amountMinor - principalMinor,
+    ),
+    currency: occurrence.interestCurrency ?? occurrence.currency,
+  };
+}
+
 function OccurrenceCard({
   rule,
   state,
@@ -509,8 +548,10 @@ function OccurrenceCard({
   const counterAccountVisual = counterAccount
     ? resolveAccountIconVisual(counterAccount)
     : undefined;
-  const principalAmountMinor = Math.max(0, occurrence.principalAmountMinor ?? 0);
-  const interestAmountMinor = Math.max(0, occurrence.interestAmountMinor ?? 0);
+  const isLoanRepayment = rule.type === 'loan_repayment' || occurrence.type === 'loan_repayment';
+  const emiAmount = loanOccurrenceEmiAmount(rule, occurrence);
+  const interestAmount = loanOccurrenceInterestAmount(occurrence);
+  const totalAmount = { amountMinor: occurrence.amountMinor, currency: occurrence.currency };
 
   return (
     <SectionCard title="Next occurrence" compact>
@@ -525,41 +566,25 @@ function OccurrenceCard({
         icon="cash-multiple"
         iconBackgroundColor={occurrenceIconBackgroundColor}
         iconColor={PLANNED_PAYMENT_ICON_FOREGROUND_COLOR}
-        label="Amount"
-        value={formatMoney(
-          { amountMinor: occurrence.amountMinor, currency: occurrence.currency },
-          state.preferences.locale,
-        )}
+        label={isLoanRepayment ? 'EMI' : 'Amount'}
+        value={formatMoney(isLoanRepayment ? emiAmount : totalAmount, state.preferences.locale)}
       />
-      {principalAmountMinor > 0 ? (
-        <InfoRow
-          icon="bank-transfer-out"
-          iconBackgroundColor={occurrenceIconBackgroundColor}
-          iconColor={PLANNED_PAYMENT_ICON_FOREGROUND_COLOR}
-          label="Principal"
-          value={formatMoney(
-            {
-              amountMinor: principalAmountMinor,
-              currency: occurrence.principalCurrency ?? occurrence.currency,
-            },
-            state.preferences.locale,
-          )}
-        />
-      ) : null}
-      {interestAmountMinor > 0 ? (
-        <InfoRow
-          icon="percent-outline"
-          iconBackgroundColor={occurrenceIconBackgroundColor}
-          iconColor={PLANNED_PAYMENT_ICON_FOREGROUND_COLOR}
-          label="Interest"
-          value={formatMoney(
-            {
-              amountMinor: interestAmountMinor,
-              currency: occurrence.interestCurrency ?? occurrence.currency,
-            },
-            state.preferences.locale,
-          )}
-        />
+      {isLoanRepayment ? (
+        <>
+          <InfoRow
+            label="Interest debit"
+            iconBackgroundColor={occurrenceIconBackgroundColor}
+            iconColor={PLANNED_PAYMENT_ICON_FOREGROUND_COLOR}
+            value={formatMoney(interestAmount, state.preferences.locale)}
+          />
+          <InfoRow
+            icon="cash-plus"
+            iconBackgroundColor={occurrenceIconBackgroundColor}
+            iconColor={PLANNED_PAYMENT_ICON_FOREGROUND_COLOR}
+            label="Total"
+            value={formatMoney(totalAmount, state.preferences.locale)}
+          />
+        </>
       ) : null}
       <InfoRow
         icon={accountVisual?.icon ?? 'wallet-outline'}
@@ -681,12 +706,19 @@ function HistoryRow({
 }) {
   const theme = useTheme();
   const interestTransaction = linkedLoanInterestTransaction(state, transaction);
-  const displayAmount = interestTransaction
-    ? {
-        amountMinor: transaction.amount.amountMinor + interestTransaction.amount.amountMinor,
-        currency: transaction.amount.currency,
-      }
-    : transaction.amount;
+  const isLoanRepayment = rule.type === 'loan_repayment' || transaction.type === 'loan_repayment';
+  const loan = isLoanRepayment ? findLoanAccountForRule(state, rule) : undefined;
+  const breakdown = loan
+    ? loanRepaymentBreakdown(loan, transaction, interestTransaction)
+    : {
+        total: transaction.amount,
+        principal: transaction.counterAmount ?? transaction.amount,
+        interest: undefined,
+      };
+  const principalAmount = breakdown.principal;
+  const interestAmount = breakdown.interest;
+  const totalAmount = breakdown.total;
+  const displayAmount = isLoanRepayment ? principalAmount : totalAmount;
   const amountColor = historyAmountColor(
     transaction,
     theme.dark,
@@ -724,11 +756,11 @@ function HistoryRow({
           >
             {transaction.notes ?? accountName(state, transaction.accountId) ?? 'Confirmed'}
           </Text>
-          {interestTransaction ? (
+          {isLoanRepayment ? (
             <InlineMeta
               items={[
-                `P ${formatMoney(transaction.amount, state.preferences.locale)}`,
-                `I ${formatMoney(interestTransaction.amount, state.preferences.locale)}`,
+                `Interest debit ${formatMoney(interestAmount ?? { amountMinor: 0, currency: totalAmount.currency }, state.preferences.locale)}`,
+                `Total ${formatMoney(totalAmount, state.preferences.locale)}`,
               ]}
             />
           ) : null}

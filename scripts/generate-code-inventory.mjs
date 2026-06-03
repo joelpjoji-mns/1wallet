@@ -499,7 +499,6 @@ function keepByConventionReason(file) {
   if (file === 'apps/mobile/index.js') return 'framework-entrypoint:expo';
   if (/^apps\/mobile\/android\/app\/src\/main\/java\//.test(file))
     return 'native-entrypoint:android';
-  if (/^apps\/web\/src\/app\/.+\.(tsx|ts)$/.test(file)) return 'framework-entrypoint:next';
   if (/^patches\/.+\.patch$/.test(file)) return 'dependency-patch:pnpm';
   if (/^supabase\/migrations\/.+\.sql$/.test(file)) return 'schema-history:migration';
   if (/^(package|pnpm-workspace|turbo|tsconfig\.base)\./.test(file)) return 'repo-config';
@@ -514,7 +513,7 @@ function keepByConventionReason(file) {
 }
 
 function isRouteComponentFile(file) {
-  return /^apps\/mobile\/app\/.+\.tsx$/.test(file) || /^apps\/web\/src\/app\/.+\.tsx$/.test(file);
+  return /^apps\/mobile\/app\/.+\.tsx$/.test(file);
 }
 
 function refactorCandidateForFile(file, lineCount, extension) {

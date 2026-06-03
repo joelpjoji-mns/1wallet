@@ -2,10 +2,11 @@ import { formatMoney, fromMinor, toMinor } from '@1wallet/domain/money';
 import type { Account } from '@1wallet/domain/types';
 import { isLoanAccountType } from '@1wallet/ledger/loans';
 import type {
-    FutureRuleOccurrence,
-    PostFutureRuleOccurrenceOverrides,
+  FutureRuleOccurrence,
+  PostFutureRuleOccurrenceOverrides,
 } from '@1wallet/ledger/rules/futureGeneration';
 import { accountBalance } from '@1wallet/ledger/services';
+import { indexedAccountBalance, type LedgerIndexes } from '@1wallet/ledger/services/indexes';
 import type { FutureGenerationRule, LedgerState } from '@1wallet/ledger/store/types';
 import { tokens } from '@1wallet/ui';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -20,10 +21,10 @@ import { RecordDateTimeFields } from '../components/record/RecordDateTimeFields'
 import { AccountPickerOverlay } from '../components/record/RecordPickers';
 import { RecordSelectorRow } from '../components/record/RecordSelectorRow';
 import {
-    dateTimeToIso,
-    isValidLocalDate,
-    isValidLocalTime,
-    localDateTimePartsFromIso,
+  dateTimeToIso,
+  isValidLocalDate,
+  isValidLocalTime,
+  localDateTimePartsFromIso,
 } from '../recordDateTime';
 import { dueLabel } from './display';
 
@@ -46,6 +47,7 @@ export function OccurrenceConfirmDialog({
   rule,
   occurrence,
   state,
+  indexes,
   title = 'Confirm payment',
   confirmLabel = 'Confirm record',
   initialDateTime = 'occurrence',
@@ -56,6 +58,7 @@ export function OccurrenceConfirmDialog({
   rule?: FutureGenerationRule | null;
   occurrence?: FutureRuleOccurrence;
   state: LedgerState;
+  indexes?: LedgerIndexes;
   title?: string;
   confirmLabel?: string;
   initialDateTime?: InitialDateTime;
@@ -183,7 +186,7 @@ export function OccurrenceConfirmDialog({
               label={isTransfer ? 'From account' : 'Account'}
               value={account?.name ?? 'Choose account'}
               valueNumberOfLines={2}
-              supporting={account ? accountSupporting(state, account) : 'Required'}
+              supporting={account ? accountSupporting(state, account, indexes) : 'Required'}
               onPress={() => setPickerMode('account')}
             />
             {isTransfer ? (
@@ -194,7 +197,9 @@ export function OccurrenceConfirmDialog({
                 label="To account"
                 value={counterAccount?.name ?? 'Choose destination'}
                 valueNumberOfLines={2}
-                supporting={counterAccount ? accountSupporting(state, counterAccount) : 'Required'}
+                supporting={
+                  counterAccount ? accountSupporting(state, counterAccount, indexes) : 'Required'
+                }
                 onPress={() => setPickerMode('counter')}
               />
             ) : null}
@@ -208,31 +213,41 @@ export function OccurrenceConfirmDialog({
           />
 
           <View style={[styles.reviewBox, { borderColor: theme.colors.outlineVariant }]}>
-            <ReviewLine
-              label="Record amount"
-              value={formatMoney({ amountMinor: totalMinor, currency }, state.preferences.locale)}
-            />
+            {split ? (
+              <ReviewLine
+                label="EMI"
+                value={formatMoney(
+                  { amountMinor: split.principalMinor, currency },
+                  state.preferences.locale,
+                )}
+              />
+            ) : null}
             {isTransfer && counterAccount ? (
               <ReviewLine label="Destination" value={counterAccount.name} />
             ) : null}
             {split ? (
               <>
                 <ReviewLine
-                  label="Principal"
-                  value={formatMoney(
-                    { amountMinor: split.principalMinor, currency },
-                    state.preferences.locale,
-                  )}
-                />
-                <ReviewLine
-                  label="Linked interest"
+                  label="Interest debit"
                   value={formatMoney(
                     { amountMinor: split.interestMinor, currency },
                     state.preferences.locale,
                   )}
                 />
+                <ReviewLine
+                  label="Total"
+                  value={formatMoney(
+                    { amountMinor: totalMinor, currency },
+                    state.preferences.locale,
+                  )}
+                />
               </>
-            ) : null}
+            ) : (
+              <ReviewLine
+                label="Total"
+                value={formatMoney({ amountMinor: totalMinor, currency }, state.preferences.locale)}
+              />
+            )}
           </View>
 
           {error ? (
@@ -263,7 +278,7 @@ export function OccurrenceConfirmDialog({
         title={pickerMode === 'counter' ? 'Choose destination' : 'Choose account'}
         accounts={pickerMode === 'counter' ? counterAccounts : accounts}
         selectedId={pickerMode === 'counter' ? draft.counterAccountId : draft.accountId}
-        balances={(item) => accountSupporting(state, item)}
+        balances={(item) => accountSupporting(state, item, indexes)}
         onDismiss={() => setPickerMode(null)}
         onCreate={() => {
           setPickerMode(null);
@@ -304,9 +319,10 @@ function emptyDraft(
   occurrence?: FutureRuleOccurrence,
   initialDateTime: InitialDateTime = 'occurrence',
 ): ConfirmDraft {
-  const dateTime = occurrence && initialDateTime === 'occurrence'
-    ? localDateTimePartsFromIso(occurrence.occurredAt)
-    : localDateTimePartsFromIso(new Date().toISOString());
+  const dateTime =
+    occurrence && initialDateTime === 'occurrence'
+      ? localDateTimePartsFromIso(occurrence.occurredAt)
+      : localDateTimePartsFromIso(new Date().toISOString());
   return {
     amountText: occurrence ? String(fromMinor(occurrence.amountMinor, occurrence.currency)) : '',
     accountId: occurrence?.accountId,
@@ -391,8 +407,11 @@ function selectedCurrency(
   return account?.currency ?? occurrence?.currency ?? state.preferences.baseCurrency;
 }
 
-function accountSupporting(state: LedgerState, account: Account): string {
-  return formatMoney(accountBalance(state, account.id), state.preferences.locale);
+function accountSupporting(state: LedgerState, account: Account, indexes?: LedgerIndexes): string {
+  const balance = indexes
+    ? indexedAccountBalance(indexes, account)
+    : accountBalance(state, account.id);
+  return formatMoney(balance, state.preferences.locale);
 }
 
 function parseAmount(value: string): number {

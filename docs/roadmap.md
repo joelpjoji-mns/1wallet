@@ -91,25 +91,6 @@ Estimated effort for one developer:
 - Full-time: 3 to 5 weeks
 - Part-time: 5 to 8 weeks
 
-## Phase 4: Web companion
-
-Outcome:
-
-- Larger-screen workflows become easier than mobile for power tasks
-
-Features:
-
-- Reporting
-- Bulk edits
-- Import center
-- Rules management
-- Settings and exports
-
-Estimated effort for one developer:
-
-- Full-time: 3 to 5 weeks
-- Part-time: 5 to 8 weeks
-
 ## MVP release checklist
 
 - Auth is stable
@@ -127,10 +108,10 @@ Estimated effort for one developer:
 - Over-reliance on SMS-based automation
 - Weak account and transfer modeling causing broken reports
 - Poor review workflow causing mistrust in automation
-- Trying to ship mobile and web parity too early
+- Expanding platform scope before Android release quality is stable
 
 ## What to do next
 
 1. Keep high-risk mobile flows covered by focused QA: Add Record, currencies/FX, notifications, automation, imports, account balances, and release startup.
 2. Decide the cloud-sync contract before treating the Postgres schema as production truth.
-3. Continue mobile visual polish and Android release validation before expanding the web companion.
+3. Continue mobile visual polish and Android release validation.

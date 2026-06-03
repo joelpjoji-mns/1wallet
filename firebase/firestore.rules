@@ -162,24 +162,32 @@ service cloud.firestore {
         (!('estimatedDownloadSeconds' in data) || (data.estimatedDownloadSeconds is int && data.estimatedDownloadSeconds > 0 && data.estimatedDownloadSeconds <= 86400));
     }
 
-    function isValidAppUpdateRelease(data, platform) {
-      return platform == 'android' &&
-        data is map &&
+    function isValidUpdateIos(data) {
+      return data is map &&
         data.keys().hasOnly([
-          'platform',
-          'channel',
-          'status',
-          'versionName',
-          'versionCode',
-          'runtimeVersion',
-          'releaseType',
-          'mandatory',
-          'requirement',
-          'minimumSupportedVersionCode',
-          'publishedAt',
-          'changelog',
-          'apk'
+          'appStoreUrl',
+          'testFlightUrl',
+          'buildUrl',
+          'appStoreId',
+          'bundleIdentifier',
+          'minimumOsVersion'
         ]) &&
+        (
+          ('appStoreUrl' in data && data.appStoreUrl is string && data.appStoreUrl.matches('^https?://.+')) ||
+          ('testFlightUrl' in data && data.testFlightUrl is string && data.testFlightUrl.matches('^https?://.+')) ||
+          ('buildUrl' in data && data.buildUrl is string && data.buildUrl.matches('^https?://.+'))
+        ) &&
+        (!('appStoreUrl' in data) || (data.appStoreUrl is string && data.appStoreUrl.matches('^https?://.+'))) &&
+        (!('testFlightUrl' in data) || (data.testFlightUrl is string && data.testFlightUrl.matches('^https?://.+'))) &&
+        (!('buildUrl' in data) || (data.buildUrl is string && data.buildUrl.matches('^https?://.+'))) &&
+        (!('appStoreId' in data) || (data.appStoreId is string && data.appStoreId.matches('^[0-9]{1,32}$'))) &&
+        (!('bundleIdentifier' in data) || (data.bundleIdentifier is string && data.bundleIdentifier.matches('^[A-Za-z0-9.-]{1,160}$'))) &&
+        (!('minimumOsVersion' in data) || (data.minimumOsVersion is string && data.minimumOsVersion.matches('^[0-9]+(\.[0-9]+){0,2}$')));
+    }
+
+    function isValidAppUpdateRelease(data, platform) {
+      return platform in ['android', 'ios'] &&
+        data is map &&
         data.platform == platform &&
         data.channel is string && data.channel.matches('^[a-z0-9._-]{1,40}$') &&
         data.status == 'published' &&
@@ -193,11 +201,50 @@ service cloud.firestore {
         data.minimumSupportedVersionCode is int && data.minimumSupportedVersionCode >= 0 &&
         data.publishedAt is timestamp &&
         isValidUpdateChangelog(data.changelog) &&
-        isValidUpdateApk(data.apk);
+        (
+          (
+            platform == 'android' &&
+            data.keys().hasOnly([
+              'platform',
+              'channel',
+              'status',
+              'versionName',
+              'versionCode',
+              'runtimeVersion',
+              'releaseType',
+              'mandatory',
+              'requirement',
+              'minimumSupportedVersionCode',
+              'publishedAt',
+              'changelog',
+              'apk'
+            ]) &&
+            isValidUpdateApk(data.apk)
+          ) ||
+          (
+            platform == 'ios' &&
+            data.keys().hasOnly([
+              'platform',
+              'channel',
+              'status',
+              'versionName',
+              'versionCode',
+              'runtimeVersion',
+              'releaseType',
+              'mandatory',
+              'requirement',
+              'minimumSupportedVersionCode',
+              'publishedAt',
+              'changelog',
+              'ios'
+            ]) &&
+            isValidUpdateIos(data.ios)
+          )
+        );
     }
 
     function isValidAppUpdateChannel(data, platform, channel) {
-      return platform == 'android' &&
+      return platform in ['android', 'ios'] &&
         data is map &&
         data.keys().hasOnly(['platform', 'channel', 'status', 'latestVersionCode', 'updatedAt']) &&
         data.platform == platform &&
@@ -214,7 +261,7 @@ service cloud.firestore {
     }
 
     match /appUpdates/{platform}/channels/{channel} {
-      allow get: if platform == 'android' && channel.matches('^[a-z0-9._-]{1,40}$');
+      allow get: if platform in ['android', 'ios'] && channel.matches('^[a-z0-9._-]{1,40}$');
       allow list: if false;
       allow create, update, delete: if false;
     }

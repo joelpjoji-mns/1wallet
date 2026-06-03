@@ -1,6 +1,6 @@
 /**
- * Shared design tokens. UI components live in each app for now (mobile uses
- * React Native primitives, web uses HTML), but the visual language is shared.
+ * Shared design tokens. UI components live in the mobile app for now, but the
+ * visual language is kept in a shared package.
  */
 
 const md3Light = {

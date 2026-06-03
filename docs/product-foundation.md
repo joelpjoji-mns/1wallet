@@ -4,7 +4,7 @@
 
 Build a personal finance app that feels as fast as an expense tracker, as useful as a budgeting tool, and as structured as a lightweight money operating system.
 
-Current implementation note: the app is mobile-first and local-first today. Cloud sync, Supabase auth, and the web companion remain planned surfaces, while the active ledger model lives in shared TypeScript packages.
+Current implementation note: the app is mobile-first and local-first today. Cloud sync remains the planned cross-device path, while the active ledger model lives in shared TypeScript packages.
 
 The app should help a user answer five questions quickly:
 
@@ -26,7 +26,7 @@ The app should help a user answer five questions quickly:
 
 - Individual user managing personal finances across multiple accounts.
 - Heavy need for recurring expense tracking, card due dates, EMIs, and savings targets.
-- Wants mobile-first daily use and a web app later for deeper management and reporting.
+- Wants mobile-first daily use for tracking, planning, reporting, and maintenance.
 
 ## Core domains
 
@@ -277,19 +277,6 @@ Screen responsibilities:
 - Add: fast manual entry and import shortcuts
 - Planner: budgets, goals, cards, loans, bills
 - Accounts: balances, account detail, reconciliation
-
-## Web app role
-
-The web app should launch after the mobile core is stable. It should focus on:
-
-- Bulk editing
-- Reporting
-- Import management
-- Rules management
-- Month-end review
-- Settings and admin screens
-
-Do not force full mobile and web parity in the first release.
 
 ## UI direction
 

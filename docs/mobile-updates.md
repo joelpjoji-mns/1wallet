@@ -1,18 +1,19 @@
 # Mobile Updates
 
-1wallet uses a hybrid update model for Android:
+1wallet uses a hybrid update model for Android and iOS:
 
-- Firestore stores published release metadata under `appUpdates/android`.
+- Firestore stores published release metadata under `appUpdates/android` and `appUpdates/ios`.
 - APK files are hosted through this public repository's GitHub Releases by default. The separate `APK_RELEASE_REPO` mirror is optional and controlled by `PUBLISH_APK_TO_ASSETS_REPO`.
 - The app downloads APK updates into private app cache, verifies SHA-256, then opens the Android system installer.
+- iOS native updates open TestFlight or the App Store from Firestore metadata. iOS does not download or install app binaries inside the app.
 - Users can choose the `stable` or `beta` update channel from the Updates screen. The selection is stored per installed app/device.
-- `expo-updates` is installed for compatible JavaScript/assets updates, but true JS OTA is optional. It cannot replace APK updates for native code, permissions, Android modules, signing, or dependency changes.
+- `expo-updates` is installed for compatible JavaScript/assets updates. It cannot replace native updates for native code, permissions, native modules, signing, or dependency changes.
 
 Android does not allow this app to silently install APK files. Users must confirm installation in the system installer.
 
 ## Versioning
 
-Use semantic versions for display and Android `versionCode` for ordering.
+Use semantic versions for display. Android uses `versionCode`; iOS uses `buildNumber`. Firestore stores both platform counters as `versionCode` for shared ordering logic.
 
 Recommended mapping:
 
@@ -44,6 +45,8 @@ Recommended GitHub Release tags:
 ```text
 android-stable-v1.4.1-1040100
 android-beta-v1.4.2-beta-1040200
+ios-stable-v1.5.3-1050300
+ios-beta-v1.5.3-beta-1050300
 ```
 
 ## Firestore Schema
@@ -53,12 +56,15 @@ Latest channel pointer:
 ```text
 appUpdates/android/channels/stable
 appUpdates/android/channels/beta
+appUpdates/ios/channels/stable
+appUpdates/ios/channels/beta
 ```
 
 Release document:
 
 ```text
 appUpdates/android/releases/1040100
+appUpdates/ios/releases/1050300
 ```
 
 Firebase Console sorts collection documents by document ID in ascending order, so the app-facing `releases/{versionCode}` collection can look oldest-first in panel view. The release workflow also writes a console-friendly feed whose IDs start with an inverted version-code sort key, so panel view shows the newest Android build first:
@@ -101,6 +107,35 @@ Required release fields:
 }
 ```
 
+For iOS releases, replace the `apk` object with store metadata:
+
+```json
+{
+  "platform": "ios",
+  "channel": "beta",
+  "status": "published",
+  "versionName": "1.5.3-beta",
+  "versionCode": 1050300,
+  "runtimeVersion": "1.5.3-beta",
+  "releaseType": "patch",
+  "mandatory": false,
+  "requirement": "optional",
+  "minimumSupportedVersionCode": 0,
+  "publishedAt": "Firestore timestamp",
+  "changelog": {
+    "newFeatures": ["iOS build is available through TestFlight"],
+    "bugFixes": [],
+    "notes": ["The app opens TestFlight or App Store to install native updates"]
+  },
+  "ios": {
+    "testFlightUrl": "https://testflight.apple.com/join/example",
+    "appStoreUrl": "https://apps.apple.com/app/id1234567890",
+    "bundleIdentifier": "com.joelpjoji.one.wallet",
+    "minimumOsVersion": "15.1"
+  }
+}
+```
+
 The channel document should point at the latest published build:
 
 ```json
@@ -121,13 +156,21 @@ After building the APK, generate the release manifest:
 pnpm run mobile:update:manifest -- --apk apps/mobile/android/app/build/outputs/apk/release/app-release.apk --version 1.5.0 --version-code 1050000 --url "https://example.com/1wallet-1.5.0-stable-arm64-v8a.apk" --file-name "1wallet-1.5.0-stable-arm64-v8a.apk" --architecture arm64-v8a --channel stable --release-type minor --feature "Home header now shows 1Wallet again" --fix "Update download validation" --note "Android installer confirmation is required" --output importdata/mobile-update-1.5.0-stable.json
 ```
 
+For iOS, generate metadata with at least one store or build URL:
+
+```powershell
+pnpm run mobile:update:manifest -- --platform ios --version 1.5.3 --version-code 1050300 --channel stable --release-type patch --app-store-url "https://apps.apple.com/app/id1234567890" --bundle-identifier "com.joelpjoji.one.wallet" --minimum-os-version 15.1 --note "Native updates open in the App Store" --output importdata/mobile-update-1.5.3-stable-ios.json
+```
+
 ## Release Workflow
 
 Do not commit directly to `main` or `development`. Create `feature/*` or `bug/*` branches from `development`, test locally and on device as needed, then open a pull request back to `development`. Fill the PR Release Notes sections because they become both the GitHub Release notes and the in-app OTA changelog.
 
-Beta releases publish from `development`. When a feature or bug PR is merged into `development`, the Android Release workflow builds the arm64-v8a APK, creates a prerelease GitHub Release, generates the manifest, and updates the Firestore `beta` channel document. Each development beta must have a unique patch beta version such as `1.4.2-beta`; bump the patch again for the next beta.
+Beta releases publish from `development`. When a feature or bug PR is merged into `development`, the Android Release workflow builds the arm64-v8a APK and the iOS Release workflow builds through EAS/TestFlight. Both workflows create prerelease GitHub Releases, generate manifests, and update the Firestore `beta` channel documents. Each development beta must have a unique patch beta version such as `1.4.2-beta`; bump the patch again for the next beta.
 
-Stable releases publish only after `development` is merged into `main`. The Android Release workflow builds the arm64-v8a APK used by production phones, uploads it to this repo's GitHub Release, generates the manifest, marks it as the GitHub Latest release, and publishes the Firestore `stable` channel document. Future planned stable versions should use `.0` releases such as `1.5.0`; the existing `1.4.1` stable is a rescue exception. PRs that should not ship an APK must use the `skip-release` label or include `[skip release]` in the merge commit.
+Stable releases publish only after `development` is merged into `main`. The Android Release workflow builds the arm64-v8a APK used by production phones. The iOS Release workflow builds and submits through EAS/App Store Connect. Both workflows publish the Firestore `stable` channel documents. Future planned stable versions should use `.0` releases such as `1.5.0`; the existing Android `1.4.1` stable is a rescue exception. PRs that should not ship a native app update must use the `skip-release` label or include `[skip release]` in the merge commit.
+
+The iOS workflows require `EXPO_TOKEN` plus Apple/EAS submit credentials in secrets, and `IOS_TESTFLIGHT_URL`, `IOS_APP_STORE_URL`, or `IOS_BUILD_URL` in repository variables so in-app update metadata can open the correct destination.
 
 Manual workflow dispatch is reserved for release administration. Stable dispatches are allowed only from `main`. Beta dispatches are allowed from `development`, `feature/*`, or `bug/*`, never from `main`.
 
@@ -140,6 +183,7 @@ When a user switches from beta back to stable in the app, the update provider cl
 The Updates screen shows the installed release identity separately from the selected checking channel. It reads `appUpdates/android/releases/{installedVersionCode}` so an installed beta can still show as beta even when Android reports only the base app version. The selected channel still comes from local app settings and controls which channel pointer is checked.
 
 True JS OTA through `expo-updates` can be added later for JavaScript/assets-only fixes, but it is not required for the current update system. The APK pipeline is the reliable path for this app because most release changes can include native Android code, permissions, or native module updates.
+On iOS, JS OTA can serve JavaScript/assets-only fixes, while native changes still go through TestFlight or App Store review.
 
 ## QA Checklist
 
@@ -157,6 +201,7 @@ True JS OTA through `expo-updates` can be added later for JavaScript/assets-only
 12. Switch to beta, confirm the app checks the beta channel, then switch back to stable and confirm stale beta download state clears.
 13. On a device with `1039901` installed, switch to stable and confirm the app offers `1.4.1 / 1040100`.
 14. On an older `1.2.x` build, confirm stable checks jump directly to the latest `channels/stable.latestVersionCode` release instead of stepping through older releases.
+15. On iOS, confirm beta metadata opens TestFlight and stable metadata opens the App Store or configured build URL.
 
 ## Rollback
 

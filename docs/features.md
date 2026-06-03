@@ -384,10 +384,6 @@ Reference signals: BudgetBakers Wallet, YNAB, Money Lover, Spendee, Monefy, Mint
 - Recent 3 transactions
 - Goal progress
 
-### Web dashboard widgets
-
-- Same as in-app, but with drag-and-drop layout and more density
-
 ## 13. Search and filters
 
 - Global search (amount, merchant, note, tag, category)
@@ -523,8 +519,6 @@ Reference signals: BudgetBakers Wallet, YNAB, Money Lover, Spendee, Monefy, Mint
 
 ## 25. Power-user features
 
-- Keyboard shortcuts (web)
-- Command palette (web)
 - Bulk operations
 - Smart import (paste a line, parse it)
 - Custom dashboards

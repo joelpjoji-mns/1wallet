@@ -1,0 +1,21 @@
+{
+  "newFeatures": [
+    "Loading and restore screens now follow your selected theme, including dark, AMOLED, Material You, and custom accent colors.",
+    "Categories are unified across the app instead of being split into income and expense lists.",
+    "Notifications now focus on Android system notifications, including update availability alerts.",
+    "The side drawer uses a wider standard layout with more comfortable spacing around icons and labels."
+  ],
+  "bugFixes": [
+    "Removed visible transaction status fields, values, chips, and filters from transaction flows.",
+    "Custom accent colors now apply more consistently with readable contrast for outlines, text, and selected states.",
+    "Loan EMI plans now show the total due with principal and interest clearly separated, and interest no longer creates an incorrect record balance effect.",
+    "Calendar month grids now use the correct week range and start on Sunday, then Monday through Saturday.",
+    "The bottom tab island is now solid instead of transparent.",
+    "Startup loading and recovery handling were tightened so wallet restore, session checks, and fallback retry states stay consistent."
+  ],
+  "notes": [
+    "Built as Android 1.4.2 / 1040200 for arm64-v8a devices.",
+    "Expo SDK 56 package versions were aligned before release.",
+    "Validated with mobile typecheck, mobile lint, signed release build, physical phone install, non-debuggable release check, screenshots, and fatal-error log scans."
+  ]
+}
