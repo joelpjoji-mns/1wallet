@@ -1,15 +1,15 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import {
-    APP_UPDATE_PLATFORM,
-    type AppUpdateRelease,
-    type InstalledAppVersion,
-    type UpdateReleaseType,
+  APP_UPDATE_PLATFORM,
+  type AppUpdateRelease,
+  type InstalledAppVersion,
+  type UpdateReleaseType,
 } from './types';
 
-const FALLBACK_VERSION_NAME = '1.5.0';
-const FALLBACK_VERSION_CODE = 1050000;
-const FALLBACK_RUNTIME_VERSION = '1.5.0';
+const FALLBACK_VERSION_NAME = '1.5.3';
+const FALLBACK_VERSION_CODE = 1050300;
+const FALLBACK_RUNTIME_VERSION = '1.5.3';
 
 type Semver = {
   major: number;

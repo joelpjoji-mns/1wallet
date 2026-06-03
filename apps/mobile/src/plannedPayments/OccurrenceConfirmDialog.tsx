@@ -208,31 +208,41 @@ export function OccurrenceConfirmDialog({
           />
 
           <View style={[styles.reviewBox, { borderColor: theme.colors.outlineVariant }]}>
-            <ReviewLine
-              label="Record amount"
-              value={formatMoney({ amountMinor: totalMinor, currency }, state.preferences.locale)}
-            />
+            {split ? (
+              <ReviewLine
+                label="EMI"
+                value={formatMoney(
+                  { amountMinor: split.principalMinor, currency },
+                  state.preferences.locale,
+                )}
+              />
+            ) : null}
             {isTransfer && counterAccount ? (
               <ReviewLine label="Destination" value={counterAccount.name} />
             ) : null}
             {split ? (
               <>
                 <ReviewLine
-                  label="Principal"
-                  value={formatMoney(
-                    { amountMinor: split.principalMinor, currency },
-                    state.preferences.locale,
-                  )}
-                />
-                <ReviewLine
-                  label="Linked interest"
+                  label="Interest debit"
                   value={formatMoney(
                     { amountMinor: split.interestMinor, currency },
                     state.preferences.locale,
                   )}
                 />
+                <ReviewLine
+                  label="Total"
+                  value={formatMoney(
+                    { amountMinor: totalMinor, currency },
+                    state.preferences.locale,
+                  )}
+                />
               </>
-            ) : null}
+            ) : (
+              <ReviewLine
+                label="Total"
+                value={formatMoney({ amountMinor: totalMinor, currency }, state.preferences.locale)}
+              />
+            )}
           </View>
 
           {error ? (

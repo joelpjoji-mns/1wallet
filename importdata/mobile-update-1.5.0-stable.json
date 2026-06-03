@@ -1,0 +1,60 @@
+{
+  "releasePath": "appUpdates/android/releases/1050000",
+  "release": {
+    "platform": "android",
+    "channel": "stable",
+    "status": "published",
+    "versionName": "1.5.0",
+    "versionCode": 1050000,
+    "runtimeVersion": "1.5.0",
+    "releaseType": "minor",
+    "mandatory": false,
+    "requirement": "optional",
+    "minimumSupportedVersionCode": 0,
+    "publishedAt": "2026-06-02T14:47:45.228Z",
+    "changelog": {
+      "newFeatures": [
+        "Home Cash now shows a converted total with a compact native-currency split derived from existing Cash records.",
+        "Android startup uses the theme-aware loading handoff, native splash resources, and foreground capture service setup for a steadier release launch.",
+        "Review, Accounts, Home widgets, and Add flows include the latest responsiveness and autosave polish."
+      ],
+      "bugFixes": [
+        "Loan detail and edit screens now calculate disbursement-date interest, editable remaining amounts, EMI counts, and payoff dates consistently.",
+        "Ledger save queues, indexed balances, Review lookups, and dashboard widgets were hardened to reduce slow reloads and deadlock-prone save waits.",
+        "Cash and double-currency account tiles now stay the same size and use inline | separators instead of bordered mini-pills.",
+        "SMS capture, permissions, notifications, and local storage maintenance paths were tightened for the stable Android build."
+      ],
+      "notes": [
+        "Planned stable release: Android 1.5.0 / 1050000 for arm64-v8a devices.",
+        "Validated locally with mobile lint/typecheck, focused package typechecks, ledger tests, and signed release APK build; final physical 1.5.0 install is pending ADB reconnect."
+      ]
+    },
+    "apk": {
+      "downloadUrl": "https://github.com/joelpjoji-mns/1wallet/releases/download/android-stable-v1.5.0-1050000/1wallet-1.5.0-stable-arm64-v8a.apk",
+      "fileName": "1wallet-1.5.0-stable-arm64-v8a.apk",
+      "sizeBytes": 34076934,
+      "sha256": "d55fc9960e828ef8b974b01dedad0887f596ae7f30f56ae11920343b12885c59",
+      "architecture": "arm64-v8a",
+      "minSdk": 24
+    }
+  },
+  "channelPath": "appUpdates/android/channels/stable",
+  "channel": {
+    "platform": "android",
+    "channel": "stable",
+    "status": "published",
+    "latestVersionCode": 1050000,
+    "updatedAt": "2026-06-02T14:47:45.228Z"
+  },
+  "releaseFeedPath": "appUpdates/android/releaseFeed/998949999-1050000-stable-1.5.0",
+  "releaseFeed": {
+    "platform": "android",
+    "channel": "stable",
+    "status": "published",
+    "versionName": "1.5.0",
+    "versionCode": 1050000,
+    "releasePath": "appUpdates/android/releases/1050000",
+    "publishedAt": "2026-06-02T14:47:45.228Z",
+    "title": "1Wallet Android 1.5.0 Stable (1050000)"
+  }
+}

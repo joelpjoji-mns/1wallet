@@ -2,7 +2,10 @@ import type { Money } from '@1wallet/domain/money';
 import { formatMoney, fromMinor } from '@1wallet/domain/money';
 import type { Account, Category, Transaction } from '@1wallet/domain/types';
 import type { FutureRuleOccurrence } from '@1wallet/ledger/rules/futureGeneration';
-import { forecastFutureRuleOccurrences } from '@1wallet/ledger/rules/futureGeneration';
+import {
+    forecastFutureRuleOccurrences,
+    futureRuleInterestExternalRef,
+} from '@1wallet/ledger/rules/futureGeneration';
 import { rateBetween } from '@1wallet/ledger/services';
 import type { FutureGenerationRule } from '@1wallet/ledger/store/types';
 import { useLedger } from '@1wallet/state';
@@ -12,16 +15,16 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import {
-  Appbar,
-  Button,
-  Divider,
-  IconButton,
-  Modal,
-  Portal,
-  Surface,
-  Text,
-  TouchableRipple,
-  useTheme,
+    Appbar,
+    Button,
+    Divider,
+    IconButton,
+    Modal,
+    Portal,
+    Surface,
+    Text,
+    TouchableRipple,
+    useTheme,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { accountTypeLabel, resolveAccountIconVisual } from '../../src/accountOptions';
@@ -30,26 +33,26 @@ import { resolveCategoryIconVisual } from '../../src/categoryIcons';
 import { useBackLayer } from '../../src/components/AppBackLayer';
 import { useAppDrawer } from '../../src/components/AppDrawerHost';
 import {
-  AppMenuAction,
-  PremiumRow,
-  PremiumSearchInput,
-  TAB_BAR_OVERLAY_CLEARANCE,
+    AppMenuAction,
+    PremiumRow,
+    PremiumSearchInput,
+    TAB_BAR_OVERLAY_CLEARANCE,
 } from '../../src/components/AppKit';
 import {
-  OptionListOverlay,
-  OptionSelectorRow,
-  type OptionListItem,
+    OptionListOverlay,
+    OptionSelectorRow,
+    type OptionListItem,
 } from '../../src/components/OptionListOverlay';
 import { numericMediumFontFamily } from '../../src/fonts';
 import { iconSurfaceForThemeTone } from '../../src/iconSystem';
 import {
-  runAfterInteractionsWithTimeout,
-  type DeferredInteractionTask,
+    runAfterInteractionsWithTimeout,
+    type DeferredInteractionTask,
 } from '../../src/interactionScheduler';
 import {
-  EXPENSE_TRANSACTION_TYPES as EXPENSE_TYPES,
-  INCOME_TRANSACTION_TYPES as INCOME_TYPES,
-  transactionTypeLabel,
+    EXPENSE_TRANSACTION_TYPES as EXPENSE_TYPES,
+    INCOME_TRANSACTION_TYPES as INCOME_TYPES,
+    transactionTypeLabel,
 } from '../../src/transactionTypes';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -276,12 +279,15 @@ export default function Calendar() {
     }
 
     for (const transaction of transactions) {
+      if (isLinkedLoanInterestTransaction(transaction, state)) continue;
       if (!isReportableTransaction(transaction, state, selectedAccountIdSet)) continue;
 
       const amountMinor = amountForCategoryFilter(
         transaction,
         selectedCategoryId,
         splitTotalsByTransaction,
+        state,
+        baseCurrency,
       );
       if (amountMinor <= 0) continue;
 
@@ -1081,16 +1087,19 @@ function amountForCategoryFilter(
   transaction: Transaction,
   selectedCategoryId: string | undefined,
   splitTotalsByTransaction: SplitTotalsByTransaction,
+  state: ReturnType<typeof useLedger>['state'],
+  baseCurrency: string,
 ): number {
-  if (!selectedCategoryId) return Math.abs(transaction.baseAmount.amountMinor);
+  const transactionBaseMinor = calendarTransactionBaseMinor(transaction, state, baseCurrency);
+  if (!selectedCategoryId) return transactionBaseMinor;
   if (transaction.categoryId === selectedCategoryId)
-    return Math.abs(transaction.baseAmount.amountMinor);
+    return transactionBaseMinor;
 
   const splitMinor = splitTotalsByTransaction.get(transaction.id)?.get(selectedCategoryId) ?? 0;
   if (splitMinor <= 0 || transaction.amount.amountMinor === 0) return 0;
 
   const ratio = splitMinor / Math.abs(transaction.amount.amountMinor);
-  return Math.round(Math.abs(transaction.baseAmount.amountMinor) * ratio);
+  return Math.round(transactionBaseMinor * ratio);
 }
 
 function amountForForecastCategoryFilter(
@@ -1100,9 +1109,77 @@ function amountForForecastCategoryFilter(
   baseCurrency: string,
 ): number {
   if (selectedCategoryId && occurrence.categoryId !== selectedCategoryId) return 0;
+  return calendarForecastOccurrenceBaseMinor(occurrence, state, baseCurrency);
+}
+
+function calendarTransactionBaseMinor(
+  transaction: Transaction,
+  state: ReturnType<typeof useLedger>['state'],
+  baseCurrency: string,
+): number {
+  if (transaction.type !== 'loan_repayment') return Math.abs(transaction.baseAmount.amountMinor);
+  const loan = loanAccountForCalendarRepayment(transaction, state.accounts);
+  const interest = loan ? linkedLoanInterestForCalendar(transaction, state) : undefined;
+  const usesLoanInterestAccount = Boolean(interest && loan && interest.accountId === loan.id);
+  const principal = usesLoanInterestAccount
+    ? {
+        amountMinor: Math.max(0, transaction.amount.amountMinor - (interest?.amount.amountMinor ?? 0)),
+        currency: transaction.amount.currency,
+      }
+    : (transaction.counterAmount ?? transaction.amount);
   return Math.abs(
-    Math.round(occurrence.amountMinor * rateBetween(state, occurrence.currency, baseCurrency)),
+    Math.round(principal.amountMinor * rateBetween(state, principal.currency, baseCurrency)),
   );
+}
+
+function loanAccountForCalendarRepayment(
+  transaction: Transaction,
+  accounts: Account[],
+): Account | undefined {
+  const account = accounts.find((item) => item.id === transaction.accountId);
+  if (account && isLoanAccountType(account.type)) return account;
+  const counterAccount = transaction.counterAccountId
+    ? accounts.find((item) => item.id === transaction.counterAccountId)
+    : undefined;
+  return counterAccount && isLoanAccountType(counterAccount.type) ? counterAccount : undefined;
+}
+
+function linkedLoanInterestForCalendar(
+  repayment: Transaction,
+  state: ReturnType<typeof useLedger>['state'],
+): Transaction | undefined {
+  const expectedRef = repayment.externalRef
+    ? futureRuleInterestExternalRef(repayment.externalRef)
+    : undefined;
+  return state.transactions.find((transaction) => {
+    if (transaction.status === 'void') return false;
+    if (expectedRef && transaction.externalRef === expectedRef) return true;
+    return (
+      transaction.originalTransactionId === repayment.id &&
+      (transaction.type === 'interest_in' || transaction.type === 'interest_out')
+    );
+  });
+}
+
+function isLoanAccountType(type: Account['type']): boolean {
+  return type === 'loan' || type === 'overdraft' || type === 'lent';
+}
+
+function calendarForecastOccurrenceBaseMinor(
+  occurrence: FutureRuleOccurrence,
+  state: ReturnType<typeof useLedger>['state'],
+  baseCurrency: string,
+): number {
+  if (occurrence.type !== 'loan_repayment') {
+    return Math.abs(
+      Math.round(occurrence.amountMinor * rateBetween(state, occurrence.currency, baseCurrency)),
+    );
+  }
+  const principalMinor =
+    occurrence.principalAmountMinor ?? occurrence.counterAmountMinor ?? occurrence.amountMinor;
+  const principalCurrency =
+    occurrence.principalCurrency ?? occurrence.counterCurrency ?? occurrence.currency;
+  return Math.abs(Math.round(principalMinor * rateBetween(state, principalCurrency, baseCurrency)));
 }
 
 function entryKindForTransaction(transaction: Transaction): DayEntryKind | undefined {
@@ -1162,9 +1239,7 @@ function virtualForecastDeltaForAccountsThroughDate(
     }
     const kind = entryKindForTransactionType(occurrence.type);
     if (!kind) continue;
-    const amount = Math.abs(
-      Math.round(occurrence.amountMinor * rateBetween(state, occurrence.currency, currency)),
-    );
+    const amount = calendarForecastOccurrenceBaseMinor(occurrence, state, currency);
     if (kind === 'income') delta += amount;
     if (kind === 'expense') delta -= amount;
   }
@@ -1230,6 +1305,26 @@ function isReportableTransaction(
     );
   }
   return true;
+}
+
+function isLinkedLoanInterestTransaction(
+  transaction: Transaction,
+  state: ReturnType<typeof useLedger>['state'],
+): boolean {
+  if (transaction.type !== 'interest_in' && transaction.type !== 'interest_out') return false;
+  if (transaction.originalTransactionId) {
+    return state.transactions.some(
+      (item) => item.id === transaction.originalTransactionId && item.type === 'loan_repayment',
+    );
+  }
+  if (!transaction.externalRef) return false;
+  return state.transactions.some(
+    (item) =>
+      item.type === 'loan_repayment' &&
+      (item.externalRef
+        ? futureRuleInterestExternalRef(item.externalRef) === transaction.externalRef
+        : false),
+  );
 }
 
 function entryMatchesSelectedAccounts(

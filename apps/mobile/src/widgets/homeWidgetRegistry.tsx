@@ -1,24 +1,25 @@
 import type { Money } from '@1wallet/domain/money';
 import {
-  currencyDefinition,
-  formatMoney,
-  fromMinor,
-  minorUnitsFor,
-  normalizeCurrencyCode,
-  toMinor,
+    currencyDefinition,
+    formatMoney,
+    fromMinor,
+    minorUnitsFor,
+    normalizeCurrencyCode,
+    toMinor,
 } from '@1wallet/domain/money';
 import type { Account, Category, Transaction, TransactionType } from '@1wallet/domain/types';
+import { buildLoanForecast } from '@1wallet/ledger/loans';
 import {
-  FUTURE_RULE_REF_PREFIX,
-  forecastFutureRuleOccurrences,
-  futureRuleInterestExternalRef,
-  type FutureRuleOccurrence,
+    FUTURE_RULE_REF_PREFIX,
+    forecastFutureRuleOccurrences,
+    futureRuleInterestExternalRef,
+    type FutureRuleOccurrence,
 } from '@1wallet/ledger/rules/futureGeneration';
 import {
-  convertMoneyForDisplay,
-  displayCurrency,
-  enabledCurrencies,
-  rateBetween,
+    convertMoneyForDisplay,
+    displayCurrency,
+    enabledCurrencies,
+    rateBetween,
 } from '@1wallet/ledger/services';
 import type { LedgerIndexes } from '@1wallet/ledger/services/indexes';
 import { indexedAccountBalance } from '@1wallet/ledger/services/indexes';
@@ -29,27 +30,27 @@ import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  PanResponder,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-  type GestureResponderEvent,
-  type LayoutChangeEvent,
+    PanResponder,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    View,
+    type GestureResponderEvent,
+    type LayoutChangeEvent,
 } from 'react-native';
 import {
-  Chip,
-  Divider,
-  IconButton,
-  Modal,
-  Portal,
-  ProgressBar,
-  Surface,
-  Text,
-  TextInput,
-  TouchableRipple,
-  useTheme,
-  type MD3Theme,
+    Chip,
+    Divider,
+    IconButton,
+    Modal,
+    Portal,
+    ProgressBar,
+    Surface,
+    Text,
+    TextInput,
+    TouchableRipple,
+    useTheme,
+    type MD3Theme,
 } from 'react-native-paper';
 import { resolveCategoryIconVisual } from '../categoryIcons';
 import { categoryBreadcrumb } from '../categoryTree';
@@ -58,49 +59,49 @@ import { OptionListOverlay, type OptionListItem } from '../components/OptionList
 import { positiveAmountColor } from '../financeColors';
 import { numericMediumFontFamily } from '../fonts';
 import {
-  iconSurfaceForThemeTone,
-  iconTextColorForBackground,
-  insetIconSurfaceForBackground,
-  type IconSurfaceTone,
+    iconSurfaceForThemeTone,
+    iconTextColorForBackground,
+    insetIconSurfaceForBackground,
+    type IconSurfaceTone,
 } from '../iconSystem';
 import { transactionForRuleOccurrence } from '../plannedPayments/ruleActions';
 import { formatRecordDateLabel } from '../recordDateTime';
 import {
-  transactionAmountDisplay,
-  type TransactionAmountRowSide,
+    transactionAmountDisplay,
+    type TransactionAmountRowSide,
 } from '../transactionDisplayAmounts';
 import {
-  INCOME_TRANSACTION_TYPES as INFLOW_TYPES,
-  EXPENSE_TRANSACTION_TYPES as OUTFLOW_TYPES,
-  TRANSFER_TRANSACTION_TYPES as TRANSFER_TYPES,
-  transactionTypeIcon,
-  transactionTypeIconTone,
-  transactionTypeLabel,
+    INCOME_TRANSACTION_TYPES as INFLOW_TYPES,
+    EXPENSE_TRANSACTION_TYPES as OUTFLOW_TYPES,
+    TRANSFER_TRANSACTION_TYPES as TRANSFER_TYPES,
+    transactionTypeIcon,
+    transactionTypeIconTone,
+    transactionTypeLabel,
 } from '../transactionTypes';
 import {
-  HOME_WIDGET_REORDER_LONG_PRESS_DELAY_MS,
-  HomeWidgetReorderProvider,
-  HomeWidgetShell,
-  WidgetDateFilterButton,
-  WidgetDropdownButton,
-  WidgetEmpty,
-  useHomeWidgetReorderLongPress,
+    HOME_WIDGET_REORDER_LONG_PRESS_DELAY_MS,
+    HomeWidgetReorderProvider,
+    HomeWidgetShell,
+    WidgetDateFilterButton,
+    WidgetDropdownButton,
+    WidgetEmpty,
+    useHomeWidgetReorderLongPress,
 } from './HomeWidgetShell';
 import {
-  dateRangeForPreset,
-  dateRangeSubtitle,
-  filterTransactionsByPreset,
-  timestampInRange,
+    dateRangeForPreset,
+    dateRangeSubtitle,
+    filterTransactionsByPreset,
+    timestampInRange,
 } from './dateFilters';
 import {
-  BALANCE_HERO_DATE_PRESETS,
-  BALANCE_HERO_DEFAULT_DATE_PRESET,
-  CURRENCY_RATE_DATE_PRESETS,
-  HOME_WIDGET_DATE_LABELS,
-  HOME_WIDGET_META,
-  type HomeWidgetDatePreset,
-  type HomeWidgetId,
-  type HomeWidgetSize,
+    BALANCE_HERO_DATE_PRESETS,
+    BALANCE_HERO_DEFAULT_DATE_PRESET,
+    CURRENCY_RATE_DATE_PRESETS,
+    HOME_WIDGET_DATE_LABELS,
+    HOME_WIDGET_META,
+    type HomeWidgetDatePreset,
+    type HomeWidgetId,
+    type HomeWidgetSize,
 } from './homeWidgetTypes';
 
 type WidgetProps = {
@@ -142,6 +143,18 @@ const plannedTransactionsCache = new WeakMap<LedgerIndexes, PlannedTransactionCa
 
 function balanceForAccount(indexes: LedgerIndexes, account: Account): Money {
   return indexedAccountBalance(indexes, account);
+}
+
+function loanOutstandingForDisplay(
+  state: LedgerStateForWidget,
+  indexes: LedgerIndexes,
+  account: Account,
+): Money {
+  const balance = balanceForAccount(indexes, account);
+  if (!account.loanDetails || !['loan', 'overdraft', 'lent'].includes(account.type)) return balance;
+  const outstanding = buildLoanForecast(state, account, account.loanDetails, balance).outstanding;
+  const direction = account.type === 'lent' ? 1 : -1;
+  return { amountMinor: Math.abs(outstanding.amountMinor) * direction, currency: outstanding.currency };
 }
 
 function cashCurrencyBalancesForAccount(indexes: LedgerIndexes, account: Account): Money[] {
@@ -407,7 +420,8 @@ function homeTransactionFromScheduled(
   transaction: Transaction,
 ): Transaction {
   const interest = linkedScheduledFutureInterestTransaction(indexes, transaction);
-  if (!interest) return transaction;
+  const loanAccountId = loanAccountIdForWidgetTransaction(state, transaction);
+  if (!interest || (loanAccountId && interest.accountId === loanAccountId)) return transaction;
   const amount = {
     amountMinor: transaction.amount.amountMinor + interest.amount.amountMinor,
     currency: transaction.amount.currency,
@@ -430,9 +444,11 @@ function homeTransactionFromOccurrence(
   const interest = existing
     ? linkedScheduledFutureInterestTransaction(indexes, existing)
     : undefined;
+  const loanAccountId = existing ? loanAccountIdForWidgetTransaction(state, existing) : undefined;
+  const includeLegacyInterest = Boolean(interest && loanAccountId && interest.accountId !== loanAccountId);
   const amount = {
     amountMinor: existing
-      ? existing.amount.amountMinor + (interest?.amount.amountMinor ?? 0)
+      ? existing.amount.amountMinor + (includeLegacyInterest ? (interest?.amount.amountMinor ?? 0) : 0)
       : occurrence.amountMinor,
     currency: existing?.amount.currency ?? occurrence.currency,
   };
@@ -444,6 +460,7 @@ function homeTransactionFromOccurrence(
           currency: occurrence.counterCurrency ?? occurrence.currency,
         }
       : undefined);
+
   const occurredAt = existing?.occurredAt ?? occurrence.occurredAt;
   return {
     id: existing?.id ?? `home-forecast:${occurrence.externalRef}`,
@@ -482,6 +499,24 @@ function homeTransactionFromOccurrence(
     createdAt: existing?.createdAt ?? occurredAt,
     updatedAt: existing?.updatedAt ?? occurredAt,
   };
+}
+
+function loanAccountIdForWidgetTransaction(
+  state: LedgerStateForWidget,
+  transaction: Transaction,
+): string | undefined {
+  const account = state.accounts.find((item) => item.id === transaction.accountId);
+  if (account && isLoanAccountTypeForWidget(account.type)) return account.id;
+  const counterAccount = transaction.counterAccountId
+    ? state.accounts.find((item) => item.id === transaction.counterAccountId)
+    : undefined;
+  return counterAccount && isLoanAccountTypeForWidget(counterAccount.type)
+    ? counterAccount.id
+    : undefined;
+}
+
+function isLoanAccountTypeForWidget(type: Account['type']): boolean {
+  return type === 'loan' || type === 'overdraft' || type === 'lent';
 }
 
 function plannedInflowBaseAmountMinor(
@@ -877,7 +912,7 @@ function AccountGridWidget({ size, selectedAccountId, onSelectedAccountChange }:
       accounts.map((account, index) => {
         const color =
           account.color ?? ACCOUNT_COLORS[index % ACCOUNT_COLORS.length] ?? tokens.color.md3Primary;
-        const balance = balanceForAccount(indexes, account);
+        const balance = loanOutstandingForDisplay(state, indexes, account);
         const cashDisplayBalance =
           account.type === 'cash'
             ? cashCurrencyTotalForAccount(state, indexes, account, viewCurrency)
@@ -1808,9 +1843,9 @@ function LoanPayoffWidget({
     selectedAccountId,
   ).filter((transaction) => transaction.type === 'loan_repayment');
   const remainingMinor = loans.reduce((sum, loan) => {
-    const balance = balanceForAccount(indexes, loan);
+    const balance = loanOutstandingForDisplay(state, indexes, loan);
     const display = selectors.convertMoneyForDisplay(state, balance, viewCurrency);
-    return sum + Math.abs(Math.min(display.amountMinor, 0));
+    return sum + Math.abs(display.amountMinor);
   }, 0);
   const emiMinor = emis.reduce(
     (sum, emi) =>
@@ -3799,9 +3834,7 @@ function AccountTile({
   onPressAccount,
 }: AccountTileProps) {
   const handlePress = useCallback(() => onPressAccount(accountId), [accountId, onPressAccount]);
-  const cashBreakdownLabel = cashCurrencyBreakdown
-    ?.map(cashCurrencyInlineLabel)
-    .join(' | ');
+  const cashBreakdownLabel = cashCurrencyBreakdown?.map(cashCurrencyInlineLabel).join(' | ');
   const secondaryBalanceLabel = [convertedBalanceLabel, cashBreakdownLabel]
     .filter(Boolean)
     .join(' | ');
@@ -5506,28 +5539,28 @@ const styles = StyleSheet.create({
   accountTile: {
     flexGrow: 0,
     flexShrink: 0,
-    flexBasis: '31.7%',
-    maxWidth: '31.7%',
-    height: 66,
+    flexBasis: '32%',
+    maxWidth: '32%',
+    height: 48,
     borderRadius: tokens.radius.md,
     borderWidth: 2,
     borderColor: 'transparent',
     overflow: 'hidden',
   },
-  accountTileCompact: { height: 58 },
+  accountTileCompact: { height: 44 },
   selectedAccountTile: {},
   pressedAccountTile: { transform: [{ scale: 0.985 }] },
   accountTileContent: {
     flex: 1,
-    paddingHorizontal: 7,
-    paddingVertical: 6,
-    gap: 2,
+    paddingHorizontal: 5,
+    paddingVertical: 0,
+    gap: 0,
     justifyContent: 'center',
   },
-  accountTopLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.space.xs },
+  accountTopLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.space.xxs },
   accountIcon: {
-    width: 22,
-    height: 22,
+    width: 16,
+    height: 16,
     borderRadius: tokens.radius.sm,
     alignItems: 'center',
     justifyContent: 'center',

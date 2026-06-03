@@ -1,32 +1,42 @@
 'use client';
 
 import { tokens } from '@1wallet/ui';
-import type { ReactElement, ReactNode } from 'react';
+import type { ReactElement, ReactNode, CSSProperties } from 'react';
 
-const scheme = tokens.color.md3.light;
-
-export function Card({ title, children }: { title: string; children: ReactNode }): ReactElement {
+export function Card({
+  title,
+  children,
+  style,
+}: {
+  title?: ReactNode;
+  children: ReactNode;
+  style?: CSSProperties;
+}): ReactElement {
   return (
     <section
+      className="glass"
       style={{
-        background: scheme.surfaceContainerLowest,
-        border: `1px solid ${scheme.outlineVariant}`,
-        borderRadius: tokens.radius.md,
-        padding: tokens.space.lg,
-        boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+        borderRadius: tokens.radius.xl,
+        padding: tokens.space.xl,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: tokens.space.md,
+        transition: 'var(--transition-normal)',
+        ...style,
       }}
     >
-      <h3
-        style={{
-          margin: 0,
-          marginBottom: tokens.space.sm,
-          fontSize: tokens.font.size.md,
-          color: scheme.onSurfaceVariant,
-          fontWeight: tokens.font.weight.semibold,
-        }}
-      >
-        {title}
-      </h3>
+      {title && (
+        <h3
+          style={{
+            margin: 0,
+            fontSize: tokens.font.size.lg,
+            color: 'var(--color-on-surface)',
+            fontWeight: tokens.font.weight.bold,
+          }}
+        >
+          {title}
+        </h3>
+      )}
       {children}
     </section>
   );

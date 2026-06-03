@@ -3,8 +3,13 @@ import { tokens } from '@1wallet/ui';
 import { Roboto, Roboto_Mono } from 'next/font/google';
 import type { ReactElement, ReactNode } from 'react';
 import { Providers } from '../lib/providers';
+import { Sidebar } from '../components/Sidebar';
+import { ThemeManager } from '../components/ThemeManager';
+import { AuthProvider } from '../lib/auth';
+import { CloudSyncProvider } from '../lib/cloudSync';
+import { AuthGuard } from '../components/AuthGuard';
+import './globals.css';
 
-const scheme = tokens.color.md3.light;
 const roboto = Roboto({
   subsets: ['latin'],
   weight: ['400', '500', '700'],
@@ -30,13 +35,22 @@ export default function RootLayout({ children }: { children: ReactNode }): React
         style={{
           margin: 0,
           fontFamily: 'var(--font-ui), Roboto, "Helvetica Neue", Arial, sans-serif',
-          background: scheme.background,
-          color: scheme.onBackground,
+          backgroundColor: 'var(--color-bg, #FBF8F3)',
+          color: 'var(--color-on-bg, #1B1B1F)',
           minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         <Providers>
-          <Shell>{children}</Shell>
+          <AuthProvider>
+            <CloudSyncProvider>
+              <ThemeManager />
+              <AuthGuard>
+                <Shell>{children}</Shell>
+              </AuthGuard>
+            </CloudSyncProvider>
+          </AuthProvider>
         </Providers>
       </body>
     </html>
@@ -45,44 +59,35 @@ export default function RootLayout({ children }: { children: ReactNode }): React
 
 function Shell({ children }: { children: ReactNode }): ReactElement {
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <aside
-        style={{
-          width: 236,
-          padding: tokens.space.lg,
-          borderRight: `1px solid ${scheme.outlineVariant}`,
-          background: scheme.surfaceContainerLow,
-        }}
-      >
-        <h2 style={{ margin: 0, marginBottom: tokens.space.lg }}>1wallet</h2>
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: tokens.space.sm }}>
-          <NavLink href="/">Home</NavLink>
-          <NavLink href="/transactions">Transactions</NavLink>
-          <NavLink href="/accounts">Accounts</NavLink>
-          <NavLink href="/currencies">Currencies</NavLink>
-          <NavLink href="/planner">Planner</NavLink>
-          <NavLink href="/review">Review Queue</NavLink>
-          <NavLink href="/settings">Settings</NavLink>
-        </nav>
-      </aside>
-      <main style={{ flex: 1, padding: tokens.space.xl, minWidth: 0 }}>{children}</main>
-    </div>
-  );
-}
-
-function NavLink({ href, children }: { href: string; children: ReactNode }): ReactElement {
-  return (
-    <a
-      href={href}
-      style={{
-        color: scheme.onSurface,
-        textDecoration: 'none',
-        padding: `${tokens.space.md}px ${tokens.space.md}px`,
-        borderRadius: tokens.radius.lg,
-        fontWeight: tokens.font.weight.semibold,
-      }}
+    <div
+      style={{ display: 'flex', minHeight: '100vh', flex: 1, backgroundColor: 'var(--color-bg)' }}
     >
-      {children}
-    </a>
+      <Sidebar />
+      <main
+        style={{
+          flex: 1,
+          padding: tokens.space.xl,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          overflowY: 'auto',
+        }}
+        className="hide-scrollbar"
+      >
+        <div
+          style={{
+            width: '100%',
+            maxWidth: 1100,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: tokens.space.lg,
+            flex: 1,
+          }}
+        >
+          {children}
+        </div>
+      </main>
+    </div>
   );
 }
