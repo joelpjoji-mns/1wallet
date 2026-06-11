@@ -11,26 +11,20 @@ permissions:
   contents: read
 
 jobs:
-  typecheck:
-    name: Typecheck
+  analyze:
+    name: Flutter Analyze
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
-          version: 11.4.0
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
+          flutter-version: '3.24.x' # Or whatever stable version
 
       - name: Install dependencies
-        run: pnpm --config.auto-install-peers=false --config.node-linker=hoisted install --frozen-lockfile
+        run: flutter pub get
 
-      - name: Typecheck mobile app
-        run: pnpm --config.auto-install-peers=false --config.node-linker=hoisted --filter @1wallet/mobile typecheck
+      - name: Analyze
+        run: flutter analyze
