@@ -600,10 +600,10 @@ class _CurrencyValuesHomeWidgetState extends State<CurrencyValuesHomeWidget> {
     final quote = snapshot.quoteCurrency;
 
     if (quote == null || snapshot.rate == null) {
-      return HomeWidgetCard(
+      return const HomeWidgetCard(
         title: 'Currency values',
         icon: Icons.currency_pound_rounded,
-        child: const EmptyState(
+        child: EmptyState(
           icon: Icons.currency_exchange_outlined,
           title: 'No foreign currency yet',
           body: 'Foreign accounts or refreshed rates will appear here.',

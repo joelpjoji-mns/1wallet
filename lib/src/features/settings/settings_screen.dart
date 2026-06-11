@@ -210,13 +210,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ? MetricTone.warning
                       : MetricTone.standard,
                 ),
-                InfoRow(
+                const InfoRow(
                   label: 'Auto Capture',
                   value: 'SMS ready',
                   icon: Icons.sms_outlined,
                   tone: MetricTone.positive,
                 ),
-                InfoRow(
+                const InfoRow(
                   label: 'CSV imports',
                   value: 'Ready',
                   icon: Icons.table_chart_outlined,

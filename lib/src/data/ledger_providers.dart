@@ -17,7 +17,7 @@ import 'ledger_models.dart';
 const _ledgerStorageKey = 'one_wallet_flutter.ledger.v1';
 
 final ledgerRepositoryProvider = Provider<LedgerRepository>((ref) {
-  return LedgerRepository();
+  return const LedgerRepository();
 });
 
 final ledgerLoadStateProvider = StateProvider<LedgerLoadState>((ref) {
