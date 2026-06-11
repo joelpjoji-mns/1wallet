@@ -1,50 +1,392 @@
-name: Android Release
+name: Android Release Core
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
+  workflow_call:
+    inputs:
+      channel:
+        description: Update channel to publish
+        required: true
+        type: string
+      beta_number:
+        description: Deprecated. Beta releases now use a unique patch version such as 1.4.2-beta.
+        required: false
+        default: '1'
+        type: string
+      release_type:
+        description: Release type for update metadata
+        required: false
+        default: ''
+        type: string
+      mandatory:
+        description: Mark the in-app update as mandatory
+        required: false
+        default: false
+        type: boolean
+      features:
+        description: New feature changelog lines, one per line
+        required: false
+        default: ''
+        type: string
+      fixes:
+        description: Bug fix changelog lines, one per line
+        required: false
+        default: ''
+        type: string
+      notes:
+        description: Extra release notes, one per line
+        required: false
+        default: ''
+        type: string
+      publish_assets_repo:
+        description: Also mirror APK to APK_RELEASE_REPO
+        required: false
+        default: false
+        type: boolean
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Update channel to publish
+        required: true
+        default: beta
+        type: choice
+        options:
+          - beta
+          - stable
+      beta_number:
+        description: Deprecated. Beta releases now use a unique patch version such as 1.4.2-beta.
+        required: true
+        default: '1'
+        type: string
+      release_type:
+        description: Release type for update metadata
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      mandatory:
+        description: Mark the in-app update as mandatory
+        required: true
+        default: false
+        type: boolean
+      features:
+        description: New feature changelog lines, one per line
+        required: false
+        type: string
+      fixes:
+        description: Bug fix changelog lines, one per line
+        required: false
+        type: string
+      notes:
+        description: Extra release notes, one per line
+        required: false
+        type: string
+      publish_assets_repo:
+        description: Also mirror APK to APK_RELEASE_REPO
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: android-release-${{ github.ref }}-${{ inputs.channel || 'stable' }}
+  cancel-in-progress: false
 
 jobs:
-  build:
-    name: Build & Release APK/AAB
+  release:
+    name: Build and publish APK
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'push'
+    env:
+      APK_PATH: build/app/outputs/flutter-apk/app-release.apk
+      RELEASE_ARCHITECTURE: arm64-v8a
+      ASSET_REPO: ${{ vars.APK_RELEASE_REPO }}
+      FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID || 'wallet-1a5af' }}
+      UPDATE_CHANNEL: ${{ inputs.channel || 'stable' }}
+      PUBLISH_ASSET_REPO_INPUT: ${{ inputs.publish_assets_repo }}
+      PUBLISH_ASSET_REPO_DEFAULT: ${{ vars.PUBLISH_APK_TO_ASSETS_REPO || 'false' }}
+      RELEASE_TYPE: ${{ inputs.release_type }}
+      MANDATORY_UPDATE: ${{ inputs.mandatory }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate release trigger
+        run: |
+          if [ "$UPDATE_CHANNEL" = "stable" ] && [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Stable releases must run from main."
+            exit 1
+          fi
+          if [ "$UPDATE_CHANNEL" = "beta" ] && [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            echo "::error::Beta releases must run from development, feature/*, or bug/*, not main."
+            exit 1
+          fi
+          if [ "$UPDATE_CHANNEL" = "beta" ] && [ "$GITHUB_REF" != "refs/heads/development" ] && [[ "$GITHUB_REF_NAME" != feature/* ]] && [[ "$GITHUB_REF_NAME" != bug/* ]]; then
+            echo "::error::Beta releases must run from development, feature/*, or bug/*."
+            exit 1
+          fi
+          echo "Publishing $UPDATE_CHANNEL update metadata from $GITHUB_REF_NAME."
 
       - name: Setup Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
-          java-version: '17'
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android build packages
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;27.1.12297006"
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.x'
+          flutter-version: '3.24.5'
+          channel: 'stable'
+          cache: true
 
-      - name: Install dependencies
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Flutter dependencies
         run: flutter pub get
 
-      - name: Build APK
+      - name: Write mobile environment
+        run: |
+          {
+            echo "EXPO_PUBLIC_FIREBASE_API_KEY=${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}"
+            echo "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}"
+            echo "EXPO_PUBLIC_FIREBASE_PROJECT_ID=${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}"
+            echo "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}"
+            echo "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}"
+            echo "EXPO_PUBLIC_FIREBASE_APP_ID=${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}"
+            echo "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=${{ secrets.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}"
+            echo "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}"
+            echo "EXPO_PUBLIC_FIREBASE_USE_EMULATOR=false"
+          } > .env.local
+
+      - name: Restore Android release keystore
+        run: |
+          printf '%s' "${{ secrets.ONEWALLET_RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > android/release.keystore
+          chmod 600 android/release.keystore
+
+      - name: Read release info
+        id: info
+        run: node scripts/mobile-release-info.mjs --channel "$UPDATE_CHANNEL" --beta-number "${{ inputs.beta_number || '1' }}" --output "$GITHUB_OUTPUT"
+
+      - name: Collect release note source
+        id: notes_source
         env:
-          ONEWALLET_RELEASE_STORE_FILE: ${{ secrets.ONEWALLET_RELEASE_STORE_FILE }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] && [ "$UPDATE_CHANNEL" = "beta" ] && [ "$GITHUB_REF" != "refs/heads/development" ]; then
+            gh pr list --repo "$GITHUB_REPOSITORY" --head "$GITHUB_REF_NAME" --state open --json number,title,body,url,labels --limit 1 > .tmp-pr.json || echo "[]" > .tmp-pr.json
+          else
+            gh api -H "Accept: application/vnd.github+json" \
+              "/repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" \
+              --jq '[.[] | {number,title,body,url,labels: [.labels[].name]}] | .[0:1]' > .tmp-pr.json || echo "[]" > .tmp-pr.json
+          fi
+          skip_release="$(node -e "const fs=require('fs'); const pr=(JSON.parse(fs.readFileSync('.tmp-pr.json','utf8'))||[])[0]; const labels=(pr?.labels||[]).map((item)=>String(typeof item==='string'?item:item.name||'').toLowerCase()); process.stdout.write(labels.includes('skip-release')?'true':'false')")"
+          echo "skip_release=$skip_release" >> "$GITHUB_OUTPUT"
+          if [ "$skip_release" = "true" ]; then
+            echo "PR has skip-release label; Android release publishing will be skipped."
+          fi
+          previous_tag="$(git describe --tags --match 'android-*' --abbrev=0 2>/dev/null || true)"
+          if [ -n "$previous_tag" ]; then
+            git log --pretty=format:'%s' "$previous_tag..HEAD" > .tmp-commits.txt
+          else
+            git log --pretty=format:'%s' -20 > .tmp-commits.txt
+          fi
+
+      - name: Generate release notes
+        if: steps.notes_source.outputs.skip_release != 'true'
+        env:
+          RELEASE_FEATURES: ${{ inputs.features }}
+          RELEASE_FIXES: ${{ inputs.fixes }}
+          RELEASE_NOTES: ${{ inputs.notes }}
+        run: |
+          changelog_args=()
+          if [ -n "$RELEASE_FEATURES" ]; then
+            changelog_args+=(--feature "$RELEASE_FEATURES")
+          fi
+          if [ -n "$RELEASE_FIXES" ]; then
+            changelog_args+=(--fix "$RELEASE_FIXES")
+          fi
+          if [ -n "$RELEASE_NOTES" ]; then
+            changelog_args+=(--note "$RELEASE_NOTES")
+          fi
+          node scripts/mobile-release-notes.mjs \
+            --pr-json .tmp-pr.json \
+            --commit-log .tmp-commits.txt \
+            --version "${{ steps.info.outputs.versionName }}" \
+            --version-code "${{ steps.info.outputs.versionCode }}" \
+            --require-changelog true \
+            "${changelog_args[@]}" \
+            --output .tmp-release-notes.json \
+            --markdown .tmp-release-notes.md
+
+      - name: Build signed arm64 APK
+        if: steps.notes_source.outputs.skip_release != 'true'
+        env:
+          ONEWALLET_RELEASE_ARCHITECTURES: arm64-v8a
+          ONEWALLET_RELEASE_STORE_FILE: release.keystore
           ONEWALLET_RELEASE_STORE_PASSWORD: ${{ secrets.ONEWALLET_RELEASE_STORE_PASSWORD }}
           ONEWALLET_RELEASE_KEY_ALIAS: ${{ secrets.ONEWALLET_RELEASE_KEY_ALIAS }}
           ONEWALLET_RELEASE_KEY_PASSWORD: ${{ secrets.ONEWALLET_RELEASE_KEY_PASSWORD }}
-        run: flutter build apk --release
+          ONEWALLET_VERSION_NAME: ${{ steps.info.outputs.versionName }}
+          ONEWALLET_VERSION_CODE: ${{ steps.info.outputs.versionCode }}
+        run: flutter build apk --release --target-platform android-arm64 --build-name="${{ steps.info.outputs.versionName }}" --build-number="${{ steps.info.outputs.versionCode }}"
 
-      - name: Build AppBundle
+      - name: Stage release assets
+        if: steps.notes_source.outputs.skip_release != 'true'
+        run: |
+          mkdir -p .tmp-release-assets
+          cp "$APK_PATH" ".tmp-release-assets/${{ steps.info.outputs.apkFileName }}"
+
+      - name: Publish APK to this repository release
+        if: steps.notes_source.outputs.skip_release != 'true'
         env:
-          ONEWALLET_RELEASE_STORE_FILE: ${{ secrets.ONEWALLET_RELEASE_STORE_FILE }}
-          ONEWALLET_RELEASE_STORE_PASSWORD: ${{ secrets.ONEWALLET_RELEASE_STORE_PASSWORD }}
-          ONEWALLET_RELEASE_KEY_ALIAS: ${{ secrets.ONEWALLET_RELEASE_KEY_ALIAS }}
-          ONEWALLET_RELEASE_KEY_PASSWORD: ${{ secrets.ONEWALLET_RELEASE_KEY_PASSWORD }}
-        run: flutter build appbundle --release
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ steps.info.outputs.tag }}"
+          title="${{ steps.info.outputs.releaseTitle }}"
+          target="$GITHUB_SHA"
+          create_flags=()
+          edit_flags=()
+          if [ "${{ steps.info.outputs.prerelease }}" = "true" ]; then
+            create_flags+=(--prerelease --latest=false)
+            edit_flags+=(--prerelease)
+          else
+            create_flags+=(--latest)
+            edit_flags+=(--latest)
+          fi
+          git tag --force "$tag" "$target"
+          git push --force origin "refs/tags/$tag"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            if [ "${{ steps.info.outputs.prerelease }}" = "true" ]; then
+              echo "::error::Beta release $tag already exists. Bump the development beta patch version before publishing again."
+              exit 1
+            fi
+            gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --target "$target" --title "$title" --notes-file .tmp-release-notes.md "${edit_flags[@]}"
+          else
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$target" --title "$title" --notes-file .tmp-release-notes.md "${create_flags[@]}"
+          fi
+          gh release upload "$tag" ".tmp-release-assets/${{ steps.info.outputs.apkFileName }}" --repo "$GITHUB_REPOSITORY" --clobber
 
-      - name: Upload APK
+      - name: Publish APK to public assets repo
+        if: steps.notes_source.outputs.skip_release != 'true'
+        id: asset_release
+        env:
+          GH_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
+        run: |
+          tag="${{ steps.info.outputs.tag }}"
+          title="${{ steps.info.outputs.releaseTitle }}"
+          download_repo="$GITHUB_REPOSITORY"
+          publish_asset_repo="${PUBLISH_ASSET_REPO_INPUT:-$PUBLISH_ASSET_REPO_DEFAULT}"
+          create_flags=()
+          edit_flags=()
+          if [ "${{ steps.info.outputs.prerelease }}" = "true" ]; then
+            create_flags+=(--prerelease --latest=false)
+            edit_flags+=(--prerelease)
+          else
+            create_flags+=(--latest)
+            edit_flags+=(--latest)
+          fi
+          if [ "$publish_asset_repo" != "false" ] && [ -n "$ASSET_REPO" ]; then
+            if gh release view "$tag" --repo "$ASSET_REPO" >/dev/null 2>&1; then
+              if [ "${{ steps.info.outputs.prerelease }}" = "true" ]; then
+                echo "::error::Beta release $tag already exists in $ASSET_REPO. Bump the development beta patch version before publishing again."
+                exit 1
+              fi
+              gh release edit "$tag" --repo "$ASSET_REPO" --title "$title" --notes-file .tmp-release-notes.md "${edit_flags[@]}"
+            else
+              gh release create "$tag" --repo "$ASSET_REPO" --title "$title" --notes-file .tmp-release-notes.md "${create_flags[@]}"
+            fi
+            gh release upload "$tag" ".tmp-release-assets/${{ steps.info.outputs.apkFileName }}" --repo "$ASSET_REPO" --clobber
+            download_repo="$ASSET_REPO"
+          fi
+          download_url="$(gh release view "$tag" --repo "$download_repo" --json assets --jq '.assets[] | select(.name == "${{ steps.info.outputs.apkFileName }}") | .url')"
+          if [ -z "$download_url" ]; then
+            echo "::error::Could not resolve download URL for ${{ steps.info.outputs.apkFileName }} in $download_repo"
+            exit 1
+          fi
+          echo "download_url=$download_url" >> "$GITHUB_OUTPUT"
+          echo "download_repo=$download_repo" >> "$GITHUB_OUTPUT"
+
+      - name: Generate update manifest
+        if: steps.notes_source.outputs.skip_release != 'true'
+        env:
+          DOWNLOAD_URL: ${{ steps.asset_release.outputs.download_url }}
+        run: |
+          mandatory_args=()
+          if [ "$MANDATORY_UPDATE" = "true" ]; then
+            mandatory_args=(--mandatory true)
+          fi
+          release_type_args=()
+          if [ -n "$RELEASE_TYPE" ]; then
+            release_type_args=(--release-type "$RELEASE_TYPE")
+          fi
+          if [ -z "$DOWNLOAD_URL" ]; then
+            echo "::error::Update manifest download URL is empty"
+            exit 1
+          fi
+          node scripts/mobile-update-manifest.mjs \
+            --apk "$APK_PATH" \
+            --version "${{ steps.info.outputs.versionName }}" \
+            --version-code "${{ steps.info.outputs.versionCode }}" \
+            --url "$DOWNLOAD_URL" \
+            --file-name "${{ steps.info.outputs.apkFileName }}" \
+            --architecture "$RELEASE_ARCHITECTURE" \
+            --channel "$UPDATE_CHANNEL" \
+            "${release_type_args[@]}" \
+            --changelog-json .tmp-release-notes.json \
+            "${mandatory_args[@]}" \
+            --output "importdata/mobile-update-${{ steps.info.outputs.versionName }}-${{ steps.info.outputs.channel }}.json"
+
+      - name: Publish update metadata to Firestore
+        if: steps.notes_source.outputs.skip_release != 'true'
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          node scripts/publish-mobile-update-to-firebase.mjs \
+            --project "$FIREBASE_PROJECT_ID" \
+            --skip-upload \
+            --manifest "importdata/mobile-update-${{ steps.info.outputs.versionName }}-${{ steps.info.outputs.channel }}.json"
+
+      - name: Upload manifest to releases
+        if: steps.notes_source.outputs.skip_release != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
+        run: |
+          tag="${{ steps.info.outputs.tag }}"
+          manifest="importdata/mobile-update-${{ steps.info.outputs.versionName }}-${{ steps.info.outputs.channel }}.json"
+          manifest_asset=".tmp-release-assets/${{ steps.info.outputs.manifestFileName }}"
+          cp "$manifest" "$manifest_asset"
+          gh release upload "$tag" "$manifest_asset" --repo "$GITHUB_REPOSITORY" --clobber
+          if [ "${{ steps.asset_release.outputs.download_repo }}" != "$GITHUB_REPOSITORY" ]; then
+            gh release upload "$tag" "$manifest_asset" --repo "${{ steps.asset_release.outputs.download_repo }}" --clobber
+          fi
+
+      - name: Upload workflow artifacts
+        if: steps.notes_source.outputs.skip_release != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: 1wallet-android-arm64-v8a-${{ steps.info.outputs.versionName }}-${{ steps.info.outputs.channel }}-${{ steps.info.outputs.versionCode }}
+          path: |
+            .tmp-release-assets/${{ steps.info.outputs.apkFileName }}
+            importdata/mobile-update-${{ steps.info.outputs.versionName }}-${{ steps.info.outputs.channel }}.json
+            .tmp-release-notes.md

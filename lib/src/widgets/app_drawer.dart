@@ -67,6 +67,12 @@ class AppDrawerWidget extends ConsumerWidget {
       Icons.fact_check_outlined,
       '/review',
     ),
+    (
+      'App Updates',
+      'Check for new releases',
+      Icons.system_update_outlined,
+      '/updates',
+    ),
   ];
 
   @override
