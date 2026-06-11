@@ -228,11 +228,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (next != null) {
       setState(() {
         _currentDraft.type = next;
-        if (next == 'bank') _currentDraft.icon = Icons.account_balance_outlined;
-        else if (next == 'cash') _currentDraft.icon = Icons.money_outlined;
-        else if (next == 'credit_card') _currentDraft.icon = Icons.credit_card_outlined;
-        else if (next == 'loan') _currentDraft.icon = Icons.real_estate_agent_outlined;
-        else if (next == 'wallet') _currentDraft.icon = Icons.account_balance_wallet_outlined;
+        if (next == 'bank') {
+          _currentDraft.icon = Icons.account_balance_outlined;
+        } else if (next == 'cash') {
+          _currentDraft.icon = Icons.money_outlined;
+        } else if (next == 'credit_card') {
+          _currentDraft.icon = Icons.credit_card_outlined;
+        } else if (next == 'loan') {
+          _currentDraft.icon = Icons.real_estate_agent_outlined;
+        } else if (next == 'wallet') {
+          _currentDraft.icon = Icons.account_balance_wallet_outlined;
+        }
       });
     }
   }
@@ -785,7 +791,6 @@ class _AccountPreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     String symbol = draft.currency;
     try {
       symbol = NumberFormat.simpleCurrency(name: draft.currency).currencySymbol;
