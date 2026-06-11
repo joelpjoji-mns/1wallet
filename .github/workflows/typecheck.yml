@@ -6,7 +6,7 @@ on:
     branches: [ "development", "main" ]
 
 jobs:
-  typecheck:
+  Typecheck:
     runs-on: ubuntu-latest
     steps:
       - run: echo "Typecheck bypassed."
