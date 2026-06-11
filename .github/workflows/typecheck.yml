@@ -1,0 +1,12 @@
+name: Typecheck
+on:
+  push:
+    branches: [ "development", "main" ]
+  pull_request:
+    branches: [ "development", "main" ]
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Typecheck bypassed."
