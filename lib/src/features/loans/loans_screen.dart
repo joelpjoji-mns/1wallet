@@ -640,6 +640,50 @@ class LoanDetailView extends ConsumerWidget {
                   ),
                 ),
               ),
+              if (details.principal != null) ...[
+                const SizedBox(height: AppSpacing.xl),
+                Builder(builder: (context) {
+                  final principal = details.principal!.amountMinor.abs();
+                  final remaining = balance.amountMinor.abs();
+                  final paid = (principal - remaining).clamp(0, principal);
+                  final progress = principal > 0 ? paid / principal : 0.0;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Paid: ${formatMoney(Money(amountMinor: paid, currency: loan.currency), state.preferences.locale)}',
+                            style: TextStyle(
+                              fontSize: 13, 
+                              color: Colors.white.withAlpha(220), 
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          if (projection.monthsRemaining != null)
+                            Text(
+                              '${projection.monthsRemaining} mos left',
+                              style: TextStyle(
+                                fontSize: 13, 
+                                color: Colors.white.withAlpha(220), 
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 8,
+                        backgroundColor: Colors.white.withAlpha(40),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ],
+                  );
+                }),
+              ],
             ],
           ),
         ),

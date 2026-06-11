@@ -116,13 +116,23 @@ class _MainShellState extends ConsumerState<MainShell> {
         ),
         body: Stack(
           children: [
-            PageView.builder(
-              controller: _pageController,
-              dragStartBehavior: DragStartBehavior.down,
-              itemCount: _tabs.length,
-              onPageChanged: (index) {
-                _selectedIndex.value = index;
+            NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                if (notification is ScrollEndNotification) {
+                  final page = _pageController.page?.round() ?? 0;
+                  if (_selectedIndex.value != page) {
+                    _selectedIndex.value = page;
+                  }
+                }
+                return false;
               },
+              child: PageView.builder(
+                controller: _pageController,
+                dragStartBehavior: DragStartBehavior.down,
+                itemCount: _tabs.length,
+                onPageChanged: (index) {
+                  // Index update deferred to ScrollEndNotification to prevent mid-swipe jank.
+                },
               itemBuilder: (context, index) {
                 return _KeepAliveWrapper(
                   key: PageStorageKey<String>('main-shell-tab-$index'),

@@ -544,29 +544,50 @@ class BrandedLoadingState extends StatelessWidget {
   }
 }
 
-class _ProgressTrack extends StatelessWidget {
+class _ProgressTrack extends StatefulWidget {
   const _ProgressTrack({required this.palette});
 
   final _ResolvedLaunchPalette palette;
 
   @override
+  State<_ProgressTrack> createState() => _ProgressTrackState();
+}
+
+class _ProgressTrackState extends State<_ProgressTrack> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      duration: const Duration(milliseconds: 720),
-      curve: Curves.easeInOutCubic,
-      tween: Tween(begin: 0, end: 1),
-      builder: (context, value, child) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final value = _controller.value;
         return ClipRRect(
           borderRadius: BorderRadius.circular(AppRadii.pill),
           child: Container(
             width: 156,
             height: 5,
-            color: palette.progressTrack,
+            color: widget.palette.progressTrack,
             child: Align(
-              alignment: Alignment(-1 + (2 * value), 0),
+              alignment: Alignment(-1.5 + (3.0 * value), 0),
               child: FractionallySizedBox(
                 widthFactor: 0.46 + (0.34 * math.sin(value * math.pi)),
-                child: Container(color: palette.primary),
+                child: Container(color: widget.palette.primary),
               ),
             ),
           ),

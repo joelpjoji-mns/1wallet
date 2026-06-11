@@ -27,13 +27,33 @@ const expenseTypes = {
 
 const transferTypes = {'transfer'};
 
+bool isHiddenInterest(LedgerState state, TransactionRecord transaction) {
+  if (transaction.type != 'interest_in' && transaction.type != 'interest_out') return false;
+  
+  final account = accountById(state, transaction.accountId);
+  if (account != null && account.type == 'loan') {
+    if (account.loanDetails?.hideInterestInLedger ?? true) return true;
+  }
+  
+  final counterAccount = accountById(state, transaction.counterAccountId);
+  if (counterAccount != null && counterAccount.type == 'loan') {
+    if (counterAccount.loanDetails?.hideInterestInLedger ?? true) return true;
+  }
+  
+  return false;
+}
+
 List<TransactionRecord> sortedTransactions(
   LedgerState state, {
   bool includeScheduled = true,
+  bool hideInterest = false,
 }) {
   final items = state.transactions
       .where(
         (transaction) => includeScheduled || transaction.status != 'scheduled',
+      )
+      .where(
+        (transaction) => !hideInterest || !isHiddenInterest(state, transaction),
       )
       .toList();
   items.sort((left, right) => right.occurredAt.compareTo(left.occurredAt));
@@ -319,6 +339,7 @@ Money totalBalance(
       continue;
     }
     if (transaction.isExcludedFromReports) continue;
+    if (isHiddenInterest(state, transaction)) continue;
     if (transaction.occurredAt.isBefore(start) ||
         !transaction.occurredAt.isBefore(end)) {
       continue;
@@ -389,6 +410,7 @@ Money totalBalance(
       continue;
     }
     if (transaction.isExcludedFromReports) continue;
+    if (isHiddenInterest(state, transaction)) continue;
     if (accountId != null) {
       if (accountId == 'cash_group') {
         if (!cashAccountIds.contains(transaction.accountId) &&
