@@ -1,0 +1,712 @@
+import 'package:flutter/material.dart';
+import '../common/route_scaffold.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../auth/auth_controller.dart';
+import '../../data/ledger_providers.dart';
+import '../../data/ledger_models.dart';
+import '../../design/tokens.dart';
+import '../../theme/theme_controller.dart';
+import '../../widgets/app_kit.dart';
+import '../common/full_screen_picker.dart';
+import 'settings_components.dart';
+
+class SettingsScreen extends ConsumerStatefulWidget {
+  const SettingsScreen({super.key});
+
+  @override
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  final _startDayController = TextEditingController();
+  var _startDayTouched = false;
+  var _resetDialogVisible = false;
+
+  static const _localeOptions = [
+    ('en_IN', 'English (India)', 'Dates and money formatted for India'),
+    (
+      'en_US',
+      'English (United States)',
+      'US date, number, and currency formatting',
+    ),
+    (
+      'en_GB',
+      'English (United Kingdom)',
+      'UK date, number, and currency formatting',
+    ),
+  ];
+
+  static const _accentOptions = [
+    ('system', 'System themed', 'Use your phone Material You accent'),
+    ('custom', 'Custom color', 'Pick a wallet accent color'),
+  ];
+
+  static const _notificationChannels = [
+    (
+      'scheduled',
+      'Scheduled records',
+      'Upcoming and overdue payments, transfers, bills, and income.',
+      Icons.event_repeat_outlined,
+    ),
+    (
+      'budgets',
+      'Budgets',
+      'Threshold and over-budget alerts.',
+      Icons.donut_large_outlined,
+    ),
+    (
+      'goals',
+      'Goals',
+      'Goal deadline and progress warnings.',
+      Icons.flag_outlined,
+    ),
+  ];
+
+  static const _managementLinks = [
+    (
+      'Sync',
+      'Google sign-in, cloud restore, background upload, and sync status.',
+      Icons.cloud_sync_outlined,
+      '/sync',
+    ),
+    (
+      'Device permissions',
+      'Camera and photos access with a clear reason for each prompt.',
+      Icons.security_outlined,
+      '/device-permissions',
+    ),
+    (
+      'Notifications',
+      'Review work, reminders, budgets, accounts, cards, and import alerts.',
+      Icons.notifications_outlined,
+      '/notifications',
+    ),
+    (
+      'Currencies',
+      'Default currency, enabled currencies, exchange rates, and refresh status.',
+      Icons.currency_exchange_outlined,
+      '/currencies',
+    ),
+    (
+      'Categories',
+      'Expense and income trees, hidden stats, archive controls.',
+      Icons.category_outlined,
+      '/categories',
+    ),
+    (
+      'Widgets',
+      'Add, restore, and review Home tiles for cashflow, trends, budgets, goals, and accounts.',
+      Icons.widgets_outlined,
+      '/widgets',
+    ),
+    (
+      'Import & backup',
+      'CSV, Wallet exports, native backups, notification captures, and duplicate checks.',
+      Icons.file_upload_outlined,
+      '/imports',
+    ),
+    (
+      'Cards',
+      'Statement cycle, dues, utilization, and payment flows.',
+      Icons.credit_card_outlined,
+      '/cards',
+    ),
+    (
+      'Loans & EMI',
+      'Payoff calculator, schedules, and loan account tracking.',
+      Icons.account_balance_outlined,
+      '/loans',
+    ),
+    (
+      'Recurring',
+      'Bills, subscriptions, expected income, and reminders.',
+      Icons.event_repeat_outlined,
+      '/recurring',
+    ),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final state = ref.read(ledgerProvider);
+    _startDayController.text = '${state.preferences.startDayOfMonth}';
+  }
+
+  @override
+  void dispose() {
+    _startDayController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final state = ref.watch(ledgerProvider);
+    final auth = ref.watch(authControllerProvider);
+    final themeState = ref.watch(themeControllerProvider);
+    final user = auth.user;
+    final pendingCaptures = state.captureCandidates
+        .where((c) => c.status == 'pending')
+        .length;
+
+    return RouteScaffold(
+      title: 'Settings',
+      actions: [
+        IconButton(
+          tooltip: 'Review queue',
+          onPressed: () => context.push('/review'),
+          icon: const Icon(Icons.fact_check_outlined),
+        ),
+      ],
+      child: Column(
+        children: [
+          // ── Profile ──
+          SettingsProfileSection(
+            user: user,
+            onOpenSync: () => context.push('/sync'),
+            onSignOut: () => _signOut(ref),
+          ),
+          const Gap(AppSpacing.lg),
+
+          // ── Preferences ──
+          SettingsPreferencesSection(
+            preferences: state.preferences,
+            themeState: themeState,
+            startDayController: _startDayController,
+            startDayValidationError: _startDayValidationError,
+            onStartDayChanged: (value) {
+              _startDayTouched = true;
+              _autoSaveStartDay(value);
+            },
+            onBaseCurrencyTap: () => context.push('/currencies'),
+            onLocaleTap: () => _showLocalePicker(state),
+            onThemeTap: () => _showThemePicker(ref, themeState.preference),
+            onAccentTap: _showAccentPicker,
+            localeLabel: _localeLabel(state.preferences.locale),
+          ),
+          const Gap(AppSpacing.lg),
+
+          // ── Feature hub ──
+          SettingsFeatureHubSection(
+            links: _managementLinks,
+            onOpenLink: (route) => context.push(route),
+          ),
+          const Gap(AppSpacing.lg),
+
+          // ── Capture & automation ──
+          SectionCard(
+            title: 'Capture & automation',
+            subtitle:
+                'Manual review stays in control before automation posts anything.',
+            child: Column(
+              children: [
+                InfoRow(
+                  label: 'Pending review',
+                  value: '$pendingCaptures',
+                  icon: Icons.fact_check_outlined,
+                  tone: pendingCaptures > 0
+                      ? MetricTone.warning
+                      : MetricTone.standard,
+                ),
+                InfoRow(
+                  label: 'Auto Capture',
+                  value: 'SMS ready',
+                  icon: Icons.sms_outlined,
+                  tone: MetricTone.positive,
+                ),
+                InfoRow(
+                  label: 'CSV imports',
+                  value: 'Ready',
+                  icon: Icons.table_chart_outlined,
+                  tone: MetricTone.positive,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  children: [
+                    FilledButton.tonalIcon(
+                      onPressed: () => context.push('/review'),
+                      icon: const Icon(Icons.fact_check_outlined),
+                      label: const Text('Review queue'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => context.push('/notifications'),
+                      icon: const Icon(Icons.notifications_outlined),
+                      label: const Text('Notifications'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => context.push('/auto-capture'),
+                      icon: const Icon(Icons.auto_awesome_outlined),
+                      label: const Text('Auto Capture'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const Gap(AppSpacing.lg),
+
+          // ── Notifications ──
+          SectionCard(
+            title: 'Notifications',
+            subtitle:
+                'Actionable native alerts for updates and time-sensitive wallet items.',
+            child: Column(
+              children: [
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  value: true,
+                  onChanged: (value) =>
+                      _showMessage('Notification toggle saved.'),
+                  title: const Text('Notification inbox'),
+                  subtitle: Text(
+                    'Active reminder, budget, or goal alerts.',
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                const Divider(height: 1),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  value: false,
+                  onChanged: (value) =>
+                      _showMessage('Device notifications toggled.'),
+                  title: const Text('Device notifications'),
+                  subtitle: Text(
+                    'Updates use native alerts when permission is granted.',
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                const Divider(height: 1),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  value: false,
+                  onChanged: (value) => _showMessage(
+                    value ? 'Quiet hours enabled' : 'Quiet hours disabled',
+                  ),
+                  title: const Text('Quiet hours'),
+                  subtitle: Text(
+                    '22:00 to 07:00',
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                const Divider(height: 1),
+                for (final channel in _notificationChannels) ...[
+                  SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    value: true,
+                    onChanged: (value) => _showMessage(
+                      value ? '${channel.$2} enabled' : '${channel.$2} paused',
+                    ),
+                    title: Row(
+                      children: [
+                        Icon(
+                          channel.$4,
+                          size: 20,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Text(channel.$2),
+                      ],
+                    ),
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(left: 28),
+                      child: Text(
+                        channel.$3,
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (channel != _notificationChannels.last)
+                    const Divider(height: 1),
+                ],
+                const SizedBox(height: AppSpacing.sm),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.tonalIcon(
+                    onPressed: () => context.push('/notifications'),
+                    icon: const Icon(Icons.notifications_outlined),
+                    label: const Text('Open notification inbox'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Gap(AppSpacing.lg),
+
+          // ── Security & Privacy ──
+          SectionCard(
+            title: 'Security & privacy',
+            subtitle: 'Local-first until cloud sync is configured.',
+            child: Column(
+              children: [
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  value: false,
+                  onChanged: null,
+                  title: const Text('Privacy mode'),
+                  subtitle: Text(
+                    'Hide amounts in widgets and screenshots once native widgets are added.',
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  value: false,
+                  onChanged: null,
+                  title: const Text('Biometric lock'),
+                  subtitle: Text(
+                    'Requires a native security slice after the app shell is stable.',
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Gap(AppSpacing.lg),
+
+          // ── Data ──
+          SettingsDataSection(
+            state: state,
+            resetDialogVisible: _resetDialogVisible,
+            onOpenImports: () => context.push('/imports'),
+            onOpenWalletCsv: () => context.push('/import-wallet-csv'),
+            onShowReset: () => setState(() => _resetDialogVisible = true),
+            onHideReset: () => setState(() => _resetDialogVisible = false),
+            onConfirmReset: () => _resetLedger(ref),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String? get _startDayValidationError {
+    if (!_startDayTouched) return null;
+    final parsed = int.tryParse(_startDayController.text.trim());
+    if (parsed == null) return 'Enter a number';
+    if (parsed < 1 || parsed > 28) return 'Must be 1 – 28';
+    return null;
+  }
+
+  void _autoSaveStartDay(String value) {
+    final parsed = int.tryParse(value.trim());
+    if (parsed == null || parsed < 1 || parsed > 28) {
+      setState(() {});
+      return;
+    }
+    ref.read(ledgerProvider.notifier).setStartDayOfMonth(parsed);
+    setState(() {});
+    _showMessage('Month start day updated.');
+  }
+
+  Future<void> _showLocalePicker(LedgerState state) async {
+    final next = await showFullScreenPicker<String>(
+      context: context,
+      title: 'Locale',
+      searchable: false,
+      selectedValue: state.preferences.locale,
+      options: [
+        for (final locale in _localeOptions)
+          PickerOption(
+            value: locale.$1,
+            title: locale.$2,
+            subtitle: locale.$3,
+            icon: Icons.language_outlined,
+          ),
+      ],
+    );
+    if (next == null) return;
+    await ref.read(ledgerProvider.notifier).setLocale(next);
+    if (!mounted) return;
+    _showMessage('Locale updated.');
+  }
+
+  Future<void> _showThemePicker(
+    WidgetRef ref,
+    AppThemePreference selected,
+  ) async {
+    final next = await showFullScreenPicker<AppThemePreference>(
+      context: context,
+      title: 'Theme mode',
+      searchable: false,
+      selectedValue: selected,
+      options: [
+        for (final preference in AppThemePreference.values)
+          PickerOption(
+            value: preference,
+            title: _themePreferenceLabel(preference),
+            subtitle: switch (preference) {
+              AppThemePreference.system => 'Follow device light/dark mode',
+              AppThemePreference.light => 'Bright Material 3 surfaces',
+              AppThemePreference.dark => 'Dark navy surfaces',
+              AppThemePreference.amoled => 'True-black OLED surfaces',
+            },
+            icon: switch (preference) {
+              AppThemePreference.system => Icons.brightness_auto_outlined,
+              AppThemePreference.light => Icons.light_mode_outlined,
+              AppThemePreference.dark => Icons.dark_mode_outlined,
+              AppThemePreference.amoled => Icons.brightness_2_outlined,
+            },
+          ),
+      ],
+    );
+    if (next == null) return;
+    await ref.read(themeControllerProvider.notifier).setPreference(next);
+    if (!mounted) return;
+    _showMessage('Theme preference saved.');
+  }
+
+  Future<void> _showAccentPicker() async {
+    final next = await showFullScreenPicker<String>(
+      context: context,
+      title: 'Accent source',
+      searchable: false,
+      selectedValue: 'system',
+      options: [
+        for (final accent in _accentOptions)
+          PickerOption(
+            value: accent.$1,
+            title: accent.$2,
+            subtitle: accent.$3,
+            icon: accent.$1 == 'system'
+                ? Icons.smartphone_outlined
+                : Icons.palette_outlined,
+          ),
+      ],
+    );
+    if (next == null || !mounted) return;
+    if (next == 'custom') {
+      final color = await showDialog<String>(
+        context: context,
+        builder: (context) => _ColorPickerInlineDialog(),
+      );
+      if (color != null && mounted) {
+        await ref.read(themeControllerProvider.notifier).setAccentColor(color);
+        if (!mounted) return;
+        _showMessage('Custom accent saved: $color');
+      }
+    } else {
+      await ref.read(themeControllerProvider.notifier).setAccentColor(null);
+      if (!mounted) return;
+      _showMessage('System accent enabled.');
+    }
+  }
+
+  Future<void> _signOut(WidgetRef ref) async {
+    await ref.read(authControllerProvider.notifier).signOut();
+    if (!mounted) return;
+    context.push('/login');
+  }
+
+  Future<void> _resetLedger(WidgetRef ref) async {
+    setState(() => _resetDialogVisible = false);
+    await ref.read(ledgerProvider.notifier).resetLedger();
+    if (!mounted) return;
+    _showMessage('Local ledger reset.');
+    context.push('/');
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      );
+  }
+
+  String _themePreferenceLabel(AppThemePreference preference) {
+    return switch (preference) {
+      AppThemePreference.system => 'System',
+      AppThemePreference.light => 'Light',
+      AppThemePreference.dark => 'Dark',
+      AppThemePreference.amoled => 'AMOLED',
+    };
+  }
+
+  String _localeLabel(String locale) {
+    return switch (locale) {
+      'en_IN' => 'English (India)',
+      'en_US' => 'English (United States)',
+      'en_GB' => 'English (United Kingdom)',
+      _ => locale,
+    };
+  }
+}
+
+class _ColorPickerInlineDialog extends StatefulWidget {
+  @override
+  State<_ColorPickerInlineDialog> createState() =>
+      _ColorPickerInlineDialogState();
+}
+
+class _ColorPickerInlineDialogState extends State<_ColorPickerInlineDialog> {
+  double _hue = 220;
+  double _saturation = 0.65;
+  double _lightness = 0.42;
+
+  static const _presetHexColors = [
+    '#315DA8',
+    '#1976D2',
+    '#0097A7',
+    '#388E3C',
+    '#689F38',
+    '#F57C00',
+    '#E64A19',
+    '#D32F2F',
+    '#C2185B',
+    '#7B1FA2',
+    '#512DA8',
+    '#303F9F',
+    '#455A64',
+    '#5D4037',
+    '#616161',
+  ];
+
+  Color get _currentColor =>
+      HSLColor.fromAHSL(1.0, _hue, _saturation, _lightness).toColor();
+
+  String get _currentHex =>
+      '#${_currentColor.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AlertDialog(
+      title: const Text('Custom accent'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              height: 56,
+              decoration: BoxDecoration(
+                color: _currentColor,
+                borderRadius: BorderRadius.circular(AppRadii.lg),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                _currentHex,
+                style: TextStyle(
+                  color: _lightness > 0.5 ? Colors.black87 : Colors.white,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _buildSlider('Hue', _hue, 360, (v) => setState(() => _hue = v)),
+            _buildSlider(
+              'Sat',
+              _saturation,
+              1,
+              (v) => setState(() => _saturation = v),
+            ),
+            _buildSlider(
+              'Light',
+              _lightness,
+              1,
+              (v) => setState(() => _lightness = v),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text('Presets', style: theme.textTheme.labelMedium),
+            const SizedBox(height: AppSpacing.xs),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final hex in _presetHexColors)
+                  GestureDetector(
+                    onTap: () {
+                      final c = Color(
+                        int.parse(hex.substring(1), radix: 16) | 0xFF000000,
+                      );
+                      final hsl = HSLColor.fromColor(c);
+                      setState(() {
+                        _hue = hsl.hue;
+                        _saturation = hsl.saturation;
+                        _lightness = hsl.lightness;
+                      });
+                    },
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: Color(
+                          int.parse(hex.substring(1), radix: 16) | 0xFF000000,
+                        ),
+                        shape: BoxShape.circle,
+                        border: _currentHex.toUpperCase() == hex.toUpperCase()
+                            ? Border.all(
+                                color: theme.colorScheme.onSurface,
+                                width: 2.5,
+                              )
+                            : null,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(null),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_currentHex),
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSlider(
+    String label,
+    double value,
+    double max,
+    ValueChanged<double> onChanged,
+  ) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 44,
+          child: Text(label, style: const TextStyle(fontSize: 12)),
+        ),
+        Expanded(
+          child: Slider(value: value, min: 0, max: max, onChanged: onChanged),
+        ),
+        SizedBox(
+          width: 40,
+          child: Text(
+            max == 1 ? '${(value * 100).round()}%' : '${value.round()}°',
+            textAlign: TextAlign.end,
+            style: const TextStyle(fontSize: 11),
+          ),
+        ),
+      ],
+    );
+  }
+}

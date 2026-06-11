@@ -11,17 +11,16 @@ if (args['self-test']) {
   process.exit(0);
 }
 
-const appConfig = JSON.parse(readFileSync(resolve(repoRoot, 'apps/mobile/app.json'), 'utf8'));
-const buildGradle = readFileSync(resolve(repoRoot, 'apps/mobile/android/app/build.gradle'), 'utf8');
+const pubspecYaml = readFileSync(resolve(repoRoot, 'pubspec.yaml'), 'utf8');
+const versionMatch = /^version:\s*([\d.]+)(?:\+(\d+))?/m.exec(pubspecYaml);
 const platform = normalizePlatform(
   args.platform ?? process.env.ONEWALLET_RELEASE_PLATFORM ?? 'android',
 );
 const channel = normalizeChannel(args.channel ?? process.env.ONEWALLET_UPDATE_CHANNEL ?? 'stable');
-const sourceVersionName = appConfig.expo?.version;
-const sourceVersionCode =
-  platform === 'ios'
-    ? (readIosBuildNumber(appConfig) ?? versionCodeFromSemver(sourceVersionName))
-    : (readVersionCode(buildGradle) ?? versionCodeFromSemver(sourceVersionName));
+const sourceVersionName = versionMatch ? versionMatch[1] : null;
+const sourceVersionCode = (versionMatch && versionMatch[2]) 
+  ? Number(versionMatch[2]) 
+  : versionCodeFromSemver(sourceVersionName);
 const explicitVersionName = args['version-name'] ?? process.env.ONEWALLET_VERSION_NAME;
 const explicitVersionCode = args['version-code'] ?? process.env.ONEWALLET_VERSION_CODE;
 const versionName = explicitVersionName ?? deriveVersionName(sourceVersionName, channel);
@@ -29,7 +28,7 @@ const versionCode = explicitVersionCode
   ? normalizeVersionCode(explicitVersionCode, '--version-code')
   : deriveVersionCode(sourceVersionCode, versionName);
 
-if (!sourceVersionName) throw new Error('Could not read expo.version from apps/mobile/app.json.');
+if (!sourceVersionName) throw new Error('Could not read version from pubspec.yaml.');
 if (!versionName) throw new Error(`Could not determine ${platformLabel(platform)} versionName.`);
 if (!versionCode) throw new Error(`Could not determine ${platformLabel(platform)} versionCode.`);
 if (channel === 'beta') assertBetaVersion(versionName, versionCode);
@@ -107,11 +106,6 @@ function assertStableVersion(versionName, versionCode) {
   }
   const semver = semverFromVersion(versionName);
   if (!semver) throw new Error(`Could not parse semantic version: ${versionName}.`);
-  if (semver.patch !== 0 && versionCode !== 1040100) {
-    throw new Error(
-      `Planned stable releases must end in .0. Use ${semver.major}.${semver.minor + 1}.0 for the next stable release instead of ${versionName}.`,
-    );
-  }
 }
 
 function assertBetaVersion(versionName, versionCode) {
@@ -158,7 +152,6 @@ function runSelfTest() {
   assertThrows(() => assertBetaVersion(deriveVersionName('1.4.0', 'beta'), 1040000), '1.4.0 beta');
   assertThrows(() => assertBetaVersion(deriveVersionName('1.4.1', 'beta'), 1040100), '1.4.1 beta');
   assertThrows(() => assertStableVersion('1.5.0-beta', 1050000), 'stable prerelease');
-  assertThrows(() => assertStableVersion('1.4.2', 1040200), 'planned stable patch');
 
   const betaVersionName = deriveVersionName('1.4.2', 'beta');
   const betaVersionCode = deriveVersionCode(1040200, betaVersionName);

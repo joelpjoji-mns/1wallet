@@ -1,59 +1,53 @@
-# OS
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
 .DS_Store
-Thumbs.db
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
 
-# Node
-node_modules/
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/sdks
-!.yarn/versions
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
 
-# Build
-dist/
-build/
-.next/
-.expo/
-.firebase/
-.turbo/
-.tmp/
-.tmp-*.json
-*.tsbuildinfo
-apps/mobile/android/.kotlin/
-apps/mobile/android/local.properties
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
 
-# Env
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Local configuration and secrets
 .env
 .env.local
 .env.*.local
+firebase_options.local.dart
+google-services.json
+GoogleService-Info.plist
 
-# Android signing
-*.jks
-*.keystore
-apps/mobile/android/release-signing.properties.local
+# Symbolication related
+app.*.symbols
 
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+# Obfuscation related
+app.*.map.json
 
-# Local backups
-backups/
-
-# IDE
-.idea/
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-
-# Test
-coverage/
-
-# Supabase
-supabase/.branches
-supabase/.temp
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release

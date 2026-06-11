@@ -1,0 +1,1305 @@
+import 'package:collection/collection.dart';
+import 'package:flutter/material.dart';
+import '../common/route_scaffold.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../data/ledger_models.dart';
+import '../../data/ledger_providers.dart';
+import '../../design/tokens.dart';
+import '../../ledger/ledger_selectors.dart';
+import '../../widgets/app_kit.dart';
+import '../common/full_screen_picker.dart';
+
+class RecurringScreen extends ConsumerWidget {
+  const RecurringScreen({super.key, this.mode = 'overview', this.recordId});
+
+  final String mode;
+  final String? recordId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(ledgerProvider);
+    final scheduled = _orderedRecurringTransactions(
+      scheduledTransactions(state),
+    );
+    final recurringHistory = _recurringHistoryTransactions(state);
+    final selected = recordId == null
+        ? null
+        : state.transactions.firstWhereOrNull(
+            (transaction) => transaction.id == recordId,
+          );
+    final listed = mode == 'past' ? recurringHistory : scheduled;
+    return RouteScaffold(
+      title: switch (mode) {
+        'new' => 'New recurring',
+        'past' => 'Past recurring',
+        'edit' => 'Edit recurring',
+        _ when recordId != null => 'Planned detail',
+        _ => 'Planned payments',
+      },
+      actions: [
+        IconButton(
+          onPressed: () => context.push('/recurring/new'),
+          icon: const Icon(Icons.add_rounded),
+        ),
+      ],
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl, horizontal: AppSpacing.md),
+            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF00B4DB),
+                  const Color(0xFF0083B0),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(AppRadii.xl),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0083B0).withAlpha(60),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                IconBubble(
+                  icon: mode == 'past' ? Icons.history_rounded : Icons.event_repeat_rounded,
+                  color: Colors.white,
+                  compact: true,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  mode == 'past'
+                      ? '${recurringHistory.length} Posted'
+                      : formatMoney(
+                          Money(
+                            amountMinor: scheduled.fold(
+                              0,
+                              (sum, item) => sum + item.amount.amountMinor,
+                            ),
+                            currency: state.preferences.baseCurrency,
+                          ),
+                          state.preferences.locale,
+                        ),
+                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: -1.0,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  mode == 'past' ? 'Historical Records' : 'Total Planned',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white.withAlpha(200),
+                    letterSpacing: 1.0,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(30),
+                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                    border: Border.all(color: Colors.white.withAlpha(60)),
+                  ),
+                  child: Text(
+                    '${listed.length} ${mode == 'past' ? 'RECORDS' : 'SCHEDULED ITEMS'}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Gap(AppSpacing.lg),
+          if (mode == 'new' || mode == 'edit')
+            RecurringForm(recordId: recordId)
+          else if (recordId != null)
+            selected == null
+                ? EmptyState(
+                    icon: Icons.event_busy_outlined,
+                    title: 'Planned record not found',
+                    body:
+                        'This scheduled record is not available in the local ledger.',
+                    actionLabel: 'Back to planned payments',
+                    onAction: () => context.push('/recurring'),
+                  )
+                : RecurringDetailView(transaction: selected)
+          else if (listed.isEmpty)
+            EmptyState(
+              icon: mode == 'past'
+                  ? Icons.history_rounded
+                  : Icons.event_repeat_outlined,
+              title: mode == 'past'
+                  ? 'No posted recurring history yet'
+                  : 'No planned payments yet',
+              body: mode == 'past'
+                  ? 'Posted recurring records will appear here once a scheduled item is completed.'
+                  : 'Create a scheduled record to keep bills, transfers, and repayments on track.',
+              actionLabel: mode == 'past'
+                  ? 'Back to planned payments'
+                  : 'Create recurring',
+              onAction: () => context.push(
+                mode == 'past' ? '/recurring' : '/recurring/new',
+              ),
+            )
+          else
+            for (final transaction in listed) ...[
+              _RecurringCompactCard(
+                state: state,
+                transaction: transaction,
+                onTap: () => context.push('/recurring/${transaction.id}'),
+                historyMode: mode == 'past',
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+        ],
+      ),
+    );
+  }
+}
+
+List<TransactionRecord> _recurringHistoryTransactions(LedgerState state) {
+  final items = state.transactions
+      .where(
+        (transaction) =>
+            _isRecurringHistorySource(transaction.source) &&
+            transaction.status != 'void' &&
+            _isHistoricalRecurringTransaction(transaction),
+      )
+      .toList();
+  items.sort(_compareRecurringHistory);
+  return items;
+}
+
+bool _isRecurringHistorySource(String source) {
+  return source == 'recurring' || source == 'rule';
+}
+
+bool _isHistoricalRecurringTransaction(TransactionRecord transaction) {
+  if (transaction.status != 'scheduled') return true;
+  final today = _startOfToday();
+  final occurredDay = DateTime(
+    transaction.occurredAt.year,
+    transaction.occurredAt.month,
+    transaction.occurredAt.day,
+  );
+  return occurredDay.isBefore(today);
+}
+
+DateTime _startOfToday() {
+  final now = DateTime.now();
+  return DateTime(now.year, now.month, now.day);
+}
+
+List<TransactionRecord> _orderedRecurringTransactions(
+  List<TransactionRecord> transactions,
+) {
+  final items = [...transactions];
+  items.sort((left, right) {
+    final dateCompare = left.occurredAt.compareTo(right.occurredAt);
+    if (dateCompare != 0) return dateCompare;
+    final amountCompare = right.amount.amountMinor.abs().compareTo(
+      left.amount.amountMinor.abs(),
+    );
+    if (amountCompare != 0) return amountCompare;
+    return left.id.compareTo(right.id);
+  });
+  return items;
+}
+
+int _compareRecurringHistory(TransactionRecord left, TransactionRecord right) {
+  final dateCompare = right.occurredAt.compareTo(left.occurredAt);
+  if (dateCompare != 0) return dateCompare;
+  final amountCompare = right.amount.amountMinor.abs().compareTo(
+    left.amount.amountMinor.abs(),
+  );
+  if (amountCompare != 0) return amountCompare;
+  return right.id.compareTo(left.id);
+}
+
+class _RecurringCompactCard extends StatelessWidget {
+  const _RecurringCompactCard({
+    required this.state,
+    required this.transaction,
+    required this.onTap,
+    required this.historyMode,
+  });
+
+  final LedgerState state;
+  final TransactionRecord transaction;
+  final VoidCallback onTap;
+  final bool historyMode;
+
+  @override
+  Widget build(BuildContext context) {
+    final account = accountById(state, transaction.accountId);
+    final counter = accountById(state, transaction.counterAccountId);
+    final category = categoryById(state, transaction.categoryId);
+    final scheme = Theme.of(context).colorScheme;
+    final headerTitle = _recurringHeaderTitle(state, transaction);
+    final primaryTitle = _recurringPrimaryTitle(state, transaction);
+    final recurrence = _recurringCadenceLabel(transaction.recurrenceFrequency);
+    final extraLine = _recurringExtraLine(
+      state,
+      transaction,
+      account,
+      counter,
+      primaryTitle,
+      headerTitle,
+    );
+    final status = _recurringStatus(
+      transaction.occurredAt,
+      locale: state.preferences.locale,
+      historyMode: historyMode,
+    );
+    final amountText = _recurringAmountLabel(state, transaction);
+
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      color: scheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        side: BorderSide(color: scheme.outlineVariant),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      headerTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Icon(status.icon, color: status.color, size: 26),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _RoundRecurringIcon(
+                    icon: transactionIcon(transaction),
+                    color: categoryColor(category, context),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          primaryTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          recurrence,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: scheme.onSurfaceVariant,
+                            fontSize: 13,
+                          ),
+                        ),
+                        if (extraLine != null) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            extraLine,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: scheme.onSurfaceVariant,
+                              fontStyle: FontStyle.italic,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        amountText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: _recurringAmountColor(
+                                context,
+                                transaction,
+                              ),
+                            ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        status.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: status.color,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              if (!historyMode && (account?.loanDetails != null || counter?.loanDetails != null))
+                Builder(builder: (context) {
+                  final loanAccount = account?.loanDetails != null ? account : counter;
+                  final total = loanAccount?.loanDetails?.repaymentCount;
+                  if (total == null || total <= 0) return const SizedBox();
+                  final postedCount = state.transactions.where((t) => 
+                     t.status == 'posted' && 
+                     (t.accountId == loanAccount!.id || t.counterAccountId == loanAccount.id) &&
+                     t.type == 'loan_repayment'
+                  ).length;
+                  final progress = (postedCount / total).clamp(0.0, 1.0);
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: AppSpacing.md),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Payment $postedCount of $total',
+                            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant, fontWeight: FontWeight.w600),
+                          ),
+                          Text(
+                            '${total - postedCount} left',
+                            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      LinearProgressIndicator(
+                        value: progress,
+                        backgroundColor: scheme.surfaceContainerHighest,
+                        color: scheme.primary,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ],
+                  );
+                }),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RoundRecurringIcon extends StatelessWidget {
+  const _RoundRecurringIcon({required this.icon, required this.color});
+
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      child: Icon(icon, color: Colors.white, size: 28),
+    );
+  }
+}
+
+class RecurringForm extends ConsumerStatefulWidget {
+  const RecurringForm({super.key, this.recordId});
+
+  final String? recordId;
+
+  @override
+  ConsumerState<RecurringForm> createState() => _RecurringFormState();
+}
+
+class _RecurringFormState extends ConsumerState<RecurringForm> {
+  final _amountController = TextEditingController();
+  final _notesController = TextEditingController();
+  String? _loadedRecordId;
+  var _type = 'expense';
+  var _frequency = 'monthly';
+  String? _accountId;
+  String? _counterAccountId;
+  String? _categoryId;
+  DateTime _nextDate = DateTime.now().add(const Duration(days: 1));
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(ledgerProvider);
+    final record = widget.recordId == null
+        ? null
+        : state.transactions.firstWhereOrNull(
+            (transaction) => transaction.id == widget.recordId,
+          );
+    _syncRecurringDraft(state, record);
+    final account = accountById(state, _accountId);
+    final counterAccount = accountById(state, _counterAccountId);
+    final category = categoryById(state, _categoryId);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionCard(
+          title: record == null ? 'Recurring rule' : 'Edit recurring rule',
+          subtitle:
+              'Creates a scheduled ledger record for the next occurrence.',
+          child: Column(
+            children: [
+              PremiumRow(
+                icon: transactionIcon(
+                  TransactionRecord(
+                    id: 'draft',
+                    type: _type,
+                    status: 'scheduled',
+                    source: 'recurring',
+                    accountId: _accountId ?? '',
+                    amount: Money(
+                      amountMinor: 0,
+                      currency: state.preferences.baseCurrency,
+                    ),
+                    baseAmount: Money(
+                      amountMinor: 0,
+                      currency: state.preferences.baseCurrency,
+                    ),
+                    occurredAt: _nextDate,
+                  ),
+                ),
+                title: 'Type',
+                subtitle: transactionTypeLabel(_type),
+                onTap: _showRecurringTypePicker,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextFormField(
+                controller: _amountController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Amount',
+                  prefixIcon: Icon(Icons.payments_outlined),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              PremiumRow(
+                icon: account == null
+                    ? Icons.wallet_outlined
+                    : accountIcon(account),
+                title: _type == 'transfer' ? 'From account' : 'Account',
+                subtitle: account?.name ?? 'Choose account',
+                iconColor: account?.color,
+                onTap: () => _showRecurringAccountPicker(state, counter: false),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              if (_needsCounterAccount)
+                PremiumRow(
+                  icon: counterAccount == null
+                      ? Icons.swap_horiz_rounded
+                      : accountIcon(counterAccount),
+                  title: _type == 'transfer' ? 'To account' : 'Linked account',
+                  subtitle: counterAccount?.name ?? 'Choose destination',
+                  iconColor: counterAccount?.color,
+                  onTap: () =>
+                      _showRecurringAccountPicker(state, counter: true),
+                )
+              else
+                PremiumRow(
+                  icon: Icons.category_outlined,
+                  title: 'Category',
+                  subtitle: category?.name ?? 'Choose category',
+                  iconColor: categoryColor(category, context),
+                  onTap: () => _showRecurringCategoryPicker(state),
+                ),
+            ],
+          ),
+        ),
+        const Gap(AppSpacing.lg),
+        SectionCard(
+          title: 'Schedule',
+          child: Column(
+            children: [
+              PremiumRow(
+                icon: Icons.repeat_outlined,
+                title: 'Frequency',
+                subtitle: transactionTypeLabel(_frequency),
+                onTap: _showFrequencyPicker,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              PremiumRow(
+                icon: Icons.calendar_month_outlined,
+                title: 'Next date',
+                subtitle: formatLedgerDate(_nextDate, state.preferences.locale),
+                onTap: _pickRecurringDate,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextFormField(
+                controller: _notesController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Notes',
+                  prefixIcon: Icon(Icons.notes_outlined),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Gap(AppSpacing.lg),
+        FilledButton.icon(
+          onPressed: () => _saveRecurring(state, record),
+          icon: const Icon(Icons.save_outlined),
+          label: Text(
+            record == null
+                ? 'Create scheduled record'
+                : 'Save scheduled record',
+          ),
+        ),
+      ],
+    );
+  }
+
+  bool get _needsCounterAccount =>
+      _type == 'transfer' ||
+      _type == 'card_payment' ||
+      _type == 'loan_repayment';
+
+  void _syncRecurringDraft(LedgerState state, TransactionRecord? record) {
+    final key = record?.id ?? '__new__';
+    if (_loadedRecordId == key) return;
+    _loadedRecordId = key;
+    _type = record?.type ?? 'expense';
+    _amountController.text = record == null
+        ? ''
+        : _formatAmountInput(record.amount.amountMinor.abs());
+    _accountId = record?.accountId ?? state.accounts.firstOrNull?.id;
+    _counterAccountId = record?.counterAccountId;
+    _categoryId = record?.categoryId ?? _firstExpenseCategoryId(state);
+    _nextDate =
+        record?.occurredAt ?? DateTime.now().add(const Duration(days: 1));
+    _notesController.text = record?.notes ?? '';
+    _frequency = record?.recurrenceFrequency ?? 'monthly';
+  }
+
+  Future<void> _showRecurringTypePicker() async {
+    final next = await showFullScreenPicker<String>(
+      context: context,
+      title: 'Recurring type',
+      searchable: false,
+      selectedValue: _type,
+      options: const [
+        PickerOption(
+          value: 'expense',
+          title: 'Expense',
+          icon: Icons.arrow_upward_rounded,
+        ),
+        PickerOption(
+          value: 'income',
+          title: 'Income',
+          icon: Icons.arrow_downward_rounded,
+        ),
+        PickerOption(
+          value: 'transfer',
+          title: 'Transfer',
+          icon: Icons.swap_horiz_rounded,
+        ),
+        PickerOption(
+          value: 'card_payment',
+          title: 'Card payment',
+          icon: Icons.credit_card_outlined,
+        ),
+        PickerOption(
+          value: 'loan_repayment',
+          title: 'Loan repayment',
+          icon: Icons.account_balance_outlined,
+        ),
+      ],
+    );
+    if (next == null) return;
+    setState(() {
+      _type = next;
+      if (!_needsCounterAccount) _counterAccountId = null;
+    });
+  }
+
+  Future<void> _showRecurringAccountPicker(
+    LedgerState state, {
+    required bool counter,
+  }) async {
+    final next = await showFullScreenPicker<String>(
+      context: context,
+      title: counter ? 'Choose linked account' : 'Choose account',
+      searchHint: 'Search accounts',
+      selectedValue: counter ? _counterAccountId : _accountId,
+      options: [
+        for (final account in state.accounts.where(
+          (account) =>
+              !account.isArchived && (!counter || account.id != _accountId),
+        ))
+          PickerOption(
+            value: account.id,
+            title: account.name,
+            subtitle:
+                '${accountTypeLabel(account.type)} · ${formatMoney(accountBalance(state, account), state.preferences.locale)}',
+            icon: accountIcon(account),
+            iconColor: accountDisplayColor(account),
+          ),
+      ],
+    );
+    if (next == null) return;
+    setState(() {
+      if (counter) {
+        _counterAccountId = next;
+      } else {
+        _accountId = next;
+        if (_counterAccountId == next) _counterAccountId = null;
+      }
+    });
+  }
+
+  Future<void> _showRecurringCategoryPicker(LedgerState state) async {
+    final kind = incomeTypes.contains(_type) ? 'income' : 'expense';
+    final next = await showFullScreenPicker<String>(
+      context: context,
+      title: 'Choose category',
+      searchHint: 'Search categories',
+      selectedValue: _categoryId,
+      options: [
+        for (final category in state.categories.where(
+          (category) => !category.isArchived && category.kind == kind,
+        ))
+          PickerOption(
+            value: category.id,
+            title: category.name,
+            subtitle: category.kind,
+            icon: Icons.category_outlined,
+            iconColor: categoryColor(category, context),
+          ),
+      ],
+    );
+    if (next == null) return;
+    setState(() => _categoryId = next);
+  }
+
+  Future<void> _showFrequencyPicker() async {
+    final next = await showFullScreenPicker<String>(
+      context: context,
+      title: 'Frequency',
+      searchable: false,
+      selectedValue: _frequency,
+      options: const [
+        PickerOption(
+          value: 'daily',
+          title: 'Daily',
+          icon: Icons.today_outlined,
+        ),
+        PickerOption(
+          value: 'weekly',
+          title: 'Weekly',
+          icon: Icons.date_range_outlined,
+        ),
+        PickerOption(
+          value: 'monthly',
+          title: 'Monthly',
+          icon: Icons.calendar_month_outlined,
+        ),
+        PickerOption(
+          value: 'yearly',
+          title: 'Yearly',
+          icon: Icons.event_outlined,
+        ),
+      ],
+    );
+    if (next == null) return;
+    setState(() => _frequency = next);
+  }
+
+  Future<void> _pickRecurringDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _nextDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked == null) return;
+    setState(() => _nextDate = picked);
+  }
+
+  Future<void> _saveRecurring(
+    LedgerState state,
+    TransactionRecord? existing,
+  ) async {
+    final amountMinor = _amountMinorFromInput(_amountController.text).abs();
+    final account = accountById(state, _accountId);
+    if (amountMinor <= 0) {
+      _showRouteMessage(context, 'Enter an amount.');
+      return;
+    }
+    if (account == null) {
+      _showRouteMessage(context, 'Choose an account.');
+      return;
+    }
+    if (_needsCounterAccount && _counterAccountId == null) {
+      _showRouteMessage(context, 'Choose the linked account.');
+      return;
+    }
+    try {
+      await ref
+          .read(ledgerProvider.notifier)
+          .upsertTransaction(
+            id: existing?.id,
+            type: _type,
+            accountId: account.id,
+            counterAccountId: _needsCounterAccount ? _counterAccountId : null,
+            categoryId: _needsCounterAccount || _type == 'adjustment'
+                ? null
+                : _categoryId,
+            amountMinor: amountMinor,
+            status: 'scheduled',
+            source: 'recurring',
+            notes: _notesController.text,
+            occurredAt: _nextDate,
+            recurrenceFrequency: _frequency,
+          );
+      if (!mounted) return;
+      _showRouteMessage(
+        context,
+        existing == null
+            ? 'Scheduled record created.'
+            : 'Scheduled record saved.',
+      );
+      context.push('/recurring');
+    } catch (error) {
+      if (!mounted) return;
+      _showRouteMessage(context, error.toString());
+    }
+  }
+}
+
+class RecurringDetailView extends ConsumerWidget {
+  const RecurringDetailView({required this.transaction, super.key});
+
+  final TransactionRecord transaction;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(ledgerProvider);
+    final account = accountById(state, transaction.accountId);
+    final counter = accountById(state, transaction.counterAccountId);
+    final category = categoryById(state, transaction.categoryId);
+    final frequency = transaction.recurrenceFrequency ?? 'manual';
+    final scheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Amount Banner
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl, horizontal: AppSpacing.md),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                scheme.primaryContainer,
+                scheme.primary,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(AppRadii.xl),
+            boxShadow: [
+              BoxShadow(
+                color: scheme.primary.withAlpha(60),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              IconBubble(
+                icon: category == null ? Icons.event_repeat_rounded : Icons.category_rounded,
+                color: scheme.onPrimary,
+                compact: true,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                formatMoney(
+                  transaction.amount,
+                  state.preferences.locale,
+                ),
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: scheme.onPrimary,
+                  letterSpacing: -1.0,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                category?.name ?? transactionTypeLabel(transaction.type),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onPrimary.withAlpha(200),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: scheme.onPrimary.withAlpha(30),
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                  border: Border.all(color: scheme.onPrimary.withAlpha(60)),
+                ),
+                child: Text(
+                  '${transaction.status.toUpperCase()} · ${transactionTypeLabel(frequency).toUpperCase()}',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: scheme.onPrimary,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Gap(AppSpacing.lg),
+
+        // Metadata Grid
+        Row(
+          children: [
+            Expanded(
+              child: MetricTile(
+                label: 'Next payment',
+                value: formatLedgerDate(
+                  transaction.occurredAt,
+                  state.preferences.locale,
+                ),
+                icon: Icons.calendar_month_outlined,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: MetricTile(
+                label: counter != null ? 'From account' : 'Account',
+                value: account?.name ?? 'Unknown',
+                icon: Icons.account_balance_wallet_outlined,
+              ),
+            ),
+          ],
+        ),
+        if (counter != null) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: MetricTile(
+                  label: 'To account',
+                  value: counter.name,
+                  icon: Icons.account_balance_outlined,
+                ),
+              ),
+            ],
+          ),
+        ],
+        const Gap(AppSpacing.xl),
+
+        // Action Buttons
+        if (transaction.status == 'scheduled')
+          FilledButton.icon(
+            onPressed: () => _postNow(context, ref),
+            icon: const Icon(Icons.check_circle_rounded),
+            label: const Text('Post payment now'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+          ),
+        const Gap(AppSpacing.sm),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: transaction.status == 'scheduled'
+                    ? () => _postpone(context, ref)
+                    : null,
+                icon: const Icon(Icons.snooze_outlined),
+                label: const Text('Postpone'),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: transaction.status == 'scheduled'
+                    ? () => _skip(context, ref)
+                    : null,
+                icon: const Icon(Icons.skip_next_rounded),
+                label: const Text('Skip next'),
+              ),
+            ),
+          ],
+        ),
+        const Gap(AppSpacing.sm),
+        FilledButton.tonalIcon(
+          onPressed: () =>
+              context.push('/recurring/${transaction.id}/edit'),
+          icon: const Icon(Icons.edit_rounded),
+          label: const Text('Edit planned details'),
+        ),
+        const Gap(AppSpacing.xxl),
+
+        // History
+        _RecurringHistoryList(plan: transaction),
+      ],
+    );
+  }
+
+  Future<void> _postNow(BuildContext context, WidgetRef ref) async {
+    final notifier = ref.read(ledgerProvider.notifier);
+    
+    // Create a cleared instance based on the scheduled transaction
+    await notifier.upsertTransaction(
+      type: transaction.type,
+      accountId: transaction.accountId,
+      amountMinor: transaction.amount.amountMinor,
+      status: 'cleared',
+      source: transaction.source,
+      counterAccountId: transaction.counterAccountId,
+      categoryId: transaction.categoryId,
+      paymentMethod: transaction.paymentMethod,
+      notes: transaction.notes,
+      occurredAt: DateTime.now(),
+      originalTransactionId: transaction.id,
+      recurrenceFrequency: transaction.recurrenceFrequency,
+    );
+
+    // Advance the scheduled template
+    final nextDate = _advanceCursor(transaction.occurredAt, transaction.recurrenceFrequency ?? 'monthly');
+    await notifier.updateTransactionStatus(
+      transaction.id,
+      'scheduled',
+      occurredAt: nextDate,
+    );
+
+    if (!context.mounted) return;
+    _showRouteMessage(context, 'Scheduled record posted.');
+    context.push('/recurring/past');
+  }
+
+  Future<void> _postpone(BuildContext context, WidgetRef ref) async {
+    await ref
+        .read(ledgerProvider.notifier)
+        .postponeTransaction(transaction.id, const Duration(days: 7));
+    if (!context.mounted) return;
+    _showRouteMessage(context, 'Scheduled record postponed by one week.');
+    context.push('/recurring');
+  }
+
+  Future<void> _skip(BuildContext context, WidgetRef ref) async {
+    final notifier = ref.read(ledgerProvider.notifier);
+    final nextDate = _advanceCursor(transaction.occurredAt, transaction.recurrenceFrequency ?? 'monthly');
+    await notifier.updateTransactionStatus(
+      transaction.id,
+      'scheduled',
+      occurredAt: nextDate,
+    );
+    if (!context.mounted) return;
+    _showRouteMessage(context, 'Scheduled record skipped.');
+    context.push('/recurring');
+  }
+
+  DateTime _advanceCursor(DateTime current, String frequency) {
+    switch (frequency.toLowerCase()) {
+      case 'daily':
+        return current.add(const Duration(days: 1));
+      case 'weekly':
+        return current.add(const Duration(days: 7));
+      case 'monthly':
+        return _addMonths(current, 1);
+      case 'yearly':
+        return _addMonths(current, 12);
+      default:
+        return _addMonths(current, 1);
+    }
+  }
+
+  DateTime _addMonths(DateTime date, int months) {
+    var year = date.year;
+    var month = date.month + months;
+    while (month > 12) {
+      year++;
+      month -= 12;
+    }
+    while (month < 1) {
+      year--;
+      month += 12;
+    }
+    var day = date.day;
+    final daysInNextMonth = DateTime(year, month + 1, 0).day;
+    if (day > daysInNextMonth) {
+      day = daysInNextMonth;
+    }
+    return DateTime(year, month, day, date.hour, date.minute, date.second);
+  }
+}
+
+class _RecurringHistoryList extends ConsumerWidget {
+  const _RecurringHistoryList({required this.plan});
+
+  final TransactionRecord plan;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(ledgerProvider);
+    final history = state.transactions
+        .where((t) =>
+            (t.originalTransactionId == plan.id ||
+                (_isRecurringHistorySource(t.source) &&
+                    t.accountId == plan.accountId &&
+                    t.categoryId == plan.categoryId &&
+                    t.amount.amountMinor == plan.amount.amountMinor)) &&
+            t.status != 'scheduled' &&
+            t.status != 'void' &&
+            t.id != plan.id)
+        .toList();
+
+    if (history.isEmpty) return const SizedBox.shrink();
+
+    history.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+          child: Text(
+            'Past payments',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        for (final item in history) ...[
+          _RecurringCompactCard(
+            state: state,
+            transaction: item,
+            onTap: () => context.push('/transaction/${item.id}'),
+            historyMode: true,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
+      ],
+    );
+  }
+}
+
+String? _firstExpenseCategoryId(LedgerState state, {String? preferred}) {
+  final normalizedPreferred = preferred?.trim().toLowerCase();
+  if (normalizedPreferred != null && normalizedPreferred.isNotEmpty) {
+    final match = state.categories.firstWhereOrNull(
+      (category) =>
+          category.kind == 'expense' &&
+          !category.isArchived &&
+          category.name.toLowerCase().contains(normalizedPreferred),
+    );
+    if (match != null) return match.id;
+  }
+  return state.categories
+      .firstWhereOrNull(
+        (category) => category.kind == 'expense' && !category.isArchived,
+      )
+      ?.id;
+}
+
+String _formatAmountInput(int amountMinor) {
+  if (amountMinor == 0) return '';
+  final integer = amountMinor ~/ 100;
+  final fraction = amountMinor % 100;
+  if (fraction == 0) return '$integer';
+  return '$integer.${fraction.toString().padLeft(2, '0')}';
+}
+
+int _amountMinorFromInput(String value) {
+  final clean = value.replaceAll(RegExp(r'[^0-9.]'), '');
+  if (clean.isEmpty) return 0;
+  final parts = clean.split('.');
+  final integer = int.tryParse(parts[0]) ?? 0;
+  final fraction = parts.length > 1
+      ? (int.tryParse(parts[1].padRight(2, '0').substring(0, 2)) ?? 0)
+      : 0;
+  return integer * 100 + fraction;
+}
+
+void _showRouteMessage(BuildContext context, String message) {
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
+}
+
+String _recurringHeaderTitle(LedgerState state, TransactionRecord transaction) {
+  final notes = transaction.notes?.trim();
+  if (notes != null && notes.isNotEmpty) {
+    return notes.replaceFirst(
+      RegExp(r'^Scheduled EMI for\s+', caseSensitive: false),
+      '',
+    );
+  }
+  final counter = accountById(state, transaction.counterAccountId);
+  if (transaction.type == 'loan_repayment' && counter != null) {
+    return counter.name;
+  }
+  final category = categoryById(state, transaction.categoryId);
+  return category?.name ?? transactionTypeLabel(transaction.type);
+}
+
+String _recurringPrimaryTitle(
+  LedgerState state,
+  TransactionRecord transaction,
+) {
+  final category = categoryById(state, transaction.categoryId);
+  final counter = accountById(state, transaction.counterAccountId);
+  if (transaction.type == 'loan_repayment' && counter != null) {
+    return counter.name;
+  }
+  if (transaction.type == 'transfer' && counter != null) {
+    return 'Transfer to ${counter.name}';
+  }
+  return category?.name ?? transactionTypeLabel(transaction.type);
+}
+
+String _recurringCadenceLabel(String? frequency) {
+  return switch (frequency) {
+    'daily' => 'Every 1 day',
+    'weekly' => 'Every 1 week',
+    'yearly' => 'Every 1 year',
+    'monthly' || null => 'Every 1 month',
+    _ => 'Every ${transactionTypeLabel(frequency)}',
+  };
+}
+
+String? _recurringExtraLine(
+  LedgerState state,
+  TransactionRecord transaction,
+  Account? account,
+  Account? counter,
+  String primaryTitle,
+  String headerTitle,
+) {
+  if (transaction.type == 'loan_repayment' && counter != null) {
+    return '"${counter.name}"';
+  }
+  final accountName = transaction.type == 'transfer'
+      ? [
+          account?.name,
+          if (counter != null) counter.name,
+        ].whereType<String>().join(' → ')
+      : account?.name;
+  if (accountName != null &&
+      accountName.trim().isNotEmpty &&
+      accountName != primaryTitle &&
+      accountName != headerTitle) {
+    return '"$accountName"';
+  }
+  return null;
+}
+
+({String label, IconData icon, Color color}) _recurringStatus(
+  DateTime date, {
+  required String locale,
+  required bool historyMode,
+}) {
+  if (historyMode) {
+    return (
+      label: formatLedgerDate(date, locale),
+      icon: Icons.history_rounded,
+      color: Colors.blueAccent,
+    );
+  }
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final target = DateTime(date.year, date.month, date.day);
+  final diff = target.difference(today).inDays;
+  if (diff < 0) {
+    return (
+      label: formatDueDate(date, locale),
+      icon: Icons.warning_rounded,
+      color: Colors.redAccent,
+    );
+  }
+  if (diff == 0) {
+    return (
+      label: formatDueDate(date, locale),
+      icon: Icons.notification_important_outlined,
+      color: Colors.orangeAccent,
+    );
+  }
+  if (diff == 1) {
+    return (
+      label: formatDueDate(date, locale),
+      icon: Icons.history_toggle_off_rounded,
+      color: Colors.orangeAccent,
+    );
+  }
+  return (
+    label: formatDueDate(date, locale),
+    icon: Icons.history_toggle_off_rounded,
+    color: Colors.orangeAccent,
+  );
+}
+
+String _recurringAmountLabel(LedgerState state, TransactionRecord transaction) {
+  final isNegative = !incomeTypes.contains(transaction.type);
+  final sign = isNegative ? '-' : '+';
+  return '$sign${formatMoney(transaction.amount.copyWith(amountMinor: transaction.amount.amountMinor.abs()), state.preferences.locale)}';
+}
+
+Color _recurringAmountColor(
+  BuildContext context,
+  TransactionRecord transaction,
+) {
+  if (incomeTypes.contains(transaction.type)) {
+    return amountColor(context, transaction.amount.amountMinor.abs());
+  }
+  return Theme.of(context).colorScheme.error;
+}

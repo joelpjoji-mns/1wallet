@@ -1,82 +1,63 @@
-# 1wallet
+# 1wallet Flutter
 
-Local-first personal finance app with budgeting, expense tracking, savings goals, credit cards, loans, multi-currency records, and assisted transaction capture.
+Flutter migration of the 1wallet mobile app with Google/Firebase sign-in,
+branded launch/login screens, first-run onboarding, app icon generation, and
+Material 3 theming.
 
-The mobile app is the active product surface today. The current ledger runs through shared TypeScript packages and local persistence, with Firebase added for Google sign-in, cloud restore, and periodic snapshot sync.
+## Local auth config
 
-## Product direction
+Copy `.env.example` to `.env` and fill the Firebase + Google OAuth values before
+testing real Google sign-in:
 
-- Mobile-first personal finance app focused on Android and iOS delivery.
-- Multi-account support for cash, bank accounts, wallets, credit cards, loans, and savings pots.
-- Track expenses, income, transfers, budgets, recurring bills, EMIs, and savings goals.
-- Assist transaction capture through manual entry, imports, Android notifications, and policy-safe automation.
-- Treat automation as a review workflow, not a blind write to the ledger.
+- `FIREBASE_API_KEY`
+- `FIREBASE_AUTH_DOMAIN`
+- `FIREBASE_PROJECT_ID`
+- `FIREBASE_STORAGE_BUCKET`
+- `FIREBASE_MESSAGING_SENDER_ID`
+- `FIREBASE_APP_ID`
+- `GOOGLE_WEB_CLIENT_ID`
+- `GOOGLE_ANDROID_CLIENT_ID`
+- `GOOGLE_IOS_CLIENT_ID`
 
-## Recommended stack
+`.env` is intentionally ignored by git. Android is configured with package ID
+`com.joelpjoji.one.wallet`, so the Firebase project must include that package and
+its debug/release SHA fingerprints for Google sign-in to work.
 
-- Mobile: React Native with Expo development builds and TypeScript
-- Current data path: local-first ledger state with shared domain, ledger, state, validation, and UI packages
-- Sync/backend path: Firebase Auth and Firestore metadata plus chunked ledger snapshots
-- Shared code: Turborepo monorepo with TypeScript packages
+For parity testing against the React Native Firebase project, copy the values
+from `../1wallet/.env.local` into this app's ignored `.env`. The config loader
+accepts either direct names such as `FIREBASE_API_KEY` or RN-style
+`EXPO_PUBLIC_FIREBASE_API_KEY` names.
 
-## Why this direction
+## QA email/password restore
 
-- React Native with Expo keeps Android delivery fast while preserving shared TypeScript business logic.
-- Local-first state keeps daily mobile use fast and offline-friendly.
-- Firebase handles account identity and restore without making every screen depend on online database reads.
+Google remains the primary production sign-in. A debug-only email/password panel
+can be shown for Firebase restore testing with:
 
-## Important platform constraint
+- `ONEWALLET_ENABLE_EMAIL_PASSWORD_AUTH=true`
+- `ONEWALLET_QA_EMAIL=<your Firebase QA email>`
+- `ONEWALLET_QA_PASSWORD=<local generated password>`
 
-- iPhone apps cannot read the user's SMS inbox directly.
-- On Android, automated transaction capture should start with notification parsing and import flows.
-- On iOS, SMS capture is unavailable; use manual entry, CSV imports, statement imports, and shared review flows.
-- SMS parsing should be treated as optional and reviewed against current Play policy before release.
+Keep the QA password only in ignored local files such as `.env` or the RN repo's
+`.tmp/firebase-qa-user.local.json`.
 
-## Docs
+On sign-in, the Flutter app checks Firestore for the authenticated user's latest
+wallet snapshot at `users/{uid}/wallets/default`, downloads ordered snapshot
+chunks, validates the React Native `OneWalletArchiveV1` checksum, converts the
+ledger into Flutter models, persists it locally, and then routes to Home. If no
+cloud snapshot exists, onboarding still creates the first local wallet.
 
-- [docs/app/README.md](docs/app/README.md) — app handbook for current features, pages, flows, scenarios, business rules, and QA status
-- [docs/implementation-status.md](docs/implementation-status.md) — current repo status, validation commands, and commit notes
-- [docs/product-foundation.md](docs/product-foundation.md) — scope, principles, workflows, UI direction
-- [docs/features.md](docs/features.md) — full feature catalog (widgets, multi-currency, exclusions, automation, reports)
-- [docs/wireframes.md](docs/wireframes.md) — low-fidelity wireframes for every core screen
-- [docs/technical-architecture.md](docs/technical-architecture.md) — stack choice and architecture
-- [docs/database-schema.md](docs/database-schema.md) — target cloud data model for the future Supabase path
-- [.env.example](.env.example) — public Firebase and Google OAuth environment variables for local setup
-- [docs/roadmap.md](docs/roadmap.md) — phased build order
+The current Flutter cloud implementation is restore/read-only. Automatic upload
+from Flutter is intentionally not enabled yet.
 
-## Layout
+## Validation
 
-```text
-apps/
-  mobile/           # Expo + React Native app
-packages/
-  config/           # Shared configuration
-  domain/           # Types and money math
-  ledger/           # Ledger store, services, imports, capture parsing, loans, rules
-  state/            # React provider, local persistence, FX refresh bridge
-  ui/               # Design tokens and shared visual language
-  validation/       # Zod schemas shared across client and server
-supabase/
-  migrations/       # Postgres schema migrations
-firebase/
-  firestore.rules   # User-scoped Firestore access rules
-```
-
-## Getting started
-
-Prereqs: Node 20+, pnpm 11+, Android tooling for Android release builds, EAS credentials for iOS builds, and optionally the Supabase CLI for future backend work.
+Use the local Flutter SDK path on this Windows machine:
 
 ```powershell
-pnpm install
-pnpm typecheck
-pnpm test
-pnpm --filter @1wallet/mobile dev   # Expo
-# Optional local Firebase emulators after Firebase config is set:
-firebase emulators:start
+C:\Users\Joel\development\flutter\bin\flutter.bat analyze --no-pub
+C:\Users\Joel\development\flutter\bin\flutter.bat test --no-pub
+C:\Users\Joel\development\flutter\bin\flutter.bat build apk --debug --no-pub
 ```
 
-## What's next
-
-1. Keep the mobile ledger, Add Record, automation, notifications, and currency flows covered by focused QA runs.
-2. Tighten cloud-sync boundaries before moving beyond snapshot restore/upload into full entity-level merge.
-3. Continue visual polish and release validation on Android and iOS.
+If `flutter pub get` reports that plugin symlink support is required, enable
+Windows Developer Mode and run it again.

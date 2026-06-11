@@ -1,0 +1,513 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../auth/auth_controller.dart';
+import '../data/ledger_codec.dart';
+import '../data/ledger_models.dart';
+import '../data/ledger_providers.dart';
+import '../data/ledger_defaults.dart';
+import 'cloud_restore_controller.dart';
+import 'cloud_sync_metadata.dart';
+
+const uploadDebounceMs = 2500;
+const uploadCircuitBreakerMs = 30000;
+const uploadFailureCircuitBreakerThreshold = 5;
+
+final cloudSyncControllerProvider =
+    StateNotifierProvider<CloudSyncController, CloudSyncState>((ref) {
+      return CloudSyncController(ref);
+    });
+
+enum CloudSyncPhase { disabled, idle, checking, restoring, uploading, error }
+
+@immutable
+class CloudSyncState {
+  const CloudSyncState({
+    this.phase = CloudSyncPhase.disabled,
+    this.error,
+    this.disabledReason,
+    this.metadata,
+    this.pendingUpload = false,
+    this.bootstrapComplete = false,
+    this.bootstrappedUserId,
+  });
+
+  final CloudSyncPhase phase;
+  final String? error;
+  final String? disabledReason;
+  final CloudSyncMetadata? metadata;
+  final bool pendingUpload;
+  final bool bootstrapComplete;
+  final String? bootstrappedUserId;
+
+  bool get isChecking => phase == CloudSyncPhase.checking;
+  bool get isRestoring => phase == CloudSyncPhase.restoring;
+
+  CloudSyncState copyWith({
+    CloudSyncPhase? phase,
+    Object? error = _unset,
+    Object? disabledReason = _unset,
+    Object? metadata = _unset,
+    bool? pendingUpload,
+    bool? bootstrapComplete,
+    Object? bootstrappedUserId = _unset,
+  }) {
+    return CloudSyncState(
+      phase: phase ?? this.phase,
+      error: identical(error, _unset) ? this.error : error as String?,
+      disabledReason: identical(disabledReason, _unset)
+          ? this.disabledReason
+          : disabledReason as String?,
+      metadata: identical(metadata, _unset)
+          ? this.metadata
+          : metadata as CloudSyncMetadata?,
+      pendingUpload: pendingUpload ?? this.pendingUpload,
+      bootstrapComplete: bootstrapComplete ?? this.bootstrapComplete,
+      bootstrappedUserId: identical(bootstrappedUserId, _unset)
+          ? this.bootstrappedUserId
+          : bootstrappedUserId as String?,
+    );
+  }
+}
+
+const _unset = Object();
+
+class CloudSyncController extends StateNotifier<CloudSyncState> {
+  CloudSyncController(this._ref) : super(const CloudSyncState()) {
+    _init();
+  }
+
+  final Ref _ref;
+  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
+  LedgerController get _ledger => _ref.read(ledgerProvider.notifier);
+
+  Timer? _uploadTimer;
+  Timer? _retryTimer;
+  int _uploadFailureCount = 0;
+  int _uploadCircuitOpenUntil = 0;
+  bool _localClearInProgress = false;
+
+  void _init() {
+    _ref.listen(ledgerLoadStateProvider, (previous, next) {
+      if (!next.isReady) return;
+      final auth = _ref.read(authControllerProvider);
+      final user = auth.user;
+      if (user == null) return;
+      if (state.bootstrappedUserId == user.id && state.bootstrapComplete) {
+        return;
+      }
+      _bootstrap(user.id);
+    });
+
+    _ref.listen(authControllerProvider, (previous, next) {
+      if (next.user != null) {
+        final loadState = _ref.read(ledgerLoadStateProvider);
+        if (!loadState.isReady) {
+          state = state.copyWith(
+            phase: CloudSyncPhase.checking,
+            error: null,
+            disabledReason: null,
+            bootstrapComplete: false,
+            bootstrappedUserId: null,
+          );
+          return;
+        }
+        _bootstrap(next.user!.id);
+      } else {
+        _disableSync();
+      }
+    });
+
+    _ref.listen(ledgerProvider, (previous, next) {
+      final user = _ref.read(authControllerProvider).user;
+      if (user == null) return;
+      if (state.bootstrappedUserId != user.id) return;
+      if (_localClearInProgress) return;
+      if (state.phase == CloudSyncPhase.restoring ||
+          state.phase == CloudSyncPhase.checking) {
+        return;
+      }
+
+      _scheduleUpload();
+    });
+
+    final initialUser = _ref.read(authControllerProvider).user;
+    final loadState = _ref.read(ledgerLoadStateProvider);
+    if (initialUser != null) {
+      if (loadState.isReady) {
+        _bootstrap(initialUser.id);
+      } else {
+        state = state.copyWith(
+          phase: CloudSyncPhase.checking,
+          error: null,
+          disabledReason: null,
+          bootstrapComplete: false,
+          bootstrappedUserId: null,
+        );
+      }
+    } else {
+      _disableSync();
+    }
+  }
+
+  void _disableSync() {
+    _cancelTimers();
+    state = const CloudSyncState(
+      phase: CloudSyncPhase.disabled,
+      disabledReason: 'Sign in with Google to enable sync.',
+    );
+  }
+
+  void _cancelTimers() {
+    _uploadTimer?.cancel();
+    _uploadTimer = null;
+    _retryTimer?.cancel();
+    _retryTimer = null;
+  }
+
+  Future<void> _bootstrap(String userId) async {
+    if (state.bootstrappedUserId == userId) return;
+    try {
+      state = state.copyWith(
+        phase: CloudSyncPhase.checking,
+        error: null,
+        bootstrappedUserId: null,
+      );
+
+      var metadata = await CloudSyncMetadata.load();
+      if (metadata.userId != userId) {
+        metadata = metadata.copyWith(userId: userId);
+        await metadata.save();
+      }
+      state = state.copyWith(metadata: metadata);
+
+      final prefsDoc = await _firestore.doc('users/$userId/metadata/preferences').get().timeout(const Duration(seconds: 15));
+      
+      if (prefsDoc.exists) {
+        // We have cloud data. Restore it locally.
+        await _restoreFromCloud(userId, metadata);
+        
+        // Migrate rules from preferences to transactions if needed
+        final currentLedger = _ref.read(ledgerProvider);
+        
+        final existingRuleIds = currentLedger.transactions.map((t) => t.id).toSet();
+        final rulesToConvert = <FutureGenerationRule>[];
+        
+        // 1. Check if we already have rules in current preferences
+        if (currentLedger.preferences.futureGenerationRules != null) {
+          for (final rule in currentLedger.preferences.futureGenerationRules!) {
+            if (!existingRuleIds.contains(rule.id)) {
+              rulesToConvert.add(rule);
+            }
+          }
+        }
+        
+        // 2. If no rules at all, try fetching from legacy
+        if (rulesToConvert.isEmpty && (currentLedger.preferences.futureGenerationRules == null || currentLedger.preferences.futureGenerationRules!.isEmpty)) {
+          final restoreRepo = _ref.read(cloudWalletRestoreRepositoryProvider);
+          final legacyWallet = await restoreRepo.readLatestLedger(userId);
+          if (legacyWallet != null && legacyWallet.ledger.preferences.futureGenerationRules != null) {
+            for (final rule in legacyWallet.ledger.preferences.futureGenerationRules!) {
+              if (!existingRuleIds.contains(rule.id)) {
+                rulesToConvert.add(rule);
+              }
+            }
+          }
+        }
+        
+        if (rulesToConvert.isNotEmpty) {
+           final newTransactions = <TransactionRecord>[];
+           for (final rule in rulesToConvert) {
+             newTransactions.add(
+               TransactionRecord(
+                 id: rule.id,
+                 type: rule.type,
+                 status: 'scheduled',
+                 source: 'recurring',
+                 accountId: rule.accountId,
+                 counterAccountId: rule.counterAccountId,
+                 amount: Money(amountMinor: rule.amountMinor, currency: rule.currency),
+                 baseAmount: Money(amountMinor: rule.amountMinor, currency: rule.currency),
+                 occurredAt: rule.startsOn,
+                 categoryId: rule.categoryId,
+                 recurrenceFrequency: rule.frequency,
+                 notes: rule.name,
+                 paymentMethod: rule.paymentMethod,
+               )
+             );
+           }
+           
+           final mergedPreferences = currentLedger.preferences.copyWith(
+             futureGenerationRules: rulesToConvert.toList(),
+           );
+           
+           // Fix any already-migrated rules that accidentally got 'planned' status
+           final updatedTransactions = currentLedger.transactions.map((t) {
+             if (t.status == 'planned') {
+               return t.copyWith(status: 'scheduled');
+             }
+             return t;
+           }).toList();
+           
+           final mergedTransactions = [...updatedTransactions, ...newTransactions];
+           await _ledger.restoreLedgerState(currentLedger.copyWith(
+             preferences: mergedPreferences,
+             transactions: mergedTransactions,
+           ));
+           await uploadSnapshot(reason: 'migration_rules');
+        } else {
+           // If no new rules to convert, just check if we need to fix statuses
+           final hasPlannedStatus = currentLedger.transactions.any((t) => t.status == 'planned');
+           if (hasPlannedStatus) {
+             final updatedTransactions = currentLedger.transactions.map((t) {
+               if (t.status == 'planned') {
+                 return t.copyWith(status: 'scheduled');
+               }
+               return t;
+             }).toList();
+             await _ledger.restoreLedgerState(currentLedger.copyWith(
+               transactions: updatedTransactions,
+             ));
+             await uploadSnapshot(reason: 'migration_fix_status');
+           }
+        }
+      } else {
+        // Migration check
+        final restoreRepo = _ref.read(cloudWalletRestoreRepositoryProvider);
+        final legacyWallet = await restoreRepo.readLatestLedger(userId);
+        if (legacyWallet != null) {
+          // Found legacy data! Restore it and immediately push to the new schema.
+          await _ledger.restoreLedgerState(legacyWallet.ledger);
+          await uploadSnapshot(reason: 'migration');
+        } else if (_walletHasUserData(_ref.read(ledgerProvider))) {
+          // No cloud data, but we have local data. Push local to cloud.
+          await uploadSnapshot(reason: 'seed');
+        } else {
+          state = state.copyWith(phase: CloudSyncPhase.idle);
+        }
+      }
+
+      state = state.copyWith(
+        bootstrappedUserId: userId,
+        bootstrapComplete: true,
+      );
+    } catch (e) {
+      debugPrint('Cloud sync bootstrap error: $e');
+      state = state.copyWith(
+        phase: CloudSyncPhase.error,
+        error: 'Could not prepare sync: $e',
+        bootstrappedUserId: null,
+      );
+    }
+  }
+
+  void _scheduleUpload() {
+    state = state.copyWith(pendingUpload: true);
+    _uploadTimer?.cancel();
+    _uploadTimer = Timer(const Duration(milliseconds: uploadDebounceMs), () {
+      _uploadTimer = null;
+      uploadSnapshot(reason: 'auto');
+    });
+  }
+
+  Future<void> uploadSnapshot({required String reason}) async {
+    final user = _ref.read(authControllerProvider).user;
+    if (user == null) return;
+
+    if (reason == 'auto') {
+      if (state.phase == CloudSyncPhase.checking ||
+          state.phase == CloudSyncPhase.restoring) {
+        state = state.copyWith(pendingUpload: true);
+        return;
+      }
+      if (DateTime.now().millisecondsSinceEpoch < _uploadCircuitOpenUntil) {
+        state = state.copyWith(pendingUpload: true);
+        return;
+      }
+    }
+
+    try {
+      final currentLedger = _ref.read(ledgerProvider);
+      if (!_walletHasUserData(currentLedger)) {
+        state = state.copyWith(pendingUpload: false);
+        return;
+      }
+
+      var metadata = state.metadata ?? await CloudSyncMetadata.load();
+
+      state = state.copyWith(
+        pendingUpload: false,
+        phase: CloudSyncPhase.uploading,
+        error: null,
+      );
+
+      final writes = <Future<void>>[];
+      WriteBatch currentBatch = _firestore.batch();
+      int opCount = 0;
+
+      void addWrite(DocumentReference doc, Map<String, dynamic> data) {
+        currentBatch.set(doc, data, SetOptions(merge: true));
+        opCount++;
+        if (opCount >= 450) {
+          writes.add(currentBatch.commit());
+          currentBatch = _firestore.batch();
+          opCount = 0;
+        }
+      }
+
+      // Write metadata
+      addWrite(
+        _firestore.doc('users/${user.id}/metadata/preferences'), 
+        preferencesToJson(currentLedger.preferences).cast<String, dynamic>(),
+      );
+
+      addWrite(_firestore.doc('users/${user.id}'), {
+        'email': user.email,
+        'displayName': user.displayName,
+        'authProvider': 'google',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      
+      for (final account in currentLedger.accounts) {
+         addWrite(_firestore.doc('users/${user.id}/accounts/${account.id}'), accountToJson(account).cast<String, dynamic>());
+      }
+      for (final cat in currentLedger.categories) {
+         addWrite(_firestore.doc('users/${user.id}/categories/${cat.id}'), categoryToJson(cat).cast<String, dynamic>());
+      }
+      for (final txn in currentLedger.transactions) {
+         addWrite(_firestore.doc('users/${user.id}/transactions/${txn.id}'), transactionToJson(txn).cast<String, dynamic>());
+      }
+      for (final budget in currentLedger.budgets) {
+         addWrite(_firestore.doc('users/${user.id}/budgets/${budget.id}'), budgetToJson(budget).cast<String, dynamic>());
+      }
+      for (final goal in currentLedger.goals) {
+         addWrite(_firestore.doc('users/${user.id}/goals/${goal.id}'), goalToJson(goal).cast<String, dynamic>());
+      }
+
+      if (opCount > 0) {
+        writes.add(currentBatch.commit());
+      }
+      await Future.wait(writes);
+
+      final now = DateTime.now().toIso8601String();
+      metadata = metadata.copyWith(
+        userId: user.id,
+        lastPushedAt: now,
+      );
+      await metadata.save();
+
+      _uploadFailureCount = 0;
+      _uploadCircuitOpenUntil = 0;
+      state = state.copyWith(phase: CloudSyncPhase.idle, metadata: metadata);
+    } catch (e) {
+      _uploadFailureCount++;
+      if (_uploadFailureCount >= uploadFailureCircuitBreakerThreshold) {
+        _uploadCircuitOpenUntil =
+            DateTime.now().millisecondsSinceEpoch + uploadCircuitBreakerMs;
+      }
+      state = state.copyWith(
+        pendingUpload: true,
+        phase: CloudSyncPhase.error,
+        error: 'Could not sync your wallet to Firebase collections: $e',
+      );
+    }
+  }
+
+  Future<void> _restoreFromCloud(String userId, CloudSyncMetadata metadata) async {
+    state = state.copyWith(phase: CloudSyncPhase.restoring, error: null);
+
+    try {
+      final accountsQuery = await _firestore.collection('users/$userId/accounts').get().timeout(const Duration(seconds: 15));
+      final categoriesQuery = await _firestore.collection('users/$userId/categories').get().timeout(const Duration(seconds: 15));
+      final txnsQuery = await _firestore.collection('users/$userId/transactions').get().timeout(const Duration(seconds: 15));
+      final budgetsQuery = await _firestore.collection('users/$userId/budgets').get().timeout(const Duration(seconds: 15));
+      final goalsQuery = await _firestore.collection('users/$userId/goals').get().timeout(const Duration(seconds: 15));
+      final prefsDoc = await _firestore.doc('users/$userId/metadata/preferences').get().timeout(const Duration(seconds: 15));
+
+      final ledger = emptyLedgerState(userId: userId).copyWith(
+         preferences: prefsDoc.exists ? preferencesFromJson(prefsDoc.data()!) : const LedgerPreferences(),
+         accounts: accountsQuery.docs.map((d) => accountFromJson(d.data())).toList(),
+         categories: categoriesQuery.docs.map((d) => categoryFromJson(d.data())).toList(),
+         transactions: txnsQuery.docs.map((d) => transactionFromJson(d.data())).toList(),
+         budgets: budgetsQuery.docs.map((d) => budgetFromJson(d.data())).toList(),
+         goals: goalsQuery.docs.map((d) => goalFromJson(d.data())).toList(),
+      );
+
+      final currentLedger = _ref.read(ledgerProvider);
+      if (!_walletHasUserData(ledger) && _walletHasUserData(currentLedger)) {
+        state = state.copyWith(
+          phase: CloudSyncPhase.idle,
+          error: 'Cloud backup is empty, so the existing local wallet was kept.',
+        );
+        return;
+      }
+
+      await _ledger.restoreLedgerState(ledger);
+
+      metadata = metadata.copyWith(
+        userId: userId,
+        lastPulledAt: DateTime.now().toIso8601String(),
+      );
+      await metadata.save();
+
+      state = state.copyWith(phase: CloudSyncPhase.idle, metadata: metadata);
+    } catch (e) {
+      state = state.copyWith(
+        phase: CloudSyncPhase.error,
+        error: 'Restore failed: $e',
+      );
+    }
+  }
+
+  Future<void> prepareForLocalClear() async {
+    _localClearInProgress = true;
+    _cancelTimers();
+    final user = _ref.read(authControllerProvider).user;
+    if (user == null) return;
+    if (state.pendingUpload) {
+      await uploadSnapshot(reason: 'auto');
+    }
+  }
+
+  void resumeAfterLocalClear() {
+    _localClearInProgress = false;
+  }
+
+  void retryBootstrap() {
+    _cancelTimers();
+    _uploadFailureCount = 0;
+    _uploadCircuitOpenUntil = 0;
+
+    final user = _ref.read(authControllerProvider).user;
+    if (user == null) {
+      _disableSync();
+      return;
+    }
+
+    state = state.copyWith(
+      phase: CloudSyncPhase.checking,
+      error: null,
+      disabledReason: null,
+      pendingUpload: false,
+      bootstrapComplete: false,
+      bootstrappedUserId: null,
+    );
+
+    final loadState = _ref.read(ledgerLoadStateProvider);
+    if (loadState.isReady) {
+      _bootstrap(user.id);
+    }
+  }
+
+  bool _walletHasUserData(LedgerState ledger) {
+    return ledger.accounts.isNotEmpty ||
+        ledger.transactions.isNotEmpty ||
+        ledger.captureCandidates.isNotEmpty ||
+        ledger.importBatches.isNotEmpty ||
+        ledger.budgets.isNotEmpty ||
+        ledger.goals.isNotEmpty;
+  }
+}

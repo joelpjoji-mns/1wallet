@@ -1,0 +1,571 @@
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../auth/auth_controller.dart';
+import '../../auth/auth_user.dart';
+import '../../cloud_sync/cloud_sync_controller.dart';
+import '../../data/ledger_models.dart';
+import '../../data/ledger_providers.dart';
+import '../../design/tokens.dart';
+import '../../ledger/ledger_selectors.dart';
+import '../../widgets/user_identity_widgets.dart';
+import '../../widgets/bottom_island_nav.dart';
+import 'main_drawer_components.dart';
+import '../accounts/accounts_screen.dart';
+import '../calendar/calendar_screen.dart';
+import '../home/home_screen.dart';
+import '../notifications/notification_engine.dart';
+import '../planner/planner_screen.dart';
+import '../transactions/transactions_screen.dart';
+
+class MainShell extends ConsumerStatefulWidget {
+  const MainShell({super.key});
+
+  @override
+  ConsumerState<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends ConsumerState<MainShell> {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
+  late final PageController _pageController;
+  final ValueNotifier<int> _selectedIndex = ValueNotifier(0);
+
+  static const _tabs = [
+    IslandTabItem(
+      title: 'Home',
+      icon: Icons.home_outlined,
+      activeIcon: Icons.home_rounded,
+    ),
+    IslandTabItem(
+      title: 'Records',
+      icon: Icons.receipt_long_outlined,
+      activeIcon: Icons.receipt_long_rounded,
+      pageIndex: 1,
+    ),
+    IslandTabItem(
+      title: 'Calendar',
+      icon: Icons.calendar_month_outlined,
+      activeIcon: Icons.calendar_month_rounded,
+      pageIndex: 2,
+    ),
+    IslandTabItem(
+      title: 'Planner',
+      icon: Icons.stacked_line_chart_rounded,
+      activeIcon: Icons.stacked_line_chart_rounded,
+      pageIndex: 3,
+    ),
+    IslandTabItem(
+      title: 'Accounts',
+      icon: Icons.wallet_outlined,
+      activeIcon: Icons.wallet_rounded,
+      pageIndex: 4,
+    ),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _openDrawer() => _scaffoldKey.currentState?.openDrawer();
+
+  void _selectTab(int index) {
+    if (_selectedIndex.value != index) {
+      _selectedIndex.value = index;
+    }
+    if (!_pageController.hasClients) return;
+    final currentPage = _pageController.page?.round();
+    if (currentPage == index) return;
+    _pageController.jumpToPage(index);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BackButtonListener(
+      onBackButtonPressed: () async {
+        if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+          Navigator.of(context).pop();
+          return true;
+        }
+        if (_selectedIndex.value == 0) return false;
+        _selectTab(0);
+        return true;
+      },
+      child: Scaffold(
+        key: _scaffoldKey,
+        drawerEnableOpenDragGesture: true,
+        drawerEdgeDragWidth: 40,
+        drawer: ValueListenableBuilder<int>(
+          valueListenable: _selectedIndex,
+          builder: (context, selectedIndex, child) => _MainDrawer(
+            selectedIndex: selectedIndex,
+            onTabSelected: (index) {
+              Navigator.of(context).pop();
+              _selectTab(index);
+            },
+          ),
+        ),
+        body: Stack(
+          children: [
+            NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                if (notification is ScrollEndNotification) {
+                  final page = _pageController.page?.round() ?? 0;
+                  if (_selectedIndex.value != page) {
+                    _selectedIndex.value = page;
+                  }
+                }
+                return false;
+              },
+              child: PageView.builder(
+                controller: _pageController,
+                dragStartBehavior: DragStartBehavior.down,
+                itemCount: _tabs.length,
+                onPageChanged: (index) {
+                  // Index update deferred to ScrollEndNotification to prevent mid-swipe jank.
+                },
+                itemBuilder: (context, index) {
+                  return _KeepAliveWrapper(
+                    key: PageStorageKey<String>('main-shell-tab-$index'),
+                    child: _buildScreen(index),
+                  );
+                },
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: IgnorePointer(
+                child: Container(
+                  height:
+                      AppSizes.bottomBarClearance +
+                      MediaQuery.paddingOf(context).bottom,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Theme.of(context).colorScheme.surface.withAlpha(0),
+                        Theme.of(context).colorScheme.surface.withAlpha(220),
+                        Theme.of(context).colorScheme.surface,
+                      ],
+                      stops: const [0.0, 0.42, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: ValueListenableBuilder<int>(
+                valueListenable: _selectedIndex,
+                builder: (context, selectedIndex, child) => BottomIslandNavBar(
+                  items: _tabs,
+                  selectedIndex: selectedIndex,
+                  onSelected: _selectTab,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScreen(int index) {
+    return switch (index) {
+      0 => HomeScreen(onMenuPressed: _openDrawer, onTabSelected: _selectTab),
+      1 => TransactionsScreen(onMenuPressed: _openDrawer),
+      2 => CalendarScreen(onMenuPressed: _openDrawer),
+      3 => PlannerScreen(onMenuPressed: _openDrawer),
+      4 => AccountsScreen(onMenuPressed: _openDrawer),
+      _ => const SizedBox.shrink(),
+    };
+  }
+}
+
+class _MainDrawer extends ConsumerWidget {
+  const _MainDrawer({required this.selectedIndex, required this.onTabSelected});
+
+  final int selectedIndex;
+  final ValueChanged<int> onTabSelected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final auth = ref.watch(authControllerProvider);
+    final ledger = ref.watch(ledgerProvider);
+    final sync = ref.watch(cloudSyncControllerProvider);
+    final pendingReviewCount = _pendingReviewCount(ledger);
+    final notificationCount = buildNotificationInbox(ledger).length;
+    final updatesBadge = _syncBadge(sync);
+    final profileName = _profileName(auth.user, ledger);
+    final profileSubtitle = _profileSubtitle(auth.user, ledger);
+    final profileInitials = auth.user?.initials ?? _walletInitials(profileName);
+    final total = totalBalance(ledger);
+    return Drawer(
+      width: MediaQuery.sizeOf(context).width * 0.82,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: SafeArea(
+        child: Container(
+          margin: const EdgeInsets.all(AppSpacing.sm),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadii.xl),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                scheme.surface,
+                scheme.surfaceContainerLow,
+                scheme.surface,
+              ],
+            ),
+            border: Border.all(color: scheme.outlineVariant.withAlpha(180)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(28),
+                blurRadius: 22,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  AppSpacing.sm,
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppRadii.xl),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        scheme.primaryContainer.withAlpha(220),
+                        scheme.surfaceContainerHigh,
+                        scheme.tertiaryContainer.withAlpha(180),
+                      ],
+                    ),
+                    border: Border.all(
+                      color: scheme.outlineVariant.withAlpha(180),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AuthUserAvatar(
+                            user: auth.user,
+                            radius: 26,
+                            fallbackLabel: profileInitials,
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  profileName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.titleLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w900,
+                                        color: scheme.onSurface,
+                                        letterSpacing: -0.6,
+                                      ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  profileSubtitle,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: scheme.onSurfaceVariant,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      // Metrics and badges removed as requested
+                    ],
+                  ),
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                  ),
+                  children: [
+                    DrawerSection(
+                      title: 'Daily',
+                      titleColor: scheme.primary,
+                      icon: Icons.bolt_rounded,
+                      surfaceTint: scheme.primary,
+                      rows: [
+                        DrawerRowConfig.tab(
+                          'Home',
+                          Icons.dashboard_outlined,
+                          0,
+                        ),
+                        DrawerRowConfig.route(
+                          'Review',
+                          Icons.smart_toy_outlined,
+                          '/review',
+                          badge: _countBadge(pendingReviewCount),
+                        ),
+                      ],
+                      selectedIndex: selectedIndex,
+                      onTabSelected: onTabSelected,
+                    ),
+                    DrawerSection(
+                      title: 'Money',
+                      titleColor: scheme.tertiary,
+                      icon: Icons.account_balance_wallet_outlined,
+                      surfaceTint: scheme.tertiary,
+                      rows: [
+                        DrawerRowConfig.route(
+                          'Widgets',
+                          Icons.dashboard_customize_outlined,
+                          '/widgets',
+                        ),
+                        DrawerRowConfig.route(
+                          'Currencies',
+                          Icons.currency_exchange_outlined,
+                          '/currencies',
+                        ),
+                      ],
+                      selectedIndex: selectedIndex,
+                      onTabSelected: onTabSelected,
+                    ),
+                    DrawerSection(
+                      title: 'Planning',
+                      titleColor: scheme.secondary,
+                      icon: Icons.timeline_rounded,
+                      surfaceTint: scheme.secondary,
+                      rows: [
+                        DrawerRowConfig.route(
+                          'Categories',
+                          Icons.category_outlined,
+                          '/categories',
+                        ),
+                        DrawerRowConfig.route(
+                          'Planned payments',
+                          Icons.event_repeat_outlined,
+                          '/recurring',
+                        ),
+                        DrawerRowConfig.route(
+                          'Budgets',
+                          Icons.donut_large_outlined,
+                          '/budgets/new',
+                        ),
+                        DrawerRowConfig.route(
+                          'Goals',
+                          Icons.flag_outlined,
+                          '/goals/new',
+                        ),
+                      ],
+                      selectedIndex: selectedIndex,
+                      onTabSelected: onTabSelected,
+                    ),
+                    DrawerSection(
+                      title: 'Loans & credit',
+                      titleColor: const Color(0xFF7C4DFF),
+                      icon: Icons.account_balance_outlined,
+                      surfaceTint: const Color(0xFF7C4DFF),
+                      rows: [
+                        DrawerRowConfig.route(
+                          'Loans',
+                          Icons.account_balance_outlined,
+                          '/loans',
+                        ),
+                        DrawerRowConfig.route(
+                          'Loan forecast',
+                          Icons.show_chart_rounded,
+                          '/loans/forecast',
+                        ),
+                      ],
+                      selectedIndex: selectedIndex,
+                      onTabSelected: onTabSelected,
+                    ),
+                    DrawerSection(
+                      title: 'Tools',
+                      icon: Icons.build_circle_outlined,
+                      surfaceTint: scheme.primary,
+                      rows: [
+                        DrawerRowConfig.route(
+                          'Sync',
+                          Icons.cloud_done_outlined,
+                          '/sync',
+                        ),
+                        DrawerRowConfig.route(
+                          'Auto Capture',
+                          Icons.notifications_active_outlined,
+                          '/auto-capture',
+                        ),
+                        DrawerRowConfig.route(
+                          'Import & backup',
+                          Icons.folder_copy_outlined,
+                          '/imports',
+                        ),
+                        DrawerRowConfig.route(
+                          'Notifications',
+                          Icons.notifications_none,
+                          '/notifications',
+                          badge: _countBadge(notificationCount),
+                        ),
+                        DrawerRowConfig.route(
+                          'Updates',
+                          Icons.download_for_offline_outlined,
+                          '/updates',
+                          badge: updatesBadge,
+                        ),
+                      ],
+                      selectedIndex: selectedIndex,
+                      onTabSelected: onTabSelected,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        top: AppSpacing.sm,
+                        bottom: AppSpacing.md,
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        decoration: BoxDecoration(
+                          color: scheme.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(AppRadii.xl),
+                          border: Border.all(color: scheme.outlineVariant),
+                        ),
+                        child: Column(
+                          children: [
+                            DrawerRouteTile(
+                              config: DrawerRowConfig.route(
+                                'Settings',
+                                Icons.settings_outlined,
+                                '/settings',
+                              ),
+                              selectedIndex: selectedIndex,
+                              onTabSelected: onTabSelected,
+                              accentColor: scheme.primary,
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            DrawerRouteTile(
+                              config: DrawerRowConfig.route(
+                                'Sign out',
+                                Icons.logout_outlined,
+                                '/login',
+                              ),
+                              selectedIndex: selectedIndex,
+                              onTabSelected: onTabSelected,
+                              danger: true,
+                              accentColor: scheme.error,
+                              onTapOverride: () async {
+                                Navigator.of(context).pop();
+                                await ref
+                                    .read(authControllerProvider.notifier)
+                                    .signOut();
+                                if (context.mounted) context.go('/login');
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+int _pendingReviewCount(LedgerState ledger) {
+  return ledger.captureCandidates
+      .where((candidate) => candidate.status == 'pending')
+      .length;
+}
+
+String? _countBadge(int count) => count <= 0 ? null : count.toString();
+
+String? _syncBadge(CloudSyncState sync) {
+  if (sync.phase == CloudSyncPhase.error) return '!';
+  if (sync.pendingUpload || sync.phase == CloudSyncPhase.uploading) {
+    return 'sync';
+  }
+  return null;
+}
+
+String _profileName(AuthUser? user, LedgerState ledger) {
+  final displayName = user?.displayName?.trim();
+  if (displayName != null && displayName.isNotEmpty) return displayName;
+  final email = user?.email.trim();
+  if (email != null && email.isNotEmpty) return email;
+  return '${ledger.preferences.displayCurrency} wallet';
+}
+
+String _profileSubtitle(AuthUser? user, LedgerState ledger) {
+  final accountCount = ledger.accounts
+      .where((account) => !account.isArchived)
+      .length;
+  final recordCount = ledger.transactions.length;
+  final authLabel = user == null ? 'Local ledger' : user.providerLabel;
+  return '$authLabel · $accountCount account${accountCount == 1 ? '' : 's'} · $recordCount record${recordCount == 1 ? '' : 's'}';
+}
+
+String _walletInitials(String source) {
+  final parts = source
+      .split(RegExp(r'\s+|@'))
+      .where((part) => part.trim().isNotEmpty)
+      .toList();
+  if (parts.isEmpty) return '1W';
+  return parts.take(2).map((part) => part[0].toUpperCase()).join();
+}
+
+class _KeepAliveWrapper extends StatefulWidget {
+  const _KeepAliveWrapper({required this.child, super.key});
+  final Widget child;
+
+  @override
+  State<_KeepAliveWrapper> createState() => _KeepAliveWrapperState();
+}
+
+class _KeepAliveWrapperState extends State<_KeepAliveWrapper>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
+}
