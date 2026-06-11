@@ -2,6 +2,8 @@
 
 This is the target Supabase/Postgres schema for the future cloud-sync backend. The current mobile app is local-first; the active runtime model lives in `packages/ledger/src/store/types.ts` and `packages/ledger/src/services/index.ts`.
 
+Runnable schema history lives in `supabase/migrations/`. `0001_init.sql` creates the baseline schema, while follow-up migrations reconcile runtime/documentation gaps, add RLS policies, and add indexed/cached read paths for scale.
+
 Target engine: PostgreSQL 15+ (Supabase compatible).
 
 Conventions:
@@ -14,7 +16,7 @@ Conventions:
 - All user-owned tables include `user_id uuid not null` and are scoped via Postgres RLS.
 - Enum types are defined as Postgres `enum`s for stable schemas; flexible "type" lists use `text` + check constraint where iteration is expected.
 
-> Before writing the first production cloud migration, reconcile this target schema with the current local ledger model. Do not assume this file alone is the runtime source of truth.
+> Before wiring production app sync to this database, verify the migration set against the current local ledger model and run RLS/performance validation. Do not assume this file alone is the runtime source of truth.
 
 ---
 

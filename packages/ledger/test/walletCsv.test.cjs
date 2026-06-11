@@ -26,6 +26,7 @@ const { seedDefaultCategories } = require('../src/seed.ts');
 const { emptyState } = require('../src/store/types.ts');
 const {
   analyzeWalletCsvImport,
+  deriveWalletCsvAccountAliases,
   isWalletCsvProposalQueueable,
   provisionWalletCsvEntities,
   walletCsvProposalsToCaptureInputs,
@@ -48,11 +49,131 @@ const file = { fileName: 'wallet_records.csv', content };
 const provision = provisionWalletCsvEntities(state, [file]);
 assert.equal(provision.accountsCreated, 2);
 
+const aliasContent = [
+  header,
+  'AmazonPay ICICI;Shopping;INR;100;100;Expense;Card;Amazon order;2026-05-01T09:00:00.000Z;false;Amazon;card',
+  'Amazon Pay Credit Card;Shopping;INR;200;200;Expense;Card;Amazon order;2026-05-02T09:00:00.000Z;false;Amazon;card',
+  'OneCard BOB;Dining;INR;300;300;Expense;Card;Dinner;2026-05-03T09:00:00.000Z;false;Restaurant;card',
+  'One Card Bank of Baroda;Dining;INR;400;400;Expense;Card;Dinner;2026-05-04T09:00:00.000Z;false;Restaurant;card',
+].join('\n');
+const aliasFile = { fileName: 'wallet_aliases.csv', content: aliasContent };
+const aliasPreProvisionState = emptyState('wallet-csv-derived-alias-test', 'INR');
+const aliasPreProvisionAnalysis = analyzeWalletCsvImport(aliasPreProvisionState, [aliasFile]);
+assert.equal(aliasPreProvisionAnalysis.summary.accountAliases.length, 2);
+const amazonAliasGroup = aliasPreProvisionAnalysis.summary.accountAliases.find(
+  (group) => group.canonicalName === 'Amazon Pay Credit Card',
+);
+assert.ok(amazonAliasGroup);
+assert.deepEqual(amazonAliasGroup.aliases, ['AmazonPay ICICI']);
+assert.equal(amazonAliasGroup.type, 'credit_card');
+const oneCardAliasGroup = aliasPreProvisionAnalysis.summary.accountAliases.find(
+  (group) => group.canonicalName === 'One Card Bank of Baroda',
+);
+assert.ok(oneCardAliasGroup);
+assert.deepEqual(oneCardAliasGroup.aliases, ['OneCard BOB']);
+assert.equal(oneCardAliasGroup.institution, 'Bank of Baroda');
+assert.deepEqual(
+  deriveWalletCsvAccountAliases(aliasPreProvisionAnalysis.parsedRows).map((group) => ({
+    canonicalName: group.canonicalName,
+    aliases: group.aliases,
+  })),
+  [
+    { canonicalName: 'Amazon Pay Credit Card', aliases: ['AmazonPay ICICI'] },
+    { canonicalName: 'One Card Bank of Baroda', aliases: ['OneCard BOB'] },
+  ],
+);
+const aliasProvision = provisionWalletCsvEntities(aliasPreProvisionState, [aliasFile]);
+assert.equal(aliasProvision.accountsCreated, 2);
+assert.deepEqual(aliasProvision.accountNames.sort(), [
+  'Amazon Pay Credit Card',
+  'One Card Bank of Baroda',
+]);
+const aliasPostProvisionAnalysis = analyzeWalletCsvImport(aliasPreProvisionState, [aliasFile]);
+assert.equal(aliasPostProvisionAnalysis.summary.unknownAccounts, 0);
+const amazonAliasRow = aliasPostProvisionAnalysis.parsedRows.find(
+  (row) => row.accountName === 'AmazonPay ICICI',
+);
+assert.equal(amazonAliasRow.accountMatch.kind, 'alias');
+assert.equal(amazonAliasRow.accountMatch.accountName, 'Amazon Pay Credit Card');
+
+const manualAccountMappingState = emptyState('wallet-csv-manual-account-map-test', 'INR');
+seedDefaultCategories(manualAccountMappingState);
+const everydayCash = createAccount(manualAccountMappingState, {
+  name: 'Everyday Cash',
+  type: 'cash',
+  currency: 'INR',
+  openingBalanceMinor: 0,
+});
+const manualAccountMappingContent = [
+  header,
+  'Wallet Cash;Gym;INR;100;100;Expense;UPI;Gym;2026-05-01T09:00:00.000Z;false;Gym;fitness',
+].join('\n');
+const manualAccountMappingFile = {
+  fileName: 'wallet_manual_account_mapping.csv',
+  content: manualAccountMappingContent,
+};
+const manualAccountMappings = {
+  accountIdsByCsvName: { 'Wallet Cash': everydayCash.id },
+};
+const manualAccountMappingAnalysis = analyzeWalletCsvImport(
+  manualAccountMappingState,
+  [manualAccountMappingFile],
+  { mappings: manualAccountMappings },
+);
+assert.equal(manualAccountMappingAnalysis.summary.unknownAccounts, 0);
+const manualAccountMappedRow = manualAccountMappingAnalysis.parsedRows[0];
+assert.equal(manualAccountMappedRow.accountId, everydayCash.id);
+assert.equal(manualAccountMappedRow.accountMatch.kind, 'manual');
+assert.equal(manualAccountMappingAnalysis.proposals[0].suggestedAccountId, everydayCash.id);
+assert.equal(isWalletCsvProposalQueueable(manualAccountMappingAnalysis.proposals[0]), true);
+const manualAccountProvision = provisionWalletCsvEntities(
+  manualAccountMappingState,
+  [manualAccountMappingFile],
+  manualAccountMappings,
+);
+assert.equal(manualAccountProvision.accountsCreated, 0);
+
 const analysis = analyzeWalletCsvImport(state, [file]);
 assert.equal(analysis.summary.transferPairs, 1);
 assert.equal(analysis.summary.unpairedTransfers, 0);
 assert.equal(analysis.summary.queueable, 5);
 assert.equal(analysis.summary.plannedPayments, 1);
+assert.equal(analysis.summary.columns.length, 12);
+assert.deepEqual(
+  analysis.summary.columns.map((column) => column.column),
+  [
+    'account',
+    'category',
+    'currency',
+    'amount',
+    'ref_currency_amount',
+    'type',
+    'payment_type',
+    'note',
+    'date',
+    'transfer',
+    'payee',
+    'labels',
+  ],
+);
+const columnsByName = new Map(analysis.summary.columns.map((column) => [column.column, column]));
+assert.equal(columnsByName.get('account').status, 'mapped');
+assert.equal(columnsByName.get('account').populated, 6);
+assert.equal(columnsByName.get('amount').status, 'mapped');
+assert.equal(columnsByName.get('amount').uniqueValues, 4);
+assert.equal(columnsByName.get('category').status, 'partial');
+assert.match(columnsByName.get('category').notFullyMappedReason, /Transfer rows/);
+assert.equal(columnsByName.get('ref_currency_amount').status, 'partial');
+assert.match(columnsByName.get('ref_currency_amount').notFullyMappedReason, /dedicated transaction field/);
+assert.equal(columnsByName.get('note').populated, 4);
+assert.equal(columnsByName.get('note').empty, 2);
+assert.equal(columnsByName.get('transfer').topValues[0].value, 'false');
+assert.equal(columnsByName.get('transfer').topValues[0].count, 4);
+assert.equal(columnsByName.get('payee').status, 'partial');
+assert.match(columnsByName.get('payee').notFullyMappedReason, /merchantId/);
+assert.equal(columnsByName.get('labels').status, 'mapped');
+assert.equal(columnsByName.get('labels').topValues[0].value, 'streaming');
+assert.equal(columnsByName.get('labels').topValues[0].count, 3);
 
 const plannedPayment = analysis.plannedPayments[0];
 assert.equal(plannedPayment.name, 'Netflix');
@@ -224,6 +345,24 @@ assert.equal(categoryProvision.categoriesCreated, 0);
 assert.equal(categoryMatchState.categories.length, seededCategoryCount);
 const categoryMatchAnalysis = analyzeWalletCsvImport(categoryMatchState, [categoryMatchFile]);
 assert.equal(categoryMatchAnalysis.summary.unknownCategories, 0);
+const categoryMappingsByName = new Map(
+  categoryMatchAnalysis.summary.categoryMappings.map((mapping) => [mapping.categoryName, mapping]),
+);
+assert.equal(categoryMappingsByName.get('Gym').status, 'matched');
+assert.equal(
+  categoryMappingsByName.get('Gym').matchedCategoryBreadcrumb,
+  'Health & wellness > Fitness',
+);
+assert.equal(categoryMappingsByName.get('Gym').matchKind, 'taxonomy');
+assert.equal(
+  categoryMappingsByName.get('Software, apps, games').matchedCategoryBreadcrumb,
+  'Work & business > Software',
+);
+assert.equal(
+  categoryMappingsByName.get('Allowance').matchedCategoryBreadcrumb,
+  'Gifts & support > Family support',
+);
+assert.equal(categoryMappingsByName.get('Allowance').matchKind, 'taxonomy');
 const fitnessCategory = categoryMatchState.categories.find((item) => item.name === 'Fitness');
 const softwareCategory = categoryMatchState.categories.find((item) => item.name === 'Software');
 const diningCategory = categoryMatchState.categories.find((item) => item.name === 'Dining out');
@@ -244,7 +383,7 @@ const jewelleryCategory = categoryMatchState.categories.find(
   (item) => item.name === 'Jewellery & accessories',
 );
 const allowanceCategory = categoryMatchState.categories.find(
-  (item) => item.name === 'Family support',
+  (item) => item.name === 'Family support' && item.kind === 'income',
 );
 const advisoryCategory = categoryMatchState.categories.find(
   (item) => item.name === 'Professional services',
@@ -336,6 +475,75 @@ assert.equal(
     .suggestedCategoryId,
   advisoryCategory.id,
 );
+
+const ambiguousCategoryState = emptyState('wallet-csv-category-ambiguous-test', 'INR');
+seedDefaultCategories(ambiguousCategoryState);
+createAccount(ambiguousCategoryState, {
+  name: 'Cash',
+  type: 'cash',
+  currency: 'INR',
+  openingBalanceMinor: 0,
+});
+const ambiguousCategoryContent = [
+  header,
+  'Cash;Gift;INR;500;500;Expense;UPI;Birthday gift;2026-05-14T09:00:00.000Z;false;Friend;gift',
+].join('\n');
+const ambiguousCategoryAnalysis = analyzeWalletCsvImport(ambiguousCategoryState, [
+  { fileName: 'wallet_ambiguous_categories.csv', content: ambiguousCategoryContent },
+]);
+const giftMapping = ambiguousCategoryAnalysis.summary.categoryMappings.find(
+  (mapping) => mapping.categoryName === 'Gift',
+);
+assert.ok(giftMapping);
+assert.equal(giftMapping.status, 'ambiguous');
+assert.equal(giftMapping.matchedCategoryId, undefined);
+assert.ok(
+  giftMapping.candidates.some((candidate) => candidate.categoryBreadcrumb === 'Gifts & giving'),
+);
+assert.ok(
+  giftMapping.candidates.some(
+    (candidate) => candidate.categoryBreadcrumb === 'Gifts & giving > Gifts',
+  ),
+);
+const ambiguousGiftProposal = ambiguousCategoryAnalysis.proposals[0];
+assert.equal(ambiguousGiftProposal.suggestedCategoryId, undefined);
+assert.ok(
+  ambiguousGiftProposal.warnings.some((warning) =>
+    warning.startsWith('ambiguous category match: Gift'),
+  ),
+);
+const giftSubcategory = ambiguousCategoryState.categories.find(
+  (category) => category.name === 'Gifts' && category.parentId,
+);
+assert.ok(giftSubcategory);
+const manualCategoryMappings = {
+  categoryIdsByCsvName: { Gift: giftSubcategory.id },
+};
+const manualCategoryAnalysis = analyzeWalletCsvImport(
+  ambiguousCategoryState,
+  [{ fileName: 'wallet_ambiguous_categories.csv', content: ambiguousCategoryContent }],
+  { mappings: manualCategoryMappings },
+);
+const manuallyMappedGift = manualCategoryAnalysis.summary.categoryMappings.find(
+  (mapping) => mapping.categoryName === 'Gift',
+);
+assert.ok(manuallyMappedGift);
+assert.equal(manuallyMappedGift.status, 'matched');
+assert.equal(manuallyMappedGift.matchedCategoryId, giftSubcategory.id);
+assert.equal(manuallyMappedGift.matchKind, 'manual');
+assert.equal(manualCategoryAnalysis.proposals[0].suggestedCategoryId, giftSubcategory.id);
+assert.equal(
+  manualCategoryAnalysis.proposals[0].warnings.some((warning) =>
+    warning.startsWith('ambiguous category match: Gift'),
+  ),
+  false,
+);
+const manualCategoryProvision = provisionWalletCsvEntities(
+  ambiguousCategoryState,
+  [{ fileName: 'wallet_ambiguous_categories.csv', content: ambiguousCategoryContent }],
+  manualCategoryMappings,
+);
+assert.equal(manualCategoryProvision.categoriesCreated, 0);
 
 const loanImportState = emptyState('wallet-csv-loan-import-test', 'INR');
 const loanContent = [

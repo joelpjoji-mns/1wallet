@@ -6,7 +6,7 @@ This file separates the current repository state from the broader product, archi
 
 - Mobile app is the primary working surface under `apps/mobile`.
 - The ledger is local-first today through `@1wallet/ledger` and `@1wallet/state`.
-- Supabase/Postgres docs and migrations describe the future cloud-sync target, not the active storage path.
+- Supabase/Postgres docs and migrations describe the future cloud-sync target, not the active storage path. The migration set now includes schema reconciliation, RLS policies, performance indexes, and an account-balance cache; app runtime sync still needs an explicit integration pass before SQL becomes active.
 - The current app handbook lives at [app/README.md](app/README.md), with route inventory, feature catalog, user flows, scenario matrices, business rules, and QA status.
 
 ## Current Core Capabilities
@@ -31,6 +31,7 @@ This file separates the current repository state from the broader product, archi
 pnpm --filter @1wallet/mobile typecheck
 pnpm --filter @1wallet/ledger --filter @1wallet/state typecheck
 pnpm --filter @1wallet/ledger test
+pnpm supabase:validate
 pnpm typecheck
 pnpm test
 pnpm lint

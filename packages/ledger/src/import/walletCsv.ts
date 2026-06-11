@@ -3,10 +3,10 @@ import type { Account, AccountType, Category, TransactionType, UUID } from '@1wa
 import { DEFAULT_CATEGORY_TAXONOMY } from '../seed';
 import { createAccount, createCategory, type CreateCaptureCandidateInput } from '../services/index';
 import type {
-    FutureGenerationFrequency,
-    FutureGenerationRule,
-    LedgerState,
-    PlannedPaymentKind,
+  FutureGenerationFrequency,
+  FutureGenerationRule,
+  LedgerState,
+  PlannedPaymentKind,
 } from '../store/types';
 
 export type WalletCsvType = 'Expense' | 'Income';
@@ -52,6 +52,9 @@ export interface WalletCsvParsedRow {
   accountId?: UUID;
   accountMatch?: WalletCsvAccountMatch;
   categoryId?: UUID;
+  categoryMatch?: WalletCsvCategoryMatch;
+  categoryCandidates?: WalletCsvCategoryCandidate[];
+  categoryMappingStatus?: WalletCsvCategoryMappingStatus;
   suggestedType: TransactionType;
   confidence: number;
   warnings: string[];
@@ -59,9 +62,38 @@ export interface WalletCsvParsedRow {
 
 export interface WalletCsvAccountMatch {
   accountName: string;
-  kind: 'exact' | 'alias' | 'similar';
+  kind: 'exact' | 'alias' | 'similar' | 'manual';
   reason: string;
   score: number;
+}
+
+export type WalletCsvCategoryMatchKind = 'exact' | 'taxonomy' | 'similar' | 'manual';
+export type WalletCsvCategoryMappingStatus = 'matched' | 'ambiguous' | 'missing' | 'transfer_only';
+
+export interface WalletCsvCategoryCandidate {
+  categoryId: UUID;
+  categoryName: string;
+  categoryBreadcrumb: string;
+  categoryKind: Category['kind'];
+  matchKind: WalletCsvCategoryMatchKind;
+  reason: string;
+  score: number;
+}
+
+export interface WalletCsvCategoryMatch extends WalletCsvCategoryCandidate { }
+
+export interface WalletCsvCategoryMappingSummary {
+  categoryName: string;
+  count: number;
+  types: WalletCsvValueSummary[];
+  status: WalletCsvCategoryMappingStatus;
+  matchedCategoryId?: UUID;
+  matchedCategoryName?: string;
+  matchedCategoryBreadcrumb?: string;
+  matchKind?: WalletCsvCategoryMatchKind;
+  matchReason?: string;
+  candidates: WalletCsvCategoryCandidate[];
+  warnings: string[];
 }
 
 export interface WalletCsvCandidateProposal {
@@ -122,7 +154,14 @@ export interface WalletCsvPlannedPaymentDetectionOptions {
   activeLowFrequencyWindowMonths?: number;
 }
 
-export interface WalletCsvImportAnalysisOptions extends WalletCsvPlannedPaymentDetectionOptions {}
+export interface WalletCsvMappingOverrides {
+  accountIdsByCsvName?: Record<string, UUID | undefined>;
+  categoryIdsByCsvName?: Record<string, UUID | undefined>;
+}
+
+export interface WalletCsvImportAnalysisOptions extends WalletCsvPlannedPaymentDetectionOptions {
+  mappings?: WalletCsvMappingOverrides;
+}
 
 export interface WalletCsvCaptureLinkOptions {
   plannedPayments?: WalletCsvPlannedPaymentCandidate[];
@@ -167,6 +206,31 @@ export interface WalletCsvPlannedPaymentCandidate {
 export interface WalletCsvValueSummary {
   value: string;
   count: number;
+}
+
+export type WalletCsvColumnName = keyof WalletCsvRawRow;
+export type WalletCsvColumnMappingStatus = 'mapped' | 'partial' | 'audit_only';
+
+export interface WalletCsvColumnSummary {
+  column: WalletCsvColumnName;
+  label: string;
+  rowCount: number;
+  populated: number;
+  empty: number;
+  uniqueValues: number;
+  topValues: WalletCsvValueSummary[];
+  ledgerMapping: string;
+  status: WalletCsvColumnMappingStatus;
+  notFullyMappedReason?: string;
+}
+
+export interface WalletCsvAccountAliasGroup {
+  canonicalName: string;
+  aliases: string[];
+  rowCount: number;
+  currencies: WalletCsvValueSummary[];
+  type: AccountType;
+  institution?: string;
 }
 
 export interface WalletCsvDateRange {
@@ -217,7 +281,10 @@ export interface WalletCsvImportAnalysis {
     warnings: number;
     dateRange: WalletCsvDateRange;
     perFile: WalletCsvFileSummary[];
+    columns: WalletCsvColumnSummary[];
     accounts: WalletCsvValueSummary[];
+    accountAliases: WalletCsvAccountAliasGroup[];
+    categoryMappings: WalletCsvCategoryMappingSummary[];
     categories: WalletCsvValueSummary[];
     currencies: WalletCsvValueSummary[];
     paymentTypes: WalletCsvValueSummary[];
@@ -241,29 +308,76 @@ const REQUIRED_HEADERS = [
   'labels',
 ] as const;
 
-const ACCOUNT_ALIASES: Record<string, string> = {
-  amazonpay: 'amazonpaycreditcard',
-  amazonpaycard: 'amazonpaycreditcard',
-  amazonpayicici: 'amazonpaycreditcard',
-  amazonpayicicicard: 'amazonpaycreditcard',
-  axisforex: 'axisforexcard',
-  axissupermoney: 'axissupermoneycreditcard',
-  bobonecard: 'onecardbob',
-  hdfcmoneyback: 'hdfcmoneybackcreditcard',
-  hdfcmoneybackcard: 'hdfcmoneybackcreditcard',
-  icicicoral: 'icicicoralcreditcard',
-  icicicoralcard: 'icicicoralcreditcard',
-  onecard: 'onecardbob',
-  onecardbankofbaroda: 'onecardbob',
-  onecardbob: 'onecardbob',
-  sbicashback: 'sbicashbackcreditcard',
-  sbicashbackcard: 'sbicashbackcreditcard',
-  sbisimplyclick: 'sbisimplyclickcreditcard',
-  sbisimplyclickcard: 'sbisimplyclickcreditcard',
-  sbisimplyclickcreditcard: 'sbisimplyclickcreditcard',
-  simplyclick: 'sbisimplyclickcreditcard',
-  swiggyhdfc: 'swiggyhdfccreditcard',
-  swiggyhdfccard: 'swiggyhdfccreditcard',
+const WALLET_CSV_COLUMN_MAPPINGS: Record<
+  WalletCsvColumnName,
+  Pick<
+    WalletCsvColumnSummary,
+    'label' | 'ledgerMapping' | 'status' | 'notFullyMappedReason'
+  >
+> = {
+  account: {
+    label: 'Account',
+    ledgerMapping: 'Matched to suggestedAccountId, provisioned as an Account, and stored in raw import audit.',
+    status: 'mapped',
+  },
+  category: {
+    label: 'Category',
+    ledgerMapping: 'Matched to suggestedCategoryId for non-transfer rows and retained in raw import audit.',
+    status: 'partial',
+    notFullyMappedReason: 'Transfer rows use category only as transfer evidence; category mapping review is handled separately.',
+  },
+  currency: {
+    label: 'Currency',
+    ledgerMapping: 'Mapped to parsedCurrency and transaction amount currency.',
+    status: 'mapped',
+  },
+  amount: {
+    label: 'Amount',
+    ledgerMapping: 'Mapped to parsedAmountMinor and transaction amount; transfer rows use it as source amount.',
+    status: 'mapped',
+  },
+  ref_currency_amount: {
+    label: 'Reference amount',
+    ledgerMapping: 'Used for FX/base amount inference and cross-currency transfer pairing when present.',
+    status: 'partial',
+    notFullyMappedReason: 'Rows without FX needs keep this value only in raw audit; no dedicated transaction field exists for every reference amount.',
+  },
+  type: {
+    label: 'Type',
+    ledgerMapping: 'Mapped to suggestedType as income/expense plus fee/transfer/card/loan inference.',
+    status: 'mapped',
+  },
+  payment_type: {
+    label: 'Payment type',
+    ledgerMapping: 'Mapped to parsedPaymentMethod and transaction paymentMethod.',
+    status: 'mapped',
+  },
+  note: {
+    label: 'Note',
+    ledgerMapping: 'Mapped to parsedNotes, transaction notes, planned-payment evidence, and raw audit.',
+    status: 'mapped',
+  },
+  date: {
+    label: 'Date',
+    ledgerMapping: 'Mapped to parsedOccurredAt and transaction occurredAt.',
+    status: 'mapped',
+  },
+  transfer: {
+    label: 'Transfer flag',
+    ledgerMapping: 'Used to pair transfer rows and infer transfer/card_payment/loan_repayment candidates.',
+    status: 'mapped',
+  },
+  payee: {
+    label: 'Payee',
+    ledgerMapping: 'Mapped to parsedMerchant, appended to notes, and used for planned-payment identity.',
+    status: 'partial',
+    notFullyMappedReason: 'Merchant entities are not created/linked to transaction.merchantId yet.',
+  },
+  labels: {
+    label: 'Labels',
+    ledgerMapping: 'Split into parsedTags and transaction tags; raw label text stays in audit payload.',
+    status: 'mapped',
+  },
 };
 
 const GENERIC_ACCOUNT_TOKENS = new Set([
@@ -278,6 +392,8 @@ const GENERIC_ACCOUNT_TOKENS = new Set([
   'prepaid',
   'savings',
   'saving',
+  'of',
+  'the',
   'upi',
   'wallet',
 ]);
@@ -341,10 +457,13 @@ export function analyzeWalletCsvImport(
   options: WalletCsvImportAnalysisOptions = {},
 ): WalletCsvImportAnalysis {
   const parsedRows = files.flatMap((file) => parseWalletCsvFile(file));
-  const rows = parsedRows.map((row) => matchWalletCsvRow(state, row));
+  const accountAliases = deriveWalletCsvAccountAliases(parsedRows);
+  const rows = parsedRows.map((row) =>
+    matchWalletCsvRow(state, row, accountAliases, options.mappings),
+  );
   const proposals = buildWalletCsvProposals(state, rows);
   const plannedPayments = detectWalletCsvPlannedPayments(state, proposals, options);
-  const summary = summarizeWalletCsvRows(rows, proposals, plannedPayments);
+  const summary = summarizeWalletCsvRows(rows, proposals, plannedPayments, accountAliases);
   return {
     files: files.map((file) => file.fileName),
     rowCount: rows.length,
@@ -416,6 +535,7 @@ export function summarizeWalletCsvRows(
   rows: WalletCsvParsedRow[],
   proposals: WalletCsvCandidateProposal[],
   plannedPayments: WalletCsvPlannedPaymentCandidate[] = [],
+  accountAliases: WalletCsvAccountAliasGroup[] = deriveWalletCsvAccountAliases(rows),
 ): WalletCsvImportAnalysis['summary'] {
   const transferPairs = proposals.filter(
     (proposal) =>
@@ -452,7 +572,10 @@ export function summarizeWalletCsvRows(
     warnings: proposals.reduce((sum, proposal) => sum + proposal.warnings.length, 0),
     dateRange: dateRangeForRows(rows),
     perFile: summarizeFiles(rows),
+    columns: summarizeWalletCsvColumns(rows),
     accounts: uniqueWalletCsvFieldValues(rows, 'accountName'),
+    accountAliases,
+    categoryMappings: summarizeWalletCsvCategoryMappings(rows),
     categories: uniqueWalletCsvFieldValues(rows, 'categoryName'),
     currencies: uniqueWalletCsvFieldValues(rows, 'currency'),
     paymentTypes: uniqueWalletCsvFieldValues(rows, 'paymentMethod'),
@@ -466,10 +589,10 @@ function plannedPaymentLinkForProposal(
   options: WalletCsvCaptureLinkOptions,
 ):
   | {
-      candidate: WalletCsvPlannedPaymentCandidate;
-      ruleId: UUID;
-      loanAccountId?: UUID;
-    }
+    candidate: WalletCsvPlannedPaymentCandidate;
+    ruleId: UUID;
+    loanAccountId?: UUID;
+  }
   | undefined {
   if (!options.plannedPayments?.length || !options.ruleIdsByPlannedPaymentKey) return undefined;
   const candidate = options.plannedPayments.find((plannedPayment) => {
@@ -511,6 +634,107 @@ export function uniqueWalletCsvFieldValues(
   return countValues(values);
 }
 
+export function summarizeWalletCsvColumns(rows: WalletCsvParsedRow[]): WalletCsvColumnSummary[] {
+  return REQUIRED_HEADERS.map((column) => {
+    const rawValues = rows.map((row) => row.raw[column] ?? '');
+    const populatedValues = rawValues.map((value) => value.trim()).filter(Boolean);
+    const topValues =
+      column === 'labels'
+        ? countValues(rawValues.flatMap((value) => splitLabels(value)))
+        : countValues(populatedValues);
+    const mapping = WALLET_CSV_COLUMN_MAPPINGS[column];
+    return {
+      column,
+      label: mapping.label,
+      rowCount: rows.length,
+      populated: populatedValues.length,
+      empty: rows.length - populatedValues.length,
+      uniqueValues: new Set(populatedValues.map((value) => value.toLowerCase())).size,
+      topValues,
+      ledgerMapping: mapping.ledgerMapping,
+      status: mapping.status,
+      notFullyMappedReason: mapping.notFullyMappedReason,
+    };
+  });
+}
+
+export function summarizeWalletCsvCategoryMappings(
+  rows: WalletCsvParsedRow[],
+): WalletCsvCategoryMappingSummary[] {
+  return unique(rows.filter((row) => !row.isTransfer).map((row) => row.categoryName))
+    .filter(Boolean)
+    .map((categoryName) => {
+      const categoryRows = rows.filter(
+        (row) => !row.isTransfer && row.categoryName === categoryName,
+      );
+      const matches = categoryRows
+        .map((row) => row.categoryMatch)
+        .filter((match): match is WalletCsvCategoryMatch => Boolean(match));
+      const candidateDetails = dedupeWalletCsvCategoryCandidates(
+        categoryRows.flatMap((row) => row.categoryCandidates ?? []),
+      );
+      const matchedIds = unique(matches.map((match) => match.categoryId));
+      const firstMatch = matches[0];
+      const ambiguous =
+        categoryRows.some((row) => row.categoryMappingStatus === 'ambiguous') ||
+        matchedIds.length > 1;
+      const status: WalletCsvCategoryMappingStatus = ambiguous
+        ? 'ambiguous'
+        : firstMatch
+          ? 'matched'
+          : 'missing';
+      return {
+        categoryName,
+        count: categoryRows.length,
+        types: countValues(categoryRows.map((row) => row.type)),
+        status,
+        matchedCategoryId: status === 'matched' ? firstMatch?.categoryId : undefined,
+        matchedCategoryName: status === 'matched' ? firstMatch?.categoryName : undefined,
+        matchedCategoryBreadcrumb:
+          status === 'matched' ? firstMatch?.categoryBreadcrumb : undefined,
+        matchKind: status === 'matched' ? firstMatch?.matchKind : undefined,
+        matchReason: status === 'matched' ? firstMatch?.reason : undefined,
+        candidates: candidateDetails,
+        warnings: unique(
+          categoryRows.flatMap((row) =>
+            row.warnings.filter(
+              (warning) =>
+                warning.startsWith('unknown category:') ||
+                warning.startsWith('ambiguous category match:'),
+            ),
+          ),
+        ),
+      };
+    })
+    .sort(
+      (left, right) =>
+        categoryMappingStatusSort(left.status) - categoryMappingStatusSort(right.status) ||
+        right.count - left.count ||
+        left.categoryName.localeCompare(right.categoryName),
+    );
+}
+
+function dedupeWalletCsvCategoryCandidates(
+  candidates: WalletCsvCategoryCandidate[],
+): WalletCsvCategoryCandidate[] {
+  const byId = new Map<string, WalletCsvCategoryCandidate>();
+  for (const candidate of candidates) {
+    const existing = byId.get(candidate.categoryId);
+    if (!existing || candidate.score > existing.score) byId.set(candidate.categoryId, candidate);
+  }
+  return [...byId.values()].sort(
+    (left, right) =>
+      right.score - left.score || left.categoryBreadcrumb.localeCompare(right.categoryBreadcrumb),
+  );
+}
+
+function categoryMappingStatusSort(status: WalletCsvCategoryMappingStatus): number {
+  if (status === 'ambiguous') return 0;
+  if (status === 'missing') return 1;
+  if (status === 'matched') return 2;
+  return 3;
+}
+
 export function walletCsvBlockedReason(proposal: WalletCsvCandidateProposal): string | undefined {
   if (isWalletCsvProposalQueueable(proposal)) return undefined;
   if (proposal.duplicate) return 'duplicate import row';
@@ -530,27 +754,39 @@ export function walletCsvBlockedReason(proposal: WalletCsvCandidateProposal): st
 export function provisionWalletCsvEntities(
   state: LedgerState,
   files: WalletCsvFile[],
+  mappings: WalletCsvMappingOverrides = {},
 ): WalletCsvProvisionSummary {
   const rows = files.flatMap((file) => parseWalletCsvFile(file));
+  const accountAliases = deriveWalletCsvAccountAliases(rows);
   const accountNames: string[] = [];
   const categoryNames: string[] = [];
 
-  for (const accountName of unique(rows.map((row) => row.accountName)).filter(Boolean)) {
-    if (findAccount(state.accounts, accountName)) continue;
-    const accountRows = rows.filter(
-      (row) => normalizeName(row.accountName) === normalizeName(accountName),
+  for (const accountGroup of accountAliases) {
+    const accountName = accountGroup.canonicalName;
+    const groupNames = accountAliasGroupNames(accountGroup);
+    if (
+      !accountName ||
+      groupNames.some((name) => mappedWalletCsvAccount(state, name, mappings)) ||
+      findAccount(state.accounts, accountName, accountAliases)
+    ) {
+      continue;
+    }
+    const accountRows = rows.filter((row) =>
+      groupNames.some((name) => normalizeName(row.accountName) === normalizeName(name)),
     );
     const currency =
-      mostCommon(accountRows.map((row) => row.currency)) ?? state.preferences.baseCurrency;
+      accountGroup.currencies[0]?.value ??
+      mostCommon(accountRows.map((row) => row.currency)) ??
+      state.preferences.baseCurrency;
     createAccount(state, {
       name: accountName,
-      type: inferWalletCsvAccountType(accountName),
+      type: accountGroup.type,
       currency,
       openingBalanceMinor: 0,
       icon: inferWalletCsvAccountIcon(accountName),
       color: inferWalletCsvAccountColor(accountName),
-      institution: inferWalletCsvInstitution(accountName),
-      notes: `Created from Wallet CSV import. Original Wallet account label: ${accountName}.`,
+      institution: accountGroup.institution ?? inferWalletCsvInstitution(accountName),
+      notes: `Created from Wallet CSV import. Original Wallet account labels: ${accountAliasGroupNames(accountGroup).join(', ')}.`,
     });
     accountNames.push(accountName);
   }
@@ -560,7 +796,13 @@ export function provisionWalletCsvEntities(
     if (row.isTransfer || !row.categoryName) continue;
     const kind = categoryKindFor(row);
     const key = normalizeName(row.categoryName);
-    if (categoryKeys.has(key) || findCategory(state.categories, row.categoryName)) continue;
+    if (
+      categoryKeys.has(key) ||
+      mappedWalletCsvCategory(state, row.categoryName, mappings) ||
+      findCategory(state.categories, row.categoryName, kind)
+    ) {
+      continue;
+    }
     createCategory(state, {
       name: row.categoryName,
       kind,
@@ -651,32 +893,96 @@ function normalizeWalletCsvRow(
   };
 }
 
-function matchWalletCsvRow(state: LedgerState, row: WalletCsvParsedRow): WalletCsvParsedRow {
-  const accountMatch = findAccountMatch(state.accounts, row.accountName);
+function matchWalletCsvRow(
+  state: LedgerState,
+  row: WalletCsvParsedRow,
+  accountAliases: WalletCsvAccountAliasGroup[],
+  mappings: WalletCsvMappingOverrides = {},
+): WalletCsvParsedRow {
+  const mappedAccount = mappedWalletCsvAccount(state, row.accountName, mappings);
+  const accountMatch = mappedAccount
+    ? {
+      account: mappedAccount,
+      kind: 'manual' as const,
+      reason: `manual CSV account mapping: ${row.accountName} -> ${mappedAccount.name}`,
+      score: 1,
+    }
+    : findAccountMatch(state.accounts, row.accountName, accountAliases);
   const account = accountMatch?.account;
-  const category = row.isTransfer ? undefined : findCategory(state.categories, row.categoryName);
+  const mappedCategory = row.isTransfer
+    ? undefined
+    : mappedWalletCsvCategory(state, row.categoryName, mappings);
+  const categoryResolution = mappedCategory
+    ? {
+      match: {
+        category: mappedCategory,
+        kind: 'manual' as const,
+        reason: `manual CSV category mapping: ${row.categoryName} -> ${categoryBreadcrumbFor(
+          state.categories,
+          mappedCategory.id,
+        )}`,
+        score: 1,
+      },
+      candidates: [
+        {
+          category: mappedCategory,
+          kind: 'manual' as const,
+          reason: `manual CSV category mapping: ${row.categoryName}`,
+          score: 1,
+        },
+      ],
+      ambiguous: false,
+    }
+    : row.isTransfer
+      ? undefined
+      : resolveCategoryMatch(state.categories, row.categoryName, categoryKindFor(row));
+  const category = categoryResolution?.match?.category;
+  const categoryCandidates = categoryResolution?.candidates.map((candidate) =>
+    categoryCandidateDetails(candidate, state.categories),
+  );
   const warnings = [...row.warnings];
   if (!account) warnings.push(`unknown account: ${row.accountName}`);
-  if (accountMatch && accountMatch.kind !== 'exact') {
+  if (accountMatch && accountMatch.kind !== 'exact' && accountMatch.kind !== 'manual') {
     warnings.push(
       `account ${accountMatch.kind} match: ${row.accountName} -> ${accountMatch.account.name}`,
     );
   }
-  if (!row.isTransfer && !category) warnings.push(`unknown category: ${row.categoryName}`);
+  if (categoryResolution?.ambiguous) {
+    warnings.push(
+      `ambiguous category match: ${row.categoryName} -> ${categoryCandidates
+        ?.map((candidate) => candidate.categoryBreadcrumb)
+        .slice(0, 3)
+        .join(', ')}`,
+    );
+  }
+  if (!row.isTransfer && !category && !categoryResolution?.ambiguous) {
+    warnings.push(`unknown category: ${row.categoryName}`);
+  }
   return {
     ...row,
     accountId: accountMatch?.account.id,
     accountMatch: accountMatch
       ? {
-          accountName: accountMatch.account.name,
-          kind: accountMatch.kind,
-          reason: accountMatch.reason,
-          score: accountMatch.score,
-        }
+        accountName: accountMatch.account.name,
+        kind: accountMatch.kind,
+        reason: accountMatch.reason,
+        score: accountMatch.score,
+      }
       : undefined,
     categoryId: category?.id,
+    categoryMatch: categoryResolution?.match
+      ? categoryCandidateDetails(categoryResolution.match, state.categories)
+      : undefined,
+    categoryCandidates,
+    categoryMappingStatus: row.isTransfer
+      ? 'transfer_only'
+      : categoryResolution?.ambiguous
+        ? 'ambiguous'
+        : category
+          ? 'matched'
+          : 'missing',
     confidence: clamp(
-      row.confidence + accountConfidenceBoost(accountMatch) + (category || row.isTransfer ? 10 : 0),
+      row.confidence + accountConfidenceBoost(accountMatch) + categoryConfidenceBoost(categoryResolution),
       0,
       95,
     ),
@@ -729,9 +1035,9 @@ function buildWalletCsvProposals(
       duplicate,
       warnings: duplicate
         ? unique([
-            ...proposal.warnings,
-            duplicateInSelection ? 'duplicate import row' : 'already imported',
-          ])
+          ...proposal.warnings,
+          duplicateInSelection ? 'duplicate import row' : 'already imported',
+        ])
         : proposal.warnings,
     };
   });
@@ -810,10 +1116,10 @@ function buildWalletCsvPlannedPaymentCandidate(
   const amountWarnings = plannedPaymentVariationWarnings(sorted, amountMinMinor, amountMaxMinor);
   const confidence = clamp(
     cadence.confidence +
-      Math.min(14, (dates.length - PLANNED_PAYMENT_MIN_OCCURRENCES) * 3) +
-      (identity ? 4 : 0) +
-      plannedKeywordBoost -
-      warnings.length * 6,
+    Math.min(14, (dates.length - PLANNED_PAYMENT_MIN_OCCURRENCES) * 3) +
+    (identity ? 4 : 0) +
+    plannedKeywordBoost -
+    warnings.length * 6,
     0,
     96,
   );
@@ -1579,8 +1885,40 @@ function splitLabels(labels: string): string[] {
     .filter(Boolean);
 }
 
-function findAccount(accounts: Account[], name: string): Account | undefined {
-  return findAccountMatch(accounts, name)?.account;
+function findAccount(
+  accounts: Account[],
+  name: string,
+  accountAliases: WalletCsvAccountAliasGroup[] = [],
+): Account | undefined {
+  return findAccountMatch(accounts, name, accountAliases)?.account;
+}
+
+function mappedWalletCsvAccount(
+  state: Pick<LedgerState, 'accounts'>,
+  name: string,
+  mappings: WalletCsvMappingOverrides = {},
+): Account | undefined {
+  const accountId = mappedWalletCsvEntityId(mappings.accountIdsByCsvName, name);
+  return accountId ? state.accounts.find((account) => account.id === accountId) : undefined;
+}
+
+function mappedWalletCsvCategory(
+  state: Pick<LedgerState, 'categories'>,
+  name: string,
+  mappings: WalletCsvMappingOverrides = {},
+): Category | undefined {
+  const categoryId = mappedWalletCsvEntityId(mappings.categoryIdsByCsvName, name);
+  return categoryId
+    ? state.categories.find((category) => category.id === categoryId && !category.isArchived)
+    : undefined;
+}
+
+function mappedWalletCsvEntityId(
+  idsByCsvName: Record<string, UUID | undefined> | undefined,
+  name: string,
+): UUID | undefined {
+  if (!idsByCsvName) return undefined;
+  return idsByCsvName[name] ?? idsByCsvName[normalizeName(name)];
 }
 
 type AccountMatchResult = {
@@ -1590,7 +1928,11 @@ type AccountMatchResult = {
   score: number;
 };
 
-function findAccountMatch(accounts: Account[], name: string): AccountMatchResult | undefined {
+function findAccountMatch(
+  accounts: Account[],
+  name: string,
+  accountAliases: WalletCsvAccountAliasGroup[] = [],
+): AccountMatchResult | undefined {
   const normalized = normalizeName(name);
   if (!normalized) return undefined;
 
@@ -1599,15 +1941,24 @@ function findAccountMatch(accounts: Account[], name: string): AccountMatchResult
     return { account: exact, kind: 'exact', reason: 'same normalized account name', score: 1 };
   }
 
-  const alias = ACCOUNT_ALIASES[normalized];
-  if (alias) {
-    const aliasMatch = accounts.find((account) => normalizeName(account.name) === alias);
-    if (aliasMatch) {
+  const aliasGroup = accountAliases.find((group) =>
+    accountAliasGroupNames(group).some((alias) => normalizeName(alias) === normalized),
+  );
+  if (aliasGroup) {
+    const aliasNames = accountAliasGroupNames(aliasGroup);
+    const aliasMatch = accounts.find((account) =>
+      aliasNames.some(
+        (alias) =>
+          normalizeName(account.name) === normalizeName(alias) ||
+          accountNameSimilarity(alias, account.name) >= 0.9,
+      ),
+    );
+    if (aliasMatch && normalizeName(aliasMatch.name) !== normalized) {
       return {
         account: aliasMatch,
         kind: 'alias',
-        reason: `alias ${normalized} -> ${alias}`,
-        score: 0.96,
+        reason: `CSV account alias: ${name} -> ${aliasGroup.canonicalName}`,
+        score: 0.95,
       };
     }
   }
@@ -1635,19 +1986,124 @@ function accountConfidenceBoost(match?: AccountMatchResult): number {
   return 8;
 }
 
+export function deriveWalletCsvAccountAliases(
+  rows: Pick<WalletCsvParsedRow, 'accountName' | 'currency'>[],
+): WalletCsvAccountAliasGroup[] {
+  const summaries = countValues(rows.map((row) => row.accountName)).map((summary) => ({
+    ...summary,
+    rows: rows.filter((row) => row.accountName === summary.value),
+  }));
+  const groups: Array<typeof summaries> = [];
+
+  for (const summary of summaries) {
+    if (!summary.value.trim()) continue;
+    const existingGroup = groups.find((group) =>
+      group.some((candidate) => accountLabelsAreAliases(summary.value, candidate.value)),
+    );
+    if (existingGroup) existingGroup.push(summary);
+    else groups.push([summary]);
+  }
+
+  return groups
+    .map((group) => {
+      const canonical = chooseCanonicalAccountSummary(group);
+      const aliases = group
+        .map((summary) => summary.value)
+        .filter((name) => normalizeName(name) !== normalizeName(canonical.value))
+        .sort((left, right) => left.localeCompare(right));
+      const groupRows = group.flatMap((summary) => summary.rows);
+      return {
+        canonicalName: canonical.value,
+        aliases,
+        rowCount: groupRows.length,
+        currencies: countValues(groupRows.map((row) => row.currency)),
+        type: mostSpecificAccountType(group.map((summary) => inferWalletCsvAccountType(summary.value))),
+        institution:
+          mostCommon(group.map((summary) => inferWalletCsvInstitution(summary.value) ?? '')) ??
+          undefined,
+      };
+    })
+    .sort((left, right) => right.rowCount - left.rowCount || left.canonicalName.localeCompare(right.canonicalName));
+}
+
+function accountAliasGroupNames(group: WalletCsvAccountAliasGroup): string[] {
+  return [group.canonicalName, ...group.aliases];
+}
+
+function accountLabelsAreAliases(left: string, right: string): boolean {
+  if (normalizeName(left) === normalizeName(right)) return true;
+  const similarity = accountNameSimilarity(left, right);
+  if (similarity >= 0.9) return true;
+  const leftTokens = meaningfulAccountTokens(left);
+  const rightTokens = meaningfulAccountTokens(right);
+  if (leftTokens.length < 2 || rightTokens.length < 2) return false;
+  const shared = leftTokens.filter((token) => rightTokens.includes(token));
+  const coverage = shared.length / Math.max(leftTokens.length, rightTokens.length, 1);
+  const sameSpecificType =
+    inferWalletCsvAccountType(left) === inferWalletCsvAccountType(right) ||
+    mostSpecificAccountType([inferWalletCsvAccountType(left), inferWalletCsvAccountType(right)]) !==
+    'bank';
+  return shared.length >= 2 && coverage >= 0.5 && sameSpecificType;
+}
+
+function chooseCanonicalAccountSummary<TSummary extends { value: string; count: number }>(
+  summaries: TSummary[],
+): TSummary {
+  return [...summaries].sort(
+    (left, right) =>
+      right.count - left.count ||
+      accountTypeSpecificity(inferWalletCsvAccountType(right.value)) -
+      accountTypeSpecificity(inferWalletCsvAccountType(left.value)) ||
+      meaningfulAccountTokens(right.value).length - meaningfulAccountTokens(left.value).length ||
+      right.value.length - left.value.length ||
+      left.value.localeCompare(right.value),
+  )[0]!;
+}
+
+function mostSpecificAccountType(types: AccountType[]): AccountType {
+  return [...types].sort(
+    (left, right) => accountTypeSpecificity(right) - accountTypeSpecificity(left),
+  )[0] ?? 'bank';
+}
+
+function accountTypeSpecificity(type: AccountType): number {
+  const scores: Partial<Record<AccountType, number>> = {
+    credit_card: 90,
+    loan: 86,
+    lent: 84,
+    prepaid: 82,
+    debit_card: 78,
+    investment: 74,
+    crypto: 72,
+    wallet: 68,
+    cash: 62,
+    overdraft: 58,
+    savings_goal: 54,
+    bank: 40,
+    other: 10,
+  };
+  return scores[type] ?? 0;
+}
+
 function findCategory(
   categories: Category[],
   name: string,
   kind?: Category['kind'],
 ): Category | undefined {
-  return findCategoryMatch(categories, name, kind)?.category;
+  return resolveCategoryMatch(categories, name, kind).match?.category;
 }
 
 type CategoryMatchResult = {
   category: Category;
-  kind: 'exact' | 'taxonomy' | 'similar';
+  kind: WalletCsvCategoryMatchKind;
   reason: string;
   score: number;
+};
+
+type CategoryMatchResolution = {
+  match?: CategoryMatchResult;
+  candidates: CategoryMatchResult[];
+  ambiguous: boolean;
 };
 
 function findCategoryMatch(
@@ -1655,90 +2111,175 @@ function findCategoryMatch(
   name: string,
   kind?: Category['kind'],
 ): CategoryMatchResult | undefined {
+  return resolveCategoryMatch(categories, name, kind).match;
+}
+
+function resolveCategoryMatch(
+  categories: Category[],
+  name: string,
+  kind?: Category['kind'],
+): CategoryMatchResolution {
   const normalized = normalizeName(name);
-  if (!normalized) return undefined;
+  if (!normalized) return { candidates: [], ambiguous: false };
 
   const eligible = categories.filter((category) =>
     kind ? categoryAppliesToKind(category, kind) : !category.isArchived,
   );
-  const exact = eligible.find((category) => normalizeName(category.name) === normalized);
-  if (exact) return { category: exact, kind: 'exact', reason: 'same category name', score: 1 };
+  const candidates: CategoryMatchResult[] = [];
 
-  const template = taxonomyTemplateForCategoryName(name, kind);
-  if (template) {
-    const taxonomyMatch = eligible.find(
-      (category) => normalizeName(category.name) === normalizeName(template.name),
-    );
-    if (taxonomyMatch) {
-      return {
-        category: taxonomyMatch,
+  for (const category of eligible) {
+    if (normalizeName(category.name) !== normalized) continue;
+    candidates.push({ category, kind: 'exact', reason: 'same category name', score: 1 });
+  }
+
+  for (const template of taxonomyTemplatesForCategoryName(name, kind)) {
+    for (const category of eligible.filter(
+      (item) => normalizeName(item.name) === normalizeName(template.name),
+    )) {
+      candidates.push({
+        category,
         kind: 'taxonomy',
         reason: `default taxonomy match: ${name} -> ${template.name}`,
         score: 0.96,
-      };
+      });
     }
   }
 
-  const candidates = eligible
-    .map((category) => ({ category, score: categoryNameSimilarity(name, category.name) }))
-    .filter((candidate) => candidate.score >= 0.78)
-    .sort((left, right) => right.score - left.score);
-  const crossKind = kind ? findCrossKindCategoryMatch(categories, name, kind) : undefined;
-  const best = candidates[0];
-  if (!best) return crossKind;
-  const next = candidates[1];
-  if (next && best.score === next.score) return crossKind;
-  if (next && best.score - next.score < 0.08 && best.score < 0.92) return crossKind;
+  for (const category of eligible) {
+    const score = categoryNameSimilarity(name, category.name);
+    if (score < 0.78) continue;
+    candidates.push({
+      category,
+      kind: 'similar',
+      reason: `category similarity ${Math.round(score * 100)}%`,
+      score,
+    });
+  }
+
+  for (const candidate of crossKindCategoryMatches(categories, name, kind)) {
+    candidates.push(candidate);
+  }
+
+  const sorted = dedupeCategoryCandidates(candidates).sort(
+    (left, right) =>
+      right.score - left.score ||
+      categoryBreadcrumbFor(categories, left.category.id).localeCompare(
+        categoryBreadcrumbFor(categories, right.category.id),
+      ),
+  );
+  const best = sorted[0];
+  if (!best) return { candidates: [], ambiguous: false };
+
+  const next = sorted[1];
+  const ambiguous = Boolean(
+    next &&
+    (best.score === next.score ||
+      (best.score - next.score < 0.08 && best.score < 0.96)),
+  );
+
   return {
-    category: best.category,
-    kind: 'similar',
-    reason: `category similarity ${Math.round(best.score * 100)}%`,
-    score: best.score,
+    match: ambiguous ? undefined : best,
+    candidates: sorted.slice(0, 5),
+    ambiguous,
   };
 }
 
-function findCrossKindCategoryMatch(
+function categoryConfidenceBoost(resolution?: CategoryMatchResolution): number {
+  if (!resolution) return 10;
+  if (resolution.ambiguous) return 0;
+  if (!resolution.match) return 0;
+  if (resolution.match.kind === 'exact') return 10;
+  if (resolution.match.kind === 'taxonomy') return 8;
+  return 5;
+}
+
+function dedupeCategoryCandidates(candidates: CategoryMatchResult[]): CategoryMatchResult[] {
+  const byCategoryId = new Map<string, CategoryMatchResult>();
+  for (const candidate of candidates) {
+    const existing = byCategoryId.get(candidate.category.id);
+    if (
+      !existing ||
+      candidate.score > existing.score ||
+      (candidate.score === existing.score &&
+        categoryMatchKindRank(candidate.kind) > categoryMatchKindRank(existing.kind))
+    ) {
+      byCategoryId.set(candidate.category.id, candidate);
+    }
+  }
+  return [...byCategoryId.values()];
+}
+
+function categoryMatchKindRank(kind: WalletCsvCategoryMatchKind): number {
+  if (kind === 'manual') return 4;
+  if (kind === 'exact') return 3;
+  if (kind === 'taxonomy') return 2;
+  return 1;
+}
+
+function categoryCandidateDetails(
+  result: CategoryMatchResult,
+  categories: Category[],
+): WalletCsvCategoryCandidate {
+  return {
+    categoryId: result.category.id,
+    categoryName: result.category.name,
+    categoryBreadcrumb: categoryBreadcrumbFor(categories, result.category.id),
+    categoryKind: result.category.kind,
+    matchKind: result.kind,
+    reason: result.reason,
+    score: result.score,
+  };
+}
+
+function categoryBreadcrumbFor(categories: Category[], categoryId?: string): string {
+  if (!categoryId) return '';
+  const byId = new Map(categories.map((category) => [category.id, category]));
+  const names: string[] = [];
+  const seen = new Set<string>();
+  let current = byId.get(categoryId);
+  while (current && !seen.has(current.id)) {
+    seen.add(current.id);
+    names.unshift(current.name);
+    current = current.parentId ? byId.get(current.parentId) : undefined;
+  }
+  return names.length ? names.join(' > ') : byId.get(categoryId)?.name ?? '';
+}
+
+function crossKindCategoryMatches(
   categories: Category[],
   name: string,
-  kind: Category['kind'],
-): CategoryMatchResult | undefined {
+  kind?: Category['kind'],
+): CategoryMatchResult[] {
+  if (!kind) return [];
   const normalized = normalizeName(name);
   const eligible = categories.filter(
     (category) => !category.isArchived && !categoryAppliesToKind(category, kind),
   );
 
-  const exactMatches = eligible.filter((category) => normalizeName(category.name) === normalized);
-  const exactMatch = exactMatches[0];
-  if (exactMatches.length === 1 && exactMatch) {
-    return {
-      category: exactMatch,
+  const candidates: CategoryMatchResult[] = [];
+  for (const category of eligible.filter((item) => normalizeName(item.name) === normalized)) {
+    candidates.push({
+      category,
       kind: 'exact',
       reason: 'same category name across Wallet CSV type',
       score: 0.94,
-    };
+    });
   }
 
-  const taxonomyMatches: Category[] = [];
   for (const template of taxonomyTemplatesForCategoryName(name)) {
-    const match = eligible.find(
-      (category) => normalizeName(category.name) === normalizeName(template.name),
-    );
-    if (match && !taxonomyMatches.some((category) => category.id === match.id)) {
-      taxonomyMatches.push(match);
+    for (const category of eligible.filter(
+      (item) => normalizeName(item.name) === normalizeName(template.name),
+    )) {
+      candidates.push({
+        category,
+        kind: 'taxonomy',
+        reason: `default taxonomy match across Wallet CSV type: ${name} -> ${category.name}`,
+        score: 0.9,
+      });
     }
   }
 
-  const taxonomyMatch = taxonomyMatches[0];
-  if (taxonomyMatches.length === 1 && taxonomyMatch) {
-    return {
-      category: taxonomyMatch,
-      kind: 'taxonomy',
-      reason: `default taxonomy match across Wallet CSV type: ${name} -> ${taxonomyMatch.name}`,
-      score: 0.9,
-    };
-  }
-
-  return undefined;
+  return candidates;
 }
 
 function categoryAppliesToKind(category: Category, kind: Category['kind']): boolean {
@@ -1851,11 +2392,36 @@ function meaningfulCategoryTokens(value: string): string[] {
 }
 
 function meaningfulAccountTokens(value: string): string[] {
+  const words = accountNameWords(value);
+  const tokens = words.filter((token) => token.length > 1 && !GENERIC_ACCOUNT_TOKENS.has(token));
+  const acronyms = accountNameAcronymTokens(words);
+  return unique([...tokens, ...acronyms]);
+}
+
+function accountNameWords(value: string): string[] {
   return value
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .map((token) => token.trim())
-    .filter((token) => token.length > 1 && !GENERIC_ACCOUNT_TOKENS.has(token));
+    .filter(Boolean);
+}
+
+function accountNameAcronymTokens(words: string[]): string[] {
+  const acronyms: string[] = [];
+  for (let start = 0; start < words.length; start += 1) {
+    for (let length = 2; length <= 4 && start + length <= words.length; length += 1) {
+      const slice = words.slice(start, start + length);
+      const meaningful = slice.filter(
+        (word) => word.length > 1 && !GENERIC_ACCOUNT_TOKENS.has(word),
+      );
+      if (meaningful.length < 2 && !(slice.length >= 3 && meaningful.length >= 1)) continue;
+      const acronym = slice.map((word) => word[0]).join('');
+      if (acronym.length > 1 && !GENERIC_ACCOUNT_TOKENS.has(acronym)) acronyms.push(acronym);
+    }
+  }
+  return unique(acronyms);
 }
 
 function levenshteinDistance(left: string, right: string): number {

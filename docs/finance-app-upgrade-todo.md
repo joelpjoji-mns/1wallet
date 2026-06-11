@@ -21,9 +21,9 @@ This checklist tracks the mobile-first rebuild requested for 1wallet. Work throu
 - [x] Enrich default categories with curated parents, subcategories, icons, and colors.
 - [x] Backfill missing icons/colors for existing categories without breaking transaction history.
 - [x] Add safe known-category parenting where it does not create duplicates.
-- [ ] Rework Categories screen into a cleaner drill-down manager.
-- [ ] Move row actions behind contextual controls instead of showing every action at once.
-- [ ] Validate duplicate prevention, archive/restore, hidden-in-stats, and icon fallback.
+- [x] Rework Categories screen into a cleaner drill-down manager.
+- [x] Move row actions behind contextual controls instead of showing every action at once.
+- [x] Validate duplicate prevention, archive/restore, hidden-in-stats, and icon fallback.
 
 ## Phase 3: Transactions
 
@@ -40,17 +40,17 @@ This checklist tracks the mobile-first rebuild requested for 1wallet. Work throu
 - [x] Improve transaction rows with account path, category breadcrumb, source/status metadata, notes, and transfer direction.
 - [x] Rework Calendar into a fixed no-scroll month grid that fits the tab viewport.
 - [x] Show each calendar day with green income above red spending and include scheduled records in forecast totals.
-- [ ] Verify edit/save/delete updates balances and transaction list rows.
+- [x] Verify edit/save/delete updates balances and transaction list rows.
 
 ## Phase 4: CSV Import
 
 - [x] Inventory `importdata/wallet_records2023.csv`, `wallet_records2024.csv`, `wallet_records2025.csv`, and `wallet_records2026.csv` before mutating app data.
 - [x] Summarize all four Wallet CSV files from `importdata/`.
 - [x] Show row counts, date ranges, account names, category names, currencies, payment types, labels, transfer pairs, duplicates, unknowns, and invalid rows.
-- [ ] Derive app account names and aliases from CSV data instead of hardcoding guesses.
-- [ ] Summarize every CSV column and identify fields not yet mapped into the ledger.
-- [ ] Build category mapping against parent/subcategory taxonomy with ambiguous matches surfaced for review.
-- [ ] Add account/category mapping before queueing candidates.
+- [x] Derive app account names and aliases from CSV data instead of hardcoding guesses.
+- [x] Summarize every CSV column and identify fields not yet mapped into the ledger.
+- [x] Build category mapping against parent/subcategory taxonomy with ambiguous matches surfaced for review.
+- [x] Add account/category mapping before queueing candidates.
 - [ ] Replace hardcoded account aliases with preview-scoped or persisted mappings.
 - [x] Queue safe rows through the review flow.
 - [x] Support importing all four CSV files in one reviewed batch.

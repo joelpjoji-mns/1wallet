@@ -1,35 +1,35 @@
 import 'react-native-url-polyfill/auto';
 
 import {
-    createUserWithEmailAndPassword,
-    signOut as firebaseSignOut,
-    GoogleAuthProvider,
-    onAuthStateChanged,
-    signInWithCredential,
-    signInWithEmailAndPassword,
-    type User as FirebaseUser,
+  createUserWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithCredential,
+  signInWithEmailAndPassword,
+  type User as FirebaseUser,
 } from '@firebase/auth';
 import {
-    GoogleSignin,
-    isErrorWithCode,
-    isSuccessResponse,
-    statusCodes,
+  GoogleSignin,
+  isErrorWithCode,
+  isSuccessResponse,
+  statusCodes,
 } from '@react-native-google-signin/google-signin';
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 import {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-    useState,
-    type ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
 } from 'react';
 import {
-    firebaseGoogleAuthConfig,
-    getFirebaseServices,
-    googleClientIdForPlatform,
+  firebaseGoogleAuthConfig,
+  getFirebaseServices,
+  googleClientIdForPlatform,
 } from './firebase/client';
 
 export type AuthProviderKind = 'firebase' | 'supabase' | 'local';
@@ -109,13 +109,13 @@ const secureStoreAdapter = {
 const supabase: SupabaseClient | null =
   supabaseUrl && supabaseAnonKey
     ? createClient(supabaseUrl, supabaseAnonKey, {
-        auth: {
-          storage: secureStoreAdapter,
-          autoRefreshToken: true,
-          persistSession: true,
-          detectSessionInUrl: false,
-        },
-      })
+      auth: {
+        storage: secureStoreAdapter,
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: false,
+      },
+    })
     : null;
 
 export function AuthProvider({ children }: { children: ReactNode }) {

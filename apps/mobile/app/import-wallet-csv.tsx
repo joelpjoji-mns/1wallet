@@ -1,38 +1,42 @@
 import { formatMoney, fromMinor, toMinor } from '@1wallet/domain/money';
 import type {
-    AccountLoanDetails,
-    AccountType,
-    LoanInterestMethod,
-    LoanInterestRatePeriod,
-    LoanKind,
+  AccountLoanDetails,
+  AccountType,
+  LoanInterestMethod,
+  LoanInterestRatePeriod,
+  LoanKind,
 } from '@1wallet/domain/types';
 import type {
-    WalletCsvFile,
-    WalletCsvImportAnalysis,
-    WalletCsvPlannedPaymentCandidate,
-    WalletCsvProvisionSummary,
-    WalletCsvValueSummary,
+  WalletCsvCategoryMappingSummary,
+  WalletCsvColumnSummary,
+  WalletCsvFile,
+  WalletCsvImportAnalysis,
+  WalletCsvMappingOverrides,
+  WalletCsvPlannedPaymentCandidate,
+  WalletCsvProvisionSummary,
+  WalletCsvValueSummary,
 } from '@1wallet/ledger/import/walletCsv';
 import {
-    analyzeWalletCsvImport,
-    inferWalletCsvAccountType,
-    inferWalletCsvInstitution,
-    isWalletCsvProposalQueueable,
-    provisionWalletCsvEntities,
-    walletCsvBlockedReason,
-    walletCsvProposalsToCaptureInputs,
+  analyzeWalletCsvImport,
+  inferWalletCsvAccountType,
+  inferWalletCsvInstitution,
+  isWalletCsvProposalQueueable,
+  provisionWalletCsvEntities,
+  walletCsvBlockedReason,
+  walletCsvProposalsToCaptureInputs,
 } from '@1wallet/ledger/import/walletCsv';
 import { buildLoanPlannedPaymentInput } from '@1wallet/ledger/loans';
 import {
-    createFutureGenerationRule,
-    type CreateFutureGenerationRuleInput,
+  createFutureGenerationRule,
+  type CreateFutureGenerationRuleInput,
 } from '@1wallet/ledger/rules/futureGeneration';
 import {
-    createAccount,
-    createCaptureCandidate,
-    createImportBatch,
-    updateAccount,
+  createAccount,
+  createCaptureCandidate,
+  createImportBatch,
+  updateAccount,
 } from '@1wallet/ledger/services';
+import { indexedAccountBalance } from '@1wallet/ledger/services/indexes';
 import type { LedgerState } from '@1wallet/ledger/store/types';
 import { useLedger } from '@1wallet/state';
 import * as DocumentPicker from 'expo-document-picker';
@@ -41,37 +45,41 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
-    ActivityIndicator,
-    Button,
-    Chip,
-    Dialog,
-    Divider,
-    Portal,
-    Snackbar,
-    Text,
-    TextInput,
-    useTheme,
+  ActivityIndicator,
+  Button,
+  Chip,
+  Dialog,
+  Divider,
+  Portal,
+  Snackbar,
+  Text,
+  TextInput,
+  useTheme,
 } from 'react-native-paper';
 import {
-    accountIconForType,
-    accountTypeLabel,
-    resolveAccountIconVisual,
+  accountIconForType,
+  accountTypeLabel,
+  resolveAccountIconVisual,
 } from '../src/accountOptions';
 import {
-    AppScreen,
-    EmptyState,
-    InfoRow,
-    InlineMeta,
-    PremiumTextInput,
-    SectionCard,
+  AppScreen,
+  EmptyState,
+  InfoRow,
+  InlineMeta,
+  PremiumTextInput,
+  SectionCard,
 } from '../src/components/AppKit';
 import { DateOnlyPickerField } from '../src/components/DateOnlyPickerField';
+import {
+  AccountPickerOverlay,
+  CategoryPickerOverlay,
+} from '../src/components/record/RecordPickers';
 import { recurrenceCadenceLabel } from '../src/loans/loanUtils';
 import { PlannedPaymentEditor } from '../src/plannedPayments/PlanEditor';
 import {
-    draftFromWalletCsvPlannedPayment,
-    futureRuleInputFromDraft,
-    type PlannedPaymentDraft,
+  draftFromWalletCsvPlannedPayment,
+  futureRuleInputFromDraft,
+  type PlannedPaymentDraft,
 } from '../src/plannedPayments/planDraft';
 import { transactionTypeLabel } from '../src/transactionTypes';
 
@@ -91,6 +99,7 @@ type WalletCsvAnalysisState = WalletCsvImportAnalysis | { error: string } | null
 type WalletCsvProvisionPreview = {
   accounts: Array<{
     name: string;
+    aliases: string[];
     count: number;
     typeLabel: string;
     currencyLabel: string;
@@ -131,9 +140,13 @@ type WalletCsvApprovalLinks = {
   loanAccountIdsByPlannedPaymentKey: Record<string, string>;
 };
 
+type WalletCsvMappingPicker =
+  | { kind: 'account'; csvName: string }
+  | { kind: 'category'; csvName: string };
+
 export default function ImportWalletCsv() {
   const theme = useTheme();
-  const { state, mutate, resetAndMutate } = useLedger();
+  const { state, indexes, mutate, resetAndMutate } = useLedger();
   const [fileName, setFileName] = useState('wallet_records.csv');
   const [csvText, setCsvText] = useState('');
   const [pasteVisible, setPasteVisible] = useState(false);
@@ -144,6 +157,8 @@ export default function ImportWalletCsv() {
   const [lastProvision, setLastProvision] = useState<WalletCsvProvisionSummary | null>(null);
   const [analysisBusy, setAnalysisBusy] = useState(false);
   const [analysis, setAnalysis] = useState<WalletCsvAnalysisState>(null);
+  const [mappingOverrides, setMappingOverrides] = useState<WalletCsvMappingOverrides>({});
+  const [mappingPicker, setMappingPicker] = useState<WalletCsvMappingPicker | null>(null);
   const [resetImportVisible, setResetImportVisible] = useState(false);
   const [importBusy, setImportBusy] = useState(false);
   const planBusy = importBusy;
@@ -163,6 +178,10 @@ export default function ImportWalletCsv() {
     if (!csvText.trim()) return [];
     return [{ fileName: fileName.trim() || 'wallet_records.csv', content: csvText }];
   }, [csvText, fileName, pickedFiles]);
+  const activeAccounts = useMemo(
+    () => state.accounts.filter((account) => !account.isArchived),
+    [state.accounts],
+  );
 
   useEffect(() => {
     if (sourceFiles.length === 0) {
@@ -176,7 +195,9 @@ export default function ImportWalletCsv() {
     setAnalysisBusy(true);
     const timer = setTimeout(() => {
       try {
-        const nextAnalysis = analyzeWalletCsvImport(state, sourceFiles);
+        const nextAnalysis = analyzeWalletCsvImport(state, sourceFiles, {
+          mappings: mappingOverrides,
+        });
         if (!cancelled) setAnalysis(nextAnalysis);
       } catch (error) {
         if (!cancelled) setAnalysis({ error: (error as Error).message });
@@ -189,7 +210,7 @@ export default function ImportWalletCsv() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [sourceFiles, state]);
+  }, [mappingOverrides, sourceFiles, state]);
 
   const validAnalysis = analysis && !('error' in analysis) ? analysis : null;
   const queueable = validAnalysis?.proposals.filter(isWalletCsvProposalQueueable) ?? [];
@@ -204,6 +225,13 @@ export default function ImportWalletCsv() {
   );
   const hasMissingSetup =
     provisionPreview.accounts.length > 0 || provisionPreview.categories.length > 0;
+  const hasCategoryMappingChoices =
+    validAnalysis?.summary.categoryMappings.some((mapping) => mapping.status === 'ambiguous') ??
+    false;
+  const firstCategoryMappingChoice = validAnalysis?.summary.categoryMappings.find(
+    (mapping) => mapping.status === 'ambiguous',
+  );
+  const hasManualMappings = hasWalletCsvMappingOverrides(mappingOverrides);
   const reviewablePlannedPayments = useMemo(
     () =>
       (validAnalysis?.plannedPayments ?? []).filter(
@@ -229,10 +257,16 @@ export default function ImportWalletCsv() {
   const currentLoanCandidate = pendingLoanCandidates[0];
   const plannedPaymentReviewComplete = pendingPlannedPayments.length === 0;
   const loanReviewComplete = pendingLoanCandidates.length === 0;
-  const canQueueRecords = !hasMissingSetup && plannedPaymentReviewComplete && loanReviewComplete;
+  const canQueueRecords =
+    !hasMissingSetup &&
+    !hasCategoryMappingChoices &&
+    plannedPaymentReviewComplete &&
+    loanReviewComplete;
 
   useEffect(() => {
     setLastProvision(null);
+    setMappingOverrides({});
+    setMappingPicker(null);
     setApprovedPlanRuleIds({});
     setApprovedLoanAccountIds({});
     setStagedPlanInputs({});
@@ -308,6 +342,52 @@ export default function ImportWalletCsv() {
     } finally {
       setPickBusy(false);
     }
+  };
+
+  const setAccountMapping = (csvName: string, accountId: string) => {
+    const csvNames = validAnalysis ? accountAliasNamesForCsvName(validAnalysis, csvName) : [csvName];
+    setMappingOverrides((current) => ({
+      ...current,
+      accountIdsByCsvName: {
+        ...(current.accountIdsByCsvName ?? {}),
+        ...Object.fromEntries(csvNames.map((name) => [name, accountId])),
+      },
+    }));
+    setSnackbar(`${csvName} account mapping updated`);
+  };
+
+  const clearAccountMapping = (csvName: string) => {
+    const csvNames = validAnalysis ? accountAliasNamesForCsvName(validAnalysis, csvName) : [csvName];
+    setMappingOverrides((current) => {
+      const accountIdsByCsvName = { ...(current.accountIdsByCsvName ?? {}) };
+      for (const name of csvNames) delete accountIdsByCsvName[name];
+      const next: WalletCsvMappingOverrides = { ...current, accountIdsByCsvName };
+      if (Object.keys(accountIdsByCsvName).length === 0) delete next.accountIdsByCsvName;
+      return next;
+    });
+    setSnackbar(`${csvName} account mapping cleared`);
+  };
+
+  const setCategoryMapping = (csvName: string, categoryId: string) => {
+    setMappingOverrides((current) => ({
+      ...current,
+      categoryIdsByCsvName: {
+        ...(current.categoryIdsByCsvName ?? {}),
+        [csvName]: categoryId,
+      },
+    }));
+    setSnackbar(`${csvName} category mapping updated`);
+  };
+
+  const clearCategoryMapping = (csvName: string) => {
+    setMappingOverrides((current) => {
+      const categoryIdsByCsvName = { ...(current.categoryIdsByCsvName ?? {}) };
+      delete categoryIdsByCsvName[csvName];
+      const next: WalletCsvMappingOverrides = { ...current, categoryIdsByCsvName };
+      if (Object.keys(categoryIdsByCsvName).length === 0) delete next.categoryIdsByCsvName;
+      return next;
+    });
+    setSnackbar(`${csvName} category mapping cleared`);
   };
 
   const queueImport = async () => {
@@ -441,7 +521,7 @@ export default function ImportWalletCsv() {
     try {
       await mutate(
         (draft) => {
-          provision = provisionWalletCsvEntities(draft, sourceFiles);
+          provision = provisionWalletCsvEntities(draft, sourceFiles, mappingOverrides);
         },
         { slices: ['preferences', 'accounts', 'categories'] },
       );
@@ -459,7 +539,7 @@ export default function ImportWalletCsv() {
   };
 
   const resetAndQueueImport = async () => {
-    if (!validAnalysis || validAnalysis.proposals.length === 0) return;
+    if (!validAnalysis || validAnalysis.proposals.length === 0 || hasManualMappings) return;
     setResetImportVisible(false);
     setImportBusy(true);
     let result: QueueResult | undefined;
@@ -753,6 +833,15 @@ export default function ImportWalletCsv() {
                               label="Institution"
                               value={account.institution ?? 'Not inferred'}
                             />
+                            {account.aliases.length > 0 ? (
+                              <InlineMeta
+                                numberOfLines={2}
+                                items={[
+                                  'Aliases from CSV',
+                                  ...account.aliases.map((alias) => `aka ${alias}`),
+                                ]}
+                              />
+                            ) : null}
                             {index < Math.min(provisionPreview.accounts.length, 12) - 1 ? (
                               <Divider />
                             ) : null}
@@ -803,6 +892,38 @@ export default function ImportWalletCsv() {
                       tone="positive"
                     />
                   </>
+                ) : null}
+              </SectionCard>
+            ) : null}
+
+            {hasCategoryMappingChoices ? (
+              <SectionCard
+                title="Choose category mappings"
+                subtitle="Ambiguous Wallet categories must be mapped before safe rows can go to Review."
+              >
+                <InfoRow
+                  icon="alert-circle-outline"
+                  label="Needs category choice"
+                  value={String(
+                    validAnalysis.summary.categoryMappings.filter(
+                      (mapping) => mapping.status === 'ambiguous',
+                    ).length,
+                  )}
+                  tone="warning"
+                />
+                {firstCategoryMappingChoice ? (
+                  <Button
+                    mode="contained"
+                    icon="shape-outline"
+                    onPress={() =>
+                      setMappingPicker({
+                        kind: 'category',
+                        csvName: firstCategoryMappingChoice.categoryName,
+                      })
+                    }
+                  >
+                    Choose {firstCategoryMappingChoice.categoryName}
+                  </Button>
                 ) : null}
               </SectionCard>
             ) : null}
@@ -889,11 +1010,13 @@ export default function ImportWalletCsv() {
             <SectionCard
               title="Import actions"
               subtitle={
-                hasMissingSetup
-                  ? 'Create missing accounts and categories before queueing rows.'
-                  : canQueueRecords
-                    ? 'The selected file is loaded and ready to queue.'
-                    : 'Review planned-payment and loan candidates before queueing rows.'
+                hasCategoryMappingChoices
+                  ? 'Choose category mappings before queueing rows.'
+                  : hasMissingSetup
+                    ? 'Create missing accounts and categories before queueing rows.'
+                    : canQueueRecords
+                      ? 'The selected file is loaded and ready to queue.'
+                      : 'Review planned-payment and loan candidates before queueing rows.'
               }
             >
               <InfoRow
@@ -905,14 +1028,22 @@ export default function ImportWalletCsv() {
               <InfoRow
                 icon="database-sync-outline"
                 label="Setup"
-                value={hasMissingSetup ? 'Create setup first' : 'Ready'}
+                value={hasMissingSetup ? 'Create or map missing setup' : 'Ready'}
                 tone={hasMissingSetup ? 'warning' : 'positive'}
+              />
+              <InfoRow
+                icon="link-variant"
+                label="Mappings"
+                value={hasCategoryMappingChoices ? 'Needs category choices' : 'Ready'}
+                tone={hasCategoryMappingChoices ? 'warning' : 'positive'}
               />
               <InfoRow
                 icon="calendar-clock-outline"
                 label="Plan review"
-                value={canQueueRecords ? 'Ready' : 'Needs review'}
-                tone={canQueueRecords ? 'positive' : 'warning'}
+                value={
+                  plannedPaymentReviewComplete && loanReviewComplete ? 'Ready' : 'Needs review'
+                }
+                tone={plannedPaymentReviewComplete && loanReviewComplete ? 'positive' : 'warning'}
               />
               <InfoRow
                 icon="check-circle-outline"
@@ -953,6 +1084,7 @@ export default function ImportWalletCsv() {
                   validAnalysis.proposals.length === 0 ||
                   importBusy ||
                   provisionBusy ||
+                  hasManualMappings ||
                   !canQueueRecords
                 }
                 onPress={() => setResetImportVisible(true)}
@@ -962,7 +1094,9 @@ export default function ImportWalletCsv() {
               <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
                 {hasMissingSetup
                   ? 'The import count will update after setup is created.'
-                  : 'Import creates Review items first. Approving Review items is what posts real ledger transactions.'}
+                  : hasManualMappings
+                    ? 'Preview-scoped mappings are ready for normal import. Clear mappings to use reset import.'
+                    : 'Import creates Review items first. Approving Review items is what posts real ledger transactions.'}
               </Text>
             </SectionCard>
 
@@ -1019,6 +1153,26 @@ export default function ImportWalletCsv() {
                     value={row.institution ?? 'Not inferred'}
                   />
                   <InlineMeta items={[row.statusLabel, row.matchReason]} />
+                  <View style={styles.actionsRowWrap}>
+                    <Button
+                      compact
+                      mode={row.matchedAccountName ? 'contained-tonal' : 'contained'}
+                      icon="link-variant"
+                      onPress={() => setMappingPicker({ kind: 'account', csvName: row.csvName })}
+                    >
+                      {row.matchedAccountName ? 'Change mapping' : 'Map account'}
+                    </Button>
+                    {hasAccountMappingOverride(mappingOverrides, row.csvName) ? (
+                      <Button
+                        compact
+                        mode="text"
+                        icon="link-variant-off"
+                        onPress={() => clearAccountMapping(row.csvName)}
+                      >
+                        Clear mapping
+                      </Button>
+                    ) : null}
+                  </View>
                   {index < Math.min(accountAuditRows.length, 18) - 1 ? <Divider /> : null}
                 </View>
               ))}
@@ -1029,32 +1183,127 @@ export default function ImportWalletCsv() {
               ) : null}
             </SectionCard>
 
-            <SectionCard title="Field summary" subtitle="Top values from the loaded Wallet file.">
-              <InfoRow
-                icon="wallet-outline"
-                label="Accounts"
-                value={formatTopValues(validAnalysis.summary.accounts, 5)}
+            <SectionCard
+              title="Category mapping"
+              subtitle="Wallet categories matched against the 1Wallet parent/subcategory taxonomy."
+            >
+              <InlineMeta
+                numberOfLines={2}
+                items={[
+                  `${categoryMappingCount(validAnalysis.summary.categoryMappings, 'matched')} matched`,
+                  `${categoryMappingCount(validAnalysis.summary.categoryMappings, 'ambiguous')} ambiguous`,
+                  `${categoryMappingCount(validAnalysis.summary.categoryMappings, 'missing')} missing`,
+                ]}
               />
-              <InfoRow
-                icon="shape-outline"
-                label="Categories"
-                value={formatTopValues(validAnalysis.summary.categories, 5)}
-              />
-              <InfoRow
-                icon="currency-inr"
-                label="Currencies"
-                value={formatTopValues(validAnalysis.summary.currencies, 5)}
-              />
-              <InfoRow
-                icon="credit-card-outline"
-                label="Payment types"
-                value={formatTopValues(validAnalysis.summary.paymentTypes, 5)}
-              />
-              <InfoRow
-                icon="tag-outline"
-                label="Labels"
-                value={formatTopValues(validAnalysis.summary.labels, 5)}
-              />
+              {validAnalysis.summary.categoryMappings.slice(0, 18).map((mapping, index) => (
+                <View key={mapping.categoryName}>
+                  <View style={styles.accountAuditHeader}>
+                    <Text variant="titleSmall" numberOfLines={1} style={styles.proposalTitle}>
+                      {mapping.categoryName}
+                    </Text>
+                    <Text variant="labelLarge" numberOfLines={1} style={styles.countText}>
+                      {mapping.count} rows
+                    </Text>
+                  </View>
+                  <InfoRow
+                    icon="shape-outline"
+                    label="CSV category"
+                    value={`${mapping.categoryName} · ${formatTopValues(mapping.types, 2)}`}
+                  />
+                  <InfoRow
+                    icon={categoryMappingIcon(mapping.status)}
+                    label="App category"
+                    value={categoryMappingValue(mapping)}
+                    tone={categoryMappingTone(mapping.status)}
+                  />
+                  <InlineMeta
+                    numberOfLines={3}
+                    items={[
+                      categoryMappingStatusLabel(mapping.status),
+                      mapping.matchKind ? matchKindLabel(mapping.matchKind) : null,
+                      mapping.matchReason,
+                      ...mapping.warnings.slice(0, 2),
+                    ]}
+                  />
+                  {mapping.status === 'ambiguous' && mapping.candidates.length > 0 ? (
+                    <InlineMeta
+                      numberOfLines={3}
+                      items={[
+                        'Candidates',
+                        ...mapping.candidates
+                          .slice(0, 4)
+                          .map(
+                            (candidate) =>
+                              `${candidate.categoryBreadcrumb} (${Math.round(candidate.score * 100)}%)`,
+                          ),
+                      ]}
+                    />
+                  ) : null}
+                  <View style={styles.actionsRowWrap}>
+                    <Button
+                      compact
+                      mode={mapping.status === 'matched' ? 'contained-tonal' : 'contained'}
+                      icon="shape-outline"
+                      onPress={() =>
+                        setMappingPicker({ kind: 'category', csvName: mapping.categoryName })
+                      }
+                    >
+                      {mapping.status === 'matched' ? 'Change mapping' : 'Choose category'}
+                    </Button>
+                    {hasCategoryMappingOverride(mappingOverrides, mapping.categoryName) ? (
+                      <Button
+                        compact
+                        mode="text"
+                        icon="link-variant-off"
+                        onPress={() => clearCategoryMapping(mapping.categoryName)}
+                      >
+                        Clear mapping
+                      </Button>
+                    ) : null}
+                  </View>
+                  {index < Math.min(validAnalysis.summary.categoryMappings.length, 18) - 1 ? (
+                    <Divider />
+                  ) : null}
+                </View>
+              ))}
+              {validAnalysis.summary.categoryMappings.length > 18 ? (
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                  Showing 18 of {validAnalysis.summary.categoryMappings.length} category mappings.
+                </Text>
+              ) : null}
+            </SectionCard>
+
+            <SectionCard
+              title="CSV column mapping"
+              subtitle="Every Wallet column, where it lands in 1Wallet, and what still needs review."
+            >
+              {validAnalysis.summary.columns.map((column, index) => (
+                <View key={column.column}>
+                  <InfoRow
+                    icon={columnMappingIcon(column.status)}
+                    label={`${column.label} (${column.column})`}
+                    value={columnMappingStatusLabel(column.status)}
+                    tone={columnMappingTone(column.status)}
+                  />
+                  <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                    {column.ledgerMapping}
+                  </Text>
+                  <InlineMeta
+                    numberOfLines={3}
+                    items={[
+                      `${column.populated}/${column.rowCount} populated`,
+                      `${column.uniqueValues} unique`,
+                      column.topValues.length > 0
+                        ? `Top: ${formatTopValues(column.topValues, 4)}`
+                        : 'No populated values',
+                      column.notFullyMappedReason
+                        ? `Gap: ${column.notFullyMappedReason}`
+                        : null,
+                    ]}
+                  />
+                  {index < validAnalysis.summary.columns.length - 1 ? <Divider /> : null}
+                </View>
+              ))}
             </SectionCard>
 
             <SectionCard
@@ -1161,6 +1410,45 @@ export default function ImportWalletCsv() {
           </Dialog.Actions>
         </Dialog>
       </Portal>
+      <AccountPickerOverlay
+        visible={mappingPicker?.kind === 'account'}
+        title="Map CSV account"
+        accounts={activeAccounts}
+        selectedId={
+          mappingPicker?.kind === 'account'
+            ? selectedAccountIdForCsvName(validAnalysis, mappingOverrides, mappingPicker.csvName)
+            : undefined
+        }
+        balances={(account) =>
+          formatMoney(indexedAccountBalance(indexes, account), state.preferences.locale)
+        }
+        onDismiss={() => setMappingPicker(null)}
+        onCreate={() => {
+          setMappingPicker(null);
+          router.push('/account/new');
+        }}
+        onSelect={(account) => {
+          if (mappingPicker?.kind === 'account') setAccountMapping(mappingPicker.csvName, account.id);
+          setMappingPicker(null);
+        }}
+      />
+      <CategoryPickerOverlay
+        visible={mappingPicker?.kind === 'category'}
+        categories={state.categories}
+        selectedId={
+          mappingPicker?.kind === 'category'
+            ? selectedCategoryIdForCsvName(validAnalysis, mappingOverrides, mappingPicker.csvName)
+            : undefined
+        }
+        allowClear={false}
+        onDismiss={() => setMappingPicker(null)}
+        onSelect={(category) => {
+          if (mappingPicker?.kind === 'category') {
+            setCategoryMapping(mappingPicker.csvName, category.id);
+          }
+          setMappingPicker(null);
+        }}
+      />
       <Snackbar visible={Boolean(snackbar)} onDismiss={() => setSnackbar(null)} duration={2600}>
         {snackbar}
       </Snackbar>
@@ -1654,12 +1942,12 @@ function buildLoanImportAccountDraft(
   draft: LoanImportDraft,
 ):
   | {
-      ok: true;
-      cleanName: string;
-      currency: string;
-      openingBalanceMinor: number;
-      loanDetails: AccountLoanDetails;
-    }
+    ok: true;
+    cleanName: string;
+    currency: string;
+    openingBalanceMinor: number;
+    loanDetails: AccountLoanDetails;
+  }
   | { ok: false; message: string } {
   const sourceAccount = candidate.accountId
     ? state.accounts.find((account) => account.id === candidate.accountId)
@@ -1787,6 +2075,115 @@ function formatTopValues(values: WalletCsvValueSummary[], limit: number) {
     .join(', ');
 }
 
+function columnMappingStatusLabel(status: WalletCsvColumnSummary['status']) {
+  if (status === 'mapped') return 'Mapped';
+  if (status === 'partial') return 'Partial';
+  return 'Audit only';
+}
+
+function columnMappingTone(
+  status: WalletCsvColumnSummary['status'],
+): 'default' | 'positive' | 'danger' | 'warning' {
+  if (status === 'mapped') return 'positive';
+  if (status === 'partial') return 'warning';
+  return 'default';
+}
+
+function columnMappingIcon(status: WalletCsvColumnSummary['status']) {
+  if (status === 'mapped') return 'check-circle-outline';
+  if (status === 'partial') return 'alert-circle-outline';
+  return 'archive-outline';
+}
+
+function categoryMappingCount(
+  mappings: WalletCsvCategoryMappingSummary[],
+  status: WalletCsvCategoryMappingSummary['status'],
+): number {
+  return mappings.filter((mapping) => mapping.status === status).length;
+}
+
+function categoryMappingStatusLabel(status: WalletCsvCategoryMappingSummary['status']) {
+  if (status === 'matched') return 'Mapped to app category';
+  if (status === 'ambiguous') return 'Needs category choice';
+  if (status === 'missing') return 'Needs category setup';
+  return 'Transfer-only evidence';
+}
+
+function categoryMappingValue(mapping: WalletCsvCategoryMappingSummary) {
+  if (mapping.status === 'matched') return mapping.matchedCategoryBreadcrumb ?? 'Matched';
+  if (mapping.status === 'ambiguous') return `${mapping.candidates.length} possible matches`;
+  if (mapping.status === 'missing') return 'Will be created or mapped before import';
+  return 'Transfer rows only';
+}
+
+function categoryMappingTone(
+  status: WalletCsvCategoryMappingSummary['status'],
+): 'default' | 'positive' | 'danger' | 'warning' {
+  if (status === 'matched') return 'positive';
+  if (status === 'ambiguous' || status === 'missing') return 'warning';
+  return 'default';
+}
+
+function categoryMappingIcon(status: WalletCsvCategoryMappingSummary['status']) {
+  if (status === 'matched') return 'check-circle-outline';
+  if (status === 'ambiguous') return 'alert-circle-outline';
+  if (status === 'missing') return 'shape-plus-outline';
+  return 'swap-horizontal';
+}
+
+function hasWalletCsvMappingOverrides(mappings: WalletCsvMappingOverrides): boolean {
+  return (
+    Object.keys(mappings.accountIdsByCsvName ?? {}).length > 0 ||
+    Object.keys(mappings.categoryIdsByCsvName ?? {}).length > 0
+  );
+}
+
+function hasAccountMappingOverride(
+  mappings: WalletCsvMappingOverrides,
+  csvName: string,
+): boolean {
+  return Boolean(mappings.accountIdsByCsvName?.[csvName]);
+}
+
+function hasCategoryMappingOverride(
+  mappings: WalletCsvMappingOverrides,
+  csvName: string,
+): boolean {
+  return Boolean(mappings.categoryIdsByCsvName?.[csvName]);
+}
+
+function selectedAccountIdForCsvName(
+  analysis: WalletCsvImportAnalysis | null,
+  mappings: WalletCsvMappingOverrides,
+  csvName: string,
+): string | undefined {
+  return (
+    mappings.accountIdsByCsvName?.[csvName] ??
+    analysis?.parsedRows.find((row) => row.accountName === csvName && row.accountId)?.accountId
+  );
+}
+
+function selectedCategoryIdForCsvName(
+  analysis: WalletCsvImportAnalysis | null,
+  mappings: WalletCsvMappingOverrides,
+  csvName: string,
+): string | undefined {
+  return (
+    mappings.categoryIdsByCsvName?.[csvName] ??
+    analysis?.parsedRows.find((row) => row.categoryName === csvName && row.categoryId)?.categoryId
+  );
+}
+
+function accountAliasNamesForCsvName(
+  analysis: WalletCsvImportAnalysis,
+  csvName: string,
+): string[] {
+  const aliasGroup = analysis.summary.accountAliases.find((group) =>
+    [group.canonicalName, ...group.aliases].includes(csvName),
+  );
+  return uniqueStrings(aliasGroup ? [aliasGroup.canonicalName, ...aliasGroup.aliases] : [csvName]);
+}
+
 function buildAccountAuditRows(state: LedgerState, analysis: WalletCsvImportAnalysis) {
   return analysis.summary.accounts.map((summary) => {
     const rows = analysis.parsedRows.filter((row) => row.accountName === summary.value);
@@ -1819,17 +2216,15 @@ function buildAccountAuditRows(state: LedgerState, analysis: WalletCsvImportAnal
 }
 
 function buildProvisionPreview(analysis: WalletCsvImportAnalysis): WalletCsvProvisionPreview {
-  const accountRowsByName = new Map<string, typeof analysis.parsedRows>();
   const categoriesByKey = new Map<string, { key: string; name: string; count: number }>();
 
   for (const row of analysis.parsedRows) {
-    if (!row.accountId && row.accountName) {
-      const rows = accountRowsByName.get(row.accountName) ?? [];
-      rows.push(row);
-      accountRowsByName.set(row.accountName, rows);
-    }
-
-    if (!row.isTransfer && !row.categoryId && row.categoryName) {
+    if (
+      !row.isTransfer &&
+      !row.categoryId &&
+      row.categoryName &&
+      row.categoryMappingStatus !== 'ambiguous'
+    ) {
       const key = row.categoryName.trim().toLowerCase();
       const existing = categoriesByKey.get(key);
       categoriesByKey.set(key, {
@@ -1840,14 +2235,22 @@ function buildProvisionPreview(analysis: WalletCsvImportAnalysis): WalletCsvProv
     }
   }
 
-  const accounts = [...accountRowsByName.entries()]
-    .map(([name, rows]) => ({
-      name,
-      count: rows.length,
-      typeLabel: accountTypeLabel(inferWalletCsvAccountType(name)),
-      currencyLabel: formatCompactCounts(rows.map((row) => row.currency)),
-      institution: inferWalletCsvInstitution(name),
-    }))
+  const accounts = analysis.summary.accountAliases
+    .map((group) => {
+      const groupNames = [group.canonicalName, ...group.aliases];
+      const rows = analysis.parsedRows.filter(
+        (row) => !row.accountId && groupNames.includes(row.accountName),
+      );
+      return {
+        name: group.canonicalName,
+        aliases: group.aliases,
+        count: rows.length,
+        typeLabel: accountTypeLabel(group.type),
+        currencyLabel: formatCompactCounts(rows.map((row) => row.currency)),
+        institution: group.institution ?? inferWalletCsvInstitution(group.canonicalName),
+      };
+    })
+    .filter((account) => account.count > 0)
     .sort(sortProvisionRows);
 
   const categories = [...categoriesByKey.values()].sort(sortProvisionRows);
@@ -1879,9 +2282,11 @@ function formatCompactCounts(values: string[], limit = 3) {
     .join(', ');
 }
 
-function matchKindLabel(kind: 'exact' | 'alias' | 'similar') {
+function matchKindLabel(kind: 'exact' | 'alias' | 'similar' | 'taxonomy' | 'manual') {
+  if (kind === 'manual') return 'Manual mapping';
   if (kind === 'alias') return 'Alias match';
   if (kind === 'similar') return 'Similar-name match';
+  if (kind === 'taxonomy') return 'Taxonomy match';
   return 'Exact match';
 }
 

@@ -182,7 +182,7 @@ service cloud.firestore {
         (!('buildUrl' in data) || (data.buildUrl is string && data.buildUrl.matches('^https?://.+'))) &&
         (!('appStoreId' in data) || (data.appStoreId is string && data.appStoreId.matches('^[0-9]{1,32}$'))) &&
         (!('bundleIdentifier' in data) || (data.bundleIdentifier is string && data.bundleIdentifier.matches('^[A-Za-z0-9.-]{1,160}$'))) &&
-        (!('minimumOsVersion' in data) || (data.minimumOsVersion is string && data.minimumOsVersion.matches('^[0-9]+(\.[0-9]+){0,2}$')));
+        (!('minimumOsVersion' in data) || (data.minimumOsVersion is string && data.minimumOsVersion.matches('^[0-9]+(\\.[0-9]+){0,2}$')));
     }
 
     function isValidAppUpdateRelease(data, platform) {
@@ -270,6 +270,10 @@ service cloud.firestore {
       allow read: if isOwner(userId);
       allow create, update: if isOwner(userId) && isValidUserDocument(request.resource.data);
       allow delete: if false;
+
+      match /{document=**} {
+        allow read, write: if isOwner(userId);
+      }
 
       match /wallets/{walletId} {
         allow read: if isOwner(userId) && walletId == 'default';

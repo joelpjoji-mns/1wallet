@@ -41,7 +41,7 @@ Rules for this product shape:
 - Store the validated ledger archive as chunked Firestore snapshot documents so the first sync slice works on Firebase Spark
 - Save a local pre-restore backup before cloud data replaces device data
 - Treat full entity-level merge as a later phase once the snapshot sync foundation is stable
-- Keep Supabase/Postgres docs as a possible analytics/reference backend, not the current runtime backend
+- Keep Supabase/Postgres as the hardened future SQL sync/reporting backend, not the current runtime backend, until normalized LedgerState mapping, RLS smoke tests, and scale validation are complete
 
 ## Platform constraints
 
@@ -98,6 +98,7 @@ packages/
 - Ingestion service: imports, parsers, candidate queue, duplicate detection, account hints, and review flow
 - Insight service: dashboards, widgets, cash flow, debt, and goal progress
 - Firebase services: Google auth, Firestore sync metadata, Firestore archive chunks, and user-scoped security rules
+- Supabase services: future normalized SQL sync schema, RLS policies, indexed reporting paths, and account-balance cache; currently validation-ready but not the active mobile runtime data source
 
 ## Core data model
 

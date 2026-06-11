@@ -12,6 +12,8 @@
     "inventory": "node scripts/generate-code-inventory.mjs",
     "mobile:update:manifest": "node scripts/mobile-update-manifest.mjs",
     "mobile:update:publish": "node scripts/publish-mobile-update-to-firebase.mjs",
+    "firebase:qa-seed": "node scripts/firebase-qa-user-seed.mjs",
+    "supabase:validate": "node scripts/validate-supabase-schema.mjs",
     "migrate:google": "node importdata/create-google-migration-ledger.cjs",
     "normalize:wallet-csv": "node scripts/normalize-wallet-csv.mjs",
     "dev": "turbo run dev",

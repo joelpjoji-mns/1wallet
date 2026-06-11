@@ -184,10 +184,10 @@ export function mergeAcceptedMessageAccountHints(
   account.messageSourceHints =
     smsSenderIds.length > 0 || emailDomains.length > 0 || keywords.length > 0
       ? {
-          ...(smsSenderIds.length > 0 ? { smsSenderIds } : {}),
-          ...(emailDomains.length > 0 ? { emailDomains } : {}),
-          ...(keywords.length > 0 ? { keywords } : {}),
-        }
+        ...(smsSenderIds.length > 0 ? { smsSenderIds } : {}),
+        ...(emailDomains.length > 0 ? { emailDomains } : {}),
+        ...(keywords.length > 0 ? { keywords } : {}),
+      }
       : undefined;
   account.updatedAt = nowIso();
   return account;
@@ -264,6 +264,17 @@ const TRANSFER_TYPES = new Set<TransactionType>(['transfer', 'card_payment', 'lo
 
 function affectsPostedBalance(transaction: Transaction): boolean {
   return transaction.status !== 'scheduled' && transaction.status !== 'void';
+}
+
+function mutationTimestampAfter(previous?: string): string {
+  const next = nowIso();
+  if (!previous) return next;
+  const previousTime = Date.parse(previous);
+  const nextTime = Date.parse(next);
+  if (!Number.isFinite(previousTime) || !Number.isFinite(nextTime) || nextTime > previousTime) {
+    return next;
+  }
+  return new Date(previousTime + 1).toISOString();
 }
 
 function assertTransactionAmount(type: TransactionType, amountMinor: number, action: string): void {
@@ -529,8 +540,8 @@ export function updateTransaction(
     : (patch.originalAmountMinor ?? tx.originalAmount?.amountMinor);
   const nextOriginalAmount =
     nextOriginalCurrency &&
-    nextOriginalAmountMinor !== undefined &&
-    nextOriginalCurrency !== nextCurrency
+      nextOriginalAmountMinor !== undefined &&
+      nextOriginalCurrency !== nextCurrency
       ? { amountMinor: nextOriginalAmountMinor, currency: nextOriginalCurrency }
       : undefined;
   const nextOriginalFxRate = nextOriginalAmount
@@ -543,6 +554,9 @@ export function updateTransaction(
   const nextCounterAccount = nextCounterAccountId
     ? state.accounts.find((account) => account.id === nextCounterAccountId)
     : undefined;
+  if (isTransfer && !nextCounterAccount) {
+    throw new Error('updateTransaction: counter account not found');
+  }
   const nextCounterAmount = resolveUpdatedCounterAmount(
     state,
     patch,
@@ -586,7 +600,7 @@ export function updateTransaction(
     tx.recurringTemplateId = patch.recurringTemplateId ?? undefined;
   if (patch.status !== undefined) tx.status = patch.status;
   if (patch.externalRef !== undefined) tx.externalRef = patch.externalRef ?? undefined;
-  tx.updatedAt = nowIso();
+  tx.updatedAt = mutationTimestampAfter(tx.updatedAt);
   return tx;
 }
 
@@ -822,17 +836,17 @@ export function createCaptureCandidate(
     parsedOriginalAmount:
       input.parsedOriginalAmountMinor !== undefined && input.parsedOriginalCurrency
         ? {
-            amountMinor: input.parsedOriginalAmountMinor,
-            currency: normalizeCurrencyCode(input.parsedOriginalCurrency),
-          }
+          amountMinor: input.parsedOriginalAmountMinor,
+          currency: normalizeCurrencyCode(input.parsedOriginalCurrency),
+        }
         : undefined,
     parsedOriginalFxRate: input.parsedOriginalFxRate,
     parsedCounterAmount:
       input.parsedCounterAmountMinor !== undefined && input.parsedCounterCurrency
         ? {
-            amountMinor: input.parsedCounterAmountMinor,
-            currency: normalizeCurrencyCode(input.parsedCounterCurrency),
-          }
+          amountMinor: input.parsedCounterAmountMinor,
+          currency: normalizeCurrencyCode(input.parsedCounterCurrency),
+        }
         : undefined,
     parsedCounterFxRate: input.parsedCounterFxRate,
     parsedMerchant: input.parsedMerchant,
@@ -869,12 +883,12 @@ export function updateCaptureCandidate(
       patch.parsedAmountMinor === null
         ? undefined
         : {
-            amountMinor: patch.parsedAmountMinor,
-            currency:
-              patch.parsedCurrency ??
-              candidate.parsedAmount?.currency ??
-              state.preferences.baseCurrency,
-          };
+          amountMinor: patch.parsedAmountMinor,
+          currency:
+            patch.parsedCurrency ??
+            candidate.parsedAmount?.currency ??
+            state.preferences.baseCurrency,
+        };
   } else if (patch.parsedCurrency !== undefined && candidate.parsedAmount) {
     candidate.parsedAmount = { ...candidate.parsedAmount, currency: patch.parsedCurrency };
   }
@@ -886,13 +900,13 @@ export function updateCaptureCandidate(
       patch.parsedOriginalAmountMinor === null || patch.parsedOriginalCurrency === null
         ? undefined
         : {
-            amountMinor: patch.parsedOriginalAmountMinor,
-            currency:
-              patch.parsedOriginalCurrency ??
-              candidate.parsedOriginalAmount?.currency ??
-              candidate.parsedAmount?.currency ??
-              state.preferences.baseCurrency,
-          };
+          amountMinor: patch.parsedOriginalAmountMinor,
+          currency:
+            patch.parsedOriginalCurrency ??
+            candidate.parsedOriginalAmount?.currency ??
+            candidate.parsedAmount?.currency ??
+            state.preferences.baseCurrency,
+        };
   } else if (patch.parsedOriginalCurrency !== undefined) {
     candidate.parsedOriginalAmount =
       patch.parsedOriginalCurrency === null || !candidate.parsedOriginalAmount
@@ -907,12 +921,12 @@ export function updateCaptureCandidate(
       patch.parsedCounterAmountMinor === null || patch.parsedCounterCurrency === null
         ? undefined
         : {
-            amountMinor: patch.parsedCounterAmountMinor,
-            currency:
-              patch.parsedCounterCurrency ??
-              candidate.parsedCounterAmount?.currency ??
-              state.preferences.baseCurrency,
-          };
+          amountMinor: patch.parsedCounterAmountMinor,
+          currency:
+            patch.parsedCounterCurrency ??
+            candidate.parsedCounterAmount?.currency ??
+            state.preferences.baseCurrency,
+        };
   } else if (patch.parsedCounterCurrency !== undefined) {
     candidate.parsedCounterAmount =
       patch.parsedCounterCurrency === null || !candidate.parsedCounterAmount
@@ -1602,8 +1616,8 @@ function resolveUpdatedCounterAmount(
   const counterCurrency = cleared
     ? normalizeCurrencyCode(counterAccount.currency)
     : normalizeCurrencyCode(
-        patch.counterCurrency ?? transaction.counterAmount?.currency ?? counterAccount.currency,
-      );
+      patch.counterCurrency ?? transaction.counterAmount?.currency ?? counterAccount.currency,
+    );
   assertPostedCurrencyMatchesAccount(counterCurrency, counterAccount.currency, 'updateTransaction');
   const rate =
     patch.counterFxRate === null
@@ -1765,7 +1779,7 @@ export function projectedBalanceForAccountsThroughDate(
     const amount = Math.abs(
       Math.round(
         transaction.baseAmount.amountMinor *
-          rateBetween(state, transaction.baseAmount.currency, base),
+        rateBetween(state, transaction.baseAmount.currency, base),
       ),
     );
     if (INFLOW_TYPES.has(transaction.type)) balance += amount;

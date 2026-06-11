@@ -78,21 +78,21 @@ const ARCHIVE_FILTER_OPTIONS: OptionListItem<'active' | 'all'>[] = [
 
 type CategoryDraft =
   | {
-      mode: 'create';
-      parentId?: string;
-      kind: CategoryKind;
-      name: string;
-      icon: string;
-      color: string;
-    }
+    mode: 'create';
+    parentId?: string;
+    kind: CategoryKind;
+    name: string;
+    icon: string;
+    color: string;
+  }
   | {
-      mode: 'edit';
-      category: Category;
-      kind: CategoryKind;
-      name: string;
-      icon: string;
-      color: string;
-    };
+    mode: 'edit';
+    category: Category;
+    kind: CategoryKind;
+    name: string;
+    icon: string;
+    color: string;
+  };
 
 type CategoryProfileDraft = {
   name: string;
@@ -174,8 +174,8 @@ export default function Categories() {
     () =>
       currentParentId
         ? state.categories.find(
-            (category) => category.id === currentParentId && (showArchived || !category.isArchived),
-          )
+          (category) => category.id === currentParentId && (showArchived || !category.isArchived),
+        )
         : undefined,
     [currentParentId, showArchived, state.categories],
   );
@@ -202,13 +202,27 @@ export default function Categories() {
       })),
     [levelCategories, showArchived, state.categories],
   );
+  const allCategoryRows = useMemo(
+    () =>
+      state.categories
+        .filter((category) => showArchived || !category.isArchived)
+        .map((category) => ({
+          category,
+          breadcrumb: categoryBreadcrumb(state.categories, category.id) ?? category.name,
+          childCount: categoryChildCount(state.categories, category.id, {
+            includeArchived: showArchived,
+          }),
+        })),
+    [showArchived, state.categories],
+  );
   const filteredCategoryRows = useMemo(() => {
     const needle = deferredCategoryQuery.trim().toLowerCase();
     if (!needle) return levelCategoryRows;
-    return levelCategoryRows.filter(({ breadcrumb, category }) =>
+    return allCategoryRows.filter(({ breadcrumb, category }) =>
       `${category.name} ${breadcrumb}`.toLowerCase().includes(needle),
     );
-  }, [deferredCategoryQuery, levelCategoryRows]);
+  }, [allCategoryRows, deferredCategoryQuery, levelCategoryRows]);
+  const isSearchingCategories = deferredCategoryQuery.trim().length > 0;
   const categoryColumnCount = width >= 720 ? 3 : width >= 360 ? 2 : 1;
   const categoryCardBasis =
     categoryColumnCount === 1 ? '100%' : categoryColumnCount === 2 ? '48%' : '31%';
@@ -228,10 +242,12 @@ export default function Categories() {
       ),
     [state.categories],
   );
-  const levelTitle = currentParent?.name ?? 'Categories';
-  const levelSubtitle = currentParent
-    ? `${currentParentPath ?? currentParent.name} - ${countLabel(filteredCategoryRows.length, 'subcategory', 'subcategories')}`
-    : `${countLabel(activeCount, 'active category', 'active categories')} - ${countLabel(archivedCount, 'archived', 'archived')}`;
+  const levelTitle = isSearchingCategories ? 'Search results' : (currentParent?.name ?? 'Categories');
+  const levelSubtitle = isSearchingCategories
+    ? `${countLabel(filteredCategoryRows.length, 'match', 'matches')} across all levels${showArchived ? ' including archived' : ''}`
+    : currentParent
+      ? `${currentParentPath ?? currentParent.name} - ${countLabel(filteredCategoryRows.length, 'subcategory', 'subcategories')}`
+      : `${countLabel(activeCount, 'active category', 'active categories')} - ${countLabel(archivedCount, 'archived', 'archived')}`;
 
   const startCreate = (parent?: Category) => {
     setMenuCategoryId(null);
@@ -443,7 +459,7 @@ export default function Categories() {
             />
           </View>
 
-          {levelCategories.length === 0 ? (
+          {!isSearchingCategories && levelCategories.length === 0 ? (
             <EmptyState
               icon="shape-outline"
               title={currentParent ? 'No subcategories here' : 'No categories here'}
@@ -465,13 +481,15 @@ export default function Categories() {
             />
           ) : (
             <View style={styles.categoryGrid}>
-              {filteredCategoryRows.map(({ category, childCount }) => {
+              {filteredCategoryRows.map(({ category, breadcrumb, childCount }) => {
                 return (
                   <CategoryRow
                     key={category.id}
                     category={category}
                     categories={state.categories}
+                    breadcrumb={breadcrumb}
                     childCount={childCount}
+                    showBreadcrumb={isSearchingCategories}
                     style={categoryCardStyle}
                     onOpen={() => openCategory(category)}
                     onAddChild={() => startCreate(category)}
@@ -782,7 +800,9 @@ function FilterPill({
 function CategoryRow({
   category,
   categories,
+  breadcrumb,
   childCount,
+  showBreadcrumb,
   style,
   onOpen,
   onAddChild,
@@ -795,7 +815,9 @@ function CategoryRow({
 }: {
   category: Category;
   categories: Category[];
+  breadcrumb: string;
   childCount: number;
+  showBreadcrumb: boolean;
   style?: StyleProp<ViewStyle>;
   onOpen: () => void;
   onAddChild: () => void;
@@ -808,6 +830,9 @@ function CategoryRow({
 }) {
   const theme = useTheme();
   const childLabel = countLabel(childCount, 'subcategory', 'subcategories');
+  const secondaryLabel = showBreadcrumb && breadcrumb !== category.name
+    ? `${breadcrumb} - ${childLabel}`
+    : childLabel;
   const visual = resolveCategoryIconVisual(category, categories);
   return (
     <Surface
@@ -837,7 +862,7 @@ function CategoryRow({
                 numberOfLines={1}
                 style={{ color: theme.colors.onSurfaceVariant }}
               >
-                {childLabel}
+                {secondaryLabel}
               </Text>
             </View>
           </View>
@@ -910,13 +935,6 @@ function CategoryRow({
           }}
         />
       </Menu>
-      <IconButton
-        icon="pencil-outline"
-        size={18}
-        style={styles.categoryEditButton}
-        accessibilityLabel={`Edit ${category.name}`}
-        onPress={onEdit}
-      />
     </Surface>
   );
 }
@@ -1008,5 +1026,4 @@ const styles = StyleSheet.create({
     gap: tokens.space.sm,
   },
   categoryMenuButton: { position: 'absolute', top: 4, right: 4 },
-  categoryEditButton: { position: 'absolute', right: 4, bottom: 4 },
 });

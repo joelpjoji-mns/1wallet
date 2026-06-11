@@ -75,6 +75,24 @@ pnpm --filter @1wallet/mobile dev   # Expo
 firebase emulators:start
 ```
 
+## Flutter parity QA utilities
+
+The active Flutter migration app currently lives outside this repo at
+`../1walletF`. It can reuse this repo's Firebase config from `.env.local` for
+Google sign-in and restore testing.
+
+For QA restore testing, use the dry-run-by-default seed utility:
+
+```powershell
+pnpm firebase:qa-seed -- --source-email <source-account-email>
+pnpm firebase:qa-seed -- --source-email <source-account-email> --apply
+```
+
+The script creates or signs in `qa@onewallet.test`, copies a source wallet
+snapshot into the QA user's Firestore subtree, and saves the generated temporary
+password only under ignored `.tmp/`. Do not commit `.tmp/`, service-account
+files, Firebase tokens, or Flutter `.env` files.
+
 ## What's next
 
 1. Keep the mobile ledger, Add Record, automation, notifications, and currency flows covered by focused QA runs.
