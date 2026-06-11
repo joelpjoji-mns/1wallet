@@ -85,6 +85,8 @@ const manifest = {
 
 const json = `${JSON.stringify(manifest, null, 2)}\n`;
 if (outputPath) {
+  const { mkdirSync } = await import('node:fs');
+  mkdirSync(dirname(outputPath), { recursive: true });
   writeFileSync(outputPath, json);
   console.log(`Wrote ${relative(outputPath)}`);
 } else {
