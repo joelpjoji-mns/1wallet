@@ -31,7 +31,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  collection: ^1.19.1
+  collection: ^1.18.0
   cupertino_icons: ^1.0.8
   file_picker: ^10.0.0
   firebase_auth: ^5.7.0
