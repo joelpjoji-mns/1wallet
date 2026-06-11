@@ -5,11 +5,40 @@ import '../routing/app_router.dart';
 import '../theme/app_theme.dart';
 import '../theme/theme_controller.dart';
 
-class OneWalletApp extends ConsumerWidget {
+import '../data/ledger_providers.dart';
+
+class OneWalletApp extends ConsumerStatefulWidget {
   const OneWalletApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OneWalletApp> createState() => _OneWalletAppState();
+}
+
+class _OneWalletAppState extends ConsumerState<OneWalletApp> {
+  late final AppLifecycleListener _listener;
+
+  @override
+  void initState() {
+    super.initState();
+    _listener = AppLifecycleListener(
+      onStateChange: _onStateChanged,
+    );
+  }
+
+  @override
+  void dispose() {
+    _listener.dispose();
+    super.dispose();
+  }
+
+  void _onStateChanged(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.read(ledgerProvider.notifier).processSpooledSms();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
     final themeState = ref.watch(themeControllerProvider);
 

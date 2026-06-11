@@ -62,12 +62,13 @@ class LedgerRepository {
     final preferences = await SharedPreferences.getInstance();
     final payload = preferences.getString(_ledgerStorageKey);
     if (payload == null || payload.trim().isEmpty) return null;
-    return decodeLedgerState(payload);
+    return await compute(decodeLedgerState, payload);
   }
 
   Future<void> save(LedgerState state) async {
     final preferences = await SharedPreferences.getInstance();
-    await preferences.setString(_ledgerStorageKey, encodeLedgerState(state));
+    final payload = await compute(encodeLedgerState, state);
+    await preferences.setString(_ledgerStorageKey, payload);
   }
 
   Future<void> clear() async {
@@ -103,7 +104,7 @@ class LedgerController extends StateNotifier<LedgerState> {
       _setLoadState(
         LedgerLoadState.ready(hasPersistedLedger: restored != null),
       );
-      unawaited(_processSpooledSms());
+      unawaited(processSpooledSms());
     } catch (error) {
       if (!mounted) return;
       _setLoadState(
@@ -182,7 +183,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     await _repository.clear();
   }
 
-  Future<void> _processSpooledSms() async {
+  Future<void> processSpooledSms() async {
     try {
       final spooled = await SmsSpooler.popSpooledMessages();
       if (spooled.isEmpty) return;
