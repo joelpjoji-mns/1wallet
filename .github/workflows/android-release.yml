@@ -176,7 +176,7 @@ jobs:
             echo "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=${{ secrets.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}"
             echo "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}"
             echo "EXPO_PUBLIC_FIREBASE_USE_EMULATOR=false"
-          } > .env.local
+          } > .env
 
       - name: Restore Android release keystore
         run: |
