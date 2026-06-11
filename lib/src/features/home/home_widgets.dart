@@ -240,14 +240,30 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
             ],
           ),
           const SizedBox(height: 2),
-          Text(
-            formatMoney(total, widget.state.preferences.locale),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-              fontSize: 40,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -1.2,
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 350),
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0.0, -0.2),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
+                ),
+              );
+            },
+            child: Text(
+              formatMoney(total, widget.state.preferences.locale),
+              key: ValueKey(total.amountMinor),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                fontSize: 40,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -1.2,
+              ),
             ),
           ),
 
@@ -335,7 +351,8 @@ class AccountGridHomeWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedAccountId = ref.watch(homeSelectedAccountProvider);
-    final balances = accountBalanceMap(state);
+    final balancesAsync = ref.watch(homeAccountBalanceMapProvider);
+    final balances = balancesAsync.valueOrNull ?? const <String, Money>{};
     final accounts =
         state.accounts
             .where((account) => !account.isArchived && account.showOnHome)
@@ -1120,7 +1137,8 @@ class CardsHomeWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final balances = accountBalanceMap(state);
+    final balancesAsync = ref.watch(homeAccountBalanceMapProvider);
+    final balances = balancesAsync.valueOrNull ?? const <String, Money>{};
     final cards = state.accounts
         .where(
           (account) => account.type == 'credit_card' && !account.isArchived,
