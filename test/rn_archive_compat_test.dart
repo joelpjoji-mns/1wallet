@@ -25,7 +25,7 @@ void main() {
       },
     ];
     ledger['merchants'] = const [];
-    final checksum = reactNativeLedgerChecksum(ledger);
+    final checksum = reactNativeLedgerChecksum(jsonEncode(ledger));
     final archive = jsonEncode({
       'format': reactNativeArchiveFormat,
       'archiveVersion': reactNativeArchiveVersion,
@@ -90,18 +90,18 @@ void main() {
 
   test('checksum uses stable key order', () {
     expect(
-      reactNativeLedgerChecksum({
+      reactNativeLedgerChecksum(jsonEncode({
         'b': 2,
         'a': [
           {'z': true, 'm': null},
         ],
-      }),
-      reactNativeLedgerChecksum({
+      })),
+      reactNativeLedgerChecksum(jsonEncode({
         'a': [
           {'m': null, 'z': true},
         ],
         'b': 2,
-      }),
+      })),
     );
   });
 }
