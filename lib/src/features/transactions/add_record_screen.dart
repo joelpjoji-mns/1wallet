@@ -245,6 +245,12 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                           textAlign: TextAlign.right,
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(color: tone, fontWeight: FontWeight.w700),
                         )
+                      else if (_activeField >= 3 && _activeField - 3 < _charges.length)
+                        Text(
+                          'Charge: ${_charges[_activeField - 3].labelController.text.isEmpty ? "Split fee" : _charges[_activeField - 3].labelController.text}',
+                          textAlign: TextAlign.right,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: tone, fontWeight: FontWeight.w700),
+                        )
                       else if (_expression.isNotEmpty)
                         Text(
                           _expression,
@@ -267,7 +273,15 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Builder(builder: (context) {
-                                  final displayAmount = _activeField == 0 ? _amount : _activeField == 1 ? _localAmount : _counterAmount;
+                                  final displayAmount = _activeField == 0 
+                                      ? _amount 
+                                      : _activeField == 1 
+                                          ? _localAmount 
+                                          : _activeField == 2 
+                                              ? _counterAmount 
+                                              : (_activeField >= 3 && _activeField - 3 < _charges.length)
+                                                  ? _charges[_activeField - 3].amountController.text.replaceAll(',', '').trim()
+                                                  : '0';
                                   return Text(
                                     (_type == 'income' || displayAmount == '0'
                                             ? ''
@@ -287,7 +301,15 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                   );
                                 }),
                                 Builder(builder: (context) {
-                                  final displayAmount = _activeField == 0 ? _amount : _activeField == 1 ? _localAmount : _counterAmount;
+                                  final displayAmount = _activeField == 0 
+                                      ? _amount 
+                                      : _activeField == 1 
+                                          ? _localAmount 
+                                          : _activeField == 2 
+                                              ? _counterAmount 
+                                              : (_activeField >= 3 && _activeField - 3 < _charges.length)
+                                                  ? _charges[_activeField - 3].amountController.text.replaceAll(',', '').trim()
+                                                  : '0';
                                   return Text(
                                     _amountWords(displayAmount),
                                     maxLines: 1,
@@ -313,16 +335,11 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: AppSpacing.sm,
-                                vertical: 6,
+                                vertical: 7,
                               ),
                               decoration: BoxDecoration(
-                                color: tone.withAlphaFactor(0.12),
-                                borderRadius: BorderRadius.circular(
-                                  AppRadii.pill,
-                                ),
-                                border: Border.all(
-                                  color: tone.withAlphaFactor(0.3),
-                                ),
+                                color: tone.withAlphaFactor(0.72),
+                                borderRadius: BorderRadius.circular(AppRadii.pill),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -330,16 +347,16 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                   Text(
                                     txCurrency,
                                     style: TextStyle(
-                                      color: tone,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 13,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 12.5,
                                     ),
                                   ),
-                                  const SizedBox(width: 3),
-                                  Icon(
+                                  const SizedBox(width: 5),
+                                  const Icon(
                                     Icons.expand_more_rounded,
-                                    size: 14,
-                                    color: tone,
+                                    size: 15,
+                                    color: Colors.white,
                                   ),
                                 ],
                               ),
@@ -471,11 +488,16 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                           _localAmount = next.amount;
                           _localExpression = next.expression;
                           _localAmountController.text = next.amount;
-                        } else {
+                        } else if (_activeField == 2) {
                           final next = _applyKey(_counterAmount, _counterExpression, key);
                           _counterAmount = next.amount;
                           _counterExpression = next.expression;
                           _counterAmountController.text = next.amount;
+                        } else if (_activeField >= 3 && _activeField - 3 < _charges.length) {
+                          final chargeIdx = _activeField - 3;
+                          final chargeAmount = _charges[chargeIdx].amountController.text.replaceAll(',', '').trim();
+                          final next = _applyKey(chargeAmount.isEmpty ? '0' : chargeAmount, '', key);
+                          _charges[chargeIdx].amountController.text = next.amount;
                         }
                       }),
                     ),
@@ -582,10 +604,11 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                   Expanded(
                                     child: TextFormField(
                                       controller: _charges[i].amountController,
-                                      keyboardType:
-                                          const TextInputType.numberWithOptions(
-                                            decimal: true,
-                                          ),
+                                      readOnly: true,
+                                      onTap: () {
+                                        setState(() => _activeField = 3 + i);
+                                        DefaultTabController.of(context).animateTo(0);
+                                      },
                                       decoration: InputDecoration(
                                         hintText: 'Amount',
                                         border: OutlineInputBorder(

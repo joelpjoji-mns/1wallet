@@ -318,13 +318,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           transaction.categoryId != _categoryFilter) {
         return false;
       }
-      if (transaction.type == 'interest_in' || transaction.type == 'interest_out') {
-        final account = accountById(state, transaction.accountId);
-        if (account?.loanDetails?.hideInterestInLedger == true) {
-          if (_accountFilter != account?.id) {
-            return false;
-          }
-        }
+      if (isHiddenInterest(state, transaction)) {
+        return false;
       }
       return true;
     });

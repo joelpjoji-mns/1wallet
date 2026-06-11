@@ -46,42 +46,79 @@ class RecurringScreen extends ConsumerWidget {
       ],
       child: Column(
         children: [
-          SectionCard(
-            title: 'Recurring rules',
-            subtitle: 'Confirm, postpone or edit individual occurrences.',
-            child: Row(
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl, horizontal: AppSpacing.md),
+            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF00B4DB),
+                  const Color(0xFF0083B0),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(AppRadii.xl),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0083B0).withAlpha(60),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
               children: [
-                Expanded(
-                  child: MetricTile(
-                    label: mode == 'past' ? 'Posted' : 'Scheduled',
-                    value: '${listed.length}',
-                    icon: mode == 'past'
-                        ? Icons.history_rounded
-                        : Icons.event_repeat_outlined,
-                    compact: true,
+                IconBubble(
+                  icon: mode == 'past' ? Icons.history_rounded : Icons.event_repeat_rounded,
+                  color: Colors.white,
+                  compact: true,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  mode == 'past'
+                      ? '${recurringHistory.length} Posted'
+                      : formatMoney(
+                          Money(
+                            amountMinor: scheduled.fold(
+                              0,
+                              (sum, item) => sum + item.amount.amountMinor,
+                            ),
+                            currency: state.preferences.baseCurrency,
+                          ),
+                          state.preferences.locale,
+                        ),
+                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: -1.0,
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: MetricTile(
-                    label: mode == 'past' ? 'History' : 'This month',
-                    value: mode == 'past'
-                        ? '${recurringHistory.length}'
-                        : formatMoney(
-                            Money(
-                              amountMinor: scheduled.fold(
-                                0,
-                                (sum, item) => sum + item.amount.amountMinor,
-                              ),
-                              currency: state.preferences.baseCurrency,
-                            ),
-                            state.preferences.locale,
-                          ),
-                    icon: mode == 'past'
-                        ? Icons.receipt_long_outlined
-                        : Icons.payments_outlined,
-                    compact: true,
-                    tone: MetricTone.warning,
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  mode == 'past' ? 'Historical Records' : 'Total Planned',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white.withAlpha(200),
+                    letterSpacing: 1.0,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(30),
+                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                    border: Border.all(color: Colors.white.withAlpha(60)),
+                  ),
+                  child: Text(
+                    '${listed.length} ${mode == 'past' ? 'RECORDS' : 'SCHEDULED ITEMS'}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: 1.2,
+                    ),
                   ),
                 ),
               ],

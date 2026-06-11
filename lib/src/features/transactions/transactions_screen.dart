@@ -50,12 +50,9 @@ final _filteredTransactionsProvider = Provider.autoDispose
                 transaction.counterAccountId != filter.accountFilter) {
               return false;
             }
-            if (transaction.type == 'interest_in' || transaction.type == 'interest_out') {
-              final account = accountById(state, transaction.accountId);
-              if (account?.loanDetails?.hideInterestInLedger == true) {
-                if (filter.accountFilter != account?.id) {
-                  return false;
-                }
+            if (isHiddenInterest(state, transaction)) {
+              if (filter.accountFilter != transaction.accountId && filter.accountFilter != transaction.counterAccountId) {
+                return false;
               }
             }
             if (filter.categoryFilterIds.isNotEmpty ||
