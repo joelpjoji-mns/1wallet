@@ -133,12 +133,13 @@ class _MainShellState extends ConsumerState<MainShell> {
                 onPageChanged: (index) {
                   // Index update deferred to ScrollEndNotification to prevent mid-swipe jank.
                 },
-              itemBuilder: (context, index) {
-                return _KeepAliveWrapper(
-                  key: PageStorageKey<String>('main-shell-tab-$index'),
-                  child: _buildScreen(index),
-                );
-              },
+                itemBuilder: (context, index) {
+                  return _KeepAliveWrapper(
+                    key: PageStorageKey<String>('main-shell-tab-$index'),
+                    child: _buildScreen(index),
+                  );
+                },
+              ),
             ),
             Positioned(
               left: 0,
