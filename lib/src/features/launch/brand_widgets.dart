@@ -1,0 +1,750 @@
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+
+import '../../design/tokens.dart';
+import '../../startup/startup_state.dart';
+
+abstract final class LaunchPalette {
+  static const background = Color(0xFF0F1820);
+  static const backgroundDeep = Color(0xFF0B1218);
+  static const primary = Color(0xFFA9C7FF);
+  static const tertiary = Color(0xFF9BDDB5);
+  static const gold = Color(0xFFDFC894);
+  static const text = Color(0xFFF4F7FB);
+  static const mutedText = Color(0xFFC8D3DF);
+}
+
+class _ResolvedLaunchPalette {
+  const _ResolvedLaunchPalette({
+    required this.background,
+    required this.backgroundDeep,
+    required this.primary,
+    required this.tertiary,
+    required this.gold,
+    required this.text,
+    required this.mutedText,
+    required this.rail,
+    required this.railActive,
+    required this.completedRail,
+    required this.line,
+    required this.bandPrimary,
+    required this.bandTertiary,
+    required this.bandGold,
+    required this.cardFill,
+    required this.focusBorder,
+    required this.focusFill,
+    required this.haloFill,
+    required this.markBackground,
+    required this.markBorder,
+    required this.markGlint,
+    required this.progressTrack,
+    required this.stageBorder,
+  });
+
+  final Color background;
+  final Color backgroundDeep;
+  final Color primary;
+  final Color tertiary;
+  final Color gold;
+  final Color text;
+  final Color mutedText;
+  final Color rail;
+  final Color railActive;
+  final Color completedRail;
+  final Color line;
+  final Color bandPrimary;
+  final Color bandTertiary;
+  final Color bandGold;
+  final Color cardFill;
+  final Color focusBorder;
+  final Color focusFill;
+  final Color haloFill;
+  final Color markBackground;
+  final Color markBorder;
+  final Color markGlint;
+  final Color progressTrack;
+  final Color stageBorder;
+}
+
+_ResolvedLaunchPalette _resolveLaunchPalette(BuildContext context) {
+  final theme = Theme.of(context);
+  final scheme = theme.colorScheme;
+  final isDark = theme.brightness == Brightness.dark;
+  final isAmoled = isDark && _isTrueBlackColor(scheme.surface);
+  final background = isAmoled
+      ? Colors.black
+      : isDark
+      ? scheme.surface
+      : scheme.surface;
+  final backgroundDeep = isAmoled
+      ? Colors.black
+      : isDark
+      ? const Color(0xFF07090C)
+      : scheme.surfaceContainerLowest;
+  final surfaceRaised = isAmoled
+      ? const Color(0xFF0B0B0B)
+      : isDark
+      ? scheme.surfaceContainer
+      : scheme.surfaceContainerLow;
+  final neutralBandAlpha = isAmoled
+      ? 0.026
+      : isDark
+      ? 0.052
+      : 0.038;
+  final neutralPlateAlpha = isAmoled
+      ? 0.038
+      : isDark
+      ? 0.07
+      : 0.05;
+  final accentAlpha = isAmoled
+      ? 0.11
+      : isDark
+      ? 0.15
+      : 0.11;
+
+  return _ResolvedLaunchPalette(
+    background: background,
+    backgroundDeep: backgroundDeep,
+    primary: scheme.primary,
+    tertiary: scheme.tertiary,
+    gold: scheme.secondary,
+    text: scheme.onSurface,
+    mutedText: scheme.onSurfaceVariant,
+    rail: scheme.onSurface.withAlphaFactor(isDark ? 0.11 : 0.07),
+    railActive: scheme.primary.withAlphaFactor(accentAlpha),
+    completedRail: scheme.onSurface.withAlphaFactor(isDark ? 0.14 : 0.09),
+    line: scheme.onSurface.withAlphaFactor(isDark ? 0.12 : 0.08),
+    bandPrimary: scheme.onSurface.withAlphaFactor(neutralBandAlpha),
+    bandTertiary: scheme.onSurface.withAlphaFactor(neutralBandAlpha),
+    bandGold: scheme.onSurface.withAlphaFactor(neutralBandAlpha * 0.72),
+    cardFill: scheme.surface,
+    focusBorder: scheme.outline.withAlphaFactor(isDark ? 0.26 : 0.2),
+    focusFill: scheme.onSurface.withAlphaFactor(neutralPlateAlpha),
+    haloFill: scheme.primary.withAlphaFactor(isDark ? 0.064 : 0.052),
+    markBackground: surfaceRaised.withAlphaFactor(0.98),
+    markBorder: scheme.outline.withAlphaFactor(isDark ? 0.32 : 0.28),
+    markGlint: scheme.onSurface.withAlphaFactor(isDark ? 0.11 : 0.08),
+    progressTrack: scheme.onSurface.withAlphaFactor(isDark ? 0.12 : 0.08),
+    stageBorder: scheme.outline.withAlphaFactor(0.22),
+  );
+}
+
+bool _isTrueBlackColor(Color color) =>
+    color.toARGB32() == Colors.black.toARGB32();
+
+class LaunchBackdrop extends StatefulWidget {
+  const LaunchBackdrop({super.key, this.child});
+
+  final Widget? child;
+
+  @override
+  State<LaunchBackdrop> createState() => _LaunchBackdropState();
+}
+
+class _LaunchBackdropState extends State<LaunchBackdrop>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 4000),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = _resolveLaunchPalette(context);
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final t = _controller.value;
+        final drift = -18 + (36 * Curves.easeInOutCubic.transform(t));
+        final lineDrift = -22 * t;
+        final focusScale = 0.96 + (0.08 * math.sin(t * math.pi));
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [palette.background, palette.backgroundDeep],
+            ),
+          ),
+          child: Stack(
+            children: [
+              _LaunchBand(
+                top: 96,
+                left: -150 + drift,
+                width: 720,
+                height: 232,
+                color: palette.bandPrimary,
+              ),
+              _LaunchBand(
+                bottom: 72,
+                left: -150 - drift,
+                width: 720,
+                height: 260,
+                color: palette.bandTertiary,
+              ),
+              _LaunchBand(
+                top: 244,
+                left: 156 + drift,
+                width: 410,
+                height: 96,
+                color: palette.bandGold,
+              ),
+              _LedgerLines(color: palette.line, translateY: lineDrift),
+              Center(
+                child: Transform.scale(
+                  scale: focusScale,
+                  child: Container(
+                    width: 274,
+                    height: 274,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: palette.focusFill,
+                      border: Border.all(color: palette.focusBorder, width: 2),
+                    ),
+                  ),
+                ),
+              ),
+              child!,
+            ],
+          ),
+        );
+      },
+      child: widget.child ?? const SizedBox.expand(),
+    );
+  }
+}
+
+class _LaunchBand extends StatelessWidget {
+  const _LaunchBand({
+    required this.left,
+    required this.width,
+    required this.height,
+    required this.color,
+    this.top,
+    this.bottom,
+  });
+
+  final double left;
+  final double? top;
+  final double? bottom;
+  final double width;
+  final double height;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: left,
+      top: top,
+      bottom: bottom,
+      child: Transform.rotate(
+        angle: -14 * math.pi / 180,
+        child: Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(26),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LedgerLines extends StatelessWidget {
+  const _LedgerLines({required this.color, required this.translateY});
+
+  final Color color;
+  final double translateY;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: 150,
+      left: 34,
+      right: 34,
+      child: Transform.translate(
+        offset: Offset(0, translateY),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var index = 0; index < 12; index++) ...[
+              FractionallySizedBox(
+                widthFactor: (0.62 + (index % 4) * 0.09).clamp(0, 1),
+                child: Container(
+                  height: 1,
+                  decoration: BoxDecoration(
+                    color: color.withAlphaFactor(0.35 + (index % 3) * 0.12),
+                    borderRadius: BorderRadius.circular(1),
+                  ),
+                ),
+              ),
+              if (index != 11) const SizedBox(height: 28),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class LaunchBrandMark extends StatefulWidget {
+  const LaunchBrandMark({super.key, this.size = 112, this.animated = true});
+
+  final double size;
+  final bool animated;
+
+  @override
+  State<LaunchBrandMark> createState() => _LaunchBrandMarkState();
+}
+
+class _LaunchBrandMarkState extends State<LaunchBrandMark>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    );
+    if (widget.animated) _controller.repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = _resolveLaunchPalette(context);
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final t = _controller.value;
+        final pulse = widget.animated
+            ? 1 + (math.sin(t * math.pi) * 0.04)
+            : 1.0;
+        final glintX = -widget.size + (widget.size * 2 * t);
+        return SizedBox(
+          width: widget.size * 1.7,
+          height: widget.size * 1.5,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Transform.scale(
+                scale: pulse,
+                child: Container(
+                  width: widget.size * 1.36,
+                  height: widget.size * 1.05,
+                  decoration: BoxDecoration(
+                    color: palette.haloFill,
+                    borderRadius: BorderRadius.circular(widget.size * 0.38),
+                    border: Border.all(
+                      color: palette.primary.withAlphaFactor(0.36),
+                      width: 2,
+                    ),
+                  ),
+                ),
+              ),
+              Transform.scale(
+                scale: pulse,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(widget.size * 0.31),
+                  child: Container(
+                    width: widget.size,
+                    height: widget.size,
+                    decoration: BoxDecoration(
+                      color: palette.markBackground,
+                      borderRadius: BorderRadius.circular(widget.size * 0.31),
+                      border: Border.all(color: palette.markBorder),
+                      boxShadow: [
+                        BoxShadow(
+                          color: palette.primary.withAlphaFactor(0.18),
+                          blurRadius: 32,
+                          spreadRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Transform.translate(
+                          offset: Offset(glintX, 0),
+                          child: Transform.rotate(
+                            angle: -22 * math.pi / 180,
+                            child: Container(
+                              width: widget.size * 0.4,
+                              height: widget.size * 1.45,
+                              color: palette.markGlint,
+                            ),
+                          ),
+                        ),
+                        Transform.rotate(
+                          angle: -8 * math.pi / 180,
+                          child: Container(
+                            width: widget.size * 0.68,
+                            height: widget.size * 0.48,
+                            decoration: BoxDecoration(
+                              color: palette.cardFill,
+                              borderRadius: BorderRadius.circular(
+                                widget.size * 0.15,
+                              ),
+                              border: Border.all(
+                                color: palette.primary,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Transform.translate(
+                          offset: Offset(0, 1.5 - (3 * t)),
+                          child: Icon(
+                            Icons.account_balance_wallet_outlined,
+                            size: widget.size * 0.39,
+                            color: palette.primary,
+                          ),
+                        ),
+                        Positioned(
+                          right: widget.size * 0.09,
+                          bottom: widget.size * 0.09,
+                          child: CircleAvatar(
+                            radius: widget.size * 0.16,
+                            backgroundColor: palette.tertiary,
+                            child: Text(
+                              '1',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onTertiary,
+                                fontSize: widget.size * 0.16,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class AnimatedBrandScene extends StatelessWidget {
+  const AnimatedBrandScene({
+    super.key,
+    this.message = 'Your money, organized beautifully',
+    this.compact = false,
+  });
+
+  final String message;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = _resolveLaunchPalette(context);
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutCubic,
+      tween: Tween(begin: 0, end: 1),
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 16 * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          LaunchBrandMark(size: compact ? 96 : 122),
+          SizedBox(height: compact ? AppSpacing.lg : AppSpacing.xl),
+          Text(
+            '1wallet',
+            style: TextStyle(
+              color: palette.text,
+              fontSize: 34,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -1.2,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: palette.mutedText,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class BrandedLoadingState extends StatelessWidget {
+  const BrandedLoadingState({
+    required this.stage,
+    required this.message,
+    super.key,
+  });
+
+  final StartupStage stage;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = _resolveLaunchPalette(context);
+    return Scaffold(
+      body: LaunchBackdrop(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Spacer(),
+                AnimatedBrandScene(message: message),
+                const SizedBox(height: AppSpacing.xxl),
+                _StageRail(currentStage: stage),
+                const Spacer(),
+                _ProgressTrack(palette: palette),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProgressTrack extends StatelessWidget {
+  const _ProgressTrack({required this.palette});
+
+  final _ResolvedLaunchPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 720),
+      curve: Curves.easeInOutCubic,
+      tween: Tween(begin: 0, end: 1),
+      builder: (context, value, child) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+          child: Container(
+            width: 156,
+            height: 5,
+            color: palette.progressTrack,
+            child: Align(
+              alignment: Alignment(-1 + (2 * value), 0),
+              child: FractionallySizedBox(
+                widthFactor: 0.46 + (0.34 * math.sin(value * math.pi)),
+                child: Container(color: palette.primary),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _StageRail extends StatelessWidget {
+  const _StageRail({required this.currentStage});
+
+  final StartupStage currentStage;
+
+  @override
+  Widget build(BuildContext context) {
+    final stages = [
+      (StartupStage.session, Icons.verified_user_outlined, 'Session'),
+      (StartupStage.wallet, Icons.account_balance_wallet_outlined, 'Wallet'),
+      (StartupStage.ready, Icons.check_circle_outline_rounded, 'Ready'),
+    ];
+    final currentIndex = stages.indexWhere((item) => item.$1 == currentStage);
+    return Row(
+      children: [
+        for (final (index, item) in stages.indexed) ...[
+          Expanded(
+            child: _StagePill(
+              icon: index < currentIndex
+                  ? Icons.check_circle_outline_rounded
+                  : item.$2,
+              label: item.$3,
+              active: index <= currentIndex,
+              completed: index < currentIndex,
+            ),
+          ),
+          if (index != stages.length - 1) const SizedBox(width: AppSpacing.xs),
+        ],
+      ],
+    );
+  }
+}
+
+class _StagePill extends StatelessWidget {
+  const _StagePill({
+    required this.icon,
+    required this.label,
+    required this.active,
+    required this.completed,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool active;
+  final bool completed;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = _resolveLaunchPalette(context);
+    final color = active
+        ? completed
+              ? palette.tertiary
+              : palette.primary
+        : palette.mutedText;
+    final fill = active
+        ? completed
+              ? palette.completedRail
+              : palette.railActive
+        : palette.rail;
+    final border = active
+        ? completed
+              ? palette.tertiary.withAlphaFactor(0.55)
+              : palette.primary.withAlphaFactor(0.55)
+        : palette.stageBorder;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: fill,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: AppSpacing.xs),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: color, fontWeight: FontWeight.w800),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class RecoveryState extends StatelessWidget {
+  const RecoveryState({
+    required this.title,
+    required this.body,
+    required this.actionLabel,
+    required this.onAction,
+    super.key,
+    this.secondaryLabel,
+    this.onSecondaryAction,
+  });
+
+  final String title;
+  final String body;
+  final String actionLabel;
+  final VoidCallback onAction;
+  final String? secondaryLabel;
+  final VoidCallback? onSecondaryAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = _resolveLaunchPalette(context);
+    return Scaffold(
+      body: LaunchBackdrop(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const LaunchBrandMark(size: 96, animated: false),
+                const SizedBox(height: AppSpacing.xl),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: palette.text,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.7,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  body,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: palette.mutedText,
+                    fontSize: 16,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                FilledButton(
+                  onPressed: onAction,
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(56),
+                    backgroundColor: palette.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  ),
+                  child: Text(actionLabel),
+                ),
+                if (secondaryLabel != null && onSecondaryAction != null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  TextButton(
+                    onPressed: onSecondaryAction,
+                    child: Text(
+                      secondaryLabel!,
+                      style: TextStyle(color: palette.mutedText),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

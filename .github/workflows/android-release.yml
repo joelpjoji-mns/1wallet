@@ -106,7 +106,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'push'
     env:
-      APK_PATH: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+      APK_PATH: build/app/outputs/flutter-apk/app-release.apk
       RELEASE_ARCHITECTURE: arm64-v8a
       ASSET_REPO: ${{ vars.APK_RELEASE_REPO }}
       FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID || 'wallet-1a5af' }}
@@ -150,19 +150,20 @@ jobs:
       - name: Install Android build packages
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;27.1.12297006"
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
-          version: 11.4.0
+          flutter-version: '3.24.5'
+          channel: 'stable'
+          cache: true
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: pnpm
 
-      - name: Install dependencies
-        run: pnpm --config.auto-install-peers=false --config.node-linker=hoisted install --frozen-lockfile
+      - name: Flutter dependencies
+        run: flutter pub get
 
       - name: Write mobile environment
         run: |
@@ -180,8 +181,8 @@ jobs:
 
       - name: Restore Android release keystore
         run: |
-          printf '%s' "${{ secrets.ONEWALLET_RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > apps/mobile/android/release.keystore
-          chmod 600 apps/mobile/android/release.keystore
+          printf '%s' "${{ secrets.ONEWALLET_RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > android/release.keystore
+          chmod 600 android/release.keystore
 
       - name: Read release info
         id: info
@@ -248,7 +249,7 @@ jobs:
           ONEWALLET_RELEASE_KEY_PASSWORD: ${{ secrets.ONEWALLET_RELEASE_KEY_PASSWORD }}
           ONEWALLET_VERSION_NAME: ${{ steps.info.outputs.versionName }}
           ONEWALLET_VERSION_CODE: ${{ steps.info.outputs.versionCode }}
-        run: pnpm --config.auto-install-peers=false --config.node-linker=hoisted --filter @1wallet/mobile android:release
+        run: flutter build apk --release --target-platform android-arm64 --build-name="${{ steps.info.outputs.versionName }}" --build-number="${{ steps.info.outputs.versionCode }}"
 
       - name: Stage release assets
         if: steps.notes_source.outputs.skip_release != 'true'
@@ -343,7 +344,7 @@ jobs:
             echo "::error::Update manifest download URL is empty"
             exit 1
           fi
-          pnpm --config.auto-install-peers=false --config.node-linker=hoisted run mobile:update:manifest -- \
+          node scripts/mobile-update-manifest.mjs \
             --apk "$APK_PATH" \
             --version "${{ steps.info.outputs.versionName }}" \
             --version-code "${{ steps.info.outputs.versionCode }}" \
@@ -361,7 +362,7 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
         run: |
-          pnpm --config.auto-install-peers=false --config.node-linker=hoisted run mobile:update:publish -- \
+          node scripts/publish-mobile-update-to-firebase.mjs \
             --project "$FIREBASE_PROJECT_ID" \
             --skip-upload \
             --manifest "importdata/mobile-update-${{ steps.info.outputs.versionName }}-${{ steps.info.outputs.channel }}.json"
