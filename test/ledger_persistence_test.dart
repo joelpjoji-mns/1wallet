@@ -236,8 +236,8 @@ void main() {
         institution: 'QA Lender',
         loanDetails: AccountLoanDetails(
           loanKind: 'loan',
-          principal: Money(amountMinor: 1000000, currency: 'INR'),
-          repaymentAmount: Money(amountMinor: 50000, currency: 'INR'),
+          principal: const Money(amountMinor: 1000000, currency: 'INR'),
+          repaymentAmount: const Money(amountMinor: 50000, currency: 'INR'),
           interestRatePercent: 9.5,
           repaymentCount: 24,
           repaymentStartsOn: DateTime(2026, 7, 5),

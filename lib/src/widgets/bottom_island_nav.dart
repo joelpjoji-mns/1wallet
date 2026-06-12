@@ -43,7 +43,7 @@ class BottomIslandNavBar extends StatelessWidget {
             final compact = constraints.maxWidth < 390;
             final islandWidth = math.min(constraints.maxWidth, 430.0);
             final navHeight = compact ? 72.0 : 76.0;
-            final navPadding = 6.0;
+            const navPadding = 6.0;
             final indicatorHeight = navHeight - navPadding * 2;
             final tabWidth = (islandWidth - navPadding * 2) / items.length;
             final currentItemIndex = items.indexWhere(
@@ -77,7 +77,7 @@ class BottomIslandNavBar extends StatelessWidget {
                     Align(
                       alignment: Alignment.center,
                       child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: navPadding),
+                        padding: const EdgeInsets.symmetric(horizontal: 6.0),
                         child: Row(
                           children: [
                             for (var index = 0; index < items.length; index++)

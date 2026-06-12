@@ -283,41 +283,6 @@ class MiniLineChart extends StatelessWidget {
   }
 }
 
-class _PeriodPill extends StatelessWidget {
-  const _PeriodPill({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: 7,
-      ),
-      decoration: BoxDecoration(
-        color: scheme.error.withAlphaFactor(0.72),
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.calendar_month_rounded, size: 14, color: scheme.onError),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              color: scheme.onError,
-              fontWeight: FontWeight.w900,
-              fontSize: 12.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _MiniLineChartPainter extends CustomPainter {
   const _MiniLineChartPainter({

@@ -10,8 +10,6 @@ class UpdatesScreen extends ConsumerWidget {
     final state = ref.watch(appUpdateProvider);
     final provider = ref.read(appUpdateProvider.notifier);
 
-    final theme = Theme.of(context);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Updates'),
@@ -70,7 +68,7 @@ class UpdatesScreen extends ConsumerWidget {
     return Card(
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.1),
+          backgroundColor: color.withValues(alpha: 0.1),
           child: Icon(icon, color: color),
         ),
         title: Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),

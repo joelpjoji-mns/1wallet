@@ -9,7 +9,6 @@ import '../../cloud_sync/cloud_sync_controller.dart';
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
-import '../../ledger/ledger_selectors.dart';
 import '../../widgets/user_identity_widgets.dart';
 import '../../widgets/bottom_island_nav.dart';
 import 'main_drawer_components.dart';
@@ -214,7 +213,6 @@ class _MainDrawer extends ConsumerWidget {
     final profileName = _profileName(auth.user, ledger);
     final profileSubtitle = _profileSubtitle(auth.user, ledger);
     final profileInitials = auth.user?.initials ?? _walletInitials(profileName);
-    final total = totalBalance(ledger);
     return Drawer(
       width: MediaQuery.sizeOf(context).width * 0.82,
       backgroundColor: Colors.transparent,
