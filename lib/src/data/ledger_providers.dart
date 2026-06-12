@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show compute;
+import 'package:flutter/foundation.dart' as foundation;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -63,12 +63,12 @@ class LedgerRepository {
     final preferences = await SharedPreferences.getInstance();
     final payload = preferences.getString(_ledgerStorageKey);
     if (payload == null || payload.trim().isEmpty) return null;
-    return await compute(decodeLedgerState, payload);
+    return await foundation.compute(decodeLedgerState, payload);
   }
 
   Future<void> save(LedgerState state) async {
     final preferences = await SharedPreferences.getInstance();
-    final payload = await compute(encodeLedgerState, state);
+    final payload = await foundation.compute(encodeLedgerState, state);
     await preferences.setString(_ledgerStorageKey, payload);
   }
 
