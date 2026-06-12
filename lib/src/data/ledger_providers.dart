@@ -78,6 +78,75 @@ class LedgerRepository {
   }
 }
 
+LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
+  bool changed = false;
+  
+  final Map<String, DateTime> latestHistory = {};
+  for (final t in ledger.transactions) {
+    if (t.originalTransactionId != null && t.status != 'scheduled' && t.status != 'void') {
+      final currentLatest = latestHistory[t.originalTransactionId!];
+      if (currentLatest == null || t.occurredAt.isAfter(currentLatest)) {
+        latestHistory[t.originalTransactionId!] = t.occurredAt;
+      }
+    }
+  }
+
+  final updated = ledger.transactions.map((scheduled) {
+    if (scheduled.status != 'scheduled') return scheduled;
+    
+    final latestOccurredAt = latestHistory[scheduled.id];
+    if (latestOccurredAt == null) return scheduled;
+    
+    if (scheduled.occurredAt.isBefore(latestOccurredAt) || scheduled.occurredAt.isAtSameMomentAs(latestOccurredAt)) {
+      changed = true;
+      DateTime nextDate = scheduled.occurredAt;
+      final freq = scheduled.recurrenceFrequency ?? 'monthly';
+      
+      while (nextDate.isBefore(latestOccurredAt) || nextDate.isAtSameMomentAs(latestOccurredAt)) {
+         switch (freq.toLowerCase()) {
+          case 'daily':
+            nextDate = nextDate.add(const Duration(days: 1));
+            break;
+          case 'weekly':
+            nextDate = nextDate.add(const Duration(days: 7));
+            break;
+          case 'monthly':
+            var year = nextDate.year;
+            var month = nextDate.month + 1;
+            if (month > 12) { year++; month -= 12; }
+            var day = nextDate.day;
+            final daysInNextMonth = DateTime(year, month + 1, 0).day;
+            if (day > daysInNextMonth) day = daysInNextMonth;
+            nextDate = DateTime(year, month, day, nextDate.hour, nextDate.minute, nextDate.second);
+            break;
+          case 'yearly':
+            var year = nextDate.year + 1;
+            var month = nextDate.month;
+            var day = nextDate.day;
+            final daysInNextMonth = DateTime(year, month + 1, 0).day;
+            if (day > daysInNextMonth) day = daysInNextMonth;
+            nextDate = DateTime(year, month, day, nextDate.hour, nextDate.minute, nextDate.second);
+            break;
+          default:
+            var year = nextDate.year;
+            var month = nextDate.month + 1;
+            if (month > 12) { year++; month -= 12; }
+            var day = nextDate.day;
+            final daysInNextMonth = DateTime(year, month + 1, 0).day;
+            if (day > daysInNextMonth) day = daysInNextMonth;
+            nextDate = DateTime(year, month, day, nextDate.hour, nextDate.minute, nextDate.second);
+            break;
+        }
+      }
+      return scheduled.copyWith(occurredAt: nextDate);
+    }
+    return scheduled;
+  }).toList();
+  
+  if (!changed) return ledger;
+  return ledger.copyWith(transactions: updated);
+}
+
 class LedgerController extends StateNotifier<LedgerState> {
   LedgerController(
     this._repository, {
@@ -96,7 +165,7 @@ class LedgerController extends StateNotifier<LedgerState> {
       final restored = await _repository.load();
       if (!mounted) return;
       if (restored != null) {
-        final fixed = _fixStaleScheduledTransactions(restored);
+        final fixed = await foundation.compute(fixStaleScheduledTransactions, restored);
         state = fixed;
         if (!identical(fixed, restored)) {
           unawaited(_repository.save(fixed));
@@ -114,69 +183,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     }
   }
 
-  LedgerState _fixStaleScheduledTransactions(LedgerState ledger) {
-    bool changed = false;
-    final updated = ledger.transactions.map((scheduled) {
-      if (scheduled.status != 'scheduled') return scheduled;
-      
-      final history = ledger.transactions
-          .where((t) => t.originalTransactionId == scheduled.id && t.status != 'scheduled' && t.status != 'void')
-          .toList();
-      
-      if (history.isEmpty) return scheduled;
-      
-      history.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
-      final latest = history.first;
-      
-      if (scheduled.occurredAt.isBefore(latest.occurredAt) || scheduled.occurredAt.isAtSameMomentAs(latest.occurredAt)) {
-        changed = true;
-        DateTime nextDate = scheduled.occurredAt;
-        final freq = scheduled.recurrenceFrequency ?? 'monthly';
-        
-        while (nextDate.isBefore(latest.occurredAt) || nextDate.isAtSameMomentAs(latest.occurredAt)) {
-           switch (freq.toLowerCase()) {
-            case 'daily':
-              nextDate = nextDate.add(const Duration(days: 1));
-              break;
-            case 'weekly':
-              nextDate = nextDate.add(const Duration(days: 7));
-              break;
-            case 'monthly':
-              var year = nextDate.year;
-              var month = nextDate.month + 1;
-              if (month > 12) { year++; month -= 12; }
-              var day = nextDate.day;
-              final daysInNextMonth = DateTime(year, month + 1, 0).day;
-              if (day > daysInNextMonth) day = daysInNextMonth;
-              nextDate = DateTime(year, month, day, nextDate.hour, nextDate.minute, nextDate.second);
-              break;
-            case 'yearly':
-              var year = nextDate.year + 1;
-              var month = nextDate.month;
-              var day = nextDate.day;
-              final daysInNextMonth = DateTime(year, month + 1, 0).day;
-              if (day > daysInNextMonth) day = daysInNextMonth;
-              nextDate = DateTime(year, month, day, nextDate.hour, nextDate.minute, nextDate.second);
-              break;
-            default:
-              var year = nextDate.year;
-              var month = nextDate.month + 1;
-              if (month > 12) { year++; month -= 12; }
-              var day = nextDate.day;
-              final daysInNextMonth = DateTime(year, month + 1, 0).day;
-              if (day > daysInNextMonth) day = daysInNextMonth;
-              nextDate = DateTime(year, month, day, nextDate.hour, nextDate.minute, nextDate.second);
-              break;
-          }
-        }
-        return scheduled.copyWith(occurredAt: nextDate);
-      }
-      return scheduled;
-    }).toList();
-    
-    if (!changed) return ledger;
-    return ledger.copyWith(transactions: updated);
-  }
+
 
   Future<void> clearLocalWallet({String userId = 'local-user'}) async {
     final next = emptyLedgerState(userId: userId);

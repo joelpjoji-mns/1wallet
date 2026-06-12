@@ -275,7 +275,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
       if (result.type != ResultType.done) {
         throw Exception(result.message);
       }
-      state = state.copyWith(status: UpdateStatus.idle);
+      state = state.copyWith(status: UpdateStatus.downloaded);
     } catch (e) {
       state = state.copyWith(
         status: UpdateStatus.error,
