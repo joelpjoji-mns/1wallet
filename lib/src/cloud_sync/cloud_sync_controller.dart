@@ -371,20 +371,22 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         'updatedAt': FieldValue.serverTimestamp(),
       });
       
-      for (final account in currentLedger.accounts) {
-         addWrite(_firestore.doc('users/${user.id}/accounts/${account.id}'), accountToJson(account).cast<String, dynamic>());
+      final encodedData = await compute(_encodeCloudSnapshotData, currentLedger);
+
+      for (final accountMap in encodedData['accounts']!) {
+         addWrite(_firestore.doc('users/${user.id}/accounts/${accountMap['id']}'), accountMap);
       }
-      for (final cat in currentLedger.categories) {
-         addWrite(_firestore.doc('users/${user.id}/categories/${cat.id}'), categoryToJson(cat).cast<String, dynamic>());
+      for (final catMap in encodedData['categories']!) {
+         addWrite(_firestore.doc('users/${user.id}/categories/${catMap['id']}'), catMap);
       }
-      for (final txn in currentLedger.transactions) {
-         addWrite(_firestore.doc('users/${user.id}/transactions/${txn.id}'), transactionToJson(txn).cast<String, dynamic>());
+      for (final txnMap in encodedData['transactions']!) {
+         addWrite(_firestore.doc('users/${user.id}/transactions/${txnMap['id']}'), txnMap);
       }
-      for (final budget in currentLedger.budgets) {
-         addWrite(_firestore.doc('users/${user.id}/budgets/${budget.id}'), budgetToJson(budget).cast<String, dynamic>());
+      for (final budgetMap in encodedData['budgets']!) {
+         addWrite(_firestore.doc('users/${user.id}/budgets/${budgetMap['id']}'), budgetMap);
       }
-      for (final goal in currentLedger.goals) {
-         addWrite(_firestore.doc('users/${user.id}/goals/${goal.id}'), goalToJson(goal).cast<String, dynamic>());
+      for (final goalMap in encodedData['goals']!) {
+         addWrite(_firestore.doc('users/${user.id}/goals/${goalMap['id']}'), goalMap);
       }
 
       if (opCount > 0) {
@@ -427,14 +429,17 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       final goalsQuery = await _firestore.collection('users/$userId/goals').get().timeout(const Duration(seconds: 15));
       final prefsDoc = await _firestore.doc('users/$userId/metadata/preferences').get().timeout(const Duration(seconds: 15));
 
-      final ledger = emptyLedgerState(userId: userId).copyWith(
-         preferences: prefsDoc.exists ? preferencesFromJson(prefsDoc.data()!) : const LedgerPreferences(),
-         accounts: accountsQuery.docs.map((d) => accountFromJson(d.data())).toList(),
-         categories: categoriesQuery.docs.map((d) => categoryFromJson(d.data())).toList(),
-         transactions: txnsQuery.docs.map((d) => transactionFromJson(d.data())).toList(),
-         budgets: budgetsQuery.docs.map((d) => budgetFromJson(d.data())).toList(),
-         goals: goalsQuery.docs.map((d) => goalFromJson(d.data())).toList(),
-      );
+      final restoreData = {
+        'userId': userId,
+        'preferences': prefsDoc.exists ? prefsDoc.data() : null,
+        'accounts': accountsQuery.docs.map((d) => d.data()).toList(),
+        'categories': categoriesQuery.docs.map((d) => d.data()).toList(),
+        'transactions': txnsQuery.docs.map((d) => d.data()).toList(),
+        'budgets': budgetsQuery.docs.map((d) => d.data()).toList(),
+        'goals': goalsQuery.docs.map((d) => d.data()).toList(),
+      };
+
+      final ledger = await compute(_parseCloudRestoreData, restoreData);
 
       final currentLedger = _ref.read(ledgerProvider);
       if (!_walletHasUserData(ledger) && _walletHasUserData(currentLedger)) {
@@ -510,4 +515,33 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         ledger.budgets.isNotEmpty ||
         ledger.goals.isNotEmpty;
   }
+}
+
+LedgerState _parseCloudRestoreData(Map<String, dynamic> data) {
+  final userId = data['userId'] as String;
+  final prefsData = data['preferences'] as Map<String, dynamic>?;
+  final accountsData = data['accounts'] as List;
+  final categoriesData = data['categories'] as List;
+  final transactionsData = data['transactions'] as List;
+  final budgetsData = data['budgets'] as List;
+  final goalsData = data['goals'] as List;
+
+  return emptyLedgerState(userId: userId).copyWith(
+    preferences: prefsData != null ? preferencesFromJson(prefsData) : const LedgerPreferences(),
+    accounts: accountsData.map((d) => accountFromJson(d as Map<String, dynamic>)).toList(),
+    categories: categoriesData.map((d) => categoryFromJson(d as Map<String, dynamic>)).toList(),
+    transactions: transactionsData.map((d) => transactionFromJson(d as Map<String, dynamic>)).toList(),
+    budgets: budgetsData.map((d) => budgetFromJson(d as Map<String, dynamic>)).toList(),
+    goals: goalsData.map((d) => goalFromJson(d as Map<String, dynamic>)).toList(),
+  );
+}
+
+Map<String, List<Map<String, dynamic>>> _encodeCloudSnapshotData(LedgerState ledger) {
+  return {
+    'accounts': ledger.accounts.map((a) => accountToJson(a).cast<String, dynamic>()).toList(),
+    'categories': ledger.categories.map((c) => categoryToJson(c).cast<String, dynamic>()).toList(),
+    'transactions': ledger.transactions.map((t) => transactionToJson(t).cast<String, dynamic>()).toList(),
+    'budgets': ledger.budgets.map((b) => budgetToJson(b).cast<String, dynamic>()).toList(),
+    'goals': ledger.goals.map((g) => goalToJson(g).cast<String, dynamic>()).toList(),
+  };
 }
