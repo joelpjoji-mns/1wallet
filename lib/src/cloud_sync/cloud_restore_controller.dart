@@ -130,12 +130,13 @@ class CloudWalletRestoreRepository {
     if (wallet.latestSnapshotId == null) return null;
 
     final archiveContent = await _readSnapshotContent(uid, wallet);
-    final ledger = decodeReactNativeOneWalletArchive(
-      archiveContent,
-      userId: uid,
-      expectedChecksum: wallet.latestSnapshotChecksum,
-      expectedLedgerStateVersion: wallet.ledgerStateVersion,
-    );
+    final payload = {
+      'archiveContent': archiveContent,
+      'userId': uid,
+      'expectedChecksum': wallet.latestSnapshotChecksum,
+      'expectedLedgerStateVersion': wallet.ledgerStateVersion,
+    };
+    final ledger = await compute(_parseRnArchive, payload);
 
     return RestoredCloudLedger(
       ledger: ledger,
@@ -329,4 +330,13 @@ String _friendlyCloudError(Object error) {
   }
   if (error is FormatException) return error.message;
   return 'Could not restore your Firebase wallet backup.';
+}
+
+LedgerState _parseRnArchive(Map<String, dynamic> data) {
+  return decodeReactNativeOneWalletArchive(
+    data['archiveContent'] as String,
+    userId: data['userId'] as String,
+    expectedChecksum: data['expectedChecksum'] as String?,
+    expectedLedgerStateVersion: data['expectedLedgerStateVersion'] as int?,
+  );
 }
