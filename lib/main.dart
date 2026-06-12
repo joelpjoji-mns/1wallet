@@ -9,12 +9,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/app/one_wallet_app.dart';
 import 'src/config/firebase_env.dart';
+import 'src/services/notification_service.dart';
 
 Future<void> main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: binding);
   final sharedPreferencesWarmup = SharedPreferences.getInstance();
   final dateFormattingWarmup = initializeDateFormatting();
+  final notificationWarmup = NotificationService.initialize();
   await FirebaseEnv.load();
   FirebaseEnv.assertProductionReady();
   final firebaseOptions = FirebaseEnv.firebaseOptions;
@@ -31,7 +33,7 @@ Future<void> main() async {
       );
     }
   }
-  await Future.wait([sharedPreferencesWarmup, dateFormattingWarmup]);
+  await Future.wait([sharedPreferencesWarmup, dateFormattingWarmup, notificationWarmup]);
   runApp(const ProviderScope(child: OneWalletApp()));
   FlutterNativeSplash.remove();
 }
