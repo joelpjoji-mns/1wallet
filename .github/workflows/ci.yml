@@ -26,5 +26,8 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Create .env
+        run: touch .env
+
       - name: Analyze
         run: flutter analyze

@@ -50,10 +50,10 @@ class RecurringScreen extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl, horizontal: AppSpacing.md),
             margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
+              gradient: const LinearGradient(
                 colors: [
-                  const Color(0xFF00B4DB),
-                  const Color(0xFF0083B0),
+                  Color(0xFF00B4DB),
+                  Color(0xFF0083B0),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
