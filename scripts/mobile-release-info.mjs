@@ -97,7 +97,7 @@ function deriveVersionName(sourceVersionName, channel) {
 }
 
 function deriveVersionCode(sourceVersionCode, versionName) {
-  return versionCodeFromSemver(versionName) ?? sourceVersionCode ?? null;
+  return sourceVersionCode ?? versionCodeFromSemver(versionName) ?? null;
 }
 
 function assertStableVersion(versionName, versionCode) {
