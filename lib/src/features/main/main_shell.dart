@@ -18,6 +18,7 @@ import '../home/home_screen.dart';
 import '../notifications/notification_engine.dart';
 import '../planner/planner_screen.dart';
 import '../transactions/transactions_screen.dart';
+import '../updates/app_update_provider.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
@@ -207,9 +208,11 @@ class _MainDrawer extends ConsumerWidget {
     final auth = ref.watch(authControllerProvider);
     final ledger = ref.watch(ledgerProvider);
     final sync = ref.watch(cloudSyncControllerProvider);
+    final updateState = ref.watch(appUpdateProvider);
     final pendingReviewCount = _pendingReviewCount(ledger);
     final notificationCount = buildNotificationInbox(ledger).length;
-    final updatesBadge = _syncBadge(sync);
+    final syncBadge = _syncBadge(sync);
+    final updatesBadge = updateState.latestRelease != null && updateState.status == UpdateStatus.idle ? '!' : null;
     final profileName = _profileName(auth.user, ledger);
     final profileSubtitle = _profileSubtitle(auth.user, ledger);
     final profileInitials = auth.user?.initials ?? _walletInitials(profileName);
@@ -420,6 +423,7 @@ class _MainDrawer extends ConsumerWidget {
                           'Sync',
                           Icons.cloud_done_outlined,
                           '/sync',
+                          badge: syncBadge,
                         ),
                         DrawerRowConfig.route(
                           'Auto Capture',
