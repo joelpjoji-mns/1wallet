@@ -561,15 +561,6 @@ class LoanDetailView extends ConsumerWidget {
     final details = _effectiveLoanDetails(state, loan);
     final projection = _loanProjection(state, loan);
     final repaymentHistory = _loanHistoryRepayments(state, loan.id);
-    final nextEmiStatus = nextEmi == null
-        ? null
-        : _scheduleStatusLabel(
-            nextEmi.occurredAt,
-            locale: state.preferences.locale,
-            historyMode: false,
-          );
-    final scheme = Theme.of(context).colorScheme;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -596,7 +587,7 @@ class LoanDetailView extends ConsumerWidget {
           ),
           child: Column(
             children: [
-              IconBubble(
+              const IconBubble(
                 icon: Icons.account_balance_rounded,
                 color: Colors.white,
                 compact: true,

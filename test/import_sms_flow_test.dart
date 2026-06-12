@@ -46,7 +46,7 @@ void main() {
       find.byType(TextField).first,
       'HDFC Bank: INR 890.00 debited from card XX1234 at SWIGGY on 08-Jun.',
     );
-    await tester.tap(find.text('Parse'));
+    await tester.tap(find.text('Parse message'));
     await tester.pumpAndSettle();
     expect(find.text('SWIGGY'), findsWidgets);
     expect(find.text('Expense'), findsWidgets);
@@ -97,7 +97,7 @@ void main() {
 
     router.go('/review');
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Confirm').first);
+    await tester.tap(find.byTooltip('Confirm').first);
     await tester.pumpAndSettle();
 
     final state = container.read(ledgerProvider);

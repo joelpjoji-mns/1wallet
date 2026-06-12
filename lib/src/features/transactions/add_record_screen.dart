@@ -346,7 +346,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                 children: [
                                   Text(
                                     txCurrency,
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.w900,
                                       fontSize: 12.5,
@@ -423,7 +423,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                             final parsedAmountMinor = _amountMinorFromInput(resolvedAmount);
                             String counterHint = 'Auto-calculates if empty';
                             if (parsedAmountMinor > 0) {
-                                final calculated = convertMoneyForDisplay(state, Money(amountMinor: parsedAmountMinor, currency: txCurrency), counterAccount!.currency);
+                                final calculated = convertMoneyForDisplay(state, Money(amountMinor: parsedAmountMinor, currency: txCurrency), counterAccount.currency);
                                 counterHint = '≈ ${_formatAmountInput(calculated.amountMinor)}';
                             }
                             return TextField(
@@ -702,7 +702,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
     String key,
   ) {
     if (key == 'AC') {
-      return _CalcState(amount: '0', expression: '');
+      return const _CalcState(amount: '0', expression: '');
     }
     if (key == '⌫') {
       final next = currentAmount.length <= 1

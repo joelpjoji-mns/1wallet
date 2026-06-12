@@ -12,18 +12,12 @@ import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 import '../transactions/transaction_row.dart';
+import 'home_async_providers.dart';
 import 'home_components.dart';
 import 'home_dashboard_selectors.dart';
 import 'home_widget_card.dart';
 import 'home_widget_models.dart';
 
-final _homeBalanceTrendProvider = Provider.autoDispose<List<BalanceTrendPoint>>(
-  (ref) {
-    final state = ref.watch(ledgerProvider);
-    final now = DateTime.now();
-    return balanceTrendForRange(state, start: DateTime(now.year), end: now);
-  },
-);
 
 final _homeScheduledTransactionsProvider =
     Provider.autoDispose<List<TransactionRecord>>((ref) {
@@ -143,18 +137,28 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
       displayCurrency = allCurrencies.first;
     }
 
-    final total = totalBalance(
-      widget.state,
-      accountId: selectedAccountId,
-      targetCurrency: displayCurrency,
+    final totalAsync = ref.watch(
+      homeTotalBalanceProvider((
+        accountId: selectedAccountId,
+        targetCurrency: displayCurrency,
+      )),
     );
-    final flow = flowForPeriod(
-      widget.state,
-      _period,
-      accountId: selectedAccountId,
-      targetCurrency: displayCurrency,
+    final total = totalAsync.valueOrNull ?? Money(amountMinor: 0, currency: displayCurrency);
+
+    final flowAsync = ref.watch(
+      homeFlowForPeriodProvider((
+        period: _period,
+        accountId: selectedAccountId,
+        targetCurrency: displayCurrency,
+      )),
     );
-    final balances = accountBalanceMap(widget.state);
+    final flow = flowAsync.valueOrNull ?? (
+      income: Money(amountMinor: 0, currency: displayCurrency),
+      expense: Money(amountMinor: 0, currency: displayCurrency)
+    );
+
+    final balancesAsync = ref.watch(homeAccountBalanceMapProvider);
+    final balances = balancesAsync.valueOrNull ?? const <String, Money>{};
 
     // Build per-currency breakdown
     final currencyGroups = <String, int>{};
@@ -236,14 +240,30 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
             ],
           ),
           const SizedBox(height: 2),
-          Text(
-            formatMoney(total, widget.state.preferences.locale),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-              fontSize: 40,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -1.2,
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 350),
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0.0, -0.2),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
+                ),
+              );
+            },
+            child: Text(
+              formatMoney(total, widget.state.preferences.locale),
+              key: ValueKey(total.amountMinor),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                fontSize: 40,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -1.2,
+              ),
             ),
           ),
 
@@ -331,7 +351,8 @@ class AccountGridHomeWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedAccountId = ref.watch(homeSelectedAccountProvider);
-    final balances = accountBalanceMap(state);
+    final balancesAsync = ref.watch(homeAccountBalanceMapProvider);
+    final balances = balancesAsync.valueOrNull ?? const <String, Money>{};
     final accounts =
         state.accounts
             .where((account) => !account.isArchived && account.showOnHome)
@@ -446,9 +467,11 @@ class BalanceTrendHomeWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final now = DateTime.now();
     final start = DateTime(now.year);
-    final trend = ref.watch(_homeBalanceTrendProvider);
+    final trendAsync = ref.watch(homeBalanceTrendProvider((start: DateTime(now.year), end: now)));
+    final trend = trendAsync.valueOrNull ?? [];
     final values = trend.map((point) => point.balance.amountMinor).toList();
-    final current = totalBalance(state);
+    final currentAsync = ref.watch(homeTotalBalanceProvider((accountId: null, targetCurrency: null)));
+    final current = currentAsync.valueOrNull ?? Money(amountMinor: 0, currency: state.preferences.displayCurrency);
     final period = trend.isEmpty
         ? 'This year'
         : '${_shortDate(trend.first.date)} to ${_shortDate(trend.last.date)}';
@@ -538,42 +561,20 @@ class BalanceTrendHomeWidget extends ConsumerWidget {
   }
 }
 
-class CurrencyValuesHomeWidget extends StatefulWidget {
+class CurrencyValuesHomeWidget extends ConsumerStatefulWidget {
   const CurrencyValuesHomeWidget({required this.state, super.key});
 
   final LedgerState state;
 
   @override
-  State<CurrencyValuesHomeWidget> createState() =>
+  ConsumerState<CurrencyValuesHomeWidget> createState() =>
       _CurrencyValuesHomeWidgetState();
 }
 
-class _CurrencyValuesHomeWidgetState extends State<CurrencyValuesHomeWidget> {
+class _CurrencyValuesHomeWidgetState extends ConsumerState<CurrencyValuesHomeWidget> {
   final _baseController = TextEditingController(text: '1');
   final _quoteController = TextEditingController();
   double _rate = 1.0;
-
-  @override
-  void initState() {
-    super.initState();
-    _initRate();
-  }
-
-  @override
-  void didUpdateWidget(CurrencyValuesHomeWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.state != widget.state) {
-      _initRate();
-    }
-  }
-
-  void _initRate() {
-    final snapshot = currencyConversionSnapshot(widget.state);
-    if (snapshot.quoteCurrency != null && snapshot.rate != null) {
-      _rate = snapshot.rate!;
-      _updateQuote();
-    }
-  }
 
   void _updateQuote() {
     final baseVal = double.tryParse(_baseController.text) ?? 0.0;
@@ -596,14 +597,34 @@ class _CurrencyValuesHomeWidgetState extends State<CurrencyValuesHomeWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final snapshot = currencyConversionSnapshot(widget.state);
+    final snapshotAsync = ref.watch(homeCurrencySnapshotProvider);
+    ref.listen(homeCurrencySnapshotProvider, (_, next) {
+      final snapshot = next.valueOrNull;
+      if (snapshot?.quoteCurrency != null && snapshot?.rate != null) {
+        if (_rate != snapshot!.rate!) {
+          _rate = snapshot.rate!;
+          _updateQuote();
+        }
+      }
+    });
+    
+    final snapshot = snapshotAsync.valueOrNull;
+
+    if (snapshot == null) {
+      return const HomeWidgetCard(
+        title: 'Currency values',
+        icon: Icons.currency_pound_rounded,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    
     final quote = snapshot.quoteCurrency;
 
     if (quote == null || snapshot.rate == null) {
-      return HomeWidgetCard(
+      return const HomeWidgetCard(
         title: 'Currency values',
         icon: Icons.currency_pound_rounded,
-        child: const EmptyState(
+        child: EmptyState(
           icon: Icons.currency_exchange_outlined,
           title: 'No foreign currency yet',
           body: 'Foreign accounts or refreshed rates will appear here.',
@@ -772,7 +793,12 @@ class FinanceSummaryHomeWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final worth = netWorth(state);
+    final worthAsync = ref.watch(homeNetWorthProvider);
+    final worth = worthAsync.valueOrNull ?? (
+      total: Money(amountMinor: 0, currency: state.preferences.displayCurrency),
+      assets: Money(amountMinor: 0, currency: state.preferences.displayCurrency),
+      liabilities: Money(amountMinor: 0, currency: state.preferences.displayCurrency),
+    );
     final scheduled = ref
         .watch(_homeScheduledTransactionsProvider)
         .fold<int>(0, (sum, tx) => sum + tx.baseAmount.amountMinor);
@@ -1111,7 +1137,8 @@ class CardsHomeWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final balances = accountBalanceMap(state);
+    final balancesAsync = ref.watch(homeAccountBalanceMapProvider);
+    final balances = balancesAsync.valueOrNull ?? const <String, Money>{};
     final cards = state.accounts
         .where(
           (account) => account.type == 'credit_card' && !account.isArchived,

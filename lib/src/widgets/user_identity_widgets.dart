@@ -308,45 +308,6 @@ class _FallbackAvatarFace extends StatelessWidget {
   }
 }
 
-class _ProviderBadge extends StatelessWidget {
-  const _ProviderBadge({required this.user});
-
-  final AuthUser user;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final badgeColor = user.isGoogleProvider
-        ? const Color(0xFFF8FBFF)
-        : scheme.surface;
-    return Container(
-      width: 22,
-      height: 22,
-      decoration: BoxDecoration(
-        color: badgeColor,
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: user.isGoogleProvider
-              ? const Color(0xFF4285F4).withAlpha(70)
-              : scheme.outlineVariant,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(20),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Center(
-        child: user.isGoogleProvider
-            ? const _GoogleGlyph(size: 13)
-            : Icon(Icons.verified_rounded, size: 13, color: scheme.primary),
-      ),
-    );
-  }
-}
-
 class _GoogleGlyph extends StatelessWidget {
   const _GoogleGlyph({required this.size});
 
