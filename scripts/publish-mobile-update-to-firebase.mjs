@@ -165,10 +165,11 @@ function normalizeChangelog(source) {
 
 const versionCode = Number.parseInt(manifest.versionCode, 10);
 const channel = String(manifest.channel);
+const releaseId = `${channel}-${versionCode}`;
 const apk = manifest.apk ?? {};
 const publishedAt = manifest.generatedAt ?? new Date().toISOString();
 const release = {
-  id: String(versionCode),
+  id: releaseId,
   platform: manifest.platform ?? 'android',
   channel,
   status: manifest.status ?? 'published',
@@ -202,11 +203,12 @@ if (!release.apk.downloadUrl) {
 
 try {
   const token = await accessToken(serviceAccount);
+  await patchDocument(token, `appUpdates/android/releases/${releaseId}`, release);
   await patchDocument(token, `appUpdates/android/releases/${versionCode}`, release);
   await patchDocument(token, `appUpdates/android/channels/${channel}`, {
     channel,
     latestVersionCode: versionCode,
-    latestReleaseId: String(versionCode),
+    latestReleaseId: releaseId,
     versionName,
     updatedAt: publishedAt,
   });
