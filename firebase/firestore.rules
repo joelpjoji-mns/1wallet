@@ -22,6 +22,10 @@ service cloud.firestore {
       return !(key in data) || data[key] is timestamp;
     }
 
+    function isTimestampOrIsoString(value) {
+      return value is timestamp || value is string;
+    }
+
     function isValidChecksum(value) {
       return value is string && value.matches('^fnv1a32:[0-9a-f]{8}$');
     }
@@ -146,6 +150,7 @@ service cloud.firestore {
       return data is map &&
         data.keys().hasOnly([
           'downloadUrl',
+          'url',
           'fileName',
           'sizeBytes',
           'sha256',
@@ -154,6 +159,7 @@ service cloud.firestore {
           'estimatedDownloadSeconds'
         ]) &&
         data.downloadUrl is string && data.downloadUrl.matches('^https?://.+') &&
+        (!('url' in data) || (data.url is string && data.url.matches('^https?://.+'))) &&
         data.fileName is string && data.fileName.size() > 0 && data.fileName.size() <= 160 &&
         data.sizeBytes is int && data.sizeBytes > 0 && data.sizeBytes <= 250000000 &&
         data.sha256 is string && data.sha256.matches('^(sha256:)?[0-9a-f]{64}$') &&
@@ -199,16 +205,18 @@ service cloud.firestore {
         data.requirement in ['mandatory', 'optional'] &&
         ((data.mandatory == true && data.requirement == 'mandatory') || (data.mandatory == false && data.requirement == 'optional')) &&
         data.minimumSupportedVersionCode is int && data.minimumSupportedVersionCode >= 0 &&
-        data.publishedAt is timestamp &&
+        isTimestampOrIsoString(data.publishedAt) &&
         isValidUpdateChangelog(data.changelog) &&
         (
           (
             platform == 'android' &&
             data.keys().hasOnly([
+              'id',
               'platform',
               'channel',
               'status',
               'versionName',
+              'version',
               'versionCode',
               'runtimeVersion',
               'releaseType',
@@ -216,6 +224,7 @@ service cloud.firestore {
               'requirement',
               'minimumSupportedVersionCode',
               'publishedAt',
+              'generatedAt',
               'changelog',
               'apk'
             ]) &&
@@ -224,10 +233,12 @@ service cloud.firestore {
           (
             platform == 'ios' &&
             data.keys().hasOnly([
+              'id',
               'platform',
               'channel',
               'status',
               'versionName',
+              'version',
               'versionCode',
               'runtimeVersion',
               'releaseType',
@@ -235,6 +246,7 @@ service cloud.firestore {
               'requirement',
               'minimumSupportedVersionCode',
               'publishedAt',
+              'generatedAt',
               'changelog',
               'ios'
             ]) &&
@@ -246,12 +258,12 @@ service cloud.firestore {
     function isValidAppUpdateChannel(data, platform, channel) {
       return platform in ['android', 'ios'] &&
         data is map &&
-        data.keys().hasOnly(['platform', 'channel', 'status', 'latestVersionCode', 'updatedAt']) &&
-        data.platform == platform &&
+        data.keys().hasOnly(['platform', 'channel', 'status', 'latestVersionCode', 'latestReleaseId', 'versionName', 'updatedAt']) &&
+        (!('platform' in data) || data.platform == platform) &&
         data.channel == channel &&
-        data.status == 'published' &&
+        (!('status' in data) || data.status == 'published') &&
         data.latestVersionCode is int && data.latestVersionCode > 0 && data.latestVersionCode <= 2147483647 &&
-        data.updatedAt is timestamp;
+        isTimestampOrIsoString(data.updatedAt);
     }
 
     match /appUpdates/{platform}/releases/{releaseId} {
@@ -261,7 +273,7 @@ service cloud.firestore {
     }
 
     match /appUpdates/{platform}/channels/{channel} {
-      allow get: if platform in ['android', 'ios'] && channel.matches('^[a-z0-9._-]{1,40}$');
+      allow get: if isValidAppUpdateChannel(resource.data, platform, channel);
       allow list: if false;
       allow create, update, delete: if false;
     }

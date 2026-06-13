@@ -622,7 +622,7 @@ LedgerState _parseCloudRestoreData(Map<String, dynamic> data) {
   final captureData = data['captureCandidates'] as List?;
   final importsData = data['importBatches'] as List?;
 
-  return emptyLedgerState(userId: userId).copyWith(
+  return normalizeLedgerState(emptyLedgerState(userId: userId).copyWith(
     preferences: prefsData != null
         ? preferencesFromJson(prefsData)
         : const LedgerPreferences(),
@@ -651,7 +651,7 @@ LedgerState _parseCloudRestoreData(Map<String, dynamic> data) {
             ?.map((d) => importBatchFromJson(d as Map<String, dynamic>))
             .toList() ??
         [],
-  );
+  ));
 }
 
 Map<String, List<Map<String, dynamic>>> _encodeCloudSnapshotData(

@@ -185,7 +185,7 @@ class _PermissionsSetupScreenState extends State<PermissionsSetupScreen> {
                   runSpacing: 10,
                   children: [
                     FilledButton.icon(
-                      onPressed: () => context.push('/'),
+                      onPressed: () => context.go('/'),
                       icon: const Icon(Icons.check_circle_outline),
                       label: const Text('Continue'),
                     ),
