@@ -376,7 +376,7 @@ class _WidgetTile extends ConsumerWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.md,
-            AppSpacing.md,
+            AppSpacing.xs,
             58,
             AppSpacing.md,
           ),

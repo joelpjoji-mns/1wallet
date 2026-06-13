@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dynamic_color/dynamic_color.dart';
 
 import '../routing/app_router.dart';
 import '../theme/app_theme.dart';
@@ -42,15 +43,29 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     final router = ref.watch(appRouterProvider);
     final themeState = ref.watch(themeControllerProvider);
 
-    return MaterialApp.router(
-      title: '1Wallet',
-      debugShowCheckedModeBanner: false,
-      routerConfig: router,
-      theme: AppTheme.light(accentColor: themeState.accentColor),
-      darkTheme: themeState.preference == AppThemePreference.amoled
-          ? AppTheme.amoled(accentColor: themeState.accentColor)
-          : AppTheme.dark(accentColor: themeState.accentColor),
-      themeMode: themeState.themeMode,
+    return DynamicColorBuilder(
+      builder: (lightDynamic, darkDynamic) {
+        final useSystemAccent = themeState.accentColor == null;
+        return MaterialApp.router(
+          title: '1Wallet',
+          debugShowCheckedModeBanner: false,
+          routerConfig: router,
+          theme: AppTheme.light(
+            accentColor: themeState.accentColor,
+            systemColorScheme: useSystemAccent ? lightDynamic : null,
+          ),
+          darkTheme: themeState.preference == AppThemePreference.amoled
+              ? AppTheme.amoled(
+                  accentColor: themeState.accentColor,
+                  systemColorScheme: useSystemAccent ? darkDynamic : null,
+                )
+              : AppTheme.dark(
+                  accentColor: themeState.accentColor,
+                  systemColorScheme: useSystemAccent ? darkDynamic : null,
+                ),
+          themeMode: themeState.themeMode,
+        );
+      },
     );
   }
 }

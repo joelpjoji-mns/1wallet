@@ -10,6 +10,8 @@ import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 import '../common/full_screen_picker.dart';
+import '../transactions/transaction_row.dart';
+import '../transactions/transactions_components.dart';
 
 class RecurringScreen extends ConsumerWidget {
   const RecurringScreen({super.key, this.mode = 'overview', this.recordId});
@@ -30,6 +32,18 @@ class RecurringScreen extends ConsumerWidget {
             (transaction) => transaction.id == recordId,
           );
     final listed = mode == 'past' ? recurringHistory : scheduled;
+    final plannedIncomeMinor = listed
+        .where((t) => incomeTypes.contains(t.type))
+        .fold(0, (sum, t) => sum + t.amount.amountMinor.abs());
+    final plannedExpenseMinor = listed
+        .where((t) => !incomeTypes.contains(t.type) && t.type != 'transfer')
+        .fold(0, (sum, t) => sum + t.amount.amountMinor.abs());
+    final netMinor = plannedIncomeMinor - plannedExpenseMinor;
+
+    final incomeText = formatMoney(Money(amountMinor: plannedIncomeMinor, currency: state.preferences.baseCurrency), state.preferences.locale);
+    final expenseText = formatMoney(Money(amountMinor: plannedExpenseMinor, currency: state.preferences.baseCurrency), state.preferences.locale);
+    final netText = formatMoney(Money(amountMinor: netMinor, currency: state.preferences.baseCurrency), state.preferences.locale);
+
     return RouteScaffold(
       title: switch (mode) {
         'new' => 'New recurring',
@@ -46,85 +60,54 @@ class RecurringScreen extends ConsumerWidget {
       ],
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl, horizontal: AppSpacing.md),
-            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [
-                  Color(0xFF00B4DB),
-                  Color(0xFF0083B0),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(AppRadii.xl),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF0083B0).withAlpha(60),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
+          if (recordId == null) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: Card(
+                elevation: 0,
+                color: Theme.of(context).colorScheme.surfaceContainerLow,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                  side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
                 ),
-              ],
-            ),
-            child: Column(
-              children: [
-                IconBubble(
-                  icon: mode == 'past' ? Icons.history_rounded : Icons.event_repeat_rounded,
-                  color: Colors.white,
-                  compact: true,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  mode == 'past'
-                      ? '${recurringHistory.length} Posted'
-                      : formatMoney(
-                          Money(
-                            amountMinor: scheduled.fold(
-                              0,
-                              (sum, item) => sum + item.amount.amountMinor,
-                            ),
-                            currency: state.preferences.baseCurrency,
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            mode == 'past' ? 'Historical summary' : 'Planned summary',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
                           ),
-                          state.preferences.locale,
-                        ),
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                    letterSpacing: -1.0,
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(AppRadii.pill),
+                            ),
+                            child: Text(
+                              '${listed.length} items',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      MiniFlowRail(income: incomeText, expense: expenseText, net: netText),
+                    ],
                   ),
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  mode == 'past' ? 'Historical Records' : 'Total Planned',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white.withAlpha(200),
-                    letterSpacing: 1.0,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(30),
-                    borderRadius: BorderRadius.circular(AppRadii.pill),
-                    border: Border.all(color: Colors.white.withAlpha(60)),
-                  ),
-                  child: Text(
-                    '${listed.length} ${mode == 'past' ? 'RECORDS' : 'SCHEDULED ITEMS'}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-          const Gap(AppSpacing.lg),
+            const Gap(AppSpacing.lg),
+          ],
           if (mode == 'new' || mode == 'edit')
             RecurringForm(recordId: recordId)
           else if (recordId != null)
@@ -158,12 +141,19 @@ class RecurringScreen extends ConsumerWidget {
             )
           else
             for (final transaction in listed) ...[
-              _RecurringCompactCard(
-                state: state,
-                transaction: transaction,
-                onTap: () => context.push('/recurring/${transaction.id}'),
-                historyMode: mode == 'past',
-              ),
+              if (mode == 'past')
+                TransactionRow(
+                  state: state,
+                  transaction: transaction,
+                  onTap: () => context.push('/records/${transaction.id}'),
+                )
+              else
+                _RecurringCompactCard(
+                  state: state,
+                  transaction: transaction,
+                  onTap: () => context.push('/recurring/${transaction.id}'),
+                  historyMode: false,
+                ),
               const SizedBox(height: AppSpacing.sm),
             ],
         ],
@@ -262,6 +252,7 @@ class _RecurringCompactCard extends StatelessWidget {
       headerTitle,
     );
     final status = _recurringStatus(
+      context,
       transaction.occurredAt,
       locale: state.preferences.locale,
       historyMode: historyMode,
@@ -284,24 +275,6 @@ class _RecurringCompactCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      headerTitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Icon(status.icon, color: status.color, size: 26),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -365,14 +338,21 @@ class _RecurringCompactCard extends StatelessWidget {
                             ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        status.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: status.color,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Icon(status.icon, color: status.color, size: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            status.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: status.color,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -383,8 +363,8 @@ class _RecurringCompactCard extends StatelessWidget {
                   final loanAccount = account?.loanDetails != null ? account : counter;
                   final total = loanAccount?.loanDetails?.repaymentCount;
                   if (total == null || total <= 0) return const SizedBox();
-                  final postedCount = state.transactions.where((t) => 
-                     t.status == 'posted' && 
+                  final postedCount = state.transactions.where((t) =>
+                     t.status == 'posted' &&
                      (t.accountId == loanAccount!.id || t.counterAccountId == loanAccount.id) &&
                      t.type == 'loan_repayment'
                   ).length;
@@ -432,11 +412,15 @@ class _RoundRecurringIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final foreground = color.computeLuminance() > 0.5
+        ? scheme.onSurface
+        : scheme.surface;
     return Container(
       width: 56,
       height: 56,
       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      child: Icon(icon, color: Colors.white, size: 28),
+      child: Icon(icon, color: foreground, size: 28),
     );
   }
 }
@@ -832,73 +816,56 @@ class RecurringDetailView extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Amount Banner
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl, horizontal: AppSpacing.md),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                scheme.primaryContainer,
-                scheme.primary,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(AppRadii.xl),
-            boxShadow: [
-              BoxShadow(
-                color: scheme.primary.withAlpha(60),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
+        Card(
+          elevation: 0,
+          color: scheme.surfaceContainerLow,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            side: BorderSide(color: scheme.outlineVariant),
           ),
-          child: Column(
-            children: [
-              IconBubble(
-                icon: category == null ? Icons.event_repeat_rounded : Icons.category_rounded,
-                color: scheme.onPrimary,
-                compact: true,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                formatMoney(
-                  transaction.amount,
-                  state.preferences.locale,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Row(
+              children: [
+                IconBubble(
+                  icon: category == null ? Icons.event_repeat_rounded : Icons.category_rounded,
+                  color: scheme.primary,
+                  compact: true,
                 ),
-                style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  color: scheme.onPrimary,
-                  letterSpacing: -1.0,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                category?.name ?? transactionTypeLabel(transaction.type),
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: scheme.onPrimary.withAlpha(200),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: scheme.onPrimary.withAlpha(30),
-                  borderRadius: BorderRadius.circular(AppRadii.pill),
-                  border: Border.all(color: scheme.onPrimary.withAlpha(60)),
-                ),
-                child: Text(
-                  '${transaction.status.toUpperCase()} · ${transactionTypeLabel(frequency).toUpperCase()}',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    color: scheme.onPrimary,
-                    letterSpacing: 1.2,
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        category?.name ?? transactionTypeLabel(transaction.type),
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${transaction.status.toUpperCase()} · ${transactionTypeLabel(frequency).toUpperCase()}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
+                Text(
+                  formatMoney(
+                    transaction.amount,
+                    state.preferences.locale,
+                  ),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         const Gap(AppSpacing.lg),
@@ -916,28 +883,22 @@ class RecurringDetailView extends ConsumerWidget {
                 icon: Icons.calendar_month_outlined,
               ),
             ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: MetricTile(
-                label: counter != null ? 'From account' : 'Account',
-                value: account?.name ?? 'Unknown',
-                icon: Icons.account_balance_wallet_outlined,
-              ),
-            ),
           ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        PremiumRow(
+          icon: Icons.account_balance_wallet_outlined,
+          title: counter != null ? 'From account' : 'Account',
+          subtitle: account?.name ?? 'Unknown',
+          onTap: account != null ? () => context.push('/account/${account.id}') : () {},
         ),
         if (counter != null) ...[
           const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: MetricTile(
-                  label: 'To account',
-                  value: counter.name,
-                  icon: Icons.account_balance_outlined,
-                ),
-              ),
-            ],
+          PremiumRow(
+            icon: Icons.account_balance_outlined,
+            title: 'To account',
+            subtitle: counter.name,
+            onTap: () => context.push('/account/${counter.id}'),
           ),
         ],
         const Gap(AppSpacing.xl),
@@ -993,7 +954,7 @@ class RecurringDetailView extends ConsumerWidget {
 
   Future<void> _postNow(BuildContext context, WidgetRef ref) async {
     final notifier = ref.read(ledgerProvider.notifier);
-    
+
     // Create a cleared instance based on the scheduled transaction
     await notifier.upsertTransaction(
       type: transaction.type,
@@ -1245,15 +1206,17 @@ String? _recurringExtraLine(
 }
 
 ({String label, IconData icon, Color color}) _recurringStatus(
+  BuildContext context,
   DateTime date, {
   required String locale,
   required bool historyMode,
 }) {
+  final scheme = Theme.of(context).colorScheme;
   if (historyMode) {
     return (
       label: formatLedgerDate(date, locale),
       icon: Icons.history_rounded,
-      color: Colors.blueAccent,
+      color: scheme.primary,
     );
   }
   final now = DateTime.now();
@@ -1264,27 +1227,27 @@ String? _recurringExtraLine(
     return (
       label: formatDueDate(date, locale),
       icon: Icons.warning_rounded,
-      color: Colors.redAccent,
+      color: scheme.error,
     );
   }
   if (diff == 0) {
     return (
       label: formatDueDate(date, locale),
       icon: Icons.notification_important_outlined,
-      color: Colors.orangeAccent,
+      color: scheme.secondary,
     );
   }
   if (diff == 1) {
     return (
       label: formatDueDate(date, locale),
       icon: Icons.history_toggle_off_rounded,
-      color: Colors.orangeAccent,
+      color: scheme.secondary,
     );
   }
   return (
     label: formatDueDate(date, locale),
     icon: Icons.history_toggle_off_rounded,
-    color: Colors.orangeAccent,
+    color: scheme.secondary,
   );
 }
 

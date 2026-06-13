@@ -1,192 +1,151 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+#!/usr/bin/env node
+import fs from 'node:fs';
+import path from 'node:path';
 
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const args = parseArgs(process.argv.slice(2));
-const platform = normalizePlatform(args.platform ?? 'android');
-const explicit = {
-  newFeatures: listValues(args.feature),
-  bugFixes: listValues(args.fix),
-  notes: listValues(args.note),
-};
-const pr = readPullRequest(args['pr-json']);
-const parsed = parsePullRequestBody(pr?.body ?? '');
-const commits = readCommitLog(args['commit-log']);
-const title = pr?.title || commits[0] || `${platformLabel(platform)} app update`;
+function valuesForArg(name) {
+  const values = [];
+  for (let index = 2; index < process.argv.length; index += 1) {
+    if (process.argv[index] === name && process.argv[index + 1] !== undefined) {
+      values.push(process.argv[index + 1]);
+      index += 1;
+    }
+  }
+  return values.flatMap(splitMultiline).map(cleanEntry).filter(isRealEntry);
+}
+
+function readArg(name, fallback = undefined) {
+  const index = process.argv.indexOf(name);
+  return index === -1 ? fallback : process.argv[index + 1] ?? fallback;
+}
+
+function splitMultiline(value) {
+  return String(value)
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*[-*]\s*/, '').trim());
+}
+
+function cleanEntry(value) {
+  return String(value).replace(/^\s*[-*]\s*/, '').trim();
+}
+
+function isRealEntry(value) {
+  const normalized = value.trim().toLowerCase();
+  return normalized.length > 0 && normalized !== '-' && normalized !== 'n/a' && normalized !== 'none' && normalized !== 'todo';
+}
+
+function readJsonArray(file) {
+  if (!file || !fs.existsSync(file)) return [];
+  try {
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn(`Could not parse ${file}: ${error.message}`);
+    return [];
+  }
+}
+
+function extractSection(body, heading) {
+  const lines = body.split(/\r?\n/);
+  const entries = [];
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const headingPattern = new RegExp(`^#{2,4}\\s+${escaped}\\s*$`, 'i');
+  let inSection = false;
+
+  for (const line of lines) {
+    if (/^#{2,4}\s+/.test(line)) {
+      inSection = headingPattern.test(line);
+      continue;
+    }
+    if (inSection && /^\s*[-*]\s+/.test(line) && isRealEntry(line)) {
+      entries.push(cleanEntry(line));
+    }
+  }
+  return entries;
+}
+
+function readCommitNotes(file) {
+  if (!file || !fs.existsSync(file)) return [];
+  return fs
+    .readFileSync(file, 'utf8')
+    .split(/\r?\n/)
+    .map(cleanEntry)
+    .filter(isRealEntry)
+    .slice(0, 20);
+}
+
+function unique(values) {
+  return [...new Set(values)];
+}
+
+const prJson = readArg('--pr-json', '.tmp-pr.json');
+const commitLog = readArg('--commit-log', '.tmp-commits.txt');
+const version = readArg('--version', '0.0.0');
+const versionCode = readArg('--version-code', '0');
+const requireChangelog = readArg('--require-changelog', 'false') === 'true';
+const outputJson = readArg('--output', '.tmp-release-notes.json');
+const outputMarkdown = readArg('--markdown', '.tmp-release-notes.md');
+
+const features = valuesForArg('--feature');
+const fixes = valuesForArg('--fix');
+const notes = valuesForArg('--note');
+
+const pr = readJsonArray(prJson)[0];
+if (pr?.body) {
+  features.push(...extractSection(pr.body, 'New Features'));
+  fixes.push(...extractSection(pr.body, 'Bug Fixes'));
+  notes.push(...extractSection(pr.body, 'Notes'));
+}
+
+if (features.length === 0 && fixes.length === 0 && notes.length === 0) {
+  notes.push(...readCommitNotes(commitLog));
+}
+
 const changelog = {
-  newFeatures: mergeItems(explicit.newFeatures, parsed.newFeatures),
-  bugFixes: mergeItems(explicit.bugFixes, parsed.bugFixes),
-  notes: mergeItems(explicit.notes, parsed.notes),
+  features: unique(features),
+  fixes: unique(fixes),
+  notes: unique(notes),
 };
 
-if (args['require-changelog'] === 'true' && isEmpty(changelog)) {
-  throw new Error(
-    'Release changelog is required. Fill at least one New Features, Bug Fixes, or Notes item in the PR body, or pass release note inputs.',
-  );
+if (
+  requireChangelog &&
+  changelog.features.length === 0 &&
+  changelog.fixes.length === 0 &&
+  changelog.notes.length === 0
+) {
+  console.error('Release notes require at least one feature, fix, or note.');
+  process.exit(1);
 }
 
-if (isEmpty(changelog)) {
-  const fallbackTarget = looksLikeFix(title) ? changelog.bugFixes : changelog.newFeatures;
-  fallbackTarget.push(stripConventionalPrefix(title));
-}
-if (changelog.notes.length === 0 && pr?.url) changelog.notes.push(`Source PR: ${pr.url}`);
-if (changelog.notes.length === 0 && commits.length > 1)
-  changelog.notes.push(...commits.slice(1, 6));
-
-const output = {
-  title,
-  source: pr ? { type: 'pull_request', number: pr.number, url: pr.url } : { type: 'commits' },
+const generatedAt = new Date().toISOString();
+const releaseNotes = {
+  version,
+  versionCode: Number.parseInt(versionCode, 10),
+  date: generatedAt.slice(0, 10),
+  generatedAt,
+  source: pr
+    ? {
+      pullRequest: pr.number,
+      title: pr.title,
+      url: pr.url,
+    }
+    : null,
   ...changelog,
+  changelog,
 };
-const markdown = renderMarkdown(output, args.version, args['version-code'], platform);
 
-if (args.output)
-  writeFileSync(resolve(repoRoot, args.output), `${JSON.stringify(output, null, 2)}\n`);
-else process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
-if (args.markdown) writeFileSync(resolve(repoRoot, args.markdown), markdown);
+fs.mkdirSync(path.dirname(outputJson), { recursive: true });
+fs.writeFileSync(outputJson, `${JSON.stringify(releaseNotes, null, 2)}\n`, 'utf8');
 
-function readPullRequest(filePath) {
-  if (!filePath || !existsSync(filePath)) return null;
-  const raw = JSON.parse(readFileSync(filePath, 'utf8'));
-  if (Array.isArray(raw)) return raw[0] ?? null;
-  return raw;
+const lines = [`# 1Wallet Android ${version}`, '', `Generated: ${generatedAt}`, ''];
+for (const [title, items] of [
+  ['New Features', changelog.features],
+  ['Bug Fixes', changelog.fixes],
+  ['Notes', changelog.notes],
+]) {
+  if (items.length === 0) continue;
+  lines.push(`## ${title}`, '', ...items.map((item) => `- ${item}`), '');
 }
 
-function readCommitLog(filePath) {
-  if (!filePath || !existsSync(filePath)) return [];
-  return readFileSync(filePath, 'utf8')
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map(stripConventionalPrefix);
-}
-
-function parsePullRequestBody(body) {
-  const result = { newFeatures: [], bugFixes: [], notes: [] };
-  let current = null;
-  for (const rawLine of body.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    const heading = /^#{2,6}\s+(.+)$/.exec(line);
-    if (heading) {
-      current = sectionForHeading(heading[1]);
-      continue;
-    }
-    if (!current) continue;
-    const bullet = readBullet(line);
-    if (bullet && !isPlaceholder(bullet)) result[current].push(bullet);
-  }
-  return result;
-}
-
-function sectionForHeading(value) {
-  const normalized = value
-    .toLowerCase()
-    .replace(/[^a-z ]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  if (normalized.includes('feature') || normalized.includes('new')) return 'newFeatures';
-  if (normalized.includes('fix') || normalized.includes('bug')) return 'bugFixes';
-  if (normalized.includes('note') || normalized.includes('risk') || normalized.includes('qa'))
-    return 'notes';
-  return null;
-}
-
-function renderMarkdown(changelog, versionName, versionCode, platform) {
-  const title = versionName
-    ? `1Wallet ${platformLabel(platform)} ${versionName} (${versionCode})`
-    : changelog.title;
-  return [
-    `# ${title}`,
-    '',
-    renderSection('New Features', changelog.newFeatures),
-    renderSection('Bug Fixes', changelog.bugFixes),
-    renderSection('Notes', changelog.notes),
-  ]
-    .filter(Boolean)
-    .join('\n');
-}
-
-function normalizePlatform(value) {
-  const platform = String(value ?? '')
-    .trim()
-    .toLowerCase();
-  if (platform === 'android' || platform === 'ios') return platform;
-  throw new Error(`Unsupported release platform: ${value}. Expected android or ios.`);
-}
-
-function platformLabel(value) {
-  return value === 'ios' ? 'iOS' : 'Android';
-}
-
-function renderSection(title, items) {
-  if (!items.length) return '';
-  return [`## ${title}`, '', ...items.map((item) => `- ${item}`), ''].join('\n');
-}
-
-function listValues(value) {
-  if (Array.isArray(value)) return value.flatMap(listValues);
-  if (typeof value !== 'string') return [];
-  return value
-    .split(/\r?\n/)
-    .map((item) => stripBullet(item.trim()))
-    .filter((item) => item && !isPlaceholder(item));
-}
-
-function readBullet(value) {
-  if (!/^(- \[[ xX]\]\s*|[-*]\s*)/.test(value)) return null;
-  return stripBullet(value);
-}
-
-function stripBullet(value) {
-  return value
-    .replace(/^- \[[ xX]\]\s*/, '')
-    .replace(/^[-*]\s*/, '')
-    .trim();
-}
-
-function stripConventionalPrefix(value) {
-  return value.replace(/^[a-z]+(\([^)]+\))?!?:\s+/i, '').trim();
-}
-
-function looksLikeFix(value) {
-  return /\b(fix|bug|crash|error|repair|resolve|correct)\b/i.test(value);
-}
-
-function isPlaceholder(value) {
-  return /^(none|n\/a|na|todo|tbd|not applicable|-|_)$/i.test(value);
-}
-
-function mergeItems(...groups) {
-  return [
-    ...new Set(
-      groups
-        .flat()
-        .map((item) => item.trim())
-        .filter(Boolean),
-    ),
-  ];
-}
-
-function isEmpty(changelog) {
-  return !changelog.newFeatures.length && !changelog.bugFixes.length && !changelog.notes.length;
-}
-
-function parseArgs(values) {
-  const result = {};
-  for (let index = 0; index < values.length; index += 1) {
-    const raw = values[index];
-    if (!raw?.startsWith('--')) continue;
-    const key = raw.slice(2);
-    const next = values[index + 1];
-    if (next === undefined || next.startsWith('--')) {
-      result[key] = 'true';
-      continue;
-    }
-    if (result[key] === undefined) result[key] = next;
-    else if (Array.isArray(result[key])) result[key].push(next);
-    else result[key] = [result[key], next];
-    index += 1;
-  }
-  return result;
-}
+fs.mkdirSync(path.dirname(outputMarkdown), { recursive: true });
+fs.writeFileSync(outputMarkdown, `${lines.join('\n').trim()}\n`, 'utf8');
+console.log(`Wrote ${outputJson} and ${outputMarkdown}.`);

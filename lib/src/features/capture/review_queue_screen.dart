@@ -47,7 +47,7 @@ class ReviewQueueScreen extends ConsumerWidget {
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.lg,
-                AppSpacing.md,
+                AppSpacing.xs,
                 AppSpacing.lg,
                 AppSpacing.xxl,
               ),

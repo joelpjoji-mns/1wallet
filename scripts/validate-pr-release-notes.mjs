@@ -1,77 +1,68 @@
-import { readFileSync } from 'node:fs';
+#!/usr/bin/env node
+import fs from 'node:fs';
 
-const eventPath = process.env.GITHUB_EVENT_PATH ?? process.argv[2];
-if (!eventPath) throw new Error('GITHUB_EVENT_PATH or an event JSON path is required.');
-
-const event = JSON.parse(readFileSync(eventPath, 'utf8'));
-const pullRequest = event.pull_request;
-if (!pullRequest) {
-  console.log('No pull request payload found; skipping release-note validation.');
-  process.exit(0);
+function labelName(label) {
+  return String(typeof label === 'string' ? label : label?.name ?? '').toLowerCase();
 }
 
-const labels = (pullRequest.labels ?? []).map((label) => String(label.name ?? '').toLowerCase());
-if (labels.includes('skip-release')) {
-  console.log('skip-release label present; release-note validation skipped.');
-  process.exit(0);
+function cleanEntry(value) {
+  return String(value).replace(/^\s*[-*]\s*/, '').trim();
 }
 
-const changelog = parsePullRequestBody(pullRequest.body ?? '');
-if (isEmpty(changelog)) {
-  throw new Error(
-    'Release notes are required. Add at least one non-placeholder item under New Features, Bug Fixes, or Notes, or add the skip-release label.',
-  );
+function isRealEntry(value) {
+  const normalized = cleanEntry(value).toLowerCase();
+  return normalized.length > 0 && normalized !== '-' && normalized !== 'n/a' && normalized !== 'none' && normalized !== 'todo';
 }
 
-console.log(
-  `Release notes ok: ${changelog.newFeatures.length} feature(s), ${changelog.bugFixes.length} fix(es), ${changelog.notes.length} note(s).`,
-);
+function extractSection(body, heading) {
+  const lines = body.split(/\r?\n/);
+  const entries = [];
+  let inSection = false;
+  const headingPattern = new RegExp(`^#{2,4}\\s+${heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i');
 
-function parsePullRequestBody(body) {
-  const result = { newFeatures: [], bugFixes: [], notes: [] };
-  let current = null;
-  for (const rawLine of body.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    const heading = /^#{2,6}\s+(.+)$/.exec(line);
-    if (heading) {
-      current = sectionForHeading(heading[1]);
+  for (const line of lines) {
+    if (/^#{2,4}\s+/.test(line)) {
+      inSection = headingPattern.test(line);
       continue;
     }
-    if (!current) continue;
-    const bullet = readBullet(line);
-    if (bullet && !isPlaceholder(bullet)) result[current].push(bullet);
+    if (inSection && /^\s*[-*]\s+/.test(line) && isRealEntry(line)) {
+      entries.push(cleanEntry(line));
+    }
   }
-  return result;
+  return entries;
 }
 
-function sectionForHeading(value) {
-  const normalized = value
-    .toLowerCase()
-    .replace(/[^a-z ]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  if (normalized.includes('feature') || normalized.includes('new')) return 'newFeatures';
-  if (normalized.includes('fix') || normalized.includes('bug')) return 'bugFixes';
-  if (normalized.includes('note') || normalized.includes('risk')) return 'notes';
-  return null;
+const eventPath = process.env.GITHUB_EVENT_PATH;
+if (!eventPath || !fs.existsSync(eventPath)) {
+  console.log('No GitHub PR event payload found; skipping local release-notes validation.');
+  process.exit(0);
 }
 
-function stripBullet(value) {
-  return value
-    .replace(/^- \[[ xX]\]\s*/, '')
-    .replace(/^[-*]\s*/, '')
-    .trim();
+const event = JSON.parse(fs.readFileSync(eventPath, 'utf8'));
+const pr = event.pull_request;
+if (!pr) {
+  console.log('Event is not a pull_request payload; skipping release-notes validation.');
+  process.exit(0);
 }
 
-function readBullet(value) {
-  if (!/^(- \[[ xX]\]\s*|[-*]\s*)/.test(value)) return null;
-  return stripBullet(value);
+const labels = (pr.labels ?? []).map(labelName);
+if (labels.includes('skip-release')) {
+  console.log('skip-release label present; release notes are not required.');
+  process.exit(0);
 }
 
-function isPlaceholder(value) {
-  return /^(none|n\/a|na|todo|tbd|not applicable|-|_)$/i.test(value);
+const body = pr.body ?? '';
+const entries = [
+  ...extractSection(body, 'New Features'),
+  ...extractSection(body, 'Bug Fixes'),
+  ...extractSection(body, 'Notes'),
+];
+
+if (entries.length === 0) {
+  console.error(
+    'Release notes are required. Add at least one non-placeholder bullet under New Features, Bug Fixes, or Notes, or add the skip-release label.',
+  );
+  process.exit(1);
 }
 
-function isEmpty(changelog) {
-  return !changelog.newFeatures.length && !changelog.bugFixes.length && !changelog.notes.length;
-}
+console.log(`Release notes validation passed with ${entries.length} entr${entries.length === 1 ? 'y' : 'ies'}.`);

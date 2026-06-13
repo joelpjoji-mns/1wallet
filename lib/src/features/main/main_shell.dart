@@ -156,10 +156,10 @@ class _MainShellState extends ConsumerState<MainShell> {
                       end: Alignment.bottomCenter,
                       colors: [
                         Theme.of(context).colorScheme.surface.withAlpha(0),
-                        Theme.of(context).colorScheme.surface.withAlpha(220),
-                        Theme.of(context).colorScheme.surface,
+                        Theme.of(context).colorScheme.surface.withAlpha(120),
+                        Theme.of(context).colorScheme.surface.withAlpha(190),
                       ],
-                      stops: const [0.0, 0.42, 1.0],
+                      stops: const [0.0, 0.5, 1.0],
                     ),
                   ),
                 ),
@@ -175,6 +175,7 @@ class _MainShellState extends ConsumerState<MainShell> {
                   items: _tabs,
                   selectedIndex: selectedIndex,
                   onSelected: _selectTab,
+                  pageController: _pageController,
                 ),
               ),
             ),
@@ -324,7 +325,7 @@ class _MainDrawer extends ConsumerWidget {
                   ),
                   children: [
                     DrawerSection(
-                      title: 'Daily',
+                      title: 'Main',
                       titleColor: scheme.primary,
                       icon: Icons.bolt_rounded,
                       surfaceTint: scheme.primary,
@@ -340,46 +341,26 @@ class _MainDrawer extends ConsumerWidget {
                           '/review',
                           badge: _countBadge(pendingReviewCount),
                         ),
-                      ],
-                      selectedIndex: selectedIndex,
-                      onTabSelected: onTabSelected,
-                    ),
-                    DrawerSection(
-                      title: 'Money',
-                      titleColor: scheme.tertiary,
-                      icon: Icons.account_balance_wallet_outlined,
-                      surfaceTint: scheme.tertiary,
-                      rows: [
-                        DrawerRowConfig.route(
-                          'Widgets',
-                          Icons.dashboard_customize_outlined,
-                          '/widgets',
-                        ),
-                        DrawerRowConfig.route(
-                          'Currencies',
-                          Icons.currency_exchange_outlined,
-                          '/currencies',
-                        ),
-                      ],
-                      selectedIndex: selectedIndex,
-                      onTabSelected: onTabSelected,
-                    ),
-                    DrawerSection(
-                      title: 'Planning',
-                      titleColor: scheme.secondary,
-                      icon: Icons.timeline_rounded,
-                      surfaceTint: scheme.secondary,
-                      rows: [
-                        DrawerRowConfig.route(
-                          'Categories',
-                          Icons.category_outlined,
-                          '/categories',
-                        ),
                         DrawerRowConfig.route(
                           'Planned payments',
                           Icons.event_repeat_outlined,
                           '/recurring',
                         ),
+                        DrawerRowConfig.route(
+                          'Loans',
+                          Icons.account_balance_outlined,
+                          '/loans',
+                        ),
+                      ],
+                      selectedIndex: selectedIndex,
+                      onTabSelected: onTabSelected,
+                    ),
+                    DrawerSection(
+                      title: 'Planning & money',
+                      titleColor: scheme.secondary,
+                      icon: Icons.timeline_rounded,
+                      surfaceTint: scheme.secondary,
+                      rows: [
                         DrawerRowConfig.route(
                           'Budgets',
                           Icons.donut_large_outlined,
@@ -390,20 +371,20 @@ class _MainDrawer extends ConsumerWidget {
                           Icons.flag_outlined,
                           '/goals/new',
                         ),
-                      ],
-                      selectedIndex: selectedIndex,
-                      onTabSelected: onTabSelected,
-                    ),
-                    DrawerSection(
-                      title: 'Loans & credit',
-                      titleColor: const Color(0xFF7C4DFF),
-                      icon: Icons.account_balance_outlined,
-                      surfaceTint: const Color(0xFF7C4DFF),
-                      rows: [
                         DrawerRowConfig.route(
-                          'Loans',
-                          Icons.account_balance_outlined,
-                          '/loans',
+                          'Categories',
+                          Icons.category_outlined,
+                          '/categories',
+                        ),
+                        DrawerRowConfig.route(
+                          'Currencies',
+                          Icons.currency_exchange_outlined,
+                          '/currencies',
+                        ),
+                        DrawerRowConfig.route(
+                          'Widgets',
+                          Icons.dashboard_customize_outlined,
+                          '/widgets',
                         ),
                         DrawerRowConfig.route(
                           'Loan forecast',
@@ -538,9 +519,7 @@ String _profileSubtitle(AuthUser? user, LedgerState ledger) {
   final accountCount = ledger.accounts
       .where((account) => !account.isArchived)
       .length;
-  final recordCount = ledger.transactions.length;
-  final authLabel = user == null ? 'Local ledger' : user.providerLabel;
-  return '$authLabel · $accountCount account${accountCount == 1 ? '' : 's'} · $recordCount record${recordCount == 1 ? '' : 's'}';
+  return 'My Wallet · $accountCount account${accountCount == 1 ? '' : 's'}';
 }
 
 String _walletInitials(String source) {

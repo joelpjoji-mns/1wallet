@@ -38,6 +38,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     final unavailable = !auth.googleSignInAvailable;
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       body: LaunchBackdrop(
         child: SafeArea(
@@ -69,9 +70,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           .signInWithGoogle(),
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(62),
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF1F1F1F),
-                  disabledBackgroundColor: Colors.white.withAlphaFactor(0.32),
+                  backgroundColor: scheme.surface,
+                  foregroundColor: scheme.onSurface,
+                  disabledBackgroundColor: scheme.surfaceContainerHighest
+                      .withAlphaFactor(0.5),
                   textStyle: const TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
@@ -118,12 +120,13 @@ class _LoginPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: Colors.white.withAlphaFactor(0.10),
+        color: scheme.primary.withAlphaFactor(0.10),
         borderRadius: BorderRadius.circular(AppRadii.xl),
-        border: Border.all(color: Colors.white.withAlphaFactor(0.16)),
+        border: Border.all(color: scheme.primary.withAlphaFactor(0.22)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,18 +169,19 @@ class _InlineError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: Colors.redAccent.withAlphaFactor(0.14),
+        color: scheme.errorContainer.withAlphaFactor(0.55),
         borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: Colors.redAccent.withAlphaFactor(0.3)),
+        border: Border.all(color: scheme.error.withAlphaFactor(0.35)),
       ),
       child: Text(
         message,
-        style: const TextStyle(
-          color: Color(0xFFFFDAD6),
+        style: TextStyle(
+          color: scheme.onErrorContainer,
           fontWeight: FontWeight.w700,
         ),
       ),
