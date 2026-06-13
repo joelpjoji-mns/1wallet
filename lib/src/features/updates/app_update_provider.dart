@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +9,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../services/notification_service.dart';
+
+const _updateChannelPreferenceKey = 'appUpdate.channel';
 
 class Changelog {
   final List<String> newFeatures;
@@ -181,6 +185,7 @@ class AppUpdateState {
     bool clearLatestRelease = false,
     bool clearCurrentRelease = false,
     bool clearErrorMessage = false,
+    bool clearDownloadedApkPath = false,
   }) {
     return AppUpdateState(
       status: status ?? this.status,
@@ -199,7 +204,9 @@ class AppUpdateState {
       errorMessage: clearErrorMessage
           ? null
           : errorMessage ?? this.errorMessage,
-      downloadedApkPath: downloadedApkPath ?? this.downloadedApkPath,
+      downloadedApkPath: clearDownloadedApkPath
+          ? null
+          : downloadedApkPath ?? this.downloadedApkPath,
     );
   }
 }
@@ -209,11 +216,28 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
   final Dio _dio = Dio();
 
   AppUpdateProvider(this._firestore) : super(AppUpdateState()) {
-    checkForUpdates();
+    _loadChannelAndCheck();
+  }
+
+  Future<void> _loadChannelAndCheck() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedChannel = prefs.getString(_updateChannelPreferenceKey);
+    if (savedChannel == 'beta' || savedChannel == 'stable') {
+      state = state.copyWith(channel: savedChannel);
+    }
+    await checkForUpdates();
   }
 
   Future<void> setChannel(String channel) async {
-    state = state.copyWith(channel: channel);
+    state = state.copyWith(
+      status: UpdateStatus.checking,
+      channel: channel,
+      clearLatestRelease: true,
+      clearErrorMessage: true,
+      clearDownloadedApkPath: true,
+    );
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_updateChannelPreferenceKey, channel);
     await checkForUpdates();
   }
 
@@ -221,6 +245,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
     state = state.copyWith(
       status: UpdateStatus.checking,
       clearErrorMessage: true,
+      clearDownloadedApkPath: true,
     );
 
     try {
@@ -232,7 +257,10 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
         currentVersionCode: currentVersionCode,
       );
 
-      final currentRelease = await _releaseForVersionCode(currentVersionCode);
+      final currentRelease = await _releaseForVersionCode(
+        currentVersionCode,
+        channel: state.channel,
+      );
 
       final channelDoc = await _firestore
           .collection('appUpdates/android/channels')
@@ -252,6 +280,9 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
       final latestVersionCode = _nullableIntValue(
         channelDoc.data()?['latestVersionCode'],
       );
+      final latestReleaseId = _stringValue(
+        channelDoc.data()?['latestReleaseId'],
+      );
       if (latestVersionCode == null) {
         state = state.copyWith(
           status: UpdateStatus.idle,
@@ -263,9 +294,13 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
       }
 
       if (latestVersionCode > currentVersionCode) {
-        final release = await _releaseForVersionCode(latestVersionCode);
+        final release = await _releaseForVersionCode(
+          latestVersionCode,
+          channel: state.channel,
+          releaseId: latestReleaseId,
+        );
 
-        if (release != null) {
+        if (release != null && release.channel == state.channel) {
           state = state.copyWith(
             status: UpdateStatus.idle,
             latestRelease: release,
@@ -301,16 +336,31 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
     }
   }
 
-  Future<AppUpdateRelease?> _releaseForVersionCode(int versionCode) async {
+  Future<AppUpdateRelease?> _releaseForVersionCode(
+    int versionCode, {
+    required String channel,
+    String? releaseId,
+  }) async {
     if (versionCode <= 0) return null;
+    final ids = <String>[
+      if (releaseId != null && releaseId.trim().isNotEmpty) releaseId.trim(),
+      '$channel-$versionCode',
+      versionCode.toString(),
+    ];
+
     try {
-      final releaseDoc = await _firestore
-          .collection('appUpdates/android/releases')
-          .doc(versionCode.toString())
-          .get();
-      return releaseDoc.exists
-          ? AppUpdateRelease.fromFirestore(releaseDoc)
-          : null;
+      for (final id in ids.toSet()) {
+        final releaseDoc = await _firestore
+            .collection('appUpdates/android/releases')
+            .doc(id)
+            .get();
+        if (!releaseDoc.exists) continue;
+        final release = AppUpdateRelease.fromFirestore(releaseDoc);
+        if (release.channel == channel) {
+          return release;
+        }
+      }
+      return null;
     } on FirebaseException catch (error) {
       if (error.code == 'permission-denied') return null;
       rethrow;
@@ -325,6 +375,8 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
       progress: 0.0,
       bytesWritten: 0,
       bytesExpected: state.latestRelease!.apk!.sizeBytes,
+      clearErrorMessage: true,
+      clearDownloadedApkPath: true,
     );
 
     try {
@@ -363,11 +415,23 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
 
     state = state.copyWith(status: UpdateStatus.installing);
     try {
-      final result = await OpenFilex.open(apkPath);
+      if (!await File(apkPath).exists()) {
+        throw Exception(
+          'Downloaded APK was not found. Please download it again.',
+        );
+      }
+      final result = await OpenFilex.open(
+        apkPath,
+        type: 'application/vnd.android.package-archive',
+      );
       if (result.type != ResultType.done) {
         throw Exception(result.message);
       }
-      state = state.copyWith(status: UpdateStatus.downloaded);
+      state = state.copyWith(
+        status: UpdateStatus.downloaded,
+        errorMessage:
+            'Installer opened. If Android blocks it, allow installs from 1wallet or uninstall the debug build first.',
+      );
     } catch (e) {
       state = state.copyWith(
         status: UpdateStatus.error,
