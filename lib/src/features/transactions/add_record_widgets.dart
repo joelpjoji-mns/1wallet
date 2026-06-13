@@ -36,7 +36,6 @@ class AddRecordTypeTabs extends StatelessWidget {
         Icons.swap_horiz_rounded,
         scheme.primary,
       ),
-      ('adjustment', 'Adjust', Icons.tune_rounded, scheme.secondary),
     ];
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -162,7 +161,7 @@ class AddRecordSelectorGrid extends StatelessWidget {
             label: type == 'transfer' ? 'From' : 'Account',
             title: sourceAccount?.name ?? 'Choose account',
             subtitle: sourceAccount == null
-                ? (type == 'transfer' ? 'Required' : '')
+              ? 'Required'
                 : '${sourceAccount!.currency} · ${formatMoney(accountBalance(state, sourceAccount!), state.preferences.locale)}',
             iconColor: sourceAccount == null
                 ? null
@@ -185,18 +184,13 @@ class AddRecordSelectorGrid extends StatelessWidget {
                       : accountDisplayColor(counterAccount!),
                   onTap: onSelectCounter,
                 )
-              : type == 'adjustment'
-              ? const AddRecordSelectorBox(
-                  icon: Icons.tune_rounded,
-                  label: 'Adjustment',
-                  title: 'Balance',
-                  subtitle: 'Correction',
-                )
               : AddRecordSelectorBox(
-                  icon: Icons.category_outlined,
+                  icon: categoryIcon(category),
                   label: 'Category',
                   title: category?.name ?? 'Choose category',
-                  subtitle: category == null ? 'Required' : category!.kind,
+                  subtitle: category == null
+                      ? 'Required'
+                      : categoryPath(state, category),
                   iconColor: categoryColor(category, context),
                   onTap: onSelectCategory,
                 ),
@@ -233,6 +227,7 @@ class AddRecordSelectorBox extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.md),
         onTap: onTap,
         child: Container(
+          constraints: const BoxConstraints(minHeight: 76),
           padding: const EdgeInsets.all(AppSpacing.sm),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadii.md),
@@ -414,12 +409,6 @@ addRecordCalculatorPadColors(BuildContext context, String type) {
       operatorForeground: scheme.primary,
       equalsBackground: scheme.primary,
       equalsForeground: scheme.onPrimary,
-    ),
-    'adjustment' => (
-      operatorBackground: scheme.secondaryContainer.withAlpha(110),
-      operatorForeground: scheme.secondary,
-      equalsBackground: scheme.secondary,
-      equalsForeground: scheme.onSecondary,
     ),
     _ => (
       operatorBackground: scheme.errorContainer.withAlpha(110),
