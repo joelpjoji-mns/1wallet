@@ -65,6 +65,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Food').last);
     await tester.pumpAndSettle();
+    expect(find.text('Choose subcategory'), findsOneWidget);
+    await tester.tap(find.text('Groceries').last);
+    await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.check_rounded).first);
     await tester.pumpAndSettle();
 
@@ -73,7 +76,7 @@ void main() {
     expect(transactions.first.amount.amountMinor, 100);
     expect(transactions.first.type, 'expense');
     expect(transactions.first.accountId, 'acc-cash');
-    expect(transactions.first.categoryId, 'cat-food');
+    expect(transactions.first.categoryId, 'cat-grocery');
   });
 
   testWidgets('Add Record edit route updates an existing transaction', (

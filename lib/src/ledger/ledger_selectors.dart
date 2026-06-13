@@ -551,6 +551,134 @@ String categoryPath(LedgerState state, Category? category) {
   return names.join(' > ');
 }
 
+int compareCategories(Category left, Category right) {
+  final orderCompare = left.sortOrder.compareTo(right.sortOrder);
+  return orderCompare != 0
+      ? orderCompare
+      : left.name.toLowerCase().compareTo(right.name.toLowerCase());
+}
+
+int compareCategoriesByUsage(
+  LedgerState state,
+  Category left,
+  Category right,
+) {
+  final leftUsage = categoryUsageCount(state, left, includeDescendants: true);
+  final rightUsage = categoryUsageCount(state, right, includeDescendants: true);
+  final usageCompare = rightUsage.compareTo(leftUsage);
+  return usageCompare != 0 ? usageCompare : compareCategories(left, right);
+}
+
+int categoryUsageCount(
+  LedgerState state,
+  Category category, {
+  bool includeDescendants = false,
+}) {
+  final categoryIds = <String>{category.id};
+  if (includeDescendants) {
+    void collectChildren(String parentId) {
+      for (final child in state.categories) {
+        if (child.parentId != parentId || categoryIds.contains(child.id)) {
+          continue;
+        }
+        categoryIds.add(child.id);
+        collectChildren(child.id);
+      }
+    }
+
+    collectChildren(category.id);
+  }
+  return state.transactions.where((transaction) {
+    if (transaction.status == 'void') return false;
+    final categoryId = transaction.categoryId;
+    return categoryId != null && categoryIds.contains(categoryId);
+  }).length;
+}
+
+List<Category> sortedCategories(Iterable<Category> categories) {
+  return categories.toList()..sort(compareCategories);
+}
+
+List<Category> sortedCategoriesByUsage(
+  LedgerState state,
+  Iterable<Category> categories,
+) {
+  return categories.toList()
+    ..sort((left, right) => compareCategoriesByUsage(state, left, right));
+}
+
+List<Category> activeCategories(LedgerState state) {
+  return sortedCategoriesByUsage(
+    state,
+    state.categories.where((category) => !category.isArchived),
+  );
+}
+
+List<Category> categoryLevel(
+  LedgerState state, {
+  String? parentId,
+  bool includeArchived = false,
+}) {
+  final source = includeArchived
+      ? state.categories
+      : state.categories.where((category) => !category.isArchived).toList();
+  final byId = {for (final category in source) category.id: category};
+  return sortedCategoriesByUsage(
+    state,
+    source.where((category) {
+      final directParentId =
+          category.parentId != null && byId.containsKey(category.parentId)
+          ? category.parentId
+          : null;
+      return directParentId == parentId;
+    }),
+  );
+}
+
+List<Category> rootCategories(
+  LedgerState state, {
+  bool includeArchived = false,
+}) {
+  return categoryLevel(state, includeArchived: includeArchived);
+}
+
+List<Category> childCategories(
+  LedgerState state,
+  String parentId, {
+  bool includeArchived = false,
+}) {
+  return categoryLevel(
+    state,
+    parentId: parentId,
+    includeArchived: includeArchived,
+  );
+}
+
+Category rootCategoryFor(LedgerState state, Category category) {
+  final byId = {for (final item in state.categories) item.id: item};
+  var current = category;
+  final seen = <String>{category.id};
+  while (current.parentId != null) {
+    final parent = byId[current.parentId];
+    if (parent == null || !seen.add(parent.id)) break;
+    current = parent;
+  }
+  return current;
+}
+
+Category? firstActiveCategory(LedgerState state, {String? preferred}) {
+  final normalizedPreferred = preferred?.trim().toLowerCase();
+  final active = activeCategories(state);
+  if (normalizedPreferred != null && normalizedPreferred.isNotEmpty) {
+    for (final category in active) {
+      if (category.name.toLowerCase().contains(normalizedPreferred)) {
+        return category;
+      }
+    }
+  }
+  return active.isEmpty ? null : active.first;
+}
+
 List<String> availableCurrencies(LedgerState state) {
   final values = <String>{
     state.preferences.baseCurrency.toUpperCase(),
@@ -736,6 +864,114 @@ IconData accountIcon(Account account) {
   };
 }
 
+IconData categoryIcon(Category? category) {
+  final key = _categoryIconKey(category);
+  if (key.contains('income') || key.contains('salary')) {
+    return Icons.payments_outlined;
+  }
+  if (key.contains('freelance') || key.contains('work business')) {
+    return Icons.work_outline_rounded;
+  }
+  if (key.contains('business')) return Icons.storefront_outlined;
+  if (key.contains('interest') || key.contains('dividend')) {
+    return Icons.trending_up_rounded;
+  }
+  if (key.contains('refund') || key.contains('cashback')) {
+    return Icons.replay_rounded;
+  }
+  if (key.contains('home') ||
+      key.contains('rent') ||
+      key.contains('mortgage') ||
+      key.contains('furniture')) {
+    return Icons.home_outlined;
+  }
+  if (key.contains('electricity') || key.contains('gas')) {
+    return Icons.bolt_outlined;
+  }
+  if (key.contains('water')) return Icons.water_drop_outlined;
+  if (key.contains('internet') || key.contains('mobile')) {
+    return Icons.wifi_outlined;
+  }
+  if (key.contains('food') ||
+      key.contains('grocer') ||
+      key.contains('dining') ||
+      key.contains('coffee')) {
+    return Icons.restaurant_outlined;
+  }
+  if (key.contains('transport') ||
+      key.contains('fuel') ||
+      key.contains('taxi') ||
+      key.contains('vehicle')) {
+    return Icons.directions_car_outlined;
+  }
+  if (key.contains('transit')) return Icons.directions_bus_outlined;
+  if (key.contains('health') ||
+      key.contains('doctor') ||
+      key.contains('pharmacy')) {
+    return Icons.health_and_safety_outlined;
+  }
+  if (key.contains('fitness')) return Icons.fitness_center_rounded;
+  if (key.contains('insurance')) return Icons.verified_user_outlined;
+  if (key.contains('loan') ||
+      key.contains('debt') ||
+      key.contains('emi') ||
+      key.contains('credit card')) {
+    return Icons.account_balance_outlined;
+  }
+  if (key.contains('investment') ||
+      key.contains('emergency fund') ||
+      key.contains('retirement')) {
+    return Icons.savings_outlined;
+  }
+  if (key.contains('tax') || key.contains('fee')) {
+    return Icons.receipt_long_outlined;
+  }
+  if (key.contains('shopping') ||
+      key.contains('clothing') ||
+      key.contains('electronics') ||
+      key.contains('personal care')) {
+    return Icons.shopping_bag_outlined;
+  }
+  if (key.contains('family') || key.contains('children')) {
+    return Icons.family_restroom_rounded;
+  }
+  if (key.contains('pet')) return Icons.pets_outlined;
+  if (key.contains('gift') || key.contains('charity')) {
+    return Icons.card_giftcard_outlined;
+  }
+  if (key.contains('lifestyle') ||
+      key.contains('movie') ||
+      key.contains('event') ||
+      key.contains('hobb')) {
+    return Icons.celebration_outlined;
+  }
+  if (key.contains('subscription')) return Icons.subscriptions_outlined;
+  if (key.contains('course') || key.contains('book')) {
+    return Icons.school_outlined;
+  }
+  if (key.contains('travel') ||
+      key.contains('flight') ||
+      key.contains('hotel') ||
+      key.contains('stay')) {
+    return Icons.flight_takeoff_outlined;
+  }
+  if (key.contains('misc') || key.contains('uncategorized')) {
+    return Icons.more_horiz_rounded;
+  }
+  return category?.parentId == null
+      ? Icons.folder_outlined
+      : Icons.label_outline_rounded;
+}
+
+String _categoryIconKey(Category? category) {
+  if (category == null) return '';
+  return '${category.id} ${category.name}'
+      .toLowerCase()
+      .replaceAll('&', 'and')
+      .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+      .trim();
+}
+
 Color accountDisplayColor(Account account) {
   if (account.color != null) return account.color!;
   final source = '${account.id}|${account.name}|${account.type}';
@@ -761,10 +997,13 @@ IconData transactionIcon(TransactionRecord transaction) {
 Color categoryColor(Category? category, BuildContext context) {
   if (category?.color != null) return category!.color!;
   final colorScheme = Theme.of(context).colorScheme;
-  return switch (category?.kind) {
-    'income' => colorScheme.tertiary,
-    'expense' => colorScheme.error,
-    'transfer' => colorScheme.primary,
-    _ => colorScheme.secondary,
-  };
+  if (category == null) return colorScheme.secondary;
+  if (category.kind == 'income') return colorScheme.tertiary;
+  if (category.kind == 'transfer') return colorScheme.primary;
+  final source = '${category.id}|${category.name}|${category.parentId ?? ''}';
+  var hash = 0;
+  for (final unit in source.codeUnits) {
+    hash = (hash * 31 + unit) & 0x7fffffff;
+  }
+  return AppColors.accountPalette[hash % AppColors.accountPalette.length];
 }
