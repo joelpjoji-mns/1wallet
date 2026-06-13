@@ -30,8 +30,14 @@ if (!versionMatch) {
   process.exit(1);
 }
 
-const [, versionName, versionCode] = versionMatch;
 const isBeta = channel === 'beta';
+const [, versionName, rawVersionCode] = versionMatch;
+const parsedVersionCode = Number.parseInt(rawVersionCode, 10);
+if (!Number.isInteger(parsedVersionCode) || parsedVersionCode <= 1) {
+  console.error('Unable to read a numeric build number greater than 1 from pubspec.yaml.');
+  process.exit(1);
+}
+const versionCode = String(isBeta ? parsedVersionCode - 1 : parsedVersionCode);
 const suffix = isBeta ? '-beta' : '';
 const values = {
   versionName,
