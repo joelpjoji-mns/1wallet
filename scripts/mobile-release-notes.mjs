@@ -124,10 +124,10 @@ const releaseNotes = {
   generatedAt,
   source: pr
     ? {
-        pullRequest: pr.number,
-        title: pr.title,
-        url: pr.url,
-      }
+      pullRequest: pr.number,
+      title: pr.title,
+      url: pr.url,
+    }
     : null,
   ...changelog,
   changelog,
