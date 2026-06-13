@@ -1,12 +1,15 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import '../common/route_scaffold.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
 import '../common/file_picker_utils.dart';
+import '../common/route_scaffold.dart';
 
 class DataBackupScreen extends ConsumerStatefulWidget {
   const DataBackupScreen({super.key});
@@ -16,14 +19,7 @@ class DataBackupScreen extends ConsumerStatefulWidget {
 }
 
 class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
-  final _archiveController = TextEditingController();
   String? _status;
-
-  @override
-  void dispose() {
-    _archiveController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +33,7 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
           SectionCard(
             title: 'Ledger snapshot',
             subtitle:
-                'Export a checksum-protected local archive or restore one by pasting JSON.',
+                'Export a checksum-protected local archive or restore one from a file.',
             child: Row(
               children: [
                 Expanded(
@@ -63,64 +59,23 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
           const Gap(AppSpacing.lg),
           SectionCard(
             title: 'Export',
-            subtitle: 'Generate a portable 1Wallet archive and copy it.',
-            child: Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
-              children: [
-                FilledButton.icon(
-                  onPressed: _generateArchive,
-                  icon: const Icon(Icons.file_download_outlined),
-                  label: const Text('Generate archive'),
-                ),
-                FilledButton.tonalIcon(
-                  onPressed: _archiveController.text.trim().isEmpty
-                      ? null
-                      : _copyArchive,
-                  icon: const Icon(Icons.content_copy_outlined),
-                  label: const Text('Copy archive'),
-                ),
-              ],
+            subtitle:
+                'Generate a portable 1Wallet archive and save it to your device.',
+            child: FilledButton.icon(
+              onPressed: _generateAndSaveArchive,
+              icon: const Icon(Icons.file_download_outlined),
+              label: const Text('Save to file'),
             ),
           ),
           const Gap(AppSpacing.lg),
           SectionCard(
             title: 'Restore',
             subtitle:
-                'Paste an archive below. Checksum validation runs before replacing local data.',
-            child: Column(
-              children: [
-                TextField(
-                  controller: _archiveController,
-                  minLines: 5,
-                  maxLines: 8,
-                  decoration: const InputDecoration(
-                    labelText: 'Paste archive JSON',
-                    alignLabelWithHint: true,
-                    prefixIcon: Icon(Icons.restore_outlined),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton.tonalIcon(
-                        onPressed: _pickArchiveFile,
-                        icon: const Icon(Icons.attach_file_outlined),
-                        label: const Text('Pick archive file'),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: _restoreArchive,
-                        icon: const Icon(Icons.verified_outlined),
-                        label: const Text('Restore archive'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                'Pick an archive file from your device. Checksum validation runs before replacing local data.',
+            child: FilledButton.tonalIcon(
+              onPressed: _pickAndRestoreArchive,
+              icon: const Icon(Icons.restore_outlined),
+              label: const Text('Restore from file'),
             ),
           ),
           if (_status != null) ...[
@@ -165,22 +120,34 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
     );
   }
 
-  void _generateArchive() {
+  Future<void> _generateAndSaveArchive() async {
     final archive = ref.read(ledgerProvider.notifier).exportArchive();
-    setState(() {
-      _archiveController.text = archive;
-      _status = 'Archive generated (${archive.length} characters).';
-    });
+
+    try {
+      final outputFile = await FilePicker.platform.saveFile(
+        dialogTitle: 'Save 1Wallet Backup',
+        fileName: '1wallet_backup.onewallet',
+        type: FileType.custom,
+        allowedExtensions: ['onewallet', 'json'],
+        bytes: Uint8List.fromList(utf8.encode(archive)),
+      );
+
+      if (outputFile == null) {
+        _showBackupMessage('Save cancelled.');
+        return;
+      }
+
+      if (!mounted) return;
+      setState(() => _status = 'Archive saved successfully.');
+      _showBackupMessage('Archive saved successfully.');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _status = 'Failed to save archive: $e');
+      _showBackupMessage('Failed to save archive.');
+    }
   }
 
-  Future<void> _copyArchive() async {
-    await Clipboard.setData(ClipboardData(text: _archiveController.text));
-    if (!mounted) return;
-    setState(() => _status = 'Archive copied to clipboard.');
-    _showBackupMessage('Archive copied to clipboard.');
-  }
-
-  Future<void> _pickArchiveFile() async {
+  Future<void> _pickAndRestoreArchive() async {
     try {
       final file = await pickTextFile(
         allowedExtensions: const ['json', 'txt', 'onewallet'],
@@ -189,28 +156,10 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
         _showBackupMessage('Archive file selection cancelled.');
         return;
       }
-      setState(() {
-        _archiveController.text = file.text;
-        _status = 'Loaded ${file.name}. Review and restore when ready.';
-      });
-      _showBackupMessage('Loaded ${file.name}.');
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _status = 'Archive file load failed: $error');
-      _showBackupMessage('Archive file load failed.');
-    }
-  }
 
-  Future<void> _restoreArchive() async {
-    final archive = _archiveController.text.trim();
-    if (archive.isEmpty) {
-      _showBackupMessage('Paste an archive before restoring.');
-      return;
-    }
-    try {
-      await ref.read(ledgerProvider.notifier).importArchive(archive);
+      await ref.read(ledgerProvider.notifier).importArchive(file.text);
       if (!mounted) return;
-      setState(() => _status = 'Archive restored successfully.');
+      setState(() => _status = 'Restored successfully from ${file.name}.');
       _showBackupMessage('Archive restored successfully.');
     } catch (error) {
       if (!mounted) return;

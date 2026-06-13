@@ -29,6 +29,7 @@ class HomeWidgetCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final resolvedIconColor = iconColor ?? scheme.primary;
+    final reorderScope = HomeWidgetCardReorderScope.maybeOf(context);
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
@@ -41,14 +42,9 @@ class HomeWidgetCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: resolvedIconColor.withAlphaFactor(0.24),
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                ),
-                child: Icon(icon, color: resolvedIconColor, size: 24),
+              HomeWidgetReorderableIcon(
+                icon: icon,
+                iconColor: resolvedIconColor,
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
@@ -76,6 +72,25 @@ class HomeWidgetCard extends StatelessWidget {
                   ],
                 ),
               ),
+              if (reorderScope?.reorderMode ?? false) ...[
+                const SizedBox(width: AppSpacing.xs),
+                IconButton(
+                  tooltip: 'Move up ${reorderScope!.label}',
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.keyboard_arrow_up_rounded),
+                  onPressed: reorderScope.canMoveUp
+                      ? reorderScope.onMoveUp
+                      : null,
+                ),
+                IconButton(
+                  tooltip: 'Move down ${reorderScope.label}',
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                  onPressed: reorderScope.canMoveDown
+                      ? reorderScope.onMoveDown
+                      : null,
+                ),
+              ],
               if (actionLabel != null && onAction != null) ...[
                 const SizedBox(width: AppSpacing.xs),
                 TextButton(
@@ -94,6 +109,117 @@ class HomeWidgetCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class HomeWidgetReorderableIcon extends StatelessWidget {
+  const HomeWidgetReorderableIcon({
+    required this.icon,
+    required this.iconColor,
+    super.key,
+    this.size = 42,
+    this.iconSize = 24,
+    this.borderRadius = AppRadii.md,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final double size;
+  final double iconSize;
+  final double borderRadius;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final reorderScope = HomeWidgetCardReorderScope.maybeOf(context);
+    Widget leadingIcon = Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: iconColor.withAlphaFactor(0.24),
+        borderRadius: BorderRadius.circular(borderRadius),
+      ),
+      child: Icon(icon, color: iconColor, size: iconSize),
+    );
+    if (reorderScope == null) return leadingIcon;
+
+    if (reorderScope.reorderMode) {
+      return ReorderableDelayedDragStartListener(
+        index: reorderScope.index,
+        child: Tooltip(
+          message: 'Drag ${reorderScope.label}',
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              leadingIcon,
+              Positioned(
+                right: -4,
+                bottom: -4,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: scheme.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.drag_indicator_rounded,
+                    color: scheme.onPrimary,
+                    size: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Tooltip(
+      message: 'Long press ${reorderScope.label} to reorder widgets',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onLongPress: reorderScope.onEnterReorderMode,
+        child: leadingIcon,
+      ),
+    );
+  }
+}
+
+class HomeWidgetCardReorderScope extends InheritedWidget {
+  const HomeWidgetCardReorderScope({
+    required this.reorderMode,
+    required this.index,
+    required this.label,
+    required this.onEnterReorderMode,
+    required this.canMoveUp,
+    required this.canMoveDown,
+    required this.onMoveUp,
+    required this.onMoveDown,
+    required super.child,
+    super.key,
+  });
+
+  final bool reorderMode;
+  final int index;
+  final String label;
+  final VoidCallback onEnterReorderMode;
+  final bool canMoveUp;
+  final bool canMoveDown;
+  final VoidCallback onMoveUp;
+  final VoidCallback onMoveDown;
+
+  static HomeWidgetCardReorderScope? maybeOf(BuildContext context) {
+    return context
+        .dependOnInheritedWidgetOfExactType<HomeWidgetCardReorderScope>();
+  }
+
+  @override
+  bool updateShouldNotify(HomeWidgetCardReorderScope oldWidget) {
+    return reorderMode != oldWidget.reorderMode ||
+        index != oldWidget.index ||
+        label != oldWidget.label ||
+        canMoveUp != oldWidget.canMoveUp ||
+        canMoveDown != oldWidget.canMoveDown;
   }
 }
 
@@ -283,41 +409,6 @@ class MiniLineChart extends StatelessWidget {
   }
 }
 
-class _PeriodPill extends StatelessWidget {
-  const _PeriodPill({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: 7,
-      ),
-      decoration: BoxDecoration(
-        color: scheme.error.withAlphaFactor(0.72),
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.calendar_month_rounded, size: 14, color: scheme.onError),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              color: scheme.onError,
-              fontWeight: FontWeight.w900,
-              fontSize: 12.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _MiniLineChartPainter extends CustomPainter {
   const _MiniLineChartPainter({

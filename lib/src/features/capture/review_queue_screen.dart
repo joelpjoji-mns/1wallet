@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../common/route_scaffold.dart';
 import '../../ledger/ledger_selectors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -48,7 +47,7 @@ class ReviewQueueScreen extends ConsumerWidget {
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.lg,
-                AppSpacing.md,
+                AppSpacing.xs,
                 AppSpacing.lg,
                 AppSpacing.xxl,
               ),
@@ -329,22 +328,7 @@ class ReviewQueueScreen extends ConsumerWidget {
       );
   }
 
-  Future<void> _clearCandidateWarnings(
-    BuildContext context,
-    WidgetRef ref,
-    String id,
-  ) async {
-    await ref.read(ledgerProvider.notifier).clearCaptureCandidateWarnings(id);
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(
-          content: Text('Warnings dismissed.'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-  }
+
 
   Future<void> _updateAllPending(
     BuildContext context,

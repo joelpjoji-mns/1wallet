@@ -258,7 +258,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   },
                 ),
                 if (category != null)
-                  SwitchListTile.adaptive(
+                  LiquidGlassSwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     value: archived,
                     onChanged: (value) =>

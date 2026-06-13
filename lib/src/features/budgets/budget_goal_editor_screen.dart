@@ -83,7 +83,7 @@ class _BudgetGoalEditorScreenState
             title: isBudget ? 'Rules' : 'Pace',
             child: Column(
               children: [
-                SwitchListTile.adaptive(
+                LiquidGlassSwitchListTile(
                   value: _primaryRuleEnabled,
                   onChanged: (value) =>
                       setState(() => _primaryRuleEnabled = value),
@@ -91,7 +91,7 @@ class _BudgetGoalEditorScreenState
                     isBudget ? 'Warn on overspend' : 'Show on dashboard',
                   ),
                 ),
-                SwitchListTile.adaptive(
+                LiquidGlassSwitchListTile(
                   value: _secondaryRuleEnabled,
                   onChanged: (value) =>
                       setState(() => _secondaryRuleEnabled = value),

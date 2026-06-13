@@ -1,8 +1,7 @@
-# 1wallet Flutter
+# 1wallet
 
-Flutter migration of the 1wallet mobile app with Google/Firebase sign-in,
-branded launch/login screens, first-run onboarding, app icon generation, and
-Material 3 theming.
+The 1wallet mobile app built with Flutter. Features Google/Firebase sign-in,
+branded launch/login screens, first-run onboarding, and Material 3 theming.
 
 ## Local auth config
 
@@ -23,10 +22,7 @@ testing real Google sign-in:
 `com.joelpjoji.one.wallet`, so the Firebase project must include that package and
 its debug/release SHA fingerprints for Google sign-in to work.
 
-For parity testing against the React Native Firebase project, copy the values
-from `../1wallet/.env.local` into this app's ignored `.env`. The config loader
-accepts either direct names such as `FIREBASE_API_KEY` or RN-style
-`EXPO_PUBLIC_FIREBASE_API_KEY` names.
+The config loader accepts direct names such as `FIREBASE_API_KEY`.
 
 ## QA email/password restore
 
@@ -37,21 +33,20 @@ can be shown for Firebase restore testing with:
 - `ONEWALLET_QA_EMAIL=<your Firebase QA email>`
 - `ONEWALLET_QA_PASSWORD=<local generated password>`
 
-Keep the QA password only in ignored local files such as `.env` or the RN repo's
-`.tmp/firebase-qa-user.local.json`.
+Keep the QA password only in ignored local files such as `.env`.
 
-On sign-in, the Flutter app checks Firestore for the authenticated user's latest
+On sign-in, the app checks Firestore for the authenticated user's latest
 wallet snapshot at `users/{uid}/wallets/default`, downloads ordered snapshot
-chunks, validates the React Native `OneWalletArchiveV1` checksum, converts the
-ledger into Flutter models, persists it locally, and then routes to Home. If no
+chunks, validates the `OneWalletArchiveV1` checksum, converts the
+ledger into local models, persists it locally, and then routes to Home. If no
 cloud snapshot exists, onboarding still creates the first local wallet.
 
-The current Flutter cloud implementation is restore/read-only. Automatic upload
-from Flutter is intentionally not enabled yet.
+The current cloud implementation is restore/read-only. Automatic upload
+is intentionally not enabled yet.
 
 ## Validation
 
-Use the local Flutter SDK path on this Windows machine:
+Use the local Flutter SDK path on Windows:
 
 ```powershell
 C:\Users\Joel\development\flutter\bin\flutter.bat analyze --no-pub
