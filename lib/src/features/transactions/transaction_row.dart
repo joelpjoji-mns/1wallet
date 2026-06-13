@@ -144,7 +144,7 @@ class TransactionRow extends StatelessWidget {
       list.add('To ${_formatSignedMoney(counterAmt)}');
       displayedCurrencies.add(counterAmt.currency.toUpperCase());
     } else if (side == 'transferIn') {
-      final sign = -1;
+      const sign = -1;
       final fromAmt = transaction.amount.copyWith(
         amountMinor: sign * transaction.amount.amountMinor.abs(),
       );

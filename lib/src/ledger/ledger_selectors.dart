@@ -28,18 +28,20 @@ const expenseTypes = {
 const transferTypes = {'transfer'};
 
 bool isHiddenInterest(LedgerState state, TransactionRecord transaction) {
-  if (transaction.type != 'interest_in' && transaction.type != 'interest_out') return false;
-  
+  if (transaction.type != 'interest_in' && transaction.type != 'interest_out') {
+    return false;
+  }
+
   final account = accountById(state, transaction.accountId);
   if (account != null && account.type == 'loan') {
     if (account.loanDetails?.hideInterestInLedger ?? true) return true;
   }
-  
+
   final counterAccount = accountById(state, transaction.counterAccountId);
   if (counterAccount != null && counterAccount.type == 'loan') {
     if (counterAccount.loanDetails?.hideInterestInLedger ?? true) return true;
   }
-  
+
   return false;
 }
 
@@ -483,10 +485,10 @@ List<TransactionRecord> scheduledTransactions(LedgerState state) {
     ).where((transaction) => transaction.status == 'scheduled').map((tx) {
       if (tx.type == 'loan_repayment') {
         final loanId = tx.counterAccountId ?? tx.accountId;
-        final posted = state.transactions.where((t) => 
-          t.status != 'scheduled' && 
-          t.status != 'void' && 
-          t.type == 'loan_repayment' && 
+        final posted = state.transactions.where((t) =>
+          t.status != 'scheduled' &&
+          t.status != 'void' &&
+          t.type == 'loan_repayment' &&
           (t.accountId == loanId || t.counterAccountId == loanId)
         );
         if (posted.isNotEmpty) {
@@ -515,7 +517,7 @@ List<TransactionRecord> scheduledTransactions(LedgerState state) {
       }
       return tx;
     }).toList();
-    
+
   items.sort((left, right) => left.occurredAt.compareTo(right.occurredAt));
   return items;
 }
@@ -760,7 +762,7 @@ Color categoryColor(Category? category, BuildContext context) {
   if (category?.color != null) return category!.color!;
   final colorScheme = Theme.of(context).colorScheme;
   return switch (category?.kind) {
-    'income' => AppColors.tertiary,
+    'income' => colorScheme.tertiary,
     'expense' => colorScheme.error,
     'transfer' => colorScheme.primary,
     _ => colorScheme.secondary,

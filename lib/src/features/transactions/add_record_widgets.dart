@@ -16,26 +16,27 @@ class AddRecordTypeTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final options = [
       (
         'expense',
         'Expense',
         Icons.arrow_upward_rounded,
-        const Color(0xFFF07178),
+        scheme.error,
       ),
       (
         'income',
         'Income',
         Icons.arrow_downward_rounded,
-        const Color(0xFFC3E88D),
+        scheme.tertiary,
       ),
       (
         'transfer',
         'Transfer',
         Icons.swap_horiz_rounded,
-        const Color(0xFF82AAFF),
+        scheme.primary,
       ),
-      ('adjustment', 'Adjust', Icons.tune_rounded, const Color(0xFF4FD6BE)),
+      ('adjustment', 'Adjust', Icons.tune_rounded, scheme.secondary),
     ];
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -401,20 +402,12 @@ class AddRecordCalculatorPad extends StatelessWidget {
 })
 addRecordCalculatorPadColors(BuildContext context, String type) {
   final scheme = Theme.of(context).colorScheme;
-  final isDark = Theme.of(context).brightness == Brightness.dark;
   return switch (type) {
     'income' => (
-      operatorBackground:
-          (isDark ? AppColors.positiveDark : AppColors.positiveLight).withAlpha(
-            48,
-          ),
-      operatorForeground: isDark
-          ? AppColors.positiveDark
-          : AppColors.positiveLight,
-      equalsBackground: isDark
-          ? AppColors.positiveDark
-          : AppColors.positiveLight,
-      equalsForeground: isDark ? Colors.black : const Color(0xFF173300),
+      operatorBackground: scheme.tertiaryContainer.withAlpha(110),
+      operatorForeground: scheme.tertiary,
+      equalsBackground: scheme.tertiary,
+      equalsForeground: scheme.onTertiary,
     ),
     'transfer' => (
       operatorBackground: scheme.primaryContainer.withAlpha(110),

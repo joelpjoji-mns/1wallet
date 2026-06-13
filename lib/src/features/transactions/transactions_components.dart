@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../design/tokens.dart';
+import '../../widgets/app_kit.dart';
 
 class TransactionCommandStrip extends StatelessWidget {
   const TransactionCommandStrip({
@@ -49,81 +50,88 @@ class TransactionCommandStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: scheme.outlineVariant),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.sm),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: CompactSearchField(
-                    value: query,
-                    onChanged: onQueryChanged,
+            Expanded(
+              child: CompactSearchField(
+                value: query,
+                onChanged: onQueryChanged,
+              ),
+            ),
+            if (hasActiveFilters) ...[
+              const SizedBox(width: AppSpacing.sm),
+              LiquidGlassContainer(
+                borderRadius: BorderRadius.circular(AppRadii.pill),
+                child: Tooltip(
+                  message: 'Clear filters',
+                  child: IconButton(
+                    onPressed: onClear,
+                    icon: const Icon(Icons.filter_alt_off_rounded),
                   ),
                 ),
-                if (hasActiveFilters) ...[
-                  const SizedBox(width: AppSpacing.xs),
-                  Tooltip(
-                    message: 'Clear filters',
-                    child: IconButton.filledTonal(
-                      visualDensity: VisualDensity.compact,
-                      onPressed: onClear,
-                      icon: const Icon(Icons.filter_alt_off_rounded),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Row(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        FilterPill(
-                          icon: Icons.filter_alt_outlined,
-                          label: typeLabel,
-                          active: typeActive,
-                          onTap: onTypeTap,
-                        ),
-                        FilterPill(
-                          icon: Icons.date_range_outlined,
-                          label: dateLabel,
-                          active: dateActive,
-                          onTap: onDateTap,
-                        ),
-                        FilterPill(
-                          icon: Icons.wallet_outlined,
-                          label: accountLabel,
-                          active: accountActive,
-                          onTap: onAccountTap,
-                        ),
-                        FilterPill(
-                          icon: Icons.category_outlined,
-                          label: categoryLabel,
-                          active: categoryActive,
-                          onTap: onCategoryTap,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            MiniFlowRail(income: income, expense: expense, net: net),
+              ),
+            ],
           ],
         ),
-      ),
+        const SizedBox(height: AppSpacing.md),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            border: Border.all(color: scheme.outlineVariant),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            FilterPill(
+                              icon: Icons.filter_alt_outlined,
+                              label: typeLabel,
+                              active: typeActive,
+                              onTap: onTypeTap,
+                            ),
+                            FilterPill(
+                              icon: Icons.date_range_outlined,
+                              label: dateLabel,
+                              active: dateActive,
+                              onTap: onDateTap,
+                            ),
+                            FilterPill(
+                              icon: Icons.wallet_outlined,
+                              label: accountLabel,
+                              active: accountActive,
+                              onTap: onAccountTap,
+                            ),
+                            FilterPill(
+                              icon: Icons.category_outlined,
+                              label: categoryLabel,
+                              active: categoryActive,
+                              onTap: onCategoryTap,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                MiniFlowRail(income: income, expense: expense, net: net),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -145,29 +153,22 @@ class CompactSearchField extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return SizedBox(
       height: 42,
-      child: TextField(
-        controller: controller,
-        onChanged: onChanged,
-        textInputAction: TextInputAction.search,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        decoration: InputDecoration(
-          hintText: 'Search records',
-          prefixIcon: Icon(Icons.search_rounded, color: scheme.primary),
-          prefixIconConstraints: const BoxConstraints(minWidth: 38),
-          contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-          filled: true,
-          fillColor: scheme.surfaceContainerHigh,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-            borderSide: BorderSide(color: scheme.outlineVariant),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-            borderSide: BorderSide(color: scheme.outlineVariant),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-            borderSide: BorderSide(color: scheme.primary, width: 1.4),
+      child: LiquidGlassContainer(
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        child: TextField(
+          controller: controller,
+          onChanged: onChanged,
+          textInputAction: TextInputAction.search,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          decoration: InputDecoration(
+            hintText: 'Search records',
+            filled: false,
+            prefixIcon: Icon(Icons.search_rounded, color: scheme.primary),
+            prefixIconConstraints: const BoxConstraints(minWidth: 48),
+            contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 0),
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
           ),
         ),
       ),

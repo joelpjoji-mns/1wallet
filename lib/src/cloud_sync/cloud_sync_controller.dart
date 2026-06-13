@@ -184,18 +184,23 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       }
       state = state.copyWith(metadata: metadata);
 
-      final prefsDoc = await _firestore.doc('users/$userId/metadata/preferences').get().timeout(const Duration(seconds: 15));
-      
+      final prefsDoc = await _firestore
+          .doc('users/$userId/metadata/preferences')
+          .get()
+          .timeout(const Duration(seconds: 15));
+
       if (prefsDoc.exists) {
         // We have cloud data. Restore it locally.
         await _restoreFromCloud(userId, metadata);
-        
+
         // Migrate rules from preferences to transactions if needed
         final currentLedger = _ref.read(ledgerProvider);
-        
-        final existingRuleIds = currentLedger.transactions.map((t) => t.id).toSet();
+
+        final existingRuleIds = currentLedger.transactions
+            .map((t) => t.id)
+            .toSet();
         final rulesToConvert = <FutureGenerationRule>[];
-        
+
         // 1. Check if we already have rules in current preferences
         if (currentLedger.preferences.futureGenerationRules != null) {
           for (final rule in currentLedger.preferences.futureGenerationRules!) {
@@ -204,75 +209,92 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
             }
           }
         }
-        
+
         // 2. If no rules at all, try fetching from legacy
-        if (rulesToConvert.isEmpty && (currentLedger.preferences.futureGenerationRules == null || currentLedger.preferences.futureGenerationRules!.isEmpty)) {
+        if (rulesToConvert.isEmpty &&
+            (currentLedger.preferences.futureGenerationRules == null ||
+                currentLedger.preferences.futureGenerationRules!.isEmpty)) {
           final restoreRepo = _ref.read(cloudWalletRestoreRepositoryProvider);
           final legacyWallet = await restoreRepo.readLatestLedger(userId);
-          if (legacyWallet != null && legacyWallet.ledger.preferences.futureGenerationRules != null) {
-            for (final rule in legacyWallet.ledger.preferences.futureGenerationRules!) {
+          if (legacyWallet != null &&
+              legacyWallet.ledger.preferences.futureGenerationRules != null) {
+            for (final rule
+                in legacyWallet.ledger.preferences.futureGenerationRules!) {
               if (!existingRuleIds.contains(rule.id)) {
                 rulesToConvert.add(rule);
               }
             }
           }
         }
-        
+
         if (rulesToConvert.isNotEmpty) {
-           final newTransactions = <TransactionRecord>[];
-           for (final rule in rulesToConvert) {
-             newTransactions.add(
-               TransactionRecord(
-                 id: rule.id,
-                 type: rule.type,
-                 status: 'scheduled',
-                 source: 'recurring',
-                 accountId: rule.accountId,
-                 counterAccountId: rule.counterAccountId,
-                 amount: Money(amountMinor: rule.amountMinor, currency: rule.currency),
-                 baseAmount: Money(amountMinor: rule.amountMinor, currency: rule.currency),
-                 occurredAt: rule.startsOn,
-                 categoryId: rule.categoryId,
-                 recurrenceFrequency: rule.frequency,
-                 notes: rule.name,
-                 paymentMethod: rule.paymentMethod,
-               )
-             );
-           }
-           
-           final mergedPreferences = currentLedger.preferences.copyWith(
-             futureGenerationRules: rulesToConvert.toList(),
-           );
-           
-           // Fix any already-migrated rules that accidentally got 'planned' status
-           final updatedTransactions = currentLedger.transactions.map((t) {
-             if (t.status == 'planned') {
-               return t.copyWith(status: 'scheduled');
-             }
-             return t;
-           }).toList();
-           
-           final mergedTransactions = [...updatedTransactions, ...newTransactions];
-           await _ledger.restoreLedgerState(currentLedger.copyWith(
-             preferences: mergedPreferences,
-             transactions: mergedTransactions,
-           ));
-           await uploadSnapshot(reason: 'migration_rules');
+          final newTransactions = <TransactionRecord>[];
+          for (final rule in rulesToConvert) {
+            newTransactions.add(
+              TransactionRecord(
+                id: rule.id,
+                type: rule.type,
+                status: 'scheduled',
+                source: 'recurring',
+                accountId: rule.accountId,
+                counterAccountId: rule.counterAccountId,
+                amount: Money(
+                  amountMinor: rule.amountMinor,
+                  currency: rule.currency,
+                ),
+                baseAmount: Money(
+                  amountMinor: rule.amountMinor,
+                  currency: rule.currency,
+                ),
+                occurredAt: rule.startsOn,
+                categoryId: rule.categoryId,
+                recurrenceFrequency: rule.frequency,
+                notes: rule.name,
+                paymentMethod: rule.paymentMethod,
+              ),
+            );
+          }
+
+          final mergedPreferences = currentLedger.preferences.copyWith(
+            futureGenerationRules: rulesToConvert.toList(),
+          );
+
+          // Fix any already-migrated rules that accidentally got 'planned' status
+          final updatedTransactions = currentLedger.transactions.map((t) {
+            if (t.status == 'planned') {
+              return t.copyWith(status: 'scheduled');
+            }
+            return t;
+          }).toList();
+
+          final mergedTransactions = [
+            ...updatedTransactions,
+            ...newTransactions,
+          ];
+          await _ledger.restoreLedgerState(
+            currentLedger.copyWith(
+              preferences: mergedPreferences,
+              transactions: mergedTransactions,
+            ),
+          );
+          await uploadSnapshot(reason: 'migration_rules');
         } else {
-           // If no new rules to convert, just check if we need to fix statuses
-           final hasPlannedStatus = currentLedger.transactions.any((t) => t.status == 'planned');
-           if (hasPlannedStatus) {
-             final updatedTransactions = currentLedger.transactions.map((t) {
-               if (t.status == 'planned') {
-                 return t.copyWith(status: 'scheduled');
-               }
-               return t;
-             }).toList();
-             await _ledger.restoreLedgerState(currentLedger.copyWith(
-               transactions: updatedTransactions,
-             ));
-             await uploadSnapshot(reason: 'migration_fix_status');
-           }
+          // If no new rules to convert, just check if we need to fix statuses
+          final hasPlannedStatus = currentLedger.transactions.any(
+            (t) => t.status == 'planned',
+          );
+          if (hasPlannedStatus) {
+            final updatedTransactions = currentLedger.transactions.map((t) {
+              if (t.status == 'planned') {
+                return t.copyWith(status: 'scheduled');
+              }
+              return t;
+            }).toList();
+            await _ledger.restoreLedgerState(
+              currentLedger.copyWith(transactions: updatedTransactions),
+            );
+            await uploadSnapshot(reason: 'migration_fix_status');
+          }
         }
       } else {
         // Migration check
@@ -331,11 +353,6 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
     try {
       final currentLedger = _ref.read(ledgerProvider);
-      if (!_walletHasUserData(currentLedger)) {
-        state = state.copyWith(pendingUpload: false);
-        return;
-      }
-
       var metadata = state.metadata ?? await CloudSyncMetadata.load();
 
       state = state.copyWith(
@@ -344,59 +361,106 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         error: null,
       );
 
-      final writes = <Future<void>>[];
       WriteBatch currentBatch = _firestore.batch();
       int opCount = 0;
 
-      void addWrite(DocumentReference doc, Map<String, dynamic> data) {
+      Future<void> addWrite(
+        DocumentReference doc,
+        Map<String, dynamic> data,
+      ) async {
         currentBatch.set(doc, data, SetOptions(merge: true));
         opCount++;
         if (opCount >= 450) {
-          writes.add(currentBatch.commit());
+          await currentBatch.commit();
           currentBatch = _firestore.batch();
           opCount = 0;
         }
       }
 
       // Write metadata
-      addWrite(
-        _firestore.doc('users/${user.id}/metadata/preferences'), 
+      await addWrite(
+        _firestore.doc('users/${user.id}/metadata/preferences'),
         preferencesToJson(currentLedger.preferences).cast<String, dynamic>(),
       );
 
-      addWrite(_firestore.doc('users/${user.id}'), {
+      await addWrite(_firestore.doc('users/${user.id}'), {
         'email': user.email,
         'displayName': user.displayName,
         'authProvider': 'google',
         'updatedAt': FieldValue.serverTimestamp(),
       });
-      
-      for (final account in currentLedger.accounts) {
-         addWrite(_firestore.doc('users/${user.id}/accounts/${account.id}'), accountToJson(account).cast<String, dynamic>());
+
+      final encodedData = await compute(
+        _encodeCloudSnapshotData,
+        currentLedger,
+      );
+      final accountIds = encodedData['accounts']!
+          .map((accountMap) => accountMap['id'] as String)
+          .toSet();
+
+      for (final accountMap in encodedData['accounts']!) {
+        await addWrite(
+          _firestore.doc('users/${user.id}/accounts/${accountMap['id']}'),
+          accountMap,
+        );
       }
-      for (final cat in currentLedger.categories) {
-         addWrite(_firestore.doc('users/${user.id}/categories/${cat.id}'), categoryToJson(cat).cast<String, dynamic>());
+      final cloudAccounts = await _firestore
+          .collection('users/${user.id}/accounts')
+          .get()
+          .timeout(const Duration(seconds: 15));
+      for (final accountDoc in cloudAccounts.docs) {
+        if (accountIds.contains(accountDoc.id)) continue;
+        currentBatch.delete(accountDoc.reference);
+        opCount++;
+        if (opCount >= 450) {
+          await currentBatch.commit();
+          currentBatch = _firestore.batch();
+          opCount = 0;
+        }
       }
-      for (final txn in currentLedger.transactions) {
-         addWrite(_firestore.doc('users/${user.id}/transactions/${txn.id}'), transactionToJson(txn).cast<String, dynamic>());
+      for (final catMap in encodedData['categories']!) {
+        await addWrite(
+          _firestore.doc('users/${user.id}/categories/${catMap['id']}'),
+          catMap,
+        );
       }
-      for (final budget in currentLedger.budgets) {
-         addWrite(_firestore.doc('users/${user.id}/budgets/${budget.id}'), budgetToJson(budget).cast<String, dynamic>());
+      for (final txnMap in encodedData['transactions']!) {
+        await addWrite(
+          _firestore.doc('users/${user.id}/transactions/${txnMap['id']}'),
+          txnMap,
+        );
       }
-      for (final goal in currentLedger.goals) {
-         addWrite(_firestore.doc('users/${user.id}/goals/${goal.id}'), goalToJson(goal).cast<String, dynamic>());
+      for (final budgetMap in encodedData['budgets']!) {
+        await addWrite(
+          _firestore.doc('users/${user.id}/budgets/${budgetMap['id']}'),
+          budgetMap,
+        );
+      }
+      for (final goalMap in encodedData['goals']!) {
+        await addWrite(
+          _firestore.doc('users/${user.id}/goals/${goalMap['id']}'),
+          goalMap,
+        );
+      }
+      for (final capMap in encodedData['captureCandidates']!) {
+        await addWrite(
+          _firestore.doc('users/${user.id}/captureCandidates/${capMap['id']}'),
+          capMap,
+        );
+      }
+      for (final impMap in encodedData['importBatches']!) {
+        await addWrite(
+          _firestore.doc('users/${user.id}/importBatches/${impMap['id']}'),
+          impMap,
+        );
       }
 
       if (opCount > 0) {
-        writes.add(currentBatch.commit());
+        await currentBatch.commit();
       }
-      await Future.wait(writes);
 
       final now = DateTime.now().toIso8601String();
-      metadata = metadata.copyWith(
-        userId: user.id,
-        lastPushedAt: now,
-      );
+      metadata = metadata.copyWith(userId: user.id, lastPushedAt: now);
       await metadata.save();
 
       _uploadFailureCount = 0;
@@ -416,31 +480,66 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     }
   }
 
-  Future<void> _restoreFromCloud(String userId, CloudSyncMetadata metadata) async {
+  Future<void> _restoreFromCloud(
+    String userId,
+    CloudSyncMetadata metadata,
+  ) async {
     state = state.copyWith(phase: CloudSyncPhase.restoring, error: null);
 
     try {
-      final accountsQuery = await _firestore.collection('users/$userId/accounts').get().timeout(const Duration(seconds: 15));
-      final categoriesQuery = await _firestore.collection('users/$userId/categories').get().timeout(const Duration(seconds: 15));
-      final txnsQuery = await _firestore.collection('users/$userId/transactions').get().timeout(const Duration(seconds: 15));
-      final budgetsQuery = await _firestore.collection('users/$userId/budgets').get().timeout(const Duration(seconds: 15));
-      final goalsQuery = await _firestore.collection('users/$userId/goals').get().timeout(const Duration(seconds: 15));
-      final prefsDoc = await _firestore.doc('users/$userId/metadata/preferences').get().timeout(const Duration(seconds: 15));
+      final accountsQuery = await _firestore
+          .collection('users/$userId/accounts')
+          .get()
+          .timeout(const Duration(seconds: 15));
+      final categoriesQuery = await _firestore
+          .collection('users/$userId/categories')
+          .get()
+          .timeout(const Duration(seconds: 15));
+      final txnsQuery = await _firestore
+          .collection('users/$userId/transactions')
+          .get()
+          .timeout(const Duration(seconds: 15));
+      final budgetsQuery = await _firestore
+          .collection('users/$userId/budgets')
+          .get()
+          .timeout(const Duration(seconds: 15));
+      final goalsQuery = await _firestore
+          .collection('users/$userId/goals')
+          .get()
+          .timeout(const Duration(seconds: 15));
+      final captureQuery = await _firestore
+          .collection('users/$userId/captureCandidates')
+          .get()
+          .timeout(const Duration(seconds: 15));
+      final importsQuery = await _firestore
+          .collection('users/$userId/importBatches')
+          .get()
+          .timeout(const Duration(seconds: 15));
+      final prefsDoc = await _firestore
+          .doc('users/$userId/metadata/preferences')
+          .get()
+          .timeout(const Duration(seconds: 15));
 
-      final ledger = emptyLedgerState(userId: userId).copyWith(
-         preferences: prefsDoc.exists ? preferencesFromJson(prefsDoc.data()!) : const LedgerPreferences(),
-         accounts: accountsQuery.docs.map((d) => accountFromJson(d.data())).toList(),
-         categories: categoriesQuery.docs.map((d) => categoryFromJson(d.data())).toList(),
-         transactions: txnsQuery.docs.map((d) => transactionFromJson(d.data())).toList(),
-         budgets: budgetsQuery.docs.map((d) => budgetFromJson(d.data())).toList(),
-         goals: goalsQuery.docs.map((d) => goalFromJson(d.data())).toList(),
-      );
+      final restoreData = {
+        'userId': userId,
+        'preferences': prefsDoc.exists ? prefsDoc.data() : null,
+        'accounts': accountsQuery.docs.map((d) => d.data()).toList(),
+        'categories': categoriesQuery.docs.map((d) => d.data()).toList(),
+        'transactions': txnsQuery.docs.map((d) => d.data()).toList(),
+        'budgets': budgetsQuery.docs.map((d) => d.data()).toList(),
+        'goals': goalsQuery.docs.map((d) => d.data()).toList(),
+        'captureCandidates': captureQuery.docs.map((d) => d.data()).toList(),
+        'importBatches': importsQuery.docs.map((d) => d.data()).toList(),
+      };
+
+      final ledger = await compute(_parseCloudRestoreData, restoreData);
 
       final currentLedger = _ref.read(ledgerProvider);
       if (!_walletHasUserData(ledger) && _walletHasUserData(currentLedger)) {
         state = state.copyWith(
           phase: CloudSyncPhase.idle,
-          error: 'Cloud backup is empty, so the existing local wallet was kept.',
+          error:
+              'Cloud backup is empty, so the existing local wallet was kept.',
         );
         return;
       }
@@ -510,4 +609,75 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         ledger.budgets.isNotEmpty ||
         ledger.goals.isNotEmpty;
   }
+}
+
+LedgerState _parseCloudRestoreData(Map<String, dynamic> data) {
+  final userId = data['userId'] as String;
+  final prefsData = data['preferences'] as Map<String, dynamic>?;
+  final accountsData = data['accounts'] as List;
+  final categoriesData = data['categories'] as List;
+  final transactionsData = data['transactions'] as List;
+  final budgetsData = data['budgets'] as List;
+  final goalsData = data['goals'] as List;
+  final captureData = data['captureCandidates'] as List?;
+  final importsData = data['importBatches'] as List?;
+
+  return emptyLedgerState(userId: userId).copyWith(
+    preferences: prefsData != null
+        ? preferencesFromJson(prefsData)
+        : const LedgerPreferences(),
+    accounts: accountsData
+        .map((d) => accountFromJson(d as Map<String, dynamic>))
+        .toList(),
+    categories: categoriesData
+        .map((d) => categoryFromJson(d as Map<String, dynamic>))
+        .toList(),
+    transactions: transactionsData
+        .map((d) => transactionFromJson(d as Map<String, dynamic>))
+        .toList(),
+    budgets: budgetsData
+        .map((d) => budgetFromJson(d as Map<String, dynamic>))
+        .toList(),
+    goals: goalsData
+        .map((d) => goalFromJson(d as Map<String, dynamic>))
+        .toList(),
+    captureCandidates:
+        captureData
+            ?.map((d) => captureCandidateFromJson(d as Map<String, dynamic>))
+            .toList() ??
+        [],
+    importBatches:
+        importsData
+            ?.map((d) => importBatchFromJson(d as Map<String, dynamic>))
+            .toList() ??
+        [],
+  );
+}
+
+Map<String, List<Map<String, dynamic>>> _encodeCloudSnapshotData(
+  LedgerState ledger,
+) {
+  return {
+    'accounts': ledger.accounts
+        .map((a) => accountToJson(a).cast<String, dynamic>())
+        .toList(),
+    'categories': ledger.categories
+        .map((c) => categoryToJson(c).cast<String, dynamic>())
+        .toList(),
+    'transactions': ledger.transactions
+        .map((t) => transactionToJson(t).cast<String, dynamic>())
+        .toList(),
+    'budgets': ledger.budgets
+        .map((b) => budgetToJson(b).cast<String, dynamic>())
+        .toList(),
+    'goals': ledger.goals
+        .map((g) => goalToJson(g).cast<String, dynamic>())
+        .toList(),
+    'captureCandidates': ledger.captureCandidates
+        .map((c) => captureCandidateToJson(c).cast<String, dynamic>())
+        .toList(),
+    'importBatches': ledger.importBatches
+        .map((i) => importBatchToJson(i).cast<String, dynamic>())
+        .toList(),
+  };
 }
