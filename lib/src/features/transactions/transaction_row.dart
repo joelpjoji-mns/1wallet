@@ -51,7 +51,9 @@ class TransactionRow extends StatelessWidget {
           child: Row(
             children: [
               IconBubble(
-                icon: transactionIcon(transaction),
+                icon: category == null || transaction.type == 'transfer'
+                    ? transactionIcon(transaction)
+                    : categoryIcon(category),
                 color: categoryColor(category, context),
                 compact: true,
               ),
