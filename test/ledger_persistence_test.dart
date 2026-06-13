@@ -7,6 +7,7 @@ import 'package:one_wallet_flutter/src/data/ledger_codec.dart';
 import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
 import 'package:one_wallet_flutter/src/imports/wallet_csv_parser.dart';
+import 'package:one_wallet_flutter/src/ledger/ledger_selectors.dart';
 
 import 'fixtures/sample_ledger.dart';
 
@@ -28,6 +29,114 @@ void main() {
     expect(restored.captureCandidates.length, state.captureCandidates.length);
     expect(restored.importBatches.length, state.importBatches.length);
     expect(restored.accounts.first.name, state.accounts.first.name);
+  });
+
+  test('default categories include parent and subcategory hierarchy', () {
+    final state = sampleLedgerState();
+    expect(
+      state.categories.firstWhere((item) => item.id == 'cat-income').name,
+      'Income',
+    );
+    expect(
+      state.categories.firstWhere((item) => item.id == 'cat-salary').parentId,
+      'cat-income',
+    );
+    expect(
+      state.categories.firstWhere((item) => item.id == 'cat-grocery').parentId,
+      'cat-food',
+    );
+    expect(
+      state.categories.firstWhere((item) => item.id == 'cat-emi').parentId,
+      'cat-debt',
+    );
+  });
+
+  test('legacy duplicate categories migrate into crisp taxonomy', () {
+    const legacy = '''
+{
+  "version": 15,
+  "userId": "local-user",
+  "preferences": {},
+  "accounts": [],
+  "categories": [
+    {"id":"old-bills","name":"Bills","kind":"expense","sortOrder":1},
+    {"id":"old-utilities","name":"Utilities","kind":"expense","sortOrder":2},
+    {"id":"old-grocery","name":"Grocery","kind":"expense","sortOrder":3},
+    {"id":"custom-life","name":"Life admin","kind":"expense","sortOrder":4}
+  ],
+  "transactions": [
+    {"id":"tx-1","type":"expense","status":"cleared","source":"manual","accountId":"","amount":{"amountMinor":100,"currency":"INR"},"baseAmount":{"amountMinor":100,"currency":"INR"},"categoryId":"old-bills","occurredAt":"2026-06-13T00:00:00.000"},
+    {"id":"tx-2","type":"expense","status":"cleared","source":"manual","accountId":"","amount":{"amountMinor":200,"currency":"INR"},"baseAmount":{"amountMinor":200,"currency":"INR"},"categoryId":"old-grocery","occurredAt":"2026-06-13T00:00:00.000"}
+  ],
+  "budgets": [],
+  "goals": [],
+  "captureCandidates": [],
+  "importBatches": [],
+  "exchangeRates": []
+}
+''';
+
+    final restored = decodeLedgerState(legacy);
+    expect(restored.version, currentLedgerStateVersion);
+    expect(restored.categories.where((item) => item.name == 'Bills'), isEmpty);
+    expect(
+      restored.categories.where((item) => item.id == 'cat-bills'),
+      hasLength(1),
+    );
+    expect(
+      restored.categories.where((item) => item.id == 'cat-grocery'),
+      hasLength(1),
+    );
+    expect(restored.transactions[0].categoryId, 'cat-bills');
+    expect(restored.transactions[1].categoryId, 'cat-grocery');
+    expect(
+      restored.categories.any((item) => item.name == 'Life admin'),
+      isTrue,
+    );
+  });
+
+  test('current-version duplicate categories are still normalized on load', () {
+    const current = '''
+{
+  "version": 16,
+  "userId": "local-user",
+  "preferences": {},
+  "accounts": [],
+  "categories": [
+    {"id":"cat-bills","name":"Utilities","kind":"expense","sortOrder":400},
+    {"id":"dupe-bills","name":"Bills","kind":"expense","sortOrder":401},
+    {"id":"dupe-fees-a","name":"Bank fee","kind":"expense","sortOrder":402},
+    {"id":"dupe-fees-b","name":"Bank fees","kind":"expense","sortOrder":403},
+    {"id":"custom-a","name":"Life admin","kind":"expense","sortOrder":404},
+    {"id":"custom-b","name":"Life  admin","kind":"expense","sortOrder":405}
+  ],
+  "transactions": [
+    {"id":"tx-1","type":"expense","status":"cleared","source":"manual","accountId":"","amount":{"amountMinor":100,"currency":"INR"},"baseAmount":{"amountMinor":100,"currency":"INR"},"categoryId":"dupe-bills","occurredAt":"2026-06-13T00:00:00.000"},
+    {"id":"tx-2","type":"expense","status":"cleared","source":"manual","accountId":"","amount":{"amountMinor":200,"currency":"INR"},"baseAmount":{"amountMinor":200,"currency":"INR"},"categoryId":"custom-b","occurredAt":"2026-06-13T00:00:00.000"}
+  ],
+  "budgets": [],
+  "goals": [],
+  "captureCandidates": [],
+  "importBatches": [],
+  "exchangeRates": []
+}
+''';
+
+    final restored = decodeLedgerState(current);
+    expect(
+      restored.categories.where((item) => item.id == 'cat-bills'),
+      hasLength(1),
+    );
+    expect(
+      restored.categories.where((item) => item.id == 'cat-bank-fees'),
+      hasLength(1),
+    );
+    expect(
+      restored.categories.where((item) => item.name == 'Life admin'),
+      hasLength(1),
+    );
+    expect(restored.transactions[0].categoryId, 'cat-bills');
+    expect(restored.transactions[1].categoryId, 'custom-a');
   });
 
   test('starter wallet creation does not overwrite existing data', () async {
@@ -250,6 +359,53 @@ void main() {
       restored!.accounts.firstWhere((item) => item.id == account.id).isArchived,
       isTrue,
     );
+  });
+
+  test('cross-currency transfer preserves edited received amount', () async {
+    final seeded = sampleLedgerState();
+    const gbpAccount = Account(
+      id: 'acc-gbp',
+      name: 'GBP account',
+      type: 'bank',
+      currency: 'GBP',
+      openingBalance: Money(amountMinor: 0, currency: 'GBP'),
+    );
+    final controller = LedgerController(
+      const LedgerRepository(),
+      initialState: seeded.copyWith(
+        accounts: [...seeded.accounts, gbpAccount],
+        exchangeRates: [
+          ExchangeRateRecord(
+            base: 'INR',
+            quote: 'GBP',
+            rate: 0.0095,
+            asOfDate: DateTime(2026, 6, 13),
+          ),
+        ],
+      ),
+    );
+    addTearDown(controller.dispose);
+    final startingSourceBalance = accountBalanceMap(
+      controller.state,
+    )['acc-bank']!.amountMinor;
+
+    final transaction = await controller.upsertTransaction(
+      type: 'transfer',
+      accountId: 'acc-bank',
+      counterAccountId: 'acc-gbp',
+      amountMinor: 150000,
+      counterAmountMinor: 1425,
+    );
+
+    expect(transaction.amount.amountMinor, 150000);
+    expect(transaction.amount.currency, 'INR');
+    expect(transaction.counterAmount?.amountMinor, 1425);
+    expect(transaction.counterAmount?.currency, 'GBP');
+    expect(transaction.fxRate, closeTo(1425 / 150000, 0.000001));
+
+    final balances = accountBalanceMap(controller.state);
+    expect(balances['acc-bank']!.amountMinor, startingSourceBalance - 150000);
+    expect(balances['acc-gbp']!.amountMinor, 1425);
   });
 
   test(

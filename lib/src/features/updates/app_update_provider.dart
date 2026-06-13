@@ -20,12 +20,25 @@ class Changelog {
   });
 
   factory Changelog.fromJson(Map<String, dynamic> json) {
+    final nested = _mapValue(json['changelog']);
     return Changelog(
-      newFeatures: List<String>.from(json['newFeatures'] ?? []),
-      bugFixes: List<String>.from(json['bugFixes'] ?? []),
-      notes: List<String>.from(json['notes'] ?? []),
+      newFeatures: _stringList(
+        json['newFeatures'] ??
+            json['features'] ??
+            nested['newFeatures'] ??
+            nested['features'],
+      ),
+      bugFixes: _stringList(
+        json['bugFixes'] ??
+            json['fixes'] ??
+            nested['bugFixes'] ??
+            nested['fixes'],
+      ),
+      notes: _stringList(json['notes'] ?? nested['notes']),
     );
   }
+
+  bool get isEmpty => newFeatures.isEmpty && bugFixes.isEmpty && notes.isEmpty;
 }
 
 class ApkMetadata {
@@ -49,13 +62,15 @@ class ApkMetadata {
 
   factory ApkMetadata.fromJson(Map<String, dynamic> json) {
     return ApkMetadata(
-      downloadUrl: json['downloadUrl'] ?? '',
-      fileName: json['fileName'] ?? 'update.apk',
-      sizeBytes: json['sizeBytes'] ?? 0,
-      sha256: json['sha256'] ?? '',
-      architecture: json['architecture'] ?? '',
-      minSdk: json['minSdk'],
-      estimatedDownloadSeconds: json['estimatedDownloadSeconds'],
+      downloadUrl: _stringValue(json['downloadUrl'] ?? json['url']),
+      fileName: _stringValue(json['fileName'], fallback: 'update.apk'),
+      sizeBytes: _intValue(json['sizeBytes']),
+      sha256: _stringValue(json['sha256']),
+      architecture: _stringValue(json['architecture']),
+      minSdk: _nullableIntValue(json['minSdk']),
+      estimatedDownloadSeconds: _nullableIntValue(
+        json['estimatedDownloadSeconds'],
+      ),
     );
   }
 }
@@ -95,37 +110,41 @@ class AppUpdateRelease {
 
   factory AppUpdateRelease.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    return AppUpdateRelease.fromJson(doc.id, data);
+  }
+
+  factory AppUpdateRelease.fromJson(String id, Map<String, dynamic> data) {
     return AppUpdateRelease(
-      id: doc.id,
-      platform: data['platform'] ?? 'android',
-      channel: data['channel'] ?? 'stable',
-      status: data['status'] ?? 'published',
-      versionName: data['versionName'] ?? '',
-      versionCode: data['versionCode'] ?? 0,
-      runtimeVersion: data['runtimeVersion'] ?? '',
-      releaseType: data['releaseType'] ?? '',
-      requirement: data['requirement'] ?? 'optional',
-      mandatory: data['mandatory'] ?? false,
-      minimumSupportedVersionCode: data['minimumSupportedVersionCode'] ?? 0,
-      publishedAt: data['publishedAt']?.toString() ?? '',
+      id: id,
+      platform: _stringValue(data['platform'], fallback: 'android'),
+      channel: _stringValue(data['channel'], fallback: 'stable'),
+      status: _stringValue(data['status'], fallback: 'published'),
+      versionName: _stringValue(data['versionName'] ?? data['version']),
+      versionCode: _intValue(data['versionCode']),
+      runtimeVersion: _stringValue(data['runtimeVersion']),
+      releaseType: _stringValue(data['releaseType']),
+      requirement: _stringValue(data['requirement'], fallback: 'optional'),
+      mandatory: data['mandatory'] == true,
+      minimumSupportedVersionCode: _intValue(
+        data['minimumSupportedVersionCode'],
+      ),
+      publishedAt: _dateString(data['publishedAt'] ?? data['generatedAt']),
       changelog: Changelog.fromJson(data['changelog'] ?? {}),
-      apk: data['apk'] != null ? ApkMetadata.fromJson(data['apk']) : null,
+      apk: data['apk'] != null
+          ? ApkMetadata.fromJson(_mapValue(data['apk']))
+          : null,
     );
   }
 }
 
-enum UpdateStatus {
-  idle,
-  checking,
-  downloading,
-  downloaded,
-  installing,
-  error,
-}
+enum UpdateStatus { idle, checking, downloading, downloaded, installing, error }
 
 class AppUpdateState {
   final UpdateStatus status;
   final AppUpdateRelease? latestRelease;
+  final AppUpdateRelease? currentRelease;
+  final String currentVersionName;
+  final int currentVersionCode;
   final String channel;
   final double progress;
   final int bytesWritten;
@@ -136,6 +155,9 @@ class AppUpdateState {
   AppUpdateState({
     this.status = UpdateStatus.idle,
     this.latestRelease,
+    this.currentRelease,
+    this.currentVersionName = '',
+    this.currentVersionCode = 0,
     this.channel = 'stable',
     this.progress = 0.0,
     this.bytesWritten = 0,
@@ -147,21 +169,36 @@ class AppUpdateState {
   AppUpdateState copyWith({
     UpdateStatus? status,
     AppUpdateRelease? latestRelease,
+    AppUpdateRelease? currentRelease,
+    String? currentVersionName,
+    int? currentVersionCode,
     String? channel,
     double? progress,
     int? bytesWritten,
     int? bytesExpected,
     String? errorMessage,
     String? downloadedApkPath,
+    bool clearLatestRelease = false,
+    bool clearCurrentRelease = false,
+    bool clearErrorMessage = false,
   }) {
     return AppUpdateState(
       status: status ?? this.status,
-      latestRelease: latestRelease ?? this.latestRelease,
+      latestRelease: clearLatestRelease
+          ? null
+          : latestRelease ?? this.latestRelease,
+      currentRelease: clearCurrentRelease
+          ? null
+          : currentRelease ?? this.currentRelease,
+      currentVersionName: currentVersionName ?? this.currentVersionName,
+      currentVersionCode: currentVersionCode ?? this.currentVersionCode,
       channel: channel ?? this.channel,
       progress: progress ?? this.progress,
       bytesWritten: bytesWritten ?? this.bytesWritten,
       bytesExpected: bytesExpected ?? this.bytesExpected,
-      errorMessage: errorMessage ?? this.errorMessage,
+      errorMessage: clearErrorMessage
+          ? null
+          : errorMessage ?? this.errorMessage,
       downloadedApkPath: downloadedApkPath ?? this.downloadedApkPath,
     );
   }
@@ -181,11 +218,21 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
   }
 
   Future<void> checkForUpdates() async {
-    state = state.copyWith(status: UpdateStatus.checking, errorMessage: null);
+    state = state.copyWith(
+      status: UpdateStatus.checking,
+      clearErrorMessage: true,
+    );
 
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersionCode = int.tryParse(packageInfo.buildNumber) ?? 0;
+      final currentVersionName = packageInfo.version;
+      state = state.copyWith(
+        currentVersionName: currentVersionName,
+        currentVersionCode: currentVersionCode,
+      );
+
+      final currentRelease = await _releaseForVersionCode(currentVersionCode);
 
       final channelDoc = await _firestore
           .collection('appUpdates/android/channels')
@@ -193,51 +240,86 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
           .get();
 
       if (!channelDoc.exists) {
-        state = state.copyWith(status: UpdateStatus.idle);
+        state = state.copyWith(
+          status: UpdateStatus.idle,
+          currentRelease: currentRelease,
+          clearCurrentRelease: currentRelease == null,
+          clearLatestRelease: true,
+        );
         return;
       }
 
-      final latestVersionCode = channelDoc.data()?['latestVersionCode'] as int?;
+      final latestVersionCode = _nullableIntValue(
+        channelDoc.data()?['latestVersionCode'],
+      );
       if (latestVersionCode == null) {
-        state = state.copyWith(status: UpdateStatus.idle);
+        state = state.copyWith(
+          status: UpdateStatus.idle,
+          currentRelease: currentRelease,
+          clearCurrentRelease: currentRelease == null,
+          clearLatestRelease: true,
+        );
         return;
       }
 
       if (latestVersionCode > currentVersionCode) {
-        final releaseDoc = await _firestore
-            .collection('appUpdates/android/releases')
-            .doc(latestVersionCode.toString())
-            .get();
+        final release = await _releaseForVersionCode(latestVersionCode);
 
-        if (releaseDoc.exists) {
-          final release = AppUpdateRelease.fromFirestore(releaseDoc);
+        if (release != null) {
           state = state.copyWith(
             status: UpdateStatus.idle,
             latestRelease: release,
+            currentRelease: currentRelease,
+            clearCurrentRelease: currentRelease == null,
           );
-          
+
           final prefs = await SharedPreferences.getInstance();
-          final lastNotifiedVersionCode = prefs.getInt('lastNotifiedVersionCode') ?? 0;
+          final notificationKey = 'lastNotifiedVersionCode.${state.channel}';
+          final lastNotifiedVersionCode = prefs.getInt(notificationKey) ?? 0;
           if (latestVersionCode > lastNotifiedVersionCode) {
-            await NotificationService.showUpdateNotification(release.versionName, release.channel);
-            await prefs.setInt('lastNotifiedVersionCode', latestVersionCode);
+            await NotificationService.showUpdateNotification(
+              release.versionName,
+              release.channel,
+            );
+            await prefs.setInt(notificationKey, latestVersionCode);
           }
           return;
         }
       }
 
-      state = state.copyWith(status: UpdateStatus.idle, latestRelease: null);
-    } catch (e) {
       state = state.copyWith(
-        status: UpdateStatus.error,
-        errorMessage: 'Failed to check for updates: $e',
+        status: UpdateStatus.idle,
+        currentRelease: currentRelease,
+        clearCurrentRelease: currentRelease == null,
+        clearLatestRelease: true,
       );
+    } catch (e) {
+      final message = e is FirebaseException && e.code == 'permission-denied'
+          ? 'Update metadata is not available yet. Please try again later.'
+          : 'Failed to check for updates: $e';
+      state = state.copyWith(status: UpdateStatus.error, errorMessage: message);
+    }
+  }
+
+  Future<AppUpdateRelease?> _releaseForVersionCode(int versionCode) async {
+    if (versionCode <= 0) return null;
+    try {
+      final releaseDoc = await _firestore
+          .collection('appUpdates/android/releases')
+          .doc(versionCode.toString())
+          .get();
+      return releaseDoc.exists
+          ? AppUpdateRelease.fromFirestore(releaseDoc)
+          : null;
+    } on FirebaseException catch (error) {
+      if (error.code == 'permission-denied') return null;
+      rethrow;
     }
   }
 
   Future<void> downloadUpdate() async {
     if (state.latestRelease?.apk == null) return;
-    
+
     state = state.copyWith(
       status: UpdateStatus.downloading,
       progress: 0.0,
@@ -278,7 +360,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
   Future<void> installUpdate() async {
     final apkPath = state.downloadedApkPath;
     if (apkPath == null) return;
-    
+
     state = state.copyWith(status: UpdateStatus.installing);
     try {
       final result = await OpenFilex.open(apkPath);
@@ -295,6 +377,41 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
   }
 }
 
-final appUpdateProvider = StateNotifierProvider<AppUpdateProvider, AppUpdateState>((ref) {
-  return AppUpdateProvider(FirebaseFirestore.instance);
-});
+final appUpdateProvider =
+    StateNotifierProvider<AppUpdateProvider, AppUpdateState>((ref) {
+      return AppUpdateProvider(FirebaseFirestore.instance);
+    });
+
+Map<String, dynamic> _mapValue(Object? value) {
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) return Map<String, dynamic>.from(value);
+  return <String, dynamic>{};
+}
+
+List<String> _stringList(Object? value) {
+  if (value is! List) return const [];
+  return value
+      .map((item) => item.toString())
+      .where((item) => item.trim().isNotEmpty)
+      .toList();
+}
+
+String _stringValue(Object? value, {String fallback = ''}) {
+  if (value == null) return fallback;
+  final string = value.toString().trim();
+  return string.isEmpty ? fallback : string;
+}
+
+int _intValue(Object? value) => _nullableIntValue(value) ?? 0;
+
+int? _nullableIntValue(Object? value) {
+  if (value is int) return value;
+  if (value is num) return value.round();
+  if (value is String) return int.tryParse(value);
+  return null;
+}
+
+String _dateString(Object? value) {
+  if (value is Timestamp) return value.toDate().toIso8601String();
+  return _stringValue(value);
+}

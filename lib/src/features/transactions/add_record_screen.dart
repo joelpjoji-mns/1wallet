@@ -12,6 +12,7 @@ import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../common/category_hierarchy_picker.dart';
 import '../common/full_screen_picker.dart';
 
 class AddRecordScreen extends ConsumerStatefulWidget {
@@ -46,6 +47,8 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
   final _charges = <_ChargeDraft>[];
   DateTime _occurredAt = DateTime.now();
   bool _isScanning = false;
+  bool _localAmountEdited = false;
+  bool _counterAmountEdited = false;
 
   @override
   void dispose() {
@@ -90,6 +93,14 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
         counterAccount.currency.toUpperCase() !=
             (sourceAccount?.currency.toUpperCase() ??
                 state.preferences.baseCurrency.toUpperCase());
+    _syncConvertedAmountDraft(
+      state: state,
+      sourceAccount: sourceAccount,
+      counterAccount: counterAccount,
+      txCurrency: txCurrency,
+      isForeign: isForeign,
+      isCrossTransfer: isCrossTransfer,
+    );
 
     return DefaultTabController(
       length: 2,
@@ -107,7 +118,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
               if (context.canPop()) {
                 context.pop();
               } else {
-                context.push('/');
+                context.go('/');
               }
             },
           ),
@@ -157,10 +168,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                   value: _type,
                   onChanged: (value) => setState(() {
                     _type = value;
-                    final selectedCategory = categoryById(state, _categoryId);
-                    if (value == 'transfer' || value == 'adjustment') {
-                      _categoryId = null;
-                    } else if (selectedCategory?.kind != value) {
+                    if (value == 'transfer') {
                       _categoryId = null;
                     }
                     if (value != 'transfer') _counterAccountId = null;
@@ -330,7 +338,18 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                           // Currency chip
                           PopupMenuButton<String>(
                             initialValue: txCurrency,
-                            onSelected: (val) => setState(() => _transactionCurrency = val),
+                            onSelected: (val) => setState(() {
+                              _transactionCurrency = val;
+                              _localAmountEdited = false;
+                              _localAmount = '';
+                              _localExpression = '';
+                              _localAmountController.clear();
+                              if (!_counterAmountEdited) {
+                                _counterAmount = '';
+                                _counterExpression = '';
+                                _counterAmountController.clear();
+                              }
+                            }),
                             itemBuilder: (context) => availableCurrencies(state)
                                 .map((c) => PopupMenuItem(value: c, child: Text(c)))
                                 .toList(),
@@ -386,82 +405,41 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.md,
                   ),
-                  child: Column(
-                    children: [
-                      if (isForeign) ...[
-                        Builder(
-                          builder: (context) {
-                            final resolvedAmount = _expression.isNotEmpty
-                                ? _evaluate('$_expression ${_amount.isEmpty ? "0" : _amount}')
-                                : _amount;
-                            final parsedAmountMinor = _amountMinorFromInput(resolvedAmount);
-                            String localHint = 'Auto-calculates if empty';
-                            if (parsedAmountMinor > 0) {
-                                final calculated = convertMoneyForDisplay(state, Money(amountMinor: parsedAmountMinor, currency: txCurrency), sourceAccount?.currency ?? state.preferences.baseCurrency);
-                                localHint = '≈ ${_formatAmountInput(calculated.amountMinor)}';
-                            }
-                            return TextField(
-                              controller: _localAmountController,
-                              readOnly: true,
-                              onTap: () {
-                                setState(() {
-                                  _activeField = 1;
-                                  _localAmount = _localAmountController.text.replaceAll(',', '').trim();
-                                });
-                                DefaultTabController.of(context).animateTo(0);
-                              },
-                              style: const TextStyle(fontWeight: FontWeight.w700),
-                              decoration: InputDecoration(
-                                labelText: 'Amount charged in ${sourceAccount?.currency ?? ""}',
-                                hintText: localHint,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(AppRadii.md),
-                                ),
-                                prefixIcon: const Icon(
-                                  Icons.currency_exchange_rounded,
-                                ),
-                              ),
-                            );
-                          }
-                        ),
-                      ],
-                      if (isCrossTransfer) ...[
-                        if (isForeign) const SizedBox(height: AppSpacing.xs),
-                        Builder(
-                          builder: (context) {
-                            final resolvedAmount = _expression.isNotEmpty
-                                ? _evaluate('$_expression ${_amount.isEmpty ? "0" : _amount}')
-                                : _amount;
-                            final parsedAmountMinor = _amountMinorFromInput(resolvedAmount);
-                            String counterHint = 'Auto-calculates if empty';
-                            if (parsedAmountMinor > 0) {
-                                final calculated = convertMoneyForDisplay(state, Money(amountMinor: parsedAmountMinor, currency: txCurrency), counterAccount.currency);
-                                counterHint = '≈ ${_formatAmountInput(calculated.amountMinor)}';
-                            }
-                            return TextField(
-                              controller: _counterAmountController,
-                              readOnly: true,
-                              onTap: () {
-                                setState(() {
-                                  _activeField = 2;
-                                  _counterAmount = _counterAmountController.text.replaceAll(',', '').trim();
-                                });
-                                DefaultTabController.of(context).animateTo(0);
-                              },
-                              style: const TextStyle(fontWeight: FontWeight.w700),
-                              decoration: InputDecoration(
-                                labelText: 'Amount received in ${counterAccount.currency}',
-                                hintText: counterHint,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(AppRadii.md),
-                                ),
-                                prefixIcon: const Icon(Icons.download_rounded),
-                              ),
-                            );
-                          }
-                        ),
-                      ],
-                    ],
+                  child: _FxAmountPanel(
+                    state: state,
+                    sourceAccount: sourceAccount,
+                    counterAccount: counterAccount,
+                    txCurrency: txCurrency,
+                    isForeign: isForeign,
+                    isCrossTransfer: isCrossTransfer,
+                    sentAmount: _resolvedMainAmountInput(),
+                    localAmount: _localAmountController.text,
+                    counterAmount: _counterAmountController.text,
+                    activeField: _activeField,
+                    onEditMain: () {
+                      setState(() => _activeField = 0);
+                      DefaultTabController.of(context).animateTo(0);
+                    },
+                    onEditLocal: () {
+                      setState(() {
+                        _activeField = 1;
+                        _localAmountEdited = true;
+                        _localAmount = _localAmountController.text
+                            .replaceAll(',', '')
+                            .trim();
+                      });
+                      DefaultTabController.of(context).animateTo(0);
+                    },
+                    onEditCounter: () {
+                      setState(() {
+                        _activeField = 2;
+                        _counterAmountEdited = true;
+                        _counterAmount = _counterAmountController.text
+                            .replaceAll(',', '')
+                            .trim();
+                      });
+                      DefaultTabController.of(context).animateTo(0);
+                    },
                   ),
                 ),
               ],
@@ -496,12 +474,22 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                           _amount = next.amount;
                           _expression = next.expression;
                         } else if (_activeField == 1) {
-                          final next = _applyKey(_localAmount, _localExpression, key);
+                          _localAmountEdited = true;
+                          final next = _applyKey(
+                            _localAmount,
+                            _localExpression,
+                            key,
+                          );
                           _localAmount = next.amount;
                           _localExpression = next.expression;
                           _localAmountController.text = next.amount;
                         } else if (_activeField == 2) {
-                          final next = _applyKey(_counterAmount, _counterExpression, key);
+                          _counterAmountEdited = true;
+                          final next = _applyKey(
+                            _counterAmount,
+                            _counterExpression,
+                            key,
+                          );
                           _counterAmount = next.amount;
                           _counterExpression = next.expression;
                           _counterAmountController.text = next.amount;
@@ -910,37 +898,33 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
     setState(() {
       if (counter) {
         _counterAccountId = nextId;
+        _counterAmountEdited = false;
+        _counterAmount = '';
+        _counterExpression = '';
+        _counterAmountController.clear();
       } else {
         _accountId = nextId;
-        if (_counterAccountId == nextId) _counterAccountId = null;
+        _localAmountEdited = false;
+        _localAmount = '';
+        _localExpression = '';
+        _localAmountController.clear();
+        if (_counterAccountId == nextId) {
+          _counterAccountId = null;
+        }
+        _counterAmountEdited = false;
+        _counterAmount = '';
+        _counterExpression = '';
+        _counterAmountController.clear();
       }
     });
   }
 
   Future<void> _showCategoryPicker() async {
     final state = ref.read(ledgerProvider);
-    final categories = state.categories.where((category) {
-      if (category.isArchived) return false;
-      if (_type == 'income' || _type == 'expense') {
-        return category.kind == _type;
-      }
-      return true;
-    }).toList();
-    final nextId = await showFullScreenPicker<String>(
+    final nextId = await showCategoryHierarchyPicker(
       context: context,
-      title: 'Choose category',
-      searchHint: 'Search categories',
-      selectedValue: _categoryId,
-      options: [
-        for (final category in categories)
-          PickerOption(
-            value: category.id,
-            title: category.name,
-            subtitle: category.kind,
-            icon: Icons.category_outlined,
-            iconColor: categoryColor(category, context),
-          ),
-      ],
+      state: state,
+      selectedCategoryId: _categoryId,
     );
     if (nextId == null) return;
     setState(() => _categoryId = nextId);
@@ -984,6 +968,78 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
         );
       });
     }
+  }
+
+  String _resolvedMainAmountInput() {
+    return _expression.isNotEmpty
+        ? _evaluate('$_expression ${_amount.isEmpty ? "0" : _amount}')
+        : _amount;
+  }
+
+  void _syncConvertedAmountDraft({
+    required LedgerState state,
+    required Account? sourceAccount,
+    required Account? counterAccount,
+    required String txCurrency,
+    required bool isForeign,
+    required bool isCrossTransfer,
+  }) {
+    final parsedAmountMinor = _amountMinorFromInput(_resolvedMainAmountInput());
+    if (parsedAmountMinor <= 0) return;
+
+    if (isForeign && sourceAccount != null && !_localAmountEdited) {
+      final converted = _convertedAmountInput(
+        state: state,
+        amountMinor: parsedAmountMinor,
+        fromCurrency: txCurrency,
+        toCurrency: sourceAccount.currency,
+      );
+      _setConvertedDraft(
+        controller: _localAmountController,
+        value: converted,
+        updateDraft: (value) => _localAmount = value,
+        activeField: 1,
+      );
+    }
+
+    if (isCrossTransfer && counterAccount != null && !_counterAmountEdited) {
+      final converted = _convertedAmountInput(
+        state: state,
+        amountMinor: parsedAmountMinor,
+        fromCurrency: txCurrency,
+        toCurrency: counterAccount.currency,
+      );
+      _setConvertedDraft(
+        controller: _counterAmountController,
+        value: converted,
+        updateDraft: (value) => _counterAmount = value,
+        activeField: 2,
+      );
+    }
+  }
+
+  String _convertedAmountInput({
+    required LedgerState state,
+    required int amountMinor,
+    required String fromCurrency,
+    required String toCurrency,
+  }) {
+    final converted = convertMoneyForDisplay(
+      state,
+      Money(amountMinor: amountMinor, currency: fromCurrency),
+      toCurrency,
+    );
+    return _formatAmountInput(converted.amountMinor);
+  }
+
+  void _setConvertedDraft({
+    required TextEditingController controller,
+    required String value,
+    required ValueChanged<String> updateDraft,
+    required int activeField,
+  }) {
+    if (controller.text != value) controller.text = value;
+    if (_activeField != activeField) updateDraft(value);
   }
 
   // ── Save ──────────────────────────────────────────────────────────────────
@@ -1072,11 +1128,9 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       return;
     }
     final selectedCategory = categoryById(state, _categoryId);
-    final needsCategory = _type != 'transfer' && _type != 'adjustment';
+    final needsCategory = _type != 'transfer';
     if (needsCategory &&
-        (selectedCategory == null ||
-            selectedCategory.isArchived ||
-            selectedCategory.kind != _type)) {
+      (selectedCategory == null || selectedCategory.isArchived)) {
       _showMessage('Choose a category before saving.');
       return;
     }
@@ -1092,9 +1146,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
             originalAmountMinor: finalOriginalAmountMinor,
             originalCurrency: finalOriginalCurrency,
             counterAmountMinor: finalCounterAmountMinor,
-            categoryId: _type == 'transfer' || _type == 'adjustment'
-                ? null
-              : selectedCategory!.id,
+            categoryId: _type == 'transfer' ? null : selectedCategory!.id,
             status: editingTransaction?.status ?? 'cleared',
             source: editingTransaction?.source ?? 'manual',
             paymentMethod: _paymentMethodController.text.trim().isEmpty
@@ -1134,7 +1186,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       if (context.canPop()) {
         context.pop();
       } else {
-        context.push('/');
+        context.go('/');
       }
     } catch (error) {
       if (!mounted) return;
@@ -1168,6 +1220,8 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       _counterExpression = '';
       _localAmountController.text = '';
       _counterAmountController.text = '';
+      _localAmountEdited = false;
+      _counterAmountEdited = false;
       _notesController.text = '';
       _locationController.text = '';
       _paymentMethodController.text = '';
@@ -1183,12 +1237,18 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       _localAmountController.text = _formatAmountInput(
         transaction.amount.amountMinor,
       );
+      _localAmountEdited = true;
+    } else {
+      _localAmountEdited = false;
     }
     if (transaction.counterAmount != null &&
         transaction.counterAmount?.currency != transaction.amount.currency) {
       _counterAmountController.text = _formatAmountInput(
         transaction.counterAmount!.amountMinor,
       );
+      _counterAmountEdited = true;
+    } else {
+      _counterAmountEdited = false;
     }
     _expression = '';
     _accountId = transaction.accountId;
@@ -1225,20 +1285,219 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
     TransactionRecord? editingTransaction,
   ) {
     if (editingTransaction != null) return;
-    if (_type == 'transfer' || _type == 'adjustment') {
+    if (_type == 'transfer') {
       _categoryId = null;
       return;
     }
     final selectedCategory = categoryById(state, _categoryId);
     if (selectedCategory == null ||
-        selectedCategory.isArchived ||
-        selectedCategory.kind != _type) {
+        selectedCategory.isArchived) {
       _categoryId = null;
     }
   }
 }
 
 // ── Helper types ──────────────────────────────────────────────────────────────
+
+class _FxAmountPanel extends StatelessWidget {
+  const _FxAmountPanel({
+    required this.state,
+    required this.sourceAccount,
+    required this.counterAccount,
+    required this.txCurrency,
+    required this.isForeign,
+    required this.isCrossTransfer,
+    required this.sentAmount,
+    required this.localAmount,
+    required this.counterAmount,
+    required this.activeField,
+    required this.onEditMain,
+    required this.onEditLocal,
+    required this.onEditCounter,
+  });
+
+  final LedgerState state;
+  final Account? sourceAccount;
+  final Account? counterAccount;
+  final String txCurrency;
+  final bool isForeign;
+  final bool isCrossTransfer;
+  final String sentAmount;
+  final String localAmount;
+  final String counterAmount;
+  final int activeField;
+  final VoidCallback onEditMain;
+  final VoidCallback onEditLocal;
+  final VoidCallback onEditCounter;
+
+  @override
+  Widget build(BuildContext context) {
+    final sourceCurrency = sourceAccount?.currency ?? state.preferences.baseCurrency;
+    final counterCurrency = counterAccount?.currency;
+    final rateLabel = counterCurrency == null
+        ? null
+        : _fxRateLabel(state, txCurrency, counterCurrency);
+
+    if (isCrossTransfer && counterAccount != null) {
+      return Row(
+        children: [
+          Expanded(
+            child: _FxAmountCard(
+              title: 'Sent',
+              subtitle: sourceAccount?.name ?? sourceCurrency,
+              amount: sentAmount,
+              currency: txCurrency,
+              icon: Icons.upload_rounded,
+              selected: activeField == 0,
+              onTap: onEditMain,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: _FxAmountCard(
+              title: 'Received',
+              subtitle: rateLabel ?? counterAccount!.name,
+              amount: counterAmount,
+              currency: counterAccount!.currency,
+              icon: Icons.download_rounded,
+              selected: activeField == 2,
+              onTap: onEditCounter,
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (isForeign && sourceAccount != null) {
+      return Row(
+        children: [
+          Expanded(
+            child: _FxAmountCard(
+              title: 'Original',
+              subtitle: 'Transaction amount',
+              amount: sentAmount,
+              currency: txCurrency,
+              icon: Icons.receipt_long_outlined,
+              selected: activeField == 0,
+              onTap: onEditMain,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: _FxAmountCard(
+              title: 'Charged',
+              subtitle: _fxRateLabel(state, txCurrency, sourceCurrency) ?? sourceAccount!.name,
+              amount: localAmount,
+              currency: sourceCurrency,
+              icon: Icons.currency_exchange_rounded,
+              selected: activeField == 1,
+              onTap: onEditLocal,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+}
+
+class _FxAmountCard extends StatelessWidget {
+  const _FxAmountCard({
+    required this.title,
+    required this.subtitle,
+    required this.amount,
+    required this.currency,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final String amount;
+  final String currency;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = selected ? scheme.primary : scheme.onSurfaceVariant;
+    return Material(
+      color: selected
+          ? scheme.primaryContainer.withAlpha(110)
+          : scheme.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 78),
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            border: Border.all(
+              color: selected ? scheme.primary : scheme.outlineVariant,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, size: 15, color: color),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 5),
+              Text(
+                '${amount.isEmpty ? '0' : amount} $currency',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: scheme.onSurface,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 15,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: scheme.onSurfaceVariant,
+                  fontSize: 10.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String? _fxRateLabel(LedgerState state, String from, String to) {
+  final rate = rateBetween(state, from, to);
+  if (rate == null || rate <= 0 || !rate.isFinite) return null;
+  final displayRate = rate >= 1 ? rate.toStringAsFixed(2) : rate.toStringAsFixed(4);
+  return '1 ${from.toUpperCase()} ≈ $displayRate ${to.toUpperCase()}';
+}
 
 class _CalcState {
   const _CalcState({required this.amount, required this.expression});
@@ -1274,7 +1533,6 @@ Color _toneColor(BuildContext context, String type) {
           ? AppColors.positiveDark
           : AppColors.positiveLight,
     'transfer' => scheme.primary,
-    'adjustment' => scheme.secondary,
     _ => scheme.error,
   };
 }

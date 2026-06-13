@@ -11,19 +11,31 @@ class UpdatesScreen extends ConsumerWidget {
     final provider = ref.read(appUpdateProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Updates'),
-      ),
+      appBar: AppBar(title: const Text('Updates')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _buildStatusCard(context, state, provider),
           const SizedBox(height: 16),
+          _buildCurrentVersionCard(context, state),
+          const SizedBox(height: 16),
           if (state.latestRelease != null)
             _buildReleaseInfoCard(context, state.latestRelease!),
-          const SizedBox(height: 16),
-          if (state.latestRelease?.changelog != null)
-            _buildChangelogCard(context, state.latestRelease!.changelog),
+          if (state.latestRelease != null) const SizedBox(height: 16),
+          if (state.latestRelease != null)
+            _buildChangelogCard(
+              context,
+              state.latestRelease!.changelog,
+              title: 'Available update changelog',
+            ),
+          if (state.latestRelease != null && state.currentRelease != null)
+            const SizedBox(height: 16),
+          if (state.currentRelease != null)
+            _buildChangelogCard(
+              context,
+              state.currentRelease!.changelog,
+              title: 'Installed version changelog',
+            ),
           const SizedBox(height: 24),
           if (state.status == UpdateStatus.downloading)
             _buildDownloadProgress(context, state),
@@ -34,7 +46,11 @@ class UpdatesScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatusCard(BuildContext context, AppUpdateState state, AppUpdateProvider provider) {
+  Widget _buildStatusCard(
+    BuildContext context,
+    AppUpdateState state,
+    AppUpdateProvider provider,
+  ) {
     final theme = Theme.of(context);
     String title = 'Checking for updates...';
     String subtitle = '';
@@ -44,7 +60,8 @@ class UpdatesScreen extends ConsumerWidget {
     if (state.status == UpdateStatus.idle) {
       if (state.latestRelease != null) {
         title = 'Update Available';
-        subtitle = 'Version ${state.latestRelease!.versionName} (${state.latestRelease!.channel})';
+        subtitle =
+            'Version ${state.latestRelease!.versionName} (${state.latestRelease!.channel})';
         icon = Icons.system_update;
         color = theme.colorScheme.secondary;
       } else {
@@ -54,7 +71,7 @@ class UpdatesScreen extends ConsumerWidget {
         color = theme.colorScheme.tertiary;
       }
     } else if (state.status == UpdateStatus.error) {
-      title = 'Error checking for updates';
+      title = 'Update check unavailable';
       subtitle = state.errorMessage ?? '';
       icon = Icons.error;
       color = theme.colorScheme.error;
@@ -71,7 +88,12 @@ class UpdatesScreen extends ConsumerWidget {
           backgroundColor: color.withValues(alpha: 0.1),
           child: Icon(icon, color: color),
         ),
-        title: Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+        title: Text(
+          title,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         subtitle: Text(subtitle),
         trailing: DropdownButton<String>(
           value: state.channel,
@@ -88,6 +110,56 @@ class UpdatesScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildCurrentVersionCard(BuildContext context, AppUpdateState state) {
+    final theme = Theme.of(context);
+    final versionName = state.currentVersionName.isEmpty
+        ? 'Unknown'
+        : state.currentVersionName;
+    final versionCode = state.currentVersionCode == 0
+        ? 'Unknown'
+        : state.currentVersionCode.toString();
+    final release = state.currentRelease;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Current app version',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.phone_android_outlined),
+              title: Text(versionName),
+              subtitle: Text('Build $versionCode'),
+              trailing: release == null
+                  ? const Tooltip(
+                      message: 'No release metadata found for this build',
+                      child: Icon(Icons.info_outline),
+                    )
+                  : Chip(label: Text(release.channel)),
+            ),
+            if (release == null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'No changelog metadata was found for this installed build yet. Once the release metadata is published, its full changelog will appear here.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildReleaseInfoCard(BuildContext context, AppUpdateRelease release) {
     return Card(
       child: Padding(
@@ -95,7 +167,12 @@ class UpdatesScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Release Details', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              'Release Details',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -114,7 +191,9 @@ class UpdatesScreen extends ConsumerWidget {
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.sd_storage),
                 title: const Text('Size'),
-                trailing: Text('${(release.apk!.sizeBytes / 1024 / 1024).toStringAsFixed(1)} MB'),
+                trailing: Text(
+                  '${(release.apk!.sizeBytes / 1024 / 1024).toStringAsFixed(1)} MB',
+                ),
               ),
           ],
         ),
@@ -122,8 +201,12 @@ class UpdatesScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildChangelogCard(BuildContext context, Changelog changelog) {
-    if (changelog.newFeatures.isEmpty && changelog.bugFixes.isEmpty && changelog.notes.isEmpty) {
+  Widget _buildChangelogCard(
+    BuildContext context,
+    Changelog changelog, {
+    required String title,
+  }) {
+    if (changelog.isEmpty) {
       return const SizedBox();
     }
 
@@ -133,30 +216,74 @@ class UpdatesScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Changelog', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              title,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 12),
             if (changelog.newFeatures.isNotEmpty) ...[
-              Text('New Features', style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.primary)),
-              ...changelog.newFeatures.map((f) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('• '), Expanded(child: Text(f))]),
-              )),
+              Text(
+                'New Features',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              ...changelog.newFeatures.map(
+                (f) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('• '),
+                      Expanded(child: Text(f)),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 12),
             ],
             if (changelog.bugFixes.isNotEmpty) ...[
-              Text('Bug Fixes', style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.error)),
-              ...changelog.bugFixes.map((f) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('• '), Expanded(child: Text(f))]),
-              )),
+              Text(
+                'Bug Fixes',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ),
+              ...changelog.bugFixes.map(
+                (f) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('• '),
+                      Expanded(child: Text(f)),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 12),
             ],
             if (changelog.notes.isNotEmpty) ...[
-              Text('Notes', style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.secondary)),
-              ...changelog.notes.map((f) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('• '), Expanded(child: Text(f))]),
-              )),
+              Text(
+                'Notes',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.secondary,
+                ),
+              ),
+              ...changelog.notes.map(
+                (f) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('• '),
+                      Expanded(child: Text(f)),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ],
         ),
@@ -186,7 +313,11 @@ class UpdatesScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, AppUpdateState state, AppUpdateProvider provider) {
+  Widget _buildActionButtons(
+    BuildContext context,
+    AppUpdateState state,
+    AppUpdateProvider provider,
+  ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
