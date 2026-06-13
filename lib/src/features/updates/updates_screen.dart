@@ -51,7 +51,7 @@ class UpdatesScreen extends ConsumerWidget {
         title = 'App is up to date';
         subtitle = 'You are on the latest version';
         icon = Icons.check_circle;
-        color = Colors.green;
+        color = theme.colorScheme.tertiary;
       }
     } else if (state.status == UpdateStatus.error) {
       title = 'Error checking for updates';

@@ -1,5 +1,8 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../design/tokens.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
@@ -40,15 +43,15 @@ class NotificationService {
   ) async {
     await requestPermissions();
 
-    const androidDetails = AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       'app_updates',
       'App Updates',
       channelDescription: 'Notifications for new app versions',
       importance: Importance.high,
       priority: Priority.high,
-      color: Color(0xFF315DA8),
+      color: await _notificationAccentColor(),
     );
-    const notificationDetails = NotificationDetails(android: androidDetails);
+    final notificationDetails = NotificationDetails(android: androidDetails);
 
     await _notificationsPlugin.show(
       id: 0,
@@ -56,5 +59,17 @@ class NotificationService {
       body: 'Version $version ($channel) is ready to install',
       notificationDetails: notificationDetails,
     );
+  }
+
+  static Future<Color> _notificationAccentColor() async {
+    final preferences = await SharedPreferences.getInstance();
+    final accent = preferences.getString(
+      'one_wallet_flutter.accent.preference.v1',
+    );
+    if (accent != null && accent.length == 7 && accent.startsWith('#')) {
+      final intValue = int.tryParse(accent.substring(1), radix: 16);
+      if (intValue != null) return Color(intValue | 0xFF000000);
+    }
+    return AppColors.primary;
   }
 }

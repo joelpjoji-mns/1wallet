@@ -3,61 +3,93 @@ import 'package:flutter/material.dart';
 import '../design/tokens.dart';
 
 abstract final class AppTheme {
-  static ThemeData light({String? accentColor}) => _theme(Brightness.light, accentColor: accentColor);
+  static ThemeData light({String? accentColor, ColorScheme? systemColorScheme}) =>
+      _theme(
+        Brightness.light,
+        accentColor: accentColor,
+        systemColorScheme: systemColorScheme,
+      );
 
-  static ThemeData dark({String? accentColor}) => _theme(Brightness.dark, accentColor: accentColor);
+  static ThemeData dark({String? accentColor, ColorScheme? systemColorScheme}) =>
+      _theme(
+        Brightness.dark,
+        accentColor: accentColor,
+        systemColorScheme: systemColorScheme,
+      );
 
-  static ThemeData amoled({String? accentColor}) => _theme(Brightness.dark, amoled: true, accentColor: accentColor);
+  static ThemeData amoled({String? accentColor, ColorScheme? systemColorScheme}) =>
+      _theme(
+        Brightness.dark,
+        amoled: true,
+        accentColor: accentColor,
+        systemColorScheme: systemColorScheme,
+      );
 
-  static ThemeData _theme(Brightness brightness, {bool amoled = false, String? accentColor}) {
+  static ThemeData _theme(
+    Brightness brightness, {
+    bool amoled = false,
+    String? accentColor,
+    ColorScheme? systemColorScheme,
+  }) {
     final dark = brightness == Brightness.dark;
-    
-    Color primaryColor = AppColors.primary;
-    if (accentColor != null && accentColor.length == 7 && accentColor.startsWith('#')) {
-      final intValue = int.tryParse(accentColor.substring(1), radix: 16);
-      if (intValue != null) {
-        primaryColor = Color(intValue | 0xFF000000);
-      }
+    final customAccentColor = _parseAccentColor(accentColor);
+    final baseScheme = customAccentColor == null &&
+            systemColorScheme != null &&
+            systemColorScheme.brightness == brightness
+        ? systemColorScheme
+        : ColorScheme.fromSeed(
+            seedColor: customAccentColor ?? AppColors.primary,
+            brightness: brightness,
+          );
+
+    var scheme = baseScheme;
+    if (customAccentColor != null) {
+      scheme = scheme.copyWith(primary: customAccentColor);
     }
 
-    final scheme =
-        ColorScheme.fromSeed(
-          seedColor: primaryColor,
-          brightness: brightness,
-        ).copyWith(
-          primary: primaryColor,
-          secondary: AppColors.secondary,
-          tertiary: AppColors.tertiary,
-          error: dark ? AppColors.dangerDark : AppColors.dangerLight,
-          surface: amoled
-              ? const Color(0xFF050505)
-              : dark
-              ? const Color(0xFF121316)
-              : const Color(0xFFFFFBFF),
-          surfaceContainerLow: amoled
-              ? const Color(0xFF050505)
-              : dark
-              ? const Color(0xFF191A1E)
-              : const Color(0xFFFFF6EC),
-          surfaceContainer: amoled
-              ? const Color(0xFF090909)
-              : dark
-              ? const Color(0xFF1F2024)
-              : const Color(0xFFF7EFE6),
-          surfaceContainerHigh: amoled
-              ? const Color(0xFF101010)
-              : dark
-              ? const Color(0xFF292A2F)
-              : const Color(0xFFF1E7DC),
-          surfaceContainerHighest: amoled
-              ? const Color(0xFF171717)
-              : dark
-              ? const Color(0xFF33343A)
-              : const Color(0xFFE9DDD0),
-          outlineVariant: dark
-              ? const Color(0xFF4A4C52)
-              : const Color(0xFFCFC2B5),
-        );
+    scheme = scheme.copyWith(
+      error: dark ? AppColors.dangerDark : AppColors.dangerLight,
+      surface: amoled
+        ? const Color(0xFF050505)
+        : _accentTintedSurface(
+          scheme.surface,
+          scheme.primary,
+          dark ? 0.03 : 0.018,
+        ),
+      surfaceContainerLow: amoled
+        ? const Color(0xFF050505)
+        : _accentTintedSurface(
+          scheme.surfaceContainerLow,
+          scheme.primary,
+          dark ? 0.08 : 0.045,
+        ),
+      surfaceContainer: amoled
+        ? const Color(0xFF090909)
+        : _accentTintedSurface(
+          scheme.surfaceContainer,
+          scheme.primary,
+          dark ? 0.10 : 0.06,
+        ),
+      surfaceContainerHigh: amoled
+        ? const Color(0xFF101010)
+        : _accentTintedSurface(
+          scheme.surfaceContainerHigh,
+          scheme.primary,
+          dark ? 0.12 : 0.075,
+        ),
+      surfaceContainerHighest: amoled
+        ? const Color(0xFF171717)
+        : _accentTintedSurface(
+          scheme.surfaceContainerHighest,
+          scheme.primary,
+          dark ? 0.14 : 0.09,
+        ),
+      outlineVariant: _accentTintedSurface(
+      scheme.outlineVariant,
+      scheme.primary,
+      dark ? 0.18 : 0.12,
+      ),
+    );
 
     final textTheme = Typography.material2021(
       platform: TargetPlatform.android,
@@ -116,5 +148,25 @@ abstract final class AppTheme {
         linearTrackColor: scheme.surfaceContainerHighest,
       ),
     );
+  }
+
+  static Color? _parseAccentColor(String? accentColor) {
+    if (accentColor != null &&
+        accentColor.length == 7 &&
+        accentColor.startsWith('#')) {
+      final intValue = int.tryParse(accentColor.substring(1), radix: 16);
+      if (intValue != null) {
+        return Color(intValue | 0xFF000000);
+      }
+    }
+    return null;
+  }
+
+  static Color _accentTintedSurface(
+    Color surface,
+    Color accent,
+    double opacity,
+  ) {
+    return Color.alphaBlend(accent.withAlphaFactor(opacity), surface);
   }
 }

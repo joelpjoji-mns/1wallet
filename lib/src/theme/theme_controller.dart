@@ -11,7 +11,7 @@ enum AppThemePreference { system, light, dark, amoled }
 
 class AppThemeState {
   const AppThemeState({
-    this.preference = AppThemePreference.system,
+    this.preference = AppThemePreference.amoled,
     this.accentColor,
     this.isLoaded = false,
   });
@@ -75,7 +75,7 @@ class ThemeController extends StateNotifier<AppThemeState> {
       final accent = preferences.getString(_accentKey);
       final preference = AppThemePreference.values.firstWhere(
         (item) => item.name == raw,
-        orElse: () => AppThemePreference.system,
+        orElse: () => AppThemePreference.amoled,
       );
       if (!mounted) return;
       state = AppThemeState(

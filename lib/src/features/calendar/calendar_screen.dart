@@ -73,7 +73,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       scrollable: false,
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.md,
-        AppSpacing.md,
+        AppSpacing.xs,
         AppSpacing.md,
         115.0,
       ),

@@ -324,14 +324,24 @@ class LedgerController extends StateNotifier<LedgerState> {
     );
   }
 
-
-
   Future<void> setStartDayOfMonth(int day) async {
     await _commit(
       state.copyWith(
         preferences: state.preferences.copyWith(startDayOfMonth: day),
       ),
     );
+  }
+
+  Timer? _prefsSaveTimer;
+
+  Future<void> updatePreferences(LedgerPreferences preferences) async {
+    state = state.copyWith(preferences: preferences);
+
+    // Debounce the heavy disk/cloud save to avoid OutOfMemory / extreme jank during slider drags
+    _prefsSaveTimer?.cancel();
+    _prefsSaveTimer = Timer(const Duration(milliseconds: 500), () {
+      unawaited(_repository.save(state));
+    });
   }
 
   Future<void> resetLedger() async {
