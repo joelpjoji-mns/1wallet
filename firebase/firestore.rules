@@ -164,8 +164,8 @@ service cloud.firestore {
         data.sizeBytes is int && data.sizeBytes > 0 && data.sizeBytes <= 250000000 &&
         data.sha256 is string && data.sha256.matches('^(sha256:)?[0-9a-f]{64}$') &&
         data.architecture is string && data.architecture in ['universal', 'arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64'] &&
-        (!('minSdk' in data) || (data.minSdk is int && data.minSdk >= 21 && data.minSdk <= 100)) &&
-        (!('estimatedDownloadSeconds' in data) || (data.estimatedDownloadSeconds is int && data.estimatedDownloadSeconds > 0 && data.estimatedDownloadSeconds <= 86400));
+        (!('minSdk' in data) || data.minSdk == null || (data.minSdk is int && data.minSdk >= 21 && data.minSdk <= 100)) &&
+        (!('estimatedDownloadSeconds' in data) || data.estimatedDownloadSeconds == null || (data.estimatedDownloadSeconds is int && data.estimatedDownloadSeconds > 0 && data.estimatedDownloadSeconds <= 86400));
     }
 
     function isValidUpdateIos(data) {
@@ -188,7 +188,7 @@ service cloud.firestore {
         (!('buildUrl' in data) || (data.buildUrl is string && data.buildUrl.matches('^https?://.+'))) &&
         (!('appStoreId' in data) || (data.appStoreId is string && data.appStoreId.matches('^[0-9]{1,32}$'))) &&
         (!('bundleIdentifier' in data) || (data.bundleIdentifier is string && data.bundleIdentifier.matches('^[A-Za-z0-9.-]{1,160}$'))) &&
-        (!('minimumOsVersion' in data) || (data.minimumOsVersion is string && data.minimumOsVersion.matches('^[0-9]+(\.[0-9]+){0,2}$')));
+        (!('minimumOsVersion' in data) || (data.minimumOsVersion is string && data.minimumOsVersion.matches('^[0-9.]{1,20}$')));
     }
 
     function isValidAppUpdateRelease(data, platform) {
