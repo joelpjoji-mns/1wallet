@@ -9,6 +9,7 @@ import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../common/category_hierarchy_picker.dart';
 import '../common/full_screen_picker.dart';
 import '../transactions/transaction_row.dart';
 import '../transactions/transactions_components.dart';
@@ -529,9 +530,11 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                 )
               else
                 PremiumRow(
-                  icon: Icons.category_outlined,
+                  icon: categoryIcon(category),
                   title: 'Category',
-                  subtitle: category?.name ?? 'Choose category',
+                  subtitle: category == null
+                      ? 'Choose category'
+                      : categoryPath(state, category),
                   iconColor: categoryColor(category, context),
                   onTap: () => _showRecurringCategoryPicker(state),
                 ),
@@ -597,7 +600,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
         : _formatAmountInput(record.amount.amountMinor.abs());
     _accountId = record?.accountId ?? state.accounts.firstOrNull?.id;
     _counterAccountId = record?.counterAccountId;
-    _categoryId = record?.categoryId ?? _firstExpenseCategoryId(state);
+    _categoryId = record?.categoryId ?? _firstCategoryId(state);
     _nextDate =
         record?.occurredAt ?? DateTime.now().add(const Duration(days: 1));
     _notesController.text = record?.notes ?? '';
@@ -681,24 +684,10 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
   }
 
   Future<void> _showRecurringCategoryPicker(LedgerState state) async {
-    final kind = incomeTypes.contains(_type) ? 'income' : 'expense';
-    final next = await showFullScreenPicker<String>(
+    final next = await showCategoryHierarchyPicker(
       context: context,
-      title: 'Choose category',
-      searchHint: 'Search categories',
-      selectedValue: _categoryId,
-      options: [
-        for (final category in state.categories.where(
-          (category) => !category.isArchived && category.kind == kind,
-        ))
-          PickerOption(
-            value: category.id,
-            title: category.name,
-            subtitle: category.kind,
-            icon: Icons.category_outlined,
-            iconColor: categoryColor(category, context),
-          ),
-      ],
+      state: state,
+      selectedCategoryId: _categoryId,
     );
     if (next == null) return;
     setState(() => _categoryId = next);
@@ -774,9 +763,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
             type: _type,
             accountId: account.id,
             counterAccountId: _needsCounterAccount ? _counterAccountId : null,
-            categoryId: _needsCounterAccount || _type == 'adjustment'
-                ? null
-                : _categoryId,
+            categoryId: _needsCounterAccount ? null : _categoryId,
             amountMinor: amountMinor,
             status: 'scheduled',
             source: 'recurring',
@@ -1093,22 +1080,8 @@ class _RecurringHistoryList extends ConsumerWidget {
   }
 }
 
-String? _firstExpenseCategoryId(LedgerState state, {String? preferred}) {
-  final normalizedPreferred = preferred?.trim().toLowerCase();
-  if (normalizedPreferred != null && normalizedPreferred.isNotEmpty) {
-    final match = state.categories.firstWhereOrNull(
-      (category) =>
-          category.kind == 'expense' &&
-          !category.isArchived &&
-          category.name.toLowerCase().contains(normalizedPreferred),
-    );
-    if (match != null) return match.id;
-  }
-  return state.categories
-      .firstWhereOrNull(
-        (category) => category.kind == 'expense' && !category.isArchived,
-      )
-      ?.id;
+String? _firstCategoryId(LedgerState state, {String? preferred}) {
+  return firstActiveCategory(state, preferred: preferred)?.id;
 }
 
 String _formatAmountInput(int amountMinor) {

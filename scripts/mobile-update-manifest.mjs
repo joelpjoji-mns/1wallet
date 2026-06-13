@@ -46,15 +46,27 @@ if (!fs.existsSync(changelogPath)) {
 }
 
 const apk = fs.readFileSync(apkPath);
-const changelog = JSON.parse(fs.readFileSync(changelogPath, 'utf8'));
+const changelogSource = JSON.parse(fs.readFileSync(changelogPath, 'utf8'));
+const changelog = {
+  newFeatures: changelogSource.newFeatures ?? changelogSource.features ?? changelogSource.changelog?.newFeatures ?? changelogSource.changelog?.features ?? [],
+  bugFixes: changelogSource.bugFixes ?? changelogSource.fixes ?? changelogSource.changelog?.bugFixes ?? changelogSource.changelog?.fixes ?? [],
+  notes: changelogSource.notes ?? changelogSource.changelog?.notes ?? [],
+};
 const manifest = {
+  versionName: version,
   version,
   versionCode: Number.parseInt(versionCode, 10),
+  platform: 'android',
   channel,
+  status: 'published',
   releaseType,
+  requirement: mandatory ? 'mandatory' : 'optional',
   mandatory,
+  minimumSupportedVersionCode: 0,
+  runtimeVersion: version,
   apk: {
     fileName,
+    downloadUrl: url,
     url,
     sizeBytes: apk.length,
     sha256: createHash('sha256').update(apk).digest('hex'),

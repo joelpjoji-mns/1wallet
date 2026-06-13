@@ -133,7 +133,7 @@ class _BudgetGoalEditorScreenState
     if (context.canPop()) {
       context.pop();
     } else {
-      context.push('/');
+      context.go('/');
     }
   }
 

@@ -2,12 +2,17 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+import 'category_taxonomy.dart';
 import 'ledger_models.dart';
 
-const currentLedgerStateVersion = 14;
+const currentLedgerStateVersion = 16;
 
 String encodeLedgerState(LedgerState state) {
   return jsonEncode(_ledgerToJson(state));
+}
+
+LedgerState normalizeLedgerState(LedgerState state) {
+  return _migrateLedgerState(state, fromVersion: state.version);
 }
 
 LedgerState decodeLedgerState(String source) {
@@ -37,8 +42,9 @@ Map<String, Object?> _ledgerToJson(LedgerState state) {
 }
 
 LedgerState _ledgerFromJson(Map<String, dynamic> json) {
-  return LedgerState(
-    version: _int(json['version'], fallback: currentLedgerStateVersion),
+  final version = _int(json['version'], fallback: currentLedgerStateVersion);
+  final ledger = LedgerState(
+    version: version,
     userId: _string(json['userId'], fallback: 'local-user'),
     preferences: _preferencesFromJson(_map(json['preferences'])),
     accounts: _list(json['accounts']).map(_accountFromJson).toList(),
@@ -58,6 +64,300 @@ LedgerState _ledgerFromJson(Map<String, dynamic> json) {
       json['exchangeRates'],
     ).map(_exchangeRateFromJson).toList(),
   );
+  return _migrateLedgerState(ledger, fromVersion: version);
+}
+
+LedgerState _migrateLedgerState(LedgerState state, {required int fromVersion}) {
+  var next = state;
+  if (fromVersion < 15) {
+    final categoryIds = {for (final category in next.categories) category.id};
+    final categories = [
+      for (final category in next.categories)
+        if (category.id == 'cat-grocery' &&
+            category.parentId == null &&
+            categoryIds.contains('cat-food'))
+          category.copyWith(parentId: 'cat-food')
+        else if (category.id == 'cat-emi' &&
+            category.parentId == null &&
+            categoryIds.contains('cat-bills'))
+          category.copyWith(parentId: 'cat-bills')
+        else
+          category,
+    ];
+    next = next.copyWith(categories: categories);
+  }
+  next = _migrateCategoryTaxonomy(next);
+  return next.copyWith(version: currentLedgerStateVersion);
+}
+
+LedgerState _migrateCategoryTaxonomy(LedgerState state) {
+  final defaults = lifeCategoryTaxonomy();
+  final defaultsById = {for (final category in defaults) category.id: category};
+  final preferredByName = <String, String>{};
+  for (final category in defaults) {
+    preferredByName[_categoryNameKey(category.name)] = category.id;
+  }
+  preferredByName.addAll(const {
+    'bill': 'cat-bills',
+    'bills': 'cat-bills',
+    'home': 'cat-bills',
+    'housing': 'cat-bills',
+    'home and bills': 'cat-bills',
+    'utility': 'cat-bills',
+    'utilities': 'cat-bills',
+    'bills and utilities': 'cat-bills',
+    'grocery': 'cat-grocery',
+    'groceries': 'cat-grocery',
+    'food and dining': 'cat-food',
+    'breakfast': 'cat-dining',
+    'lunch': 'cat-dining',
+    'food delivery': 'cat-dining',
+    'emi': 'cat-emi',
+    'loan emi': 'cat-emi',
+    'travel': 'cat-travel',
+    'transport': 'cat-transport',
+    'transportation': 'cat-transport',
+    'vehicle': 'cat-transport',
+    'salary': 'cat-salary',
+    'work': 'cat-income',
+    'bonus': 'cat-salary',
+    'reimbursements': 'cat-refunds',
+    'reimbursement': 'cat-refunds',
+    'business income': 'cat-business-income',
+    'sales': 'cat-business-income',
+    'investments income': 'cat-interest-dividends',
+    'interest': 'cat-interest-dividends',
+    'dividend': 'cat-interest-dividends',
+    'capital gains': 'cat-interest-dividends',
+    'money back': 'cat-refunds',
+    'refund': 'cat-refunds',
+    'cashback': 'cat-refunds',
+    'rewards': 'cat-refunds',
+    'income adjustments': 'cat-income',
+    'miscellaneous income': 'cat-income',
+    'uncategorized income': 'cat-income',
+    'food': 'cat-food',
+    'dining': 'cat-dining',
+    'restaurant': 'cat-dining',
+    'restaurants': 'cat-dining',
+    'shopping': 'cat-shopping',
+    'health': 'cat-health',
+    'health and wellness': 'cat-health',
+    'medical': 'cat-health',
+    'dental': 'cat-doctor',
+    'subscription': 'cat-subscriptions',
+    'subscriptions': 'cat-subscriptions',
+    'investment': 'cat-investments',
+    'investments': 'cat-investments',
+    'rent': 'cat-rent-mortgage',
+    'mortgage': 'cat-rent-mortgage',
+    'maintenance': 'cat-home-maintenance',
+    'home maintenance': 'cat-home-maintenance',
+    'internet': 'cat-internet',
+    'wifi': 'cat-internet',
+    'mobile': 'cat-mobile',
+    'phone': 'cat-mobile',
+    'doctor': 'cat-doctor',
+    'pharmacy': 'cat-pharmacy',
+    'medicine': 'cat-pharmacy',
+    'medicines': 'cat-pharmacy',
+    'credit card': 'cat-credit-card-payment',
+    'credit card payment': 'cat-credit-card-payment',
+    'fuel': 'cat-fuel',
+    'petrol': 'cat-fuel',
+    'diesel': 'cat-fuel',
+    'taxi': 'cat-taxi-rides',
+    'cab': 'cat-taxi-rides',
+    'uber': 'cat-taxi-rides',
+    'ola': 'cat-taxi-rides',
+    'public transit': 'cat-public-transit',
+    'metro': 'cat-public-transit',
+    'train': 'cat-public-transit',
+    'parking': 'cat-vehicle-service',
+    'parking and tolls': 'cat-vehicle-service',
+    'tolls': 'cat-vehicle-service',
+    'vehicle service': 'cat-vehicle-service',
+    'vehicle maintenance': 'cat-vehicle-service',
+    'vehicle insurance': 'cat-vehicle-service',
+    'lease and rentals': 'cat-vehicle-service',
+    'car wash': 'cat-vehicle-service',
+    'vehicle costs': 'cat-vehicle-service',
+    'internet and phone': 'cat-internet',
+    'mobile recharge': 'cat-mobile',
+    'tv and streaming': 'cat-subscriptions',
+    'council tax': 'cat-taxes',
+    'clothes': 'cat-clothing',
+    'clothing': 'cat-clothing',
+    'electronics': 'cat-electronics',
+    'personal care': 'cat-personal-care',
+    'personal and care': 'cat-personal-care',
+    'childcare': 'cat-children',
+    'gift': 'cat-gifts',
+    'gifts': 'cat-gifts',
+    'gifts and support': 'cat-family',
+    'gifts and giving': 'cat-family',
+    'giving': 'cat-family',
+    'family': 'cat-family',
+    'family support': 'cat-family-support',
+    'donations': 'cat-charity',
+    'charity': 'cat-charity',
+    'community': 'cat-community',
+    'work and business': 'cat-work-business',
+    'office supplies': 'cat-office-supplies',
+    'software': 'cat-software',
+    'professional services': 'cat-professional-services',
+    'business travel': 'cat-business-travel',
+    'finance and loans': 'cat-debt',
+    'charges and fees': 'cat-bank-fees',
+    'credit card bill': 'cat-credit-card-payment',
+    'fines and penalties': 'cat-bank-fees',
+    'debt payments': 'cat-emi',
+    'interest paid': 'cat-loan-interest',
+    'investment fees': 'cat-bank-fees',
+    'shared expenses': 'cat-family-support',
+    'lending': 'cat-debt',
+    'lifestyle': 'cat-entertainment',
+    'movies': 'cat-movies-events',
+    'events': 'cat-movies-events',
+    'entertainment': 'cat-entertainment',
+    'course': 'cat-courses',
+    'courses': 'cat-courses',
+    'books': 'cat-books',
+    'education': 'cat-entertainment',
+    'school fees': 'cat-courses',
+    'savings': 'cat-emergency-fund',
+    'saving': 'cat-emergency-fund',
+    'savings and investing': 'cat-debt',
+    'tax': 'cat-taxes',
+    'taxes': 'cat-taxes',
+    'taxes and fees': 'cat-debt',
+    'bank fee': 'cat-bank-fees',
+    'bank fees': 'cat-bank-fees',
+    'fees': 'cat-bank-fees',
+    'charges': 'cat-bank-fees',
+    'trip food': 'cat-travel-activities',
+    'hotels': 'cat-hotels',
+    'hotel': 'cat-hotels',
+    'stay': 'cat-hotels',
+    'misc': 'cat-misc',
+    'miscellaneous': 'cat-misc',
+    'uncategorized': 'cat-uncategorized',
+    'uncategorized imports': 'cat-uncategorized',
+    'adjustment': 'cat-uncategorized',
+    'cash adjustment': 'cat-uncategorized',
+  });
+
+  final idRedirect = <String, String>{};
+  final mergedById = <String, Category>{};
+  final customIdByName = <String, String>{};
+
+  for (final category in state.categories) {
+    final nameKey = _categoryNameKey(category.name);
+    final preferredId = preferredByName[nameKey];
+    final customId = preferredId == null
+        ? customIdByName.putIfAbsent(nameKey, () => category.id)
+        : null;
+    final targetId = preferredId ?? customId ?? category.id;
+    idRedirect[category.id] = targetId;
+    final defaultCategory = defaultsById[targetId];
+    final current = mergedById[targetId];
+    final normalized = defaultCategory ??
+        Category(
+          id: targetId,
+          name: _crispCategoryName(category.name),
+          kind: category.kind,
+          color: category.color,
+          parentId: _blankCategoryParent(category.parentId),
+          isArchived: category.isArchived,
+          sortOrder: category.sortOrder,
+        );
+    mergedById[targetId] = current == null
+        ? normalized
+        : current.copyWith(isArchived: current.isArchived && category.isArchived);
+  }
+
+  for (final category in defaults) {
+    mergedById[category.id] = category.copyWith(
+      isArchived: mergedById[category.id]?.isArchived ?? false,
+    );
+  }
+
+  final validIds = mergedById.keys.toSet();
+  final normalizedCategories = mergedById.values.map((category) {
+    final redirectedParentId = idRedirect[category.parentId] ?? category.parentId;
+    final parentId = redirectedParentId != null && validIds.contains(redirectedParentId)
+        ? redirectedParentId
+        : defaultsById[category.id]?.parentId;
+    final defaultCategory = defaultsById[category.id];
+    if (defaultCategory != null) {
+      return defaultCategory.copyWith(isArchived: category.isArchived);
+    }
+    return Category(
+      id: category.id,
+      name: category.name,
+      kind: category.kind,
+      color: category.color,
+      parentId: parentId == category.id ? null : parentId,
+      isArchived: category.isArchived,
+      sortOrder: category.sortOrder,
+    );
+  }).toList()
+    ..sort(_compareCategoryForMigration);
+
+  String? redirectCategoryId(String? id) {
+    if (id == null) return null;
+    return idRedirect[id] ?? (validIds.contains(id) ? id : null);
+  }
+
+  return state.copyWith(
+    categories: normalizedCategories,
+    transactions: [
+      for (final transaction in state.transactions)
+        transaction.copyWith(categoryId: redirectCategoryId(transaction.categoryId)),
+    ],
+    captureCandidates: [
+      for (final candidate in state.captureCandidates)
+        candidate.copyWith(
+          suggestedCategoryId: redirectCategoryId(candidate.suggestedCategoryId),
+        ),
+    ],
+    preferences: state.preferences.futureGenerationRules == null
+        ? state.preferences
+        : state.preferences.copyWith(
+            futureGenerationRules: [
+              for (final rule in state.preferences.futureGenerationRules!)
+                rule.copyWith(categoryId: redirectCategoryId(rule.categoryId)),
+            ],
+          ),
+  );
+}
+
+String _categoryNameKey(String name) {
+  return name
+      .trim()
+      .toLowerCase()
+      .replaceAll('&', 'and')
+      .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+      .trim()
+      .replaceAll(RegExp(r'\s+'), ' ');
+}
+
+String _crispCategoryName(String name) {
+  final normalized = name.trim().replaceAll(RegExp(r'\s+'), ' ');
+  if (normalized.isEmpty) return 'Miscellaneous';
+  return normalized[0].toUpperCase() + normalized.substring(1);
+}
+
+String? _blankCategoryParent(String? parentId) {
+  final value = parentId?.trim();
+  return value == null || value.isEmpty ? null : value;
+}
+
+int _compareCategoryForMigration(Category left, Category right) {
+  final orderCompare = left.sortOrder.compareTo(right.sortOrder);
+  return orderCompare != 0
+      ? orderCompare
+      : left.name.toLowerCase().compareTo(right.name.toLowerCase());
 }
 
 Map<String, Object?> _moneyToJson(Money money) {
