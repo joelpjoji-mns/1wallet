@@ -22,16 +22,12 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(ledgerProvider);
-    final incomeSource = _visibleCategories(
+    final source = _visibleCategories(
       state.categories,
-      kind: 'income',
       includeArchived: _showArchived,
     );
-    final expenseSource = _visibleCategories(
-      state.categories,
-      kind: 'expense',
-      includeArchived: _showArchived,
-    );
+    final rootCount = _categoryLevel(state, source).length;
+    final subcategoryCount = source.length - rootCount;
     final archivedCount = state.categories
         .where((item) => item.isArchived)
         .length;
@@ -56,21 +52,21 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   children: [
                     Expanded(
                       child: MetricTile(
-                        label: 'Income groups',
-                        value: '${incomeSource.length}',
-                        icon: Icons.trending_up_rounded,
+                        label: 'Categories',
+                        value: '$rootCount',
+                        icon: Icons.folder_outlined,
                         compact: true,
-                        tone: MetricTone.positive,
+                        tone: MetricTone.standard,
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: MetricTile(
-                        label: 'Expense groups',
-                        value: '${expenseSource.length}',
-                        icon: Icons.trending_down_rounded,
+                        label: 'Subcategories',
+                        value: '$subcategoryCount',
+                        icon: Icons.account_tree_outlined,
                         compact: true,
-                        tone: MetricTone.danger,
+                        tone: MetricTone.standard,
                       ),
                     ),
                   ],
@@ -89,7 +85,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             ),
           ),
           const Gap(AppSpacing.lg),
-          if (incomeSource.isEmpty && expenseSource.isEmpty)
+          if (source.isEmpty)
             EmptyState(
               icon: Icons.category_outlined,
               title: 'No categories yet',
@@ -100,27 +96,13 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             )
           else ...[
             _CategoryKindSection(
-              title: 'Expense categories',
-              subtitle: 'Grouped parents and subcategories for spending.',
-              tone: MetricTone.danger,
-              icon: Icons.trending_down_rounded,
-              state: state,
-              source: expenseSource,
-              onEdit: (category) =>
-                  _openCategoryEditor(context, state, category: category),
-              onAddChild: (category) =>
-                  _openCategoryEditor(context, state, parentCategory: category),
-              onToggleArchive: _toggleArchive,
-            ),
-            const Gap(AppSpacing.lg),
-            _CategoryKindSection(
-              title: 'Income categories',
+              title: 'Shared categories',
               subtitle:
-                  'Grouped parents and subcategories for money coming in.',
-              tone: MetricTone.positive,
-              icon: Icons.trending_up_rounded,
+                  'One category tree shared by income and expense records.',
+              tone: MetricTone.standard,
+              icon: Icons.category_outlined,
               state: state,
-              source: incomeSource,
+              source: source,
               onEdit: (category) =>
                   _openCategoryEditor(context, state, category: category),
               onAddChild: (category) =>
@@ -140,9 +122,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     Category? parentCategory,
   }) async {
     var name = category?.name ?? '';
-    var kind =
-        parentCategory?.kind ??
-        (category?.kind == 'income' ? 'income' : 'expense');
+    var kind = parentCategory?.kind ?? category?.kind ?? 'expense';
     var archived = category?.isArchived ?? false;
     String? parentId = category?.parentId ?? parentCategory?.id;
     String? errorText;
@@ -173,49 +153,6 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                 const SizedBox(height: AppSpacing.sm),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.category_outlined),
-                  title: const Text('Type'),
-                  subtitle: Text(transactionTypeLabel(kind)),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () async {
-                    final next = await showFullScreenPicker<String>(
-                      context: dialogContext,
-                      title: 'Category type',
-                      searchable: false,
-                      selectedValue: kind,
-                      options: const [
-                        PickerOption(
-                          value: 'expense',
-                          title: 'Expense',
-                          subtitle: 'Spending categories',
-                          icon: Icons.trending_down_rounded,
-                        ),
-                        PickerOption(
-                          value: 'income',
-                          title: 'Income',
-                          subtitle: 'Earning categories',
-                          icon: Icons.trending_up_rounded,
-                        ),
-                      ],
-                    );
-                    if (next == null) return;
-                    setDialogState(() {
-                      kind = next;
-                      final allowedParents = _parentCategoryOptions(
-                        state,
-                        kind: kind,
-                        category: category,
-                      );
-                      if (parentId != null &&
-                          !allowedParents.any((item) => item.id == parentId)) {
-                        parentId = null;
-                      }
-                    });
-                  },
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.account_tree_outlined),
                   title: const Text('Parent group'),
                   subtitle: Text(
@@ -239,22 +176,23 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                         ),
                         for (final parent in _parentCategoryOptions(
                           state,
-                          kind: kind,
                           category: category,
                         ))
                           PickerOption(
                             value: parent.id,
                             title: parent.name,
                             subtitle: categoryPath(state, parent),
-                            icon: Icons.folder_outlined,
+                            icon: categoryIcon(parent),
                             iconColor: categoryColor(parent, context),
                           ),
                       ],
                     );
                     if (next == null) return;
-                    setDialogState(
-                      () => parentId = next == '__root__' ? null : next,
-                    );
+                    setDialogState(() {
+                      parentId = next == '__root__' ? null : next;
+                      final parent = categoryById(state, parentId);
+                      if (parent != null) kind = parent.kind;
+                    });
                   },
                 ),
                 if (category != null)
@@ -347,7 +285,7 @@ class _CategoryKindSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final roots = _categoryLevel(source);
+    final roots = _categoryLevel(state, source);
     return SectionCard(
       title: title,
       subtitle: subtitle,
@@ -403,7 +341,7 @@ class _CategoryTreeNode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final children = _categoryLevel(source, parentId: category.id);
+    final children = _categoryLevel(state, source, parentId: category.id);
     final scheme = Theme.of(context).colorScheme;
 
     return Column(
@@ -431,9 +369,7 @@ class _CategoryTreeNode extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconBubble(
-                    icon: depth == 0
-                        ? Icons.folder_outlined
-                        : Icons.subdirectory_arrow_right_rounded,
+                    icon: categoryIcon(category),
                     color: categoryColor(category, context),
                     compact: true,
                   ),
@@ -551,16 +487,18 @@ enum _CategoryAction { edit, addChild, toggleArchive }
 
 List<Category> _visibleCategories(
   List<Category> categories, {
-  required String kind,
   required bool includeArchived,
 }) {
   return categories
-      .where((category) => category.kind == kind)
       .where((category) => includeArchived || !category.isArchived)
       .toList();
 }
 
-List<Category> _categoryLevel(List<Category> source, {String? parentId}) {
+List<Category> _categoryLevel(
+  LedgerState state,
+  List<Category> source, {
+  String? parentId,
+}) {
   final byId = {for (final category in source) category.id: category};
   final items = source.where((category) {
     final directParentId =
@@ -569,20 +507,18 @@ List<Category> _categoryLevel(List<Category> source, {String? parentId}) {
         : null;
     return directParentId == parentId;
   }).toList();
-  items.sort(_sortCategories);
+  items.sort((left, right) => compareCategoriesByUsage(state, left, right));
   return items;
 }
 
 List<Category> _parentCategoryOptions(
   LedgerState state, {
-  required String kind,
   Category? category,
 }) {
   final descendants = category == null
       ? <String>{}
       : _categoryDescendantIds(state.categories, category.id);
   final items = state.categories.where((item) {
-    if (item.kind != kind) return false;
     if (item.isArchived) return false;
     if (category != null && item.id == category.id) return false;
     if (descendants.contains(item.id)) return false;
@@ -620,17 +556,10 @@ String _categoryNodeSubtitle(
   required int depth,
 }) {
   final parts = <String>[
-    depth == 0 ? transactionTypeLabel(category.kind) : 'Subcategory',
+    depth == 0 ? 'Category' : 'Subcategory',
     if (childCount > 0)
       '$childCount ${childCount == 1 ? 'subcategory' : 'subcategories'}',
     if (category.isArchived) 'archived',
   ];
   return parts.join(' · ');
-}
-
-int _sortCategories(Category left, Category right) {
-  final compare = left.sortOrder.compareTo(right.sortOrder);
-  return compare != 0
-      ? compare
-      : left.name.toLowerCase().compareTo(right.name.toLowerCase());
 }
