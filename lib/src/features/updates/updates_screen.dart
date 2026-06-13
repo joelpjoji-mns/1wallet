@@ -77,8 +77,13 @@ class UpdatesScreen extends ConsumerWidget {
       color = theme.colorScheme.error;
     } else if (state.status == UpdateStatus.downloaded) {
       title = 'Update Ready to Install';
-      subtitle = 'Tap install to apply the update';
+      subtitle = state.errorMessage ?? 'Tap install to apply the update';
       icon = Icons.download_done;
+      color = theme.colorScheme.primary;
+    } else if (state.status == UpdateStatus.installing) {
+      title = 'Opening installer...';
+      subtitle = 'Confirm the Android install prompt to finish updating.';
+      icon = Icons.install_mobile;
       color = theme.colorScheme.primary;
     }
 
