@@ -48,7 +48,9 @@ void main() {
     expect(controller.state.accounts.length, seeded.accounts.length);
     expect(controller.state.transactions.length, seeded.transactions.length);
     expect(
-      controller.state.accounts.any((item) => item.name == 'Replacement wallet'),
+      controller.state.accounts.any(
+        (item) => item.name == 'Replacement wallet',
+      ),
       isFalse,
     );
   });
@@ -103,6 +105,34 @@ void main() {
     },
   );
 
+  test('ledger controller persists account color changes', () async {
+    const repository = LedgerRepository();
+    final controller = LedgerController(repository);
+    addTearDown(controller.dispose);
+
+    final account = await controller.upsertAccount(
+      name: 'Colorful account',
+      type: 'bank',
+      currency: 'INR',
+      color: const Color(0xFF315DA8),
+    );
+
+    await controller.upsertAccount(
+      id: account.id,
+      name: account.name,
+      type: account.type,
+      currency: account.currency,
+      color: const Color(0xFFFFE082),
+    );
+
+    final restored = await repository.load();
+    expect(restored, isNotNull);
+    expect(
+      restored!.accounts.firstWhere((item) => item.id == account.id).color,
+      const Color(0xFFFFE082),
+    );
+  });
+
   test('ledger controller updates and deletes transactions', () async {
     const repository = LedgerRepository();
     final controller = LedgerController(repository);
@@ -153,6 +183,72 @@ void main() {
     expect(
       controller.state.transactions.any((item) => item.id == original.id),
       isFalse,
+    );
+  });
+
+  test(
+    'ledger controller deletes unused accounts and persists removal',
+    () async {
+      const repository = LedgerRepository();
+      final controller = LedgerController(repository);
+      addTearDown(controller.dispose);
+
+      final account = await controller.upsertAccount(
+        id: 'acc-unused',
+        name: 'Unused account',
+        type: 'bank',
+        currency: 'INR',
+        openingBalanceMinor: 0,
+      );
+
+      await controller.deleteAccount(account.id);
+
+      expect(
+        controller.state.accounts.any((item) => item.id == account.id),
+        isFalse,
+      );
+      final restored = await repository.load();
+      expect(restored, isNotNull);
+      expect(restored!.accounts.any((item) => item.id == account.id), isFalse);
+    },
+  );
+
+  test('ledger controller archives accounts with linked records', () async {
+    const repository = LedgerRepository();
+    final controller = LedgerController(repository);
+    addTearDown(controller.dispose);
+
+    final account = await controller.upsertAccount(
+      id: 'acc-used',
+      name: 'Used account',
+      type: 'bank',
+      currency: 'INR',
+      openingBalanceMinor: 0,
+    );
+    final transaction = await controller.upsertTransaction(
+      id: 'tx-linked',
+      type: 'income',
+      accountId: account.id,
+      amountMinor: 1000,
+      categoryId: controller.state.categories.first.id,
+    );
+
+    await controller.deleteAccount(account.id);
+
+    final archived = controller.state.accounts.firstWhere(
+      (item) => item.id == account.id,
+    );
+    expect(archived.isArchived, isTrue);
+    expect(
+      controller.state.transactions.any((item) => item.id == transaction.id),
+      isTrue,
+    );
+
+    final restored = await repository.load();
+    expect(restored, isNotNull);
+    expect(
+      restored!.accounts.firstWhere((item) => item.id == account.id).isArchived,
+      isTrue,
     );
   });
 

@@ -59,6 +59,111 @@ void main() {
     ]);
   });
 
+  test('balance breakdown matches default total-balance account scope', () {
+    final state = _ledger(
+      accounts: [
+        _account(id: 'bank', openingMinor: 10000),
+        _account(
+          id: 'gbp-excluded',
+          currency: 'GBP',
+          openingMinor: 2500,
+          includeInTotals: false,
+        ),
+        _account(
+          id: 'usd-archived',
+          currency: 'USD',
+          openingMinor: 9900,
+          isArchived: true,
+        ),
+      ],
+    );
+
+    final breakdown = balanceBreakdownByCurrency(state);
+
+    expect(breakdown.map((money) => money.currency), ['INR']);
+    expect(breakdown.single.amountMinor, 10000);
+  });
+
+  test('balance breakdown includes every account currency in total scope', () {
+    final state = _ledger(
+      accounts: [
+        _account(id: 'bank', openingMinor: 10000),
+        _account(id: 'gbp', currency: 'GBP', openingMinor: 2500),
+      ],
+    );
+
+    final breakdown = balanceBreakdownByCurrency(state);
+
+    expect(breakdown.map((money) => money.currency), ['INR', 'GBP']);
+    expect(breakdown.map((money) => money.amountMinor), [10000, 2500]);
+  });
+
+  test('balance breakdown reflects selected account scope', () {
+    final state = _ledger(
+      accounts: [
+        _account(id: 'bank', openingMinor: 10000),
+        _account(
+          id: 'gbp-excluded',
+          currency: 'GBP',
+          openingMinor: 0,
+          includeInTotals: false,
+        ),
+      ],
+    );
+
+    final allAccountsBreakdown = balanceBreakdownByCurrency(state);
+    final selectedBreakdown = balanceBreakdownByCurrency(
+      state,
+      accountId: 'gbp-excluded',
+    );
+
+    expect(allAccountsBreakdown.map((money) => money.currency), ['INR']);
+    expect(selectedBreakdown.map((money) => money.currency), ['GBP']);
+    expect(selectedBreakdown.single.amountMinor, 0);
+  });
+
+  test('balance breakdown shows every native currency net in selected scope', () {
+    final state = _ledger(
+      accounts: [
+        _account(id: 'cash', type: 'cash', currency: 'INR', openingMinor: 0),
+      ],
+      transactions: [
+        _tx(
+          id: 'cash-gbp-in',
+          type: 'income',
+          accountId: 'cash',
+          amountMinor: 500,
+          currency: 'GBP',
+          baseAmountMinor: 52500,
+          date: DateTime(2026, 6, 1),
+        ),
+        _tx(
+          id: 'cash-gbp-out',
+          type: 'expense',
+          accountId: 'cash',
+          amountMinor: 500,
+          currency: 'GBP',
+          baseAmountMinor: 52500,
+          date: DateTime(2026, 6, 2),
+        ),
+        _tx(
+          id: 'cash-usd-in',
+          type: 'income',
+          accountId: 'cash',
+          amountMinor: 1200,
+          currency: 'USD',
+          baseAmountMinor: 100000,
+          date: DateTime(2026, 6, 3),
+        ),
+      ],
+    );
+
+    final breakdown = balanceBreakdownByCurrency(state, accountId: 'cash');
+
+    expect(breakdown.map((money) => money.currency), ['INR', 'USD', 'GBP']);
+    expect(breakdown.map((money) => money.amountMinor), [0, 1200, 0]);
+  });
+
   test('currency snapshot prefers explicit latest exchange rate', () {
     final state = _ledger(
       accounts: [_account(id: 'gbp', currency: 'GBP', openingMinor: 2500)],
@@ -130,6 +235,8 @@ Account _account({
   String type = 'bank',
   String currency = 'INR',
   required int openingMinor,
+  bool includeInTotals = true,
+  bool isArchived = false,
 }) {
   return Account(
     id: id,
@@ -137,6 +244,8 @@ Account _account({
     type: type,
     currency: currency,
     openingBalance: Money(amountMinor: openingMinor, currency: currency),
+    includeInTotals: includeInTotals,
+    isArchived: isArchived,
   );
 }
 

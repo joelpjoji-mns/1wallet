@@ -94,6 +94,12 @@ Map<String, Object?> _preferencesToJson(LedgerPreferences preferences) {
     },
     if (preferences.futureGenerationRules != null)
       'futureGenerationRules': preferences.futureGenerationRules!.map(_ruleToJson).toList(),
+    'glassSpecularOpacity': preferences.glassSpecularOpacity,
+    'glassSpecularSaturation': preferences.glassSpecularSaturation,
+    'glassRefractionLevel': preferences.glassRefractionLevel,
+    'glassBlurLevel': preferences.glassBlurLevel,
+    'glassProgressiveBlurStrength': preferences.glassProgressiveBlurStrength,
+    'glassBackgroundOpacity': preferences.glassBackgroundOpacity,
   };
 }
 
@@ -152,6 +158,12 @@ LedgerPreferences _preferencesFromJson(Map<String, dynamic> json) {
             .map(_ruleFromJson)
             .toList()
         : null,
+    glassSpecularOpacity: _double(json['glassSpecularOpacity'], fallback: fallback.glassSpecularOpacity),
+    glassSpecularSaturation: _double(json['glassSpecularSaturation'], fallback: fallback.glassSpecularSaturation),
+    glassRefractionLevel: _double(json['glassRefractionLevel'], fallback: fallback.glassRefractionLevel),
+    glassBlurLevel: _double(json['glassBlurLevel'], fallback: fallback.glassBlurLevel),
+    glassProgressiveBlurStrength: _double(json['glassProgressiveBlurStrength'], fallback: fallback.glassProgressiveBlurStrength),
+    glassBackgroundOpacity: _double(json['glassBackgroundOpacity'], fallback: fallback.glassBackgroundOpacity),
   );
 }
 

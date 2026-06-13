@@ -29,6 +29,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
   var _includeInNetWorth = true;
   var _showOnHome = true;
   var _isArchived = false;
+  Color? _selectedColor;
 
   @override
   void dispose() {
@@ -44,10 +45,20 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     final account = accountById(state, widget.accountId);
     _syncForm(account);
     final isNew = account == null;
-    final selectedColor = account?.color ?? AppColors.primary;
+    final selectedColor =
+      _selectedColor ?? account?.color ?? Theme.of(context).colorScheme.primary;
+    final selectedForeground = selectedColor.computeLuminance() > 0.5
+      ? Theme.of(context).colorScheme.onSurface
+      : Theme.of(context).colorScheme.surface;
     return RouteScaffold(
       title: isNew ? 'New account' : account.name,
       actions: [
+        if (account != null)
+          IconButton(
+            tooltip: 'Delete account',
+            icon: const Icon(Icons.delete_outline_rounded),
+            onPressed: () => _confirmDeleteAccount(state, account),
+          ),
         IconButton(
           icon: const Icon(Icons.check_rounded),
           onPressed: () => _saveAccount(state, account),
@@ -75,7 +86,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                         account == null
                             ? Icons.account_balance_wallet_outlined
                             : accountIcon(account),
-                        color: Colors.white,
+                        color: selectedForeground,
                         size: 32,
                       ),
                     ),
@@ -126,16 +137,29 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                   runSpacing: AppSpacing.xs,
                   children: [
                     for (final color in AppColors.accountPalette)
-                      CircleAvatar(
-                        backgroundColor: color,
-                        radius: 16,
-                        child: color == selectedColor
-                            ? const Icon(
-                                Icons.check,
-                                size: 16,
-                                color: Colors.white,
-                              )
-                            : null,
+                      Tooltip(
+                        message: 'Use account color',
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(AppRadii.pill),
+                          onTap: () => setState(() => _selectedColor = color),
+                          child: CircleAvatar(
+                            backgroundColor: color,
+                            radius: 16,
+                            child: color == selectedColor
+                                ? Icon(
+                                    Icons.check,
+                                    size: 16,
+                                    color: color.computeLuminance() > 0.5
+                                        ? Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                        : Theme.of(context)
+                                            .colorScheme
+                                            .surface,
+                                  )
+                                : null,
+                          ),
+                        ),
                       ),
                   ],
                 ),
@@ -157,31 +181,31 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                         ),
                   icon: Icons.account_balance_wallet_outlined,
                 ),
-                SwitchListTile.adaptive(
+                LiquidGlassSwitchListTile(
                   value: _includeInTotals,
                   onChanged: (value) =>
                       setState(() => _includeInTotals = value),
                   title: const Text('Include in totals'),
                 ),
-                SwitchListTile.adaptive(
+                LiquidGlassSwitchListTile(
                   value: _includeInReports,
                   onChanged: (value) =>
                       setState(() => _includeInReports = value),
                   title: const Text('Include in reports'),
                 ),
-                SwitchListTile.adaptive(
+                LiquidGlassSwitchListTile(
                   value: _includeInNetWorth,
                   onChanged: (value) =>
                       setState(() => _includeInNetWorth = value),
                   title: const Text('Include in net worth'),
                 ),
-                SwitchListTile.adaptive(
+                LiquidGlassSwitchListTile(
                   value: _showOnHome,
                   onChanged: (value) => setState(() => _showOnHome = value),
                   title: const Text('Show on home'),
                 ),
                 if (!isNew)
-                  SwitchListTile.adaptive(
+                  LiquidGlassSwitchListTile(
                     value: _isArchived,
                     onChanged: (value) => setState(() => _isArchived = value),
                     title: const Text('Archive account'),
@@ -200,19 +224,45 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                   TextFormField(
                     controller: _last4Controller,
                     decoration: InputDecoration(
-                      labelText: account?.displayLast4Label ?? 'Account last 4 digits',
+                      labelText:
+                          account?.displayLast4Label ?? 'Account last 4 digits',
                       hintText: 'e.g. 1234',
                     ),
                     keyboardType: TextInputType.number,
                     maxLength: 4,
                   ),
                 ] else ...[
-                  const Text('Cash accounts do not have account numbers.',
-                      style: TextStyle(fontStyle: FontStyle.italic)),
+                  const Text(
+                    'Cash accounts do not have account numbers.',
+                    style: TextStyle(fontStyle: FontStyle.italic),
+                  ),
                 ],
               ],
             ),
           ),
+          if (account != null) ...[
+            const Gap(AppSpacing.lg),
+            SectionCard(
+              title: 'Delete account',
+              subtitle: _accountHasLinkedTransactions(state, account)
+                  ? 'Linked records are kept, so this account will be archived and synced.'
+                  : 'Unused accounts are removed from this wallet and synced.',
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: () => _confirmDeleteAccount(state, account),
+                  icon: const Icon(Icons.delete_outline_rounded),
+                  label: const Text('Delete account'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -230,6 +280,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     _includeInNetWorth = account?.includeInNetWorth ?? true;
     _showOnHome = account?.showOnHome ?? true;
     _isArchived = account?.isArchived ?? false;
+    _selectedColor = account?.color;
   }
 
   Future<void> _saveAccount(LedgerState state, Account? account) async {
@@ -246,9 +297,12 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
             name: name,
             type: account?.type ?? 'bank',
             currency: account?.currency ?? state.preferences.baseCurrency,
+            color: _selectedColor,
             institution: _institutionController.text,
             cardLast4: (account?.type == 'card') ? _last4Controller.text : '',
-            accountLast4: (account?.type != 'card' && account?.type != 'cash') ? _last4Controller.text : '',
+            accountLast4: (account?.type != 'card' && account?.type != 'cash')
+                ? _last4Controller.text
+                : '',
             includeInTotals: _includeInTotals,
             includeInReports: _includeInReports,
             includeInNetWorth: _includeInNetWorth,
@@ -268,6 +322,60 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
       if (!mounted) return;
       _showAccountMessage(error.toString());
     }
+  }
+
+  Future<void> _confirmDeleteAccount(LedgerState state, Account account) async {
+    final hasLinkedTransactions = _accountHasLinkedTransactions(state, account);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          hasLinkedTransactions ? 'Archive account?' : 'Delete account?',
+        ),
+        content: Text(
+          hasLinkedTransactions
+              ? '“${account.name}” has linked records, so it will be archived instead of permanently deleted. This change will sync with your wallet.'
+              : 'This permanently removes “${account.name}” from your wallet. This deletion will sync with your wallet.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.tonal(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(hasLinkedTransactions ? 'Archive' : 'Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await ref.read(ledgerProvider.notifier).deleteAccount(account.id);
+      if (!mounted) return;
+      _showAccountMessage(
+        hasLinkedTransactions
+            ? 'Account archived. Sync will update shortly.'
+            : 'Account deleted. Sync will update shortly.',
+      );
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/');
+      }
+    } catch (error) {
+      if (!mounted) return;
+      _showAccountMessage(error.toString());
+    }
+  }
+
+  bool _accountHasLinkedTransactions(LedgerState state, Account account) {
+    return state.transactions.any(
+      (transaction) =>
+          transaction.accountId == account.id ||
+          transaction.counterAccountId == account.id,
+    );
   }
 
   void _showAccountMessage(String message) {
@@ -295,14 +403,13 @@ class _DetailField extends StatelessWidget {
         border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
               label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontWeight: FontWeight.w800),
             ),
           ),

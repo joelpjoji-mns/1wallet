@@ -15,9 +15,10 @@ import '../../widgets/app_kit.dart';
 import '../common/full_screen_picker.dart';
 
 class AddRecordScreen extends ConsumerStatefulWidget {
-  const AddRecordScreen({super.key, this.transactionId});
+  const AddRecordScreen({super.key, this.transactionId, this.initialAccountId});
 
   final String? transactionId;
+  final String? initialAccountId;
 
   @override
   ConsumerState<AddRecordScreen> createState() => _AddRecordScreenState();
@@ -68,10 +69,8 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
             (transaction) => transaction.id == widget.transactionId,
           );
     _syncEditDraft(editingTransaction, state);
-    _accountId ??= state.accounts.firstOrNull?.id;
-    _categoryId ??= state.categories
-        .firstWhereOrNull((category) => category.kind == 'expense')
-        ?.id;
+    _syncCreateDraftAccount(state, editingTransaction);
+    _clearInvalidCategory(state, editingTransaction);
     final sourceAccount = accountById(state, _accountId);
     final counterAccount = accountById(state, _counterAccountId);
     final category = categoryById(state, _categoryId);
@@ -158,7 +157,10 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                   value: _type,
                   onChanged: (value) => setState(() {
                     _type = value;
+                    final selectedCategory = categoryById(state, _categoryId);
                     if (value == 'transfer' || value == 'adjustment') {
+                      _categoryId = null;
+                    } else if (selectedCategory?.kind != value) {
                       _categoryId = null;
                     }
                     if (value != 'transfer') _counterAccountId = null;
@@ -273,12 +275,12 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Builder(builder: (context) {
-                                  final displayAmount = _activeField == 0 
-                                      ? _amount 
-                                      : _activeField == 1 
-                                          ? _localAmount 
-                                          : _activeField == 2 
-                                              ? _counterAmount 
+                                  final displayAmount = _activeField == 0
+                                      ? _amount
+                                      : _activeField == 1
+                                          ? _localAmount
+                                          : _activeField == 2
+                                              ? _counterAmount
                                               : (_activeField >= 3 && _activeField - 3 < _charges.length)
                                                   ? _charges[_activeField - 3].amountController.text.replaceAll(',', '').trim()
                                                   : '0';
@@ -301,12 +303,12 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                   );
                                 }),
                                 Builder(builder: (context) {
-                                  final displayAmount = _activeField == 0 
-                                      ? _amount 
-                                      : _activeField == 1 
-                                          ? _localAmount 
-                                          : _activeField == 2 
-                                              ? _counterAmount 
+                                  final displayAmount = _activeField == 0
+                                      ? _amount
+                                      : _activeField == 1
+                                          ? _localAmount
+                                          : _activeField == 2
+                                              ? _counterAmount
                                               : (_activeField >= 3 && _activeField - 3 < _charges.length)
                                                   ? _charges[_activeField - 3].amountController.text.replaceAll(',', '').trim()
                                                   : '0';
@@ -346,17 +348,27 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                 children: [
                                   Text(
                                     txCurrency,
-                                    style: const TextStyle(
-                                      color: Colors.white,
+                                    style: TextStyle(
+                                      color: tone.computeLuminance() > 0.5
+                                          ? Theme.of(context)
+                                                .colorScheme
+                                                .onSurface
+                                          : Theme.of(context)
+                                                .colorScheme
+                                                .surface,
                                       fontWeight: FontWeight.w900,
                                       fontSize: 12.5,
                                     ),
                                   ),
                                   const SizedBox(width: 5),
-                                  const Icon(
+                                  Icon(
                                     Icons.expand_more_rounded,
                                     size: 15,
-                                    color: Colors.white,
+                                    color: tone.computeLuminance() > 0.5
+                                        ? Theme.of(context)
+                                              .colorScheme
+                                              .onSurface
+                                        : Theme.of(context).colorScheme.surface,
                                   ),
                                 ],
                               ),
@@ -620,9 +632,9 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                     ),
                                   ),
                                   IconButton(
-                                    icon: const Icon(
+                                    icon: Icon(
                                       Icons.remove_circle_outline,
-                                      color: Colors.red,
+                                      color: Theme.of(context).colorScheme.error,
                                     ),
                                     onPressed: () {
                                       setState(() {
@@ -907,15 +919,20 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
 
   Future<void> _showCategoryPicker() async {
     final state = ref.read(ledgerProvider);
+    final categories = state.categories.where((category) {
+      if (category.isArchived) return false;
+      if (_type == 'income' || _type == 'expense') {
+        return category.kind == _type;
+      }
+      return true;
+    }).toList();
     final nextId = await showFullScreenPicker<String>(
       context: context,
       title: 'Choose category',
       searchHint: 'Search categories',
       selectedValue: _categoryId,
       options: [
-        for (final category in state.categories.where(
-          (category) => !category.isArchived,
-        ))
+        for (final category in categories)
           PickerOption(
             value: category.id,
             title: category.name,
@@ -1054,6 +1071,15 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       _showMessage('Choose a destination account for this transfer.');
       return;
     }
+    final selectedCategory = categoryById(state, _categoryId);
+    final needsCategory = _type != 'transfer' && _type != 'adjustment';
+    if (needsCategory &&
+        (selectedCategory == null ||
+            selectedCategory.isArchived ||
+            selectedCategory.kind != _type)) {
+      _showMessage('Choose a category before saving.');
+      return;
+    }
     try {
       final savedTx = await ref
           .read(ledgerProvider.notifier)
@@ -1068,7 +1094,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
             counterAmountMinor: finalCounterAmountMinor,
             categoryId: _type == 'transfer' || _type == 'adjustment'
                 ? null
-                : _categoryId,
+              : selectedCategory!.id,
             status: editingTransaction?.status ?? 'cleared',
             source: editingTransaction?.source ?? 'manual',
             paymentMethod: _paymentMethodController.text.trim().isEmpty
@@ -1132,11 +1158,16 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       _type = 'expense';
       _amount = '0';
       _expression = '';
-      _accountId = state.accounts.firstOrNull?.id;
+      _transactionCurrency = null;
+      _accountId = _initialAccountId(state);
       _counterAccountId = null;
-      _categoryId = state.categories
-          .firstWhereOrNull((category) => category.kind == 'expense')
-          ?.id;
+      _categoryId = null;
+      _localAmount = '';
+      _localExpression = '';
+      _counterAmount = '';
+      _counterExpression = '';
+      _localAmountController.text = '';
+      _counterAmountController.text = '';
       _notesController.text = '';
       _locationController.text = '';
       _paymentMethodController.text = '';
@@ -1167,6 +1198,43 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
     _locationController.text = transaction.locationLabel ?? '';
     _paymentMethodController.text = transaction.paymentMethod ?? '';
     _occurredAt = transaction.occurredAt;
+  }
+
+  void _syncCreateDraftAccount(
+    LedgerState state,
+    TransactionRecord? editingTransaction,
+  ) {
+    if (editingTransaction != null) return;
+    final currentAccount = accountById(state, _accountId);
+    if (_accountId != null &&
+        (currentAccount == null || currentAccount.isArchived)) {
+      _accountId = null;
+    }
+    if (_accountId != null) return;
+    _accountId = _initialAccountId(state);
+  }
+
+  String? _initialAccountId(LedgerState state) {
+    final initialAccount = accountById(state, widget.initialAccountId);
+    if (initialAccount == null || initialAccount.isArchived) return null;
+    return initialAccount.id;
+  }
+
+  void _clearInvalidCategory(
+    LedgerState state,
+    TransactionRecord? editingTransaction,
+  ) {
+    if (editingTransaction != null) return;
+    if (_type == 'transfer' || _type == 'adjustment') {
+      _categoryId = null;
+      return;
+    }
+    final selectedCategory = categoryById(state, _categoryId);
+    if (selectedCategory == null ||
+        selectedCategory.isArchived ||
+        selectedCategory.kind != _type) {
+      _categoryId = null;
+    }
   }
 }
 

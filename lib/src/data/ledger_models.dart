@@ -164,6 +164,12 @@ class LedgerPreferences {
     this.homeWidgetSizes = const {},
     this.homeWidgetFilters = const {},
     this.futureGenerationRules,
+    this.glassSpecularOpacity = 1.0,
+    this.glassSpecularSaturation = 2.0,
+    this.glassRefractionLevel = 1.0,
+    this.glassBlurLevel = 9.0,
+    this.glassProgressiveBlurStrength = 0.0,
+    this.glassBackgroundOpacity = 0.15,
   });
 
   final String baseCurrency;
@@ -176,6 +182,12 @@ class LedgerPreferences {
   final Map<String, String> homeWidgetSizes;
   final Map<String, String> homeWidgetFilters;
   final List<FutureGenerationRule>? futureGenerationRules;
+  final double glassSpecularOpacity;
+  final double glassSpecularSaturation;
+  final double glassRefractionLevel;
+  final double glassBlurLevel;
+  final double glassProgressiveBlurStrength;
+  final double glassBackgroundOpacity;
 
   LedgerPreferences copyWith({
     String? baseCurrency,
@@ -188,6 +200,12 @@ class LedgerPreferences {
     Map<String, String>? homeWidgetSizes,
     Map<String, String>? homeWidgetFilters,
     List<FutureGenerationRule>? futureGenerationRules,
+    double? glassSpecularOpacity,
+    double? glassSpecularSaturation,
+    double? glassRefractionLevel,
+    double? glassBlurLevel,
+    double? glassProgressiveBlurStrength,
+    double? glassBackgroundOpacity,
   }) {
     return LedgerPreferences(
       baseCurrency: baseCurrency ?? this.baseCurrency,
@@ -200,6 +218,12 @@ class LedgerPreferences {
       homeWidgetSizes: homeWidgetSizes ?? this.homeWidgetSizes,
       homeWidgetFilters: homeWidgetFilters ?? this.homeWidgetFilters,
       futureGenerationRules: futureGenerationRules ?? this.futureGenerationRules,
+      glassSpecularOpacity: glassSpecularOpacity ?? this.glassSpecularOpacity,
+      glassSpecularSaturation: glassSpecularSaturation ?? this.glassSpecularSaturation,
+      glassRefractionLevel: glassRefractionLevel ?? this.glassRefractionLevel,
+      glassBlurLevel: glassBlurLevel ?? this.glassBlurLevel,
+      glassProgressiveBlurStrength: glassProgressiveBlurStrength ?? this.glassProgressiveBlurStrength,
+      glassBackgroundOpacity: glassBackgroundOpacity ?? this.glassBackgroundOpacity,
     );
   }
 }

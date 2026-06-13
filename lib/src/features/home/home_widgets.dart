@@ -25,6 +25,12 @@ final _homeScheduledTransactionsProvider =
       return scheduledTransactions(state);
     });
 
+final _homeSortedTransactionsProvider =
+    Provider.autoDispose<List<TransactionRecord>>((ref) {
+      final state = ref.watch(ledgerProvider);
+      return sortedTransactions(state, includeScheduled: false);
+    });
+
 final _homeCurrentMonthFlowProvider =
     Provider.autoDispose<({Money income, Money expense})>((ref) {
       final state = ref.watch(ledgerProvider);
@@ -137,46 +143,25 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
       displayCurrency = allCurrencies.first;
     }
 
-    final totalAsync = ref.watch(
+    final total = ref.watch(
       homeTotalBalanceProvider((
         accountId: selectedAccountId,
         targetCurrency: displayCurrency,
       )),
     );
-    final total = totalAsync.valueOrNull ?? Money(amountMinor: 0, currency: displayCurrency);
 
-    final flowAsync = ref.watch(
+    final flow = ref.watch(
       homeFlowForPeriodProvider((
         period: _period,
         accountId: selectedAccountId,
         targetCurrency: displayCurrency,
       )),
     );
-    final flow = flowAsync.valueOrNull ?? (
-      income: Money(amountMinor: 0, currency: displayCurrency),
-      expense: Money(amountMinor: 0, currency: displayCurrency)
+
+    final currencyBreakdown = balanceBreakdownByCurrency(
+      widget.state,
+      accountId: selectedAccountId,
     );
-
-    final balancesAsync = ref.watch(homeAccountBalanceMapProvider);
-    final balances = balancesAsync.valueOrNull ?? const <String, Money>{};
-
-    // Build per-currency breakdown
-    final currencyGroups = <String, int>{};
-    final accounts = selectedAccountId != null
-        ? (selectedAccountId == 'cash_group'
-              ? widget.state.accounts.where(
-                  (a) => a.type == 'cash' && !a.isArchived,
-                )
-              : widget.state.accounts.where((a) => a.id == selectedAccountId))
-        : widget.state.accounts.where((a) => !a.isArchived);
-
-    for (final account in accounts) {
-      final bal = accountBalanceFromMap(balances, account);
-      currencyGroups[bal.currency] =
-          (currencyGroups[bal.currency] ?? 0) + bal.amountMinor;
-    }
-
-    final multiCurrency = currencyGroups.length > 1;
 
     return Container(
       constraints: const BoxConstraints(minHeight: 178),
@@ -191,6 +176,14 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
         children: [
           Row(
             children: [
+              HomeWidgetReorderableIcon(
+                icon: Icons.account_balance_wallet_outlined,
+                iconColor: scheme.primary,
+                size: 32,
+                iconSize: 18,
+                borderRadius: AppRadii.sm,
+              ),
+              const SizedBox(width: AppSpacing.xs),
               Expanded(
                 child: Text(
                   'Balance',
@@ -240,42 +233,39 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
             ],
           ),
           const SizedBox(height: 2),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 350),
-            transitionBuilder: (child, animation) {
-              return FadeTransition(
-                opacity: animation,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0.0, -0.2),
-                    end: Offset.zero,
-                  ).animate(animation),
-                  child: child,
+          TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOutCubic,
+            tween: Tween<double>(
+              begin: total.amountMinor.toDouble(),
+              end: total.amountMinor.toDouble(),
+            ),
+            builder: (context, value, child) {
+              return Text(
+                formatMoney(
+                  total.copyWith(amountMinor: value.round()),
+                  widget.state.preferences.locale,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                  fontSize: 40,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -1.2,
                 ),
               );
             },
-            child: Text(
-              formatMoney(total, widget.state.preferences.locale),
-              key: ValueKey(total.amountMinor),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                fontSize: 40,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -1.2,
-              ),
-            ),
           ),
 
           const SizedBox(height: AppSpacing.xs),
           SizedBox(
             height: 24,
-            child: multiCurrency
+            child: currencyBreakdown.isNotEmpty
                 ? SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        for (final entry in currencyGroups.entries) ...[
+                        for (final money in currencyBreakdown) ...[
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
@@ -289,7 +279,7 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                               border: Border.all(color: scheme.outlineVariant),
                             ),
                             child: Text(
-                              '${entry.key} ${formatMoney(Money(amountMinor: entry.value, currency: entry.key), widget.state.preferences.locale)}',
+                              '${money.currency} ${formatMoney(money, widget.state.preferences.locale)}',
                               style: TextStyle(
                                 color: scheme.onSurfaceVariant,
                                 fontSize: 11,
@@ -297,7 +287,7 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                               ),
                             ),
                           ),
-                          if (entry.key != currencyGroups.keys.last)
+                          if (money != currencyBreakdown.last)
                             const SizedBox(width: AppSpacing.xs),
                         ],
                       ],
@@ -312,10 +302,8 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
               Expanded(
                 child: HomeFlowPanel(
                   label: 'Income',
-                  value: formatMoney(
-                    flow.income,
-                    widget.state.preferences.locale,
-                  ),
+                  value: flow.income,
+                  locale: widget.state.preferences.locale,
                   tone: MetricTone.positive,
                 ),
               ),
@@ -323,10 +311,8 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
               Expanded(
                 child: HomeFlowPanel(
                   label: 'Expense',
-                  value: formatMoney(
-                    flow.expense,
-                    widget.state.preferences.locale,
-                  ),
+                  value: flow.expense,
+                  locale: widget.state.preferences.locale,
                   tone: MetricTone.danger,
                 ),
               ),
@@ -351,8 +337,7 @@ class AccountGridHomeWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedAccountId = ref.watch(homeSelectedAccountProvider);
-    final balancesAsync = ref.watch(homeAccountBalanceMapProvider);
-    final balances = balancesAsync.valueOrNull ?? const <String, Money>{};
+    final balances = ref.watch(homeAccountBalanceMapProvider);
     final accounts =
         state.accounts
             .where((account) => !account.isArchived && account.showOnHome)
@@ -420,7 +405,8 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedAccountId = ref.watch(homeSelectedAccountProvider);
-    final recent = sortedTransactions(state, includeScheduled: false)
+    final recent = ref
+        .watch(_homeSortedTransactionsProvider)
         .where(
           (t) =>
               selectedAccountId == null ||
@@ -467,11 +453,9 @@ class BalanceTrendHomeWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final now = DateTime.now();
     final start = DateTime(now.year);
-    final trendAsync = ref.watch(homeBalanceTrendProvider((start: DateTime(now.year), end: now)));
-    final trend = trendAsync.valueOrNull ?? [];
+    final trend = ref.watch(homeBalanceTrendProvider((start: DateTime(now.year), end: now)));
     final values = trend.map((point) => point.balance.amountMinor).toList();
-    final currentAsync = ref.watch(homeTotalBalanceProvider((accountId: null, targetCurrency: null)));
-    final current = currentAsync.valueOrNull ?? Money(amountMinor: 0, currency: state.preferences.displayCurrency);
+    final current = ref.watch(homeTotalBalanceProvider((accountId: null, targetCurrency: null)));
     final period = trend.isEmpty
         ? 'This year'
         : '${_shortDate(trend.first.date)} to ${_shortDate(trend.last.date)}';
@@ -526,12 +510,12 @@ class BalanceTrendHomeWidget extends ConsumerWidget {
       title: 'Balance trend',
       subtitle: period,
       icon: Icons.bar_chart_rounded,
-      iconColor: Colors.tealAccent.shade400,
+      iconColor: Theme.of(context).colorScheme.tertiary,
       child: Column(
         children: [
           MiniLineChart(
             values: values,
-            color: Theme.of(context).colorScheme.error,
+            color: Theme.of(context).colorScheme.primary,
             yAxisLabels: yLabels,
             xAxisLabels: xLabels,
           ),
@@ -597,18 +581,15 @@ class _CurrencyValuesHomeWidgetState extends ConsumerState<CurrencyValuesHomeWid
 
   @override
   Widget build(BuildContext context) {
-    final snapshotAsync = ref.watch(homeCurrencySnapshotProvider);
+    final snapshot = ref.watch(homeCurrencySnapshotProvider);
     ref.listen(homeCurrencySnapshotProvider, (_, next) {
-      final snapshot = next.valueOrNull;
-      if (snapshot?.quoteCurrency != null && snapshot?.rate != null) {
-        if (_rate != snapshot!.rate!) {
-          _rate = snapshot.rate!;
+      if (next?.quoteCurrency != null && next?.rate != null) {
+        if (_rate != next!.rate!) {
+          _rate = next.rate!;
           _updateQuote();
         }
       }
     });
-    
-    final snapshot = snapshotAsync.valueOrNull;
 
     if (snapshot == null) {
       return const HomeWidgetCard(
@@ -617,7 +598,7 @@ class _CurrencyValuesHomeWidgetState extends ConsumerState<CurrencyValuesHomeWid
         child: Center(child: CircularProgressIndicator()),
       );
     }
-    
+
     final quote = snapshot.quoteCurrency;
 
     if (quote == null || snapshot.rate == null) {
@@ -666,7 +647,7 @@ class _CurrencyValuesHomeWidgetState extends ConsumerState<CurrencyValuesHomeWid
       title: 'Currency values',
       subtitle: '1 rates to ${snapshot.baseCurrency}',
       icon: Icons.currency_pound_rounded,
-      iconColor: Colors.cyanAccent.shade400,
+      iconColor: scheme.tertiary,
       actionLabel: 'Rates',
       onAction: () => context.push('/currencies'),
       child: Column(
@@ -717,7 +698,7 @@ class _CurrencyValuesHomeWidgetState extends ConsumerState<CurrencyValuesHomeWid
                 title: '${money.currency} exposure',
                 subtitle: 'Foreign-currency account balance',
                 trailing: _formatDisplayMoney(widget.state, money),
-                iconColor: Colors.cyanAccent.shade400,
+                iconColor: scheme.tertiary,
               ),
               if (money != snapshot.exposure.take(2).last)
                 const SizedBox(height: AppSpacing.xs),
@@ -793,12 +774,7 @@ class FinanceSummaryHomeWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final worthAsync = ref.watch(homeNetWorthProvider);
-    final worth = worthAsync.valueOrNull ?? (
-      total: Money(amountMinor: 0, currency: state.preferences.displayCurrency),
-      assets: Money(amountMinor: 0, currency: state.preferences.displayCurrency),
-      liabilities: Money(amountMinor: 0, currency: state.preferences.displayCurrency),
-    );
+    final worth = ref.watch(homeNetWorthProvider);
     final scheduled = ref
         .watch(_homeScheduledTransactionsProvider)
         .fold<int>(0, (sum, tx) => sum + tx.baseAmount.amountMinor);
@@ -880,7 +856,7 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
       title: 'Upcoming & due',
       subtitle: 'Scheduled payments and bills',
       icon: Icons.event_available_outlined,
-      iconColor: AppColors.warning,
+      iconColor: Theme.of(context).colorScheme.secondary,
       actionLabel: 'Open',
       onAction: () => context.push('/recurring'),
       child: Column(
@@ -967,7 +943,7 @@ class LoansAndEmisHomeWidget extends ConsumerWidget {
       title: 'Loans & EMIs',
       subtitle: 'Merged EMI tracker and payoff',
       icon: Icons.account_balance_outlined,
-      iconColor: Colors.pink.shade200,
+      iconColor: Theme.of(context).colorScheme.secondary,
       actionLabel: 'Loans',
       onAction: () => context.push('/loans'),
       child: Column(
@@ -1032,7 +1008,7 @@ class PlannedPaymentsHomeWidget extends ConsumerWidget {
       title: 'Planned payments',
       subtitle: 'Upcoming scheduled payments',
       icon: Icons.event_repeat_outlined,
-      iconColor: Colors.orange.shade200,
+      iconColor: Theme.of(context).colorScheme.secondary,
       actionLabel: 'Planned',
       onAction: () => context.push('/planned'),
       child: HomeMetricTile(
@@ -1081,7 +1057,7 @@ class LoansHomeWidget extends ConsumerWidget {
       title: 'Loans & EMIs',
       subtitle: 'Merged EMI tracker and payoff',
       icon: Icons.account_balance_outlined,
-      iconColor: Colors.pink.shade200,
+      iconColor: Theme.of(context).colorScheme.secondary,
       actionLabel: 'Loans',
       onAction: () => context.push('/loans'),
       child: Column(
@@ -1137,8 +1113,7 @@ class CardsHomeWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final balancesAsync = ref.watch(homeAccountBalanceMapProvider);
-    final balances = balancesAsync.valueOrNull ?? const <String, Money>{};
+    final balances = ref.watch(homeAccountBalanceMapProvider);
     final cards = state.accounts
         .where(
           (account) => account.type == 'credit_card' && !account.isArchived,
@@ -1185,7 +1160,7 @@ class CardsHomeWidget extends ConsumerWidget {
       title: 'Cards',
       subtitle: 'Debt and payment plan',
       icon: Icons.credit_card_outlined,
-      iconColor: Colors.pink.shade200,
+      iconColor: Theme.of(context).colorScheme.secondary,
       actionLabel: 'Cards',
       onAction: () => context.push('/cards'),
       child: Column(
@@ -1273,7 +1248,7 @@ class CashflowForecastHomeWidget extends ConsumerWidget {
       title: '30-day forecast',
       subtitle: 'Next 30 days',
       icon: Icons.calendar_month_outlined,
-      iconColor: Colors.cyanAccent.shade400,
+      iconColor: Theme.of(context).colorScheme.tertiary,
       actionLabel: 'Plan',
       onAction: () => context.push('/recurring'),
       child: Column(
@@ -1341,7 +1316,7 @@ class AccountGroupsHomeWidget extends StatelessWidget {
     return HomeWidgetCard(
       title: 'Account groups',
       icon: Icons.account_tree_outlined,
-      iconColor: Colors.pink.shade200,
+      iconColor: Theme.of(context).colorScheme.secondary,
       child: groups.isEmpty
           ? const EmptyState(
               icon: Icons.account_tree_outlined,
@@ -1398,7 +1373,7 @@ class AutomationReviewHomeWidget extends StatelessWidget {
       title: 'Automation & review',
       subtitle: 'Queue, imports, and warnings',
       icon: Icons.verified_user_outlined,
-      iconColor: Colors.greenAccent.shade400,
+      iconColor: Theme.of(context).colorScheme.tertiary,
       actionLabel: 'Review',
       onAction: () => context.push('/review'),
       child: Column(
@@ -1488,7 +1463,7 @@ class SavingsRunwayHomeWidget extends StatelessWidget {
       title: 'Savings runway',
       subtitle: 'Liquid cash vs last 30 days',
       icon: Icons.hourglass_bottom_rounded,
-      iconColor: AppColors.warning,
+      iconColor: Theme.of(context).colorScheme.secondary,
       child: Column(
         children: [
           Row(
@@ -1559,7 +1534,7 @@ class CashflowBookHomeWidget extends ConsumerWidget {
             icon: Icons.arrow_downward_rounded,
             title: 'Income',
             trailing: formatMoney(flow.income, state.preferences.locale),
-            iconColor: Colors.greenAccent.shade400,
+            iconColor: Theme.of(context).colorScheme.tertiary,
             tone: MetricTone.positive,
           ),
           const SizedBox(height: AppSpacing.md),
@@ -1582,8 +1557,8 @@ class CashflowBookHomeWidget extends ConsumerWidget {
               state.preferences.locale,
             ),
             iconColor: net >= 0
-                ? Colors.greenAccent.shade400
-                : Theme.of(context).colorScheme.error,
+              ? Theme.of(context).colorScheme.tertiary
+              : Theme.of(context).colorScheme.error,
             tone: net >= 0 ? MetricTone.positive : MetricTone.danger,
           ),
         ],
@@ -1634,7 +1609,7 @@ class IncomeMixHomeWidget extends StatelessWidget {
       state: state,
       title: 'Income mix',
       icon: Icons.donut_large_outlined,
-      iconColor: Colors.greenAccent.shade400,
+      iconColor: Theme.of(context).colorScheme.tertiary,
       actionLabel: 'Records',
       onRecords: onRecords,
       items: items,
@@ -1652,7 +1627,7 @@ class BudgetPressureHomeWidget extends StatelessWidget {
     return HomeWidgetCard(
       title: 'Budget pressure',
       icon: Icons.speed_outlined,
-      iconColor: AppColors.warning,
+      iconColor: Theme.of(context).colorScheme.secondary,
       actionLabel: 'Planner',
       onAction: () => context.push('/budgets/new'),
       child: state.budgets.isEmpty
@@ -1694,7 +1669,7 @@ class GoalProgressHomeWidget extends StatelessWidget {
     return HomeWidgetCard(
       title: 'Goal progress',
       icon: Icons.track_changes_outlined,
-      iconColor: Colors.greenAccent.shade400,
+      iconColor: Theme.of(context).colorScheme.tertiary,
       actionLabel: 'Planner',
       onAction: () => context.push('/goals/new'),
       child: state.goals.isEmpty
@@ -1713,7 +1688,7 @@ class GoalProgressHomeWidget extends StatelessWidget {
                     progress: goal.target.amountMinor == 0
                         ? 0
                         : goal.saved.amountMinor / goal.target.amountMinor,
-                    color: Colors.greenAccent.shade400,
+                    color: Theme.of(context).colorScheme.tertiary,
                   ),
                   if (goal != state.goals.take(4).last)
                     const SizedBox(height: AppSpacing.sm),
@@ -1735,7 +1710,7 @@ class CurrencyExposureHomeWidget extends StatelessWidget {
     return HomeWidgetCard(
       title: 'Currency exposure',
       icon: Icons.currency_exchange_outlined,
-      iconColor: Colors.cyanAccent.shade400,
+      iconColor: Theme.of(context).colorScheme.tertiary,
       actionLabel: 'Rates',
       onAction: () => context.push('/currencies'),
       child: exposure.isEmpty
@@ -1752,7 +1727,7 @@ class CurrencyExposureHomeWidget extends StatelessWidget {
                     icon: Icons.currency_pound_rounded,
                     title: money.currency,
                     trailing: _formatDisplayMoney(state, money),
-                    iconColor: Colors.cyanAccent.shade400,
+                    iconColor: Theme.of(context).colorScheme.tertiary,
                   ),
                   if (money != exposure.take(5).last)
                     const Divider(height: AppSpacing.md),
@@ -1873,9 +1848,7 @@ class _AccountTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final color = accountDisplayColor(account);
-    final foreground = color.computeLuminance() > 0.45
-        ? Colors.black
-        : Colors.white;
+    final foreground = _legibleForegroundFor(color);
     final nativeBalance = accountBalanceFromMap(balances, account);
     final displayBalance = convertMoneyForDisplay(state, nativeBalance);
     final isForeignCurrency =
@@ -1997,6 +1970,22 @@ class _AccountTile extends ConsumerWidget {
       ),
     );
   }
+}
+
+Color _legibleForegroundFor(Color background) {
+  const light = Colors.white;
+  const dark = Colors.black;
+  return _contrastRatio(background, light) >= _contrastRatio(background, dark)
+      ? light
+      : dark;
+}
+
+double _contrastRatio(Color first, Color second) {
+  final firstLuminance = first.computeLuminance();
+  final secondLuminance = second.computeLuminance();
+  final lighter = math.max(firstLuminance, secondLuminance);
+  final darker = math.min(firstLuminance, secondLuminance);
+  return (lighter + 0.05) / (darker + 0.05);
 }
 
 List<_AccountGroupSummary> _accountGroupSummaries(LedgerState state) {
