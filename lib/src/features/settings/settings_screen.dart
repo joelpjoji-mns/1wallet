@@ -671,7 +671,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await ref.read(ledgerProvider.notifier).resetLedger();
     if (!mounted) return;
     _showMessage('Local ledger reset.');
-    context.push('/');
+    context.go('/');
   }
 
   void _showMessage(String message) {

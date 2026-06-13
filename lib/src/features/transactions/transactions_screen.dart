@@ -35,10 +35,6 @@ final _filteredTransactionsProvider = Provider.autoDispose
                 transaction.type != 'transfer') {
               return false;
             }
-            if (filter.typeFilter == 'adjustment' &&
-                transaction.type != 'adjustment') {
-              return false;
-            }
             if (!_matchesDateFilter(
               transaction.occurredAt,
               filter.dateFilter,
@@ -248,17 +244,17 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         monthlyFlows[monthStr] = (monthlyFlows[monthStr] ?? 0) + (converted.amountMinor * sign);
                       }
 
-                      final includedAccounts = accountFilter != null 
-                          ? {accountFilter} 
+                      final includedAccounts = accountFilter != null
+                          ? {accountFilter}
                           : { for (final a in state.accounts) if (!a.isArchived && a.includeInTotals) a.id };
-                          
+
                       var running = state.accounts
                           .where((a) => includedAccounts.contains(a.id))
                           .fold<int>(0, (sum, a) => sum + convertMoneyForDisplay(state, a.openingBalance, state.preferences.displayCurrency).amountMinor);
-                          
+
                       final monthlyBalances = <String, int>{};
                       final fullLedger = sortedTransactions(state, includeScheduled: false).reversed;
-                      
+
                       for (final t in fullLedger) {
                           final monthStr = DateFormat('MMM yyyy', state.preferences.locale.replaceAll('_', '-')).format(t.occurredAt).toUpperCase();
                           var delta = 0;
@@ -286,7 +282,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         }
                         items.add(t);
                       }
-                      
+
                       return ListView.builder(
                         padding: const EdgeInsets.only(bottom: AppSizes.bottomBarClearance),
                         itemCount: items.length,
@@ -332,7 +328,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                               ),
                             );
                           }
-                          
+
                           final transaction = item as TransactionRecord;
                           return Padding(
                             padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -421,11 +417,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           value: 'transfer',
           title: 'Transfer',
           icon: Icons.swap_horiz_rounded,
-        ),
-        PickerOption(
-          value: 'adjustment',
-          title: 'Adjustment',
-          icon: Icons.tune_rounded,
         ),
       ],
     );
@@ -541,9 +532,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                             }
                           }),
                           title: Text(category.name),
-                          subtitle: Text(category.kind),
+                          subtitle: Text(categoryPath(state, category)),
                           secondary: Icon(
-                            Icons.category_outlined,
+                            categoryIcon(category),
                             color: categoryColor(category, context),
                           ),
                         ),
@@ -693,7 +684,6 @@ String _typeFilterLabel(String value) {
     'income' => 'Income',
     'expense' => 'Expense',
     'transfer' => 'Transfer',
-    'adjustment' => 'Adjustment',
     _ => 'All types',
   };
 }
@@ -711,7 +701,7 @@ class _MonthHeaderItem {
   final String monthStr;
   final int balance;
   final int netFlow;
-  
+
   _MonthHeaderItem({
     required this.monthStr,
     required this.balance,

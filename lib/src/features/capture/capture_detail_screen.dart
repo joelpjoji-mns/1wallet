@@ -10,6 +10,7 @@ import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../common/category_hierarchy_picker.dart';
 import '../common/full_screen_picker.dart';
 
 class CaptureDetailScreen extends ConsumerStatefulWidget {
@@ -140,9 +141,11 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 PremiumRow(
-                  icon: Icons.category_outlined,
+                  icon: categoryIcon(selectedCategory),
                   title: 'Category',
-                  subtitle: selectedCategory?.name ?? 'Choose category',
+                  subtitle: selectedCategory == null
+                      ? 'Choose category'
+                      : categoryPath(state, selectedCategory),
                   iconColor: categoryColor(selectedCategory, context),
                   onTap: () => _showCategoryPicker(state),
                 ),
@@ -194,11 +197,7 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
         state.accounts.firstOrNull?.id;
     _categoryId =
         candidate.suggestedCategoryId ??
-        state.categories
-            .firstWhereOrNull(
-              (category) => category.kind == _type && !category.isArchived,
-            )
-            ?.id;
+        firstActiveCategory(state)?.id;
   }
 
   Future<void> _showTypePicker() async {
@@ -249,23 +248,10 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
   }
 
   Future<void> _showCategoryPicker(LedgerState state) async {
-    final next = await showFullScreenPicker<String>(
+    final next = await showCategoryHierarchyPicker(
       context: context,
-      title: 'Choose category',
-      searchHint: 'Search categories',
-      selectedValue: _categoryId,
-      options: [
-        for (final category in state.categories.where(
-          (category) => !category.isArchived && category.kind == _type,
-        ))
-          PickerOption(
-            value: category.id,
-            title: category.name,
-            subtitle: category.kind,
-            icon: Icons.category_outlined,
-            iconColor: categoryColor(category, context),
-          ),
-      ],
+      state: state,
+      selectedCategoryId: _categoryId,
     );
     if (next == null) return;
     setState(() => _categoryId = next);
