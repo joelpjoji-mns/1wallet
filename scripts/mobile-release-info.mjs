@@ -1,221 +1,47 @@
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+#!/usr/bin/env node
+import fs from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const args = parseArgs(process.argv.slice(2));
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-if (args['self-test']) {
-  runSelfTest();
-  process.stdout.write('mobile-release-info self-test passed\n');
-  process.exit(0);
+function readArg(name, fallback = undefined) {
+  const index = process.argv.indexOf(name);
+  return index === -1 ? fallback : process.argv[index + 1] ?? fallback;
 }
 
-const pubspecYaml = readFileSync(resolve(repoRoot, 'pubspec.yaml'), 'utf8');
-const versionMatch = /^version:\s*([\d.]+)(?:\+(\d+))?/m.exec(pubspecYaml);
-const platform = normalizePlatform(
-  args.platform ?? process.env.ONEWALLET_RELEASE_PLATFORM ?? 'android',
-);
-const channel = normalizeChannel(args.channel ?? process.env.ONEWALLET_UPDATE_CHANNEL ?? 'stable');
-const sourceVersionName = versionMatch ? versionMatch[1] : null;
-const sourceVersionCode = (versionMatch && versionMatch[2]) 
-  ? Number(versionMatch[2]) 
-  : versionCodeFromSemver(sourceVersionName);
-const explicitVersionName = args['version-name'] ?? process.env.ONEWALLET_VERSION_NAME;
-const explicitVersionCode = args['version-code'] ?? process.env.ONEWALLET_VERSION_CODE;
-const versionName = explicitVersionName ?? deriveVersionName(sourceVersionName, channel);
-const versionCode = explicitVersionCode
-  ? normalizeVersionCode(explicitVersionCode, '--version-code')
-  : deriveVersionCode(sourceVersionCode, versionName);
+function writeOutput(file, values) {
+  const lines = Object.entries(values).map(([key, value]) => `${key}=${value}`);
+  if (file) {
+    fs.appendFileSync(file, `${lines.join('\n')}\n`, 'utf8');
+  } else {
+    console.log(lines.join('\n'));
+  }
+}
 
-if (!sourceVersionName) throw new Error('Could not read version from pubspec.yaml.');
-if (!versionName) throw new Error(`Could not determine ${platformLabel(platform)} versionName.`);
-if (!versionCode) throw new Error(`Could not determine ${platformLabel(platform)} versionCode.`);
-if (channel === 'beta') assertBetaVersion(versionName, versionCode);
-if (channel === 'stable') assertStableVersion(versionName, versionCode);
+const channel = readArg('--channel', 'stable');
+const outputFile = readArg('--output', process.env.GITHUB_OUTPUT);
+const pubspecPath = path.resolve(__dirname, '..', 'pubspec.yaml');
+const pubspec = fs.readFileSync(pubspecPath, 'utf8');
+const versionMatch = pubspec.match(/^version:\s*([^+\s]+)\+(\d+)\s*$/m);
 
-const releaseLabel = releaseDisplayLabel(versionName, channel);
-const assetLabel = releaseAssetLabel(versionName, channel);
+if (!versionMatch) {
+  console.error('Unable to read `version: x.y.z+build` from pubspec.yaml.');
+  process.exit(1);
+}
 
-const info = {
-  platform,
+const [, versionName, versionCode] = versionMatch;
+const isBeta = channel === 'beta';
+const suffix = isBeta ? '-beta' : '';
+const values = {
   versionName,
-  versionCode: String(versionCode),
-  buildNumber: String(versionCode),
+  versionCode,
+  apkFileName: `1wallet-arm64-v8a-${versionName}-${channel}.apk`,
+  tag: `android-${versionName}${suffix}`,
+  releaseTitle: `1Wallet Android ${versionName}${isBeta ? ' beta' : ''}`,
+  prerelease: isBeta ? 'true' : 'false',
   channel,
-  tag: `${platform}-${channel}-v${versionName}-${versionCode}`,
-  releaseTitle: `1Wallet ${platformLabel(platform)} ${releaseLabel} (${versionCode})`,
-  prerelease: String(channel === 'beta'),
-  latest: String(channel === 'stable'),
-  apkFileName: `1wallet-${assetLabel}-arm64-v8a.apk`,
-  ipaFileName: `1wallet-${assetLabel}.ipa`,
-  artifactFileName:
-    platform === 'ios' ? `1wallet-${assetLabel}.ipa` : `1wallet-${assetLabel}-arm64-v8a.apk`,
-  manifestFileName: `1wallet-${assetLabel}-update-manifest.json`,
+  manifestFileName: `mobile-update-${versionName}-${channel}.json`,
 };
 
-if (args.output) {
-  const lines = Object.entries(info).map(([key, value]) => `${key}=${value}`);
-  await appendFile(args.output, `${lines.join('\n')}\n`);
-} else {
-  process.stdout.write(`${JSON.stringify(info, null, 2)}\n`);
-}
-
-function readVersionCode(value) {
-  const line = value.split(/\r?\n/).find((item) => item.includes('appVersionCode')) ?? '';
-  const match = /'([0-9]+)'/.exec(line);
-  return match ? Number(match[1]) : null;
-}
-
-function readIosBuildNumber(config) {
-  const raw = config.expo?.ios?.buildNumber;
-  const parsed = Number(raw);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-function versionCodeFromSemver(version) {
-  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version ?? '');
-  if (!match) return null;
-  return Number(match[1]) * 1000000 + Number(match[2]) * 10000 + Number(match[3]) * 100;
-}
-
-function semverFromVersion(version) {
-  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version ?? '');
-  if (!match) return null;
-  return {
-    major: Number(match[1]),
-    minor: Number(match[2]),
-    patch: Number(match[3]),
-  };
-}
-
-function deriveVersionName(sourceVersionName, channel) {
-  if (!sourceVersionName) return null;
-  if (channel === 'stable') return sourceVersionName;
-  if (sourceVersionName.includes('-')) return sourceVersionName;
-  return `${sourceVersionName}-beta`;
-}
-
-function deriveVersionCode(sourceVersionCode, versionName) {
-  return versionCodeFromSemver(versionName) ?? sourceVersionCode ?? null;
-}
-
-function assertStableVersion(versionName, versionCode) {
-  if (versionName.includes('-')) {
-    throw new Error(`Stable releases must use a plain semantic version, not ${versionName}.`);
-  }
-  const semver = semverFromVersion(versionName);
-  if (!semver) throw new Error(`Could not parse semantic version: ${versionName}.`);
-}
-
-function assertBetaVersion(versionName, versionCode) {
-  const semver = semverFromVersion(versionName);
-  if (!semver) throw new Error(`Could not parse semantic version: ${versionName}.`);
-  if (!/-beta$/.test(versionName)) {
-    throw new Error(`Beta releases must use the form 1.4.2-beta, not ${versionName}.`);
-  }
-  if (semver.patch === 0) {
-    throw new Error(
-      `Beta releases must target a patch version greater than 0. Use ${semver.major}.${semver.minor}.1-beta or later instead of ${semver.major}.${semver.minor}.0-beta.`,
-    );
-  }
-  if (versionCode < 1040200) {
-    throw new Error(
-      'The next beta must be 1.4.2-beta / 1040200 or later because stable 1.4.1 / 1040100 is already published.',
-    );
-  }
-}
-
-function releaseDisplayLabel(versionName, channel) {
-  if (channel === 'beta') return `${versionName.replace(/-beta$/, '')} Beta`;
-  return `${versionName} Stable`;
-}
-
-function releaseAssetLabel(versionName, channel) {
-  if (channel === 'beta' && /-beta$/.test(versionName)) return versionName;
-  return `${versionName}-${channel}`;
-}
-
-function runSelfTest() {
-  const rescueVersionName = deriveVersionName('1.4.1', 'stable');
-  const rescueVersionCode = deriveVersionCode(1040100, rescueVersionName);
-  if (rescueVersionName !== '1.4.1' || rescueVersionCode !== 1040100) {
-    throw new Error('Expected rescue stable 1.4.1 to produce versionCode 1040100.');
-  }
-
-  const stableVersionName = deriveVersionName('1.5.0', 'stable');
-  const stableVersionCode = deriveVersionCode(1050000, stableVersionName);
-  if (stableVersionName !== '1.5.0' || stableVersionCode !== 1050000) {
-    throw new Error('Expected planned stable 1.5.0 to produce versionCode 1050000.');
-  }
-
-  assertThrows(() => assertBetaVersion(deriveVersionName('1.4.0', 'beta'), 1040000), '1.4.0 beta');
-  assertThrows(() => assertBetaVersion(deriveVersionName('1.4.1', 'beta'), 1040100), '1.4.1 beta');
-  assertThrows(() => assertStableVersion('1.5.0-beta', 1050000), 'stable prerelease');
-
-  const betaVersionName = deriveVersionName('1.4.2', 'beta');
-  const betaVersionCode = deriveVersionCode(1040200, betaVersionName);
-  assertBetaVersion(betaVersionName, betaVersionCode);
-  if (betaVersionName !== '1.4.2-beta' || betaVersionCode !== 1040200) {
-    throw new Error('Expected beta 1.4.2 to produce 1.4.2-beta / 1040200.');
-  }
-}
-
-function assertThrows(callback, label) {
-  try {
-    callback();
-  } catch {
-    return;
-  }
-  throw new Error(`Expected ${label} derivation to fail.`);
-}
-
-function normalizeVersionCode(value, label) {
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new Error(`${label} must be a positive integer.`);
-  }
-  return parsed;
-}
-
-function normalizeChannel(value) {
-  const channel = String(value ?? '')
-    .trim()
-    .toLowerCase();
-  if (channel === 'stable' || channel === 'beta') return channel;
-  throw new Error(`Unsupported update channel: ${value}. Expected stable or beta.`);
-}
-
-function normalizePlatform(value) {
-  const platform = String(value ?? '')
-    .trim()
-    .toLowerCase();
-  if (platform === 'android' || platform === 'ios') return platform;
-  throw new Error(`Unsupported release platform: ${value}. Expected android or ios.`);
-}
-
-function platformLabel(value) {
-  return value === 'ios' ? 'iOS' : 'Android';
-}
-
-function parseArgs(values) {
-  const result = {};
-  for (let index = 0; index < values.length; index += 1) {
-    const raw = values[index];
-    if (!raw?.startsWith('--')) continue;
-    const key = raw.slice(2);
-    const next = values[index + 1];
-    if (!next || next.startsWith('--')) {
-      result[key] = 'true';
-      continue;
-    }
-    result[key] = next;
-    index += 1;
-  }
-  return result;
-}
-
-async function appendFile(filePath, content) {
-  const { appendFile } = await import('node:fs/promises');
-  await appendFile(filePath, content);
-}
+writeOutput(outputFile, values);

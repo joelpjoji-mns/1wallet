@@ -986,21 +986,21 @@ class _PermissionsStep extends StatelessWidget {
           'Choose which helpers to prepare. We ask for device permissions only when a feature needs them.',
       child: Column(
         children: [
-          SwitchListTile.adaptive(
+          LiquidGlassSwitchListTile(
             contentPadding: EdgeInsets.zero,
             value: enableAutoCapture,
             onChanged: onAutoCaptureChanged,
-            secondary: const Icon(Icons.auto_awesome_outlined),
+            icon: Icons.auto_awesome_outlined,
             title: const Text('Prepare auto-capture'),
             subtitle: const Text(
               'SMS, receipt, and notification review queues',
             ),
           ),
-          SwitchListTile.adaptive(
+          LiquidGlassSwitchListTile(
             contentPadding: EdgeInsets.zero,
             value: enableReminders,
             onChanged: onRemindersChanged,
-            secondary: const Icon(Icons.notifications_active_outlined),
+            icon: Icons.notifications_active_outlined,
             title: const Text('Prepare reminders'),
             subtitle: const Text('Bills, review nudges, and update alerts'),
           ),

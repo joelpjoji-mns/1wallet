@@ -1,9 +1,9 @@
 import 'dart:math' as math;
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
 import '../design/tokens.dart';
+import 'app_kit.dart';
 
 @immutable
 class IslandTabItem {
@@ -25,12 +25,14 @@ class BottomIslandNavBar extends StatelessWidget {
     required this.items,
     required this.selectedIndex,
     required this.onSelected,
+    this.pageController,
     super.key,
   });
 
   final List<IslandTabItem> items;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
+  final PageController? pageController;
 
   @override
   Widget build(BuildContext context) {
@@ -46,135 +48,73 @@ class BottomIslandNavBar extends StatelessWidget {
             const navPadding = 6.0;
             final indicatorHeight = navHeight - navPadding * 2;
             final tabWidth = (islandWidth - navPadding * 2) / items.length;
-            final currentItemIndex = items.indexWhere(
-              (item) => (item.pageIndex ?? items.indexOf(item)) == selectedIndex,
-            );
-            final selectedItemIndex = currentItemIndex < 0 ? 0 : currentItemIndex;
 
-            // Proportions exactly matching the reference image
             final pillWidth = compact ? 76.0 : 80.0;
-            final tabCenter = navPadding + tabWidth * (selectedItemIndex + 0.5);
-            final left = tabCenter - pillWidth / 2;
 
             return Align(
               alignment: Alignment.bottomCenter,
-              child: _GlassIsland(
+              child: LiquidGlassContainer(
                 width: islandWidth,
                 height: navHeight,
-                child: Stack(
-                  children: [
-                    // Animated selection pill
-                    AnimatedPositioned(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOutExpo,
-                      left: left,
-                      top: navPadding,
-                      width: pillWidth,
-                      height: indicatorHeight,
-                      child: const _SelectedIslandBubble(),
-                    ),
-                    // Tab buttons
-                    Align(
-                      alignment: Alignment.center,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 6.0),
-                        child: Row(
-                          children: [
-                            for (var index = 0; index < items.length; index++)
-                              Expanded(
-                                child: _IslandButton(
-                                  item: items[index],
-                                  selected:
-                                      (items[index].pageIndex ?? index) ==
-                                      selectedIndex,
-                                  compact: compact,
-                                  onTap: () => onSelected(
-                                    items[index].pageIndex ?? index,
-                                  ),
-                                ),
-                              ),
-                          ],
+                borderRadius: BorderRadius.circular(AppRadii.pill),
+                child: AnimatedBuilder(
+                  animation:
+                      pageController ?? const AlwaysStoppedAnimation(0.0),
+                  builder: (context, child) {
+                    double page = selectedIndex.toDouble();
+                    if (pageController != null && pageController!.hasClients) {
+                      page = pageController!.page ?? selectedIndex.toDouble();
+                    }
+
+                    final tabCenter = navPadding + tabWidth * (page + 0.5);
+                    final left = tabCenter - pillWidth / 2;
+
+                    return Stack(
+                      children: [
+                        Positioned(
+                          left: left,
+                          top: navPadding,
+                          width: pillWidth,
+                          height: indicatorHeight,
+                          child: const _SelectedIslandBubble(),
                         ),
-                      ),
-                    ),
-                  ],
+                        // Tab buttons
+                        Align(
+                          alignment: Alignment.center,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6.0,
+                            ),
+                            child: Row(
+                              children: [
+                                for (
+                                  var index = 0;
+                                  index < items.length;
+                                  index++
+                                )
+                                  Expanded(
+                                    child: _IslandButton(
+                                      item: items[index],
+                                      selected:
+                                          (items[index].pageIndex ?? index) ==
+                                          selectedIndex,
+                                      compact: compact,
+                                      onTap: () => onSelected(
+                                        items[index].pageIndex ?? index,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             );
           },
-        ),
-      ),
-    );
-  }
-}
-
-class _GlassIsland extends StatelessWidget {
-  const _GlassIsland({
-    required this.width,
-    required this.height,
-    required this.child,
-  });
-
-  final double width;
-  final double height;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    // Glass surface: we want it to stand out against the white/dark background
-    final glassFill = isDark
-        ? scheme.surfaceContainerHighest.withAlpha(200)
-        : scheme.surfaceContainerHigh.withAlpha(220);
-
-    // Border highlight (top shimmer)
-    final borderColor = isDark
-        ? Colors.white.withAlphaFactor(0.14)
-        : Colors.white.withAlphaFactor(0.9);
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadii.pill),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 36, sigmaY: 36),
-        child: Container(
-          width: width,
-          height: height,
-          decoration: BoxDecoration(
-            color: glassFill,
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-            border: Border.all(color: borderColor, width: 1.2),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlphaFactor(isDark ? 0.42 : 0.08),
-                blurRadius: 24,
-                offset: const Offset(0, 12),
-              ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              // Inner gradient shimmer overlay
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(AppRadii.pill),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Colors.white.withAlphaFactor(isDark ? 0.08 : 0.38),
-                        scheme.primary.withAlphaFactor(isDark ? 0.04 : 0.02),
-                        Colors.white.withAlphaFactor(isDark ? 0.04 : 0.12),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              child,
-            ],
-          ),
         ),
       ),
     );
@@ -217,7 +157,6 @@ class _IslandButton extends StatefulWidget {
 
 class _IslandButtonState extends State<_IslandButton>
     with SingleTickerProviderStateMixin {
-
   late AnimationController _scaleCtrl;
   late Animation<double> _scaleAnim;
 
@@ -228,9 +167,10 @@ class _IslandButtonState extends State<_IslandButton>
       vsync: this,
       duration: const Duration(milliseconds: 120),
     );
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.88).animate(
-      CurvedAnimation(parent: _scaleCtrl, curve: Curves.easeOut),
-    );
+    _scaleAnim = Tween<double>(
+      begin: 1.0,
+      end: 0.88,
+    ).animate(CurvedAnimation(parent: _scaleCtrl, curve: Curves.easeOut));
   }
 
   @override
@@ -287,9 +227,7 @@ class _IslandButtonState extends State<_IslandButton>
                 scale: widget.selected ? 1.08 : 1.0,
                 curve: Curves.easeOutBack,
                 child: Icon(
-                  widget.selected
-                      ? widget.item.activeIcon
-                      : widget.item.icon,
+                  widget.selected ? widget.item.activeIcon : widget.item.icon,
                   size: iconSize,
                   color: color,
                 ),

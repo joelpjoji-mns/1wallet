@@ -5,9 +5,11 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
+import 'package:one_wallet_flutter/src/features/transactions/add_record_screen.dart';
 import 'package:one_wallet_flutter/src/routing/app_router.dart';
 import 'package:one_wallet_flutter/src/theme/app_theme.dart';
 
+import 'fixtures/sample_ledger.dart';
 import 'test_harness.dart';
 
 void main() {
@@ -26,24 +28,42 @@ void main() {
       overrides: authenticatedSampleOverrides(),
     );
     addTearDown(container.dispose);
-    final router = container.read(appRouterProvider);
+    await container.read(ledgerProvider.notifier).restoreLedgerState(
+          sampleLedgerState(),
+        );
 
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: MaterialApp.router(
+        child: MaterialApp(
           debugShowCheckedModeBanner: false,
-          routerConfig: router,
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),
+          home: const AddRecordScreen(initialAccountId: 'acc-cash'),
         ),
       ),
     );
-    router.go('/add');
+    await tester.pumpAndSettle();
+    for (var i = 0; i < 20; i++) {
+      if (container.read(ledgerProvider).accounts.isNotEmpty) break;
+      await tester.pump(const Duration(milliseconds: 50));
+    }
     await tester.pumpAndSettle();
 
     final beforeCount = container.read(ledgerProvider).transactions.length;
+    expect(find.text('Cash Wallet'), findsOneWidget);
+    expect(find.text('Choose category'), findsOneWidget);
+
     await tester.tap(find.text('1').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.check_rounded).first);
+    await tester.pumpAndSettle();
+    expect(container.read(ledgerProvider).transactions.length, beforeCount);
+    expect(find.text('Choose a category before saving.'), findsOneWidget);
+
+    await tester.tap(find.text('Choose category'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Food').last);
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.check_rounded).first);
     await tester.pumpAndSettle();
@@ -52,6 +72,8 @@ void main() {
     expect(transactions.length, beforeCount + 1);
     expect(transactions.first.amount.amountMinor, 100);
     expect(transactions.first.type, 'expense');
+    expect(transactions.first.accountId, 'acc-cash');
+    expect(transactions.first.categoryId, 'cat-food');
   });
 
   testWidgets('Add Record edit route updates an existing transaction', (

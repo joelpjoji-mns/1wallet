@@ -50,7 +50,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
       scrollable: false,
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.md,
-        AppSpacing.md,
+        AppSpacing.xs,
         AppSpacing.md,
         0,
       ),
