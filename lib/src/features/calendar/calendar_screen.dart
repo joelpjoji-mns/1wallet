@@ -352,7 +352,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           !forecast.occurredAt.isBefore(through)) {
         continue;
       }
-      
+
       if (selectedAccountIds.contains(forecast.accountId)) {
         final delta = convertMoneyForDisplay(
           state,
@@ -361,12 +361,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         );
         balanceMinor += delta.amountMinor;
       }
-      
+
       if (forecast.counterAccountId != null && selectedAccountIds.contains(forecast.counterAccountId)) {
         final delta = convertMoneyForDisplay(
           state,
           Money(
-            amountMinor: counterDelta(forecast), 
+            amountMinor: counterDelta(forecast),
             currency: forecast.counterAmount?.currency ?? forecast.amount.currency
           ),
           state.preferences.baseCurrency,
@@ -456,8 +456,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           PickerOption(
             value: category.id,
             title: category.name,
-            subtitle: category.kind,
-            icon: Icons.category_outlined,
+            subtitle: categoryPath(state, category),
+            icon: categoryIcon(category),
             iconColor: categoryColor(category, context),
           ),
       ],

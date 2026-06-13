@@ -316,7 +316,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
       if (context.canPop()) {
         context.pop();
       } else {
-        context.push('/');
+        context.go('/');
       }
     } catch (error) {
       if (!mounted) return;

@@ -363,7 +363,6 @@ jobs:
         run: |
           node scripts/publish-mobile-update-to-firebase.mjs \
             --project "$FIREBASE_PROJECT_ID" \
-            --skip-upload \
             --manifest "importdata/mobile-update-${{ steps.info.outputs.versionName }}-${{ steps.info.outputs.channel }}.json"
 
       - name: Upload manifest to releases

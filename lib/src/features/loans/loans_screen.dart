@@ -517,7 +517,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
               amountMinor: emiMinor,
               status: 'scheduled',
               source: 'recurring',
-              categoryId: _firstExpenseCategoryId(
+              categoryId: _firstCategoryId(
                 latestState,
                 preferred: 'emi',
               ),
@@ -1327,22 +1327,8 @@ String? _nonLoanGroupName(String? value) {
   return parts.isEmpty ? null : parts.join('|');
 }
 
-String? _firstExpenseCategoryId(LedgerState state, {String? preferred}) {
-  final normalizedPreferred = preferred?.trim().toLowerCase();
-  if (normalizedPreferred != null && normalizedPreferred.isNotEmpty) {
-    final match = state.categories.firstWhereOrNull(
-      (category) =>
-          category.kind == 'expense' &&
-          !category.isArchived &&
-          category.name.toLowerCase().contains(normalizedPreferred),
-    );
-    if (match != null) return match.id;
-  }
-  return state.categories
-      .firstWhereOrNull(
-        (category) => category.kind == 'expense' && !category.isArchived,
-      )
-      ?.id;
+String? _firstCategoryId(LedgerState state, {String? preferred}) {
+  return firstActiveCategory(state, preferred: preferred)?.id;
 }
 
 List<String> _currencyOptions(LedgerState state) {

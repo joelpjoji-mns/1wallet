@@ -40,7 +40,7 @@ class _TransactionDetailScreenState
           body:
               'The selected transaction is not available in your wallet data.',
           actionLabel: 'Back home',
-          onAction: () => context.push('/'),
+          onAction: () => context.go('/'),
         ),
       );
     }
@@ -199,9 +199,9 @@ class _TransactionDetailScreenState
                 if (category != null) ...[
                   const SizedBox(height: AppSpacing.sm),
                   PremiumRow(
-                    icon: Icons.category_outlined,
+                    icon: categoryIcon(category),
                     title: category.name,
-                    subtitle: category.kind,
+                    subtitle: categoryPath(state, category),
                     iconColor: category.color,
                     onTap: () => context.push('/categories'),
                   ),
@@ -420,7 +420,7 @@ class _TransactionDetailScreenState
           behavior: SnackBarBehavior.floating,
         ),
       );
-    context.push('/');
+    context.go('/');
   }
 }
 
