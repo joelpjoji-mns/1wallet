@@ -99,7 +99,7 @@ class _ImportWalletCsvScreenState extends ConsumerState<ImportWalletCsvScreen> {
                 'Override auto-detection when a CSV uses unusual column order.',
             child: Column(
               children: [
-                SwitchListTile.adaptive(
+                LiquidGlassSwitchListTile(
                   value: _manualMapping,
                   onChanged: (value) => setState(() {
                     _manualMapping = value;
@@ -109,7 +109,7 @@ class _ImportWalletCsvScreenState extends ConsumerState<ImportWalletCsvScreen> {
                   subtitle: const Text('Use 1-based column numbers'),
                 ),
                 if (_manualMapping) ...[
-                  SwitchListTile.adaptive(
+                  LiquidGlassSwitchListTile(
                     value: _mappingHasHeader,
                     onChanged: (value) => setState(() {
                       _mappingHasHeader = value;

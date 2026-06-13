@@ -283,7 +283,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                 onTap: () => _showSourceAccountPicker(state),
               ),
               const SizedBox(height: AppSpacing.sm),
-              SwitchListTile(
+              LiquidGlassSwitchListTile(
                 title: const Text('Hide interest in main ledger'),
                 subtitle: const Text('Interest transactions won\'t clutter the Records screen, but will stay visible here.'),
                 value: _hideInterestInLedger,
@@ -564,118 +564,105 @@ class LoanDetailView extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Premium Hero Banner
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl, horizontal: AppSpacing.md),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                const Color(0xFF7C4DFF).withAlpha(220),
-                const Color(0xFF7C4DFF),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(AppRadii.xl),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF7C4DFF).withAlpha(60),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
+        Card(
+          elevation: 0,
+          color: Theme.of(context).colorScheme.surfaceContainerLow,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
           ),
-          child: Column(
-            children: [
-              const IconBubble(
-                icon: Icons.account_balance_rounded,
-                color: Colors.white,
-                compact: true,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                formatMoney(
-                  balance.copyWith(amountMinor: balance.amountMinor.abs()),
-                  state.preferences.locale,
-                ),
-                style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                  letterSpacing: -1.0,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                'Remaining Principal',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white.withAlpha(200),
-                  letterSpacing: 1.0,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(30),
-                  borderRadius: BorderRadius.circular(AppRadii.pill),
-                  border: Border.all(color: Colors.white.withAlpha(60)),
-                ),
-                child: Text(
-                  loan.name.toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ),
-              if (details.principal != null) ...[
-                const SizedBox(height: AppSpacing.xl),
-                Builder(builder: (context) {
-                  final principal = details.principal!.amountMinor.abs();
-                  final remaining = balance.amountMinor.abs();
-                  final paid = (principal - remaining).clamp(0, principal);
-                  final progress = principal > 0 ? paid / principal : 0.0;
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    IconBubble(
+                      icon: Icons.account_balance_rounded,
+                      color: Theme.of(context).colorScheme.primary,
+                      compact: true,
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Paid: ${formatMoney(Money(amountMinor: paid, currency: loan.currency), state.preferences.locale)}',
-                            style: TextStyle(
-                              fontSize: 13, 
-                              color: Colors.white.withAlpha(220), 
-                              fontWeight: FontWeight.w700,
+                            loan.name,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
-                          if (projection.monthsRemaining != null)
+                          const SizedBox(height: 2),
+                          Text(
+                            'LOAN ACCOUNT',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      formatMoney(
+                        balance.copyWith(amountMinor: balance.amountMinor.abs()),
+                        state.preferences.locale,
+                      ),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+                if (details.principal != null) ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  Builder(builder: (context) {
+                    final principal = details.principal!.amountMinor.abs();
+                    final remaining = balance.amountMinor.abs();
+                    final paid = (principal - remaining).clamp(0, principal);
+                    final progress = principal > 0 ? paid / principal : 0.0;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
                             Text(
-                              '${projection.monthsRemaining} mos left',
+                              'Paid: ${formatMoney(Money(amountMinor: paid, currency: loan.currency), state.preferences.locale)}',
                               style: TextStyle(
-                                fontSize: 13, 
-                                color: Colors.white.withAlpha(220), 
+                                fontSize: 13,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      LinearProgressIndicator(
-                        value: progress,
-                        minHeight: 8,
-                        backgroundColor: Colors.white.withAlpha(40),
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ],
-                  );
-                }),
+                            if (projection.monthsRemaining != null)
+                              Text(
+                                '${projection.monthsRemaining} mos left',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 8,
+                          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          color: Theme.of(context).colorScheme.primary,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ],
+                    );
+                  }),
+                ],
               ],
-            ],
+            ),
           ),
         ),
         const Gap(AppSpacing.lg),
@@ -733,8 +720,8 @@ class LoanDetailView extends ConsumerWidget {
           label: const Text('Edit loan details'),
           style: FilledButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 16),
-            backgroundColor: const Color(0xFF7C4DFF),
-            foregroundColor: Colors.white,
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            foregroundColor: Theme.of(context).colorScheme.onPrimary,
           ),
         ),
         const Gap(AppSpacing.sm),
@@ -850,6 +837,7 @@ class _LoanCompactCard extends StatelessWidget {
     final nextEmi = _existingLoanEmi(state, loan.id);
     final scheduleDate = nextEmi?.occurredAt ?? details.repaymentStartsOn;
     final status = _scheduleStatus(
+      context,
       scheduleDate,
       locale: state.preferences.locale,
       historyMode: mode == 'past',
@@ -1048,11 +1036,15 @@ class _RoundTileIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final foreground = color.computeLuminance() > 0.5
+        ? scheme.onSurface
+        : scheme.surface;
     return Container(
       width: 56,
       height: 56,
       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      child: Icon(icon, color: Colors.white, size: 28),
+      child: Icon(icon, color: foreground, size: 28),
     );
   }
 }
@@ -1185,23 +1177,25 @@ String _loanCadenceLabel(AccountLoanDetails details) {
 }
 
 ({String label, IconData icon, Color color}) _scheduleStatus(
+  BuildContext context,
   DateTime? date, {
   required String locale,
   required bool historyMode,
 }) {
+  final scheme = Theme.of(context).colorScheme;
   if (date == null) {
     return (
       label: historyMode ? 'Past loan' : 'No due date',
       icon: historyMode ? Icons.history_rounded : Icons.schedule_outlined,
-      color: historyMode ? Colors.grey : Colors.grey,
+      color: scheme.outline,
     );
   }
   final tone = _scheduleTone(date);
   final color = switch (tone) {
-    MetricTone.danger => Colors.redAccent,
-    MetricTone.warning => Colors.orangeAccent,
-    MetricTone.positive => Colors.green,
-    MetricTone.standard => Colors.blueAccent,
+    MetricTone.danger => scheme.error,
+    MetricTone.warning => scheme.secondary,
+    MetricTone.positive => scheme.tertiary,
+    MetricTone.standard => scheme.primary,
   };
   return (
     label: _scheduleStatusLabel(date, locale: locale, historyMode: historyMode),

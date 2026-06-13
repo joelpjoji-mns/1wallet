@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
+import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 
 class HomeBalancePill extends StatelessWidget {
@@ -18,33 +20,34 @@ class HomeBalancePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
         vertical: 7,
       ),
       decoration: BoxDecoration(
-        color: scheme.error.withAlphaFactor(0.72),
+        color: scheme.primary.withAlphaFactor(isDark ? 0.28 : 0.16),
         borderRadius: BorderRadius.circular(AppRadii.pill),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 14, color: scheme.onError),
+            Icon(icon, size: 14, color: scheme.primary),
             const SizedBox(width: 5),
           ],
           Text(
             label,
             style: TextStyle(
-              color: scheme.onError,
+              color: scheme.primary,
               fontWeight: FontWeight.w900,
               fontSize: 12.5,
             ),
           ),
           if (showChevron) ...[
             const SizedBox(width: 2),
-            Icon(Icons.expand_more_rounded, size: 15, color: scheme.onError),
+            Icon(Icons.expand_more_rounded, size: 15, color: scheme.primary),
           ],
         ],
       ),
@@ -56,12 +59,14 @@ class HomeFlowPanel extends StatelessWidget {
   const HomeFlowPanel({
     required this.label,
     required this.value,
+    required this.locale,
     required this.tone,
     super.key,
   });
 
   final String label;
-  final String value;
+  final Money value;
+  final String locale;
   final MetricTone tone;
 
   @override
@@ -97,30 +102,27 @@ class HomeFlowPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 2),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            transitionBuilder: (child, animation) {
-              return FadeTransition(
-                opacity: animation,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0.0, -0.2),
-                    end: Offset.zero,
-                  ).animate(animation),
-                  child: child,
+          TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOutCubic,
+            tween: Tween<double>(
+              begin: value.amountMinor.toDouble(),
+              end: value.amountMinor.toDouble(),
+            ),
+            builder: (context, amountMinor, child) {
+              return Text(
+                formatMoney(
+                  value.copyWith(amountMinor: amountMinor.round()),
+                  locale,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w900,
                 ),
               );
             },
-            child: Text(
-              value,
-              key: ValueKey(value),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
           ),
         ],
       ),
