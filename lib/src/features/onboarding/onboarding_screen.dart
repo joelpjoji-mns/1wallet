@@ -228,11 +228,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (next != null) {
       setState(() {
         _currentDraft.type = next;
-        if (next == 'bank') _currentDraft.icon = Icons.account_balance_outlined;
-        else if (next == 'cash') _currentDraft.icon = Icons.money_outlined;
-        else if (next == 'credit_card') _currentDraft.icon = Icons.credit_card_outlined;
-        else if (next == 'loan') _currentDraft.icon = Icons.real_estate_agent_outlined;
-        else if (next == 'wallet') _currentDraft.icon = Icons.account_balance_wallet_outlined;
+        if (next == 'bank') {
+          _currentDraft.icon = Icons.account_balance_outlined;
+        } else if (next == 'cash') {
+          _currentDraft.icon = Icons.money_outlined;
+        } else if (next == 'credit_card') {
+          _currentDraft.icon = Icons.credit_card_outlined;
+        } else if (next == 'loan') {
+          _currentDraft.icon = Icons.real_estate_agent_outlined;
+        } else if (next == 'wallet') {
+          _currentDraft.icon = Icons.account_balance_wallet_outlined;
+        }
       });
     }
   }
@@ -785,7 +791,6 @@ class _AccountPreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     String symbol = draft.currency;
     try {
       symbol = NumberFormat.simpleCurrency(name: draft.currency).currencySymbol;
@@ -981,21 +986,21 @@ class _PermissionsStep extends StatelessWidget {
           'Choose which helpers to prepare. We ask for device permissions only when a feature needs them.',
       child: Column(
         children: [
-          SwitchListTile.adaptive(
+          LiquidGlassSwitchListTile(
             contentPadding: EdgeInsets.zero,
             value: enableAutoCapture,
             onChanged: onAutoCaptureChanged,
-            secondary: const Icon(Icons.auto_awesome_outlined),
+            icon: Icons.auto_awesome_outlined,
             title: const Text('Prepare auto-capture'),
             subtitle: const Text(
               'SMS, receipt, and notification review queues',
             ),
           ),
-          SwitchListTile.adaptive(
+          LiquidGlassSwitchListTile(
             contentPadding: EdgeInsets.zero,
             value: enableReminders,
             onChanged: onRemindersChanged,
-            secondary: const Icon(Icons.notifications_active_outlined),
+            icon: Icons.notifications_active_outlined,
             title: const Text('Prepare reminders'),
             subtitle: const Text('Bills, review nudges, and update alerts'),
           ),

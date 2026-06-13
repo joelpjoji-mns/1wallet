@@ -90,6 +90,102 @@ List<BalanceTrendPoint> balanceTrendForRange(
   return points;
 }
 
+List<Money> balanceBreakdownByCurrency(
+  LedgerState state, {
+  String? accountId,
+}) {
+  final accounts = accountId != null
+      ? (accountId == 'cash_group'
+            ? state.accounts.where((a) => a.type == 'cash' && !a.isArchived)
+            : state.accounts.where((a) => a.id == accountId && !a.isArchived))
+      : state.accounts.where(
+          (account) => !account.isArchived && account.includeInTotals,
+        );
+  final totals = <String, int>{};
+  for (final account in accounts) {
+    for (final money in _accountCurrencyNet(state, account)) {
+      _addMoney(totals, money);
+    }
+  }
+
+  final items = totals.entries
+      .map((entry) => Money(amountMinor: entry.value, currency: entry.key))
+      .toList();
+  final displayCurrency = state.preferences.displayCurrency.toUpperCase();
+  items.sort((left, right) {
+    final leftIsDisplay = left.currency.toUpperCase() == displayCurrency;
+    final rightIsDisplay = right.currency.toUpperCase() == displayCurrency;
+    if (leftIsDisplay && !rightIsDisplay) return -1;
+    if (!leftIsDisplay && rightIsDisplay) return 1;
+    final amountCompare = right.amountMinor.abs().compareTo(
+      left.amountMinor.abs(),
+    );
+    return amountCompare == 0
+        ? left.currency.compareTo(right.currency)
+        : amountCompare;
+  });
+  return items;
+}
+
+List<Money> _accountCurrencyNet(LedgerState state, Account account) {
+  final totals = <String, int>{};
+  _addMoney(totals, account.openingBalance.copyWith(currency: account.currency));
+
+  for (final transaction in state.transactions) {
+    if (transaction.status == 'scheduled' || transaction.status == 'void') {
+      continue;
+    }
+
+    if (transaction.accountId == account.id) {
+      final delta = sourceDelta(transaction);
+      if (delta != 0) {
+        final money = _sourceCurrencyMoney(transaction, account);
+        _addSignedMoney(totals, money, delta);
+      }
+    }
+
+    if (transaction.counterAccountId == account.id) {
+      final delta = counterDelta(transaction);
+      if (delta != 0) {
+        final money = _counterCurrencyMoney(transaction, account);
+        _addSignedMoney(totals, money, delta);
+      }
+    }
+  }
+
+  return totals.entries
+      .map((entry) => Money(amountMinor: entry.value, currency: entry.key))
+      .toList();
+}
+
+Money _sourceCurrencyMoney(TransactionRecord transaction, Account account) {
+  if (account.type == 'cash') return cashSourceTransactionMoney(transaction);
+  return transaction.amount;
+}
+
+Money _counterCurrencyMoney(TransactionRecord transaction, Account account) {
+  if (account.type == 'cash') {
+    return cashDestinationTransferMoney(transaction, account);
+  }
+  return transaction.counterAmount ?? transaction.amount;
+}
+
+void _addSignedMoney(Map<String, int> totals, Money money, int signedDelta) {
+  final signedAmount = signedDelta < 0
+      ? -money.amountMinor.abs()
+      : money.amountMinor.abs();
+  _addMoney(totals, money.copyWith(amountMinor: signedAmount));
+}
+
+void _addMoney(Map<String, int> totals, Money money) {
+  final currency = money.currency.toUpperCase();
+  totals.update(
+    currency,
+    (amountMinor) => amountMinor + money.amountMinor,
+    ifAbsent: () => money.amountMinor,
+  );
+}
+
 CurrencyConversionSnapshot currencyConversionSnapshot(LedgerState state) {
   final base = state.preferences.baseCurrency.toUpperCase();
   final exposure = foreignCurrencyExposure(state);

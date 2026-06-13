@@ -10,8 +10,6 @@ class UpdatesScreen extends ConsumerWidget {
     final state = ref.watch(appUpdateProvider);
     final provider = ref.read(appUpdateProvider.notifier);
 
-    final theme = Theme.of(context);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Updates'),
@@ -53,7 +51,7 @@ class UpdatesScreen extends ConsumerWidget {
         title = 'App is up to date';
         subtitle = 'You are on the latest version';
         icon = Icons.check_circle;
-        color = Colors.green;
+        color = theme.colorScheme.tertiary;
       }
     } else if (state.status == UpdateStatus.error) {
       title = 'Error checking for updates';
@@ -70,7 +68,7 @@ class UpdatesScreen extends ConsumerWidget {
     return Card(
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.1),
+          backgroundColor: color.withValues(alpha: 0.1),
           child: Icon(icon, color: color),
         ),
         title: Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),

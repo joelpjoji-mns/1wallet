@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' as foundation;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,7 +17,7 @@ import 'ledger_models.dart';
 const _ledgerStorageKey = 'one_wallet_flutter.ledger.v1';
 
 final ledgerRepositoryProvider = Provider<LedgerRepository>((ref) {
-  return LedgerRepository();
+  return const LedgerRepository();
 });
 
 final ledgerLoadStateProvider = StateProvider<LedgerLoadState>((ref) {
@@ -62,18 +63,119 @@ class LedgerRepository {
     final preferences = await SharedPreferences.getInstance();
     final payload = preferences.getString(_ledgerStorageKey);
     if (payload == null || payload.trim().isEmpty) return null;
-    return decodeLedgerState(payload);
+    return await foundation.compute(decodeLedgerState, payload);
   }
 
   Future<void> save(LedgerState state) async {
     final preferences = await SharedPreferences.getInstance();
-    await preferences.setString(_ledgerStorageKey, encodeLedgerState(state));
+    final payload = await foundation.compute(encodeLedgerState, state);
+    await preferences.setString(_ledgerStorageKey, payload);
   }
 
   Future<void> clear() async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.remove(_ledgerStorageKey);
   }
+}
+
+LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
+  bool changed = false;
+
+  final Map<String, DateTime> latestHistory = {};
+  for (final t in ledger.transactions) {
+    if (t.originalTransactionId != null &&
+        t.status != 'scheduled' &&
+        t.status != 'void') {
+      final currentLatest = latestHistory[t.originalTransactionId!];
+      if (currentLatest == null || t.occurredAt.isAfter(currentLatest)) {
+        latestHistory[t.originalTransactionId!] = t.occurredAt;
+      }
+    }
+  }
+
+  final updated = ledger.transactions.map((scheduled) {
+    if (scheduled.status != 'scheduled') return scheduled;
+
+    final latestOccurredAt = latestHistory[scheduled.id];
+    if (latestOccurredAt == null) return scheduled;
+
+    if (scheduled.occurredAt.isBefore(latestOccurredAt) ||
+        scheduled.occurredAt.isAtSameMomentAs(latestOccurredAt)) {
+      changed = true;
+      DateTime nextDate = scheduled.occurredAt;
+      final freq = scheduled.recurrenceFrequency ?? 'monthly';
+
+      while (nextDate.isBefore(latestOccurredAt) ||
+          nextDate.isAtSameMomentAs(latestOccurredAt)) {
+        switch (freq.toLowerCase()) {
+          case 'daily':
+            nextDate = nextDate.add(const Duration(days: 1));
+            break;
+          case 'weekly':
+            nextDate = nextDate.add(const Duration(days: 7));
+            break;
+          case 'monthly':
+            var year = nextDate.year;
+            var month = nextDate.month + 1;
+            if (month > 12) {
+              year++;
+              month -= 12;
+            }
+            var day = nextDate.day;
+            final daysInNextMonth = DateTime(year, month + 1, 0).day;
+            if (day > daysInNextMonth) day = daysInNextMonth;
+            nextDate = DateTime(
+              year,
+              month,
+              day,
+              nextDate.hour,
+              nextDate.minute,
+              nextDate.second,
+            );
+            break;
+          case 'yearly':
+            var year = nextDate.year + 1;
+            var month = nextDate.month;
+            var day = nextDate.day;
+            final daysInNextMonth = DateTime(year, month + 1, 0).day;
+            if (day > daysInNextMonth) day = daysInNextMonth;
+            nextDate = DateTime(
+              year,
+              month,
+              day,
+              nextDate.hour,
+              nextDate.minute,
+              nextDate.second,
+            );
+            break;
+          default:
+            var year = nextDate.year;
+            var month = nextDate.month + 1;
+            if (month > 12) {
+              year++;
+              month -= 12;
+            }
+            var day = nextDate.day;
+            final daysInNextMonth = DateTime(year, month + 1, 0).day;
+            if (day > daysInNextMonth) day = daysInNextMonth;
+            nextDate = DateTime(
+              year,
+              month,
+              day,
+              nextDate.hour,
+              nextDate.minute,
+              nextDate.second,
+            );
+            break;
+        }
+      }
+      return scheduled.copyWith(occurredAt: nextDate);
+    }
+    return scheduled;
+  }).toList();
+
+  if (!changed) return ledger;
+  return ledger.copyWith(transactions: updated);
 }
 
 class LedgerController extends StateNotifier<LedgerState> {
@@ -94,7 +196,10 @@ class LedgerController extends StateNotifier<LedgerState> {
       final restored = await _repository.load();
       if (!mounted) return;
       if (restored != null) {
-        final fixed = _fixStaleScheduledTransactions(restored);
+        final fixed = await foundation.compute(
+          fixStaleScheduledTransactions,
+          restored,
+        );
         state = fixed;
         if (!identical(fixed, restored)) {
           unawaited(_repository.save(fixed));
@@ -103,7 +208,7 @@ class LedgerController extends StateNotifier<LedgerState> {
       _setLoadState(
         LedgerLoadState.ready(hasPersistedLedger: restored != null),
       );
-      unawaited(_processSpooledSms());
+      unawaited(processSpooledSms());
     } catch (error) {
       if (!mounted) return;
       _setLoadState(
@@ -112,81 +217,17 @@ class LedgerController extends StateNotifier<LedgerState> {
     }
   }
 
-  LedgerState _fixStaleScheduledTransactions(LedgerState ledger) {
-    bool changed = false;
-    final updated = ledger.transactions.map((scheduled) {
-      if (scheduled.status != 'scheduled') return scheduled;
-      
-      final history = ledger.transactions
-          .where((t) => t.originalTransactionId == scheduled.id && t.status != 'scheduled' && t.status != 'void')
-          .toList();
-      
-      if (history.isEmpty) return scheduled;
-      
-      history.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
-      final latest = history.first;
-      
-      if (scheduled.occurredAt.isBefore(latest.occurredAt) || scheduled.occurredAt.isAtSameMomentAs(latest.occurredAt)) {
-        changed = true;
-        DateTime nextDate = scheduled.occurredAt;
-        final freq = scheduled.recurrenceFrequency ?? 'monthly';
-        
-        while (nextDate.isBefore(latest.occurredAt) || nextDate.isAtSameMomentAs(latest.occurredAt)) {
-           switch (freq.toLowerCase()) {
-            case 'daily':
-              nextDate = nextDate.add(const Duration(days: 1));
-              break;
-            case 'weekly':
-              nextDate = nextDate.add(const Duration(days: 7));
-              break;
-            case 'monthly':
-              var year = nextDate.year;
-              var month = nextDate.month + 1;
-              if (month > 12) { year++; month -= 12; }
-              var day = nextDate.day;
-              final daysInNextMonth = DateTime(year, month + 1, 0).day;
-              if (day > daysInNextMonth) day = daysInNextMonth;
-              nextDate = DateTime(year, month, day, nextDate.hour, nextDate.minute, nextDate.second);
-              break;
-            case 'yearly':
-              var year = nextDate.year + 1;
-              var month = nextDate.month;
-              var day = nextDate.day;
-              final daysInNextMonth = DateTime(year, month + 1, 0).day;
-              if (day > daysInNextMonth) day = daysInNextMonth;
-              nextDate = DateTime(year, month, day, nextDate.hour, nextDate.minute, nextDate.second);
-              break;
-            default:
-              var year = nextDate.year;
-              var month = nextDate.month + 1;
-              if (month > 12) { year++; month -= 12; }
-              var day = nextDate.day;
-              final daysInNextMonth = DateTime(year, month + 1, 0).day;
-              if (day > daysInNextMonth) day = daysInNextMonth;
-              nextDate = DateTime(year, month, day, nextDate.hour, nextDate.minute, nextDate.second);
-              break;
-          }
-        }
-        return scheduled.copyWith(occurredAt: nextDate);
-      }
-      return scheduled;
-    }).toList();
-    
-    if (!changed) return ledger;
-    return ledger.copyWith(transactions: updated);
-  }
-
   Future<void> clearLocalWallet({String userId = 'local-user'}) async {
     final next = emptyLedgerState(userId: userId);
     state = next;
     await _repository.clear();
   }
 
-  Future<void> _processSpooledSms() async {
+  Future<void> processSpooledSms() async {
     try {
       final spooled = await SmsSpooler.popSpooledMessages();
       if (spooled.isEmpty) return;
-      
+
       for (final payload in spooled) {
         final body = payload['body'] as String?;
         if (body != null && body.isNotEmpty) {
@@ -315,14 +356,24 @@ class LedgerController extends StateNotifier<LedgerState> {
     );
   }
 
-
-
   Future<void> setStartDayOfMonth(int day) async {
     await _commit(
       state.copyWith(
         preferences: state.preferences.copyWith(startDayOfMonth: day),
       ),
     );
+  }
+
+  Timer? _prefsSaveTimer;
+
+  Future<void> updatePreferences(LedgerPreferences preferences) async {
+    state = state.copyWith(preferences: preferences);
+
+    // Debounce the heavy disk/cloud save to avoid OutOfMemory / extreme jank during slider drags
+    _prefsSaveTimer?.cancel();
+    _prefsSaveTimer = Timer(const Duration(milliseconds: 500), () {
+      unawaited(_repository.save(state));
+    });
   }
 
   Future<void> resetLedger() async {
@@ -407,33 +458,56 @@ class LedgerController extends StateNotifier<LedgerState> {
       amountMinor: effectiveAmountMinor,
       currency: sourceAccount.currency,
     );
-    final baseAmount = convertMoneyForDisplay(state, amount, state.preferences.baseCurrency);
-    
+    final baseAmount = convertMoneyForDisplay(
+      state,
+      amount,
+      state.preferences.baseCurrency,
+    );
+
     Money? originalAmount;
-    if (originalAmountMinor != null && originalCurrency != null && originalCurrency.toUpperCase() != sourceAccount.currency.toUpperCase()) {
-      originalAmount = Money(amountMinor: originalAmountMinor, currency: originalCurrency.toUpperCase());
+    if (originalAmountMinor != null &&
+        originalCurrency != null &&
+        originalCurrency.toUpperCase() !=
+            sourceAccount.currency.toUpperCase()) {
+      originalAmount = Money(
+        amountMinor: originalAmountMinor,
+        currency: originalCurrency.toUpperCase(),
+      );
     } else {
       originalAmount = existing?.originalAmount;
     }
-    
+
     Money? counterAmount;
     if (counterAccount != null) {
       if (counterAmountMinor != null) {
-        counterAmount = Money(amountMinor: counterAmountMinor, currency: counterAccount.currency);
-      } else if (counterAccount.currency.toUpperCase() == sourceAccount.currency.toUpperCase()) {
+        counterAmount = Money(
+          amountMinor: counterAmountMinor,
+          currency: counterAccount.currency,
+        );
+      } else if (counterAccount.currency.toUpperCase() ==
+          sourceAccount.currency.toUpperCase()) {
         counterAmount = amount;
       } else {
-        counterAmount = convertMoneyForDisplay(state, amount, counterAccount.currency);
+        counterAmount = convertMoneyForDisplay(
+          state,
+          amount,
+          counterAccount.currency,
+        );
       }
     }
 
     double? fxRate = existing?.fxRate;
-    if (counterAmount != null && counterAmount.currency.toUpperCase() != amount.currency.toUpperCase() && amount.amountMinor != 0) {
+    if (counterAmount != null &&
+        counterAmount.currency.toUpperCase() != amount.currency.toUpperCase() &&
+        amount.amountMinor != 0) {
       fxRate = counterAmount.amountMinor / amount.amountMinor;
     }
-    
+
     double? originalFxRate = existing?.originalFxRate;
-    if (originalAmount != null && originalAmount.currency.toUpperCase() != amount.currency.toUpperCase() && originalAmount.amountMinor != 0) {
+    if (originalAmount != null &&
+        originalAmount.currency.toUpperCase() !=
+            amount.currency.toUpperCase() &&
+        originalAmount.amountMinor != 0) {
       originalFxRate = amount.amountMinor / originalAmount.amountMinor;
     }
 
@@ -466,7 +540,8 @@ class LedgerController extends StateNotifier<LedgerState> {
           isExcludedFromReports ?? existing?.isExcludedFromReports ?? false,
       sourceConfidence: existing?.sourceConfidence,
       externalRef: existing?.externalRef,
-      originalTransactionId: originalTransactionId ?? existing?.originalTransactionId,
+      originalTransactionId:
+          originalTransactionId ?? existing?.originalTransactionId,
     );
     final transactions = [...state.transactions];
     final index = transactions.indexWhere((item) => item.id == transaction.id);
@@ -526,7 +601,10 @@ class LedgerController extends StateNotifier<LedgerState> {
     );
   }
 
-  Future<void> addAttachment(String transactionId, TransactionAttachment attachment) async {
+  Future<void> addAttachment(
+    String transactionId,
+    TransactionAttachment attachment,
+  ) async {
     final transactions = [...state.transactions];
     final index = transactions.indexWhere((item) => item.id == transactionId);
     if (index == -1) throw StateError('Transaction not found.');
@@ -641,9 +719,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     for (final account in state.accounts) {
       final index = orderedIds.indexOf(account.id);
       updated.add(
-        account.copyWith(
-          sortOrder: index == -1 ? account.sortOrder : index,
-        ),
+        account.copyWith(sortOrder: index == -1 ? account.sortOrder : index),
       );
     }
     await _commit(state.copyWith(accounts: updated));
@@ -788,8 +864,9 @@ class LedgerController extends StateNotifier<LedgerState> {
     String? matchedAccountId;
     if (parsed.last4 != null) {
       for (final account in state.accounts) {
-        if (!account.isArchived && 
-            (account.cardLast4 == parsed.last4 || account.accountLast4 == parsed.last4)) {
+        if (!account.isArchived &&
+            (account.cardLast4 == parsed.last4 ||
+                account.accountLast4 == parsed.last4)) {
           matchedAccountId = account.id;
           break;
         }
@@ -805,10 +882,12 @@ class LedgerController extends StateNotifier<LedgerState> {
       parsedAmount: parsed.amount,
       merchant: parsed.merchant,
       transactionType: parsed.transactionType,
-      suggestedAccountId: matchedAccountId ?? state.accounts
-          .where((account) => !account.isArchived)
-          .firstOrNull
-          ?.id,
+      suggestedAccountId:
+          matchedAccountId ??
+          state.accounts
+              .where((account) => !account.isArchived)
+              .firstOrNull
+              ?.id,
       suggestedCategoryId: _matchCategory(
         state,
         parsed.merchant,
@@ -1030,25 +1109,38 @@ Category? _matchCategory(LedgerState state, String? name, String kind) {
     for (final category in state.categories) {
       if (category.name.toLowerCase() == normalized) return category;
     }
-    
+
     String? guessedKind;
-    if (RegExp(r'\b(zomato|swiggy|food|restaurant|cafe|dining|mcdonalds|starbucks)\b').hasMatch(normalized)) {
+    if (RegExp(
+      r'\b(zomato|swiggy|food|restaurant|cafe|dining|mcdonalds|starbucks)\b',
+    ).hasMatch(normalized)) {
       guessedKind = 'food';
-    } else if (RegExp(r'\b(uber|ola|rapido|taxi|transit|metro|train|flight)\b').hasMatch(normalized)) {
+    } else if (RegExp(
+      r'\b(uber|ola|rapido|taxi|transit|metro|train|flight)\b',
+    ).hasMatch(normalized)) {
       guessedKind = 'transport';
-    } else if (RegExp(r'\b(amazon|flipkart|myntra|shopping)\b').hasMatch(normalized)) {
+    } else if (RegExp(
+      r'\b(amazon|flipkart|myntra|shopping)\b',
+    ).hasMatch(normalized)) {
       guessedKind = 'shopping';
-    } else if (RegExp(r'\b(netflix|spotify|prime|hotstar|subscription|movie)\b').hasMatch(normalized)) {
+    } else if (RegExp(
+      r'\b(netflix|spotify|prime|hotstar|subscription|movie)\b',
+    ).hasMatch(normalized)) {
       guessedKind = 'entertainment';
-    } else if (RegExp(r'\b(hospital|pharmacy|clinic|medical|health|doctor)\b').hasMatch(normalized)) {
+    } else if (RegExp(
+      r'\b(hospital|pharmacy|clinic|medical|health|doctor)\b',
+    ).hasMatch(normalized)) {
       guessedKind = 'health';
-    } else if (RegExp(r'\b(jio|airtel|vi|recharge|bill|electricity|water|wifi)\b').hasMatch(normalized)) {
+    } else if (RegExp(
+      r'\b(jio|airtel|vi|recharge|bill|electricity|water|wifi)\b',
+    ).hasMatch(normalized)) {
       guessedKind = 'bill';
     }
-    
+
     if (guessedKind != null) {
       for (final category in state.categories) {
-        if (category.name.toLowerCase().contains(guessedKind) && category.kind == kind) {
+        if (category.name.toLowerCase().contains(guessedKind) &&
+            category.kind == kind) {
           return category;
         }
       }

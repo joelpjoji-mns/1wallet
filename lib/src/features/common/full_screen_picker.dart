@@ -106,20 +106,20 @@ class _FullScreenPickerState<T> extends State<_FullScreenPicker<T>> {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: scheme.surface,
       appBar: AppBar(
         elevation: 0,
         scrolledUnderElevation: 0,
-        backgroundColor: Colors.black,
+        backgroundColor: scheme.surface,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          icon: Icon(Icons.arrow_back_rounded, color: scheme.onSurface),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
           widget.title,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.w800,
-            color: Colors.white,
+            color: scheme.onSurface,
             fontSize: 20,
           ),
         ),

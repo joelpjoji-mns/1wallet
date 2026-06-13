@@ -1,10 +1,12 @@
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../services/notification_service.dart';
 
 class Changelog {
   final List<String> newFeatures;
@@ -213,6 +215,13 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
             status: UpdateStatus.idle,
             latestRelease: release,
           );
+          
+          final prefs = await SharedPreferences.getInstance();
+          final lastNotifiedVersionCode = prefs.getInt('lastNotifiedVersionCode') ?? 0;
+          if (latestVersionCode > lastNotifiedVersionCode) {
+            await NotificationService.showUpdateNotification(release.versionName, release.channel);
+            await prefs.setInt('lastNotifiedVersionCode', latestVersionCode);
+          }
           return;
         }
       }
@@ -276,7 +285,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
       if (result.type != ResultType.done) {
         throw Exception(result.message);
       }
-      state = state.copyWith(status: UpdateStatus.idle);
+      state = state.copyWith(status: UpdateStatus.downloaded);
     } catch (e) {
       state = state.copyWith(
         status: UpdateStatus.error,
