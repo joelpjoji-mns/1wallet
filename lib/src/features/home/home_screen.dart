@@ -234,6 +234,9 @@ class _HomeDashboardList extends ConsumerWidget {
   }
 
   void _reorderHomeWidgets(WidgetRef ref, int oldIndex, int newIndex) {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
     if (oldIndex == newIndex ||
         oldIndex < 0 ||
         oldIndex >= widgetOrder.length ||
@@ -242,17 +245,8 @@ class _HomeDashboardList extends ConsumerWidget {
       return;
     }
     final next = widgetOrder.toList();
-    final moved = next[oldIndex];
-    final target = next[newIndex];
-    next.remove(moved);
-    final targetIndex = next.indexOf(target);
-    if (targetIndex == -1) {
-      next.add(moved);
-    } else if (oldIndex < newIndex) {
-      next.insert(targetIndex + 1, moved);
-    } else {
-      next.insert(targetIndex, moved);
-    }
+    final moved = next.removeAt(oldIndex);
+    next.insert(newIndex, moved);
     _saveHomeWidgetOrder(ref, next);
   }
 

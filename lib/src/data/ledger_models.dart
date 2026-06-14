@@ -18,28 +18,14 @@ class Money {
 const kRnDefaultHomeWidgetOrder = <String>[
   'balanceHero',
   'accountGrid',
-  'summaryTiles',
   'recentRecords',
-  'upcomingScheduled',
-  'dueNow',
-  'emiTracker',
-  'cardDebt',
-  'accountGroups',
-  'reviewQueue',
-  'automationHealth',
-  'cashflowForecast',
-  'billWatch',
-  'cardPaymentPlan',
-  'loanPayoff',
-  'savingsRunway',
-  'cashflowBook',
   'balanceTrend',
-  'topCategories',
-  'incomeMix',
   'currencyValues',
+  'upcomingScheduled',
+  'reviewQueue',
+  'topCategories',
   'budgetPressure',
   'goalProgress',
-  'currencyExposure',
 ];
 
 @immutable
@@ -456,6 +442,7 @@ class TransactionRecord {
     this.categoryId,
     this.locationLabel,
     this.paymentMethod,
+    this.name,
     this.notes,
     this.importBatchId,
     this.recurrenceFrequency,
@@ -484,6 +471,7 @@ class TransactionRecord {
   final DateTime occurredAt;
   final String? locationLabel;
   final String? paymentMethod;
+  final String? name;
   final String? notes;
   final String? importBatchId;
   final String? recurrenceFrequency;
@@ -512,6 +500,7 @@ class TransactionRecord {
     DateTime? occurredAt,
     String? locationLabel,
     String? paymentMethod,
+    String? name,
     String? notes,
     String? importBatchId,
     String? recurrenceFrequency,
@@ -540,6 +529,7 @@ class TransactionRecord {
       occurredAt: occurredAt ?? this.occurredAt,
       locationLabel: locationLabel ?? this.locationLabel,
       paymentMethod: paymentMethod ?? this.paymentMethod,
+      name: name ?? this.name,
       notes: notes ?? this.notes,
       importBatchId: importBatchId ?? this.importBatchId,
       recurrenceFrequency: recurrenceFrequency ?? this.recurrenceFrequency,

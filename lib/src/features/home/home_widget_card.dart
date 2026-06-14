@@ -370,19 +370,32 @@ class HomeDetailRow extends StatelessWidget {
   }
 }
 
-class MiniLineChart extends StatelessWidget {
+class MiniLineChart extends StatefulWidget {
   const MiniLineChart({
     required this.values,
     super.key,
     this.color,
     this.xAxisLabels = const [],
     this.yAxisLabels = const [],
+    this.tooltipFormatter,
+    this.minY,
+    this.maxY,
   });
 
   final List<num> values;
   final Color? color;
   final List<String> xAxisLabels;
   final List<String> yAxisLabels;
+  final String Function(num)? tooltipFormatter;
+  final double? minY;
+  final double? maxY;
+
+  @override
+  State<MiniLineChart> createState() => _MiniLineChartState();
+}
+
+class _MiniLineChartState extends State<MiniLineChart> {
+  Offset? _touchPosition;
 
   @override
   Widget build(BuildContext context) {
@@ -394,16 +407,27 @@ class MiniLineChart extends StatelessWidget {
         color: scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(AppRadii.md),
       ),
-      child: CustomPaint(
-        painter: _MiniLineChartPainter(
-          values: values.map((value) => value.toDouble()).toList(),
-          lineColor: color ?? scheme.primary,
-          gridColor: scheme.outlineVariant,
-          xAxisLabels: xAxisLabels,
-          yAxisLabels: yAxisLabels,
-          textColor: scheme.onSurfaceVariant,
+      child: GestureDetector(
+        onPanDown: (details) => setState(() => _touchPosition = details.localPosition),
+        onPanUpdate: (details) => setState(() => _touchPosition = details.localPosition),
+        onPanEnd: (details) => setState(() => _touchPosition = null),
+        onPanCancel: () => setState(() => _touchPosition = null),
+        child: CustomPaint(
+          painter: _MiniLineChartPainter(
+            values: widget.values.map((value) => value.toDouble()).toList(),
+            lineColor: widget.color ?? scheme.primary,
+            gridColor: scheme.outlineVariant,
+            xAxisLabels: widget.xAxisLabels,
+            yAxisLabels: widget.yAxisLabels,
+            textColor: scheme.onSurfaceVariant,
+            touchPosition: _touchPosition,
+            tooltipFormatter: widget.tooltipFormatter,
+            minY: widget.minY,
+            maxY: widget.maxY,
+            context: context,
+          ),
+          child: const SizedBox.expand(),
         ),
-        child: const SizedBox.expand(),
       ),
     );
   }
@@ -418,6 +442,11 @@ class _MiniLineChartPainter extends CustomPainter {
     required this.xAxisLabels,
     required this.yAxisLabels,
     required this.textColor,
+    required this.context,
+    this.touchPosition,
+    this.tooltipFormatter,
+    this.minY,
+    this.maxY,
   });
 
   final List<double> values;
@@ -426,6 +455,11 @@ class _MiniLineChartPainter extends CustomPainter {
   final List<String> xAxisLabels;
   final List<String> yAxisLabels;
   final Color textColor;
+  final Offset? touchPosition;
+  final String Function(num)? tooltipFormatter;
+  final double? minY;
+  final double? maxY;
+  final BuildContext context;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -439,7 +473,8 @@ class _MiniLineChartPainter extends CustomPainter {
     );
 
     // Calculate chart area
-    final chartWidth = hasYLabels ? size.width - 55 : size.width;
+    final leftPadding = hasYLabels ? 45.0 : 0.0;
+    final chartWidth = size.width - leftPadding;
     final chartHeight = hasXLabels ? size.height - 20 : size.height;
 
     final paintGrid = Paint()
@@ -450,19 +485,19 @@ class _MiniLineChartPainter extends CustomPainter {
     if (hasYLabels) {
       for (var index = 0; index < yAxisLabels.length; index += 1) {
         final y = chartHeight * index / (yAxisLabels.length - 1);
-        canvas.drawLine(Offset(0, y), Offset(chartWidth, y), paintGrid);
+        canvas.drawLine(Offset(leftPadding, y), Offset(size.width, y), paintGrid);
 
         final tp = TextPainter(
           text: TextSpan(text: yAxisLabels[index], style: labelStyle),
           textDirection: TextDirection.ltr,
-        )..layout(maxWidth: 50);
+        )..layout(maxWidth: 40);
 
-        tp.paint(canvas, Offset(chartWidth + 5, y - tp.height / 2));
+        tp.paint(canvas, Offset(0, y - tp.height / 2));
       }
     } else {
       for (var index = 1; index < 4; index += 1) {
         final y = chartHeight * index / 4;
-        canvas.drawLine(Offset(0, y), Offset(chartWidth, y), paintGrid);
+        canvas.drawLine(Offset(leftPadding, y), Offset(size.width, y), paintGrid);
       }
     }
 
@@ -476,11 +511,11 @@ class _MiniLineChartPainter extends CustomPainter {
 
         double x;
         if (index == 0) {
-          x = 0;
+          x = leftPadding;
         } else if (index == xAxisLabels.length - 1) {
-          x = chartWidth - tp.width;
+          x = size.width - tp.width;
         } else {
-          x = (chartWidth * index / (xAxisLabels.length - 1)) - (tp.width / 2);
+          x = leftPadding + (chartWidth * index / (xAxisLabels.length - 1)) - (tp.width / 2);
         }
 
         tp.paint(canvas, Offset(x, chartHeight + 5));
@@ -489,13 +524,23 @@ class _MiniLineChartPainter extends CustomPainter {
 
     if (values.length < 2) return;
 
-    final minValue = values.reduce(math.min);
-    final maxValue = values.reduce(math.max);
-    final span = (maxValue - minValue).abs() < 0.01 ? 1.0 : maxValue - minValue;
+    final actualMin = minY ?? values.reduce(math.min);
+    final actualMax = maxY ?? values.reduce(math.max);
+    final span = (actualMax - actualMin).abs() < 0.01 ? 1.0 : actualMax - actualMin;
+    
+    if (actualMin < 0 && actualMax > 0) {
+      final normalized0 = (0 - actualMin) / span;
+      final y0 = chartHeight - normalized0 * chartHeight;
+      final paint0 = Paint()
+        ..color = gridColor
+        ..strokeWidth = 1.5;
+      canvas.drawLine(Offset(leftPadding, y0), Offset(size.width, y0), paint0);
+    }
+
     final path = Path();
     for (var index = 0; index < values.length; index += 1) {
-      final x = chartWidth * index / (values.length - 1);
-      final normalized = (values[index] - minValue) / span;
+      final x = leftPadding + chartWidth * index / (values.length - 1);
+      final normalized = (values[index] - actualMin) / span;
       final y = chartHeight - normalized * chartHeight;
       if (index == 0) {
         path.moveTo(x, y);
@@ -517,6 +562,47 @@ class _MiniLineChartPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
     canvas.drawPath(path, shadowPaint);
     canvas.drawPath(path, linePaint);
+
+    if (touchPosition != null && values.isNotEmpty && tooltipFormatter != null) {
+      final touchX = touchPosition!.dx.clamp(leftPadding, size.width);
+      final progress = (touchX - leftPadding) / chartWidth;
+      var nearestIndex = (progress * (values.length - 1)).round();
+      nearestIndex = nearestIndex.clamp(0, values.length - 1);
+      
+      final x = leftPadding + chartWidth * nearestIndex / (values.length - 1);
+      final normalized = (values[nearestIndex] - actualMin) / span;
+      final y = chartHeight - normalized * chartHeight;
+      
+      final vLinePaint = Paint()
+        ..color = textColor.withAlphaFactor(0.5)
+        ..strokeWidth = 1.5;
+      canvas.drawLine(Offset(x, 0), Offset(x, chartHeight), vLinePaint);
+      
+      final dotPaint = Paint()..color = lineColor;
+      final dotBgPaint = Paint()..color = Theme.of(context).colorScheme.surface;
+      canvas.drawCircle(Offset(x, y), 5, dotBgPaint);
+      canvas.drawCircle(Offset(x, y), 4, dotPaint);
+      
+      final text = tooltipFormatter!(values[nearestIndex]);
+      final tpTip = TextPainter(
+         text: TextSpan(
+           text: text, 
+           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+         ),
+         textDirection: TextDirection.ltr,
+      )..layout();
+      
+      var tipX = x - tpTip.width / 2;
+      tipX = tipX.clamp(0.0, size.width - tpTip.width);
+      var tipY = y - 25;
+      if (tipY < 0) tipY = y + 10;
+      
+      final bgRect = Rect.fromLTWH(tipX - 6, tipY - 4, tpTip.width + 12, tpTip.height + 8);
+      final bgRRect = RRect.fromRectAndRadius(bgRect, const Radius.circular(6));
+      canvas.drawRRect(bgRRect, Paint()..color = const Color(0xff1e293b)); // Slate-800
+      
+      tpTip.paint(canvas, Offset(tipX, tipY));
+    }
   }
 
   @override
@@ -526,6 +612,7 @@ class _MiniLineChartPainter extends CustomPainter {
         oldDelegate.gridColor != gridColor ||
         oldDelegate.xAxisLabels != xAxisLabels ||
         oldDelegate.yAxisLabels != yAxisLabels ||
-        oldDelegate.textColor != textColor;
+        oldDelegate.textColor != textColor ||
+        oldDelegate.touchPosition != touchPosition;
   }
 }

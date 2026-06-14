@@ -38,13 +38,17 @@ List<BalanceTrendPoint> balanceTrendForRange(
   DateTime? end,
 }) {
   final now = DateTime.now();
-  final rangeEnd = _day(end ?? now);
-  final rangeStart = _day(start ?? DateTime(rangeEnd.year));
+  final rangeEnd = end ?? now;
+  DateTime earliest = now;
+  for (final tx in state.transactions) {
+    if (tx.occurredAt.isBefore(earliest)) earliest = tx.occurredAt;
+  }
+  final rangeStart = start ?? earliest;
   if (rangeEnd.isBefore(rangeStart)) return const [];
 
   final includedAccounts = {
     for (final account in state.accounts)
-      if (!account.isArchived && account.includeInTotals) account.id,
+      if (account.includeInNetWorth && account.type != 'loan') account.id,
   };
   final displayCurrency = state.preferences.displayCurrency;
   var running = state.accounts
@@ -58,35 +62,60 @@ List<BalanceTrendPoint> balanceTrendForRange(
         return sum + converted.amountMinor;
       });
 
-  final deltasByDay = <DateTime, int>{};
-  for (final transaction in state.transactions) {
-    if (transaction.status == 'scheduled' || transaction.status == 'void') {
-      continue;
+  final txs = state.transactions
+      .where((tx) => tx.status != 'scheduled' && tx.status != 'void')
+      .toList()
+    ..sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
+
+  for (final tx in txs) {
+    if (tx.occurredAt.isBefore(rangeStart)) {
+      running += _includedTotalDelta(state, tx, includedAccounts);
     }
-    final date = _day(transaction.occurredAt);
-    final delta = _includedTotalDelta(state, transaction, includedAccounts);
-    if (date.isBefore(rangeStart)) {
-      running += delta;
-      continue;
-    }
-    if (date.isAfter(rangeEnd)) continue;
-    deltasByDay.update(date, (value) => value + delta, ifAbsent: () => delta);
   }
 
   final points = <BalanceTrendPoint>[];
-  for (
-    var date = rangeStart;
-    !date.isAfter(rangeEnd);
-    date = date.add(const Duration(days: 1))
-  ) {
-    running += deltasByDay[date] ?? 0;
+  points.add(
+    BalanceTrendPoint(
+      date: rangeStart,
+      balance: Money(amountMinor: running, currency: displayCurrency),
+    ),
+  );
+
+  DateTime? lastTime;
+  for (final tx in txs) {
+    if (tx.occurredAt.isBefore(rangeStart)) continue;
+    if (tx.occurredAt.isAfter(rangeEnd)) break;
+    
+    final delta = _includedTotalDelta(state, tx, includedAccounts);
+    if (delta == 0) continue;
+    
+    running += delta;
+    
+    if (lastTime == tx.occurredAt && points.isNotEmpty) {
+      points.last = BalanceTrendPoint(
+        date: tx.occurredAt,
+        balance: Money(amountMinor: running, currency: displayCurrency),
+      );
+    } else {
+      points.add(
+        BalanceTrendPoint(
+          date: tx.occurredAt,
+          balance: Money(amountMinor: running, currency: displayCurrency),
+        ),
+      );
+      lastTime = tx.occurredAt;
+    }
+  }
+
+  if (points.last.date.isBefore(rangeEnd)) {
     points.add(
       BalanceTrendPoint(
-        date: date,
+        date: rangeEnd,
         balance: Money(amountMinor: running, currency: displayCurrency),
       ),
     );
   }
+
   return points;
 }
 

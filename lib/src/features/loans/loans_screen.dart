@@ -1439,7 +1439,10 @@ class _LoanProjection {
 
   String get payoffLabel {
     final months = monthsRemaining;
-    if (months == null) return 'Add an EMI to estimate payoff';
+    if (months == null) {
+      if (monthlyEmi > 0) return 'EMI too low to cover interest';
+      return 'Add an EMI to estimate payoff';
+    }
     if (months == 0) return 'Paid off';
     final years = months ~/ 12;
     final extraMonths = months % 12;

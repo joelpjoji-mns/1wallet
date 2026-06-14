@@ -5,6 +5,7 @@ import '../features/launch/launch_screen.dart';
 import '../features/login/login_screen.dart';
 import '../features/main/main_shell.dart';
 import '../features/onboarding/onboarding_screen.dart';
+import '../features/reports/balance_trend_screen.dart';
 import '../features/routes/route_screens.dart';
 import '../features/sync/sync_screen.dart';
 import '../startup/startup_state.dart';
@@ -71,6 +72,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/widgets',
         builder: (context, state) => const WidgetsManagerScreen(),
+      ),
+      GoRoute(
+        path: '/balance-trend',
+        builder: (context, state) => const BalanceTrendScreen(),
       ),
       GoRoute(path: '/reports', redirect: (context, state) => '/widgets'),
       GoRoute(
