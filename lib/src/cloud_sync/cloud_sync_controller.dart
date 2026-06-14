@@ -15,6 +15,7 @@ import 'cloud_sync_metadata.dart';
 const uploadDebounceMs = 2500;
 const uploadCircuitBreakerMs = 30000;
 const uploadFailureCircuitBreakerThreshold = 5;
+const cloudSyncReadTimeout = Duration(seconds: 30);
 
 final cloudSyncControllerProvider =
     StateNotifierProvider<CloudSyncController, CloudSyncState>((ref) {
@@ -187,7 +188,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       final prefsDoc = await _firestore
           .doc('users/$userId/metadata/preferences')
           .get()
-          .timeout(const Duration(seconds: 15));
+          .timeout(cloudSyncReadTimeout);
 
       if (prefsDoc.exists) {
         // We have cloud data. Restore it locally.
@@ -215,7 +216,10 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
             (currentLedger.preferences.futureGenerationRules == null ||
                 currentLedger.preferences.futureGenerationRules!.isEmpty)) {
           final restoreRepo = _ref.read(cloudWalletRestoreRepositoryProvider);
-          final legacyWallet = await restoreRepo.readLatestLedger(userId);
+          final legacyWallet = await _readLegacyWalletIfUsable(
+            restoreRepo,
+            userId,
+          );
           if (legacyWallet != null &&
               legacyWallet.ledger.preferences.futureGenerationRules != null) {
             for (final rule
@@ -299,7 +303,10 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       } else {
         // Migration check
         final restoreRepo = _ref.read(cloudWalletRestoreRepositoryProvider);
-        final legacyWallet = await restoreRepo.readLatestLedger(userId);
+        final legacyWallet = await _readLegacyWalletIfUsable(
+          restoreRepo,
+          userId,
+        );
         if (legacyWallet != null) {
           // Found legacy data! Restore it and immediately push to the new schema.
           await _ledger.restoreLedgerState(legacyWallet.ledger);
@@ -407,7 +414,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       final cloudAccounts = await _firestore
           .collection('users/${user.id}/accounts')
           .get()
-          .timeout(const Duration(seconds: 15));
+          .timeout(cloudSyncReadTimeout);
       for (final accountDoc in cloudAccounts.docs) {
         if (accountIds.contains(accountDoc.id)) continue;
         currentBatch.delete(accountDoc.reference);
@@ -490,35 +497,35 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       final accountsQuery = await _firestore
           .collection('users/$userId/accounts')
           .get()
-          .timeout(const Duration(seconds: 15));
+          .timeout(cloudSyncReadTimeout);
       final categoriesQuery = await _firestore
           .collection('users/$userId/categories')
           .get()
-          .timeout(const Duration(seconds: 15));
+          .timeout(cloudSyncReadTimeout);
       final txnsQuery = await _firestore
           .collection('users/$userId/transactions')
           .get()
-          .timeout(const Duration(seconds: 15));
+          .timeout(cloudSyncReadTimeout);
       final budgetsQuery = await _firestore
           .collection('users/$userId/budgets')
           .get()
-          .timeout(const Duration(seconds: 15));
+          .timeout(cloudSyncReadTimeout);
       final goalsQuery = await _firestore
           .collection('users/$userId/goals')
           .get()
-          .timeout(const Duration(seconds: 15));
+          .timeout(cloudSyncReadTimeout);
       final captureQuery = await _firestore
           .collection('users/$userId/captureCandidates')
           .get()
-          .timeout(const Duration(seconds: 15));
+          .timeout(cloudSyncReadTimeout);
       final importsQuery = await _firestore
           .collection('users/$userId/importBatches')
           .get()
-          .timeout(const Duration(seconds: 15));
+          .timeout(cloudSyncReadTimeout);
       final prefsDoc = await _firestore
           .doc('users/$userId/metadata/preferences')
           .get()
-          .timeout(const Duration(seconds: 15));
+          .timeout(cloudSyncReadTimeout);
 
       final restoreData = {
         'userId': userId,
@@ -601,6 +608,29 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     }
   }
 
+  Future<RestoredCloudLedger?> _readLegacyWalletIfUsable(
+    CloudWalletRestoreRepository restoreRepo,
+    String userId,
+  ) async {
+    try {
+      return await restoreRepo
+          .readLatestLedger(userId)
+          .timeout(cloudSyncReadTimeout);
+    } on FormatException catch (error) {
+      debugPrint('Ignoring unusable legacy cloud wallet: ${error.message}');
+      return null;
+    } on TimeoutException catch (error) {
+      debugPrint('Ignoring slow legacy cloud wallet restore: $error');
+      return null;
+    } on FirebaseException catch (error) {
+      if (error.code == 'permission-denied') {
+        debugPrint('Ignoring inaccessible legacy cloud wallet: $error');
+        return null;
+      }
+      rethrow;
+    }
+  }
+
   bool _walletHasUserData(LedgerState ledger) {
     return ledger.accounts.isNotEmpty ||
         ledger.transactions.isNotEmpty ||
@@ -622,36 +652,38 @@ LedgerState _parseCloudRestoreData(Map<String, dynamic> data) {
   final captureData = data['captureCandidates'] as List?;
   final importsData = data['importBatches'] as List?;
 
-  return normalizeLedgerState(emptyLedgerState(userId: userId).copyWith(
-    preferences: prefsData != null
-        ? preferencesFromJson(prefsData)
-        : const LedgerPreferences(),
-    accounts: accountsData
-        .map((d) => accountFromJson(d as Map<String, dynamic>))
-        .toList(),
-    categories: categoriesData
-        .map((d) => categoryFromJson(d as Map<String, dynamic>))
-        .toList(),
-    transactions: transactionsData
-        .map((d) => transactionFromJson(d as Map<String, dynamic>))
-        .toList(),
-    budgets: budgetsData
-        .map((d) => budgetFromJson(d as Map<String, dynamic>))
-        .toList(),
-    goals: goalsData
-        .map((d) => goalFromJson(d as Map<String, dynamic>))
-        .toList(),
-    captureCandidates:
-        captureData
-            ?.map((d) => captureCandidateFromJson(d as Map<String, dynamic>))
-            .toList() ??
-        [],
-    importBatches:
-        importsData
-            ?.map((d) => importBatchFromJson(d as Map<String, dynamic>))
-            .toList() ??
-        [],
-  ));
+  return normalizeLedgerState(
+    emptyLedgerState(userId: userId).copyWith(
+      preferences: prefsData != null
+          ? preferencesFromJson(prefsData)
+          : const LedgerPreferences(),
+      accounts: accountsData
+          .map((d) => accountFromJson(d as Map<String, dynamic>))
+          .toList(),
+      categories: categoriesData
+          .map((d) => categoryFromJson(d as Map<String, dynamic>))
+          .toList(),
+      transactions: transactionsData
+          .map((d) => transactionFromJson(d as Map<String, dynamic>))
+          .toList(),
+      budgets: budgetsData
+          .map((d) => budgetFromJson(d as Map<String, dynamic>))
+          .toList(),
+      goals: goalsData
+          .map((d) => goalFromJson(d as Map<String, dynamic>))
+          .toList(),
+      captureCandidates:
+          captureData
+              ?.map((d) => captureCandidateFromJson(d as Map<String, dynamic>))
+              .toList() ??
+          [],
+      importBatches:
+          importsData
+              ?.map((d) => importBatchFromJson(d as Map<String, dynamic>))
+              .toList() ??
+          [],
+    ),
+  );
 }
 
 Map<String, List<Map<String, dynamic>>> _encodeCloudSnapshotData(
