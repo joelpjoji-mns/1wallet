@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -418,18 +419,32 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         _encodeCloudSnapshotData,
         currentLedger,
       );
+      
+      final newSyncedHashes = Map<String, String>.from(metadata.syncedDocumentHashes ?? {});
+
       Future<void> processCollection(
           String collection, List<Map<String, dynamic>> items, List<String>? syncedIds) async {
         final currentIds = items.map((item) => item['id'] as String).toSet();
         
         for (final item in items) {
-          await addWrite(_firestore.doc('users/${user.id}/$collection/${item['id']}'), item);
+          final docId = item['id'] as String;
+          final hashKey = '$collection/$docId';
+          final currentHash = jsonEncode(item).hashCode.toString();
+          
+          if (newSyncedHashes[hashKey] == currentHash) {
+            continue; // Skip writing this document because it hasn't changed
+          }
+          
+          await addWrite(_firestore.doc('users/${user.id}/$collection/$docId'), item);
+          newSyncedHashes[hashKey] = currentHash;
         }
         
         if (syncedIds != null) {
           for (final id in syncedIds) {
             if (!currentIds.contains(id)) {
+              final hashKey = '$collection/$id';
               currentBatch.delete(_firestore.doc('users/${user.id}/$collection/$id'));
+              newSyncedHashes.remove(hashKey);
               opCount++;
               if (opCount >= 450) {
                 await currentBatch.commit();
@@ -480,6 +495,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         syncedGoalIds: encodedData['goals']!.map((m) => m['id'] as String).toList(),
         syncedCaptureCandidateIds: encodedData['captureCandidates']!.map((m) => m['id'] as String).toList(),
         syncedImportBatchIds: encodedData['importBatches']!.map((m) => m['id'] as String).toList(),
+        syncedDocumentHashes: newSyncedHashes,
       );
       await metadata.save();
 
