@@ -16,7 +16,6 @@ class ReceiptPhotoFields {
   final String? paymentMethod;
   final String? notes;
   final int confidence;
-  final List<String> warnings;
   final String? errorMessage;
 
   const ReceiptPhotoFields({
@@ -31,7 +30,6 @@ class ReceiptPhotoFields {
     this.paymentMethod,
     this.notes,
     required this.confidence,
-    required this.warnings,
     this.errorMessage,
   });
 }
@@ -183,9 +181,7 @@ Future<ReceiptPhotoFields> extractReceiptFieldsFromPhoto(
     await textRecognizer.close();
     return parseReceiptText(recognizedText.text, options);
   } catch (error) {
-    return _emptyReceiptFields(ReceiptOcrStatus.failed, options, [
-      'receipt OCR unavailable; review fields manually',
-    ], errorMessage: error.toString());
+    return _emptyReceiptFields(ReceiptOcrStatus.failed, options, errorMessage: error.toString());
   }
 }
 
@@ -200,12 +196,6 @@ ReceiptPhotoFields parseReceiptText(String text, ReceiptPhotoOptions options) {
     options.fallbackOccurredAt,
   );
   final paymentMethod = _extractReceiptPaymentMethod(lines);
-  final warnings = <String>[];
-
-  if (text.trim().isEmpty) warnings.push('receipt OCR returned no text');
-  if (amount == null) warnings.push('receipt amount needs review');
-  if (merchant == null) warnings.push('receipt merchant needs review');
-  if (occurredAt == null) warnings.push('receipt date needs review');
 
   final confidence = _receiptConfidence(
     hasText: text.trim().isNotEmpty,
@@ -233,14 +223,12 @@ ReceiptPhotoFields parseReceiptText(String text, ReceiptPhotoOptions options) {
         ? 'Receipt OCR: ${options.fileName}'
         : 'Receipt OCR',
     confidence: confidence,
-    warnings: warnings,
   );
 }
 
 ReceiptPhotoFields _emptyReceiptFields(
   ReceiptOcrStatus status,
-  ReceiptPhotoOptions options,
-  List<String> warnings, {
+  ReceiptPhotoOptions options, {
   String? errorMessage,
 }) {
   return ReceiptPhotoFields(
@@ -252,7 +240,6 @@ ReceiptPhotoFields _emptyReceiptFields(
         ? 'Receipt: ${options.fileName}'
         : 'Receipt',
     confidence: 0,
-    warnings: warnings,
     errorMessage: errorMessage,
   );
 }
@@ -700,6 +687,4 @@ int _toMinor(double amount, String currencyCode) {
   return (amount * 100).round();
 }
 
-extension on List<String> {
-  void push(String item) => add(item);
-}
+

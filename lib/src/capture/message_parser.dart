@@ -4,7 +4,6 @@ class ParsedTransactionMessage {
   const ParsedTransactionMessage({
     required this.rawText,
     required this.ignored,
-    required this.warnings,
     this.amount,
     this.merchant,
     this.transactionType,
@@ -17,7 +16,6 @@ class ParsedTransactionMessage {
   final String? merchant;
   final String? transactionType;
   final String? last4;
-  final List<String> warnings;
 }
 
 ParsedTransactionMessage parseTransactionMessage(
@@ -29,7 +27,6 @@ ParsedTransactionMessage parseTransactionMessage(
     return const ParsedTransactionMessage(
       rawText: '',
       ignored: true,
-      warnings: ['Message is empty'],
     );
   }
 
@@ -38,7 +35,6 @@ ParsedTransactionMessage parseTransactionMessage(
     return ParsedTransactionMessage(
       rawText: text,
       ignored: true,
-      warnings: const ['Ignored security/OTP style message'],
     );
   }
 
@@ -47,22 +43,20 @@ ParsedTransactionMessage parseTransactionMessage(
   final merchant = _extractMerchant(text);
   final transactionType = _detectTransactionType(normalized);
   final last4 = _extractLast4(text);
-  final warnings = <String>[];
-
-  if (amountMinor == null) warnings.add('Amount not detected');
-  if (merchant == null) warnings.add('Merchant/account label not detected');
-  if (transactionType == null) warnings.add('Transaction type not detected');
+  if (amountMinor == null || transactionType == null) {
+    return ParsedTransactionMessage(
+      rawText: text,
+      ignored: true,
+    );
+  }
 
   return ParsedTransactionMessage(
     rawText: text,
     ignored: false,
-    amount: amountMinor == null
-        ? null
-        : Money(amountMinor: amountMinor, currency: currency),
+    amount: Money(amountMinor: amountMinor, currency: currency),
     merchant: merchant,
-    transactionType: transactionType ?? 'expense',
+    transactionType: transactionType,
     last4: last4,
-    warnings: warnings,
   );
 }
 

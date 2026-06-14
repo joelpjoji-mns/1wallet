@@ -85,16 +85,6 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
                       ? MetricTone.warning
                       : MetricTone.standard,
                 ),
-                InfoRow(
-                  label: 'Warnings',
-                  value: candidate.warnings.isEmpty
-                      ? 'None'
-                      : candidate.warnings.join(', '),
-                  icon: Icons.warning_amber_outlined,
-                  tone: candidate.warnings.isEmpty
-                      ? MetricTone.standard
-                      : MetricTone.warning,
-                ),
               ],
             ),
           ),

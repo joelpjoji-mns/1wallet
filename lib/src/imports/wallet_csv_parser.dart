@@ -6,7 +6,6 @@ class ParsedWalletCsvRow {
     required this.accountName,
     required this.amount,
     required this.type,
-    required this.warnings,
     this.categoryName,
     this.notes,
     this.occurredAt,
@@ -19,14 +18,12 @@ class ParsedWalletCsvRow {
   final String? categoryName;
   final String? notes;
   final DateTime? occurredAt;
-  final List<String> warnings;
 }
 
 class ParsedWalletCsvResult {
-  const ParsedWalletCsvResult({required this.rows, required this.warnings});
+  const ParsedWalletCsvResult({required this.rows});
 
   final List<ParsedWalletCsvRow> rows;
-  final List<String> warnings;
 }
 
 class WalletCsvColumnMapping {
@@ -56,7 +53,6 @@ ParsedWalletCsvResult parseWalletCsv(
   String fallbackCurrency = 'INR',
   WalletCsvColumnMapping? mapping,
 }) {
-  final warnings = <String>[];
   final lines = rawCsv
       .split(RegExp(r'\r?\n'))
       .map((line) => line.trim())
@@ -65,7 +61,6 @@ ParsedWalletCsvResult parseWalletCsv(
   if (lines.isEmpty) {
     return const ParsedWalletCsvResult(
       rows: [],
-      warnings: ['CSV text is empty'],
     );
   }
 
@@ -80,12 +75,9 @@ ParsedWalletCsvResult parseWalletCsv(
   for (var index = startIndex; index < lines.length; index++) {
     final values = _splitCsvLine(lines[index]);
     final rowNumber = index + 1;
-    final rowWarnings = <String>[];
     final rawAmount = _value(values, indexes['amount']);
     final amountMinor = _parseAmountMinor(rawAmount);
     if (amountMinor == null) {
-      rowWarnings.add('Amount missing or invalid');
-      warnings.add('Row $rowNumber skipped: amount missing or invalid');
       continue;
     }
 
@@ -95,12 +87,10 @@ ParsedWalletCsvResult parseWalletCsv(
         : 'expense';
     final type = typeValue == 'transfer' ? 'transfer' : inferredType;
     final accountName = _value(values, indexes['account']);
-    if (accountName.isEmpty) rowWarnings.add('Account not provided');
     final currency = _value(values, indexes['currency']).isEmpty
         ? fallbackCurrency
         : _value(values, indexes['currency']).toUpperCase();
     final date = _parseDate(_value(values, indexes['date']));
-    if (date == null) rowWarnings.add('Date not detected');
 
     rows.add(
       ParsedWalletCsvRow(
@@ -111,15 +101,11 @@ ParsedWalletCsvResult parseWalletCsv(
         categoryName: _blankToNull(_value(values, indexes['category'])),
         notes: _blankToNull(_value(values, indexes['notes'])),
         occurredAt: date,
-        warnings: rowWarnings,
       ),
     );
   }
 
-  if (rows.isEmpty && warnings.isEmpty) {
-    warnings.add('No importable rows found');
-  }
-  return ParsedWalletCsvResult(rows: rows, warnings: warnings);
+  return ParsedWalletCsvResult(rows: rows);
 }
 
 bool _hasKnownHeader(List<String> header) {
