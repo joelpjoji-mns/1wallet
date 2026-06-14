@@ -375,6 +375,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     String? counterAccountId,
     String? categoryId,
     String? paymentMethod,
+    String? name,
     String? notes,
     DateTime? occurredAt,
   }) async {
@@ -387,6 +388,7 @@ class LedgerController extends StateNotifier<LedgerState> {
       counterAccountId: counterAccountId,
       categoryId: categoryId,
       paymentMethod: paymentMethod,
+      name: name,
       notes: notes,
       occurredAt: occurredAt,
     );
@@ -405,6 +407,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     String? originalCurrency,
     String? categoryId,
     String? paymentMethod,
+    String? name,
     String? notes,
     DateTime? occurredAt,
     String? recurrenceFrequency,
@@ -472,6 +475,7 @@ class LedgerController extends StateNotifier<LedgerState> {
           : categoryId,
       locationLabel: existing?.locationLabel,
       paymentMethod: _blankToNull(paymentMethod),
+      name: _blankToNull(name),
       notes: _blankToNull(notes),
       importBatchId: existing?.importBatchId,
       occurredAt: occurredAt ?? existing?.occurredAt ?? DateTime.now(),
@@ -513,10 +517,15 @@ class LedgerController extends StateNotifier<LedgerState> {
       counterAccountId: existing.counterAccountId,
       categoryId: existing.categoryId,
       paymentMethod: existing.paymentMethod,
+      name: existing.name,
       notes: existing.notes,
       occurredAt: occurredAt ?? existing.occurredAt,
       recurrenceFrequency: existing.recurrenceFrequency,
       isExcludedFromReports: existing.isExcludedFromReports,
+      originalAmountMinor: existing.originalAmount?.amountMinor,
+      originalCurrency: existing.originalAmount?.currency,
+      counterAmountMinor: existing.counterAmount?.amountMinor,
+      originalTransactionId: existing.originalTransactionId,
     );
   }
 
@@ -564,6 +573,7 @@ class LedgerController extends StateNotifier<LedgerState> {
       categoryId: existing.categoryId,
       locationLabel: existing.locationLabel,
       paymentMethod: existing.paymentMethod,
+      name: existing.name,
       notes: existing.notes,
       importBatchId: existing.importBatchId,
       occurredAt: existing.occurredAt,
@@ -704,6 +714,25 @@ class LedgerController extends StateNotifier<LedgerState> {
         category.id == id ? category.copyWith(isArchived: archived) : category,
     ];
     await _commit(state.copyWith(categories: categories));
+  }
+
+  Future<void> deleteCategory(String id) async {
+    final isUsedInTx = state.transactions.any((t) => t.categoryId == id);
+    final isUsedInRules = state.preferences.futureGenerationRules?.any((r) => r.categoryId == id) ?? false;
+    final isUsedInCaptures = state.captureCandidates.any((c) => c.suggestedCategoryId == id);
+    final hasChildren = state.categories.any((c) => c.parentId == id);
+    final isUsed = isUsedInTx || isUsedInRules || isUsedInCaptures || hasChildren;
+
+    if (isUsed) {
+      final categories = [
+        for (final category in state.categories)
+          category.id == id ? category.copyWith(isArchived: true) : category,
+      ];
+      await _commit(state.copyWith(categories: categories));
+    } else {
+      final categories = state.categories.where((category) => category.id != id).toList();
+      await _commit(state.copyWith(categories: categories));
+    }
   }
 
   Future<void> updateCaptureCandidateStatus(String id, String status) async {
@@ -960,6 +989,69 @@ class LedgerController extends StateNotifier<LedgerState> {
       ),
     );
     await _commit(state.copyWith(goals: [goal, ...state.goals]));
+  }
+
+  Future<void> addEnabledCurrency(String currency) async {
+    final normalized = currency.trim().toUpperCase();
+    if (normalized.isEmpty) return;
+    if (state.preferences.enabledCurrencies.contains(normalized)) return;
+    final enabled = <String>{
+      ...state.preferences.enabledCurrencies,
+      normalized,
+    }.toList()..sort();
+    await _commit(
+      state.copyWith(
+        preferences: state.preferences.copyWith(
+          enabledCurrencies: enabled,
+        ),
+      ),
+    );
+  }
+
+  Future<void> removeEnabledCurrency(String currency) async {
+    final normalized = currency.trim().toUpperCase();
+    if (normalized == state.preferences.baseCurrency.toUpperCase()) return;
+    final enabled = state.preferences.enabledCurrencies
+        .where((c) => c.toUpperCase() != normalized)
+        .toList();
+    await _commit(
+      state.copyWith(
+        preferences: state.preferences.copyWith(
+          enabledCurrencies: enabled,
+        ),
+      ),
+    );
+  }
+
+  Future<void> setExchangeRate({
+    required String base,
+    required String quote,
+    required double rate,
+  }) async {
+    final normalizedBase = base.trim().toUpperCase();
+    final normalizedQuote = quote.trim().toUpperCase();
+    if (normalizedBase == normalizedQuote) return;
+
+    final existingIndex = state.exchangeRates.indexWhere(
+      (r) => r.base.toUpperCase() == normalizedBase && r.quote.toUpperCase() == normalizedQuote,
+    );
+
+    final record = ExchangeRateRecord(
+      base: normalizedBase,
+      quote: normalizedQuote,
+      rate: rate,
+      asOfDate: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
+    final rates = [...state.exchangeRates];
+    if (existingIndex == -1) {
+      rates.add(record);
+    } else {
+      rates[existingIndex] = record;
+    }
+
+    await _commit(state.copyWith(exchangeRates: rates));
   }
 
   Future<void> _commit(LedgerState next) async {
