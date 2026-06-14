@@ -44,13 +44,7 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
     final trend = ref.watch(homeBalanceTrendProvider((start: start, end: now)));
     final current = ref.watch(homeTotalBalanceProvider((accountId: null, targetCurrency: null)));
     
-    final movement = trend.length < 2
-        ? current.copyWith(amountMinor: 0)
-        : current.copyWith(
-            amountMinor:
-                trend.last.balance.amountMinor -
-                trend.first.balance.amountMinor,
-          );
+
 
     return Scaffold(
       backgroundColor: scheme.surface,
