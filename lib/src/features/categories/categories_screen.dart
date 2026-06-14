@@ -108,7 +108,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
               onAddChild: (category) =>
                   _openCategoryEditor(context, state, parentCategory: category),
               onToggleArchive: _toggleArchive,
+              onDelete: _deleteCategory,
             ),
+
           ],
         ],
       ),
@@ -258,6 +260,34 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         .read(ledgerProvider.notifier)
         .archiveCategory(category.id, archived: !category.isArchived);
   }
+
+  Future<void> _deleteCategory(Category category) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete category?'),
+        content: Text('Are you sure you want to delete "${category.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    await ref.read(ledgerProvider.notifier).deleteCategory(category.id);
+  }
 }
 
 class _CategoryKindSection extends StatelessWidget {
@@ -271,6 +301,7 @@ class _CategoryKindSection extends StatelessWidget {
     required this.onEdit,
     required this.onAddChild,
     required this.onToggleArchive,
+    required this.onDelete,
   });
 
   final String title;
@@ -282,6 +313,7 @@ class _CategoryKindSection extends StatelessWidget {
   final ValueChanged<Category> onEdit;
   final ValueChanged<Category> onAddChild;
   final ValueChanged<Category> onToggleArchive;
+  final ValueChanged<Category> onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -308,7 +340,9 @@ class _CategoryKindSection extends StatelessWidget {
                     onEdit: onEdit,
                     onAddChild: onAddChild,
                     onToggleArchive: onToggleArchive,
+                    onDelete: onDelete,
                   ),
+
                   if (index != roots.length - 1)
                     const SizedBox(height: AppSpacing.md),
                 ],
@@ -328,6 +362,7 @@ class _CategoryTreeNode extends StatelessWidget {
     required this.onEdit,
     required this.onAddChild,
     required this.onToggleArchive,
+    required this.onDelete,
   });
 
   final Category category;
@@ -338,6 +373,7 @@ class _CategoryTreeNode extends StatelessWidget {
   final ValueChanged<Category> onEdit;
   final ValueChanged<Category> onAddChild;
   final ValueChanged<Category> onToggleArchive;
+  final ValueChanged<Category> onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -414,6 +450,9 @@ class _CategoryTreeNode extends StatelessWidget {
                         case _CategoryAction.toggleArchive:
                           onToggleArchive(category);
                           break;
+                        case _CategoryAction.delete:
+                          onDelete(category);
+                          break;
                       }
                     },
                     itemBuilder: (context) => [
@@ -431,7 +470,15 @@ class _CategoryTreeNode extends StatelessWidget {
                           category.isArchived ? 'Restore' : 'Archive',
                         ),
                       ),
+                      const PopupMenuItem(
+                        value: _CategoryAction.delete,
+                        child: Text(
+                          'Delete',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
                     ],
+
                     icon: Icon(
                       Icons.more_vert_rounded,
                       color: switch (tone) {
@@ -470,7 +517,9 @@ class _CategoryTreeNode extends StatelessWidget {
                       onEdit: onEdit,
                       onAddChild: onAddChild,
                       onToggleArchive: onToggleArchive,
+                      onDelete: onDelete,
                     ),
+
                     if (index != children.length - 1)
                       const SizedBox(height: AppSpacing.xs),
                   ],
@@ -483,7 +532,7 @@ class _CategoryTreeNode extends StatelessWidget {
   }
 }
 
-enum _CategoryAction { edit, addChild, toggleArchive }
+enum _CategoryAction { edit, addChild, toggleArchive, delete }
 
 List<Category> _visibleCategories(
   List<Category> categories, {

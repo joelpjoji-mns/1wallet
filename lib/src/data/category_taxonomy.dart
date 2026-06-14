@@ -45,41 +45,57 @@ List<Category> lifeCategoryTaxonomy() {
       parentId: 'cat-income',
       sortOrder: 16,
     ),
+    Category(
+      id: 'cat-pension',
+      name: 'Pension',
+      kind: 'income',
+      parentId: 'cat-income',
+      sortOrder: 17,
+    ),
+    Category(
+      id: 'cat-rental-income',
+      name: 'Rental income',
+      kind: 'income',
+      parentId: 'cat-income',
+      sortOrder: 18,
+    ),
+    Category(
+      id: 'cat-allowance',
+      name: 'Allowance',
+      kind: 'income',
+      parentId: 'cat-income',
+      sortOrder: 19,
+    ),
+    Category(
+      id: 'cat-grants',
+      name: 'Grants',
+      kind: 'income',
+      parentId: 'cat-income',
+      sortOrder: 20,
+    ),
+    Category(
+      id: 'cat-sales',
+      name: 'Sales',
+      kind: 'income',
+      parentId: 'cat-income',
+      sortOrder: 21,
+    ),
+    Category(
+      id: 'cat-borrowing',
+      name: 'Borrowing',
+      kind: 'income',
+      parentId: 'cat-income',
+      sortOrder: 22,
+    ),
+    Category(
+      id: 'cat-cashback',
+      name: 'Cashback',
+      kind: 'income',
+      parentId: 'cat-income',
+      sortOrder: 23,
+    ),
 
-    Category(
-      id: 'cat-work-business',
-      name: 'Work & business',
-      kind: 'expense',
-      sortOrder: 80,
-    ),
-    Category(
-      id: 'cat-office-supplies',
-      name: 'Office supplies',
-      kind: 'expense',
-      parentId: 'cat-work-business',
-      sortOrder: 81,
-    ),
-    Category(
-      id: 'cat-software',
-      name: 'Software',
-      kind: 'expense',
-      parentId: 'cat-work-business',
-      sortOrder: 82,
-    ),
-    Category(
-      id: 'cat-professional-services',
-      name: 'Professional services',
-      kind: 'expense',
-      parentId: 'cat-work-business',
-      sortOrder: 83,
-    ),
-    Category(
-      id: 'cat-business-travel',
-      name: 'Business travel',
-      kind: 'expense',
-      parentId: 'cat-work-business',
-      sortOrder: 84,
-    ),
+
 
     Category(
       id: 'cat-bills',
@@ -122,26 +138,56 @@ List<Category> lifeCategoryTaxonomy() {
       parentId: 'cat-bills',
       sortOrder: 105,
     ),
-    Category(
-      id: 'cat-internet',
-      name: 'Internet',
-      kind: 'expense',
-      parentId: 'cat-bills',
-      sortOrder: 106,
-    ),
-    Category(
-      id: 'cat-mobile',
-      name: 'Mobile',
-      kind: 'expense',
-      parentId: 'cat-bills',
-      sortOrder: 107,
-    ),
+
     Category(
       id: 'cat-gas',
       name: 'Gas',
       kind: 'expense',
       parentId: 'cat-bills',
       sortOrder: 108,
+    ),
+    Category(
+      id: 'cat-property-tax',
+      name: 'Property tax',
+      kind: 'expense',
+      parentId: 'cat-bills',
+      sortOrder: 109,
+    ),
+    Category(
+      id: 'cat-home-insurance',
+      name: 'Home insurance',
+      kind: 'expense',
+      parentId: 'cat-bills',
+      sortOrder: 110,
+    ),
+    Category(
+      id: 'cat-waste',
+      name: 'Waste & trash',
+      kind: 'expense',
+      parentId: 'cat-bills',
+      sortOrder: 111,
+    ),
+
+    Category(
+      id: 'cat-cleaning',
+      name: 'Cleaning',
+      kind: 'expense',
+      parentId: 'cat-bills',
+      sortOrder: 112,
+    ),
+    Category(
+      id: 'cat-security',
+      name: 'Security',
+      kind: 'expense',
+      parentId: 'cat-bills',
+      sortOrder: 113,
+    ),
+    Category(
+      id: 'cat-gardening',
+      name: 'Gardening & lawn',
+      kind: 'expense',
+      parentId: 'cat-bills',
+      sortOrder: 114,
     ),
 
     Category(id: 'cat-food', name: 'Food', kind: 'expense', sortOrder: 200),
@@ -159,42 +205,44 @@ List<Category> lifeCategoryTaxonomy() {
       parentId: 'cat-food',
       sortOrder: 202,
     ),
-    Category(
-      id: 'cat-coffee-snacks',
-      name: 'Coffee & snacks',
-      kind: 'expense',
-      parentId: 'cat-food',
-      sortOrder: 203,
-    ),
 
-    Category(id: 'cat-transport', name: 'Transport', kind: 'expense', sortOrder: 300),
+
+    Category(id: 'cat-vehicle', name: 'Vehicle', kind: 'expense', sortOrder: 300),
     Category(
       id: 'cat-fuel',
       name: 'Fuel',
       kind: 'expense',
-      parentId: 'cat-transport',
+      parentId: 'cat-vehicle',
       sortOrder: 301,
     ),
     Category(
-      id: 'cat-public-transit',
-      name: 'Public transit',
+      id: 'cat-vehicle-service',
+      name: 'Maintenance & repairs',
       kind: 'expense',
-      parentId: 'cat-transport',
+      parentId: 'cat-vehicle',
       sortOrder: 302,
     ),
     Category(
-      id: 'cat-taxi-rides',
-      name: 'Taxi & rides',
+      id: 'cat-parking-tolls',
+      name: 'Parking & tolls',
       kind: 'expense',
-      parentId: 'cat-transport',
+      parentId: 'cat-vehicle',
       sortOrder: 303,
     ),
     Category(
-      id: 'cat-vehicle-service',
-      name: 'Vehicle costs',
+      id: 'cat-vehicle-insurance',
+      name: 'Vehicle insurance',
       kind: 'expense',
-      parentId: 'cat-transport',
+      parentId: 'cat-vehicle',
       sortOrder: 304,
+    ),
+
+    Category(
+      id: 'cat-rental-leasing',
+      name: 'Rental & leasing',
+      kind: 'expense',
+      parentId: 'cat-vehicle',
+      sortOrder: 306,
     ),
 
     Category(
@@ -212,7 +260,7 @@ List<Category> lifeCategoryTaxonomy() {
     ),
     Category(
       id: 'cat-pharmacy',
-      name: 'Pharmacy',
+      name: 'Pharmacy & medicine',
       kind: 'expense',
       parentId: 'cat-health',
       sortOrder: 502,
@@ -226,11 +274,26 @@ List<Category> lifeCategoryTaxonomy() {
     ),
     Category(
       id: 'cat-insurance',
-      name: 'Insurance',
+      name: 'Health & life insurance',
       kind: 'expense',
       parentId: 'cat-health',
       sortOrder: 504,
     ),
+    Category(
+      id: 'cat-dental-vision',
+      name: 'Dental & vision',
+      kind: 'expense',
+      parentId: 'cat-health',
+      sortOrder: 505,
+    ),
+    Category(
+      id: 'cat-therapy',
+      name: 'Therapy & mental health',
+      kind: 'expense',
+      parentId: 'cat-health',
+      sortOrder: 507,
+    ),
+
 
     Category(
       id: 'cat-debt',
@@ -252,13 +315,7 @@ List<Category> lifeCategoryTaxonomy() {
       parentId: 'cat-debt',
       sortOrder: 602,
     ),
-    Category(
-      id: 'cat-loan-interest',
-      name: 'Loan interest',
-      kind: 'expense',
-      parentId: 'cat-debt',
-      sortOrder: 603,
-    ),
+
     Category(
       id: 'cat-investments',
       name: 'Investments',
@@ -273,13 +330,7 @@ List<Category> lifeCategoryTaxonomy() {
       parentId: 'cat-debt',
       sortOrder: 605,
     ),
-    Category(
-      id: 'cat-retirement',
-      name: 'Retirement',
-      kind: 'expense',
-      parentId: 'cat-debt',
-      sortOrder: 606,
-    ),
+
     Category(
       id: 'cat-taxes',
       name: 'Taxes',
@@ -293,6 +344,14 @@ List<Category> lifeCategoryTaxonomy() {
       kind: 'expense',
       parentId: 'cat-debt',
       sortOrder: 608,
+    ),
+
+    Category(
+      id: 'cat-lending',
+      name: 'Lending',
+      kind: 'expense',
+      parentId: 'cat-debt',
+      sortOrder: 609,
     ),
 
     Category(id: 'cat-shopping', name: 'Shopping', kind: 'expense', sortOrder: 700),
@@ -319,11 +378,36 @@ List<Category> lifeCategoryTaxonomy() {
     ),
     Category(
       id: 'cat-personal-care',
-      name: 'Personal care',
+      name: 'Personal care & beauty',
       kind: 'expense',
       parentId: 'cat-shopping',
       sortOrder: 704,
     ),
+    Category(
+      id: 'cat-jewelry',
+      name: 'Jewelry & accessories',
+      kind: 'expense',
+      parentId: 'cat-shopping',
+      sortOrder: 706,
+    ),
+
+    Category(
+      id: 'cat-hardware',
+      name: 'Hardware & tools',
+      kind: 'expense',
+      parentId: 'cat-shopping',
+      sortOrder: 708,
+    ),
+
+    Category(
+      id: 'cat-office-supplies',
+      name: 'Office supplies',
+      kind: 'expense',
+      parentId: 'cat-shopping',
+      sortOrder: 710,
+    ),
+
+
 
     Category(
       id: 'cat-family',
@@ -333,7 +417,7 @@ List<Category> lifeCategoryTaxonomy() {
     ),
     Category(
       id: 'cat-children',
-      name: 'Children',
+      name: 'Children & childcare',
       kind: 'expense',
       parentId: 'cat-family',
       sortOrder: 801,
@@ -373,6 +457,15 @@ List<Category> lifeCategoryTaxonomy() {
       parentId: 'cat-family',
       sortOrder: 806,
     ),
+    Category(
+      id: 'cat-education',
+      name: 'Education & tuition',
+      kind: 'expense',
+      parentId: 'cat-family',
+      sortOrder: 807,
+    ),
+
+
 
     Category(
       id: 'cat-entertainment',
@@ -381,19 +474,13 @@ List<Category> lifeCategoryTaxonomy() {
       sortOrder: 900,
     ),
     Category(
-      id: 'cat-movies-events',
-      name: 'Movies & events',
+      id: 'cat-movies',
+      name: 'Movies',
       kind: 'expense',
       parentId: 'cat-entertainment',
       sortOrder: 901,
     ),
-    Category(
-      id: 'cat-subscriptions',
-      name: 'Subscriptions',
-      kind: 'expense',
-      parentId: 'cat-entertainment',
-      sortOrder: 902,
-    ),
+
     Category(
       id: 'cat-hobbies',
       name: 'Hobbies',
@@ -401,13 +488,7 @@ List<Category> lifeCategoryTaxonomy() {
       parentId: 'cat-entertainment',
       sortOrder: 903,
     ),
-    Category(
-      id: 'cat-courses',
-      name: 'Courses',
-      kind: 'expense',
-      parentId: 'cat-entertainment',
-      sortOrder: 904,
-    ),
+
     Category(
       id: 'cat-books',
       name: 'Books',
@@ -415,34 +496,160 @@ List<Category> lifeCategoryTaxonomy() {
       parentId: 'cat-entertainment',
       sortOrder: 905,
     ),
+    Category(
+      id: 'cat-gaming',
+      name: 'Gaming',
+      kind: 'expense',
+      parentId: 'cat-entertainment',
+      sortOrder: 906,
+    ),
+    Category(
+      id: 'cat-sports',
+      name: 'Sports & outdoors',
+      kind: 'expense',
+      parentId: 'cat-entertainment',
+      sortOrder: 907,
+    ),
+    Category(
+      id: 'cat-nightlife',
+      name: 'Nightlife & bars',
+      kind: 'expense',
+      parentId: 'cat-entertainment',
+      sortOrder: 908,
+    ),
+    Category(
+      id: 'cat-spa',
+      name: 'Spa & salon',
+      kind: 'expense',
+      parentId: 'cat-entertainment',
+      sortOrder: 909,
+    ),
+    Category(
+      id: 'cat-concerts',
+      name: 'Concerts & live events',
+      kind: 'expense',
+      parentId: 'cat-entertainment',
+      sortOrder: 910,
+    ),
+    Category(
+      id: 'cat-museums',
+      name: 'Museums & art',
+      kind: 'expense',
+      parentId: 'cat-entertainment',
+      sortOrder: 911,
+    ),
+
+
+
 
     Category(
-      id: 'cat-travel',
-      name: 'Travel',
+      id: 'cat-tech',
+      name: 'Tech & subscriptions',
       kind: 'expense',
       sortOrder: 1000,
+    ),
+    Category(
+      id: 'cat-internet',
+      name: 'Internet',
+      kind: 'expense',
+      parentId: 'cat-tech',
+      sortOrder: 1001,
+    ),
+    Category(
+      id: 'cat-mobile',
+      name: 'Mobile',
+      kind: 'expense',
+      parentId: 'cat-tech',
+      sortOrder: 1002,
+    ),
+
+    Category(
+      id: 'cat-subscriptions',
+      name: 'Subscriptions',
+      kind: 'expense',
+      parentId: 'cat-tech',
+      sortOrder: 1004,
+    ),
+
+    Category(
+      id: 'cat-transit',
+      name: 'Transit & commute',
+      kind: 'expense',
+      sortOrder: 1100,
+    ),
+    Category(
+      id: 'cat-public-transit',
+      name: 'Public transit',
+      kind: 'expense',
+      parentId: 'cat-transit',
+      sortOrder: 1101,
+    ),
+    Category(
+      id: 'cat-taxi-rides',
+      name: 'Taxi & rides',
+      kind: 'expense',
+      parentId: 'cat-transit',
+      sortOrder: 1102,
+    ),
+    Category(
+      id: 'cat-scooter',
+      name: 'Scooter & bike share',
+      kind: 'expense',
+      parentId: 'cat-transit',
+      sortOrder: 1104,
+    ),
+    Category(
+      id: 'cat-ferry',
+      name: 'Ferry & boats',
+      kind: 'expense',
+      parentId: 'cat-transit',
+      sortOrder: 1105,
+    ),
+
+
+    Category(
+      id: 'cat-vacations',
+      name: 'Travel & vacations',
+      kind: 'expense',
+      sortOrder: 1200,
     ),
     Category(
       id: 'cat-flights',
       name: 'Flights',
       kind: 'expense',
-      parentId: 'cat-travel',
-      sortOrder: 1001,
+      parentId: 'cat-vacations',
+      sortOrder: 1201,
     ),
     Category(
       id: 'cat-hotels',
       name: 'Stay',
       kind: 'expense',
-      parentId: 'cat-travel',
-      sortOrder: 1002,
+      parentId: 'cat-vacations',
+      sortOrder: 1202,
     ),
     Category(
       id: 'cat-travel-activities',
       name: 'Activities',
       kind: 'expense',
-      parentId: 'cat-travel',
-      sortOrder: 1003,
+      parentId: 'cat-vacations',
+      sortOrder: 1203,
     ),
+    Category(
+      id: 'cat-souvenirs',
+      name: 'Souvenirs',
+      kind: 'expense',
+      parentId: 'cat-vacations',
+      sortOrder: 1205,
+    ),
+    Category(
+      id: 'cat-visas',
+      name: 'Visas & fees',
+      kind: 'expense',
+      parentId: 'cat-vacations',
+      sortOrder: 1206,
+    ),
+
+
 
     Category(id: 'cat-misc', name: 'Miscellaneous', kind: 'expense', sortOrder: 1500),
     Category(
@@ -451,6 +658,13 @@ List<Category> lifeCategoryTaxonomy() {
       kind: 'expense',
       parentId: 'cat-misc',
       sortOrder: 1501,
+    ),
+    Category(
+      id: 'cat-professional-services',
+      name: 'Professional services',
+      kind: 'expense',
+      parentId: 'cat-misc',
+      sortOrder: 1502,
     ),
   ];
 }
