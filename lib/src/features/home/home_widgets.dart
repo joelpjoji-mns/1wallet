@@ -1905,20 +1905,28 @@ class _AccountTile extends ConsumerWidget {
     final isForeignCurrency =
         nativeBalance.currency.toUpperCase() !=
         state.preferences.displayCurrency.toUpperCase();
-    final isCash = account.type == 'cash' || account.type == 'wallet';
+    final isCash = account.type == 'cash';
 
+    String primaryLabel;
     String? secondaryLabel;
+
     if (isCash) {
       final breakdown = cashCurrencyBalancesForAccount(state, account);
       if (breakdown.isNotEmpty) {
+        primaryLabel = formatMoney(displayBalance, state.preferences.locale);
         secondaryLabel = breakdown
             .map((m) => formatMoney(m, state.preferences.locale))
             .join(' | ');
+      } else {
+        primaryLabel = formatMoney(displayBalance, state.preferences.locale);
       }
-    }
-
-    if (secondaryLabel == null && isForeignCurrency) {
-      secondaryLabel = formatMoney(nativeBalance, state.preferences.locale);
+    } else {
+      if (isForeignCurrency) {
+        primaryLabel = formatMoney(nativeBalance, state.preferences.locale);
+        secondaryLabel = formatMoney(displayBalance, state.preferences.locale);
+      } else {
+        primaryLabel = formatMoney(displayBalance, state.preferences.locale);
+      }
     }
 
     return InkWell(
@@ -1993,7 +2001,7 @@ class _AccountTile extends ConsumerWidget {
             const SizedBox(height: 3),
             // Display in base currency
             Text(
-              formatMoney(displayBalance, state.preferences.locale),
+              primaryLabel,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(

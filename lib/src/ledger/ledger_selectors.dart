@@ -126,9 +126,21 @@ Money accountBalance(LedgerState state, Account account) {
 }
 
 Money cashSourceTransactionMoney(TransactionRecord transaction) {
-  if (transferTypes.contains(transaction.type)) return transaction.amount;
   final originalCurrency = transaction.originalAmount?.currency.toUpperCase();
   final amountCurrency = transaction.amount.currency.toUpperCase();
+  
+  if (transferTypes.contains(transaction.type)) {
+    // For transfers out of a cash wallet, if there's a counter amount in a different currency
+    // and an original amount is specified matching the counter amount, we should use that to reflect
+    // the actual physical currency that left the wallet.
+    // If no originalAmount is given, we might need to assume the counterAmount currency is what left the wallet
+    // IF the wallet is considered multi-currency. But safely, if originalCurrency differs, we use it.
+    if (originalCurrency != null && originalCurrency != amountCurrency) {
+      return transaction.originalAmount!;
+    }
+    return transaction.amount;
+  }
+  
   return originalCurrency != null && originalCurrency != amountCurrency
       ? transaction.originalAmount!
       : transaction.amount;
