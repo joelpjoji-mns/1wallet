@@ -7,6 +7,7 @@ import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../common/full_screen_picker.dart';
 import '../common/route_scaffold.dart';
 
 class AccountEditorScreen extends ConsumerStatefulWidget {
@@ -30,6 +31,8 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
   var _showOnHome = true;
   var _isArchived = false;
   Color? _selectedColor;
+  String? _selectedType;
+  String? _selectedCurrency;
 
   @override
   void dispose() {
@@ -118,15 +121,16 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                     Expanded(
                       child: _DetailField(
                         icon: Icons.category_outlined,
-                        label: accountTypeLabel(account?.type ?? 'bank'),
+                        label: accountTypeLabel(_selectedType ?? account?.type ?? 'bank'),
+                        onTap: () => _chooseAccountType(context),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: _DetailField(
                         icon: Icons.currency_exchange_outlined,
-                        label:
-                            account?.currency ?? state.preferences.baseCurrency,
+                        label: _selectedCurrency ?? account?.currency ?? state.preferences.baseCurrency,
+                        onTap: () => _chooseCurrency(context, state),
                       ),
                     ),
                   ],
@@ -281,6 +285,8 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     _showOnHome = account?.showOnHome ?? true;
     _isArchived = account?.isArchived ?? false;
     _selectedColor = account?.color;
+    _selectedType = account?.type ?? 'bank';
+    _selectedCurrency = account?.currency;
   }
 
   Future<void> _saveAccount(LedgerState state, Account? account) async {
@@ -295,8 +301,8 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
           .upsertAccount(
             id: account?.id,
             name: name,
-            type: account?.type ?? 'bank',
-            currency: account?.currency ?? state.preferences.baseCurrency,
+            type: _selectedType ?? account?.type ?? 'bank',
+            currency: _selectedCurrency ?? account?.currency ?? state.preferences.baseCurrency,
             color: _selectedColor,
             institution: _institutionController.text,
             cardLast4: (account?.type == 'card') ? _last4Controller.text : '',
@@ -385,35 +391,91 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
         SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
       );
   }
+
+  Future<void> _chooseAccountType(BuildContext context) async {
+    final next = await showFullScreenPicker<String>(
+      context: context,
+      title: 'Account type',
+      searchHint: 'Search types',
+      selectedValue: _selectedType ?? 'bank',
+      options: [
+        for (final type in [
+          'bank',
+          'cash',
+          'credit_card',
+          'wallet',
+          'loan',
+          'overdraft',
+          'investment',
+        ])
+          PickerOption(
+            value: type,
+            title: accountTypeLabel(type),
+            icon: Icons.category_outlined,
+          ),
+      ],
+    );
+    if (next != null) {
+      setState(() => _selectedType = next);
+    }
+  }
+
+  Future<void> _chooseCurrency(BuildContext context, LedgerState state) async {
+    final next = await showFullScreenPicker<String>(
+      context: context,
+      title: 'Currency',
+      searchHint: 'Search currencies',
+      selectedValue: _selectedCurrency ?? state.preferences.baseCurrency,
+      options: [
+        for (final currency in {
+          ...availableCurrencies(state),
+          'USD', 'EUR', 'GBP', 'INR', 'JPY', 'CAD', 'AUD', 'SGD', 'CHF', 'CNY', 'NZD', 'ZAR'
+        }.toList()..sort())
+          PickerOption(
+            value: currency,
+            title: currency,
+            icon: Icons.currency_exchange_outlined,
+          ),
+      ],
+    );
+    if (next != null) {
+      setState(() => _selectedCurrency = next);
+    }
+  }
 }
 
 class _DetailField extends StatelessWidget {
-  const _DetailField({required this.icon, required this.label});
+  const _DetailField({required this.icon, required this.label, this.onTap});
 
   final IconData icon;
   final String label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w800),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadii.lg),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

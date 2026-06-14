@@ -15,10 +15,18 @@ class SyncScreen extends ConsumerWidget {
     final sync = ref.watch(cloudSyncControllerProvider);
     final enabled = sync.phase != CloudSyncPhase.disabled;
 
+    final isWorking = sync.phase == CloudSyncPhase.checking || 
+                      sync.phase == CloudSyncPhase.restoring || 
+                      sync.phase == CloudSyncPhase.uploading;
+
     return AppScreen(
       title: 'Sync',
       child: Column(
         children: [
+          if (isWorking) ...[
+            const LinearProgressIndicator(),
+            const SizedBox(height: 16),
+          ],
           SectionCard(
             title: 'Status',
             subtitle:
@@ -40,15 +48,24 @@ class SyncScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         alignment: Alignment.center,
-                        child: Icon(
-                          enabled
-                              ? Icons.cloud_done_outlined
-                              : Icons.cloud_off_outlined,
-                          size: 22,
-                          color: enabled
-                              ? theme.colorScheme.onPrimaryContainer
-                              : theme.colorScheme.onSurfaceVariant,
-                        ),
+                        child: isWorking 
+                            ? SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: theme.colorScheme.onPrimaryContainer,
+                                ),
+                              )
+                            : Icon(
+                                enabled
+                                    ? Icons.cloud_done_outlined
+                                    : Icons.cloud_off_outlined,
+                                size: 22,
+                                color: enabled
+                                    ? theme.colorScheme.onPrimaryContainer
+                                    : theme.colorScheme.onSurfaceVariant,
+                              ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -122,18 +139,20 @@ class SyncScreen extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 8.0),
               child: FilledButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Starting manual sync...')),
-                  );
-                  ref.read(cloudSyncControllerProvider.notifier).uploadSnapshot(reason: 'manual');
-                },
+                onPressed: isWorking 
+                    ? null 
+                    : () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Starting manual sync...')),
+                        );
+                        ref.read(cloudSyncControllerProvider.notifier).uploadSnapshot(reason: 'manual');
+                      },
                 icon: const Icon(Icons.sync_rounded),
-                label: const Text('Sync now'),
+                label: Text(isWorking ? 'Syncing...' : 'Sync now'),
               ),
             ),
           OutlinedButton.icon(
-            onPressed: () => _cleanupLegacyData(context, ref),
+            onPressed: isWorking ? null : () => _cleanupLegacyData(context, ref),
             icon: const Icon(Icons.delete_sweep_outlined),
             label: const Text('Clean up legacy cloud data'),
           ),
