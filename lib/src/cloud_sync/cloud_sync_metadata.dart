@@ -18,6 +18,13 @@ class CloudSyncMetadata {
     this.lastPushedAt,
     this.lastPulledAt,
     this.lastRestoreBackupUri,
+    this.syncedAccountIds,
+    this.syncedCategoryIds,
+    this.syncedTransactionIds,
+    this.syncedBudgetIds,
+    this.syncedGoalIds,
+    this.syncedCaptureCandidateIds,
+    this.syncedImportBatchIds,
   });
 
   final int version;
@@ -30,6 +37,13 @@ class CloudSyncMetadata {
   final String? lastPushedAt;
   final String? lastPulledAt;
   final String? lastRestoreBackupUri;
+  final List<String>? syncedAccountIds;
+  final List<String>? syncedCategoryIds;
+  final List<String>? syncedTransactionIds;
+  final List<String>? syncedBudgetIds;
+  final List<String>? syncedGoalIds;
+  final List<String>? syncedCaptureCandidateIds;
+  final List<String>? syncedImportBatchIds;
 
   CloudSyncMetadata copyWith({
     int? version,
@@ -42,6 +56,13 @@ class CloudSyncMetadata {
     String? lastPushedAt,
     String? lastPulledAt,
     String? lastRestoreBackupUri,
+    List<String>? syncedAccountIds,
+    List<String>? syncedCategoryIds,
+    List<String>? syncedTransactionIds,
+    List<String>? syncedBudgetIds,
+    List<String>? syncedGoalIds,
+    List<String>? syncedCaptureCandidateIds,
+    List<String>? syncedImportBatchIds,
   }) {
     return CloudSyncMetadata(
       version: version ?? this.version,
@@ -54,6 +75,13 @@ class CloudSyncMetadata {
       lastPushedAt: lastPushedAt ?? this.lastPushedAt,
       lastPulledAt: lastPulledAt ?? this.lastPulledAt,
       lastRestoreBackupUri: lastRestoreBackupUri ?? this.lastRestoreBackupUri,
+      syncedAccountIds: syncedAccountIds ?? this.syncedAccountIds,
+      syncedCategoryIds: syncedCategoryIds ?? this.syncedCategoryIds,
+      syncedTransactionIds: syncedTransactionIds ?? this.syncedTransactionIds,
+      syncedBudgetIds: syncedBudgetIds ?? this.syncedBudgetIds,
+      syncedGoalIds: syncedGoalIds ?? this.syncedGoalIds,
+      syncedCaptureCandidateIds: syncedCaptureCandidateIds ?? this.syncedCaptureCandidateIds,
+      syncedImportBatchIds: syncedImportBatchIds ?? this.syncedImportBatchIds,
     );
   }
 
@@ -69,6 +97,13 @@ class CloudSyncMetadata {
       'lastPushedAt': lastPushedAt,
       'lastPulledAt': lastPulledAt,
       'lastRestoreBackupUri': lastRestoreBackupUri,
+      'syncedAccountIds': syncedAccountIds,
+      'syncedCategoryIds': syncedCategoryIds,
+      'syncedTransactionIds': syncedTransactionIds,
+      'syncedBudgetIds': syncedBudgetIds,
+      'syncedGoalIds': syncedGoalIds,
+      'syncedCaptureCandidateIds': syncedCaptureCandidateIds,
+      'syncedImportBatchIds': syncedImportBatchIds,
     };
   }
 
@@ -84,6 +119,13 @@ class CloudSyncMetadata {
       lastPushedAt: json['lastPushedAt'] as String?,
       lastPulledAt: json['lastPulledAt'] as String?,
       lastRestoreBackupUri: json['lastRestoreBackupUri'] as String?,
+      syncedAccountIds: (json['syncedAccountIds'] as List?)?.cast<String>(),
+      syncedCategoryIds: (json['syncedCategoryIds'] as List?)?.cast<String>(),
+      syncedTransactionIds: (json['syncedTransactionIds'] as List?)?.cast<String>(),
+      syncedBudgetIds: (json['syncedBudgetIds'] as List?)?.cast<String>(),
+      syncedGoalIds: (json['syncedGoalIds'] as List?)?.cast<String>(),
+      syncedCaptureCandidateIds: (json['syncedCaptureCandidateIds'] as List?)?.cast<String>(),
+      syncedImportBatchIds: (json['syncedImportBatchIds'] as List?)?.cast<String>(),
     );
   }
 
