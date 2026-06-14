@@ -481,13 +481,7 @@ class _BalanceTrendHomeWidgetState extends ConsumerState<BalanceTrendHomeWidget>
     final periodLabel = trend.isEmpty
         ? _period
         : '${_shortDate(trend.first.date)} to ${_shortDate(trend.last.date)}';
-    final movement = trend.length < 2
-        ? current
-        : current.copyWith(
-            amountMinor:
-                trend.last.balance.amountMinor -
-                trend.first.balance.amountMinor,
-          );
+
     var minY = values.isEmpty ? 0.0 : values.reduce(math.min).toDouble();
     var maxY = values.isEmpty ? 0.0 : values.reduce(math.max).toDouble();
     

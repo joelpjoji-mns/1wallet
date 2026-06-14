@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:firebase_core/firebase_core.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
@@ -92,6 +93,11 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
   bool _localClearInProgress = false;
 
   void _init() {
+    try {
+      if (Firebase.apps.isEmpty) return;
+    } catch (_) {
+      return;
+    }
     _ref.listen(ledgerLoadStateProvider, (previous, next) {
       if (!next.isReady) return;
       final auth = _ref.read(authControllerProvider);

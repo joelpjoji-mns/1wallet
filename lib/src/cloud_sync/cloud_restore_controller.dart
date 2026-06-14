@@ -10,7 +10,7 @@ const cloudWalletId = 'default';
 
 final cloudWalletRestoreRepositoryProvider =
     Provider<CloudWalletRestoreRepository>((ref) {
-      return CloudWalletRestoreRepository(FirebaseFirestore.instance);
+      return const CloudWalletRestoreRepository();
     });
 
 final cloudRestoreControllerProvider =
@@ -116,9 +116,9 @@ class CloudRestoreController extends StateNotifier<CloudRestoreState> {
 }
 
 class CloudWalletRestoreRepository {
-  const CloudWalletRestoreRepository(this._firestore);
+  const CloudWalletRestoreRepository();
 
-  final FirebaseFirestore _firestore;
+  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
 
   Future<RestoredCloudLedger?> readLatestLedger(String uid) async {
     final walletSnapshot = await _firestore
