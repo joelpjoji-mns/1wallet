@@ -283,6 +283,40 @@ service cloud.firestore {
       allow create, update: if isOwner(userId) && isValidUserDocument(request.resource.data);
       allow delete: if false;
 
+      match /metadata/{metadataId} {
+        allow read: if isOwner(userId) && metadataId == 'preferences';
+        allow create, update: if isOwner(userId) && metadataId == 'preferences';
+        allow delete: if false;
+      }
+
+      match /accounts/{documentId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+
+      match /categories/{documentId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+
+      match /transactions/{documentId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+
+      match /budgets/{documentId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+
+      match /goals/{documentId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+
+      match /captureCandidates/{documentId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+
+      match /importBatches/{documentId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+
       match /wallets/{walletId} {
         allow read: if isOwner(userId) && walletId == 'default';
         allow create, update: if isOwner(userId) && isValidWalletDocument(request.resource.data, walletId);
