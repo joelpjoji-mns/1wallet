@@ -62,19 +62,44 @@ class CurrenciesScreen extends ConsumerWidget {
             title: 'Available currencies',
             subtitle:
                 'Collected from preferences, accounts, transactions, original amounts, and rates.',
+            actionLabel: 'Add',
+            onAction: () => _addCurrency(context, ref, state),
             child: Column(
               children: [
                 for (final currency in currencies) ...[
-                  PremiumRow(
-                    icon: currency == state.preferences.baseCurrency
-                        ? Icons.flag_outlined
-                        : Icons.currency_exchange_outlined,
-                    title: currency,
-                    subtitle: _currencySubtitle(state, currency),
-                    selected: currency == state.preferences.displayCurrency,
-                    onTap: () => ref
-                        .read(ledgerProvider.notifier)
-                        .setDisplayCurrency(currency),
+                  Dismissible(
+                    key: ValueKey(currency),
+                    direction: currency == state.preferences.baseCurrency
+                        ? DismissDirection.none
+                        : DismissDirection.endToStart,
+                    onDismissed: (_) {
+                      ref.read(ledgerProvider.notifier).removeEnabledCurrency(currency);
+                      ScaffoldMessenger.of(context)
+                        ..hideCurrentSnackBar()
+                        ..showSnackBar(
+                          SnackBar(content: Text('$currency removed from explicitly enabled list.'), behavior: SnackBarBehavior.floating),
+                        );
+                    },
+                    background: Container(
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: AppSpacing.lg),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.error,
+                        borderRadius: BorderRadius.circular(AppRadii.lg),
+                      ),
+                      child: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.onError),
+                    ),
+                    child: PremiumRow(
+                      icon: currency == state.preferences.baseCurrency
+                          ? Icons.flag_outlined
+                          : Icons.currency_exchange_outlined,
+                      title: currency,
+                      subtitle: _currencySubtitle(state, currency),
+                      selected: currency == state.preferences.displayCurrency,
+                      onTap: () => ref
+                          .read(ledgerProvider.notifier)
+                          .setDisplayCurrency(currency),
+                    ),
                   ),
                   if (currency != currencies.last)
                     const SizedBox(height: AppSpacing.sm),
@@ -90,21 +115,21 @@ class CurrenciesScreen extends ConsumerWidget {
                 : '${state.exchangeRates.length} explicit rate records saved.',
             child: Column(
               children: [
-                InfoRow(
-                  label: 'Base currency',
-                  value: state.preferences.baseCurrency,
-                  icon: Icons.flag_outlined,
-                ),
-                InfoRow(
-                  label: 'Enabled',
-                  value: state.preferences.enabledCurrencies.join(', '),
-                  icon: Icons.check_circle_outline,
-                ),
-                InfoRow(
-                  label: 'Ledger currencies',
-                  value: currencies.join(', '),
-                  icon: Icons.account_tree_outlined,
-                ),
+                for (final currency in currencies)
+                  if (currency != state.preferences.baseCurrency) ...[
+                    PremiumRow(
+                      icon: Icons.swap_horiz_rounded,
+                      title: '$currency to ${state.preferences.baseCurrency}',
+                      subtitle: _rateSubtitle(state, currency),
+                      onTap: () => _editRate(context, ref, state, currency),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                  ],
+                if (currencies.length <= 1)
+                  const Padding(
+                    padding: EdgeInsets.all(AppSpacing.md),
+                    child: Text('Add another currency to set exchange rates.'),
+                  ),
               ],
             ),
           ),
@@ -161,5 +186,77 @@ class CurrenciesScreen extends ConsumerWidget {
         .length;
     if (movementCount > 0) parts.add('$movementCount movement(s)');
     return parts.isEmpty ? 'Available for display' : parts.join(' · ');
+  }
+
+  Future<void> _addCurrency(BuildContext context, WidgetRef ref, LedgerState state) async {
+    final next = await showFullScreenPicker<String>(
+      context: context,
+      title: 'Add Currency',
+      searchHint: 'Search currencies',
+      options: [
+        for (final currency in {
+          'USD', 'EUR', 'GBP', 'INR', 'JPY', 'CAD', 'AUD', 'SGD', 'CHF', 'CNY', 'NZD', 'ZAR'
+        }.where((c) => !state.preferences.enabledCurrencies.contains(c)).toList()..sort())
+          PickerOption(
+            value: currency,
+            title: currency,
+            icon: Icons.add_circle_outline,
+          ),
+      ],
+    );
+    if (next != null) {
+      await ref.read(ledgerProvider.notifier).addEnabledCurrency(next);
+    }
+  }
+
+  String _rateSubtitle(LedgerState state, String currency) {
+    final rate = latestExchangeRate(state, currency, state.preferences.baseCurrency);
+    if (rate != null) return '1 $currency = ${rate.rate} ${state.preferences.baseCurrency}';
+    final inferred = rateBetween(state, currency, state.preferences.baseCurrency);
+    if (inferred != null) {
+      return 'Inferred: 1 $currency = ${inferred.toStringAsFixed(4)} ${state.preferences.baseCurrency}';
+    }
+    return 'Not set. Tap to set explicit rate.';
+  }
+
+  Future<void> _editRate(BuildContext context, WidgetRef ref, LedgerState state, String currency) async {
+    final controller = TextEditingController();
+    final rate = latestExchangeRate(state, currency, state.preferences.baseCurrency);
+    if (rate != null) controller.text = rate.rate.toString();
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Set rate for $currency'),
+        content: TextField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: '1 $currency = ? ${state.preferences.baseCurrency}',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.tonal(
+            onPressed: () => Navigator.of(context).pop(controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result.isNotEmpty) {
+      final value = double.tryParse(result);
+      if (value != null && value > 0) {
+        await ref.read(ledgerProvider.notifier).setExchangeRate(
+          base: currency,
+          quote: state.preferences.baseCurrency,
+          rate: value,
+        );
+      }
+    }
   }
 }

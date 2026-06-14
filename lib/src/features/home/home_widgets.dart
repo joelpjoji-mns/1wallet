@@ -444,102 +444,151 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
   }
 }
 
-class BalanceTrendHomeWidget extends ConsumerWidget {
+class BalanceTrendHomeWidget extends ConsumerStatefulWidget {
   const BalanceTrendHomeWidget({required this.state, super.key});
 
   final LedgerState state;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<BalanceTrendHomeWidget> createState() => _BalanceTrendHomeWidgetState();
+}
+
+class _BalanceTrendHomeWidgetState extends ConsumerState<BalanceTrendHomeWidget> {
+  String _period = 'This year';
+
+  @override
+  Widget build(BuildContext context) {
     final now = DateTime.now();
-    final start = DateTime(now.year);
-    final trend = ref.watch(homeBalanceTrendProvider((start: DateTime(now.year), end: now)));
+    DateTime? start;
+    switch (_period) {
+      case 'This week':
+        start = now.subtract(const Duration(days: 7));
+        break;
+      case 'This month':
+        start = now.subtract(const Duration(days: 30));
+        break;
+      case 'This year':
+        start = DateTime(now.year);
+        break;
+      case 'All time':
+        start = null;
+        break;
+    }
+
+    final trend = ref.watch(homeBalanceTrendProvider((start: start, end: now)));
     final values = trend.map((point) => point.balance.amountMinor).toList();
     final current = ref.watch(homeTotalBalanceProvider((accountId: null, targetCurrency: null)));
-    final period = trend.isEmpty
-        ? 'This year'
+    final periodLabel = trend.isEmpty
+        ? _period
         : '${_shortDate(trend.first.date)} to ${_shortDate(trend.last.date)}';
-    final movement = trend.length < 2
-        ? current
-        : current.copyWith(
-            amountMinor:
-                trend.last.balance.amountMinor -
-                trend.first.balance.amountMinor,
-          );
-    final maxY = values.isEmpty ? 0 : values.reduce(math.max);
-    final minY = values.isEmpty ? 0 : values.reduce(math.min);
+
+    var minY = values.isEmpty ? 0.0 : values.reduce(math.min).toDouble();
+    var maxY = values.isEmpty ? 0.0 : values.reduce(math.max).toDouble();
+    
+    if (maxY == minY) {
+      maxY += 100000;
+      minY -= 100000;
+    } else {
+      final span = maxY - minY;
+      maxY += span * 0.2;
+      minY -= span * 0.2;
+    }
+
+    if (values.isNotEmpty) {
+      final finalValue = values.last.toDouble();
+      final span = maxY - minY;
+      final percentile = (finalValue - minY) / span;
+
+      if (percentile > 0.8) {
+        maxY = (finalValue - 0.2 * minY) / 0.8;
+      } else if (percentile < 0.2) {
+        minY = (finalValue - 0.2 * maxY) / 0.8;
+      }
+    }
+
+    String formatCompact(num amountMinor) {
+      if (amountMinor == 0) return '0';
+      final absVal = (amountMinor / 100.0).abs();
+      final sign = amountMinor < 0 ? '-' : '';
+      if (absVal >= 100000) {
+        final l = absVal / 100000;
+        return '$sign${l.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '')}L';
+      } else if (absVal >= 1000) {
+        final k = absVal / 1000;
+        return '$sign${k.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '')}K';
+      }
+      return '$sign${absVal.toInt()}';
+    }
 
     final yLabels = [
-      formatMoney(
-        Money(
-          amountMinor: maxY.toInt(),
-          currency: state.preferences.displayCurrency,
-        ),
-        state.preferences.locale,
-      ),
-      formatMoney(
-        Money(
-          amountMinor: (minY + (maxY - minY) * 2 / 3).toInt(),
-          currency: state.preferences.displayCurrency,
-        ),
-        state.preferences.locale,
-      ),
-      formatMoney(
-        Money(
-          amountMinor: (minY + (maxY - minY) * 1 / 3).toInt(),
-          currency: state.preferences.displayCurrency,
-        ),
-        state.preferences.locale,
-      ),
-      formatMoney(
-        Money(
-          amountMinor: minY.toInt(),
-          currency: state.preferences.displayCurrency,
-        ),
-        state.preferences.locale,
-      ),
+      formatCompact(maxY),
+      formatCompact(minY + (maxY - minY) * 2 / 3),
+      formatCompact(minY + (maxY - minY) * 1 / 3),
+      formatCompact(minY),
     ];
 
     final xLabels = [
-      _shortDate(start),
+      if (start != null) _shortDate(start) else trend.isNotEmpty ? _shortDate(trend.first.date) : '',
       '${trend.length} moves',
       _shortDate(now),
     ];
 
     return HomeWidgetCard(
       title: 'Balance trend',
-      subtitle: period,
+      subtitle: periodLabel,
       icon: Icons.bar_chart_rounded,
       iconColor: Theme.of(context).colorScheme.tertiary,
-      child: Column(
-        children: [
-          MiniLineChart(
-            values: values,
-            color: Theme.of(context).colorScheme.primary,
-            yAxisLabels: yLabels,
-            xAxisLabels: xLabels,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
+      actionLabel: _period,
+      onAction: () async {
+        final result = await showDialog<String>(
+          context: context,
+          builder: (context) => SimpleDialog(
+            title: const Text('Select period'),
             children: [
-              Expanded(
-                child: Text(
-                  'Current ${_shortDate(now)} ${formatMoney(current, state.preferences.locale)}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
+              SimpleDialogOption(
+                onPressed: () => Navigator.pop(context, 'This week'),
+                child: const Text('This week'),
               ),
-              Text(
-                formatMoney(movement, state.preferences.locale),
-                style: TextStyle(
-                  color: amountColor(context, movement.amountMinor),
-                  fontWeight: FontWeight.w900,
-                ),
+              SimpleDialogOption(
+                onPressed: () => Navigator.pop(context, 'This month'),
+                child: const Text('This month'),
+              ),
+              SimpleDialogOption(
+                onPressed: () => Navigator.pop(context, 'This year'),
+                child: const Text('This year'),
+              ),
+              SimpleDialogOption(
+                onPressed: () => Navigator.pop(context, 'All time'),
+                child: const Text('All time'),
               ),
             ],
           ),
-        ],
+        );
+        if (result != null) {
+          setState(() => _period = result);
+        }
+      },
+      child: GestureDetector(
+        onTap: () => context.push('/balance-trend'),
+        child: Column(
+          children: [
+            MiniLineChart(
+              values: values,
+              color: Theme.of(context).colorScheme.primary,
+              yAxisLabels: yLabels,
+              xAxisLabels: xLabels,
+              minY: minY,
+              maxY: maxY,
+              tooltipFormatter: (val) => formatMoney(
+                Money(
+                  amountMinor: val.toInt(),
+                  currency: widget.state.preferences.displayCurrency,
+                ),
+                widget.state.preferences.locale,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -559,6 +608,7 @@ class _CurrencyValuesHomeWidgetState extends ConsumerState<CurrencyValuesHomeWid
   final _baseController = TextEditingController(text: '1');
   final _quoteController = TextEditingController();
   double _rate = 1.0;
+  bool _initialized = false;
 
   void _updateQuote() {
     final baseVal = double.tryParse(_baseController.text) ?? 0.0;
@@ -582,14 +632,16 @@ class _CurrencyValuesHomeWidgetState extends ConsumerState<CurrencyValuesHomeWid
   @override
   Widget build(BuildContext context) {
     final snapshot = ref.watch(homeCurrencySnapshotProvider);
-    ref.listen(homeCurrencySnapshotProvider, (_, next) {
-      if (next?.quoteCurrency != null && next?.rate != null) {
-        if (_rate != next!.rate!) {
-          _rate = next.rate!;
-          _updateQuote();
-        }
+    
+    if (snapshot?.rate != null) {
+      if (!_initialized || _rate != snapshot!.rate!) {
+        _rate = snapshot!.rate!;
+        _initialized = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _updateQuote();
+        });
       }
-    });
+    }
 
     if (snapshot == null) {
       return const HomeWidgetCard(

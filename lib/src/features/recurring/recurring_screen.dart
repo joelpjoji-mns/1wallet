@@ -4,6 +4,7 @@ import '../common/route_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
@@ -242,14 +243,18 @@ class _RecurringCompactCard extends StatelessWidget {
     final category = categoryById(state, transaction.categoryId);
     final scheme = Theme.of(context).colorScheme;
     final headerTitle = _recurringHeaderTitle(state, transaction);
-    final primaryTitle = _recurringPrimaryTitle(state, transaction);
+    final defaultPrimaryTitle = _recurringPrimaryTitle(state, transaction);
+    final hasName = transaction.name?.trim().isNotEmpty == true;
+    final primaryTitle = hasName ? transaction.name!.trim() : defaultPrimaryTitle;
+    final categorySubtitle = hasName ? defaultPrimaryTitle : null;
+    
     final recurrence = _recurringCadenceLabel(transaction.recurrenceFrequency);
     final extraLine = _recurringExtraLine(
       state,
       transaction,
       account,
       counter,
-      primaryTitle,
+      defaultPrimaryTitle,
       headerTitle,
     );
     final status = _recurringStatus(
@@ -257,6 +262,7 @@ class _RecurringCompactCard extends StatelessWidget {
       transaction.occurredAt,
       locale: state.preferences.locale,
       historyMode: historyMode,
+      isVoid: transaction.status == 'void',
     );
     final amountText = _recurringAmountLabel(state, transaction);
 
@@ -280,7 +286,7 @@ class _RecurringCompactCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _RoundRecurringIcon(
-                    icon: transactionIcon(transaction),
+                    icon: category != null ? categoryIcon(category) : transactionIcon(transaction),
                     color: categoryColor(category, context),
                   ),
                   const SizedBox(width: AppSpacing.md),
@@ -295,6 +301,19 @@ class _RecurringCompactCard extends StatelessWidget {
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.w800),
                         ),
+                        if (categorySubtitle != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            categorySubtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: scheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 2),
                         Text(
                           recurrence,
@@ -332,10 +351,11 @@ class _RecurringCompactCard extends StatelessWidget {
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(
                               fontWeight: FontWeight.w900,
-                              color: _recurringAmountColor(
+                              color: transaction.status == 'void' ? scheme.outline : _recurringAmountColor(
                                 context,
                                 transaction,
                               ),
+                              decoration: transaction.status == 'void' ? TextDecoration.lineThrough : null,
                             ),
                       ),
                       const SizedBox(height: 4),
@@ -365,7 +385,7 @@ class _RecurringCompactCard extends StatelessWidget {
                   final total = loanAccount?.loanDetails?.repaymentCount;
                   if (total == null || total <= 0) return const SizedBox();
                   final postedCount = state.transactions.where((t) =>
-                     t.status == 'posted' &&
+                     (t.status == 'posted' || t.status == 'cleared') &&
                      (t.accountId == loanAccount!.id || t.counterAccountId == loanAccount.id) &&
                      t.type == 'loan_repayment'
                   ).length;
@@ -436,6 +456,7 @@ class RecurringForm extends ConsumerStatefulWidget {
 }
 
 class _RecurringFormState extends ConsumerState<RecurringForm> {
+  final _nameController = TextEditingController();
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
   String? _loadedRecordId;
@@ -448,6 +469,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _amountController.dispose();
     _notesController.dispose();
     super.dispose();
@@ -496,6 +518,16 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                 title: 'Type',
                 subtitle: transactionTypeLabel(_type),
                 onTap: _showRecurringTypePicker,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.sm),
+              TextFormField(
+                controller: _nameController,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Plan Name (optional)',
+                  prefixIcon: Icon(Icons.title_outlined),
+                ),
               ),
               const SizedBox(height: AppSpacing.sm),
               TextFormField(
@@ -598,6 +630,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
     _amountController.text = record == null
         ? ''
         : _formatAmountInput(record.amount.amountMinor.abs());
+    _nameController.text = record?.name ?? '';
     _accountId = record?.accountId ?? state.accounts.firstOrNull?.id;
     _counterAccountId = record?.counterAccountId;
     _categoryId = record?.categoryId ?? _firstCategoryId(state);
@@ -767,6 +800,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
             amountMinor: amountMinor,
             status: 'scheduled',
             source: 'recurring',
+            name: _nameController.text,
             notes: _notesController.text,
             occurredAt: _nextDate,
             recurrenceFrequency: _frequency,
@@ -956,6 +990,9 @@ class RecurringDetailView extends ConsumerWidget {
       occurredAt: DateTime.now(),
       originalTransactionId: transaction.id,
       recurrenceFrequency: transaction.recurrenceFrequency,
+      originalAmountMinor: transaction.originalAmount?.amountMinor,
+      originalCurrency: transaction.originalAmount?.currency,
+      counterAmountMinor: transaction.counterAmount?.amountMinor,
     );
 
     // Advance the scheduled template
@@ -983,6 +1020,25 @@ class RecurringDetailView extends ConsumerWidget {
   Future<void> _skip(BuildContext context, WidgetRef ref) async {
     final notifier = ref.read(ledgerProvider.notifier);
     final nextDate = _advanceCursor(transaction.occurredAt, transaction.recurrenceFrequency ?? 'monthly');
+    
+    await notifier.upsertTransaction(
+      type: transaction.type,
+      accountId: transaction.accountId,
+      amountMinor: transaction.amount.amountMinor,
+      status: 'void',
+      source: transaction.source,
+      counterAccountId: transaction.counterAccountId,
+      categoryId: transaction.categoryId,
+      paymentMethod: transaction.paymentMethod,
+      notes: 'Skipped',
+      occurredAt: transaction.occurredAt,
+      originalTransactionId: transaction.id,
+      recurrenceFrequency: transaction.recurrenceFrequency,
+      originalAmountMinor: transaction.originalAmount?.amountMinor,
+      originalCurrency: transaction.originalAmount?.currency,
+      counterAmountMinor: transaction.counterAmount?.amountMinor,
+    );
+    
     await notifier.updateTransactionStatus(
       transaction.id,
       'scheduled',
@@ -1044,7 +1100,6 @@ class _RecurringHistoryList extends ConsumerWidget {
                     t.categoryId == plan.categoryId &&
                     t.amount.amountMinor == plan.amount.amountMinor)) &&
             t.status != 'scheduled' &&
-            t.status != 'void' &&
             t.id != plan.id)
         .toList();
 
@@ -1183,9 +1238,17 @@ String? _recurringExtraLine(
   DateTime date, {
   required String locale,
   required bool historyMode,
+  bool isVoid = false,
 }) {
   final scheme = Theme.of(context).colorScheme;
   if (historyMode) {
+    if (isVoid) {
+      return (
+        label: 'Skipped ${formatLedgerDate(date, locale)}',
+        icon: Icons.block_rounded,
+        color: scheme.outline,
+      );
+    }
     return (
       label: formatLedgerDate(date, locale),
       icon: Icons.history_rounded,

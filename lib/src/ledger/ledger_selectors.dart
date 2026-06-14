@@ -292,7 +292,7 @@ Money totalBalance(
             ? state.accounts.where((a) => a.type == 'cash' && !a.isArchived)
             : state.accounts.where((a) => a.id == accountId))
       : state.accounts.where(
-          (account) => !account.isArchived && account.includeInTotals,
+          (account) => account.includeInNetWorth && account.type != 'loan',
         );
   final total = accounts.fold<int>(0, (sum, account) {
     final converted = convertMoneyForDisplay(
@@ -482,42 +482,7 @@ Money totalBalance(
 List<TransactionRecord> scheduledTransactions(LedgerState state) {
   final items = sortedTransactions(
       state,
-    ).where((transaction) => transaction.status == 'scheduled').map((tx) {
-      if (tx.type == 'loan_repayment') {
-        final loanId = tx.counterAccountId ?? tx.accountId;
-        final posted = state.transactions.where((t) =>
-          t.status != 'scheduled' &&
-          t.status != 'void' &&
-          t.type == 'loan_repayment' &&
-          (t.accountId == loanId || t.counterAccountId == loanId)
-        );
-        if (posted.isNotEmpty) {
-          final totalPaidMinor = posted.fold<int>(0, (sum, t) => sum + t.amount.amountMinor.abs());
-          final emiMinor = tx.amount.amountMinor.abs();
-          if (emiMinor > 0) {
-            final monthsPaid = (totalPaidMinor / emiMinor).floor();
-            var cursor = tx.occurredAt;
-            if (monthsPaid > 0) {
-              var year = cursor.year;
-              var month = cursor.month + monthsPaid;
-              while (month > 12) {
-                year++;
-                month -= 12;
-              }
-              var day = cursor.day;
-              final daysInNextMonth = DateTime(year, month + 1, 0).day;
-              if (day > daysInNextMonth) {
-                day = daysInNextMonth;
-              }
-              cursor = DateTime(year, month, day, cursor.hour, cursor.minute, cursor.second);
-            }
-            return tx.copyWith(occurredAt: cursor);
-          }
-        }
-      }
-      return tx;
-    }).toList();
-
+    ).where((transaction) => transaction.status == 'scheduled').toList();
   items.sort((left, right) => left.occurredAt.compareTo(right.occurredAt));
   return items;
 }
