@@ -191,8 +191,18 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           .timeout(cloudSyncReadTimeout);
 
       if (prefsDoc.exists) {
-        // We have cloud data. Restore it locally.
-        await _restoreFromCloud(userId, metadata);
+        final userDoc = await _firestore
+            .doc('users/$userId')
+            .get()
+            .timeout(cloudSyncReadTimeout);
+        final bool shouldPull = !userDoc.exists ||
+            userDoc.data()?['lastWriterDeviceId'] != metadata.deviceId ||
+            !_walletHasUserData(_ref.read(ledgerProvider));
+
+        if (shouldPull) {
+          // We have cloud data. Restore it locally.
+          await _restoreFromCloud(userId, metadata);
+        }
 
         // Migrate rules from preferences to transactions if needed
         final currentLedger = _ref.read(ledgerProvider);
@@ -395,79 +405,76 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         'displayName': user.displayName,
         'authProvider': 'google',
         'updatedAt': FieldValue.serverTimestamp(),
+        'lastWriterDeviceId': metadata.deviceId,
       });
 
       final encodedData = await compute(
         _encodeCloudSnapshotData,
         currentLedger,
       );
-      final accountIds = encodedData['accounts']!
-          .map((accountMap) => accountMap['id'] as String)
-          .toSet();
-
-      for (final accountMap in encodedData['accounts']!) {
-        await addWrite(
-          _firestore.doc('users/${user.id}/accounts/${accountMap['id']}'),
-          accountMap,
-        );
-      }
-      final cloudAccounts = await _firestore
-          .collection('users/${user.id}/accounts')
-          .get()
-          .timeout(cloudSyncReadTimeout);
-      for (final accountDoc in cloudAccounts.docs) {
-        if (accountIds.contains(accountDoc.id)) continue;
-        currentBatch.delete(accountDoc.reference);
-        opCount++;
-        if (opCount >= 450) {
-          await currentBatch.commit();
-          currentBatch = _firestore.batch();
-          opCount = 0;
+      Future<void> processCollection(
+          String collection, List<Map<String, dynamic>> items, List<String>? syncedIds) async {
+        final currentIds = items.map((item) => item['id'] as String).toSet();
+        
+        for (final item in items) {
+          await addWrite(_firestore.doc('users/${user.id}/$collection/${item['id']}'), item);
+        }
+        
+        if (syncedIds != null) {
+          for (final id in syncedIds) {
+            if (!currentIds.contains(id)) {
+              currentBatch.delete(_firestore.doc('users/${user.id}/$collection/$id'));
+              opCount++;
+              if (opCount >= 450) {
+                await currentBatch.commit();
+                currentBatch = _firestore.batch();
+                opCount = 0;
+              }
+            }
+          }
+        } else {
+          // Fallback if syncedIds is null (e.g. first sync after upgrade and didn't reinstall)
+          final cloudDocs = await _firestore
+              .collection('users/${user.id}/$collection')
+              .get()
+              .timeout(cloudSyncReadTimeout);
+          for (final doc in cloudDocs.docs) {
+            if (currentIds.contains(doc.id)) continue;
+            currentBatch.delete(doc.reference);
+            opCount++;
+            if (opCount >= 450) {
+              await currentBatch.commit();
+              currentBatch = _firestore.batch();
+              opCount = 0;
+            }
+          }
         }
       }
-      for (final catMap in encodedData['categories']!) {
-        await addWrite(
-          _firestore.doc('users/${user.id}/categories/${catMap['id']}'),
-          catMap,
-        );
-      }
-      for (final txnMap in encodedData['transactions']!) {
-        await addWrite(
-          _firestore.doc('users/${user.id}/transactions/${txnMap['id']}'),
-          txnMap,
-        );
-      }
-      for (final budgetMap in encodedData['budgets']!) {
-        await addWrite(
-          _firestore.doc('users/${user.id}/budgets/${budgetMap['id']}'),
-          budgetMap,
-        );
-      }
-      for (final goalMap in encodedData['goals']!) {
-        await addWrite(
-          _firestore.doc('users/${user.id}/goals/${goalMap['id']}'),
-          goalMap,
-        );
-      }
-      for (final capMap in encodedData['captureCandidates']!) {
-        await addWrite(
-          _firestore.doc('users/${user.id}/captureCandidates/${capMap['id']}'),
-          capMap,
-        );
-      }
-      for (final impMap in encodedData['importBatches']!) {
-        await addWrite(
-          _firestore.doc('users/${user.id}/importBatches/${impMap['id']}'),
-          impMap,
-        );
-      }
+
+      await processCollection('accounts', encodedData['accounts']!, metadata.syncedAccountIds);
+      await processCollection('categories', encodedData['categories']!, metadata.syncedCategoryIds);
+      await processCollection('transactions', encodedData['transactions']!, metadata.syncedTransactionIds);
+      await processCollection('budgets', encodedData['budgets']!, metadata.syncedBudgetIds);
+      await processCollection('goals', encodedData['goals']!, metadata.syncedGoalIds);
+      await processCollection('captureCandidates', encodedData['captureCandidates']!, metadata.syncedCaptureCandidateIds);
+      await processCollection('importBatches', encodedData['importBatches']!, metadata.syncedImportBatchIds);
 
       if (opCount > 0) {
         await currentBatch.commit();
       }
 
       final now = DateTime.now().toIso8601String();
-      metadata = metadata.copyWith(userId: user.id, lastPushedAt: now);
+      metadata = metadata.copyWith(
+        userId: user.id, 
+        lastPushedAt: now,
+        syncedAccountIds: encodedData['accounts']!.map((m) => m['id'] as String).toList(),
+        syncedCategoryIds: encodedData['categories']!.map((m) => m['id'] as String).toList(),
+        syncedTransactionIds: encodedData['transactions']!.map((m) => m['id'] as String).toList(),
+        syncedBudgetIds: encodedData['budgets']!.map((m) => m['id'] as String).toList(),
+        syncedGoalIds: encodedData['goals']!.map((m) => m['id'] as String).toList(),
+        syncedCaptureCandidateIds: encodedData['captureCandidates']!.map((m) => m['id'] as String).toList(),
+        syncedImportBatchIds: encodedData['importBatches']!.map((m) => m['id'] as String).toList(),
+      );
       await metadata.save();
 
       _uploadFailureCount = 0;
@@ -556,6 +563,13 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       metadata = metadata.copyWith(
         userId: userId,
         lastPulledAt: DateTime.now().toIso8601String(),
+        syncedAccountIds: ledger.accounts.map((a) => a.id).toList(),
+        syncedCategoryIds: ledger.categories.map((c) => c.id).toList(),
+        syncedTransactionIds: ledger.transactions.map((t) => t.id).toList(),
+        syncedBudgetIds: ledger.budgets.map((b) => b.id).toList(),
+        syncedGoalIds: ledger.goals.map((g) => g.id).toList(),
+        syncedCaptureCandidateIds: ledger.captureCandidates.map((c) => c.id).toList(),
+        syncedImportBatchIds: ledger.importBatches.map((i) => i.id).toList(),
       );
       await metadata.save();
 
