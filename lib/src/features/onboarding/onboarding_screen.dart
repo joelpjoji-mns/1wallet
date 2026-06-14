@@ -29,7 +29,13 @@ class _AccountDraft {
   });
 }
 
-enum _OnboardingStep { profile, mainAccount, moreAccounts, extraAccount, permissions }
+enum _OnboardingStep {
+  profile,
+  mainAccount,
+  moreAccounts,
+  extraAccount,
+  permissions,
+}
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -107,48 +113,54 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               AppSpacing.lg,
               AppSpacing.xxl,
             ),
-          children: [
-            _ProgressHeader(step: _step),
-            const SizedBox(height: AppSpacing.lg),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 240),
-              child: _buildStepBody(),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            Row(
-              children: [
-                if (_step != _OnboardingStep.profile)
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _isCompleting ? null : _back,
-                      child: const Text('Back'),
+            children: [
+              _ProgressHeader(step: _step),
+              const SizedBox(height: AppSpacing.lg),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 240),
+                child: _buildStepBody(),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              Row(
+                children: [
+                  if (_step != _OnboardingStep.profile)
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _isCompleting ? null : _back,
+                        child: const Text('Back'),
+                      ),
                     ),
-                  ),
-                if (_step != _OnboardingStep.profile)
-                  const SizedBox(width: AppSpacing.sm),
-                if (_step != _OnboardingStep.moreAccounts)
-                  Expanded(
-                    flex: 2,
-                    child: FilledButton.icon(
-                      onPressed: _isCompleting ? null : _nextOrComplete,
-                      icon: _isCompleting
-                          ? const SizedBox.square(
-                              dimension: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2.2),
-                            )
-                          : Icon(
-                              _step == _OnboardingStep.permissions
-                                  ? Icons.check_rounded
-                                  : Icons.arrow_forward_rounded,
-                            ),
-                      label: Text(_step == _OnboardingStep.permissions ? 'Finish setup' : 'Continue'),
+                  if (_step != _OnboardingStep.profile)
+                    const SizedBox(width: AppSpacing.sm),
+                  if (_step != _OnboardingStep.moreAccounts)
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton.icon(
+                        onPressed: _isCompleting ? null : _nextOrComplete,
+                        icon: _isCompleting
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.2,
+                                ),
+                              )
+                            : Icon(
+                                _step == _OnboardingStep.permissions
+                                    ? Icons.check_rounded
+                                    : Icons.arrow_forward_rounded,
+                              ),
+                        label: Text(
+                          _step == _OnboardingStep.permissions
+                              ? 'Finish setup'
+                              : 'Continue',
+                        ),
+                      ),
                     ),
-                  ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -156,58 +168,57 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Widget _buildStepBody() {
     return switch (_step) {
       _OnboardingStep.profile => _ProfileStep(
-          key: const ValueKey('profile'),
-          nameController: _displayNameController,
-          selectedUseCases: _selectedUseCases,
-          onToggleUseCase: (id) {
-            setState(() {
-              if (_selectedUseCases.contains(id)) {
-                _selectedUseCases.remove(id);
-              } else {
-                _selectedUseCases.add(id);
-              }
-            });
-          },
-        ),
+        key: const ValueKey('profile'),
+        nameController: _displayNameController,
+        selectedUseCases: _selectedUseCases,
+        onToggleUseCase: (id) {
+          setState(() {
+            if (_selectedUseCases.contains(id)) {
+              _selectedUseCases.remove(id);
+            } else {
+              _selectedUseCases.add(id);
+            }
+          });
+        },
+      ),
       _OnboardingStep.mainAccount => _AccountStep(
-          key: const ValueKey('mainAccount'),
-          isMain: true,
-          draft: _currentDraft,
-          onCurrency: _chooseCurrency,
-          onColor: _chooseColor,
-          onType: _chooseType,
-          onNameChanged: (val) => setState(() => _currentDraft.name = val),
-          onOpeningChanged: (val) => setState(() => _currentDraft.opening = val),
-        ),
+        key: const ValueKey('mainAccount'),
+        isMain: true,
+        draft: _currentDraft,
+        onCurrency: _chooseCurrency,
+        onColor: _chooseColor,
+        onType: _chooseType,
+        onNameChanged: (val) => setState(() => _currentDraft.name = val),
+        onOpeningChanged: (val) => setState(() => _currentDraft.opening = val),
+      ),
       _OnboardingStep.moreAccounts => _MoreAccountsStep(
-          key: const ValueKey('moreAccounts'),
-          accounts: _accounts,
-          isCompleting: _isCompleting,
-          onAddAnother: () {
-            _initDraft();
-            setState(() => _step = _OnboardingStep.extraAccount);
-          },
-          onFinish: _nextOrComplete,
-        ),
+        key: const ValueKey('moreAccounts'),
+        accounts: _accounts,
+        isCompleting: _isCompleting,
+        onAddAnother: () {
+          _initDraft();
+          setState(() => _step = _OnboardingStep.extraAccount);
+        },
+        onFinish: _nextOrComplete,
+      ),
       _OnboardingStep.extraAccount => _AccountStep(
-          key: const ValueKey('extraAccount'),
-          isMain: false,
-          draft: _currentDraft,
-          onCurrency: _chooseCurrency,
-          onColor: _chooseColor,
-          onType: _chooseType,
-          onNameChanged: (val) => setState(() => _currentDraft.name = val),
-          onOpeningChanged: (val) => setState(() => _currentDraft.opening = val),
-        ),
+        key: const ValueKey('extraAccount'),
+        isMain: false,
+        draft: _currentDraft,
+        onCurrency: _chooseCurrency,
+        onColor: _chooseColor,
+        onType: _chooseType,
+        onNameChanged: (val) => setState(() => _currentDraft.name = val),
+        onOpeningChanged: (val) => setState(() => _currentDraft.opening = val),
+      ),
       _OnboardingStep.permissions => _PermissionsStep(
-          key: const ValueKey('permissions'),
-          enableAutoCapture: _enableAutoCapture,
-          enableReminders: _enableReminders,
-          onAutoCaptureChanged: (value) =>
-              setState(() => _enableAutoCapture = value),
-          onRemindersChanged: (value) =>
-              setState(() => _enableReminders = value),
-        ),
+        key: const ValueKey('permissions'),
+        enableAutoCapture: _enableAutoCapture,
+        enableReminders: _enableReminders,
+        onAutoCaptureChanged: (value) =>
+            setState(() => _enableAutoCapture = value),
+        onRemindersChanged: (value) => setState(() => _enableReminders = value),
+      ),
     };
   }
 
@@ -218,11 +229,27 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       searchable: false,
       selectedValue: _currentDraft.type,
       options: const [
-        PickerOption(value: 'bank', title: 'Bank account', icon: Icons.account_balance_outlined),
+        PickerOption(
+          value: 'bank',
+          title: 'Bank account',
+          icon: Icons.account_balance_outlined,
+        ),
         PickerOption(value: 'cash', title: 'Cash', icon: Icons.money_outlined),
-        PickerOption(value: 'credit_card', title: 'Credit Card', icon: Icons.credit_card_outlined),
-        PickerOption(value: 'loan', title: 'Loan', icon: Icons.real_estate_agent_outlined),
-        PickerOption(value: 'wallet', title: 'Digital Wallet', icon: Icons.account_balance_wallet_outlined),
+        PickerOption(
+          value: 'credit_card',
+          title: 'Credit Card',
+          icon: Icons.credit_card_outlined,
+        ),
+        PickerOption(
+          value: 'loan',
+          title: 'Loan',
+          icon: Icons.real_estate_agent_outlined,
+        ),
+        PickerOption(
+          value: 'wallet',
+          title: 'Digital Wallet',
+          icon: Icons.account_balance_wallet_outlined,
+        ),
       ],
     );
     if (next != null) {
@@ -315,30 +342,39 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Future<void> _nextOrComplete() async {
     if (_step == _OnboardingStep.profile) {
       if (_displayNameController.text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter your name.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter your name.')),
+        );
         return;
       }
       if (_selectedUseCases.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select at least one use case.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select at least one use case.')),
+        );
         return;
       }
       setState(() => _step = _OnboardingStep.mainAccount);
       return;
-    } 
-    
-    if (_step == _OnboardingStep.mainAccount || _step == _OnboardingStep.extraAccount) {
+    }
+
+    if (_step == _OnboardingStep.mainAccount ||
+        _step == _OnboardingStep.extraAccount) {
       if (_currentDraft.name.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter an account name.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter an account name.')),
+        );
         return;
       }
-      _accounts.add(_AccountDraft(
-        name: _currentDraft.name.trim(),
-        type: _currentDraft.type,
-        currency: _currentDraft.currency,
-        color: _currentDraft.color,
-        opening: _currentDraft.opening.trim(),
-        icon: _currentDraft.icon,
-      ));
+      _accounts.add(
+        _AccountDraft(
+          name: _currentDraft.name.trim(),
+          type: _currentDraft.type,
+          currency: _currentDraft.currency,
+          color: _currentDraft.color,
+          opening: _currentDraft.opening.trim(),
+          icon: _currentDraft.icon,
+        ),
+      );
       setState(() => _step = _OnboardingStep.moreAccounts);
       return;
     }
@@ -357,27 +393,35 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     setState(() => _isCompleting = true);
     try {
       final currentLedger = ref.read(ledgerProvider);
-      final hasExistingWallet = currentLedger.accounts.isNotEmpty || currentLedger.transactions.isNotEmpty;
+      final hasExistingWallet =
+          currentLedger.accounts.isNotEmpty ||
+          currentLedger.transactions.isNotEmpty;
 
       if (!hasExistingWallet && _accounts.isNotEmpty) {
         final baseAccount = _accounts.first;
-        await ref.read(ledgerProvider.notifier).createStarterWallet(
+        await ref
+            .read(ledgerProvider.notifier)
+            .createStarterWallet(
               userId: authUser.id,
               accountName: baseAccount.name,
               currency: baseAccount.currency,
               accountColor: baseAccount.color,
               accountType: baseAccount.type,
-              openingBalanceMinor: (double.tryParse(baseAccount.opening) ?? 0).toInt() * 100,
+              openingBalanceMinor:
+                  (double.tryParse(baseAccount.opening) ?? 0).toInt() * 100,
             );
 
         for (var i = 1; i < _accounts.length; i++) {
           final account = _accounts[i];
-          await ref.read(ledgerProvider.notifier).upsertAccount(
+          await ref
+              .read(ledgerProvider.notifier)
+              .upsertAccount(
                 name: account.name,
                 type: account.type,
                 currency: account.currency,
                 color: account.color,
-                openingBalanceMinor: (double.tryParse(account.opening) ?? 0).toInt() * 100,
+                openingBalanceMinor:
+                    (double.tryParse(account.opening) ?? 0).toInt() * 100,
               );
         }
       }
@@ -386,7 +430,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           .read(onboardingControllerProvider.notifier)
           .setCompleted(authUser.id, true);
       if (!mounted) return;
-      context.go('/');
+      context.go('/permissions-setup');
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -410,8 +454,10 @@ class _ProgressHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final labels = ['Profile', 'Accounts', 'Permissions'];
-    int displayStep = step == _OnboardingStep.profile ? 0 : (step == _OnboardingStep.permissions ? 2 : 1);
-    
+    int displayStep = step == _OnboardingStep.profile
+        ? 0
+        : (step == _OnboardingStep.permissions ? 2 : 1);
+
     return Row(
       children: [
         for (final (index, label) in labels.indexed) ...[
@@ -424,7 +470,9 @@ class _ProgressHeader extends StatelessWidget {
                     : scheme.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(AppRadii.pill),
                 border: Border.all(
-                  color: index <= displayStep ? scheme.primary : scheme.outlineVariant,
+                  color: index <= displayStep
+                      ? scheme.primary
+                      : scheme.outlineVariant,
                 ),
               ),
               child: Text(
@@ -530,7 +578,9 @@ class _UseCaseCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadii.md),
         side: BorderSide(
-          color: selected ? scheme.primary : scheme.outlineVariant.withAlphaFactor(0.4),
+          color: selected
+              ? scheme.primary
+              : scheme.outlineVariant.withAlphaFactor(0.4),
           width: selected ? 2 : 1,
         ),
       ),
@@ -599,8 +649,8 @@ class _AccountStep extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
         SectionCard(
           title: isMain ? 'Main account' : 'Add account',
-          subtitle: isMain 
-              ? 'Start with the account you use most.' 
+          subtitle: isMain
+              ? 'Start with the account you use most.'
               : 'Create another wallet, card, cash, or loan account.',
           child: Column(
             children: [
@@ -643,7 +693,9 @@ class _AccountStep extends StatelessWidget {
                 color: scheme.surfaceContainerHigh,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppRadii.md),
-                  side: BorderSide(color: scheme.outlineVariant.withAlphaFactor(0.4)),
+                  side: BorderSide(
+                    color: scheme.outlineVariant.withAlphaFactor(0.4),
+                  ),
                 ),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(AppRadii.md),
@@ -692,7 +744,10 @@ class _AccountStep extends StatelessWidget {
                             ],
                           ),
                         ),
-                        Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: scheme.onSurfaceVariant,
+                        ),
                       ],
                     ),
                   ),
@@ -702,14 +757,25 @@ class _AccountStep extends StatelessWidget {
               TextFormField(
                 initialValue: draft.opening,
                 onChanged: onOpeningChanged,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: InputDecoration(
-                  labelText: draft.type == 'loan' ? 'Outstanding principal' : 'Opening balance',
+                  labelText: draft.type == 'loan'
+                      ? 'Outstanding principal'
+                      : 'Opening balance',
                   prefixIcon: Container(
-                    padding: const EdgeInsets.only(top: 14, left: 14, right: 10),
+                    padding: const EdgeInsets.only(
+                      top: 14,
+                      left: 14,
+                      right: 10,
+                    ),
                     child: Text(
                       symbol,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -761,10 +827,7 @@ class _GridActionCard extends StatelessWidget {
               const SizedBox(height: AppSpacing.sm),
               Text(
                 label,
-                style: TextStyle(
-                  color: scheme.onSurfaceVariant,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
               ),
               Text(
                 value,
@@ -907,7 +970,9 @@ class _MoreAccountsStep extends StatelessWidget {
                           acc.type.toUpperCase(),
                           style: TextStyle(
                             fontSize: 12,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -917,7 +982,9 @@ class _MoreAccountsStep extends StatelessWidget {
                     builder: (context) {
                       String symbol = acc.currency;
                       try {
-                        symbol = NumberFormat.simpleCurrency(name: acc.currency).currencySymbol;
+                        symbol = NumberFormat.simpleCurrency(
+                          name: acc.currency,
+                        ).currencySymbol;
                       } catch (_) {}
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
@@ -933,7 +1000,9 @@ class _MoreAccountsStep extends StatelessWidget {
                             acc.currency,
                             style: TextStyle(
                               fontSize: 12,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -1026,10 +1095,40 @@ class _UseCase {
 }
 
 const _useCases = [
-  _UseCase('daily_spending', 'Daily spending', 'Track money moving in and out every day', Icons.account_balance_wallet_outlined),
-  _UseCase('budgeting', 'Budgeting', 'Keep categories and limits visible', Icons.pie_chart_outline),
-  _UseCase('bills_subscriptions', 'Bills and subscriptions', 'Plan repeat payments before they hit', Icons.calendar_today_outlined),
-  _UseCase('cards_loans', 'Cards and loans', 'Watch dues, EMI, balances, and repayments', Icons.credit_card_outlined),
-  _UseCase('business_self_employed', 'Business/self-employed', 'Separate income, expenses, and accounts', Icons.work_outline),
-  _UseCase('investments_net_worth', 'Investments/net worth', 'See assets and liabilities together', Icons.trending_up_rounded),
+  _UseCase(
+    'daily_spending',
+    'Daily spending',
+    'Track money moving in and out every day',
+    Icons.account_balance_wallet_outlined,
+  ),
+  _UseCase(
+    'budgeting',
+    'Budgeting',
+    'Keep categories and limits visible',
+    Icons.pie_chart_outline,
+  ),
+  _UseCase(
+    'bills_subscriptions',
+    'Bills and subscriptions',
+    'Plan repeat payments before they hit',
+    Icons.calendar_today_outlined,
+  ),
+  _UseCase(
+    'cards_loans',
+    'Cards and loans',
+    'Watch dues, EMI, balances, and repayments',
+    Icons.credit_card_outlined,
+  ),
+  _UseCase(
+    'business_self_employed',
+    'Business/self-employed',
+    'Separate income, expenses, and accounts',
+    Icons.work_outline,
+  ),
+  _UseCase(
+    'investments_net_worth',
+    'Investments/net worth',
+    'See assets and liabilities together',
+    Icons.trending_up_rounded,
+  ),
 ];
