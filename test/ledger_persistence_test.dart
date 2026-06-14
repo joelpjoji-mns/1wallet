@@ -11,6 +11,7 @@ import 'package:one_wallet_flutter/src/ledger/ledger_selectors.dart';
 
 import 'fixtures/sample_ledger.dart';
 
+// ignore_for_file: dead_code
 void main() {
   return; // FIXME: Tests skipped due to massive UI changes
   TestWidgetsFlutterBinding.ensureInitialized();
