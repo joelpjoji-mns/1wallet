@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:firebase_core/firebase_core.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
@@ -212,14 +213,20 @@ class AppUpdateState {
 }
 
 class AppUpdateProvider extends StateNotifier<AppUpdateState> {
-  final FirebaseFirestore _firestore;
   final Dio _dio = Dio();
 
-  AppUpdateProvider(this._firestore) : super(AppUpdateState()) {
+  AppUpdateProvider() : super(AppUpdateState()) {
     _loadChannelAndCheck();
   }
 
+  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
+
   Future<void> _loadChannelAndCheck() async {
+    try {
+      if (Firebase.apps.isEmpty) return;
+    } catch (_) {
+      return; // If Firebase is not linked
+    }
     final prefs = await SharedPreferences.getInstance();
     final savedChannel = prefs.getString(_updateChannelPreferenceKey);
     if (savedChannel == 'beta' || savedChannel == 'stable') {
@@ -443,7 +450,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
 
 final appUpdateProvider =
     StateNotifierProvider<AppUpdateProvider, AppUpdateState>((ref) {
-      return AppUpdateProvider(FirebaseFirestore.instance);
+      return AppUpdateProvider();
     });
 
 Map<String, dynamic> _mapValue(Object? value) {
