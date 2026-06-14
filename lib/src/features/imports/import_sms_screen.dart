@@ -23,6 +23,8 @@ class ImportSmsScreen extends ConsumerStatefulWidget {
 class _ImportSmsScreenState extends ConsumerState<ImportSmsScreen> {
   final _messageController = TextEditingController();
   ParsedTransactionMessage? _preview;
+  String _scanTimeframe = '24h';
+  bool _isScanning = false;
 
   @override
   void dispose() {
@@ -47,6 +49,40 @@ class _ImportSmsScreenState extends ConsumerState<ImportSmsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          SectionCard(
+            title: 'Batch scan SMS',
+            subtitle: 'Automatically find and queue transactions from your inbox.',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: _scanTimeframe,
+                  decoration: const InputDecoration(
+                    labelText: 'Scan timeframe',
+                    prefixIcon: Icon(Icons.history_rounded),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'today', child: Text('Today (since midnight)')),
+                    DropdownMenuItem(value: '24h', child: Text('Last 24 hours')),
+                    DropdownMenuItem(value: '7d', child: Text('Last 7 days')),
+                    DropdownMenuItem(value: '30d', child: Text('Last 30 days')),
+                  ],
+                  onChanged: _isScanning ? null : (value) {
+                    if (value != null) setState(() => _scanTimeframe = value);
+                  },
+                ),
+                const SizedBox(height: AppSpacing.md),
+                FilledButton.icon(
+                  onPressed: _isScanning ? null : _startBatchScan,
+                  icon: _isScanning 
+                      ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary)) 
+                      : const Icon(Icons.manage_search_rounded),
+                  label: Text(_isScanning ? 'Scanning...' : 'Start scan'),
+                ),
+              ],
+            ),
+          ),
+          const Gap(AppSpacing.lg),
           SectionCard(
             title: 'Paste message',
             subtitle: 'Local parser extracts amount, merchant, and direction.',
@@ -112,16 +148,6 @@ class _ImportSmsScreenState extends ConsumerState<ImportSmsScreen> {
                   value: parsed.merchant ?? 'Not detected',
                   icon: Icons.storefront_outlined,
                 ),
-                InfoRow(
-                  label: 'Warnings',
-                  value: parsed.warnings.isEmpty
-                      ? 'None'
-                      : parsed.warnings.join(', '),
-                  icon: Icons.warning_amber_outlined,
-                  tone: parsed.warnings.isEmpty
-                      ? MetricTone.standard
-                      : MetricTone.warning,
-                ),
               ],
             ),
           ),
@@ -158,7 +184,69 @@ class _ImportSmsScreenState extends ConsumerState<ImportSmsScreen> {
       _parsePreview();
       _showImportMessage('Loaded latest SMS from inbox.');
     } catch (e) {
-      _showImportMessage('Error reading SMS: \$e');
+      _showImportMessage('Error reading SMS: $e');
+    }
+  }
+
+  Future<void> _startBatchScan() async {
+    final status = await requestAndroidSmsPermission();
+    if (status != AndroidSmsPermissionStatus.granted) {
+      _showImportMessage('Permission denied to read SMS inbox.');
+      return;
+    }
+
+    setState(() => _isScanning = true);
+    
+    try {
+      final now = DateTime.now();
+      DateTime minDate;
+      switch (_scanTimeframe) {
+        case 'today':
+          minDate = DateTime(now.year, now.month, now.day);
+          break;
+        case '7d':
+          minDate = now.subtract(const Duration(days: 7));
+          break;
+        case '30d':
+          minDate = now.subtract(const Duration(days: 30));
+          break;
+        case '24h':
+        default:
+          minDate = now.subtract(const Duration(hours: 24));
+          break;
+      }
+      
+      final minDateMs = minDate.millisecondsSinceEpoch;
+      
+      final messages = await readAndroidSmsInbox(maxCount: 500, minDate: minDateMs);
+      if (messages.isEmpty) {
+        _showImportMessage('No messages found in the selected timeframe.');
+        return;
+      }
+
+      int found = 0;
+      final state = ref.read(ledgerProvider);
+      final fallbackCurrency = state.preferences.baseCurrency;
+      final notifier = ref.read(ledgerProvider.notifier);
+      final validTexts = <String>[];
+      
+      for (final msg in messages) {
+        final parsed = parseTransactionMessage(msg.body, fallbackCurrency: fallbackCurrency);
+        if (!parsed.ignored && parsed.transactionType != null) {
+          validTexts.add(msg.body);
+          found++;
+        }
+      }
+      
+      final candidates = await notifier.importSmsMessagesBatch(validTexts);
+      
+      _showImportMessage('Scan complete. Found $found candidates, queued ${candidates.length}.');
+    } catch (e) {
+      _showImportMessage('Error scanning SMS: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isScanning = false);
+      }
     }
   }
 

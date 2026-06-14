@@ -26,14 +26,12 @@ class TransactionRow extends StatelessWidget {
     final account = accountById(state, transaction.accountId);
     final counter = accountById(state, transaction.counterAccountId);
     final category = categoryById(state, transaction.categoryId);
-    final color = _rowAmountColor(context);
+    final inactive = transaction.status == 'void' || transaction.status == 'paused';
+    final color = inactive ? Theme.of(context).colorScheme.outline : _rowAmountColor(context);
     final amount = _primaryAmount();
     final secondaryTexts = _secondaryAmounts(amount);
     final title = _title(category, account, counter);
-    final details = [
-      account == null ? null : accountTypeLabel(account.type),
-      transaction.notes,
-    ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' • ');
+    final details = transaction.notes?.trim() ?? '';
 
     return Card(
       elevation: 0,
@@ -47,7 +45,10 @@ class TransactionRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.md),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.xs,
+          ),
           child: Row(
             children: [
               IconBubble(
@@ -66,7 +67,11 @@ class TransactionRow extends StatelessWidget {
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w800),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: inactive ? Theme.of(context).colorScheme.outline : null,
+                        decoration: transaction.status == 'void' ? TextDecoration.lineThrough : null,
+                      ),
                     ),
                     Text(
                       _accountLine(account, counter),
@@ -84,6 +89,7 @@ class TransactionRow extends StatelessWidget {
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                           fontSize: 12,
+                          fontStyle: FontStyle.italic,
                         ),
                       ),
                   ],
@@ -95,7 +101,11 @@ class TransactionRow extends StatelessWidget {
                 children: [
                   Text(
                     _formatSignedMoney(amount),
-                    style: TextStyle(color: color, fontWeight: FontWeight.w900),
+                    style: TextStyle(
+                      color: color, 
+                      fontWeight: FontWeight.w900,
+                      decoration: transaction.status == 'void' ? TextDecoration.lineThrough : null,
+                    ),
                   ),
                   for (final text in secondaryTexts)
                     Text(

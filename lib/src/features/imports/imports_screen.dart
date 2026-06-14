@@ -171,14 +171,6 @@ class ImportBatchDetailScreen extends ConsumerWidget {
                       ? MetricTone.warning
                       : MetricTone.standard,
                 ),
-                InfoRow(
-                  label: 'Warnings',
-                  value: '${batch.warningCount}',
-                  icon: Icons.warning_amber_outlined,
-                  tone: batch.warningCount > 0
-                      ? MetricTone.warning
-                      : MetricTone.standard,
-                ),
               ],
             ),
           ),

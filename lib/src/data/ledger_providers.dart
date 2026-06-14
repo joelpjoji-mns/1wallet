@@ -743,13 +743,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     await _commit(state.copyWith(captureCandidates: candidates));
   }
 
-  Future<void> clearCaptureCandidateWarnings(String id) async {
-    final candidates = [
-      for (final candidate in state.captureCandidates)
-        candidate.id == id ? candidate.copyWith(warnings: const []) : candidate,
-    ];
-    await _commit(state.copyWith(captureCandidates: candidates));
-  }
+
 
   Future<TransactionRecord> approveCaptureCandidate(String id) async {
     final candidate = _candidateById(state, id);
@@ -821,7 +815,6 @@ class LedgerController extends StateNotifier<LedgerState> {
                     : 'expense',
                 suggestedAccountId: _blankToNull(suggestedAccountId),
                 suggestedCategoryId: _blankToNull(suggestedCategoryId),
-                warnings: candidate.warnings,
               )
             : candidate,
     ];
@@ -864,7 +857,6 @@ class LedgerController extends StateNotifier<LedgerState> {
         parsed.merchant,
         parsed.transactionType ?? 'expense',
       )?.id,
-      warnings: parsed.warnings,
     );
     await _commit(
       state.copyWith(
@@ -872,6 +864,61 @@ class LedgerController extends StateNotifier<LedgerState> {
       ),
     );
     return candidate;
+  }
+
+  Future<List<CaptureCandidate>> importSmsMessagesBatch(List<String> rawTexts) async {
+    final newCandidates = <CaptureCandidate>[];
+    int idx = 0;
+
+    for (final rawText in rawTexts) {
+      final parsed = parseTransactionMessage(
+        rawText,
+        fallbackCurrency: state.preferences.baseCurrency,
+      );
+      if (parsed.ignored) continue;
+
+      String? matchedAccountId;
+      if (parsed.last4 != null) {
+        for (final account in state.accounts) {
+          if (!account.isArchived &&
+              (account.cardLast4 == parsed.last4 || account.accountLast4 == parsed.last4)) {
+            matchedAccountId = account.id;
+            break;
+          }
+        }
+      }
+
+      final candidate = CaptureCandidate(
+        id: '${_newId('cap')}-${idx++}',
+        source: 'sms',
+        status: 'pending',
+        createdAt: DateTime.now(),
+        rawText: parsed.rawText,
+        parsedAmount: parsed.amount,
+        merchant: parsed.merchant,
+        transactionType: parsed.transactionType,
+        suggestedAccountId: matchedAccountId ?? state.accounts
+            .where((account) => !account.isArchived)
+            .firstOrNull
+            ?.id,
+        suggestedCategoryId: _matchCategory(
+          state,
+          parsed.merchant,
+          parsed.transactionType ?? 'expense',
+        )?.id,
+      );
+      newCandidates.add(candidate);
+    }
+
+    if (newCandidates.isNotEmpty) {
+      await _commit(
+        state.copyWith(
+          captureCandidates: [...newCandidates, ...state.captureCandidates],
+        ),
+      );
+    }
+
+    return newCandidates;
   }
 
   Future<int> importWalletCsvRows(List<ParsedWalletCsvRow> rows) async {
@@ -921,7 +968,6 @@ class LedgerController extends StateNotifier<LedgerState> {
       rowCount: rows.length,
       importedCount: imported.length,
       duplicateCount: duplicateCount,
-      warningCount: rows.fold<int>(0, (sum, row) => sum + row.warnings.length),
     );
     await _commit(
       state.copyWith(

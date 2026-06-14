@@ -21,10 +21,6 @@ class ReviewQueueScreen extends ConsumerWidget {
         .map((candidate) => candidate.source)
         .toSet()
         .length;
-    final warnings = candidates.fold<int>(
-      0,
-      (sum, candidate) => sum + candidate.warnings.length,
-    );
     return Scaffold(
       appBar: AppBar(
         title: const Text('Review queue'),
@@ -86,20 +82,8 @@ class ReviewQueueScreen extends ConsumerWidget {
                                 compact: true,
                               ),
                             ),
-                            SizedBox(
-                              width: 140,
-                              child: MetricTile(
-                                label: 'Warnings',
-                                value: '$warnings',
-                                icon: Icons.warning_amber_outlined,
-                                compact: true,
-                                tone: warnings == 0
-                                    ? MetricTone.standard
-                                    : MetricTone.danger,
-                              ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
                         if (candidates.isNotEmpty) ...[
                           const SizedBox(height: AppSpacing.md),
                           Wrap(
@@ -124,18 +108,8 @@ class ReviewQueueScreen extends ConsumerWidget {
                                 icon: const Icon(Icons.clear_all_outlined),
                                 label: const Text('Dismiss all'),
                               ),
-                              if (warnings > 0)
-                                OutlinedButton.icon(
-                                  onPressed: () => _clearAllWarnings(
-                                    context,
-                                    ref,
-                                    candidates.where((c) => c.warnings.isNotEmpty).map((e) => e.id),
-                                  ),
-                                  icon: const Icon(Icons.cleaning_services_outlined),
-                                  label: const Text('Dismiss all warnings'),
-                                ),
-                            ],
-                          ),
+                              ],
+                            ),
                         ],
                       ],
                     ),
@@ -156,7 +130,6 @@ class ReviewQueueScreen extends ConsumerWidget {
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
                     final candidate = candidates[index];
-                    final hasWarnings = candidate.warnings.isNotEmpty;
                     final theme = Theme.of(context);
                     final scheme = theme.colorScheme;
                     return InkWell(
@@ -227,23 +200,6 @@ class ReviewQueueScreen extends ConsumerWidget {
                                           fontSize: 11,
                                         ),
                                       ),
-                                      if (hasWarnings) ...[
-                                        const SizedBox(width: AppSpacing.sm),
-                                        Icon(
-                                          Icons.warning_amber_rounded,
-                                          size: 12,
-                                          color: scheme.error,
-                                        ),
-                                        const SizedBox(width: 2),
-                                        Text(
-                                          '${candidate.warnings.length} warnings',
-                                          style: theme.textTheme.bodySmall?.copyWith(
-                                            color: scheme.error,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
                                       const Spacer(),
                                       if (candidate.status == 'pending') ...[
                                         IconButton(
@@ -283,6 +239,35 @@ class ReviewQueueScreen extends ConsumerWidget {
                                         ),
                                     ],
                                   ),
+                                  const SizedBox(height: AppSpacing.xs),
+                                  if (candidate.suggestedAccountId != null) ...[
+                                    Row(
+                                      children: [
+                                        Icon(Icons.account_balance_wallet_outlined, size: 12, color: scheme.primary),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          state.accounts.where((a) => a.id == candidate.suggestedAccountId).firstOrNull?.name ?? 'Unknown Account',
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            color: scheme.primary,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                  ],
+                                  if (candidate.rawText != null && candidate.rawText!.isNotEmpty)
+                                    Text(
+                                      candidate.rawText!,
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: scheme.onSurfaceVariant.withOpacity(0.8),
+                                        fontSize: 11,
+                                        height: 1.3,
+                                      ),
+                                    ),
                                 ],
                               ),
                             ),
@@ -357,25 +342,5 @@ class ReviewQueueScreen extends ConsumerWidget {
       );
   }
 
-  Future<void> _clearAllWarnings(
-    BuildContext context,
-    WidgetRef ref,
-    Iterable<String> ids,
-  ) async {
-    final notifier = ref.read(ledgerProvider.notifier);
-    int count = 0;
-    for (final id in ids) {
-      await notifier.clearCaptureCandidateWarnings(id);
-      count++;
-    }
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('Warnings dismissed for $count candidates.'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-  }
+
 }

@@ -494,7 +494,7 @@ Money totalBalance(
 List<TransactionRecord> scheduledTransactions(LedgerState state) {
   final items = sortedTransactions(
       state,
-    ).where((transaction) => transaction.status == 'scheduled').toList();
+    ).where((transaction) => transaction.status == 'scheduled' || transaction.status == 'paused').toList();
   items.sort((left, right) => left.occurredAt.compareTo(right.occurredAt));
   return items;
 }

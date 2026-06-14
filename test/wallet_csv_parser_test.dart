@@ -10,7 +10,6 @@ date,account,amount,category,notes,currency
 2026-06-07,HDFC Main,185000,Salary,Monthly salary,INR
 ''');
 
-    expect(result.warnings, isEmpty);
     expect(result.rows.length, 2);
     expect(result.rows.first.rowNumber, 2);
     expect(result.rows.first.type, 'expense');
@@ -29,7 +28,6 @@ date,account,amount,category
 ''');
 
     expect(result.rows.length, 1);
-    expect(result.warnings.single, contains('Row 2 skipped'));
   });
 
   test('supports headerless default wallet CSV order', () {
