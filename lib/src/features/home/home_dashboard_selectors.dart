@@ -396,7 +396,7 @@ String? _preferredQuoteCurrency(
   return null;
 }
 
-DateTime _day(DateTime date) => DateTime(date.year, date.month, date.day);
+
 
 class _RateSnapshot {
   const _RateSnapshot({
