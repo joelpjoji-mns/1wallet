@@ -477,7 +477,6 @@ class _BalanceTrendHomeWidgetState extends ConsumerState<BalanceTrendHomeWidget>
 
     final trend = ref.watch(homeBalanceTrendProvider((start: start, end: now)));
     final values = trend.map((point) => point.balance.amountMinor).toList();
-    final current = ref.watch(homeTotalBalanceProvider((accountId: null, targetCurrency: null)));
     final periodLabel = trend.isEmpty
         ? _period
         : '${_shortDate(trend.first.date)} to ${_shortDate(trend.last.date)}';
