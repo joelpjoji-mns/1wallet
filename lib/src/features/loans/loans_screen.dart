@@ -774,7 +774,7 @@ class LoanDetailView extends ConsumerWidget {
                         ),
                       ),
                       if (index != repaymentHistory.length - 1)
-                        const SizedBox(height: AppSpacing.sm),
+                        const SizedBox(height: AppSpacing.xxs),
                     ],
                   ],
                 ),
@@ -783,7 +783,7 @@ class LoanDetailView extends ConsumerWidget {
     );
   }
 
-  Future<void> _confirmArchiveLoan(
+    Future<void> _confirmArchiveLoan(
     BuildContext context,
     WidgetRef ref,
     Account loan,
@@ -1134,7 +1134,6 @@ List<TransactionRecord> _loanHistoryRepayments(
       .where(
         (transaction) =>
             transaction.type == 'loan_repayment' &&
-            transaction.status != 'void' &&
             (transaction.accountId == loanId ||
                 transaction.counterAccountId == loanId) &&
             _isHistoricalLoanRepayment(transaction),

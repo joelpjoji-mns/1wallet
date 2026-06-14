@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -151,7 +152,7 @@ class _LaunchBackdropState extends State<LaunchBackdrop>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 4000),
+      duration: const Duration(milliseconds: 6000),
     )..repeat(reverse: true);
   }
 
@@ -163,66 +164,127 @@ class _LaunchBackdropState extends State<LaunchBackdrop>
 
   @override
   Widget build(BuildContext context) {
-    final palette = _resolveLaunchPalette(context);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final bg = isDark ? const Color(0xFF000000) : const Color(0xFFF0F4F8);
+    
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
         final t = _controller.value;
-        final drift = -18 + (36 * Curves.easeInOutCubic.transform(t));
-        final lineDrift = -22 * t;
-        final focusScale = 0.96 + (0.08 * math.sin(t * math.pi));
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [palette.background, palette.backgroundDeep],
-            ),
-          ),
+        final xOffset1 = 50 * math.sin(t * math.pi * 2);
+        final yOffset1 = 50 * math.cos(t * math.pi * 2);
+        
+        final xOffset2 = -40 * math.cos(t * math.pi * 2);
+        final yOffset2 = 60 * math.sin(t * math.pi * 2);
+
+        return Container(
+          color: bg,
           child: Stack(
             children: [
-              _LaunchBand(
-                top: 96,
-                left: -150 + drift,
-                width: 720,
-                height: 232,
-                color: palette.bandPrimary,
-              ),
-              _LaunchBand(
-                bottom: 72,
-                left: -150 - drift,
-                width: 720,
-                height: 260,
-                color: palette.bandTertiary,
-              ),
-              _LaunchBand(
-                top: 244,
-                left: 156 + drift,
-                width: 410,
-                height: 96,
-                color: palette.bandGold,
-              ),
-              _LedgerLines(color: palette.line, translateY: lineDrift),
-              Center(
-                child: Transform.scale(
-                  scale: focusScale,
-                  child: Container(
-                    width: 274,
-                    height: 274,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: palette.focusFill,
-                      border: Border.all(color: palette.focusBorder, width: 2),
-                    ),
+              Positioned(
+                top: -100 + yOffset1,
+                left: -100 + xOffset1,
+                child: Container(
+                  width: 400,
+                  height: 400,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: theme.colorScheme.primary.withOpacity(isDark ? 0.4 : 0.6),
                   ),
                 ),
               ),
-              child!,
+              Positioned(
+                bottom: -50 + yOffset2,
+                right: -50 + xOffset2,
+                child: Container(
+                  width: 350,
+                  height: 350,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: theme.colorScheme.tertiary.withOpacity(isDark ? 0.3 : 0.5),
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+              if (widget.child != null) widget.child!,
             ],
           ),
         );
       },
-      child: widget.child ?? const SizedBox.expand(),
+    );
+  }
+}
+
+class GlassCard extends StatelessWidget {
+  const GlassCard({super.key, required this.child, this.padding = const EdgeInsets.all(24)});
+  final Widget child;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          padding: padding,
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.4),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isDark ? Colors.white.withOpacity(0.1) : Colors.white.withOpacity(0.5),
+            ),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class StaggeredFadeIn extends StatefulWidget {
+  const StaggeredFadeIn({super.key, required this.child, this.delay = Duration.zero});
+  final Widget child;
+  final Duration delay;
+
+  @override
+  State<StaggeredFadeIn> createState() => _StaggeredFadeInState();
+}
+
+class _StaggeredFadeInState extends State<StaggeredFadeIn> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+  late final Animation<double> _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+  late final Animation<Offset> _slide = Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(widget.delay, () {
+      if (mounted) _ctrl.forward();
+    });
+  }
+  
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fade,
+      child: SlideTransition(
+        position: _slide,
+        child: widget.child,
+      ),
     );
   }
 }
@@ -520,22 +582,40 @@ class BrandedLoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = _resolveLaunchPalette(context);
     return Scaffold(
       body: LaunchBackdrop(
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Spacer(),
-                AnimatedBrandScene(message: message),
-                const SizedBox(height: AppSpacing.xxl),
-                _StageRail(currentStage: stage),
-                const Spacer(),
-                _ProgressTrack(palette: palette),
-              ],
+          child: Center(
+            child: StaggeredFadeIn(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                    ),
+                    child: Center(
+                      child: Icon(Icons.wallet_rounded, size: 40, color: Theme.of(context).colorScheme.primary),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: Text(
+                      message,
+                      key: ValueKey(message),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

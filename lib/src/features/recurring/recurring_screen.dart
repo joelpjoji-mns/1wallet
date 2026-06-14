@@ -35,10 +35,10 @@ class RecurringScreen extends ConsumerWidget {
           );
     final listed = mode == 'past' ? recurringHistory : scheduled;
     final plannedIncomeMinor = listed
-        .where((t) => incomeTypes.contains(t.type))
+        .where((t) => incomeTypes.contains(t.type) && t.status != 'paused')
         .fold(0, (sum, t) => sum + t.amount.amountMinor.abs());
     final plannedExpenseMinor = listed
-        .where((t) => !incomeTypes.contains(t.type) && t.type != 'transfer')
+        .where((t) => !incomeTypes.contains(t.type) && t.type != 'transfer' && t.status != 'paused')
         .fold(0, (sum, t) => sum + t.amount.amountMinor.abs());
     final netMinor = plannedIncomeMinor - plannedExpenseMinor;
 
@@ -202,6 +202,8 @@ List<TransactionRecord> _orderedRecurringTransactions(
 ) {
   final items = [...transactions];
   items.sort((left, right) {
+    if (left.status == 'paused' && right.status != 'paused') return 1;
+    if (left.status != 'paused' && right.status == 'paused') return -1;
     final dateCompare = left.occurredAt.compareTo(right.occurredAt);
     if (dateCompare != 0) return dateCompare;
     final amountCompare = right.amount.amountMinor.abs().compareTo(
@@ -263,6 +265,7 @@ class _RecurringCompactCard extends StatelessWidget {
       locale: state.preferences.locale,
       historyMode: historyMode,
       isVoid: transaction.status == 'void',
+      isPaused: transaction.status == 'paused',
     );
     final amountText = _recurringAmountLabel(state, transaction);
 
@@ -351,7 +354,7 @@ class _RecurringCompactCard extends StatelessWidget {
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(
                               fontWeight: FontWeight.w900,
-                              color: transaction.status == 'void' ? scheme.outline : _recurringAmountColor(
+                              color: (transaction.status == 'void' || transaction.status == 'paused') ? scheme.outline : _recurringAmountColor(
                                 context,
                                 transaction,
                               ),
@@ -965,6 +968,16 @@ class RecurringDetailView extends ConsumerWidget {
           icon: const Icon(Icons.edit_rounded),
           label: const Text('Edit planned details'),
         ),
+        const Gap(AppSpacing.sm),
+        if (transaction.status == 'scheduled' || transaction.status == 'paused')
+          FilledButton.tonalIcon(
+            onPressed: () => transaction.status == 'paused' ? _resume(context, ref) : _pause(context, ref),
+            icon: Icon(transaction.status == 'paused' ? Icons.play_circle_outline_rounded : Icons.pause_circle_outline_rounded),
+            label: Text(transaction.status == 'paused' ? 'Resume plan' : 'Pause plan'),
+            style: transaction.status == 'paused' 
+                ? FilledButton.styleFrom(backgroundColor: scheme.primaryContainer, foregroundColor: scheme.onPrimaryContainer)
+                : null,
+          ),
         const Gap(AppSpacing.xxl),
 
         // History
@@ -1081,6 +1094,55 @@ class RecurringDetailView extends ConsumerWidget {
       day = daysInNextMonth;
     }
     return DateTime(year, month, day, date.hour, date.minute, date.second);
+  }
+
+  Future<void> _pause(BuildContext context, WidgetRef ref) async {
+    await ref.read(ledgerProvider.notifier).updateTransactionStatus(
+      transaction.id,
+      'paused',
+    );
+    if (!context.mounted) return;
+    _showRouteMessage(context, 'Scheduled record paused.');
+    context.push('/recurring');
+  }
+
+  Future<void> _resume(BuildContext context, WidgetRef ref) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    var nextDate = transaction.occurredAt;
+    final notifier = ref.read(ledgerProvider.notifier);
+
+    // Advance the date until it's tomorrow or later
+    while (!nextDate.isAfter(today)) {
+      await notifier.upsertTransaction(
+        type: transaction.type,
+        accountId: transaction.accountId,
+        amountMinor: transaction.amount.amountMinor,
+        status: 'void',
+        source: transaction.source,
+        counterAccountId: transaction.counterAccountId,
+        categoryId: transaction.categoryId,
+        paymentMethod: transaction.paymentMethod,
+        notes: 'Skipped (Paused)',
+        occurredAt: nextDate,
+        originalTransactionId: transaction.id,
+        recurrenceFrequency: transaction.recurrenceFrequency,
+        originalAmountMinor: transaction.originalAmount?.amountMinor,
+        originalCurrency: transaction.originalAmount?.currency,
+        counterAmountMinor: transaction.counterAmount?.amountMinor,
+      );
+      nextDate = _advanceCursor(nextDate, transaction.recurrenceFrequency ?? 'monthly');
+    }
+
+    await notifier.updateTransactionStatus(
+      transaction.id,
+      'scheduled',
+      occurredAt: nextDate,
+    );
+    if (!context.mounted) return;
+    final locale = ref.read(ledgerProvider).preferences.locale;
+    _showRouteMessage(context, 'Scheduled record resumed for ${formatLedgerDate(nextDate, locale)}.');
+    context.push('/recurring');
   }
 }
 
@@ -1239,6 +1301,7 @@ String? _recurringExtraLine(
   required String locale,
   required bool historyMode,
   bool isVoid = false,
+  bool isPaused = false,
 }) {
   final scheme = Theme.of(context).colorScheme;
   if (historyMode) {
@@ -1253,6 +1316,13 @@ String? _recurringExtraLine(
       label: formatLedgerDate(date, locale),
       icon: Icons.history_rounded,
       color: scheme.primary,
+    );
+  }
+  if (isPaused) {
+    return (
+      label: 'Paused',
+      icon: Icons.pause_circle_outline_rounded,
+      color: scheme.outline,
     );
   }
   final now = DateTime.now();

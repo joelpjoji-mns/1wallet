@@ -827,7 +827,6 @@ Map<String, Object?> _captureCandidateToJson(CaptureCandidate candidate) {
     'transactionType': candidate.transactionType,
     'suggestedAccountId': candidate.suggestedAccountId,
     'suggestedCategoryId': candidate.suggestedCategoryId,
-    'warnings': candidate.warnings,
   };
 }
 
@@ -845,7 +844,6 @@ CaptureCandidate _captureCandidateFromJson(Map<String, dynamic> json) {
     transactionType: _nullableString(json['transactionType']),
     suggestedAccountId: _nullableString(json['suggestedAccountId']),
     suggestedCategoryId: _nullableString(json['suggestedCategoryId']),
-    warnings: _stringList(json['warnings']),
   );
 }
 
@@ -858,7 +856,6 @@ Map<String, Object?> _importBatchToJson(ImportBatch batch) {
     'rowCount': batch.rowCount,
     'importedCount': batch.importedCount,
     'duplicateCount': batch.duplicateCount,
-    'warningCount': batch.warningCount,
   };
 }
 
@@ -871,7 +868,6 @@ ImportBatch _importBatchFromJson(Map<String, dynamic> json) {
     rowCount: _int(json['rowCount']),
     importedCount: _int(json['importedCount']),
     duplicateCount: _int(json['duplicateCount']),
-    warningCount: _int(json['warningCount']),
   );
 }
 

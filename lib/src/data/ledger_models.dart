@@ -648,7 +648,6 @@ class CaptureCandidate {
     this.transactionType,
     this.suggestedAccountId,
     this.suggestedCategoryId,
-    this.warnings = const [],
   });
 
   final String id;
@@ -661,7 +660,6 @@ class CaptureCandidate {
   final String? transactionType;
   final String? suggestedAccountId;
   final String? suggestedCategoryId;
-  final List<String> warnings;
 
   CaptureCandidate copyWith({
     String? id,
@@ -674,7 +672,6 @@ class CaptureCandidate {
     String? transactionType,
     String? suggestedAccountId,
     String? suggestedCategoryId,
-    List<String>? warnings,
   }) {
     return CaptureCandidate(
       id: id ?? this.id,
@@ -687,7 +684,6 @@ class CaptureCandidate {
       transactionType: transactionType ?? this.transactionType,
       suggestedAccountId: suggestedAccountId ?? this.suggestedAccountId,
       suggestedCategoryId: suggestedCategoryId ?? this.suggestedCategoryId,
-      warnings: warnings ?? this.warnings,
     );
   }
 }
@@ -702,7 +698,6 @@ class ImportBatch {
     required this.rowCount,
     required this.importedCount,
     required this.duplicateCount,
-    required this.warningCount,
   });
 
   final String id;
@@ -712,7 +707,6 @@ class ImportBatch {
   final int rowCount;
   final int importedCount;
   final int duplicateCount;
-  final int warningCount;
 
   ImportBatch copyWith({
     String? id,
@@ -722,7 +716,6 @@ class ImportBatch {
     int? rowCount,
     int? importedCount,
     int? duplicateCount,
-    int? warningCount,
   }) {
     return ImportBatch(
       id: id ?? this.id,
@@ -732,7 +725,6 @@ class ImportBatch {
       rowCount: rowCount ?? this.rowCount,
       importedCount: importedCount ?? this.importedCount,
       duplicateCount: duplicateCount ?? this.duplicateCount,
-      warningCount: warningCount ?? this.warningCount,
     );
   }
 }
