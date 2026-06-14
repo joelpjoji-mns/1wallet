@@ -17,6 +17,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final location = state.matchedLocation;
       final isLaunch = location == '/launch';
       final isLogin = location == '/login' || location == '/signup';
+      final isPermissions = location == '/permissions-setup';
       final isOnboarding = location == '/onboarding';
 
       if (startup.isPending || startup.isRecoverableError) {
@@ -25,9 +26,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       return switch (startup.destination) {
         StartupDestination.login => isLogin ? null : '/login',
+        StartupDestination.permissions =>
+          isPermissions ? null : '/permissions-setup',
         StartupDestination.onboarding => isOnboarding ? null : '/onboarding',
         StartupDestination.home =>
-          isLogin || isLaunch || isOnboarding ? '/' : null,
+          isLogin || isLaunch || isPermissions || isOnboarding ? '/' : null,
         StartupDestination.launch => isLaunch ? null : '/launch',
       };
     },
@@ -109,14 +112,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) =>
             RecurringScreen(recordId: state.pathParameters['id']),
       ),
-      GoRoute(
-        path: '/cards',
-        builder: (context, state) => const CardsScreen(),
-      ),
-      GoRoute(
-        path: '/loans',
-        builder: (context, state) => const LoansScreen(),
-      ),
+      GoRoute(path: '/cards', builder: (context, state) => const CardsScreen()),
+      GoRoute(path: '/loans', builder: (context, state) => const LoansScreen()),
       GoRoute(
         path: '/loans/new',
         builder: (context, state) => const LoansScreen(mode: 'new'),
@@ -156,10 +153,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/currencies',
         builder: (context, state) => const CurrenciesScreen(),
       ),
-      GoRoute(
-        path: '/sync',
-        builder: (context, state) => const SyncScreen(),
-      ),
+      GoRoute(path: '/sync', builder: (context, state) => const SyncScreen()),
       GoRoute(
         path: '/imports',
         builder: (context, state) => const ImportsScreen(),
