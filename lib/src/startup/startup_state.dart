@@ -6,6 +6,7 @@ import '../cloud_sync/cloud_sync_controller.dart';
 import '../data/ledger_models.dart';
 import '../data/ledger_providers.dart';
 import '../features/onboarding/onboarding_controller.dart';
+import '../features/settings/permission_setup_controller.dart';
 import '../theme/theme_controller.dart';
 
 final startupStateProvider = Provider<StartupState>((ref) {
@@ -13,6 +14,7 @@ final startupStateProvider = Provider<StartupState>((ref) {
   final ledgerLoad = ref.watch(ledgerLoadStateProvider);
   final ledger = ref.watch(ledgerProvider);
   final onboarding = ref.watch(onboardingControllerProvider);
+  final permissionSetup = ref.watch(permissionSetupControllerProvider);
   final theme = ref.watch(themeControllerProvider);
   final cloudSync = ref.watch(cloudSyncControllerProvider);
 
@@ -47,6 +49,36 @@ final startupStateProvider = Provider<StartupState>((ref) {
   }
 
   final hasWalletData = _hasWalletData(ledger);
+
+  if (permissionSetup.userId != userId && !permissionSetup.isLoading) {
+    Future.microtask(() {
+      ref.read(permissionSetupControllerProvider.notifier).loadForUser(userId);
+    });
+    return const StartupState.pending(
+      stage: StartupStage.wallet,
+      message: 'Preparing permission setup',
+    );
+  }
+
+  if (permissionSetup.isLoading) {
+    return const StartupState.pending(
+      stage: StartupStage.wallet,
+      message: 'Checking device permissions',
+    );
+  }
+
+  if (permissionSetup.errorMessage != null) {
+    return StartupState.recoverableError(
+      title: 'Permissions setup needs attention',
+      message: permissionSetup.errorMessage!,
+    );
+  }
+
+  if (!permissionSetup.completed) {
+    return const StartupState.ready(
+      destination: StartupDestination.permissions,
+    );
+  }
 
   // Existing local/restored data is authoritative for startup routing. Do not
   // keep the user on onboarding or a sync splash while usable wallet data is
@@ -123,7 +155,7 @@ bool _hasWalletData(LedgerState ledger) {
 
 enum StartupStage { session, wallet, ready }
 
-enum StartupDestination { launch, login, onboarding, home }
+enum StartupDestination { launch, login, permissions, onboarding, home }
 
 @immutable
 class StartupState {
