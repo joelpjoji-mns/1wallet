@@ -21,8 +21,9 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1080, 2400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
+    final prefs = await SharedPreferences.getInstance();
     final container = ProviderContainer(
-      overrides: authenticatedSampleOverrides(),
+      overrides: authenticatedSampleOverrides(prefs: prefs),
     );
     addTearDown(container.dispose);
 

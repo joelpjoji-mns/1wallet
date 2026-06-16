@@ -25,6 +25,8 @@ class CloudSyncMetadata {
     this.syncedGoalIds,
     this.syncedCaptureCandidateIds,
     this.syncedImportBatchIds,
+    this.syncedDocumentHashes,
+    this.syncIntervalHours,
   });
 
   final int version;
@@ -44,6 +46,8 @@ class CloudSyncMetadata {
   final List<String>? syncedGoalIds;
   final List<String>? syncedCaptureCandidateIds;
   final List<String>? syncedImportBatchIds;
+  final Map<String, String>? syncedDocumentHashes;
+  final int? syncIntervalHours;
 
   CloudSyncMetadata copyWith({
     int? version,
@@ -63,6 +67,8 @@ class CloudSyncMetadata {
     List<String>? syncedGoalIds,
     List<String>? syncedCaptureCandidateIds,
     List<String>? syncedImportBatchIds,
+    Map<String, String>? syncedDocumentHashes,
+    int? syncIntervalHours,
   }) {
     return CloudSyncMetadata(
       version: version ?? this.version,
@@ -82,6 +88,8 @@ class CloudSyncMetadata {
       syncedGoalIds: syncedGoalIds ?? this.syncedGoalIds,
       syncedCaptureCandidateIds: syncedCaptureCandidateIds ?? this.syncedCaptureCandidateIds,
       syncedImportBatchIds: syncedImportBatchIds ?? this.syncedImportBatchIds,
+      syncedDocumentHashes: syncedDocumentHashes ?? this.syncedDocumentHashes,
+      syncIntervalHours: syncIntervalHours ?? this.syncIntervalHours,
     );
   }
 
@@ -104,6 +112,8 @@ class CloudSyncMetadata {
       'syncedGoalIds': syncedGoalIds,
       'syncedCaptureCandidateIds': syncedCaptureCandidateIds,
       'syncedImportBatchIds': syncedImportBatchIds,
+      'syncedDocumentHashes': syncedDocumentHashes,
+      'syncIntervalHours': syncIntervalHours,
     };
   }
 
@@ -126,6 +136,8 @@ class CloudSyncMetadata {
       syncedGoalIds: (json['syncedGoalIds'] as List?)?.cast<String>(),
       syncedCaptureCandidateIds: (json['syncedCaptureCandidateIds'] as List?)?.cast<String>(),
       syncedImportBatchIds: (json['syncedImportBatchIds'] as List?)?.cast<String>(),
+      syncedDocumentHashes: (json['syncedDocumentHashes'] as Map?)?.cast<String, String>(),
+      syncIntervalHours: json['syncIntervalHours'] as int?,
     );
   }
 

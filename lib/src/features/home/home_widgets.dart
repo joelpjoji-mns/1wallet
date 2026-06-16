@@ -436,7 +436,7 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
                     onTap: () => context.push('/transaction/${transaction.id}'),
                   ),
                   if (transaction != recent.last)
-                    const SizedBox(height: AppSpacing.xs),
+                    const SizedBox(height: AppSpacing.xxs),
                 ],
               ],
             ),
@@ -950,7 +950,7 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
                 onTap: () => context.push('/transaction/${transaction.id}'),
               ),
               if (transaction != next.last)
-                const SizedBox(height: AppSpacing.xs),
+                const SizedBox(height: AppSpacing.xxs),
             ],
           ],
         ],
@@ -1411,18 +1411,9 @@ class AutomationReviewHomeWidget extends StatelessWidget {
         .where((candidate) => candidate.status == 'pending')
         .toList();
     final sources = pending.map((candidate) => candidate.source).toSet().length;
-    final warnings =
-        state.importBatches.fold<int>(
-          0,
-          (sum, batch) => sum + batch.warningCount,
-        ) +
-        pending.fold<int>(
-          0,
-          (sum, candidate) => sum + candidate.warnings.length,
-        );
     return HomeWidgetCard(
       title: 'Automation & review',
-      subtitle: 'Queue, imports, and warnings',
+      subtitle: 'Queue, imports, and sources',
       icon: Icons.verified_user_outlined,
       iconColor: Theme.of(context).colorScheme.tertiary,
       actionLabel: 'Review',
@@ -1441,15 +1432,7 @@ class AutomationReviewHomeWidget extends StatelessWidget {
                       : MetricTone.warning,
                 ),
               ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: HomeMetricTile(
-                  label: 'Warnings',
-                  value: '$warnings',
-                  icon: Icons.warning_amber_rounded,
-                  tone: warnings == 0 ? MetricTone.standard : MetricTone.danger,
-                ),
-              ),
+
               const SizedBox(width: AppSpacing.xs),
               Expanded(
                 child: HomeMetricTile(
@@ -1905,20 +1888,28 @@ class _AccountTile extends ConsumerWidget {
     final isForeignCurrency =
         nativeBalance.currency.toUpperCase() !=
         state.preferences.displayCurrency.toUpperCase();
-    final isCash = account.type == 'cash' || account.type == 'wallet';
+    final isCash = account.type == 'cash';
 
+    String primaryLabel;
     String? secondaryLabel;
+
     if (isCash) {
       final breakdown = cashCurrencyBalancesForAccount(state, account);
       if (breakdown.isNotEmpty) {
+        primaryLabel = formatMoney(displayBalance, state.preferences.locale);
         secondaryLabel = breakdown
             .map((m) => formatMoney(m, state.preferences.locale))
             .join(' | ');
+      } else {
+        primaryLabel = formatMoney(displayBalance, state.preferences.locale);
       }
-    }
-
-    if (secondaryLabel == null && isForeignCurrency) {
-      secondaryLabel = formatMoney(nativeBalance, state.preferences.locale);
+    } else {
+      if (isForeignCurrency) {
+        primaryLabel = formatMoney(displayBalance, state.preferences.locale);
+        secondaryLabel = formatMoney(nativeBalance, state.preferences.locale);
+      } else {
+        primaryLabel = formatMoney(displayBalance, state.preferences.locale);
+      }
     }
 
     return InkWell(
@@ -1993,7 +1984,7 @@ class _AccountTile extends ConsumerWidget {
             const SizedBox(height: 3),
             // Display in base currency
             Text(
-              formatMoney(displayBalance, state.preferences.locale),
+              primaryLabel,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(

@@ -14,12 +14,68 @@ import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 import '../common/category_hierarchy_picker.dart';
 import '../common/full_screen_picker.dart';
+String _formatExpression(String expression, String locale) {
+  if (expression.isEmpty) return expression;
+  final buffer = StringBuffer();
+  final numberBuffer = StringBuffer();
+  
+  final formatter = NumberFormat.decimalPattern(locale);
+  
+  void flushNumber() {
+    if (numberBuffer.isEmpty) return;
+    final numStr = numberBuffer.toString();
+    numberBuffer.clear();
+    
+    if (numStr == '.') {
+      buffer.write('.');
+      return;
+    }
+    
+    final parts = numStr.split('.');
+    final whole = parts[0];
+    if (whole.isNotEmpty && whole != '-') {
+      final parsed = int.tryParse(whole);
+      if (parsed != null) {
+        buffer.write(formatter.format(parsed));
+      } else {
+        buffer.write(whole);
+      }
+    } else if (whole == '-') {
+      buffer.write('-');
+    }
+    
+    if (parts.length > 1) {
+      buffer.write('.');
+      buffer.write(parts[1]); 
+    } else if (numStr.endsWith('.')) {
+      buffer.write('.');
+    }
+  }
+
+  for (int i = 0; i < expression.length; i++) {
+    final char = expression[i];
+    if (char == '+' || char == '-' || char == '*' || char == '/' || char == ' ' || char == '=') {
+      flushNumber();
+      buffer.write(char);
+    } else {
+      numberBuffer.write(char);
+    }
+  }
+  flushNumber();
+  return buffer.toString();
+}
 
 class AddRecordScreen extends ConsumerStatefulWidget {
-  const AddRecordScreen({super.key, this.transactionId, this.initialAccountId});
+  const AddRecordScreen({
+    super.key,
+    this.transactionId,
+    this.initialAccountId,
+    this.initialTab = 0,
+  });
 
   final String? transactionId;
   final String? initialAccountId;
+  final int initialTab;
 
   @override
   ConsumerState<AddRecordScreen> createState() => _AddRecordScreenState();
@@ -104,6 +160,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
 
     return DefaultTabController(
       length: 2,
+      initialIndex: widget.initialTab,
       child: Scaffold(
         backgroundColor: Theme.of(context).colorScheme.surface,
         appBar: AppBar(
@@ -260,20 +317,8 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                           'Charge: ${_charges[_activeField - 3].labelController.text.isEmpty ? "Split fee" : _charges[_activeField - 3].labelController.text}',
                           textAlign: TextAlign.right,
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(color: tone, fontWeight: FontWeight.w700),
-                        )
-                      else if (_expression.isNotEmpty)
-                        Text(
-                          _expression,
-                          textAlign: TextAlign.right,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant
-                                    .withAlphaFactor(0.7),
-                                fontStyle: FontStyle.italic,
-                              ),
                         ),
+
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         crossAxisAlignment: CrossAxisAlignment.center,
@@ -292,22 +337,36 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                               : (_activeField >= 3 && _activeField - 3 < _charges.length)
                                                   ? _charges[_activeField - 3].amountController.text.replaceAll(',', '').trim()
                                                   : '0';
-                                  return Text(
-                                    (_type == 'income' || displayAmount == '0'
-                                            ? ''
-                                            : '-') +
-                                        (displayAmount.isEmpty ? '0' : displayAmount),
-                                    maxLines: 1,
-                                    textAlign: TextAlign.right,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .displayLarge
-                                        ?.copyWith(
-                                          color: tone,
-                                          fontWeight: FontWeight.w400,
-                                          letterSpacing: -1.4,
-                                        ),
+
+                                  final displayExpression = _activeField == 0
+                                      ? _expression
+                                      : _activeField == 1
+                                          ? _localExpression
+                                          : _activeField == 2
+                                              ? _counterExpression
+                                              : '';
+                                              
+                                  final fullText = displayExpression + (displayAmount.isEmpty ? '0' : displayAmount);
+
+                                  return FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.centerRight,
+                                    child: Text(
+                                      (_type == 'income' || fullText == '0'
+                                              ? ''
+                                              : '-') +
+                                          _formatExpression(fullText, state.preferences.locale),
+                                      maxLines: 1,
+                                      textAlign: TextAlign.right,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .displayLarge
+                                          ?.copyWith(
+                                            color: tone,
+                                            fontWeight: FontWeight.w400,
+                                            letterSpacing: -1.4,
+                                          ),
+                                    ),
                                   );
                                 }),
                                 Builder(builder: (context) {
@@ -320,8 +379,20 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                               : (_activeField >= 3 && _activeField - 3 < _charges.length)
                                                   ? _charges[_activeField - 3].amountController.text.replaceAll(',', '').trim()
                                                   : '0';
+
+                                  final displayExpression = _activeField == 0
+                                      ? _expression
+                                      : _activeField == 1
+                                          ? _localExpression
+                                          : _activeField == 2
+                                              ? _counterExpression
+                                              : '';
+                                              
+                                  final fullText = displayExpression + (displayAmount.isEmpty ? '0' : displayAmount);
+                                  final evaluated = displayExpression.isNotEmpty ? _evaluate(fullText) : displayAmount;
+
                                   return Text(
-                                    _amountWords(displayAmount),
+                                    (displayExpression.isNotEmpty ? '= ' : '') + _amountWords(evaluated),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: Theme.of(context).textTheme.bodySmall
@@ -866,7 +937,18 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
         .where(
           (account) => counter ? account.id != _accountId : !account.isArchived,
         )
-        .toList();
+        .toList()
+      ..sort((a, b) {
+        final homeA = a.showOnHome ? 0 : 1;
+        final homeB = b.showOnHome ? 0 : 1;
+        final homeCmp = homeA.compareTo(homeB);
+        if (homeCmp != 0) return homeCmp;
+
+        final sortCmp = a.sortOrder.compareTo(b.sortOrder);
+        if (sortCmp != 0) return sortCmp;
+
+        return a.name.compareTo(b.name);
+      });
     final nextId = await showFullScreenPicker<String>(
       context: context,
       title: counter ? 'Choose destination' : 'Choose account',
@@ -1557,22 +1639,13 @@ String _trimNumber(double value) {
 
 String _amountWords(String value) {
   final parsed = double.tryParse(value.replaceAll(',', '')) ?? 0;
-  if (parsed == 0) return 'zero';
-  if (parsed.abs() >= 1_000_000_000) {
-    return '${(parsed.abs() / 1_000_000_000).toStringAsFixed(2)} billion';
+  if (parsed == 0) return '0';
+  final format = NumberFormat.currency(locale: 'en_IN', symbol: '');
+  String formatted = format.format(parsed).trim();
+  if (formatted.endsWith('.00')) {
+    formatted = formatted.substring(0, formatted.length - 3);
   }
-  if (parsed.abs() >= 1_000_000) {
-    return '${(parsed.abs() / 1_000_000).toStringAsFixed(2)} million';
-  }
-  if (parsed.abs() >= 100_000) {
-    return '${(parsed.abs() / 100_000).toStringAsFixed(1)} lakh';
-  }
-  if (parsed.abs() >= 1_000) {
-    return '${(parsed.abs() / 1_000).toStringAsFixed(1)} thousand';
-  }
-  return parsed.abs().toStringAsFixed(
-    parsed.abs() == parsed.abs().roundToDouble() ? 0 : 2,
-  );
+  return formatted;
 }
 
 extension _FirstWhereOrNull<T> on Iterable<T> {

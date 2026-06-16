@@ -169,13 +169,6 @@ class _ImportWalletCsvScreenState extends ConsumerState<ImportWalletCsvScreen> {
             subtitle: '${preview.rows.length} importable rows',
             child: Column(
               children: [
-                if (preview.warnings.isNotEmpty)
-                  InfoRow(
-                    label: 'Warnings',
-                    value: preview.warnings.take(3).join(', '),
-                    icon: Icons.warning_amber_outlined,
-                    tone: MetricTone.warning,
-                  ),
                 if (preview.rows.isEmpty)
                   const EmptyState(
                     icon: Icons.table_rows_outlined,
@@ -190,7 +183,7 @@ class _ImportWalletCsvScreenState extends ConsumerState<ImportWalletCsvScreen> {
                           : Icons.trending_down_rounded,
                       title: row.categoryName ?? transactionTypeLabel(row.type),
                       subtitle:
-                          '${row.accountName.isEmpty ? 'Missing account name' : row.accountName} · row ${row.rowNumber}${row.warnings.isEmpty ? '' : ' · ${row.warnings.join(', ')}'}',
+                          '${row.accountName.isEmpty ? 'Missing account name' : row.accountName} · row ${row.rowNumber}',
                       meta: formatMoney(row.amount, state.preferences.locale),
                       onTap: () =>
                           _showCsvMessage('CSV row ${row.rowNumber} is ready.'),
@@ -259,7 +252,7 @@ class _ImportWalletCsvScreenState extends ConsumerState<ImportWalletCsvScreen> {
         final latestBatch = batches.isEmpty ? null : batches.first;
         _status = latestBatch == null
             ? '$count CSV rows imported as transactions.'
-            : '${latestBatch.importedCount} imported, ${latestBatch.duplicateCount} duplicates skipped, ${latestBatch.warningCount} row warnings.';
+            : '${latestBatch.importedCount} imported, ${latestBatch.duplicateCount} duplicates skipped.';
       });
       _showCsvMessage('$count CSV rows imported.');
     } catch (error) {

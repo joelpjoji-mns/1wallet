@@ -331,7 +331,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
                           final transaction = item as TransactionRecord;
                           return Padding(
-                            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                            padding: const EdgeInsets.only(bottom: AppSpacing.xxs),
                             child: TransactionRow(
                               state: state,
                               transaction: transaction,
