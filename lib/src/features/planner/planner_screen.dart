@@ -150,6 +150,14 @@ class PlannerScreen extends ConsumerWidget {
                     current: budget.spent,
                     target: budget.amount,
                     locale: state.preferences.locale,
+                    targetDate: budget.targetDate,
+                    onPostpone: () => _postponePlan(
+                      context,
+                      ref,
+                      'budget',
+                      budget.id,
+                      budget.targetDate,
+                    ),
                   ),
               ],
             ),
@@ -167,6 +175,14 @@ class PlannerScreen extends ConsumerWidget {
                     current: goal.saved,
                     target: goal.target,
                     locale: state.preferences.locale,
+                    targetDate: goal.targetDate,
+                    onPostpone: () => _postponePlan(
+                      context,
+                      ref,
+                      'goal',
+                      goal.id,
+                      goal.targetDate,
+                    ),
                   ),
               ],
             ),
@@ -203,6 +219,28 @@ class PlannerScreen extends ConsumerWidget {
 
   int _share(int part, int whole) =>
       whole <= 0 ? 0 : ((part / whole) * 100).round();
+
+  Future<void> _postponePlan(
+    BuildContext context,
+    WidgetRef ref,
+    String kind,
+    String id,
+    DateTime? currentDate,
+  ) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: currentDate ?? DateTime.now().add(const Duration(days: 30)),
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 3650)),
+    );
+    if (picked == null) return;
+
+    if (kind == 'budget') {
+      await ref.read(ledgerProvider.notifier).postponeBudget(id, picked);
+    } else {
+      await ref.read(ledgerProvider.notifier).postponeGoal(id, picked);
+    }
+  }
 }
 
 class _ProgressRow extends StatelessWidget {
@@ -211,12 +249,16 @@ class _ProgressRow extends StatelessWidget {
     required this.current,
     required this.target,
     required this.locale,
+    this.targetDate,
+    this.onPostpone,
   });
 
   final String label;
   final Money current;
   final Money target;
   final String locale;
+  final DateTime? targetDate;
+  final VoidCallback? onPostpone;
 
   @override
   Widget build(BuildContext context) {
@@ -245,11 +287,33 @@ class _ProgressRow extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           LinearProgressIndicator(value: progress),
           const SizedBox(height: AppSpacing.xs),
-          Text(
-            '${formatMoney(current, locale)} of ${formatMoney(target, locale)}',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${formatMoney(current, locale)} of ${formatMoney(target, locale)}',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              if (onPostpone != null)
+                TextButton.icon(
+                  onPressed: onPostpone,
+                  icon: const Icon(Icons.event_note_outlined, size: 16),
+                  label: Text(
+                    targetDate == null
+                        ? 'Set date'
+                        : 'Postpone (${targetDate!.day}/${targetDate!.month})',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+            ],
           ),
         ],
       ),

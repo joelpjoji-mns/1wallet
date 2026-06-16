@@ -37,11 +37,19 @@ class MainActivity : FlutterActivity() {
 						val minDate = call.argument<Long>("minDate")
 						val maxDate = call.argument<Long>("maxDate")
 						
+						var selection: String? = null
+						var selectionArgs: Array<String>? = null
+						
+						if (minDate != null) {
+							selection = "date >= ?"
+							selectionArgs = arrayOf(minDate.toString())
+						}
+						
 						val cursor = contentResolver.query(
 							Uri.parse("content://sms/inbox"),
 							arrayOf("_id", "address", "body", "date"),
-							null,
-							null,
+							selection,
+							selectionArgs,
 							"date DESC LIMIT $maxCount"
 						)
 

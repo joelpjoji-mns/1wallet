@@ -49,10 +49,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/', builder: (context, state) => const MainShell()),
       GoRoute(
         path: '/add',
-        builder: (context, state) => AddRecordScreen(
-          transactionId: state.uri.queryParameters['transactionId'],
-          initialAccountId: state.uri.queryParameters['accountId'],
-        ),
+        builder: (context, state) {
+          final tabStr = state.uri.queryParameters['tab'];
+          final initialTab = int.tryParse(tabStr ?? '0') ?? 0;
+          return AddRecordScreen(
+            transactionId: state.uri.queryParameters['transactionId'],
+            initialAccountId: state.uri.queryParameters['accountId'],
+            initialTab: initialTab,
+          );
+        },
       ),
       GoRoute(
         path: '/transaction/:id',
