@@ -296,80 +296,9 @@ class _StaggeredFadeInState extends State<StaggeredFadeIn> with SingleTickerProv
   }
 }
 
-class _LaunchBand extends StatelessWidget {
-  const _LaunchBand({
-    required this.left,
-    required this.width,
-    required this.height,
-    required this.color,
-    this.top,
-    this.bottom,
-  });
 
-  final double left;
-  final double? top;
-  final double? bottom;
-  final double width;
-  final double height;
-  final Color color;
 
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      left: left,
-      top: top,
-      bottom: bottom,
-      child: Transform.rotate(
-        angle: -14 * math.pi / 180,
-        child: Container(
-          width: width,
-          height: height,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(26),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
-class _LedgerLines extends StatelessWidget {
-  const _LedgerLines({required this.color, required this.translateY});
-
-  final Color color;
-  final double translateY;
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      top: 150,
-      left: 34,
-      right: 34,
-      child: Transform.translate(
-        offset: Offset(0, translateY),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (var index = 0; index < 12; index++) ...[
-              FractionallySizedBox(
-                widthFactor: (0.62 + (index % 4) * 0.09).clamp(0, 1),
-                child: Container(
-                  height: 1,
-                  decoration: BoxDecoration(
-                    color: color.withAlphaFactor(0.35 + (index % 3) * 0.12),
-                    borderRadius: BorderRadius.circular(1),
-                  ),
-                ),
-              ),
-              if (index != 11) const SizedBox(height: 28),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class LaunchBrandMark extends StatefulWidget {
   const LaunchBrandMark({super.key, this.size = 112, this.animated = true});
@@ -684,98 +613,7 @@ class _ProgressTrackState extends State<_ProgressTrack> with SingleTickerProvide
   }
 }
 
-class _StageRail extends StatelessWidget {
-  const _StageRail({required this.currentStage});
 
-  final StartupStage currentStage;
-
-  @override
-  Widget build(BuildContext context) {
-    final stages = [
-      (StartupStage.session, Icons.verified_user_outlined, 'Session'),
-      (StartupStage.wallet, Icons.account_balance_wallet_outlined, 'Wallet'),
-      (StartupStage.ready, Icons.check_circle_outline_rounded, 'Ready'),
-    ];
-    final currentIndex = stages.indexWhere((item) => item.$1 == currentStage);
-    return Row(
-      children: [
-        for (final (index, item) in stages.indexed) ...[
-          Expanded(
-            child: _StagePill(
-              icon: index < currentIndex
-                  ? Icons.check_circle_outline_rounded
-                  : item.$2,
-              label: item.$3,
-              active: index <= currentIndex,
-              completed: index < currentIndex,
-            ),
-          ),
-          if (index != stages.length - 1) const SizedBox(width: AppSpacing.xs),
-        ],
-      ],
-    );
-  }
-}
-
-class _StagePill extends StatelessWidget {
-  const _StagePill({
-    required this.icon,
-    required this.label,
-    required this.active,
-    required this.completed,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool active;
-  final bool completed;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = _resolveLaunchPalette(context);
-    final color = active
-        ? completed
-              ? palette.tertiary
-              : palette.primary
-        : palette.mutedText;
-    final fill = active
-        ? completed
-              ? palette.completedRail
-              : palette.railActive
-        : palette.rail;
-    final border = active
-        ? completed
-              ? palette.tertiary.withAlphaFactor(0.55)
-              : palette.primary.withAlphaFactor(0.55)
-        : palette.stageBorder;
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        color: fill,
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-        border: Border.all(color: border),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: AppSpacing.xs),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: color, fontWeight: FontWeight.w800),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class RecoveryState extends StatelessWidget {
   const RecoveryState({
