@@ -8,7 +8,6 @@ import '../../auth/auth_controller.dart';
 import '../../widgets/app_kit.dart';
 import '../launch/brand_widgets.dart';
 import '../capture/sms_inbox_reader.dart';
-import '../common/route_scaffold.dart';
 import 'permission_setup_controller.dart';
 
 class PermissionsSetupScreen extends ConsumerStatefulWidget {
@@ -196,7 +195,7 @@ class _PermissionsSetupScreenState extends ConsumerState<PermissionsSetupScreen>
                       'Permissions',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                       ),
                     ),
                     const Spacer(),
@@ -224,7 +223,7 @@ class _PermissionsSetupScreenState extends ConsumerState<PermissionsSetupScreen>
                           children: [
                             const Text('1. Auto Capture', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                             const SizedBox(height: 4),
-                            Text('SMS access powers transaction-alert parsing.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
+                            Text('SMS access powers transaction-alert parsing.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7))),
                             const SizedBox(height: 16),
                             if (_loading) const Text('Checking SMS availability...') else ...[
                               InfoRow(icon: Icons.sms_outlined, label: 'SMS permission', value: smsStatusLabel, tone: _smsReady ? MetricTone.positive : MetricTone.warning),
@@ -251,7 +250,7 @@ class _PermissionsSetupScreenState extends ConsumerState<PermissionsSetupScreen>
                           children: [
                             const Text('2. Receipts and media', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                             const SizedBox(height: 4),
-                            Text('Camera, photos, and files power receipt scanning.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
+                            Text('Camera, photos, and files power receipt scanning.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7))),
                             const SizedBox(height: 16),
                             InfoRow(icon: Icons.camera_alt_outlined, label: 'Camera', value: _permissionLabel(_cameraStatus), tone: _permissionTone(_cameraStatus)),
                             InfoRow(icon: Icons.photo_library_outlined, label: 'Photos', value: _permissionLabel(_photosStatus), tone: _permissionTone(_photosStatus)),
@@ -278,7 +277,7 @@ class _PermissionsSetupScreenState extends ConsumerState<PermissionsSetupScreen>
                           children: [
                             const Text('3. Alerts and updates', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                             const SizedBox(height: 4),
-                            Text('Notifications support update alerts.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7))),
+                            Text('Notifications support update alerts.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7))),
                             const SizedBox(height: 16),
                             InfoRow(icon: Icons.notifications_active_outlined, label: 'Notifications', value: _permissionLabel(_notificationStatus), tone: _permissionTone(_notificationStatus)),
                             InfoRow(icon: Icons.install_mobile_outlined, label: 'Install updates', value: _permissionLabel(_installStatus), tone: _permissionTone(_installStatus)),

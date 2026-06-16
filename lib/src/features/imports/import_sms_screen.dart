@@ -56,7 +56,7 @@ class _ImportSmsScreenState extends ConsumerState<ImportSmsScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 DropdownButtonFormField<String>(
-                  value: _scanTimeframe,
+                  initialValue: _scanTimeframe,
                   decoration: const InputDecoration(
                     labelText: 'Scan timeframe',
                     prefixIcon: Icon(Icons.history_rounded),

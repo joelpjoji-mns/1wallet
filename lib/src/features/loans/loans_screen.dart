@@ -187,7 +187,6 @@ class _LoanFormState extends ConsumerState<LoanForm> {
     final loan = accountById(state, widget.accountId);
     _syncLoanDraft(state, loan);
     final sourceAccount = accountById(state, _sourceAccountId);
-    final existingEmi = _existingLoanEmi(state, loan?.id);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -280,7 +279,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
               ),
               const SizedBox(height: AppSpacing.sm),
               DropdownButtonFormField<String>(
-                value: _frequency,
+                initialValue: _frequency,
                 decoration: const InputDecoration(
                   labelText: 'EMI Frequency',
                   prefixIcon: Icon(Icons.repeat_outlined),
@@ -316,8 +315,11 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                         selected: _daysOfWeek.contains(i),
                         onSelected: (selected) {
                           setState(() {
-                            if (selected) _daysOfWeek.add(i);
-                            else _daysOfWeek.remove(i);
+                            if (selected) {
+                              _daysOfWeek.add(i);
+                            } else {
+                              _daysOfWeek.remove(i);
+                            }
                           });
                         },
                       ),
@@ -340,8 +342,11 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                         selected: _daysOfMonth.contains(i),
                         onSelected: (selected) {
                           setState(() {
-                            if (selected) _daysOfMonth.add(i);
-                            else _daysOfMonth.remove(i);
+                            if (selected) {
+                              _daysOfMonth.add(i);
+                            } else {
+                              _daysOfMonth.remove(i);
+                            }
                           });
                         },
                       ),
