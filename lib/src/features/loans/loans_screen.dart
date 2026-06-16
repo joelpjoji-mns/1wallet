@@ -9,6 +9,7 @@ import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../../widgets/currency_picker.dart';
 import '../common/full_screen_picker.dart';
 import '../transactions/transaction_row.dart';
 
@@ -161,7 +162,11 @@ class _LoanFormState extends ConsumerState<LoanForm> {
   String? _loadedAccountId;
   String? _sourceAccountId;
   var _loanKind = 'loan';
-  var _currency = 'INR';
+  var _currency = kDefaultCurrency;
+  var _frequency = 'monthly';
+  int _interval = 1;
+  final Set<int> _daysOfWeek = {};
+  final Set<int> _daysOfMonth = {};
   var _hideInterestInLedger = true;
   DateTime _nextEmiDate = DateTime.now().add(const Duration(days: 30));
 
@@ -182,7 +187,6 @@ class _LoanFormState extends ConsumerState<LoanForm> {
     final loan = accountById(state, widget.accountId);
     _syncLoanDraft(state, loan);
     final sourceAccount = accountById(state, _sourceAccountId);
-    final existingEmi = _existingLoanEmi(state, loan?.id);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -225,7 +229,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                       controller: _emiController,
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
-                        labelText: 'Monthly EMI',
+                        labelText: 'Repayment amount',
                         prefixIcon: Icon(Icons.event_repeat_outlined),
                       ),
                     ),
@@ -251,7 +255,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                       controller: _tenureController,
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
-                        labelText: 'Tenure months',
+                        labelText: 'Tenure count',
                         prefixIcon: Icon(Icons.timelapse_outlined),
                       ),
                     ),
@@ -263,8 +267,9 @@ class _LoanFormState extends ConsumerState<LoanForm> {
         ),
         const Gap(AppSpacing.lg),
         SectionCard(
-          title: 'Repayment setup',
+          title: 'Repayment schedule',
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               PremiumRow(
                 icon: Icons.category_outlined,
@@ -272,6 +277,82 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                 subtitle: accountTypeLabel(_loanKind),
                 onTap: _showLoanKindPicker,
               ),
+              const SizedBox(height: AppSpacing.sm),
+              DropdownButtonFormField<String>(
+                initialValue: _frequency,
+                decoration: const InputDecoration(
+                  labelText: 'EMI Frequency',
+                  prefixIcon: Icon(Icons.repeat_outlined),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'daily', child: Text('Daily')),
+                  DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
+                  DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
+                  DropdownMenuItem(value: 'yearly', child: Text('Yearly')),
+                ],
+                onChanged: (value) => setState(() => _frequency = value ?? 'monthly'),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextFormField(
+                initialValue: _interval.toString(),
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Every X ${_frequency == 'daily' ? 'day' : _frequency.replaceAll('ly', '')}s',
+                  prefixIcon: const Icon(Icons.timer_outlined),
+                ),
+                onChanged: (value) => _interval = int.tryParse(value) ?? 1,
+              ),
+              if (_frequency == 'weekly') ...[
+                const SizedBox(height: AppSpacing.md),
+                Text('On these days:', style: Theme.of(context).textTheme.bodySmall),
+                const SizedBox(height: AppSpacing.xs),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (var i = 1; i <= 7; i++)
+                      FilterChip(
+                        label: Text(['', 'M', 'T', 'W', 'T', 'F', 'S', 'S'][i]),
+                        selected: _daysOfWeek.contains(i),
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _daysOfWeek.add(i);
+                            } else {
+                              _daysOfWeek.remove(i);
+                            }
+                          });
+                        },
+                      ),
+                  ],
+                ),
+              ],
+              if (_frequency == 'monthly') ...[
+                const SizedBox(height: AppSpacing.md),
+                Text('On these days of the month:', style: Theme.of(context).textTheme.bodySmall),
+                const SizedBox(height: AppSpacing.xs),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    for (var i = 1; i <= 31; i++)
+                      FilterChip(
+                        label: Text('$i'),
+                        padding: EdgeInsets.zero,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        selected: _daysOfMonth.contains(i),
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _daysOfMonth.add(i);
+                            } else {
+                              _daysOfMonth.remove(i);
+                            }
+                          });
+                        },
+                      ),
+                  ],
+                ),
+              ],
               const SizedBox(height: AppSpacing.sm),
               PremiumRow(
                 icon: sourceAccount == null
@@ -285,18 +366,14 @@ class _LoanFormState extends ConsumerState<LoanForm> {
               const SizedBox(height: AppSpacing.sm),
               LiquidGlassSwitchListTile(
                 title: const Text('Hide interest in main ledger'),
-                subtitle: const Text('Interest transactions won\'t clutter the Records screen, but will stay visible here.'),
                 value: _hideInterestInLedger,
                 onChanged: (value) => setState(() => _hideInterestInLedger = value),
               ),
               const SizedBox(height: AppSpacing.sm),
               PremiumRow(
                 icon: Icons.calendar_month_outlined,
-                title: 'Next EMI date',
-                subtitle: formatLedgerDate(
-                  _nextEmiDate,
-                  state.preferences.locale,
-                ),
+                title: 'Start date',
+                subtitle: formatLedgerDate(_nextEmiDate, state.preferences.locale),
                 onTap: _pickNextEmiDate,
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -306,17 +383,6 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                 subtitle: _currency,
                 onTap: () => _showCurrencyPicker(state),
               ),
-              if (existingEmi != null) ...[
-                const SizedBox(height: AppSpacing.sm),
-                InfoRow(
-                  label: 'Existing EMI rule',
-                  value: formatMoney(
-                    existingEmi.amount,
-                    state.preferences.locale,
-                  ),
-                  icon: Icons.event_repeat_outlined,
-                ),
-              ],
             ],
           ),
         ),
@@ -372,6 +438,16 @@ class _LoanFormState extends ConsumerState<LoanForm> {
         existingEmi?.occurredAt ??
         DateTime.now().add(const Duration(days: 30));
     _hideInterestInLedger = details?.hideInterestInLedger ?? true;
+    _frequency = details?.recurrenceFrequency ?? 'monthly';
+    _interval = details?.recurrenceInterval ?? 1;
+    _daysOfWeek.clear();
+    if (details?.recurrenceDaysOfWeek != null) {
+      _daysOfWeek.addAll(details!.recurrenceDaysOfWeek!);
+    }
+    _daysOfMonth.clear();
+    if (details?.recurrenceDaysOfMonth != null) {
+      _daysOfMonth.addAll(details!.recurrenceDaysOfMonth!);
+    }
   }
 
   Future<void> _showLoanKindPicker() async {
@@ -424,19 +500,10 @@ class _LoanFormState extends ConsumerState<LoanForm> {
   }
 
   Future<void> _showCurrencyPicker(LedgerState state) async {
-    final next = await showFullScreenPicker<String>(
+    final next = await showCurrencyPicker(
       context: context,
-      title: 'Loan currency',
-      searchable: false,
+      state: state,
       selectedValue: _currency,
-      options: [
-        for (final currency in _currencyOptions(state))
-          PickerOption(
-            value: currency,
-            title: currency,
-            icon: Icons.currency_exchange_outlined,
-          ),
-      ],
     );
     if (next == null) return;
     setState(() => _currency = next);
@@ -485,6 +552,10 @@ class _LoanFormState extends ConsumerState<LoanForm> {
         repaymentCount: tenure,
         repaymentStartsOn: _nextEmiDate,
         repaymentSourceAccountId: _sourceAccountId,
+        recurrenceFrequency: _frequency,
+        recurrenceInterval: _interval,
+        recurrenceDaysOfWeek: _daysOfWeek.isEmpty ? null : (List<int>.from(_daysOfWeek)..sort()),
+        recurrenceDaysOfMonth: _daysOfMonth.isEmpty ? null : (List<int>.from(_daysOfMonth)..sort()),
         hideInterestInLedger: _hideInterestInLedger,
       );
       final loan = await ref
@@ -524,7 +595,10 @@ class _LoanFormState extends ConsumerState<LoanForm> {
               paymentMethod: 'Auto debit',
               notes: 'Scheduled EMI for ${loan.name}',
               occurredAt: _nextEmiDate,
-              recurrenceFrequency: 'monthly',
+              recurrenceFrequency: _frequency,
+              recurrenceInterval: _interval,
+              recurrenceDaysOfWeek: _daysOfWeek.isEmpty ? null : (List<int>.from(_daysOfWeek)..sort()),
+              recurrenceDaysOfMonth: _daysOfMonth.isEmpty ? null : (List<int>.from(_daysOfMonth)..sort()),
             );
       } else {
         final latestState = ref.read(ledgerProvider);
@@ -774,7 +848,7 @@ class LoanDetailView extends ConsumerWidget {
                         ),
                       ),
                       if (index != repaymentHistory.length - 1)
-                        const SizedBox(height: AppSpacing.sm),
+                        const SizedBox(height: AppSpacing.xxs),
                     ],
                   ],
                 ),
@@ -783,7 +857,7 @@ class LoanDetailView extends ConsumerWidget {
     );
   }
 
-  Future<void> _confirmArchiveLoan(
+    Future<void> _confirmArchiveLoan(
     BuildContext context,
     WidgetRef ref,
     Account loan,
@@ -1134,7 +1208,6 @@ List<TransactionRecord> _loanHistoryRepayments(
       .where(
         (transaction) =>
             transaction.type == 'loan_repayment' &&
-            transaction.status != 'void' &&
             (transaction.accountId == loanId ||
                 transaction.counterAccountId == loanId) &&
             _isHistoricalLoanRepayment(transaction),
@@ -1329,11 +1402,6 @@ String? _nonLoanGroupName(String? value) {
 
 String? _firstCategoryId(LedgerState state, {String? preferred}) {
   return firstActiveCategory(state, preferred: preferred)?.id;
-}
-
-List<String> _currencyOptions(LedgerState state) {
-  final values = <String>{...availableCurrencies(state), 'INR', 'GBP', 'USD'};
-  return values.where((value) => value.trim().isNotEmpty).toList()..sort();
 }
 
 _LoanProjection _loanProjection(LedgerState state, Account loan) {

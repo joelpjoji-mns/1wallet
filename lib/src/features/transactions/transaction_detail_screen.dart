@@ -67,7 +67,9 @@ class _TransactionDetailScreenState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Premium Hero Section
-          Container(
+          GestureDetector(
+            onTap: () => context.push('/add?transactionId=${transaction.id}&tab=0'),
+            child: Container(
             padding: const EdgeInsets.all(AppSpacing.xl),
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -158,6 +160,7 @@ class _TransactionDetailScreenState
               ],
             ),
           ),
+          ),
           const Gap(AppSpacing.lg),
           SectionCard(
             title: 'Movement',
@@ -178,9 +181,7 @@ class _TransactionDetailScreenState
                           state.preferences.locale,
                         ),
                   iconColor: account?.color,
-                  onTap: account == null
-                      ? () => context.push('/account/new')
-                      : () => context.push('/account/${account.id}'),
+                  onTap: () => context.push('/add?transactionId=${transaction.id}&tab=0'),
                 ),
                 if (counterAccount != null) ...[
                   const SizedBox(height: AppSpacing.sm),
@@ -193,7 +194,7 @@ class _TransactionDetailScreenState
                       state.preferences.locale,
                     ),
                     iconColor: counterAccount.color,
-                    onTap: () => context.push('/account/${counterAccount.id}'),
+                    onTap: () => context.push('/add?transactionId=${transaction.id}&tab=0'),
                   ),
                 ],
                 if (category != null) ...[
@@ -203,7 +204,7 @@ class _TransactionDetailScreenState
                     title: category.name,
                     subtitle: categoryPath(state, category),
                     iconColor: category.color,
-                    onTap: () => context.push('/categories'),
+                    onTap: () => context.push('/add?transactionId=${transaction.id}&tab=0'),
                   ),
                 ],
               ],
@@ -214,20 +215,28 @@ class _TransactionDetailScreenState
             title: 'Details',
             child: Column(
               children: [
-                InfoRow(
-                  label: 'Date',
-                  value: formatLedgerDate(
-                    transaction.occurredAt,
-                    state.preferences.locale,
+                GestureDetector(
+                  onTap: () => context.push('/add?transactionId=${transaction.id}&tab=1'),
+                  behavior: HitTestBehavior.opaque,
+                  child: InfoRow(
+                    label: 'Date',
+                    value: formatLedgerDate(
+                      transaction.occurredAt,
+                      state.preferences.locale,
+                    ),
+                    icon: Icons.calendar_month_outlined,
                   ),
-                  icon: Icons.calendar_month_outlined,
                 ),
-                InfoRow(
-                  label: 'Time',
-                  value: DateFormat.jm(
-                    state.preferences.locale.replaceAll('_', '-'),
-                  ).format(transaction.occurredAt),
-                  icon: Icons.schedule_outlined,
+                GestureDetector(
+                  onTap: () => context.push('/add?transactionId=${transaction.id}&tab=1'),
+                  behavior: HitTestBehavior.opaque,
+                  child: InfoRow(
+                    label: 'Time',
+                    value: DateFormat.jm(
+                      state.preferences.locale.replaceAll('_', '-'),
+                    ).format(transaction.occurredAt),
+                    icon: Icons.schedule_outlined,
+                  ),
                 ),
                 if (transaction.originalFxRate != null)
                   InfoRow(
@@ -250,9 +259,13 @@ class _TransactionDetailScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  transaction.notes ?? 'No notes added.',
-                  style: Theme.of(context).textTheme.bodyLarge,
+                GestureDetector(
+                  onTap: () => context.push('/add?transactionId=${transaction.id}&tab=1'),
+                  behavior: HitTestBehavior.opaque,
+                  child: Text(
+                    transaction.notes ?? 'No notes added.',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
                 ),
               ],
             ),
