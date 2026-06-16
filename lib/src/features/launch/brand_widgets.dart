@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -151,7 +152,7 @@ class _LaunchBackdropState extends State<LaunchBackdrop>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 4000),
+      duration: const Duration(milliseconds: 6000),
     )..repeat(reverse: true);
   }
 
@@ -163,144 +164,141 @@ class _LaunchBackdropState extends State<LaunchBackdrop>
 
   @override
   Widget build(BuildContext context) {
-    final palette = _resolveLaunchPalette(context);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final bg = isDark ? const Color(0xFF000000) : const Color(0xFFF0F4F8);
+    
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
         final t = _controller.value;
-        final drift = -18 + (36 * Curves.easeInOutCubic.transform(t));
-        final lineDrift = -22 * t;
-        final focusScale = 0.96 + (0.08 * math.sin(t * math.pi));
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [palette.background, palette.backgroundDeep],
-            ),
-          ),
+        final xOffset1 = 50 * math.sin(t * math.pi * 2);
+        final yOffset1 = 50 * math.cos(t * math.pi * 2);
+        
+        final xOffset2 = -40 * math.cos(t * math.pi * 2);
+        final yOffset2 = 60 * math.sin(t * math.pi * 2);
+
+        return Container(
+          color: bg,
           child: Stack(
             children: [
-              _LaunchBand(
-                top: 96,
-                left: -150 + drift,
-                width: 720,
-                height: 232,
-                color: palette.bandPrimary,
-              ),
-              _LaunchBand(
-                bottom: 72,
-                left: -150 - drift,
-                width: 720,
-                height: 260,
-                color: palette.bandTertiary,
-              ),
-              _LaunchBand(
-                top: 244,
-                left: 156 + drift,
-                width: 410,
-                height: 96,
-                color: palette.bandGold,
-              ),
-              _LedgerLines(color: palette.line, translateY: lineDrift),
-              Center(
-                child: Transform.scale(
-                  scale: focusScale,
-                  child: Container(
-                    width: 274,
-                    height: 274,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: palette.focusFill,
-                      border: Border.all(color: palette.focusBorder, width: 2),
-                    ),
+              Positioned(
+                top: -100 + yOffset1,
+                left: -100 + xOffset1,
+                child: Container(
+                  width: 400,
+                  height: 400,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.4 : 0.6),
                   ),
                 ),
               ),
-              child!,
+              Positioned(
+                bottom: -50 + yOffset2,
+                right: -50 + xOffset2,
+                child: Container(
+                  width: 350,
+                  height: 350,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: theme.colorScheme.tertiary.withValues(alpha: isDark ? 0.3 : 0.5),
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+              if (widget.child != null) widget.child!,
             ],
           ),
         );
       },
-      child: widget.child ?? const SizedBox.expand(),
     );
   }
 }
 
-class _LaunchBand extends StatelessWidget {
-  const _LaunchBand({
-    required this.left,
-    required this.width,
-    required this.height,
-    required this.color,
-    this.top,
-    this.bottom,
+class GlassCard extends StatelessWidget {
+  const GlassCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(24),
+    this.borderRadius,
   });
-
-  final double left;
-  final double? top;
-  final double? bottom;
-  final double width;
-  final double height;
-  final Color color;
+  final Widget child;
+  final EdgeInsets padding;
+  final double? borderRadius;
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      left: left,
-      top: top,
-      bottom: bottom,
-      child: Transform.rotate(
-        angle: -14 * math.pi / 180,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final radius = borderRadius ?? 24.0;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
-          width: width,
-          height: height,
+          padding: padding,
           decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(26),
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.4),
+            borderRadius: BorderRadius.circular(radius),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.5),
+            ),
           ),
+          child: child,
         ),
       ),
     );
   }
 }
 
-class _LedgerLines extends StatelessWidget {
-  const _LedgerLines({required this.color, required this.translateY});
+class StaggeredFadeIn extends StatefulWidget {
+  const StaggeredFadeIn({super.key, required this.child, this.delay = Duration.zero});
+  final Widget child;
+  final Duration delay;
 
-  final Color color;
-  final double translateY;
+  @override
+  State<StaggeredFadeIn> createState() => _StaggeredFadeInState();
+}
+
+class _StaggeredFadeInState extends State<StaggeredFadeIn> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+  late final Animation<double> _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+  late final Animation<Offset> _slide = Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(widget.delay, () {
+      if (mounted) _ctrl.forward();
+    });
+  }
+  
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      top: 150,
-      left: 34,
-      right: 34,
-      child: Transform.translate(
-        offset: Offset(0, translateY),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (var index = 0; index < 12; index++) ...[
-              FractionallySizedBox(
-                widthFactor: (0.62 + (index % 4) * 0.09).clamp(0, 1),
-                child: Container(
-                  height: 1,
-                  decoration: BoxDecoration(
-                    color: color.withAlphaFactor(0.35 + (index % 3) * 0.12),
-                    borderRadius: BorderRadius.circular(1),
-                  ),
-                ),
-              ),
-              if (index != 11) const SizedBox(height: 28),
-            ],
-          ],
-        ),
+    return FadeTransition(
+      opacity: _fade,
+      child: SlideTransition(
+        position: _slide,
+        child: widget.child,
       ),
     );
   }
 }
+
+
+
+
 
 class LaunchBrandMark extends StatefulWidget {
   const LaunchBrandMark({super.key, this.size = 112, this.animated = true});
@@ -520,22 +518,40 @@ class BrandedLoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = _resolveLaunchPalette(context);
     return Scaffold(
       body: LaunchBackdrop(
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Spacer(),
-                AnimatedBrandScene(message: message),
-                const SizedBox(height: AppSpacing.xxl),
-                _StageRail(currentStage: stage),
-                const Spacer(),
-                _ProgressTrack(palette: palette),
-              ],
+          child: Center(
+            child: StaggeredFadeIn(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                    ),
+                    child: Center(
+                      child: Icon(Icons.wallet_rounded, size: 40, color: Theme.of(context).colorScheme.primary),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: Text(
+                      message,
+                      key: ValueKey(message),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -597,98 +613,7 @@ class _ProgressTrackState extends State<_ProgressTrack> with SingleTickerProvide
   }
 }
 
-class _StageRail extends StatelessWidget {
-  const _StageRail({required this.currentStage});
 
-  final StartupStage currentStage;
-
-  @override
-  Widget build(BuildContext context) {
-    final stages = [
-      (StartupStage.session, Icons.verified_user_outlined, 'Session'),
-      (StartupStage.wallet, Icons.account_balance_wallet_outlined, 'Wallet'),
-      (StartupStage.ready, Icons.check_circle_outline_rounded, 'Ready'),
-    ];
-    final currentIndex = stages.indexWhere((item) => item.$1 == currentStage);
-    return Row(
-      children: [
-        for (final (index, item) in stages.indexed) ...[
-          Expanded(
-            child: _StagePill(
-              icon: index < currentIndex
-                  ? Icons.check_circle_outline_rounded
-                  : item.$2,
-              label: item.$3,
-              active: index <= currentIndex,
-              completed: index < currentIndex,
-            ),
-          ),
-          if (index != stages.length - 1) const SizedBox(width: AppSpacing.xs),
-        ],
-      ],
-    );
-  }
-}
-
-class _StagePill extends StatelessWidget {
-  const _StagePill({
-    required this.icon,
-    required this.label,
-    required this.active,
-    required this.completed,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool active;
-  final bool completed;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = _resolveLaunchPalette(context);
-    final color = active
-        ? completed
-              ? palette.tertiary
-              : palette.primary
-        : palette.mutedText;
-    final fill = active
-        ? completed
-              ? palette.completedRail
-              : palette.railActive
-        : palette.rail;
-    final border = active
-        ? completed
-              ? palette.tertiary.withAlphaFactor(0.55)
-              : palette.primary.withAlphaFactor(0.55)
-        : palette.stageBorder;
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        color: fill,
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-        border: Border.all(color: border),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: AppSpacing.xs),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: color, fontWeight: FontWeight.w800),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class RecoveryState extends StatelessWidget {
   const RecoveryState({
@@ -699,6 +624,8 @@ class RecoveryState extends StatelessWidget {
     super.key,
     this.secondaryLabel,
     this.onSecondaryAction,
+    this.tertiaryLabel,
+    this.onTertiaryAction,
   });
 
   final String title;
@@ -707,6 +634,8 @@ class RecoveryState extends StatelessWidget {
   final VoidCallback onAction;
   final String? secondaryLabel;
   final VoidCallback? onSecondaryAction;
+  final String? tertiaryLabel;
+  final VoidCallback? onTertiaryAction;
 
   @override
   Widget build(BuildContext context) {
@@ -758,6 +687,19 @@ class RecoveryState extends StatelessWidget {
                     child: Text(
                       secondaryLabel!,
                       style: TextStyle(color: palette.mutedText),
+                    ),
+                  ),
+                ],
+                if (tertiaryLabel != null && onTertiaryAction != null) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  TextButton(
+                    onPressed: onTertiaryAction,
+                    child: Text(
+                      tertiaryLabel!,
+                      style: TextStyle(
+                        color: palette.mutedText.withValues(alpha: 0.6),
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ],

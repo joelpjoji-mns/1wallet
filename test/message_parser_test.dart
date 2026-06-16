@@ -13,7 +13,6 @@ void main() {
     expect(parsed.amount?.currency, 'INR');
     expect(parsed.merchant, 'SWIGGY');
     expect(parsed.transactionType, 'expense');
-    expect(parsed.warnings, isEmpty);
   });
 
   test('parses credited SMS as income', () {
@@ -32,6 +31,5 @@ void main() {
     );
 
     expect(parsed.ignored, isTrue);
-    expect(parsed.warnings.single, contains('Ignored'));
   });
 }

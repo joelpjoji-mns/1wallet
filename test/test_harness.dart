@@ -1,12 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
 import 'package:one_wallet_flutter/src/startup/startup_state.dart';
+import 'package:one_wallet_flutter/src/theme/theme_controller.dart';
 
 import 'fixtures/sample_ledger.dart';
 
-List<Override> authenticatedSampleOverrides({LedgerState? ledger}) {
+List<Override> authenticatedSampleOverrides({
+  LedgerState? ledger,
+  SharedPreferences? prefs,
+}) {
   return [
     startupStateProvider.overrideWithValue(
       const StartupState.ready(destination: StartupDestination.home),
@@ -14,6 +19,7 @@ List<Override> authenticatedSampleOverrides({LedgerState? ledger}) {
     ledgerRepositoryProvider.overrideWithValue(
       StaticLedgerRepository(ledger ?? sampleLedgerState()),
     ),
+    if (prefs != null) sharedPreferencesProvider.overrideWithValue(prefs),
   ];
 }
 
