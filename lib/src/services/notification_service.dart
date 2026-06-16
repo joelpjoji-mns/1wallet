@@ -2,13 +2,16 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../data/ledger_models.dart';
 import '../design/tokens.dart';
+import '../features/notifications/notification_engine.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
   static bool _initialized = false;
+  static const _deliveredKey = 'one_wallet_flutter.native_delivered_ids.v1';
 
   static Future<void> initialize() async {
     if (_initialized) return;
@@ -58,6 +61,53 @@ class NotificationService {
       title: 'Update Available',
       body: 'Version $version ($channel) is ready to install',
       notificationDetails: notificationDetails,
+    );
+  }
+
+  static Future<void> checkAndShowAlerts(LedgerState state) async {
+    if (!_initialized) return;
+    
+    final notifications = buildNotificationInbox(state);
+    if (notifications.isEmpty) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final deliveredIds = prefs.getStringList(_deliveredKey) ?? [];
+    final newDeliveredIds = List<String>.from(deliveredIds);
+    var showedAny = false;
+
+    for (final notification in notifications) {
+      if (!deliveredIds.contains(notification.id)) {
+        await showAppNotification(notification);
+        newDeliveredIds.add(notification.id);
+        showedAny = true;
+      }
+    }
+
+    if (showedAny) {
+      await prefs.setStringList(_deliveredKey, newDeliveredIds);
+    }
+  }
+
+  static Future<void> showAppNotification(AppNotification notification) async {
+    await requestPermissions();
+
+    final androidDetails = AndroidNotificationDetails(
+      'alerts',
+      'Alerts',
+      channelDescription: 'Important wallet alerts',
+      importance: Importance.high,
+      priority: Priority.high,
+      color: await _notificationAccentColor(),
+      styleInformation: BigTextStyleInformation(notification.body),
+    );
+    final notificationDetails = NotificationDetails(android: androidDetails);
+
+    await _notificationsPlugin.show(
+      id: notification.id.hashCode,
+      title: notification.title,
+      body: notification.body,
+      notificationDetails: notificationDetails,
+      payload: notification.actionRoute,
     );
   }
 

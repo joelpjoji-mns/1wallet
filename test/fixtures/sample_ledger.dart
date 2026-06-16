@@ -239,7 +239,6 @@ LedgerState sampleLedgerState() {
         source: 'notification',
         status: 'pending',
         createdAt: today.subtract(const Duration(hours: 2)),
-        warnings: const ['Low confidence'],
       ),
     ],
   );

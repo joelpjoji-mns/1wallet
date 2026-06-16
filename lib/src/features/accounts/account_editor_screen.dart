@@ -7,6 +7,7 @@ import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../../widgets/currency_picker.dart';
 import '../common/full_screen_picker.dart';
 import '../common/route_scaffold.dart';
 
@@ -421,22 +422,10 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
   }
 
   Future<void> _chooseCurrency(BuildContext context, LedgerState state) async {
-    final next = await showFullScreenPicker<String>(
+    final next = await showCurrencyPicker(
       context: context,
-      title: 'Currency',
-      searchHint: 'Search currencies',
+      state: state,
       selectedValue: _selectedCurrency ?? state.preferences.baseCurrency,
-      options: [
-        for (final currency in {
-          ...availableCurrencies(state),
-          'USD', 'EUR', 'GBP', 'INR', 'JPY', 'CAD', 'AUD', 'SGD', 'CHF', 'CNY', 'NZD', 'ZAR'
-        }.toList()..sort())
-          PickerOption(
-            value: currency,
-            title: currency,
-            icon: Icons.currency_exchange_outlined,
-          ),
-      ],
     );
     if (next != null) {
       setState(() => _selectedCurrency = next);

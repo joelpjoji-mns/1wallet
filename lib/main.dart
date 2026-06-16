@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'src/app/one_wallet_app.dart';
 import 'src/config/firebase_env.dart';
 import 'src/services/notification_service.dart';
+import 'src/theme/theme_controller.dart';
 
 Future<void> main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +35,12 @@ Future<void> main() async {
     }
   }
   await Future.wait([sharedPreferencesWarmup, dateFormattingWarmup, notificationWarmup]);
-  runApp(const ProviderScope(child: OneWalletApp()));
+  final prefs = await SharedPreferences.getInstance();
+  runApp(ProviderScope(
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+    ],
+    child: const OneWalletApp(),
+  ));
   FlutterNativeSplash.remove();
 }
