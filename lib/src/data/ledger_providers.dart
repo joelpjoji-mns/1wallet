@@ -218,13 +218,13 @@ class LedgerController extends StateNotifier<LedgerState> {
     }
 
     final normalizedCurrency = currency.trim().toUpperCase().isEmpty
-        ? 'INR'
+        ? kDefaultCurrency
         : currency.trim().toUpperCase();
     final preferences = LedgerPreferences(
       baseCurrency: normalizedCurrency,
       displayCurrency: normalizedCurrency,
       enabledCurrencies: [normalizedCurrency],
-      locale: normalizedCurrency == 'INR' ? 'en_IN' : 'en_US',
+      locale: normalizedCurrency == kDefaultCurrency ? kDefaultLocale : 'en_US',
     );
     final starter = emptyLedgerState(userId: userId, preferences: preferences);
     final account = Account(
@@ -411,6 +411,9 @@ class LedgerController extends StateNotifier<LedgerState> {
     String? notes,
     DateTime? occurredAt,
     String? recurrenceFrequency,
+    int? recurrenceInterval,
+    List<int>? recurrenceDaysOfWeek,
+    List<int>? recurrenceDaysOfMonth,
     bool? isExcludedFromReports,
     String? originalTransactionId,
   }) async {
@@ -480,6 +483,11 @@ class LedgerController extends StateNotifier<LedgerState> {
       importBatchId: existing?.importBatchId,
       occurredAt: occurredAt ?? existing?.occurredAt ?? DateTime.now(),
       recurrenceFrequency: recurrenceFrequency ?? existing?.recurrenceFrequency,
+      recurrenceInterval: recurrenceInterval ?? existing?.recurrenceInterval ?? 1,
+      recurrenceDaysOfWeek:
+          recurrenceDaysOfWeek ?? existing?.recurrenceDaysOfWeek,
+      recurrenceDaysOfMonth:
+          recurrenceDaysOfMonth ?? existing?.recurrenceDaysOfMonth,
       attachments: existing?.attachments ?? const [],
       isReimbursable: existing?.isReimbursable ?? false,
       isTaxDeductible: existing?.isTaxDeductible ?? false,
@@ -531,14 +539,14 @@ class LedgerController extends StateNotifier<LedgerState> {
 
   Future<TransactionRecord> postponeTransaction(
     String id,
-    Duration duration,
+    DateTime newDate,
   ) async {
     final existing = _transactionById(state, id);
     if (existing == null) throw StateError('Transaction not found.');
     return updateTransactionStatus(
       id,
       existing.status,
-      occurredAt: existing.occurredAt.add(duration),
+      occurredAt: newDate,
     );
   }
 
@@ -1001,6 +1009,11 @@ class LedgerController extends StateNotifier<LedgerState> {
     required String name,
     required int amountMinor,
     String? currency,
+    DateTime? targetDate,
+    String frequency = 'monthly',
+    int interval = 1,
+    List<int>? daysOfWeek,
+    List<int>? daysOfMonth,
   }) async {
     final budget = Budget(
       id: _newId('budget'),
@@ -1013,6 +1026,11 @@ class LedgerController extends StateNotifier<LedgerState> {
         amountMinor: 0,
         currency: currency ?? state.preferences.baseCurrency,
       ),
+      targetDate: targetDate,
+      frequency: frequency,
+      interval: interval,
+      daysOfWeek: daysOfWeek,
+      daysOfMonth: daysOfMonth,
     );
     await _commit(state.copyWith(budgets: [budget, ...state.budgets]));
   }
@@ -1021,6 +1039,11 @@ class LedgerController extends StateNotifier<LedgerState> {
     required String name,
     required int targetMinor,
     String? currency,
+    DateTime? targetDate,
+    String frequency = 'once',
+    int interval = 1,
+    List<int>? daysOfWeek,
+    List<int>? daysOfMonth,
   }) async {
     final goal = Goal(
       id: _newId('goal'),
@@ -1033,8 +1056,29 @@ class LedgerController extends StateNotifier<LedgerState> {
         amountMinor: 0,
         currency: currency ?? state.preferences.baseCurrency,
       ),
+      targetDate: targetDate,
+      frequency: frequency,
+      interval: interval,
+      daysOfWeek: daysOfWeek,
+      daysOfMonth: daysOfMonth,
     );
     await _commit(state.copyWith(goals: [goal, ...state.goals]));
+  }
+
+  Future<void> postponeBudget(String id, DateTime newDate) async {
+    final budgets = [
+      for (final b in state.budgets)
+        b.id == id ? b.copyWith(targetDate: newDate) : b,
+    ];
+    await _commit(state.copyWith(budgets: budgets));
+  }
+
+  Future<void> postponeGoal(String id, DateTime newDate) async {
+    final goals = [
+      for (final g in state.goals)
+        g.id == id ? g.copyWith(targetDate: newDate) : g,
+    ];
+    await _commit(state.copyWith(goals: goals));
   }
 
   Future<void> addEnabledCurrency(String currency) async {

@@ -20,7 +20,7 @@ class ParsedTransactionMessage {
 
 ParsedTransactionMessage parseTransactionMessage(
   String rawText, {
-  String fallbackCurrency = 'INR',
+  String fallbackCurrency = kDefaultCurrency,
 }) {
   final text = rawText.trim();
   if (text.isEmpty) {
@@ -89,17 +89,19 @@ String? _detectCurrency(String text) {
 
 int? _extractAmountMinor(String text) {
   final patterns = [
-    // Matches numbers with periods or commas as separators, with or without spaces
+    // 1. Explicit amount markers with currency codes
     RegExp(
-      r'(?:INR|Rs\.?|₹|USD|\$|GBP|£|AED|EUR|€|AUD|A\$|CAD|C\$|SGD|S\$|JPY|¥|CHF|₣|CNY)\s*([0-9]+(?:[.,\s][0-9]+)*)',
+      r'(?:Amt|Amount|Sum|Value|INR|Rs\.?|₹|USD|\$|GBP|£|AED|EUR|€|AUD|A\$|CAD|C\$|SGD|S\$|JPY|¥|CHF|₣|CNY)[:\s]*([0-9]+(?:[.,\s][0-9]+)*)',
       caseSensitive: false,
     ),
+    // 2. Numeric values followed by currency
     RegExp(
       r'([0-9]+(?:[.,\s][0-9]+)*)\s*(?:INR|Rs\.?|₹|USD|\$|GBP|£|AED|EUR|€|AUD|A\$|CAD|C\$|SGD|S\$|JPY|¥|CHF|₣|CNY)',
       caseSensitive: false,
     ),
+    // 3. Action keywords followed by amount
     RegExp(
-      r'(?:debited|credited|spent|paid|received|withdrawn|purchase(?:d)?|sent|charge of|Refund of|fee of|deducted|remitted)\D+([0-9]+(?:[.,\s][0-9]+)*)',
+      r'(?:debited|credited|spent|paid|received|withdrawn|purchase(?:d)?|sent|charge of|Refund of|fee of|deducted|remitted|txn of|transfer of)\D+([0-9]+(?:[.,\s][0-9]+)*)',
       caseSensitive: false,
     ),
   ];
@@ -120,47 +122,65 @@ int? _extractAmountMinor(String text) {
 
     final parsed = double.tryParse(value);
     if (parsed == null) continue;
-    return (parsed * 100).round();
+    
+    // Sanity check: ignore very small or very large amounts that are likely not transactions
+    if (parsed > 0 && parsed < 10000000) {
+      return (parsed * 100).round();
+    }
   }
   return null;
 }
 
 String? _extractMerchant(String text) {
-  // Strip emojis to prevent them from interfering with regex or appearing in merchant names
-  final noEmojiText = text.replaceAll(RegExp(r'[\u{1F300}-\u{1F5FF}\u{1F900}-\u{1F9FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]', unicode: true), '').trim();
+  // Strip emojis and normalize whitespace
+  final cleanText = text
+      .replaceAll(RegExp(r'[\u{1F300}-\u{1F5FF}\u{1F900}-\u{1F9FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]', unicode: true), '')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
 
   // Ordered by precision
   final patterns = [
-    // 5. Contextual postpositions like "<merchant> credited" (highest priority for complex Indian debits)
-    RegExp(r'[;-]\s*([A-Za-z0-9 &._-]+)\s+credited\b', caseSensitive: false),
     // 0. Explicit Refunds
-    RegExp(r'\brefund of\s+.*?\bfrom\s+([A-Za-z0-9 &._-]+?)(?=\s+(?:has|is|was|on|via)|[\.,]\s|[\.,]?$)', caseSensitive: false),
-    // 1. Explicit markers (requires colon, dash, or just space for VPA/UPI)
-    RegExp(r'\b(?:merchant|info|beneficiary)[:\-]\s*([A-Za-z0-9&@._-]+)', caseSensitive: false),
-    RegExp(r'\b(?:vpa|upi)[\s:\-]+([A-Za-z0-9&@._-]+)', caseSensitive: false),
-    // 2. "paid <merchant>" or "transfer to <merchant>"
-    RegExp(r'\b(?:paid to|paid|transfer to)\s+([A-Za-z0-9 &._-]+?)(?=\s+(?:from|on|using|via|ref|bal|avl|available|₹|\$|€|£|Rs)|[\.,]\s|[\.,]?$)', caseSensitive: false),
-    RegExp(r'\b(?:at|to|towards|favouring|for)\s+(?!your\s+card|card\b|a/c\b|account\b)([A-Za-z0-9 &._-]+?)(?=\s+(?:from|on|using|via|ref|bal|avl|available|was|effectu|effectué|₹|\$|€|£|Rs)|[\.,]\s|[\.,]?$)', caseSensitive: false),
-    // 3. French specific
-    RegExp(r'\b(?:à la|au)\s+([A-Za-z0-9 &._-]+?)(?=\s+(?:effectu|le|on|from)|[\.,]\s|[\.,]?$)', caseSensitive: false),
+    RegExp(r'\brefund of\s+.*?\bfrom\s+([A-Za-z0-9 &._-]+?)(?=\s+(?:has|is|was|on|via|ref)|[\.,]\s|[\.,]?$)', caseSensitive: false),
+    // 1. Generic postpositions with semicolons (very strong separator in Indian bank SMS)
+    RegExp(r'[;]\s*([A-Za-z0-9 &._-]+)\s+(?:credited|debited)\b', caseSensitive: false),
+    // 2. UPI / VPA markers (very common in India)
+    RegExp(r'\b(?:vpa|upi|info)[:\s-]+([A-Za-z0-9&@._-]+)', caseSensitive: false),
+    // 3. "paid <merchant>" or "transfer to <merchant>"
+    RegExp(r'\b(?:paid to|paid|transfer to|spent at)\s+([A-Za-z0-9 &._-]+?)(?=\s+(?:from|on|using|via|ref|bal|avl|available|₹|\$|€|£|Rs)|[\.,]\s|[\.,]?$)', caseSensitive: false),
     // 4. Indian explicit "debited from ... to <merchant>"
     RegExp(r'\bfrom\s+a/c.*to\s+([A-Za-z0-9 &@._-]+?)(?=\s+(?:on|using|via|ref)|[\(\[]|[\.,]\s|[\.,]?$)', caseSensitive: false),
-    // 5. "credited by <merchant>" or "from <merchant>"
+    // 5. "at <merchant>" or "to <merchant>" (avoiding common false positives)
+    RegExp(r'\b(?:at|to|towards|favouring|for)\s+(?!your\s+card|card\b|a/c\b|account\b)([A-Za-z0-9 &._-]+?)(?=\s+(?:from|on|using|via|ref|bal|avl|available|was|effectu|effectué|₹|\$|€|£|Rs)|[\.,]\s|[\.,]?$)', caseSensitive: false),
+    // 6. "credited by <merchant>" or "from <merchant>"
     RegExp(r'\b(?:by|from)\s+([A-Za-z0-9 &._-]+?)(?=\s+(?:on|using|via|ref|bal|avl|available|has|is)|[\.,]\s|[\.,]?$)', caseSensitive: false),
+    // 7. Generic postpositions with dashes
+    RegExp(r'[-]\s*([A-Za-z0-9 &._-]+)\s+(?:credited|debited)\b', caseSensitive: false),
   ];
   
   for (final pattern in patterns) {
-    final match = pattern.firstMatch(noEmojiText);
+    final match = pattern.firstMatch(cleanText);
     var candidate = match?.group(1)?.trim();
     if (candidate == null || candidate.isEmpty) continue;
     
     // Ignore candidates that are just phone numbers following "SMS BLOCK"
     if (RegExp(r'^\d{8,12}$').hasMatch(candidate) && 
-        RegExp(r'block\s+.*\bto\b', caseSensitive: false).hasMatch(noEmojiText)) {
+        RegExp(r'block\s+.*\bto\b', caseSensitive: false).hasMatch(cleanText)) {
+      continue;
+    }
+
+    // Filter out purely numeric reference numbers (unless it's a VPA with @)
+    if (RegExp(r'^[\d.\-]+$').hasMatch(candidate) && !candidate.contains('@')) {
+      continue;
+    }
+
+    // Filter out common bank noise
+    final lowercaseCandidate = candidate.toLowerCase();
+    if (['bal', 'available', 'balance', 'account', 'card', 'bank', 'your'].contains(lowercaseCandidate)) {
       continue;
     }
     
-    // Clean up asterisks and hashes
+    // Clean up asterisks, hashes, and leading/trailing noise
     candidate = candidate.replaceAll(RegExp(r'[*#]'), '').trim();
     if (candidate.isEmpty) continue;
 

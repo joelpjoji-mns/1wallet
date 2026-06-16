@@ -222,22 +222,29 @@ class _LaunchBackdropState extends State<LaunchBackdrop>
 }
 
 class GlassCard extends StatelessWidget {
-  const GlassCard({super.key, required this.child, this.padding = const EdgeInsets.all(24)});
+  const GlassCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(24),
+    this.borderRadius,
+  });
   final Widget child;
   final EdgeInsets padding;
+  final double? borderRadius;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final radius = borderRadius ?? 24.0;
     return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(radius),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
           padding: padding,
           decoration: BoxDecoration(
             color: isDark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.4),
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(radius),
             border: Border.all(
               color: isDark ? Colors.white.withOpacity(0.1) : Colors.white.withOpacity(0.5),
             ),
@@ -779,6 +786,8 @@ class RecoveryState extends StatelessWidget {
     super.key,
     this.secondaryLabel,
     this.onSecondaryAction,
+    this.tertiaryLabel,
+    this.onTertiaryAction,
   });
 
   final String title;
@@ -787,6 +796,8 @@ class RecoveryState extends StatelessWidget {
   final VoidCallback onAction;
   final String? secondaryLabel;
   final VoidCallback? onSecondaryAction;
+  final String? tertiaryLabel;
+  final VoidCallback? onTertiaryAction;
 
   @override
   Widget build(BuildContext context) {
@@ -838,6 +849,19 @@ class RecoveryState extends StatelessWidget {
                     child: Text(
                       secondaryLabel!,
                       style: TextStyle(color: palette.mutedText),
+                    ),
+                  ),
+                ],
+                if (tertiaryLabel != null && onTertiaryAction != null) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  TextButton(
+                    onPressed: onTertiaryAction,
+                    child: Text(
+                      tertiaryLabel!,
+                      style: TextStyle(
+                        color: palette.mutedText.withOpacity(0.6),
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ],

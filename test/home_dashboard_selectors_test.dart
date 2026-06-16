@@ -160,8 +160,8 @@ void main() {
 
     final breakdown = balanceBreakdownByCurrency(state, accountId: 'cash');
 
-    expect(breakdown.map((money) => money.currency), ['INR', 'USD', 'GBP']);
-    expect(breakdown.map((money) => money.amountMinor), [0, 1200, 0]);
+    expect(breakdown.map((money) => money.currency), ['USD', 'GBP', 'INR']);
+    expect(breakdown.map((money) => money.amountMinor), [1200, 0, 0]);
   });
 
   test('currency snapshot prefers explicit latest exchange rate', () {
@@ -219,7 +219,7 @@ LedgerState _ledger({
   return LedgerState(
     version: currentLedgerStateVersion,
     userId: 'test-user',
-    preferences: const LedgerPreferences(),
+    preferences: const LedgerPreferences(baseCurrency: 'INR'),
     accounts: accounts ?? [_account(id: 'bank', openingMinor: 0)],
     categories: const [],
     transactions: transactions ?? const [],

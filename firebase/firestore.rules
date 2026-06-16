@@ -67,11 +67,13 @@ service cloud.firestore {
     }
 
     function isValidUserDocument(data) {
-      return data.keys().hasOnly(['email', 'displayName', 'authProvider', 'updatedAt']) &&
+      return data.keys().hasOnly(['email', 'displayName', 'authProvider', 'createdAt', 'updatedAt', 'lastWriterDeviceId']) &&
         isOptionalStringOrNull(data, 'email') &&
         isOptionalStringOrNull(data, 'displayName') &&
         (!('authProvider' in data) || data.authProvider == 'google') &&
-        isOptionalTimestamp(data, 'updatedAt');
+        isOptionalTimestamp(data, 'createdAt') &&
+        isOptionalTimestamp(data, 'updatedAt') &&
+        isOptionalStringOrNull(data, 'lastWriterDeviceId');
     }
 
     function isValidWalletDocument(data, walletId) {
