@@ -10,6 +10,7 @@ import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../../widgets/currency_picker.dart';
 import '../common/category_hierarchy_picker.dart';
 import '../common/full_screen_picker.dart';
 import '../transactions/transaction_row.dart';
@@ -464,7 +465,11 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
   final _notesController = TextEditingController();
   String? _loadedRecordId;
   var _type = 'expense';
+  String? _currency;
   var _frequency = 'monthly';
+  int _interval = 1;
+  final Set<int> _daysOfWeek = {};
+  final Set<int> _daysOfMonth = {};
   String? _accountId;
   String? _counterAccountId;
   String? _categoryId;
@@ -509,11 +514,11 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                     accountId: _accountId ?? '',
                     amount: Money(
                       amountMinor: 0,
-                      currency: state.preferences.baseCurrency,
+                      currency: _currency ?? state.preferences.baseCurrency,
                     ),
                     baseAmount: Money(
                       amountMinor: 0,
-                      currency: state.preferences.baseCurrency,
+                      currency: _currency ?? state.preferences.baseCurrency,
                     ),
                     occurredAt: _nextDate,
                   ),
@@ -522,7 +527,6 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                 subtitle: transactionTypeLabel(_type),
                 onTap: _showRecurringTypePicker,
               ),
-              const SizedBox(height: AppSpacing.sm),
               const SizedBox(height: AppSpacing.sm),
               TextFormField(
                 controller: _nameController,
@@ -533,13 +537,31 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
-              TextFormField(
-                controller: _amountController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Amount',
-                  prefixIcon: Icon(Icons.payments_outlined),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _amountController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Amount',
+                        prefixIcon: Icon(Icons.payments_outlined),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  SizedBox(
+                    width: 100,
+                    child: OutlinedButton(
+                      onPressed: () => _showCurrencyPicker(state),
+                      style: OutlinedButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size.fromHeight(56),
+                      ),
+                      child: Text(_currency ?? state.preferences.baseCurrency),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: AppSpacing.sm),
               PremiumRow(
@@ -580,13 +602,83 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
         SectionCard(
           title: 'Schedule',
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              PremiumRow(
-                icon: Icons.repeat_outlined,
-                title: 'Frequency',
-                subtitle: transactionTypeLabel(_frequency),
-                onTap: _showFrequencyPicker,
+              DropdownButtonFormField<String>(
+                value: _frequency,
+                decoration: const InputDecoration(
+                  labelText: 'Frequency',
+                  prefixIcon: Icon(Icons.repeat_outlined),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'daily', child: Text('Daily')),
+                  DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
+                  DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
+                  DropdownMenuItem(value: 'yearly', child: Text('Yearly')),
+                ],
+                onChanged: (value) => setState(() => _frequency = value ?? 'monthly'),
               ),
+              const SizedBox(height: AppSpacing.sm),
+              TextFormField(
+                initialValue: _interval.toString(),
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Every X ${_frequency == 'daily' ? 'day' : _frequency.replaceAll('ly', '')}s',
+                  prefixIcon: const Icon(Icons.timer_outlined),
+                ),
+                onChanged: (value) => _interval = int.tryParse(value) ?? 1,
+              ),
+              if (_frequency == 'weekly') ...[
+                const SizedBox(height: AppSpacing.md),
+                Text('On these days:', style: Theme.of(context).textTheme.bodySmall),
+                const SizedBox(height: AppSpacing.xs),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (var i = 1; i <= 7; i++)
+                      FilterChip(
+                        label: Text(['', 'M', 'T', 'W', 'T', 'F', 'S', 'S'][i]),
+                        selected: _daysOfWeek.contains(i),
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _daysOfWeek.add(i);
+                            } else {
+                              _daysOfWeek.remove(i);
+                            }
+                          });
+                        },
+                      ),
+                  ],
+                ),
+              ],
+              if (_frequency == 'monthly') ...[
+                const SizedBox(height: AppSpacing.md),
+                Text('On these days of the month:', style: Theme.of(context).textTheme.bodySmall),
+                const SizedBox(height: AppSpacing.xs),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    for (var i = 1; i <= 31; i++)
+                      FilterChip(
+                        label: Text('$i'),
+                        padding: EdgeInsets.zero,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        selected: _daysOfMonth.contains(i),
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _daysOfMonth.add(i);
+                            } else {
+                              _daysOfMonth.remove(i);
+                            }
+                          });
+                        },
+                      ),
+                  ],
+                ),
+              ],
               const SizedBox(height: AppSpacing.sm),
               PremiumRow(
                 icon: Icons.calendar_month_outlined,
@@ -630,6 +722,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
     if (_loadedRecordId == key) return;
     _loadedRecordId = key;
     _type = record?.type ?? 'expense';
+    _currency = record?.amount.currency ?? state.preferences.baseCurrency;
     _amountController.text = record == null
         ? ''
         : _formatAmountInput(record.amount.amountMinor.abs());
@@ -641,6 +734,25 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
         record?.occurredAt ?? DateTime.now().add(const Duration(days: 1));
     _notesController.text = record?.notes ?? '';
     _frequency = record?.recurrenceFrequency ?? 'monthly';
+    _interval = record?.recurrenceInterval ?? 1;
+    _daysOfWeek.clear();
+    if (record?.recurrenceDaysOfWeek != null) {
+      _daysOfWeek.addAll(record!.recurrenceDaysOfWeek!);
+    }
+    _daysOfMonth.clear();
+    if (record?.recurrenceDaysOfMonth != null) {
+      _daysOfMonth.addAll(record!.recurrenceDaysOfMonth!);
+    }
+  }
+
+  Future<void> _showCurrencyPicker(LedgerState state) async {
+    final next = await showCurrencyPicker(
+      context: context,
+      state: state,
+      selectedValue: _currency ?? state.preferences.baseCurrency,
+    );
+    if (next == null) return;
+    setState(() => _currency = next);
   }
 
   Future<void> _showRecurringTypePicker() async {
@@ -729,39 +841,6 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
     setState(() => _categoryId = next);
   }
 
-  Future<void> _showFrequencyPicker() async {
-    final next = await showFullScreenPicker<String>(
-      context: context,
-      title: 'Frequency',
-      searchable: false,
-      selectedValue: _frequency,
-      options: const [
-        PickerOption(
-          value: 'daily',
-          title: 'Daily',
-          icon: Icons.today_outlined,
-        ),
-        PickerOption(
-          value: 'weekly',
-          title: 'Weekly',
-          icon: Icons.date_range_outlined,
-        ),
-        PickerOption(
-          value: 'monthly',
-          title: 'Monthly',
-          icon: Icons.calendar_month_outlined,
-        ),
-        PickerOption(
-          value: 'yearly',
-          title: 'Yearly',
-          icon: Icons.event_outlined,
-        ),
-      ],
-    );
-    if (next == null) return;
-    setState(() => _frequency = next);
-  }
-
   Future<void> _pickRecurringDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -801,12 +880,17 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
             counterAccountId: _needsCounterAccount ? _counterAccountId : null,
             categoryId: _needsCounterAccount ? null : _categoryId,
             amountMinor: amountMinor,
+            originalCurrency: _currency != account.currency ? _currency : null,
+            originalAmountMinor: _currency != account.currency ? amountMinor : null,
             status: 'scheduled',
             source: 'recurring',
             name: _nameController.text,
             notes: _notesController.text,
             occurredAt: _nextDate,
             recurrenceFrequency: _frequency,
+            recurrenceInterval: _interval,
+            recurrenceDaysOfWeek: _daysOfWeek.isEmpty ? null : (List<int>.from(_daysOfWeek)..sort()),
+            recurrenceDaysOfMonth: _daysOfMonth.isEmpty ? null : (List<int>.from(_daysOfMonth)..sort()),
           );
       if (!mounted) return;
       _showRouteMessage(
@@ -1022,11 +1106,26 @@ class RecurringDetailView extends ConsumerWidget {
   }
 
   Future<void> _postpone(BuildContext context, WidgetRef ref) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: transaction.occurredAt.isBefore(DateTime.now())
+          ? DateTime.now().add(const Duration(days: 1))
+          : transaction.occurredAt.add(const Duration(days: 1)),
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 3650)),
+    );
+    if (picked == null) return;
+
     await ref
         .read(ledgerProvider.notifier)
-        .postponeTransaction(transaction.id, const Duration(days: 7));
+        .postponeTransaction(transaction.id, picked);
     if (!context.mounted) return;
-    _showRouteMessage(context, 'Scheduled record postponed by one week.');
+
+    final locale = ref.read(ledgerProvider).preferences.locale;
+    _showRouteMessage(
+      context,
+      'Scheduled record postponed to ${formatLedgerDate(picked, locale)}.',
+    );
     context.push('/recurring');
   }
 

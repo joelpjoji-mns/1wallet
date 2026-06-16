@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/ledger_models.dart';
 import '../../auth/auth_controller.dart';
 import '../common/full_screen_picker.dart';
 import '../launch/brand_widgets.dart';
@@ -39,7 +40,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _displayNameController = TextEditingController();
   final _selectedUseCases = <String>{'daily_spending', 'budgeting'};
 
-  String _baseCurrency = 'USD';
+  String _baseCurrency = kDefaultCurrency;
   final _accounts = <_AccountDraft>[];
   late _AccountDraft _currentDraft;
 
@@ -62,7 +63,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     _currentDraft = _AccountDraft(
       name: '',
       type: 'checking',
-      currency: 'USD',
+      currency: kDefaultCurrency,
       color: Colors.blueAccent,
       opening: '',
       icon: Icons.account_balance_rounded,

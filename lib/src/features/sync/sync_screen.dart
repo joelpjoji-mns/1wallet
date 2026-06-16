@@ -135,7 +135,44 @@ class SyncScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
-          if (enabled)
+          if (enabled) ...[
+            SectionCard(
+              title: 'Settings',
+              subtitle: 'Configure how often your wallet syncs with the cloud.',
+              compact: true,
+              child: Column(
+                children: [
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<int?>(
+                    value: sync.metadata?.syncIntervalHours,
+                    decoration: InputDecoration(
+                      labelText: 'Periodic Sync Interval',
+                      labelStyle: theme.textTheme.bodyMedium,
+                      border: const OutlineInputBorder(),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: null, child: Text('Automatic (On change)')),
+                      DropdownMenuItem(value: 6, child: Text('Every 6 hours')),
+                      DropdownMenuItem(value: 12, child: Text('Every 12 hours')),
+                      DropdownMenuItem(value: 24, child: Text('Daily')),
+                    ],
+                    onChanged: (value) {
+                      ref.read(cloudSyncControllerProvider.notifier).updateSyncInterval(value);
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Note: Automatic sync on change is always active when connected.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
             Padding(
               padding: const EdgeInsets.only(bottom: 8.0),
               child: FilledButton.icon(
@@ -145,12 +182,13 @@ class SyncScreen extends ConsumerWidget {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Starting manual sync...')),
                         );
-                        ref.read(cloudSyncControllerProvider.notifier).uploadSnapshot(reason: 'manual');
+                        ref.read(cloudSyncControllerProvider.notifier).fullSync(reason: 'manual');
                       },
                 icon: const Icon(Icons.sync_rounded),
                 label: Text(isWorking ? 'Syncing...' : 'Sync now'),
               ),
             ),
+          ],
           OutlinedButton.icon(
             onPressed: isWorking ? null : () => _cleanupLegacyData(context, ref),
             icon: const Icon(Icons.delete_sweep_outlined),

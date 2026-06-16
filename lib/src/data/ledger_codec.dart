@@ -371,7 +371,7 @@ Money _moneyFromJson(Object? value, {Money? fallback}) {
       json['amountMinor'],
       fallback: fallback?.amountMinor ?? 0,
     ),
-    currency: _string(json['currency'], fallback: fallback?.currency ?? 'INR'),
+    currency: _string(json['currency'], fallback: fallback?.currency ?? kDefaultCurrency),
   );
 }
 
@@ -409,17 +409,17 @@ LedgerPreferences _preferencesFromJson(Map<String, dynamic> json) {
   return LedgerPreferences(
     baseCurrency: _string(
       json['baseCurrency'],
-      fallback: fallback.baseCurrency,
+      fallback: kDefaultCurrency,
     ),
     displayCurrency: _string(
       json['displayCurrency'],
-      fallback: fallback.displayCurrency,
+      fallback: kDefaultCurrency,
     ),
     enabledCurrencies: _stringList(
       json['enabledCurrencies'],
-      fallback: fallback.enabledCurrencies,
+      fallback: const [kDefaultCurrency],
     ),
-    locale: _string(json['locale'], fallback: fallback.locale),
+    locale: _string(json['locale'], fallback: kDefaultLocale),
     startDayOfMonth: _int(
       json['startDayOfMonth'],
       fallback: fallback.startDayOfMonth,
@@ -562,12 +562,16 @@ Map<String, Object?> _loanDetailsToJson(AccountLoanDetails details) {
     'repaymentCount': details.repaymentCount,
     'repaymentStartsOn': details.repaymentStartsOn?.toIso8601String(),
     'repaymentSourceAccountId': details.repaymentSourceAccountId,
+    'recurrenceFrequency': details.recurrenceFrequency,
+    'recurrenceInterval': details.recurrenceInterval,
+    'recurrenceDaysOfWeek': details.recurrenceDaysOfWeek,
+    'recurrenceDaysOfMonth': details.recurrenceDaysOfMonth,
     'hideInterestInLedger': details.hideInterestInLedger,
   };
 }
 
 Account _accountFromJson(Map<String, dynamic> json) {
-  final currency = _string(json['currency'], fallback: 'INR');
+  final currency = _string(json['currency'], fallback: kDefaultCurrency);
   return Account(
     id: _string(json['id'], fallback: _generatedId('acc')),
     name: _string(json['name'], fallback: 'Account'),
@@ -616,6 +620,10 @@ AccountLoanDetails? _loanDetailsFromJson(Object? value, String currency) {
         ? null
         : _date(json['repaymentStartsOn']),
     repaymentSourceAccountId: _nullableString(json['repaymentSourceAccountId']),
+    recurrenceFrequency: _string(json['recurrenceFrequency'], fallback: 'monthly'),
+    recurrenceInterval: _int(json['recurrenceInterval'], fallback: 1),
+    recurrenceDaysOfWeek: _nullableIntList(json['recurrenceDaysOfWeek']),
+    recurrenceDaysOfMonth: _nullableIntList(json['recurrenceDaysOfMonth']),
     hideInterestInLedger: _bool(json['hideInterestInLedger'], fallback: true),
   );
 }
@@ -670,6 +678,9 @@ Map<String, Object?> _transactionToJson(TransactionRecord transaction) {
     'notes': transaction.notes,
     'importBatchId': transaction.importBatchId,
     'recurrenceFrequency': transaction.recurrenceFrequency,
+    'recurrenceInterval': transaction.recurrenceInterval,
+    'recurrenceDaysOfWeek': transaction.recurrenceDaysOfWeek,
+    'recurrenceDaysOfMonth': transaction.recurrenceDaysOfMonth,
     'attachments': transaction.attachments
         .map(_transactionAttachmentToJson)
         .toList(),
@@ -751,6 +762,11 @@ Map<String, Object?> _budgetToJson(Budget budget) {
     'name': budget.name,
     'amount': _moneyToJson(budget.amount),
     'spent': _moneyToJson(budget.spent),
+    'targetDate': budget.targetDate?.toIso8601String(),
+    'frequency': budget.frequency,
+    'interval': budget.interval,
+    'daysOfWeek': budget.daysOfWeek,
+    'daysOfMonth': budget.daysOfMonth,
   };
 }
 
@@ -764,6 +780,11 @@ Budget _budgetFromJson(Map<String, dynamic> json) {
       json['spent'],
       fallback: amount.copyWith(amountMinor: 0),
     ),
+    targetDate: json['targetDate'] != null ? _date(json['targetDate']) : null,
+    frequency: _string(json['frequency'], fallback: 'monthly'),
+    interval: _int(json['interval'], fallback: 1),
+    daysOfWeek: _nullableIntList(json['daysOfWeek']),
+    daysOfMonth: _nullableIntList(json['daysOfMonth']),
   );
 }
 
@@ -773,6 +794,11 @@ Map<String, Object?> _goalToJson(Goal goal) {
     'name': goal.name,
     'target': _moneyToJson(goal.target),
     'saved': _moneyToJson(goal.saved),
+    'targetDate': goal.targetDate?.toIso8601String(),
+    'frequency': goal.frequency,
+    'interval': goal.interval,
+    'daysOfWeek': goal.daysOfWeek,
+    'daysOfMonth': goal.daysOfMonth,
   };
 }
 
@@ -786,6 +812,11 @@ Goal _goalFromJson(Map<String, dynamic> json) {
       json['saved'],
       fallback: target.copyWith(amountMinor: 0),
     ),
+    targetDate: json['targetDate'] != null ? _date(json['targetDate']) : null,
+    frequency: _string(json['frequency'], fallback: 'once'),
+    interval: _int(json['interval'], fallback: 1),
+    daysOfWeek: _nullableIntList(json['daysOfWeek']),
+    daysOfMonth: _nullableIntList(json['daysOfMonth']),
   );
 }
 
@@ -803,8 +834,8 @@ Map<String, Object?> _exchangeRateToJson(ExchangeRateRecord rate) {
 
 ExchangeRateRecord _exchangeRateFromJson(Map<String, dynamic> json) {
   return ExchangeRateRecord(
-    base: _string(json['base'], fallback: 'INR').toUpperCase(),
-    quote: _string(json['quote'], fallback: 'INR').toUpperCase(),
+    base: _string(json['base'], fallback: kDefaultCurrency).toUpperCase(),
+    quote: _string(json['quote'], fallback: kDefaultCurrency).toUpperCase(),
     rate: _double(json['rate'], fallback: 1),
     asOfDate: _date(json['asOfDate']),
     updatedAt: json['updatedAt'] == null ? null : _date(json['updatedAt']),
