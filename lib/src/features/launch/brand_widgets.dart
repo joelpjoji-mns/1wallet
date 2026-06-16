@@ -190,7 +190,7 @@ class _LaunchBackdropState extends State<LaunchBackdrop>
                   height: 400,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: theme.colorScheme.primary.withOpacity(isDark ? 0.4 : 0.6),
+                    color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.4 : 0.6),
                   ),
                 ),
               ),
@@ -202,7 +202,7 @@ class _LaunchBackdropState extends State<LaunchBackdrop>
                   height: 350,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: theme.colorScheme.tertiary.withOpacity(isDark ? 0.3 : 0.5),
+                    color: theme.colorScheme.tertiary.withValues(alpha: isDark ? 0.3 : 0.5),
                   ),
                 ),
               ),
@@ -243,10 +243,10 @@ class GlassCard extends StatelessWidget {
         child: Container(
           padding: padding,
           decoration: BoxDecoration(
-            color: isDark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.4),
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(radius),
             border: Border.all(
-              color: isDark ? Colors.white.withOpacity(0.1) : Colors.white.withOpacity(0.5),
+              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.5),
             ),
           ),
           child: child,
@@ -602,7 +602,7 @@ class BrandedLoadingState extends StatelessWidget {
                     height: 80,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                     ),
                     child: Center(
                       child: Icon(Icons.wallet_rounded, size: 40, color: Theme.of(context).colorScheme.primary),
@@ -859,7 +859,7 @@ class RecoveryState extends StatelessWidget {
                     child: Text(
                       tertiaryLabel!,
                       style: TextStyle(
-                        color: palette.mutedText.withOpacity(0.6),
+                        color: palette.mutedText.withValues(alpha: 0.6),
                         fontSize: 13,
                       ),
                     ),

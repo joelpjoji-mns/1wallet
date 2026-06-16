@@ -144,7 +144,7 @@ class SyncScreen extends ConsumerWidget {
                 children: [
                   const SizedBox(height: 8),
                   DropdownButtonFormField<int?>(
-                    value: sync.metadata?.syncIntervalHours,
+                    initialValue: sync.metadata?.syncIntervalHours,
                     decoration: InputDecoration(
                       labelText: 'Periodic Sync Interval',
                       labelStyle: theme.textTheme.bodyMedium,

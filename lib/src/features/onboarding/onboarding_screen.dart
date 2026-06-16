@@ -119,7 +119,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       'Step ${_currentPage + 1} of 5',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                       ),
                     ),
                     const Spacer(),
@@ -177,7 +177,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 ListTile(
                   title: Text(_baseCurrency),
                   trailing: const Icon(Icons.chevron_right_rounded),
-                  tileColor: Theme.of(context).colorScheme.surface.withOpacity(0.5),
+                  tileColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   onTap: () async {
                     final curr = await showFullScreenPicker<String>(
@@ -242,8 +242,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 avatar: Icon(uc['icon'] as IconData, size: 18),
                 onSelected: (v) {
                   setState(() {
-                    if (v) _selectedUseCases.add(uc['id'] as String);
-                    else _selectedUseCases.remove(uc['id'] as String);
+                    if (v) {
+                      _selectedUseCases.add(uc['id'] as String);
+                    } else {
+                      _selectedUseCases.remove(uc['id'] as String);
+                    }
                   });
                 },
                 padding: const EdgeInsets.all(12),

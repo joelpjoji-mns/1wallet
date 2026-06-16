@@ -263,7 +263,7 @@ class ReviewQueueScreen extends ConsumerWidget {
                                       maxLines: 3,
                                       overflow: TextOverflow.ellipsis,
                                       style: theme.textTheme.bodySmall?.copyWith(
-                                        color: scheme.onSurfaceVariant.withOpacity(0.8),
+                                        color: scheme.onSurfaceVariant.withValues(alpha: 0.8),
                                         fontSize: 11,
                                         height: 1.3,
                                       ),
