@@ -50,7 +50,7 @@ class WalletCsvColumnMapping {
 
 ParsedWalletCsvResult parseWalletCsv(
   String rawCsv, {
-  String fallbackCurrency = 'INR',
+  String fallbackCurrency = kDefaultCurrency,
   WalletCsvColumnMapping? mapping,
 }) {
   final lines = rawCsv

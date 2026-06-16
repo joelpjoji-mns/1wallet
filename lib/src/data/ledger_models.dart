@@ -137,13 +137,16 @@ class FutureGenerationRule {
   }
 }
 
+const kDefaultCurrency = 'USD';
+const kDefaultLocale = 'en_US';
+
 @immutable
 class LedgerPreferences {
   const LedgerPreferences({
-    this.baseCurrency = 'INR',
-    this.displayCurrency = 'INR',
-    this.enabledCurrencies = const ['INR'],
-    this.locale = 'en_IN',
+    this.baseCurrency = kDefaultCurrency,
+    this.displayCurrency = kDefaultCurrency,
+    this.enabledCurrencies = const [kDefaultCurrency],
+    this.locale = kDefaultLocale,
     this.startDayOfMonth = 1,
     this.homeWidgetOrder = kRnDefaultHomeWidgetOrder,
     this.homeWidgetHidden = const [],
@@ -224,6 +227,10 @@ class AccountLoanDetails {
     this.repaymentCount,
     this.repaymentStartsOn,
     this.repaymentSourceAccountId,
+    this.recurrenceFrequency = 'monthly',
+    this.recurrenceInterval = 1,
+    this.recurrenceDaysOfWeek,
+    this.recurrenceDaysOfMonth,
     this.hideInterestInLedger = true,
   });
 
@@ -234,6 +241,10 @@ class AccountLoanDetails {
   final int? repaymentCount;
   final DateTime? repaymentStartsOn;
   final String? repaymentSourceAccountId;
+  final String recurrenceFrequency;
+  final int recurrenceInterval;
+  final List<int>? recurrenceDaysOfWeek;
+  final List<int>? recurrenceDaysOfMonth;
   final bool hideInterestInLedger;
 
   AccountLoanDetails copyWith({
@@ -244,6 +255,10 @@ class AccountLoanDetails {
     int? repaymentCount,
     DateTime? repaymentStartsOn,
     String? repaymentSourceAccountId,
+    String? recurrenceFrequency,
+    int? recurrenceInterval,
+    List<int>? recurrenceDaysOfWeek,
+    List<int>? recurrenceDaysOfMonth,
     bool? hideInterestInLedger,
   }) {
     return AccountLoanDetails(
@@ -255,6 +270,11 @@ class AccountLoanDetails {
       repaymentStartsOn: repaymentStartsOn ?? this.repaymentStartsOn,
       repaymentSourceAccountId:
           repaymentSourceAccountId ?? this.repaymentSourceAccountId,
+      recurrenceFrequency: recurrenceFrequency ?? this.recurrenceFrequency,
+      recurrenceInterval: recurrenceInterval ?? this.recurrenceInterval,
+      recurrenceDaysOfWeek: recurrenceDaysOfWeek ?? this.recurrenceDaysOfWeek,
+      recurrenceDaysOfMonth:
+          recurrenceDaysOfMonth ?? this.recurrenceDaysOfMonth,
       hideInterestInLedger: hideInterestInLedger ?? this.hideInterestInLedger,
     );
   }
@@ -446,6 +466,9 @@ class TransactionRecord {
     this.notes,
     this.importBatchId,
     this.recurrenceFrequency,
+    this.recurrenceInterval = 1,
+    this.recurrenceDaysOfWeek,
+    this.recurrenceDaysOfMonth,
     this.attachments = const [],
     this.isReimbursable = false,
     this.isTaxDeductible = false,
@@ -475,6 +498,9 @@ class TransactionRecord {
   final String? notes;
   final String? importBatchId;
   final String? recurrenceFrequency;
+  final int recurrenceInterval;
+  final List<int>? recurrenceDaysOfWeek;
+  final List<int>? recurrenceDaysOfMonth;
   final List<TransactionAttachment> attachments;
   final bool isReimbursable;
   final bool isTaxDeductible;
@@ -504,6 +530,9 @@ class TransactionRecord {
     String? notes,
     String? importBatchId,
     String? recurrenceFrequency,
+    int? recurrenceInterval,
+    List<int>? recurrenceDaysOfWeek,
+    List<int>? recurrenceDaysOfMonth,
     List<TransactionAttachment>? attachments,
     bool? isReimbursable,
     bool? isTaxDeductible,
@@ -533,6 +562,9 @@ class TransactionRecord {
       notes: notes ?? this.notes,
       importBatchId: importBatchId ?? this.importBatchId,
       recurrenceFrequency: recurrenceFrequency ?? this.recurrenceFrequency,
+      recurrenceInterval: recurrenceInterval ?? this.recurrenceInterval,
+      recurrenceDaysOfWeek: recurrenceDaysOfWeek ?? this.recurrenceDaysOfWeek,
+      recurrenceDaysOfMonth: recurrenceDaysOfMonth ?? this.recurrenceDaysOfMonth,
       attachments: attachments ?? this.attachments,
       isReimbursable: isReimbursable ?? this.isReimbursable,
       isTaxDeductible: isTaxDeductible ?? this.isTaxDeductible,
@@ -553,19 +585,44 @@ class Budget {
     required this.name,
     required this.amount,
     required this.spent,
+    this.targetDate,
+    this.frequency = 'monthly',
+    this.interval = 1,
+    this.daysOfWeek,
+    this.daysOfMonth,
   });
 
   final String id;
   final String name;
   final Money amount;
   final Money spent;
+  final DateTime? targetDate;
+  final String frequency;
+  final int interval;
+  final List<int>? daysOfWeek;
+  final List<int>? daysOfMonth;
 
-  Budget copyWith({String? id, String? name, Money? amount, Money? spent}) {
+  Budget copyWith({
+    String? id,
+    String? name,
+    Money? amount,
+    Money? spent,
+    DateTime? targetDate,
+    String? frequency,
+    int? interval,
+    List<int>? daysOfWeek,
+    List<int>? daysOfMonth,
+  }) {
     return Budget(
       id: id ?? this.id,
       name: name ?? this.name,
       amount: amount ?? this.amount,
       spent: spent ?? this.spent,
+      targetDate: targetDate ?? this.targetDate,
+      frequency: frequency ?? this.frequency,
+      interval: interval ?? this.interval,
+      daysOfWeek: daysOfWeek ?? this.daysOfWeek,
+      daysOfMonth: daysOfMonth ?? this.daysOfMonth,
     );
   }
 }
@@ -577,19 +634,44 @@ class Goal {
     required this.name,
     required this.target,
     required this.saved,
+    this.targetDate,
+    this.frequency = 'once',
+    this.interval = 1,
+    this.daysOfWeek,
+    this.daysOfMonth,
   });
 
   final String id;
   final String name;
   final Money target;
   final Money saved;
+  final DateTime? targetDate;
+  final String frequency;
+  final int interval;
+  final List<int>? daysOfWeek;
+  final List<int>? daysOfMonth;
 
-  Goal copyWith({String? id, String? name, Money? target, Money? saved}) {
+  Goal copyWith({
+    String? id,
+    String? name,
+    Money? target,
+    Money? saved,
+    DateTime? targetDate,
+    String? frequency,
+    int? interval,
+    List<int>? daysOfWeek,
+    List<int>? daysOfMonth,
+  }) {
     return Goal(
       id: id ?? this.id,
       name: name ?? this.name,
       target: target ?? this.target,
       saved: saved ?? this.saved,
+      targetDate: targetDate ?? this.targetDate,
+      frequency: frequency ?? this.frequency,
+      interval: interval ?? this.interval,
+      daysOfWeek: daysOfWeek ?? this.daysOfWeek,
+      daysOfMonth: daysOfMonth ?? this.daysOfMonth,
     );
   }
 }

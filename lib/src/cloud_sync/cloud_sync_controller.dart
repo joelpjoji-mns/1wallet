@@ -89,6 +89,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
   Timer? _uploadTimer;
   Timer? _retryTimer;
+  Timer? _periodicSyncTimer;
   int _uploadFailureCount = 0;
   int _uploadCircuitOpenUntil = 0;
   bool _localClearInProgress = false;
@@ -174,6 +175,59 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     _uploadTimer = null;
     _retryTimer?.cancel();
     _retryTimer = null;
+    _periodicSyncTimer?.cancel();
+    _periodicSyncTimer = null;
+  }
+
+  void _setupPeriodicSync() {
+    _periodicSyncTimer?.cancel();
+    final interval = state.metadata?.syncIntervalHours;
+    if (interval == null || interval <= 0) return;
+
+    _periodicSyncTimer = Timer.periodic(Duration(hours: interval), (timer) {
+      final user = _ref.read(authControllerProvider).user;
+      if (user != null && state.phase == CloudSyncPhase.idle) {
+        fullSync(reason: 'periodic');
+      }
+    });
+  }
+
+  Future<void> updateSyncInterval(int? hours) async {
+    var metadata = state.metadata ?? await CloudSyncMetadata.load();
+    metadata = metadata.copyWith(syncIntervalHours: hours);
+    await metadata.save();
+    state = state.copyWith(metadata: metadata);
+    _setupPeriodicSync();
+  }
+
+  Future<void> fullSync({required String reason}) async {
+    final user = _ref.read(authControllerProvider).user;
+    if (user == null) return;
+
+    try {
+      state = state.copyWith(phase: CloudSyncPhase.checking, error: null);
+      
+      final metadata = state.metadata ?? await CloudSyncMetadata.load();
+      
+      final userDoc = await _firestore
+          .doc('users/${user.id}')
+          .get()
+          .timeout(cloudSyncReadTimeout);
+          
+      final bool shouldPull = userDoc.exists &&
+          userDoc.data()?['lastWriterDeviceId'] != metadata.deviceId;
+
+      if (shouldPull) {
+        await _restoreFromCloud(user.id, metadata);
+      } else {
+        await uploadSnapshot(reason: reason);
+      }
+    } catch (e) {
+      state = state.copyWith(
+        phase: CloudSyncPhase.error,
+        error: 'Full sync failed: $e',
+      );
+    }
   }
 
   Future<void> _bootstrap(String userId) async {
@@ -191,6 +245,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         await metadata.save();
       }
       state = state.copyWith(metadata: metadata);
+      _setupPeriodicSync();
 
       final prefsDoc = await _firestore
           .doc('users/$userId/metadata/preferences')
@@ -523,38 +578,25 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     state = state.copyWith(phase: CloudSyncPhase.restoring, error: null);
 
     try {
-      final accountsQuery = await _firestore
-          .collection('users/$userId/accounts')
-          .get()
-          .timeout(cloudSyncReadTimeout);
-      final categoriesQuery = await _firestore
-          .collection('users/$userId/categories')
-          .get()
-          .timeout(cloudSyncReadTimeout);
-      final txnsQuery = await _firestore
-          .collection('users/$userId/transactions')
-          .get()
-          .timeout(cloudSyncReadTimeout);
-      final budgetsQuery = await _firestore
-          .collection('users/$userId/budgets')
-          .get()
-          .timeout(cloudSyncReadTimeout);
-      final goalsQuery = await _firestore
-          .collection('users/$userId/goals')
-          .get()
-          .timeout(cloudSyncReadTimeout);
-      final captureQuery = await _firestore
-          .collection('users/$userId/captureCandidates')
-          .get()
-          .timeout(cloudSyncReadTimeout);
-      final importsQuery = await _firestore
-          .collection('users/$userId/importBatches')
-          .get()
-          .timeout(cloudSyncReadTimeout);
-      final prefsDoc = await _firestore
-          .doc('users/$userId/metadata/preferences')
-          .get()
-          .timeout(cloudSyncReadTimeout);
+      final results = await Future.wait([
+        _firestore.collection('users/$userId/accounts').get(),
+        _firestore.collection('users/$userId/categories').get(),
+        _firestore.collection('users/$userId/transactions').get(),
+        _firestore.collection('users/$userId/budgets').get(),
+        _firestore.collection('users/$userId/goals').get(),
+        _firestore.collection('users/$userId/captureCandidates').get(),
+        _firestore.collection('users/$userId/importBatches').get(),
+        _firestore.doc('users/$userId/metadata/preferences').get(),
+      ]).timeout(const Duration(seconds: 45));
+
+      final accountsQuery = results[0] as QuerySnapshot<Map<String, dynamic>>;
+      final categoriesQuery = results[1] as QuerySnapshot<Map<String, dynamic>>;
+      final txnsQuery = results[2] as QuerySnapshot<Map<String, dynamic>>;
+      final budgetsQuery = results[3] as QuerySnapshot<Map<String, dynamic>>;
+      final goalsQuery = results[4] as QuerySnapshot<Map<String, dynamic>>;
+      final captureQuery = results[5] as QuerySnapshot<Map<String, dynamic>>;
+      final importsQuery = results[6] as QuerySnapshot<Map<String, dynamic>>;
+      final prefsDoc = results[7] as DocumentSnapshot<Map<String, dynamic>>;
 
       final restoreData = {
         'userId': userId,
@@ -616,6 +658,18 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
   void resumeAfterLocalClear() {
     _localClearInProgress = false;
+  }
+
+  void skipBootstrap() {
+    final user = _ref.read(authControllerProvider).user;
+    if (user == null) return;
+    
+    state = state.copyWith(
+      phase: CloudSyncPhase.idle,
+      bootstrapComplete: true,
+      bootstrappedUserId: user.id,
+      error: 'Restoration skipped. You are working with local data.',
+    );
   }
 
   void retryBootstrap() {

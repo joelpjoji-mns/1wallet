@@ -444,7 +444,7 @@ void main() {
 
       final postponed = await controller.postponeTransaction(
         scheduled.id,
-        const Duration(days: 7),
+        nextDate.add(const Duration(days: 7)),
       );
       expect(postponed.occurredAt, nextDate.add(const Duration(days: 7)));
 

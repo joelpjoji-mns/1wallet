@@ -1,4 +1,5 @@
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import '../../data/ledger_models.dart';
 
 const String kReceiptOcrProvider = 'mlkit-text-recognition';
 
@@ -456,7 +457,7 @@ bool _isMerchantLine(String line) {
   if (_merchantExcludeKeywords.any((kw) => lowerLine.contains(kw))) {
     return false;
   }
-  if (_amountMatches(cleanedLine, 'INR').isNotEmpty) return false;
+  if (_amountMatches(cleanedLine, kDefaultCurrency).isNotEmpty) return false;
   if (RegExp(r'\d{1,2}[./-]\d{1,2}[./-]\d{2,4}').hasMatch(cleanedLine)) {
     return false;
   }
