@@ -47,8 +47,6 @@ class _PermissionsSetupScreenState extends ConsumerState<PermissionsSetupScreen>
     return _smsState.overall == 'granted';
   }
 
-  bool get _setupReady => _smsReady;
-
   Future<void> _refresh() async {
     setState(() => _loading = true);
     try {
