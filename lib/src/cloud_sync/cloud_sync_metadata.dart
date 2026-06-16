@@ -26,6 +26,7 @@ class CloudSyncMetadata {
     this.syncedCaptureCandidateIds,
     this.syncedImportBatchIds,
     this.syncedDocumentHashes,
+    this.syncIntervalHours,
   });
 
   final int version;
@@ -46,6 +47,7 @@ class CloudSyncMetadata {
   final List<String>? syncedCaptureCandidateIds;
   final List<String>? syncedImportBatchIds;
   final Map<String, String>? syncedDocumentHashes;
+  final int? syncIntervalHours;
 
   CloudSyncMetadata copyWith({
     int? version,
@@ -66,6 +68,7 @@ class CloudSyncMetadata {
     List<String>? syncedCaptureCandidateIds,
     List<String>? syncedImportBatchIds,
     Map<String, String>? syncedDocumentHashes,
+    int? syncIntervalHours,
   }) {
     return CloudSyncMetadata(
       version: version ?? this.version,
@@ -86,6 +89,7 @@ class CloudSyncMetadata {
       syncedCaptureCandidateIds: syncedCaptureCandidateIds ?? this.syncedCaptureCandidateIds,
       syncedImportBatchIds: syncedImportBatchIds ?? this.syncedImportBatchIds,
       syncedDocumentHashes: syncedDocumentHashes ?? this.syncedDocumentHashes,
+      syncIntervalHours: syncIntervalHours ?? this.syncIntervalHours,
     );
   }
 
@@ -109,6 +113,7 @@ class CloudSyncMetadata {
       'syncedCaptureCandidateIds': syncedCaptureCandidateIds,
       'syncedImportBatchIds': syncedImportBatchIds,
       'syncedDocumentHashes': syncedDocumentHashes,
+      'syncIntervalHours': syncIntervalHours,
     };
   }
 
@@ -132,6 +137,7 @@ class CloudSyncMetadata {
       syncedCaptureCandidateIds: (json['syncedCaptureCandidateIds'] as List?)?.cast<String>(),
       syncedImportBatchIds: (json['syncedImportBatchIds'] as List?)?.cast<String>(),
       syncedDocumentHashes: (json['syncedDocumentHashes'] as Map?)?.cast<String, String>(),
+      syncIntervalHours: json['syncIntervalHours'] as int?,
     );
   }
 

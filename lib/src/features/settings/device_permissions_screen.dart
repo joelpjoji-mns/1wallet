@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../widgets/app_kit.dart';
 import '../capture/sms_inbox_reader.dart';
@@ -17,6 +18,7 @@ class _DevicePermissionsScreenState extends State<DevicePermissionsScreen> {
   var _loading = true;
   var _smsAvailable = false;
   var _requestingSms = false;
+  var _requestingMedia = false;
   AndroidSmsPermissionState _smsState = const AndroidSmsPermissionState(
     read: AndroidSmsPermissionStatus.unavailable,
     receive: AndroidSmsPermissionStatus.unavailable,
@@ -82,6 +84,20 @@ class _DevicePermissionsScreenState extends State<DevicePermissionsScreen> {
         );
     } finally {
       if (mounted) setState(() => _requestingSms = false);
+    }
+  }
+
+  Future<void> _requestMedia() async {
+    if (_requestingMedia) return;
+    setState(() => _requestingMedia = true);
+    try {
+      await [
+        Permission.camera,
+        Permission.photos,
+        Permission.storage,
+      ].request();
+    } finally {
+      if (mounted) setState(() => _requestingMedia = false);
     }
   }
 
@@ -166,6 +182,11 @@ class _DevicePermissionsScreenState extends State<DevicePermissionsScreen> {
                   spacing: 10,
                   runSpacing: 10,
                   children: [
+                    FilledButton.icon(
+                      onPressed: _requestingMedia ? null : _requestMedia,
+                      icon: const Icon(Icons.shield_outlined),
+                      label: Text(_requestingMedia ? 'Requesting…' : 'Allow media'),
+                    ),
                     FilledButton.tonalIcon(
                       onPressed: () => context.push('/add'),
                       icon: const Icon(Icons.receipt_long_outlined),

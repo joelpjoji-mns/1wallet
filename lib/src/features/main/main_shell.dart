@@ -16,6 +16,7 @@ import '../accounts/accounts_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../home/home_screen.dart';
 import '../notifications/notification_engine.dart';
+import '../../services/notification_service.dart';
 import '../planner/planner_screen.dart';
 import '../transactions/transactions_screen.dart';
 import '../updates/app_update_provider.dart';
@@ -90,6 +91,10 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<LedgerState>(ledgerProvider, (previous, next) {
+      NotificationService.checkAndShowAlerts(next);
+    });
+
     return BackButtonListener(
       onBackButtonPressed: () async {
         if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
