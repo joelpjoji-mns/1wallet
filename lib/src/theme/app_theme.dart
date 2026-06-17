@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../design/tokens.dart';
 
@@ -99,7 +100,7 @@ abstract final class AppTheme {
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
-      fontFamily: 'Inter',
+      fontFamily: GoogleFonts.outfit().fontFamily,
       scaffoldBackgroundColor: amoled
           ? AppColors.amoledBackground
           : dark

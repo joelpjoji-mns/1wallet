@@ -145,7 +145,9 @@ class _BudgetGoalEditorScreenState
                           onSelected: (selected) {
                             setState(() {
                               if (selected) {
-                                _daysOfWeek.add(i);
+                                if (_daysOfWeek.length < _interval) {
+                                  _daysOfWeek.add(i);
+                                }
                               } else {
                                 _daysOfWeek.remove(i);
                               }
@@ -172,7 +174,9 @@ class _BudgetGoalEditorScreenState
                           onSelected: (selected) {
                             setState(() {
                               if (selected) {
-                                _daysOfMonth.add(i);
+                                if (_daysOfMonth.length < _interval) {
+                                  _daysOfMonth.add(i);
+                                }
                               } else {
                                 _daysOfMonth.remove(i);
                               }
