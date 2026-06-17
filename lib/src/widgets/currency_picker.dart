@@ -17,8 +17,8 @@ Future<String?> showCurrencyPicker({
   String? selectedValue,
 }) async {
   final currencies = {
-    ...availableCurrencies(state),
-    ...commonCurrencies,
+    state.preferences.baseCurrency,
+    ...state.preferences.enabledCurrencies,
   }.toList()..sort();
 
   return showFullScreenPicker<String>(
