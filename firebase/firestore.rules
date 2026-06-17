@@ -199,7 +199,7 @@ service cloud.firestore {
         data.platform == platform &&
         data.channel is string && data.channel.matches('^[a-z0-9._-]{1,40}$') &&
         data.status == 'published' &&
-        data.versionName is string && data.versionName.matches('^[0-9]+\\.[0-9]+\\.[0-9]+([+-][0-9A-Za-z.-]+)?$') &&
+        data.versionName is string && data.versionName.matches('^[0-9]+\\.[0-9]+(\\.[0-9]+)?([+-][0-9A-Za-z.-]+)?$') &&
         data.versionCode is int && data.versionCode > 0 && data.versionCode <= 2147483647 &&
         data.runtimeVersion is string && data.runtimeVersion.size() > 0 && data.runtimeVersion.size() <= 80 &&
         data.releaseType in ['major', 'minor', 'patch'] &&
