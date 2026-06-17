@@ -19,7 +19,7 @@ function writeOutput(file, values) {
   }
 }
 
-const channel = readArg('--channel', 'stable');
+const runNumber = readArg('--run-number');
 const outputFile = readArg('--output', process.env.GITHUB_OUTPUT);
 const pubspecPath = path.resolve(__dirname, '..', 'pubspec.yaml');
 const pubspec = fs.readFileSync(pubspecPath, 'utf8');
@@ -30,22 +30,21 @@ if (!versionMatch) {
   process.exit(1);
 }
 
-const isBeta = channel === 'beta';
-const [, versionName, rawVersionCode] = versionMatch;
-const parsedVersionCode = Number.parseInt(rawVersionCode, 10);
-if (!Number.isInteger(parsedVersionCode) || parsedVersionCode <= 1) {
-  console.error('Unable to read a numeric build number greater than 1 from pubspec.yaml.');
-  process.exit(1);
-}
-const versionCode = String(isBeta ? parsedVersionCode - 1 : parsedVersionCode);
-const suffix = isBeta ? '-beta' : '';
+const [, pubspecVersionName, pubspecVersionCode] = versionMatch;
+
+// Use run number for versioning if provided
+const versionCode = runNumber || pubspecVersionCode;
+// User wants "1.<run_number>" style version names
+const versionName = runNumber ? `1.${runNumber}` : pubspecVersionName;
+
+const channel = 'stable';
 const values = {
   versionName,
   versionCode,
   apkFileName: `1wallet-arm64-v8a-${versionName}-${channel}.apk`,
-  tag: `android-${versionName}${suffix}`,
-  releaseTitle: `1Wallet Android ${versionName}${isBeta ? ' beta' : ''}`,
-  prerelease: isBeta ? 'true' : 'false',
+  tag: `android-${versionName}`,
+  releaseTitle: `1Wallet Android ${versionName}`,
+  prerelease: 'false',
   channel,
   manifestFileName: `mobile-update-${versionName}-${channel}.json`,
 };
