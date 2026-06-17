@@ -242,18 +242,18 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
           horizontalInterval: interval,
           getDrawingHorizontalLine: (value) {
             if (value == 0) {
-              return const FlLine(
-                color: Color(0xff64748b),
+              return FlLine(
+                color: scheme.onSurfaceVariant,
                 strokeWidth: 2,
               );
             }
-            return const FlLine(
-              color: Color(0xffe2e8f0),
+            return FlLine(
+              color: scheme.outlineVariant,
               strokeWidth: 1,
             );
           },
-          getDrawingVerticalLine: (value) => const FlLine(
-            color: Color(0xffe2e8f0),
+          getDrawingVerticalLine: (value) => FlLine(
+            color: scheme.outlineVariant,
             strokeWidth: 1,
           ),
         ),
@@ -272,7 +272,7 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
                     DateFormat.yMMMd().format(date),
-                    style: const TextStyle(color: Color(0xff94a3b8), fontSize: 10),
+                    style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 10),
                   ),
                 );
               },
@@ -290,7 +290,7 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
                   child: Text(
                     _formatYAxisLabel(value),
                     textAlign: TextAlign.right,
-                    style: const TextStyle(color: Color(0xff94a3b8), fontSize: 10),
+                    style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 10),
                   ),
                 );
               },
@@ -299,9 +299,9 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
         ),
         borderData: FlBorderData(
           show: true,
-          border: const Border(
-            bottom: BorderSide(color: Color(0xffe2e8f0), width: 1),
-            left: BorderSide(color: Color(0xffe2e8f0), width: 1),
+          border: Border(
+            bottom: BorderSide(color: scheme.outlineVariant, width: 1),
+            left: BorderSide(color: scheme.outlineVariant, width: 1),
           ),
         ),
         minX: minX,
