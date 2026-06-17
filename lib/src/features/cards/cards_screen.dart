@@ -80,7 +80,7 @@ class _AccountCollectionScreen extends ConsumerWidget {
                   account.currency,
                 ].whereType<String>().join(' · '),
                 meta: formatMoney(
-                  accountBalance(state, account),
+                  convertMoneyForDisplay(state, accountBalance(state, account)),
                   state.preferences.locale,
                 ),
                 iconColor: account.color,

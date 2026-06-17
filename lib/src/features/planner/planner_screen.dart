@@ -71,9 +71,12 @@ class PlannerScreen extends ConsumerWidget {
                 child: MetricTile(
                   label: 'Can allocate',
                   value: formatMoney(
-                    Money(
-                      amountMinor: free,
-                      currency: state.preferences.baseCurrency,
+                    convertMoneyForDisplay(
+                      state,
+                      Money(
+                        amountMinor: free,
+                        currency: state.preferences.baseCurrency,
+                      ),
                     ),
                     state.preferences.locale,
                   ),
@@ -113,9 +116,12 @@ class PlannerScreen extends ConsumerWidget {
                 InfoRow(
                   label: 'EMIs and cards',
                   value: formatMoney(
-                    Money(
-                      amountMinor: debtCommitments,
-                      currency: state.preferences.baseCurrency,
+                    convertMoneyForDisplay(
+                      state,
+                      Money(
+                        amountMinor: debtCommitments,
+                        currency: state.preferences.baseCurrency,
+                      ),
                     ),
                     state.preferences.locale,
                   ),
@@ -125,9 +131,12 @@ class PlannerScreen extends ConsumerWidget {
                 InfoRow(
                   label: 'Left for saving/prepayment',
                   value: formatMoney(
-                    Money(
-                      amountMinor: free,
-                      currency: state.preferences.baseCurrency,
+                    convertMoneyForDisplay(
+                      state,
+                      Money(
+                        amountMinor: free,
+                        currency: state.preferences.baseCurrency,
+                      ),
                     ),
                     state.preferences.locale,
                   ),

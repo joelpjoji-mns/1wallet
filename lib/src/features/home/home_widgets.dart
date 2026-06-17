@@ -479,7 +479,7 @@ class _BalanceTrendHomeWidgetState extends ConsumerState<BalanceTrendHomeWidget>
     final values = trend.map((point) => point.balance.amountMinor).toList();
     final periodLabel = trend.isEmpty
         ? _period
-        : '${_shortDate(trend.first.date)} to ${_shortDate(trend.last.date)}';
+        : '${_shortDate(trend.first.date, widget.state.preferences.locale)} to ${_shortDate(trend.last.date, widget.state.preferences.locale)}';
 
     var minY = values.isEmpty ? 0.0 : values.reduce(math.min).toDouble();
     var maxY = values.isEmpty ? 0.0 : values.reduce(math.max).toDouble();
@@ -527,9 +527,9 @@ class _BalanceTrendHomeWidgetState extends ConsumerState<BalanceTrendHomeWidget>
     ];
 
     final xLabels = [
-      if (start != null) _shortDate(start) else trend.isNotEmpty ? _shortDate(trend.first.date) : '',
+      if (start != null) _shortDate(start, widget.state.preferences.locale) else trend.isNotEmpty ? _shortDate(trend.first.date, widget.state.preferences.locale) : '',
       '${trend.length} moves',
-      _shortDate(now),
+      _shortDate(now, widget.state.preferences.locale),
     ];
 
     return HomeWidgetCard(
@@ -687,9 +687,9 @@ class _CurrencyValuesHomeWidgetState extends ConsumerState<CurrencyValuesHomeWid
     final xLabels = rates.isEmpty
         ? <String>[]
         : [
-            _shortDate(rates.first.asOfDate),
+            _shortDate(rates.first.asOfDate, widget.state.preferences.locale),
             '${rates.length} changes',
-            _shortDate(rates.last.asOfDate),
+            _shortDate(rates.last.asOfDate, widget.state.preferences.locale),
           ];
 
     final scheme = Theme.of(context).colorScheme;
@@ -726,7 +726,7 @@ class _CurrencyValuesHomeWidgetState extends ConsumerState<CurrencyValuesHomeWid
           ],
           const SizedBox(height: AppSpacing.md),
           Text(
-            'Latest ${_shortDate(DateTime.now())} 1 $quote = ${_rate.toStringAsFixed(2)} ${snapshot.baseCurrency}',
+            'Latest ${_shortDate(DateTime.now(), widget.state.preferences.locale)} 1 $quote = ${_rate.toStringAsFixed(2)} ${snapshot.baseCurrency}',
             style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -1031,7 +1031,7 @@ class LoansAndEmisHomeWidget extends ConsumerWidget {
             HomeDetailRow(
               icon: Icons.event_available_outlined,
               title: 'Next EMI',
-              subtitle: _shortDate(next.occurredAt),
+              subtitle: _shortDate(next.occurredAt, state.preferences.locale),
               trailing: _formatDisplayMoney(state, next.baseAmount),
               iconColor: Theme.of(context).colorScheme.error,
               tone: MetricTone.danger,
@@ -1145,7 +1145,7 @@ class LoansHomeWidget extends ConsumerWidget {
             HomeDetailRow(
               icon: Icons.event_available_outlined,
               title: 'Next EMI',
-              subtitle: _shortDate(next.occurredAt),
+              subtitle: _shortDate(next.occurredAt, state.preferences.locale),
               trailing: _formatDisplayMoney(state, next.baseAmount),
               iconColor: Theme.of(context).colorScheme.error,
               tone: MetricTone.danger,
@@ -1342,7 +1342,7 @@ class CashflowForecastHomeWidget extends ConsumerWidget {
               icon: Icons.schedule_outlined,
               title: 'Next scheduled',
               subtitle:
-                  '${_shortDate(next.occurredAt)} · ${transactionTypeLabel(next.type)}',
+                  '${_shortDate(next.occurredAt, state.preferences.locale)} · ${transactionTypeLabel(next.type)}',
               trailing: _formatDisplayMoney(state, next.baseAmount),
               iconColor: Theme.of(context).colorScheme.error,
               tone: incomeTypes.contains(next.type)
@@ -1559,7 +1559,7 @@ class CashflowBookHomeWidget extends ConsumerWidget {
     final net = flow.income.amountMinor - flow.expense.amountMinor;
     return HomeWidgetCard(
       title: 'Cashflow book',
-      subtitle: _monthRangeLabel(DateTime.now()),
+      subtitle: _monthRangeLabel(DateTime.now(), state.preferences.locale),
       icon: Icons.receipt_long_outlined,
       iconColor: Theme.of(context).colorScheme.error,
       child: Column(
@@ -2100,13 +2100,13 @@ List<_CategoryTotal> _categoryTotals(
   return items;
 }
 
-String _monthRangeLabel(DateTime value) {
+String _monthRangeLabel(DateTime value, String locale) {
   final start = DateTime(value.year, value.month);
   final end = DateTime(value.year, value.month + 1, 0);
-  return '${formatLedgerDate(start, 'en_IN')} to ${formatLedgerDate(end, 'en_IN')}';
+  return '${formatLedgerDate(start, locale)} to ${formatLedgerDate(end, locale)}';
 }
 
-String _shortDate(DateTime date) => formatLedgerDate(date, 'en_IN');
+String _shortDate(DateTime date, String locale) => formatLedgerDate(date, locale);
 
 class _AccountGroupSummary {
   const _AccountGroupSummary({

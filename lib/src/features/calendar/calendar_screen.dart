@@ -135,9 +135,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               Expanded(
                 child: SummaryPill(
                   label: 'Net',
-                  money: Money(
-                    amountMinor: net,
-                    currency: state.preferences.baseCurrency,
+                  money: convertMoneyForDisplay(
+                    state,
+                    Money(
+                      amountMinor: net,
+                      currency: state.preferences.baseCurrency,
+                    ),
                   ),
                   tone: net >= 0 ? MetricTone.positive : MetricTone.danger,
                   locale: state.preferences.locale,
@@ -147,9 +150,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               Expanded(
                 child: SummaryPill(
                   label: 'Income',
-                  money: Money(
-                    amountMinor: income,
-                    currency: state.preferences.baseCurrency,
+                  money: convertMoneyForDisplay(
+                    state,
+                    Money(
+                      amountMinor: income,
+                      currency: state.preferences.baseCurrency,
+                    ),
                   ),
                   tone: MetricTone.positive,
                   locale: state.preferences.locale,
@@ -159,9 +165,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               Expanded(
                 child: SummaryPill(
                   label: 'Expense',
-                  money: Money(
-                    amountMinor: expense,
-                    currency: state.preferences.baseCurrency,
+                  money: convertMoneyForDisplay(
+                    state,
+                    Money(
+                      amountMinor: expense,
+                      currency: state.preferences.baseCurrency,
+                    ),
                   ),
                   tone: MetricTone.danger,
                   locale: state.preferences.locale,
@@ -732,7 +741,7 @@ class _DayCell extends StatelessWidget {
               const Spacer(),
               if (income > 0)
                 Text(
-                  '+${formatCompactMoney(Money(amountMinor: income, currency: state.preferences.baseCurrency), state.preferences.locale)}',
+                  '+${formatCompactMoney(convertMoneyForDisplay(state, Money(amountMinor: income, currency: state.preferences.baseCurrency)), state.preferences.locale)}',
                   maxLines: 1,
                   style: TextStyle(
                     fontSize: 9,
@@ -742,7 +751,7 @@ class _DayCell extends StatelessWidget {
                 ),
               if (expense > 0)
                 Text(
-                  '-${formatCompactMoney(Money(amountMinor: expense, currency: state.preferences.baseCurrency), state.preferences.locale)}',
+                  '-${formatCompactMoney(convertMoneyForDisplay(state, Money(amountMinor: expense, currency: state.preferences.baseCurrency)), state.preferences.locale)}',
                   maxLines: 1,
                   style: TextStyle(
                     fontSize: 9,

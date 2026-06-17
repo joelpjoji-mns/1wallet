@@ -11,8 +11,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../services/notification_service.dart';
 
-const _updateChannelPreferenceKey = 'appUpdate.channel';
-
 class Changelog {
   final List<String> newFeatures;
   final List<String> bugFixes;
@@ -150,7 +148,6 @@ class AppUpdateState {
   final AppUpdateRelease? currentRelease;
   final String currentVersionName;
   final int currentVersionCode;
-  final String channel;
   final double progress;
   final int bytesWritten;
   final int bytesExpected;
@@ -163,7 +160,6 @@ class AppUpdateState {
     this.currentRelease,
     this.currentVersionName = '',
     this.currentVersionCode = 0,
-    this.channel = 'stable',
     this.progress = 0.0,
     this.bytesWritten = 0,
     this.bytesExpected = 0,
@@ -177,7 +173,6 @@ class AppUpdateState {
     AppUpdateRelease? currentRelease,
     String? currentVersionName,
     int? currentVersionCode,
-    String? channel,
     double? progress,
     int? bytesWritten,
     int? bytesExpected,
@@ -198,7 +193,6 @@ class AppUpdateState {
           : currentRelease ?? this.currentRelease,
       currentVersionName: currentVersionName ?? this.currentVersionName,
       currentVersionCode: currentVersionCode ?? this.currentVersionCode,
-      channel: channel ?? this.channel,
       progress: progress ?? this.progress,
       bytesWritten: bytesWritten ?? this.bytesWritten,
       bytesExpected: bytesExpected ?? this.bytesExpected,
@@ -216,35 +210,17 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
   final Dio _dio = Dio();
 
   AppUpdateProvider() : super(AppUpdateState()) {
-    _loadChannelAndCheck();
+    _init();
   }
 
   FirebaseFirestore get _firestore => FirebaseFirestore.instance;
 
-  Future<void> _loadChannelAndCheck() async {
+  Future<void> _init() async {
     try {
       if (Firebase.apps.isEmpty) return;
     } catch (_) {
       return; // If Firebase is not linked
     }
-    final prefs = await SharedPreferences.getInstance();
-    final savedChannel = prefs.getString(_updateChannelPreferenceKey);
-    if (savedChannel == 'beta' || savedChannel == 'stable') {
-      state = state.copyWith(channel: savedChannel);
-    }
-    await checkForUpdates();
-  }
-
-  Future<void> setChannel(String channel) async {
-    state = state.copyWith(
-      status: UpdateStatus.checking,
-      channel: channel,
-      clearLatestRelease: true,
-      clearErrorMessage: true,
-      clearDownloadedApkPath: true,
-    );
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_updateChannelPreferenceKey, channel);
     await checkForUpdates();
   }
 
@@ -264,14 +240,11 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
         currentVersionCode: currentVersionCode,
       );
 
-      final currentRelease = await _releaseForVersionCode(
-        currentVersionCode,
-        channel: state.channel,
-      );
+      final currentRelease = await _releaseForVersionCode(currentVersionCode);
 
       final channelDoc = await _firestore
           .collection('appUpdates/android/channels')
-          .doc(state.channel)
+          .doc('stable')
           .get();
 
       if (!channelDoc.exists) {
@@ -300,14 +273,13 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
         return;
       }
 
-      if (latestVersionCode > currentVersionCode) {
+      if (latestVersionCode != currentVersionCode) {
         final release = await _releaseForVersionCode(
           latestVersionCode,
-          channel: state.channel,
           releaseId: latestReleaseId,
         );
 
-        if (release != null && release.channel == state.channel) {
+        if (release != null) {
           state = state.copyWith(
             status: UpdateStatus.idle,
             latestRelease: release,
@@ -316,12 +288,11 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
           );
 
           final prefs = await SharedPreferences.getInstance();
-          final notificationKey = 'lastNotifiedVersionCode.${state.channel}';
+          const notificationKey = 'lastNotifiedVersionCode.stable';
           final lastNotifiedVersionCode = prefs.getInt(notificationKey) ?? 0;
           if (latestVersionCode > lastNotifiedVersionCode) {
             await NotificationService.showUpdateNotification(
               release.versionName,
-              release.channel,
             );
             await prefs.setInt(notificationKey, latestVersionCode);
           }
@@ -345,13 +316,12 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
 
   Future<AppUpdateRelease?> _releaseForVersionCode(
     int versionCode, {
-    required String channel,
     String? releaseId,
   }) async {
     if (versionCode <= 0) return null;
     final ids = <String>[
       if (releaseId != null && releaseId.trim().isNotEmpty) releaseId.trim(),
-      '$channel-$versionCode',
+      'stable-$versionCode',
       versionCode.toString(),
     ];
 
@@ -362,10 +332,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
             .doc(id)
             .get();
         if (!releaseDoc.exists) continue;
-        final release = AppUpdateRelease.fromFirestore(releaseDoc);
-        if (release.channel == channel) {
-          return release;
-        }
+        return AppUpdateRelease.fromFirestore(releaseDoc);
       }
       return null;
     } on FirebaseException catch (error) {
@@ -373,6 +340,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
       rethrow;
     }
   }
+
 
   Future<void> downloadUpdate() async {
     if (state.latestRelease?.apk == null) return;
