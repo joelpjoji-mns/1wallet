@@ -43,9 +43,12 @@ class RecurringScreen extends ConsumerWidget {
         .fold(0, (sum, t) => sum + t.amount.amountMinor.abs());
     final netMinor = plannedIncomeMinor - plannedExpenseMinor;
 
-    final incomeText = formatMoney(Money(amountMinor: plannedIncomeMinor, currency: state.preferences.baseCurrency), state.preferences.locale);
-    final expenseText = formatMoney(Money(amountMinor: plannedExpenseMinor, currency: state.preferences.baseCurrency), state.preferences.locale);
-    final netText = formatMoney(Money(amountMinor: netMinor, currency: state.preferences.baseCurrency), state.preferences.locale);
+    final displayIncome = convertMoneyForDisplay(state, Money(amountMinor: plannedIncomeMinor, currency: state.preferences.baseCurrency));
+    final displayExpense = convertMoneyForDisplay(state, Money(amountMinor: plannedExpenseMinor, currency: state.preferences.baseCurrency));
+    final displayNet = convertMoneyForDisplay(state, Money(amountMinor: netMinor, currency: state.preferences.baseCurrency));
+    final incomeText = formatMoney(displayIncome, state.preferences.locale);
+    final expenseText = formatMoney(displayExpense, state.preferences.locale);
+    final netText = formatMoney(displayNet, state.preferences.locale);
 
     return RouteScaffold(
       title: switch (mode) {
@@ -251,7 +254,7 @@ class _RecurringCompactCard extends StatelessWidget {
     final primaryTitle = hasName ? transaction.name!.trim() : defaultPrimaryTitle;
     final categorySubtitle = hasName ? defaultPrimaryTitle : null;
     
-    final recurrence = _recurringCadenceLabel(transaction.recurrenceFrequency);
+    final recurrence = _recurringCadenceLabel(transaction.recurrenceFrequency, transaction.recurrenceInterval);
     final extraLine = _recurringExtraLine(
       state,
       transaction,
@@ -642,7 +645,9 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                         onSelected: (selected) {
                           setState(() {
                             if (selected) {
-                              _daysOfWeek.add(i);
+                              if (_daysOfWeek.length < _interval) {
+                                _daysOfWeek.add(i);
+                              }
                             } else {
                               _daysOfWeek.remove(i);
                             }
@@ -669,7 +674,9 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                         onSelected: (selected) {
                           setState(() {
                             if (selected) {
-                              _daysOfMonth.add(i);
+                              if (_daysOfMonth.length < _interval) {
+                                _daysOfMonth.add(i);
+                              }
                             } else {
                               _daysOfMonth.remove(i);
                             }
@@ -899,7 +906,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
             ? 'Scheduled record created.'
             : 'Scheduled record saved.',
       );
-      context.push('/recurring');
+      context.go('/recurring');
     } catch (error) {
       if (!mounted) return;
       _showRouteMessage(context, error.toString());
@@ -1102,7 +1109,7 @@ class RecurringDetailView extends ConsumerWidget {
 
     if (!context.mounted) return;
     _showRouteMessage(context, 'Scheduled record posted.');
-    context.push('/recurring/past');
+    context.go('/recurring/past');
   }
 
   Future<void> _postpone(BuildContext context, WidgetRef ref) async {
@@ -1126,7 +1133,7 @@ class RecurringDetailView extends ConsumerWidget {
       context,
       'Scheduled record postponed to ${formatLedgerDate(picked, locale)}.',
     );
-    context.push('/recurring');
+    context.go('/recurring');
   }
 
   Future<void> _skip(BuildContext context, WidgetRef ref) async {
@@ -1158,7 +1165,7 @@ class RecurringDetailView extends ConsumerWidget {
     );
     if (!context.mounted) return;
     _showRouteMessage(context, 'Scheduled record skipped.');
-    context.push('/recurring');
+    context.go('/recurring');
   }
 
   DateTime _advanceCursor(DateTime current, String frequency) {
@@ -1202,7 +1209,7 @@ class RecurringDetailView extends ConsumerWidget {
     );
     if (!context.mounted) return;
     _showRouteMessage(context, 'Scheduled record paused.');
-    context.push('/recurring');
+    context.go('/recurring');
   }
 
   Future<void> _resume(BuildContext context, WidgetRef ref) async {
@@ -1241,7 +1248,7 @@ class RecurringDetailView extends ConsumerWidget {
     if (!context.mounted) return;
     final locale = ref.read(ledgerProvider).preferences.locale;
     _showRouteMessage(context, 'Scheduled record resumed for ${formatLedgerDate(nextDate, locale)}.');
-    context.push('/recurring');
+    context.go('/recurring');
   }
 }
 
@@ -1358,14 +1365,16 @@ String _recurringPrimaryTitle(
   return category?.name ?? transactionTypeLabel(transaction.type);
 }
 
-String _recurringCadenceLabel(String? frequency) {
-  return switch (frequency) {
-    'daily' => 'Every 1 day',
-    'weekly' => 'Every 1 week',
-    'yearly' => 'Every 1 year',
-    'monthly' || null => 'Every 1 month',
-    _ => 'Every ${transactionTypeLabel(frequency)}',
+String _recurringCadenceLabel(String? frequency, [int interval = 1]) {
+  final n = interval < 1 ? 1 : interval;
+  final unit = switch (frequency) {
+    'daily' => n == 1 ? 'day' : 'days',
+    'weekly' => n == 1 ? 'week' : 'weeks',
+    'yearly' => n == 1 ? 'year' : 'years',
+    'monthly' || null => n == 1 ? 'month' : 'months',
+    _ => frequency,
   };
+  return 'Every $n $unit';
 }
 
 String? _recurringExtraLine(
