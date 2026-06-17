@@ -78,9 +78,12 @@ class LoansScreen extends ConsumerWidget {
                     value: mode == 'past'
                         ? '${pastLoans.length}'
                         : formatMoney(
-                            Money(
-                              amountMinor: emi,
-                              currency: state.preferences.baseCurrency,
+                            convertMoneyForDisplay(
+                              state,
+                              Money(
+                                amountMinor: emi,
+                                currency: state.preferences.baseCurrency,
+                              ),
                             ),
                             state.preferences.locale,
                           ),
@@ -162,7 +165,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
   String? _loadedAccountId;
   String? _sourceAccountId;
   var _loanKind = 'loan';
-  var _currency = kDefaultCurrency;
+  var _currency = kDefaultCurrency; // will be synced from state in _syncLoanDraft
   var _frequency = 'monthly';
   int _interval = 1;
   final Set<int> _daysOfWeek = {};
@@ -316,7 +319,9 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                         onSelected: (selected) {
                           setState(() {
                             if (selected) {
-                              _daysOfWeek.add(i);
+                              if (_daysOfWeek.length < _interval) {
+                                _daysOfWeek.add(i);
+                              }
                             } else {
                               _daysOfWeek.remove(i);
                             }
@@ -343,7 +348,9 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                         onSelected: (selected) {
                           setState(() {
                             if (selected) {
-                              _daysOfMonth.add(i);
+                              if (_daysOfMonth.length < _interval) {
+                                _daysOfMonth.add(i);
+                              }
                             } else {
                               _daysOfMonth.remove(i);
                             }
@@ -614,7 +621,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
         context,
         existingLoan == null ? 'Loan created.' : 'Loan saved.',
       );
-      context.push('/loans/${loan.id}');
+      context.go('/loans/${loan.id}');
     } catch (error) {
       if (!mounted) return;
       _showRouteMessage(context, error.toString());
@@ -885,7 +892,7 @@ class LoanDetailView extends ConsumerWidget {
     await ref.read(ledgerProvider.notifier).deleteAccount(loan.id);
     if (!context.mounted) return;
     _showRouteMessage(context, 'Loan archived.');
-    context.push('/loans');
+    context.go('/loans');
   }
 }
 
@@ -1246,7 +1253,15 @@ bool _isPastLoan(LedgerState state, Account loan) {
 
 String _loanCadenceLabel(AccountLoanDetails details) {
   if (details.repaymentAmount == null) return 'No EMI schedule';
-  return 'Every 1 month';
+  final n = details.recurrenceInterval < 1 ? 1 : details.recurrenceInterval;
+  final unit = switch (details.recurrenceFrequency) {
+    'daily' => n == 1 ? 'day' : 'days',
+    'weekly' => n == 1 ? 'week' : 'weeks',
+    'yearly' => n == 1 ? 'year' : 'years',
+    'monthly' => n == 1 ? 'month' : 'months',
+    _ => n == 1 ? 'month' : 'months',
+  };
+  return 'Every $n $unit';
 }
 
 ({String label, IconData icon, Color color}) _scheduleStatus(

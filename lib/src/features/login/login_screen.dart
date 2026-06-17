@@ -119,39 +119,69 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                               ),
                               const SizedBox(height: 32),
-                              FilledButton.icon(
-                                onPressed: unavailable || auth.isSigningIn
-                                    ? null
-                                    : () => ref.read(authControllerProvider.notifier).signInWithGoogle(),
-                                style: FilledButton.styleFrom(
-                                  minimumSize: const Size.fromHeight(64),
-                                  backgroundColor: Theme.of(context).colorScheme.onSurface,
-                                  foregroundColor: Theme.of(context).colorScheme.surface,
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20), // Curvy button
-                                  ),
-                                ),
-                                icon: auth.isSigningIn
-                                    ? const SizedBox.square(
-                                        dimension: 24,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 3,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : Text(
-                                        'G',
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 22,
-                                          fontWeight: FontWeight.w900,
-                                        ),
+                              Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: unavailable || auth.isSigningIn
+                                      ? null
+                                      : () => ref.read(authControllerProvider.notifier).signInWithGoogle(),
+                                  borderRadius: BorderRadius.circular(28),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    height: 64,
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).brightness == Brightness.dark
+                                          ? const Color(0xFF1F1F1F)
+                                          : Colors.white,
+                                      borderRadius: BorderRadius.circular(28),
+                                      border: Border.all(
+                                        color: Theme.of(context).brightness == Brightness.dark
+                                            ? Colors.white.withValues(alpha: 0.12)
+                                            : Colors.black.withValues(alpha: 0.08),
+                                        width: 1.5,
                                       ),
-                                label: Text(
-                                  auth.isSigningIn ? 'Connecting...' : 'Continue with Google',
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w700,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.06),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        if (auth.isSigningIn)
+                                          SizedBox.square(
+                                            dimension: 24,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2.5,
+                                              color: Theme.of(context).colorScheme.primary,
+                                            ),
+                                          )
+                                        else
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(4),
+                                            child: Image.asset(
+                                              'assets/images/google_logo.png',
+                                              height: 24,
+                                              width: 24,
+                                            ),
+                                          ),
+                                        const SizedBox(width: 14),
+                                        Text(
+                                          auth.isSigningIn ? 'Connecting...' : 'Continue with Google',
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 17,
+                                            fontWeight: FontWeight.w600,
+                                            color: Theme.of(context).brightness == Brightness.dark
+                                                ? Colors.white.withValues(alpha: 0.87)
+                                                : const Color(0xFF3C4043),
+                                            letterSpacing: 0.1,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
