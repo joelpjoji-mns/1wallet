@@ -105,11 +105,17 @@ NotificationPreferences normalizeNotificationPreferences(
 List<AppNotification> buildNotificationInbox(LedgerState state) {
   final notifications = <AppNotification>[];
   final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
 
   // Scheduled payment notifications
   final scheduled = scheduledTransactions(state);
   for (final transaction in scheduled) {
-    if (transaction.occurredAt.isBefore(now)) {
+    final dueDay = DateTime(
+      transaction.occurredAt.year,
+      transaction.occurredAt.month,
+      transaction.occurredAt.day,
+    );
+    if (dueDay.isBefore(today)) {
       notifications.add(
         AppNotification(
           id: 'scheduled_${transaction.id}',
@@ -117,12 +123,12 @@ List<AppNotification> buildNotificationInbox(LedgerState state) {
           title:
               'Overdue: ${transaction.notes ?? transactionTypeLabel(transaction.type)}',
           body:
-              '${formatMoney(transaction.amount, state.preferences.locale)} was due ${_relativeDate(transaction.occurredAt, now)}.',
+              '${formatMoney(transaction.amount, state.preferences.locale)} was due ${_relativeDate(dueDay, today)}.',
           createdAt: transaction.occurredAt,
           actionRoute: '/recurring/${transaction.id}',
         ),
       );
-    } else if (transaction.occurredAt.difference(now).inDays <= 3) {
+    } else if (dueDay.difference(today).inDays <= 3) {
       notifications.add(
         AppNotification(
           id: 'upcoming_${transaction.id}',
@@ -130,7 +136,7 @@ List<AppNotification> buildNotificationInbox(LedgerState state) {
           title:
               'Upcoming: ${transaction.notes ?? transactionTypeLabel(transaction.type)}',
           body:
-              '${formatMoney(transaction.amount, state.preferences.locale)} due ${_relativeDate(transaction.occurredAt, now)}.',
+              '${formatMoney(transaction.amount, state.preferences.locale)} due ${_relativeDate(dueDay, today)}.',
           createdAt: now,
           actionRoute: '/recurring/${transaction.id}',
         ),
@@ -207,14 +213,12 @@ int unreadNotificationCount(LedgerState state) {
   return buildNotificationInbox(state).where((n) => !n.read).length;
 }
 
-String _relativeDate(DateTime date, DateTime now) {
-  final diff = now.difference(date);
-  if (diff.inDays == 0) return 'today';
-  if (diff.inDays == 1) return 'yesterday';
-  if (diff.inDays < 0) {
-    final futureDays = diff.inDays.abs();
-    if (futureDays == 1) return 'tomorrow';
-    return 'in $futureDays days';
-  }
-  return '${diff.inDays} days ago';
+/// Compare dates using day-only values to avoid time-of-day skew.
+String _relativeDate(DateTime date, DateTime today) {
+  final diff = today.difference(date).inDays;
+  if (diff == 0) return 'today';
+  if (diff == 1) return 'yesterday';
+  if (diff == -1) return 'tomorrow';
+  if (diff < 0) return 'in ${diff.abs()} days';
+  return '$diff days ago';
 }
