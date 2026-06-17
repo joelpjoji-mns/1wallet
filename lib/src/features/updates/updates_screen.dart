@@ -60,8 +60,7 @@ class UpdatesScreen extends ConsumerWidget {
     if (state.status == UpdateStatus.idle) {
       if (state.latestRelease != null) {
         title = 'Update Available';
-        subtitle =
-            'Version ${state.latestRelease!.versionName} (${state.latestRelease!.channel})';
+        subtitle = 'Version ${state.latestRelease!.versionName}';
         icon = Icons.system_update;
         color = theme.colorScheme.secondary;
       } else {
@@ -100,17 +99,6 @@ class UpdatesScreen extends ConsumerWidget {
           ),
         ),
         subtitle: Text(subtitle),
-        trailing: DropdownButton<String>(
-          value: state.channel,
-          underline: const SizedBox(),
-          items: const [
-            DropdownMenuItem(value: 'stable', child: Text('Stable Channel')),
-            DropdownMenuItem(value: 'beta', child: Text('Beta Channel')),
-          ],
-          onChanged: (val) {
-            if (val != null) provider.setChannel(val);
-          },
-        ),
       ),
     );
   }
@@ -148,8 +136,9 @@ class UpdatesScreen extends ConsumerWidget {
                       message: 'No release metadata found for this build',
                       child: Icon(Icons.info_outline),
                     )
-                  : Chip(label: Text(release.channel)),
+                  : null,
             ),
+
             if (release == null) ...[
               const SizedBox(height: 8),
               Text(
