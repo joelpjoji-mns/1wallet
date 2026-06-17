@@ -1640,7 +1640,7 @@ String _trimNumber(double value) {
 String _amountWords(String value) {
   final parsed = double.tryParse(value.replaceAll(',', '')) ?? 0;
   if (parsed == 0) return '0';
-  final format = NumberFormat.currency(locale: 'en_IN', symbol: '');
+  final format = NumberFormat.currency(symbol: '');
   String formatted = format.format(parsed).trim();
   if (formatted.endsWith('.00')) {
     formatted = formatted.substring(0, formatted.length - 3);
