@@ -26,6 +26,7 @@ class _BudgetGoalEditorScreenState
   var _primaryRuleEnabled = true;
   var _secondaryRuleEnabled = false;
   String? _selectedCurrency;
+  String? _selectedCategoryId;
   DateTime? _targetDate;
   String _frequency = 'once';
   int _interval = 1;
@@ -36,15 +37,6 @@ class _BudgetGoalEditorScreenState
   void initState() {
     super.initState();
     _frequency = widget.kind == 'budget' ? 'monthly' : 'once';
-    // Initialize with base currency from ref if not set
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        final state = ref.read(ledgerProvider);
-        setState(() {
-          _selectedCurrency = state.preferences.baseCurrency;
-        });
-      }
-    });
   }
 
   @override
@@ -58,6 +50,10 @@ class _BudgetGoalEditorScreenState
   Widget build(BuildContext context) {
     final isBudget = widget.kind == 'budget';
     final state = ref.watch(ledgerProvider);
+    final category = _selectedCategoryId != null 
+        ? categoryById(state, _selectedCategoryId) 
+        : null;
+
     return RouteScaffold(
       title: isBudget ? 'New budget' : 'New goal',
       actions: [
@@ -93,15 +89,20 @@ class _BudgetGoalEditorScreenState
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                _DetailField(
-                  icon: isBudget
-                      ? Icons.category_outlined
-                      : Icons.today_outlined,
-                  label: isBudget 
-                      ? 'Choose category' 
-                      : (_targetDate == null ? 'Target date' : '${_targetDate!.day}/${_targetDate!.month}/${_targetDate!.year}'),
-                  onTap: _chooseDate,
-                ),
+                if (isBudget)
+                  _DetailField(
+                    icon: Icons.category_outlined,
+                    label: category?.name ?? 'Choose category',
+                    onTap: _chooseCategory,
+                  )
+                else
+                  _DetailField(
+                    icon: Icons.today_outlined,
+                    label: _targetDate == null 
+                        ? 'Target date' 
+                        : formatLedgerDate(_targetDate!, state.preferences.locale),
+                    onTap: _chooseDate,
+                  ),
                 const SizedBox(height: AppSpacing.sm),
                 _DetailField(
                   icon: Icons.currency_exchange_outlined,
@@ -229,6 +230,30 @@ class _BudgetGoalEditorScreenState
     );
   }
 
+  Future<void> _chooseCategory() async {
+    final state = ref.read(ledgerProvider);
+    final next = await showFullScreenPicker<Category>(
+      context: context,
+      title: 'Choose category',
+      searchHint: 'Search categories',
+      selectedValue: _selectedCategoryId != null 
+          ? categoryById(state, _selectedCategoryId) 
+          : null,
+      options: [
+        for (final category in activeCategories(state))
+          PickerOption(
+            value: category,
+            title: categoryPath(state, category),
+            icon: categoryIcon(category),
+            color: categoryColor(category, context),
+          ),
+      ],
+    );
+    if (next != null) {
+      setState(() => _selectedCategoryId = next.id);
+    }
+  }
+
   Future<void> _chooseDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -255,7 +280,9 @@ class _BudgetGoalEditorScreenState
   Future<void> _save() async {
     final isBudget = widget.kind == 'budget';
     final name = _nameController.text.trim();
-    final amountMinor = _amountMinorFromInput(_amountController.text);
+    final state = ref.read(ledgerProvider);
+    final currency = _selectedCurrency ?? state.preferences.baseCurrency;
+    final amountMinor = _amountMinorFromInput(_amountController.text, currency);
     if (name.isEmpty) {
       final label = isBudget ? 'budget' : 'goal';
       _showBudgetGoalMessage('Enter a $label name.');
@@ -332,8 +359,14 @@ class _DetailField extends StatelessWidget {
           children: [
             Icon(icon, color: Theme.of(context).colorScheme.onSurfaceVariant),
             const SizedBox(width: AppSpacing.md),
-            Text(label, style: Theme.of(context).textTheme.bodyLarge),
-            const Spacer(),
+            Expanded(
+              child: Text(
+                label, 
+                style: Theme.of(context).textTheme.bodyLarge,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
             const Icon(Icons.chevron_right_rounded),
           ],
         ),
@@ -343,8 +376,8 @@ class _DetailField extends StatelessWidget {
 }
 
 
-int _amountMinorFromInput(String value) {
+int _amountMinorFromInput(String value, String currency) {
   final normalized = value.replaceAll(',', '').trim();
   final parsed = double.tryParse(normalized) ?? 0;
-  return (parsed * 100).round();
+  return (parsed * math.pow(10, minorUnits(currency))).round();
 }
