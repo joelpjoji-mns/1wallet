@@ -3,15 +3,6 @@ name: Android Release Core
 on:
   workflow_call:
     inputs:
-      channel:
-        description: Update channel to publish
-        required: true
-        type: string
-      beta_number:
-        description: Deprecated. Beta releases now use a unique patch version such as 1.4.2-beta.
-        required: false
-        default: '1'
-        type: string
       release_type:
         description: Release type for update metadata
         required: false
@@ -44,19 +35,6 @@ on:
         type: boolean
   workflow_dispatch:
     inputs:
-      channel:
-        description: Update channel to publish
-        required: true
-        default: beta
-        type: choice
-        options:
-          - beta
-          - stable
-      beta_number:
-        description: Deprecated. Beta releases now use a unique patch version such as 1.4.2-beta.
-        required: true
-        default: '1'
-        type: string
       release_type:
         description: Release type for update metadata
         required: true
@@ -97,7 +75,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 concurrency:
-  group: android-release-${{ github.ref }}-${{ inputs.channel || 'stable' }}
+  group: android-release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -110,7 +88,7 @@ jobs:
       RELEASE_ARCHITECTURE: arm64-v8a
       ASSET_REPO: ${{ vars.APK_RELEASE_REPO }}
       FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID || 'wallet-1a5af' }}
-      UPDATE_CHANNEL: ${{ inputs.channel || 'stable' }}
+      UPDATE_CHANNEL: stable
       PUBLISH_ASSET_REPO_INPUT: ${{ inputs.publish_assets_repo }}
       PUBLISH_ASSET_REPO_DEFAULT: ${{ vars.PUBLISH_APK_TO_ASSETS_REPO || 'false' }}
       RELEASE_TYPE: ${{ inputs.release_type }}
@@ -123,19 +101,11 @@ jobs:
 
       - name: Validate release trigger
         run: |
-          if [ "$UPDATE_CHANNEL" = "stable" ] && [ "$GITHUB_REF" != "refs/heads/main" ]; then
-            echo "::error::Stable releases must run from main."
-            exit 1
+          if [ "$GITHUB_REF" != "refs/heads/main" ] && [ "$GITHUB_REF" != "refs/heads/development" ]; then
+             echo "::warning::Releasing from non-standard branch $GITHUB_REF_NAME."
           fi
-          if [ "$UPDATE_CHANNEL" = "beta" ] && [ "$GITHUB_REF" = "refs/heads/main" ]; then
-            echo "::error::Beta releases must run from development, feature/*, or bug/*, not main."
-            exit 1
-          fi
-          if [ "$UPDATE_CHANNEL" = "beta" ] && [ "$GITHUB_REF" != "refs/heads/development" ] && [[ "$GITHUB_REF_NAME" != feature/* ]] && [[ "$GITHUB_REF_NAME" != bug/* ]]; then
-            echo "::error::Beta releases must run from development, feature/*, or bug/*."
-            exit 1
-          fi
-          echo "Publishing $UPDATE_CHANNEL update metadata from $GITHUB_REF_NAME."
+          echo "Publishing stable update metadata from $GITHUB_REF_NAME."
+
 
       - name: Setup Java
         uses: actions/setup-java@v5.2.0
@@ -185,20 +155,17 @@ jobs:
 
       - name: Read release info
         id: info
-        run: node scripts/mobile-release-info.mjs --channel "$UPDATE_CHANNEL" --beta-number "${{ inputs.beta_number || '1' }}" --output "$GITHUB_OUTPUT"
+        run: node scripts/mobile-release-info.mjs --run-number "${{ github.run_number }}" --output "$GITHUB_OUTPUT"
 
       - name: Collect release note source
         id: notes_source
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] && [ "$UPDATE_CHANNEL" = "beta" ] && [ "$GITHUB_REF" != "refs/heads/development" ]; then
-            gh pr list --repo "$GITHUB_REPOSITORY" --head "$GITHUB_REF_NAME" --state open --json number,title,body,url,labels --limit 1 > .tmp-pr.json || echo "[]" > .tmp-pr.json
-          else
-            gh api -H "Accept: application/vnd.github+json" \
-              "/repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" \
-              --jq '[.[] | {number,title,body,url,labels: [.labels[].name]}] | .[0:1]' > .tmp-pr.json || echo "[]" > .tmp-pr.json
-          fi
+          gh api -H "Accept: application/vnd.github+json" \
+            "/repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" \
+            --jq '[.[] | {number,title,body,url,labels: [.labels[].name]}] | .[0:1]' > .tmp-pr.json || echo "[]" > .tmp-pr.json
+          
           skip_release="$(node -e "const fs=require('fs'); const pr=(JSON.parse(fs.readFileSync('.tmp-pr.json','utf8'))||[])[0]; const labels=(pr?.labels||[]).map((item)=>String(typeof item==='string'?item:item.name||'').toLowerCase()); process.stdout.write(labels.includes('skip-release')?'true':'false')")"
           echo "skip_release=$skip_release" >> "$GITHUB_OUTPUT"
           if [ "$skip_release" = "true" ]; then
@@ -210,6 +177,7 @@ jobs:
           else
             git log --pretty=format:'%s' -20 > .tmp-commits.txt
           fi
+
 
       - name: Generate release notes
         if: steps.notes_source.outputs.skip_release != 'true'
@@ -264,25 +232,12 @@ jobs:
           tag="${{ steps.info.outputs.tag }}"
           title="${{ steps.info.outputs.releaseTitle }}"
           target="$GITHUB_SHA"
-          create_flags=()
-          edit_flags=()
-          if [ "${{ steps.info.outputs.prerelease }}" = "true" ]; then
-            create_flags+=(--prerelease --latest=false)
-            edit_flags+=(--prerelease)
-          else
-            create_flags+=(--latest)
-            edit_flags+=(--latest)
-          fi
           git tag --force "$tag" "$target"
           git push --force origin "refs/tags/$tag"
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            if [ "${{ steps.info.outputs.prerelease }}" = "true" ]; then
-              echo "::error::Beta release $tag already exists. Bump the development beta patch version before publishing again."
-              exit 1
-            fi
-            gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --target "$target" --title "$title" --notes-file .tmp-release-notes.md "${edit_flags[@]}"
+            gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --target "$target" --title "$title" --notes-file .tmp-release-notes.md --latest
           else
-            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$target" --title "$title" --notes-file .tmp-release-notes.md "${create_flags[@]}"
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$target" --title "$title" --notes-file .tmp-release-notes.md --latest
           fi
           gh release upload "$tag" ".tmp-release-assets/${{ steps.info.outputs.apkFileName }}" --repo "$GITHUB_REPOSITORY" --clobber
 
@@ -296,29 +251,16 @@ jobs:
           title="${{ steps.info.outputs.releaseTitle }}"
           download_repo="$GITHUB_REPOSITORY"
           publish_asset_repo="${PUBLISH_ASSET_REPO_INPUT:-$PUBLISH_ASSET_REPO_DEFAULT}"
-          create_flags=()
-          edit_flags=()
-          if [ "${{ steps.info.outputs.prerelease }}" = "true" ]; then
-            create_flags+=(--prerelease --latest=false)
-            edit_flags+=(--prerelease)
-          else
-            create_flags+=(--latest)
-            edit_flags+=(--latest)
-          fi
           if [ "$publish_asset_repo" != "false" ] && [ -n "$ASSET_REPO" ]; then
             if gh release view "$tag" --repo "$ASSET_REPO" >/dev/null 2>&1; then
-              if [ "${{ steps.info.outputs.prerelease }}" = "true" ]; then
-                echo "::error::Beta release $tag already exists in $ASSET_REPO. Bump the development beta patch version before publishing again."
-                exit 1
-              fi
-              gh release edit "$tag" --repo "$ASSET_REPO" --title "$title" --notes-file .tmp-release-notes.md "${edit_flags[@]}"
+              gh release edit "$tag" --repo "$ASSET_REPO" --title "$title" --notes-file .tmp-release-notes.md --latest
             else
-              gh release create "$tag" --repo "$ASSET_REPO" --title "$title" --notes-file .tmp-release-notes.md "${create_flags[@]}"
+              gh release create "$tag" --repo "$ASSET_REPO" --title "$title" --notes-file .tmp-release-notes.md --latest
             fi
             gh release upload "$tag" ".tmp-release-assets/${{ steps.info.outputs.apkFileName }}" --repo "$ASSET_REPO" --clobber
             download_repo="$ASSET_REPO"
           fi
-          download_url="$(gh release view "$tag" --repo "$download_repo" --json assets --jq '.assets[] | select(.name == "${{ steps.info.outputs.apkFileName }}") | .url')"
+          download_url="$(gh release view "$tag" --repo "$download_repo" --json assets --jq ".assets[] | select(.name == \"${{ steps.info.outputs.apkFileName }}\") | .url")"
           if [ -z "$download_url" ]; then
             echo "::error::Could not resolve download URL for ${{ steps.info.outputs.apkFileName }} in $download_repo"
             exit 1

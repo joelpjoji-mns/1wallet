@@ -42,7 +42,6 @@ class NotificationService {
 
   static Future<void> showUpdateNotification(
     String version,
-    String channel,
   ) async {
     await requestPermissions();
 
@@ -59,7 +58,7 @@ class NotificationService {
     await _notificationsPlugin.show(
       id: 0,
       title: 'Update Available',
-      body: 'Version $version ($channel) is ready to install',
+      body: 'Version $version is ready to install',
       notificationDetails: notificationDetails,
     );
   }
