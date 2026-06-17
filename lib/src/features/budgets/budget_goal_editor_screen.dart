@@ -36,6 +36,15 @@ class _BudgetGoalEditorScreenState
   void initState() {
     super.initState();
     _frequency = widget.kind == 'budget' ? 'monthly' : 'once';
+    // Initialize with base currency from ref if not set
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final state = ref.read(ledgerProvider);
+        setState(() {
+          _selectedCurrency = state.preferences.baseCurrency;
+        });
+      }
+    });
   }
 
   @override
