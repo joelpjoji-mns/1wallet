@@ -1215,10 +1215,11 @@ List<TransactionRecord> _postedLoanRepayments(
   return state.transactions
       .where(
         (transaction) =>
-            transaction.type == 'loan_repayment' &&
-            transaction.status != 'scheduled' &&
             (transaction.accountId == loanId ||
-                transaction.counterAccountId == loanId),
+                transaction.counterAccountId == loanId) &&
+            transaction.status != 'scheduled' &&
+            (transaction.type == 'loan_repayment' ||
+                (transaction.status == 'void' && transaction.notes?.toLowerCase() == 'skipped')),
       )
       .toList();
 }
@@ -1230,10 +1231,10 @@ List<TransactionRecord> _loanHistoryRepayments(
   final items = state.transactions
       .where(
         (transaction) =>
-            transaction.type == 'loan_repayment' &&
             (transaction.accountId == loanId ||
                 transaction.counterAccountId == loanId) &&
-            (transaction.status == 'skipped' || _isHistoricalLoanRepayment(transaction)),
+            (transaction.status != 'scheduled' || 
+             transaction.notes?.toLowerCase() == 'skipped'),
       )
       .toList();
   items.sort((left, right) => right.occurredAt.compareTo(left.occurredAt));
@@ -1241,6 +1242,7 @@ List<TransactionRecord> _loanHistoryRepayments(
 }
 
 bool _isHistoricalLoanRepayment(TransactionRecord transaction) {
+  if (transaction.status == 'void' && transaction.notes == 'Skipped') return true;
   if (transaction.status != 'scheduled') return true;
   final today = _loanStartOfToday();
   final occurredDay = DateTime(
@@ -1434,6 +1436,7 @@ String? _nonLoanGroupName(String? value) {
 String? _firstCategoryId(LedgerState state, {String? preferred}) {
   return firstActiveCategory(state, preferred: preferred)?.id;
 }
+
 
 _LoanProjection _loanProjection(LedgerState state, Account loan) {
   final remaining = accountBalance(state, loan).amountMinor.abs();
