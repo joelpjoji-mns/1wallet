@@ -23,8 +23,19 @@ class _SecureAccountDetailsScreenState extends ConsumerState<SecureAccountDetail
   final _cardNumberController = TextEditingController();
   final _expiryController = TextEditingController();
   final _ccvController = TextEditingController();
+  final _last4Controller = TextEditingController();
 
-  Future<void> _authenticate() async {
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill if already exists
+    final account = ref.read(ledgerProvider).accounts.firstWhere((a) => a.id == widget.accountId);
+    if (account.encryptedDetails != null) {
+      // In a real app, we'd decrypt here *after* auth. 
+      // For now, storing last4 publicly is okay if it's just for matching.
+    }
+    _last4Controller.text = account.accountLast4 ?? '';
+  }
     try {
       final authenticated = await _auth.authenticate(
         localizedReason: 'Authenticate to view secure card details',
@@ -79,6 +90,12 @@ class _SecureAccountDetailsScreenState extends ConsumerState<SecureAccountDetail
             decoration: const InputDecoration(labelText: 'CVV'),
             keyboardType: TextInputType.number,
           ),
+          TextFormField(
+            controller: _last4Controller,
+            decoration: const InputDecoration(labelText: 'Last 4 digits (for SMS matching)'),
+            keyboardType: TextInputType.number,
+            maxLength: 4,
+          ),
         ],
       ),
     );
@@ -104,8 +121,8 @@ class _SecureAccountDetailsScreenState extends ConsumerState<SecureAccountDetail
       color: account.color,
       institution: account.institution,
       groupName: account.groupName,
-      cardLast4: account.cardLast4,
-      accountLast4: account.accountLast4,
+      cardLast4: account.type == 'card' ? _last4Controller.text : null,
+      accountLast4: account.type != 'card' ? _last4Controller.text : null,
       loanDetails: account.loanDetails,
       encryptedDetails: encrypted,
     );
