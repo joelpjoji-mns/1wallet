@@ -38,23 +38,11 @@ class RecurringScreen extends ConsumerWidget {
           );
     final listed = mode == 'past' ? recurringHistory : scheduled;
     
-    // Filter for current month and convert to display currency correctly
-    final now = DateTime.now();
-    final startOfMonth = DateTime(now.year, now.month);
-    final endOfMonth = DateTime(now.year, now.month + 1);
-    
     int plannedIncomeMinor = 0;
     int plannedExpenseMinor = 0;
     
     for (final t in listed) {
       if (t.status == 'paused') continue;
-      
-      // If not past mode, filter to current month for the summary
-      if (mode != 'past') {
-        if (t.occurredAt.isBefore(startOfMonth) || !t.occurredAt.isBefore(endOfMonth)) {
-          continue;
-        }
-      }
 
       // Convert individual transaction to base currency first to avoid summing different currency values
       final baseAmount = t.baseAmount.amountMinor.abs();
