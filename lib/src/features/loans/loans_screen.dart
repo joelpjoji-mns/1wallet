@@ -702,9 +702,16 @@ class LoanDetailView extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.lg),
                   Builder(builder: (context) {
                     final principal = details.principal!.amountMinor.abs();
-                    final remaining = balance.amountMinor.abs();
-                    final paid = (principal - remaining).clamp(0, principal);
-                    final progress = principal > 0 ? paid / principal : 0.0;
+                    // Convert all repayments to the same currency to get a consistent sum
+                    final paid = repayments.fold<int>(0, (sum, t) {
+                      final amountInBase = convertMoneyForDisplay(
+                        state,
+                        t.amount,
+                        loan.currency,
+                      ).amountMinor.abs();
+                      return sum + amountInBase;
+                    });
+                    final progress = principal > 0 ? (paid / principal).clamp(0.0, 1.0) : 0.0;
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
