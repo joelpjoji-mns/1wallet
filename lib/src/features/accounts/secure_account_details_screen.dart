@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:local_auth/local_auth.dart';
@@ -21,14 +22,18 @@ class SecureAccountDetailsScreen extends ConsumerStatefulWidget {
 class _SecureAccountDetailsScreenState extends ConsumerState<SecureAccountDetailsScreen> {
   final _auth = LocalAuthentication();
   bool _authenticated = false;
-  final _nameController = TextEditingController();
   final _cardNumberController = TextEditingController();
   final _expiryController = TextEditingController();
   final _ccvController = TextEditingController();
+  final _nameController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _cardNumberController.addListener(() => setState(() {}));
+    _expiryController.addListener(() => setState(() {}));
+    _ccvController.addListener(() => setState(() {}));
+    _nameController.addListener(() => setState(() {}));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final account = ref.read(ledgerProvider).accounts.firstWhere((a) => a.id == widget.accountId);
       _nameController.text = account.name;
@@ -45,6 +50,13 @@ class _SecureAccountDetailsScreenState extends ConsumerState<SecureAccountDetail
     } catch (e) {
       debugPrint('Auth error: $e');
     }
+  }
+
+  void _copyToClipboard(String text) {
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Copied: $text')),
+    );
   }
 
   @override
@@ -77,33 +89,39 @@ class _SecureAccountDetailsScreenState extends ConsumerState<SecureAccountDetail
         padding: const EdgeInsets.all(16),
         children: [
           CreditCardView(
-            cardNumber: _cardNumberController.text.padRight(16, '*'),
+            cardNumber: _cardNumberController.text.isEmpty ? '0000 0000 0000 0000' : _cardNumberController.text,
             expiry: _expiryController.text.isEmpty ? 'MM/YY' : _expiryController.text,
-            ccv: '***',
-            cardHolder: _nameController.text,
+            ccv: _ccvController.text.isEmpty ? '***' : _ccvController.text,
+            cardHolder: _nameController.text.isEmpty ? 'YOUR NAME' : _nameController.text,
             gradientStart: account.color ?? Theme.of(context).colorScheme.primary,
             gradientEnd: (account.color ?? Theme.of(context).colorScheme.primary).withAlpha(150),
           ),
           const SizedBox(height: 24),
-          TextFormField(
-            controller: _nameController,
-            decoration: const InputDecoration(labelText: 'Card Holder Name'),
+          _buildFieldWithCopy(_nameController, 'Card Holder Name'),
+          _buildFieldWithCopy(_cardNumberController, 'Card Number', TextInputType.number, 16),
+          _buildFieldWithCopy(_expiryController, 'Expiry (MM/YY)'),
+          _buildFieldWithCopy(_ccvController, 'CVV', TextInputType.number, 3),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFieldWithCopy(TextEditingController controller, String label, [TextInputType? type, int? maxLength]) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextFormField(
+              controller: controller,
+              decoration: InputDecoration(labelText: label),
+              keyboardType: type ?? TextInputType.text,
+              maxLength: maxLength,
+            ),
           ),
-          TextFormField(
-            controller: _cardNumberController,
-            decoration: const InputDecoration(labelText: 'Card Number'),
-            keyboardType: TextInputType.number,
-            maxLength: 16,
-          ),
-          TextFormField(
-            controller: _expiryController,
-            decoration: const InputDecoration(labelText: 'Expiry (MM/YY)'),
-          ),
-          TextFormField(
-            controller: _ccvController,
-            decoration: const InputDecoration(labelText: 'CVV'),
-            keyboardType: TextInputType.number,
-            maxLength: 3,
+          IconButton(
+            icon: const Icon(Icons.copy),
+            onPressed: () => _copyToClipboard(controller.text),
           ),
         ],
       ),
@@ -111,7 +129,6 @@ class _SecureAccountDetailsScreenState extends ConsumerState<SecureAccountDetail
   }
 
   void _saveSecureDetails(Account account) async {
-    // In production, use a secure key storage like flutter_secure_storage
     final key = encrypt.Key.fromUtf8('my32lengthsupersecretkey12345678'); 
     final iv = encrypt.IV.fromLength(16);
     final encrypter = encrypt.Encrypter(encrypt.AES(key));
