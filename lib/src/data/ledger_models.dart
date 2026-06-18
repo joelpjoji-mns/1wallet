@@ -313,6 +313,7 @@ class Account {
   final String? cardLast4;
   final String? accountLast4;
   final AccountLoanDetails? loanDetails;
+  final Map<String, String>? encryptedDetails;
   final bool includeInTotals;
   final bool includeInReports;
   final bool includeInNetWorth;
