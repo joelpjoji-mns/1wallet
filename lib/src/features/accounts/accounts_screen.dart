@@ -6,6 +6,7 @@ import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
+import '../../widgets/liquid_progress_indicator.dart';
 import '../../widgets/app_kit.dart';
 import '../transactions/transactions_components.dart';
 
@@ -23,6 +24,14 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
   var _showExcluded = true;
   var _showArchived = false;
   List<String>? _order;
+  double _liquidValue = 0.5;
+  final _inputController = TextEditingController(text: '0.5');
+
+  @override
+  void dispose() {
+    _inputController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,6 +75,30 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
       ],
       child: Column(
         children: [
+          SizedBox(
+            height: 100,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              child: LiquidProgressIndicator(
+                value: _liquidValue,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: TextField(
+              controller: _inputController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Liquid Progress (0.0 - 1.0)'),
+              onChanged: (val) {
+                final parsed = double.tryParse(val);
+                if (parsed != null && parsed >= 0 && parsed <= 1) {
+                  setState(() => _liquidValue = parsed);
+                }
+              },
+            ),
+          ),
           DecoratedBox(
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surfaceContainerLow,
