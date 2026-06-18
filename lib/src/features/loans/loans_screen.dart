@@ -1226,7 +1226,7 @@ List<TransactionRecord> _loanHistoryRepayments(
             transaction.type == 'loan_repayment' &&
             (transaction.accountId == loanId ||
                 transaction.counterAccountId == loanId) &&
-            _isHistoricalLoanRepayment(transaction),
+            (transaction.status == 'skipped' || _isHistoricalLoanRepayment(transaction)),
       )
       .toList();
   items.sort((left, right) => right.occurredAt.compareTo(left.occurredAt));
