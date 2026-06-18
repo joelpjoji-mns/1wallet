@@ -83,6 +83,13 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                gradientStart: account.color ?? Theme.of(context).colorScheme.primary,
                gradientEnd: (account.color ?? Theme.of(context).colorScheme.primary).withAlpha(150),
              ),
+          const Gap(AppSpacing.md),
+          if (account != null)
+            OutlinedButton.icon(
+              onPressed: () => context.push('/account/${account.id}/secure'),
+              icon: const Icon(Icons.lock_outline_rounded),
+              label: const Text('Manage secure details'),
+            ),
           const Gap(AppSpacing.lg),
           SectionCard(
             title: isNew ? 'Account setup' : 'Account profile',

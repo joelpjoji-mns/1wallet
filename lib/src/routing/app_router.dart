@@ -74,6 +74,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/account/:id',
         builder: (context, state) =>
             AccountEditorScreen(accountId: state.pathParameters['id']),
+        routes: [
+          GoRoute(
+            path: 'secure',
+            builder: (context, state) =>
+                SecureAccountDetailsScreen(accountId: state.pathParameters['id']!),
+          ),
+        ],
       ),
       GoRoute(
         path: '/widgets',
