@@ -186,7 +186,7 @@ class _CategoryHierarchyPickerState extends State<_CategoryHierarchyPicker> {
     if (query.isEmpty) return options;
     
     // Always search all categories, not just the currently active group
-    return allActiveCategories(widget.state).where((category) {
+    return activeCategories(widget.state).where((category) {
       final searchable = [
         category.name,
         categoryPath(widget.state, category),
