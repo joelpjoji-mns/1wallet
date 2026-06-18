@@ -39,7 +39,7 @@ class _SecureAccountDetailsScreenState extends ConsumerState<SecureAccountDetail
     try {
       final authenticated = await _auth.authenticate(
         localizedReason: 'Authenticate to view secure card details',
-        options: const AuthenticationOptions(biometricOnly: false),
+        biometricOnly: false,
       );
       setState(() => _authenticated = authenticated);
     } catch (e) {
