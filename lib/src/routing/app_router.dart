@@ -55,6 +55,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return AddRecordScreen(
             transactionId: state.uri.queryParameters['transactionId'],
             initialAccountId: state.uri.queryParameters['accountId'],
+            plannedId: state.uri.queryParameters['plannedId'],
             initialTab: initialTab,
           );
         },
