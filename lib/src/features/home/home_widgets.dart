@@ -2032,10 +2032,11 @@ double _contrastRatio(Color first, Color second) {
 
 List<_AccountGroupSummary> _accountGroupSummaries(LedgerState state) {
   final byType = <String, ({int count, int amountMinor})>{};
+  final balancesMap = accountBalanceMap(state);
   for (final account in state.accounts.where(
     (account) => !account.isArchived,
   )) {
-    final balance = _displayAccountBalanceMinor(state, account);
+    final balance = _displayAccountBalanceMinor(state, account, balances: balancesMap);
     final current = byType[account.type] ?? (count: 0, amountMinor: 0);
     byType[account.type] = (
       count: current.count + 1,
