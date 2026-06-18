@@ -5,8 +5,8 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../auth/auth_controller.dart';
 import '../../features/common/route_scaffold.dart';
-import '../../features/common/staggered_fade_in.dart';
-import '../../features/settings/permissions_setup_controller.dart';
+import '../../features/launch/brand_widgets.dart';
+import '../../features/settings/permission_setup_controller.dart';
 
 class PermissionsSetupScreen extends ConsumerStatefulWidget {
   const PermissionsSetupScreen({super.key});
