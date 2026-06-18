@@ -988,3 +988,158 @@ IconData transactionIcon(TransactionRecord transaction) {
   }
   return Icons.arrow_upward_rounded;
 }
+
+// Loan projection logic
+AccountLoanDetails effectiveLoanDetails(LedgerState state, Account loan) {
+  final existing = loan.loanDetails;
+  if (existing != null) return existing;
+  final existingEmi = existingLoanEmi(state, loan.id);
+  return AccountLoanDetails(
+    loanKind: loan.type,
+    principal: Money(
+      amountMinor: loan.openingBalance.amountMinor.abs(),
+      currency: loan.currency,
+    ),
+    repaymentAmount: existingEmi?.amount.copyWith(currency: loan.currency),
+    interestRatePercent: _doubleTagValue(loan.groupName, 'rate'),
+    repaymentCount: _intTagValue(loan.groupName, 'tenure'),
+    repaymentStartsOn: existingEmi?.occurredAt,
+    repaymentSourceAccountId: existingEmi?.accountId,
+  );
+}
+
+TransactionRecord? existingLoanEmi(LedgerState state, String? loanId) {
+  if (loanId == null) return null;
+  final matches =
+      scheduledTransactions(state)
+          .where(
+            (transaction) =>
+                transaction.type == 'loan_repayment' &&
+                transaction.counterAccountId == loanId,
+          )
+          .toList()
+        ..sort((left, right) => left.occurredAt.compareTo(right.occurredAt));
+  return matches.isEmpty ? null : matches.first;
+}
+
+LoanProjection loanProjection(LedgerState state, Account loan) {
+  final remaining = accountBalance(state, loan).amountMinor.abs();
+  final details = effectiveLoanDetails(state, loan);
+  final emi =
+      details.repaymentAmount?.amountMinor.abs() ??
+      existingLoanEmi(state, loan.id)?.amount.amountMinor.abs() ??
+      0;
+  final rate = details.interestRatePercent ?? 0;
+  if (remaining == 0) {
+    return const LoanProjection(
+      monthlyEmi: 0,
+      monthsRemaining: 0,
+      estimatedInterestMinor: 0,
+    );
+  }
+  if (emi <= 0) {
+    return const LoanProjection(
+      monthlyEmi: 0,
+      monthsRemaining: null,
+      estimatedInterestMinor: 0,
+    );
+  }
+  final forecast = _simulateLoanForecast(
+    principalMinor: remaining,
+    monthlyEmiMinor: emi,
+    annualRatePercent: rate,
+  );
+  return LoanProjection(
+    monthlyEmi: emi,
+    monthsRemaining: forecast.monthsRemaining,
+    estimatedInterestMinor: forecast.totalInterestMinor,
+  );
+}
+
+List<int> forecastMonthsForLoan(LedgerState state, Account loan) {
+  final projection = loanProjection(state, loan);
+  final months = projection.monthsRemaining;
+  final values = <int>{0, 3, 6, 12};
+  if (months != null && months > 0) values.add(months);
+  final sorted = values.toList()..sort();
+  return sorted
+      .where((month) => months == null || month == 0 || month <= months)
+      .toList();
+}
+
+({int? monthsRemaining, int totalInterestMinor, int remainingMinor})
+_simulateLoanForecast({
+  required int principalMinor,
+  required int monthlyEmiMinor,
+  required double annualRatePercent,
+  int maxMonths = 1200,
+}) {
+  var balance = principalMinor;
+  var interest = 0;
+  var months = 0;
+  final monthlyRate = annualRatePercent <= 0 ? 0 : annualRatePercent / 100 / 12;
+  while (balance > 0 && months < maxMonths) {
+    final interestMinor = (balance * monthlyRate).round();
+    final principalPaid = (monthlyEmiMinor - interestMinor)
+        .clamp(0, balance)
+        .toInt();
+    if (principalPaid <= 0) break;
+    balance -= principalPaid;
+    interest += interestMinor;
+    months++;
+  }
+  return (
+    monthsRemaining: balance <= 0 ? months : null,
+    totalInterestMinor: interest,
+    remainingMinor: balance,
+  );
+}
+
+class LoanProjection {
+  const LoanProjection({
+    required this.monthlyEmi,
+    required this.monthsRemaining,
+    required this.estimatedInterestMinor,
+  });
+
+  final int monthlyEmi;
+  final int? monthsRemaining;
+  final int estimatedInterestMinor;
+
+  String get payoffLabel {
+    final months = monthsRemaining;
+    if (months == null) {
+      if (monthlyEmi > 0) return 'EMI too low to cover interest';
+      return 'Add an EMI to estimate payoff';
+    }
+    if (months == 0) return 'Paid off';
+    final years = months ~/ 12;
+    final extraMonths = months % 12;
+    if (years == 0) return '$months months remaining';
+    if (extraMonths == 0) return '$years years remaining';
+    return '$years years $extraMonths months remaining';
+  }
+}
+
+String? _tagValue(String? source, String key) {
+  if (source == null || source.trim().isEmpty) return null;
+  for (final part in source.split('|')) {
+    final separator = part.indexOf(':');
+    if (separator <= 0) continue;
+    final itemKey = part.substring(0, separator).trim();
+    if (itemKey != key) continue;
+    final value = part.substring(separator + 1).trim();
+    return value.isEmpty ? null : value;
+  }
+  return null;
+}
+
+double? _doubleTagValue(String? source, String key) {
+  final value = _tagValue(source, key);
+  return value == null ? null : double.tryParse(value);
+}
+
+int? _intTagValue(String? source, String key) {
+  final value = _tagValue(source, key);
+  return value == null ? null : int.tryParse(value);
+}
