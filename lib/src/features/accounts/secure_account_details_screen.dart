@@ -30,13 +30,10 @@ class _SecureAccountDetailsScreenState extends ConsumerState<SecureAccountDetail
   @override
   void initState() {
     super.initState();
-    _cardNumberController.addListener(() => setState(() {}));
-    _expiryController.addListener(() => setState(() {}));
-    _ccvController.addListener(() => setState(() {}));
-    _nameController.addListener(() => setState(() {}));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final account = ref.read(ledgerProvider).accounts.firstWhere((a) => a.id == widget.accountId);
       _nameController.text = account.name;
+      _authenticate();
     });
   }
 
