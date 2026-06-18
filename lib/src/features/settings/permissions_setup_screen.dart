@@ -103,25 +103,6 @@ class _PermissionsSetupScreenState extends ConsumerState<PermissionsSetupScreen>
     }
   }
 
-  Future<void> _grantAll() async {
-    if (_requestingAll) return;
-    setState(() => _requestingAll = true);
-    try {
-      if (_smsAvailable && !_smsReady) {
-        await requestAndroidSmsPermission();
-      }
-      await [
-        Permission.notification,
-        Permission.camera,
-        Permission.photos,
-        Permission.storage,
-      ].request();
-      await _refresh();
-    } finally {
-      if (mounted) setState(() => _requestingAll = false);
-    }
-  }
-
   Future<void> _finishSetup() async {
     if (_requestingAll) return;
     final user = ref.read(authControllerProvider).user;
