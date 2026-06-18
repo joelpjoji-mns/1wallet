@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../data/ledger_models.dart';
-import '../../data/ledger_providers.dart';
-import '../../design/tokens.dart';
-import '../../ledger/ledger_selectors.dart';
+import '../../widgets/liquid_progress_indicator.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/currency_picker.dart';
 import '../common/full_screen_picker.dart';
@@ -34,6 +31,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
   Color? _selectedColor;
   String? _selectedType;
   String? _selectedCurrency;
+  double _liquidValue = 0.5;
 
   @override
   void dispose() {
@@ -71,6 +69,20 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          SizedBox(
+            height: 120,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              child: LiquidProgressIndicator(
+                value: _liquidValue,
+                color: selectedColor,
+              ),
+            ),
+          ),
+          Slider(
+            value: _liquidValue,
+            onChanged: (val) => setState(() => _liquidValue = val),
+          ),
           SectionCard(
             title: isNew ? 'Account setup' : 'Account profile',
             subtitle:
