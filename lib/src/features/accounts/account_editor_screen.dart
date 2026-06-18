@@ -78,6 +78,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
              CreditCardView(
                cardNumber: account.displayLast4 ?? '0000',
                expiry: '11/26',
+               ccv: '123',
                cardHolder: account.name,
                gradientStart: account.color ?? Theme.of(context).colorScheme.primary,
                gradientEnd: (account.color ?? Theme.of(context).colorScheme.primary).withAlpha(150),

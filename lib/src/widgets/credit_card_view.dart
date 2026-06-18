@@ -1,9 +1,11 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class CreditCardView extends StatefulWidget {
   final String cardNumber;
   final String expiry;
+  final String ccv;
   final String cardHolder;
   final Color gradientStart;
   final Color gradientEnd;
@@ -12,6 +14,7 @@ class CreditCardView extends StatefulWidget {
     super.key,
     required this.cardNumber,
     required this.expiry,
+    required this.ccv,
     required this.cardHolder,
     this.gradientStart = const Color(0xFF111111),
     this.gradientEnd = const Color(0xFF555555),
@@ -42,6 +45,13 @@ class _CreditCardViewState extends State<CreditCardView>
       _controller.reverse();
     }
     _isFront = !_isFront;
+  }
+
+  void _copyToClipboard(String text) {
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Copied $text to clipboard')),
+    );
   }
 
   @override
@@ -90,25 +100,28 @@ class _CreditCardViewState extends State<CreditCardView>
           end: Alignment.bottomRight,
         ),
       ),
-      child: Stack(
-        children: [
-          // Simplified decoration for wave/stripes
-          Positioned(right: 0, top: 0, bottom: 0, width: 80, child: Container(color: Colors.red.withAlpha(50))),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Align(alignment: Alignment.topRight, child: Icon(Icons.credit_card, color: Colors.white)),
-                const SizedBox(height: 20),
-                Text(widget.cardNumber, style: const TextStyle(color: Colors.white, fontSize: 24, letterSpacing: 2)),
-                const Spacer(),
-                Text(widget.cardHolder, style: const TextStyle(color: Colors.white, fontSize: 16)),
-                Text('EXP: ${widget.expiry}', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                const Icon(Icons.credit_card, color: Colors.white),
+                IconButton(
+                  icon: const Icon(Icons.copy, color: Colors.white, size: 16),
+                  onPressed: () => _copyToClipboard(widget.cardNumber),
+                ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 20),
+            Text(widget.cardNumber, style: const TextStyle(color: Colors.white, fontSize: 24, letterSpacing: 2)),
+            const Spacer(),
+            Text(widget.cardHolder, style: const TextStyle(color: Colors.white, fontSize: 16)),
+            Text('EXP: ${widget.expiry}', style: const TextStyle(color: Colors.white, fontSize: 12)),
+          ],
+        ),
       ),
     );
   }
@@ -132,7 +145,16 @@ class _CreditCardViewState extends State<CreditCardView>
             color: Colors.white,
             alignment: Alignment.centerRight,
             padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: const Text('123', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(widget.ccv, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                IconButton(
+                  icon: const Icon(Icons.copy, color: Colors.black, size: 16),
+                  onPressed: () => _copyToClipboard(widget.ccv),
+                ),
+              ],
+            ),
           ),
         ],
       ),
