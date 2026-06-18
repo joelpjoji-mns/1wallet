@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import '../common/route_scaffold.dart';
@@ -979,10 +981,7 @@ class RecurringDetailView extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  formatMoney(
-                    transaction.amount,
-                    state.preferences.locale,
-                  ),
+                  _recurringAmountLabel(state, transaction),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w900,
                   ),
