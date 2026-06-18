@@ -28,7 +28,7 @@ class _SecureAccountDetailsScreenState extends ConsumerState<SecureAccountDetail
     try {
       final authenticated = await _auth.authenticate(
         localizedReason: 'Authenticate to view secure card details',
-        options: AuthenticationOptions(biometricOnly: false),
+        biometricOnly: false,
       );
       setState(() => _authenticated = authenticated);
     } catch (e) {
@@ -101,6 +101,12 @@ class _SecureAccountDetailsScreenState extends ConsumerState<SecureAccountDetail
       type: account.type,
       currency: account.currency,
       openingBalanceMinor: account.openingBalance.amountMinor,
+      color: account.color,
+      institution: account.institution,
+      groupName: account.groupName,
+      cardLast4: account.cardLast4,
+      accountLast4: account.accountLast4,
+      loanDetails: account.loanDetails,
       encryptedDetails: encrypted,
     );
     
