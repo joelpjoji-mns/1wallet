@@ -237,38 +237,37 @@ class MiniFlowRail extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      constraints: const BoxConstraints(minHeight: 34),
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: 5,
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.md,
       ),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(AppRadii.sm),
+        borderRadius: BorderRadius.circular(AppRadii.md),
       ),
       child: Row(
         children: [
           Expanded(
             child: MiniFlowStat(
-              label: 'In',
+              label: 'INCOME',
               value: income,
               color: Theme.of(context).brightness == Brightness.dark
                   ? AppColors.positiveDark
                   : AppColors.positiveLight,
             ),
           ),
-          RailDivider(color: scheme.outlineVariant),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: MiniFlowStat(
-              label: 'Out',
+              label: 'EXPENSE',
               value: expense,
               color: scheme.error,
             ),
           ),
-          RailDivider(color: scheme.outlineVariant),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: MiniFlowStat(
-              label: 'Net',
+              label: 'NET',
               value: net,
               color: scheme.primary,
             ),
@@ -293,28 +292,31 @@ class MiniFlowStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '$label ',
+          label,
           maxLines: 1,
-          overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.5,
+            fontSize: 9,
           ),
         ),
-        Flexible(
-          child: Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-            ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.visible,
+          softWrap: false,
+          style: TextStyle(
+            color: color,
+            fontSize: 14,
+            fontWeight: FontWeight.w900,
+            fontFamily: 'Outfit',
           ),
         ),
       ],
