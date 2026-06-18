@@ -1085,38 +1085,7 @@ class RecurringDetailView extends ConsumerWidget {
   }
 
   Future<void> _postNow(BuildContext context, WidgetRef ref) async {
-    final notifier = ref.read(ledgerProvider.notifier);
-
-    // Create a cleared instance based on the scheduled transaction
-    await notifier.upsertTransaction(
-      type: transaction.type,
-      accountId: transaction.accountId,
-      amountMinor: transaction.amount.amountMinor,
-      status: 'cleared',
-      source: transaction.source,
-      counterAccountId: transaction.counterAccountId,
-      categoryId: transaction.categoryId,
-      paymentMethod: transaction.paymentMethod,
-      notes: transaction.notes,
-      occurredAt: DateTime.now(),
-      originalTransactionId: transaction.id,
-      recurrenceFrequency: transaction.recurrenceFrequency,
-      originalAmountMinor: transaction.originalAmount?.amountMinor,
-      originalCurrency: transaction.originalAmount?.currency,
-      counterAmountMinor: transaction.counterAmount?.amountMinor,
-    );
-
-    // Advance the scheduled template
-    final nextDate = _advanceCursor(transaction.occurredAt, transaction.recurrenceFrequency ?? 'monthly');
-    await notifier.updateTransactionStatus(
-      transaction.id,
-      'scheduled',
-      occurredAt: nextDate,
-    );
-
-    if (!context.mounted) return;
-    _showRouteMessage(context, 'Scheduled record posted.');
-    context.go('/recurring/past');
+    context.push('/add?plannedId=${transaction.id}');
   }
 
   Future<void> _postpone(BuildContext context, WidgetRef ref) async {
