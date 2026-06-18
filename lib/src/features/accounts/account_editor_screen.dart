@@ -10,6 +10,7 @@ import '../../widgets/liquid_progress_indicator.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/currency_picker.dart';
 import '../../widgets/credit_card_view.dart';
+import 'secure_account_details_screen.dart';
 import '../common/full_screen_picker.dart';
 import '../common/route_scaffold.dart';
 
