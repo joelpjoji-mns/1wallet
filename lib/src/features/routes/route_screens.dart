@@ -1,4 +1,5 @@
 export '../accounts/account_editor_screen.dart';
+export '../accounts/secure_account_details_screen.dart';
 export '../budgets/budget_goal_editor_screen.dart';
 export '../capture/capture_detail_screen.dart';
 export '../capture/review_queue_screen.dart';
