@@ -1205,10 +1205,11 @@ List<TransactionRecord> _postedLoanRepayments(
   LedgerState state,
   String loanId,
 ) {
-  return sortedTransactions(state, includeScheduled: false)
+  return state.transactions
       .where(
         (transaction) =>
             transaction.type == 'loan_repayment' &&
+            transaction.status != 'scheduled' &&
             (transaction.accountId == loanId ||
                 transaction.counterAccountId == loanId),
       )
