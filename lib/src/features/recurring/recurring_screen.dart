@@ -910,7 +910,11 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
             ? 'Scheduled record created.'
             : 'Scheduled record saved.',
       );
-      context.go('/recurring');
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/recurring');
+      }
     } catch (error) {
       if (!mounted) return;
       _showRouteMessage(context, error.toString());
