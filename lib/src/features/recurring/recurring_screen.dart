@@ -37,17 +37,53 @@ class RecurringScreen extends ConsumerWidget {
             (transaction) => transaction.id == recordId,
           );
     final listed = mode == 'past' ? recurringHistory : scheduled;
-    final plannedIncomeMinor = listed
-        .where((t) => incomeTypes.contains(t.type) && t.status != 'paused')
-        .fold(0, (sum, t) => sum + t.amount.amountMinor.abs());
-    final plannedExpenseMinor = listed
-        .where((t) => !incomeTypes.contains(t.type) && t.type != 'transfer' && t.status != 'paused')
-        .fold(0, (sum, t) => sum + t.amount.amountMinor.abs());
-    final netMinor = plannedIncomeMinor - plannedExpenseMinor;
+    
+    // Filter for current month and convert to display currency correctly
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month);
+    final endOfMonth = DateTime(now.year, now.month + 1);
+    
+    int plannedIncomeMinor = 0;
+    int plannedExpenseMinor = 0;
+    
+    for (final t in listed) {
+      if (t.status == 'paused') continue;
+      
+      // If not past mode, filter to current month for the summary
+      if (mode != 'past') {
+        if (t.occurredAt.isBefore(startOfMonth) || !t.occurredAt.isBefore(endOfMonth)) {
+          continue;
+        }
+      }
 
-    final displayIncome = convertMoneyForDisplay(state, Money(amountMinor: plannedIncomeMinor, currency: state.preferences.baseCurrency));
-    final displayExpense = convertMoneyForDisplay(state, Money(amountMinor: plannedExpenseMinor, currency: state.preferences.baseCurrency));
-    final displayNet = convertMoneyForDisplay(state, Money(amountMinor: netMinor, currency: state.preferences.baseCurrency));
+      // Convert individual transaction to base currency first to avoid summing different currency values
+      final baseAmount = t.baseAmount.amountMinor.abs();
+      if (incomeTypes.contains(t.type)) {
+        plannedIncomeMinor += baseAmount;
+      } else if (t.type != 'transfer') {
+        plannedExpenseMinor += baseAmount;
+      }
+    }
+
+    final netMinor = plannedIncomeMinor - plannedExpenseMinor;
+    final targetCurrency = state.preferences.displayCurrency;
+
+    final displayIncome = convertMoneyForDisplay(
+      state, 
+      Money(amountMinor: plannedIncomeMinor, currency: state.preferences.baseCurrency),
+      targetCurrency,
+    );
+    final displayExpense = convertMoneyForDisplay(
+      state, 
+      Money(amountMinor: plannedExpenseMinor, currency: state.preferences.baseCurrency),
+      targetCurrency,
+    );
+    final displayNet = convertMoneyForDisplay(
+      state, 
+      Money(amountMinor: netMinor, currency: state.preferences.baseCurrency),
+      targetCurrency,
+    );
+    
     final incomeText = formatMoney(displayIncome, state.preferences.locale);
     final expenseText = formatMoney(displayExpense, state.preferences.locale);
     final netText = formatMoney(displayNet, state.preferences.locale);
