@@ -73,20 +73,15 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(
-            height: 120,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadii.md),
-              child: LiquidProgressIndicator(
-                value: _liquidValue,
-                color: selectedColor,
-              ),
-            ),
-          ),
-          Slider(
-            value: _liquidValue,
-            onChanged: (val) => setState(() => _liquidValue = val),
-          ),
+          if (account != null)
+             CreditCardView(
+               cardNumber: account.displayLast4 ?? '0000',
+               expiry: '11/26',
+               cardHolder: account.name,
+               gradientStart: account.color ?? Theme.of(context).colorScheme.primary,
+               gradientEnd: (account.color ?? Theme.of(context).colorScheme.primary).withAlpha(150),
+             ),
+          const Gap(AppSpacing.lg),
           SectionCard(
             title: isNew ? 'Account setup' : 'Account profile',
             subtitle:

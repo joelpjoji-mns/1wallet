@@ -75,30 +75,6 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
       ],
       child: Column(
         children: [
-          SizedBox(
-            height: 100,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadii.md),
-              child: LiquidProgressIndicator(
-                value: _liquidValue,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: TextField(
-              controller: _inputController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Liquid Progress (0.0 - 1.0)'),
-              onChanged: (val) {
-                final parsed = double.tryParse(val);
-                if (parsed != null && parsed >= 0 && parsed <= 1) {
-                  setState(() => _liquidValue = parsed);
-                }
-              },
-            ),
-          ),
           DecoratedBox(
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surfaceContainerLow,
