@@ -100,7 +100,7 @@ class _SecureAccountDetailsScreenState extends ConsumerState<SecureAccountDetail
       name: account.name,
       type: account.type,
       currency: account.currency,
-      openingBalance: account.openingBalance,
+      openingBalanceMinor: account.openingBalance.amountMinor,
       encryptedDetails: encrypted,
     );
     
