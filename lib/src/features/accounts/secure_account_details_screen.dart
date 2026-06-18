@@ -7,6 +7,7 @@ import 'package:encrypt/encrypt.dart' as encrypt;
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../features/common/route_scaffold.dart';
+import '../../widgets/credit_card_view.dart';
 
 class SecureAccountDetailsScreen extends ConsumerStatefulWidget {
   final String accountId;
@@ -20,25 +21,24 @@ class SecureAccountDetailsScreen extends ConsumerStatefulWidget {
 class _SecureAccountDetailsScreenState extends ConsumerState<SecureAccountDetailsScreen> {
   final _auth = LocalAuthentication();
   bool _authenticated = false;
+  final _nameController = TextEditingController();
   final _cardNumberController = TextEditingController();
   final _expiryController = TextEditingController();
   final _ccvController = TextEditingController();
-  final _last4Controller = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final state = ref.read(ledgerProvider);
-      final account = state.accounts.firstWhere((a) => a.id == widget.accountId);
-      _last4Controller.text = account.accountLast4 ?? account.cardLast4 ?? '';
+      final account = ref.read(ledgerProvider).accounts.firstWhere((a) => a.id == widget.accountId);
+      _nameController.text = account.name;
     });
   }
 
   Future<void> _authenticate() async {
     try {
       final authenticated = await _auth.authenticate(
-        localizedReason: 'Authenticate to view secure card details',
+        localizedReason: 'Authenticate to view/edit secure card details',
         biometricOnly: false,
       );
       setState(() => _authenticated = authenticated);
@@ -76,10 +76,24 @@ class _SecureAccountDetailsScreenState extends ConsumerState<SecureAccountDetail
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          CreditCardView(
+            cardNumber: _cardNumberController.text.padRight(16, '*'),
+            expiry: _expiryController.text.isEmpty ? 'MM/YY' : _expiryController.text,
+            ccv: '***',
+            cardHolder: _nameController.text,
+            gradientStart: account.color ?? Theme.of(context).colorScheme.primary,
+            gradientEnd: (account.color ?? Theme.of(context).colorScheme.primary).withAlpha(150),
+          ),
+          const SizedBox(height: 24),
+          TextFormField(
+            controller: _nameController,
+            decoration: const InputDecoration(labelText: 'Card Holder Name'),
+          ),
           TextFormField(
             controller: _cardNumberController,
             decoration: const InputDecoration(labelText: 'Card Number'),
             keyboardType: TextInputType.number,
+            maxLength: 16,
           ),
           TextFormField(
             controller: _expiryController,
@@ -89,12 +103,7 @@ class _SecureAccountDetailsScreenState extends ConsumerState<SecureAccountDetail
             controller: _ccvController,
             decoration: const InputDecoration(labelText: 'CVV'),
             keyboardType: TextInputType.number,
-          ),
-          TextFormField(
-            controller: _last4Controller,
-            decoration: const InputDecoration(labelText: 'Last 4 digits (for SMS matching)'),
-            keyboardType: TextInputType.number,
-            maxLength: 4,
+            maxLength: 3,
           ),
         ],
       ),
@@ -102,7 +111,8 @@ class _SecureAccountDetailsScreenState extends ConsumerState<SecureAccountDetail
   }
 
   void _saveSecureDetails(Account account) async {
-    final key = encrypt.Key.fromLength(32);
+    // In production, use a secure key storage like flutter_secure_storage
+    final key = encrypt.Key.fromUtf8('my32lengthsupersecretkey12345678'); 
     final iv = encrypt.IV.fromLength(16);
     final encrypter = encrypt.Encrypter(encrypt.AES(key));
 
@@ -110,20 +120,19 @@ class _SecureAccountDetailsScreenState extends ConsumerState<SecureAccountDetail
       'number': encrypter.encrypt(_cardNumberController.text, iv: iv).base64,
       'expiry': encrypter.encrypt(_expiryController.text, iv: iv).base64,
       'ccv': encrypter.encrypt(_ccvController.text, iv: iv).base64,
+      'name': encrypter.encrypt(_nameController.text, iv: iv).base64,
     };
 
     await ref.read(ledgerProvider.notifier).upsertAccount(
       id: account.id,
-      name: account.name,
+      name: _nameController.text,
       type: account.type,
       currency: account.currency,
       openingBalanceMinor: account.openingBalance.amountMinor,
       color: account.color,
       institution: account.institution,
       groupName: account.groupName,
-      cardLast4: account.type == 'card' ? _last4Controller.text : null,
-      accountLast4: account.type != 'card' ? _last4Controller.text : null,
-      loanDetails: account.loanDetails,
+      cardLast4: _cardNumberController.text.length >= 4 ? _cardNumberController.text.substring(_cardNumberController.text.length - 4) : account.cardLast4,
       encryptedDetails: encrypted,
     );
     
