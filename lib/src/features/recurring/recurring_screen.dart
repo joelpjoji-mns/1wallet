@@ -1301,11 +1301,7 @@ class _RecurringHistoryList extends ConsumerWidget {
     final state = ref.watch(ledgerProvider);
     final history = state.transactions
         .where((t) =>
-            (t.originalTransactionId == plan.id ||
-                (_isRecurringHistorySource(t.source) &&
-                    t.accountId == plan.accountId &&
-                    t.categoryId == plan.categoryId &&
-                    t.amount.amountMinor == plan.amount.amountMinor)) &&
+            t.originalTransactionId == plan.id &&
             t.status != 'scheduled' &&
             t.id != plan.id)
         .toList();
