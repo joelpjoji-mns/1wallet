@@ -221,115 +221,39 @@ class _PermissionsSetupScreenState extends ConsumerState<PermissionsSetupScreen>
                 ),
               ),
               Expanded(
-                child: ListView(
+                child: Padding(
                   padding: const EdgeInsets.all(24),
-                  children: [
-                    const StaggeredFadeIn(
-                      child: Text(
-                        'Almost\nthere.',
-                        style: TextStyle(fontSize: 40, fontWeight: FontWeight.w900, height: 1.1, letterSpacing: -1),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    StaggeredFadeIn(
-                      delay: const Duration(milliseconds: 50),
-                      child: OutlinedButton.icon(
-                        onPressed: _requestingAll ? null : _grantAll,
-                        icon: const Icon(Icons.flash_on_outlined),
-                        label: Text(_requestingAll ? 'Requesting...' : 'Grant all permissions at once'),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    StaggeredFadeIn(
-                      delay: const Duration(milliseconds: 100),
-                      child: GlassCard(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('1. Auto Capture', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                            const SizedBox(height: 4),
-                            Text('SMS access powers transaction-alert parsing.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7))),
-                            const SizedBox(height: 16),
-                            if (_loading) const Text('Checking SMS availability...') else ...[
-                              InfoRow(icon: Icons.sms_outlined, label: 'SMS permission', value: smsStatusLabel, tone: _smsReady ? MetricTone.positive : MetricTone.warning),
-                              if (!_smsReady && _smsAvailable) ...[
-                                const SizedBox(height: 12),
-                                FilledButton.icon(
-                                  onPressed: _requestingSms ? null : _allowSms,
-                                  icon: const Icon(Icons.shield_outlined),
-                                  label: Text(_requestingSms ? 'Requesting...' : 'Allow SMS'),
-                                ),
-                              ],
-                            ],
-                          ],
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const StaggeredFadeIn(
+                        child: Text(
+                          'Almost\nthere.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 48, fontWeight: FontWeight.w900, height: 1.1, letterSpacing: -1),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    StaggeredFadeIn(
-                      delay: const Duration(milliseconds: 200),
-                      child: GlassCard(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('2. Receipts and media', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                            const SizedBox(height: 4),
-                            Text('Camera, photos, and files power receipt scanning.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7))),
-                            const SizedBox(height: 16),
-                            InfoRow(icon: Icons.camera_alt_outlined, label: 'Camera', value: _permissionLabel(_cameraStatus), tone: _permissionTone(_cameraStatus)),
-                            InfoRow(icon: Icons.photo_library_outlined, label: 'Photos', value: _permissionLabel(_photosStatus), tone: _permissionTone(_photosStatus)),
-                            InfoRow(icon: Icons.file_upload_outlined, label: 'Files', value: _filePermissionLabel(_storageStatus), tone: _permissionTone(_storageStatus)),
-                            if (!_cameraStatus.isGranted || !_photosStatus.isGranted || !_storageStatus.isGranted) ...[
-                              const SizedBox(height: 12),
-                              FilledButton.icon(
-                                onPressed: _requestingMedia ? null : _requestMedia,
-                                icon: const Icon(Icons.shield_outlined),
-                                label: Text(_requestingMedia ? 'Requesting...' : 'Allow media'),
-                              ),
-                            ],
-                          ],
+                      const SizedBox(height: 16),
+                      Text(
+                        'Tap below to grant all necessary permissions and finish setting up.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                          fontSize: 16,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    StaggeredFadeIn(
-                      delay: const Duration(milliseconds: 300),
-                      child: GlassCard(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('3. Alerts and updates', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                            const SizedBox(height: 4),
-                            Text('Notifications support update alerts.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7))),
-                            const SizedBox(height: 16),
-                            InfoRow(icon: Icons.notifications_active_outlined, label: 'Notifications', value: _permissionLabel(_notificationStatus), tone: _permissionTone(_notificationStatus)),
-                            InfoRow(icon: Icons.install_mobile_outlined, label: 'Install updates', value: _permissionLabel(_installStatus), tone: _permissionTone(_installStatus)),
-                            if (!_notificationStatus.isGranted || !_installStatus.isGranted) ...[
-                              const SizedBox(height: 12),
-                              FilledButton.icon(
-                                onPressed: _requestingAlerts ? null : _requestAlerts,
-                                icon: const Icon(Icons.shield_outlined),
-                                label: Text(_requestingAlerts ? 'Requesting...' : 'Allow alerts'),
-                              ),
-                            ],
-                          ],
+                      const Spacer(),
+                      StaggeredFadeIn(
+                        delay: const Duration(milliseconds: 200),
+                        child: FilledButton.icon(
+                          onPressed: _requestingAll ? null : _finishSetup,
+                          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
+                          icon: const Icon(Icons.check_circle_outline),
+                          label: Text(_requestingAll ? 'Requesting...' : 'Finish Setup'),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 48),
-                    StaggeredFadeIn(
-                      delay: const Duration(milliseconds: 400),
-                      child: FilledButton.icon(
-                        onPressed: _requestingAll ? null : _finishSetup,
-                        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
-                        icon: const Icon(Icons.check_circle_outline),
-                        label: Text(_requestingAll ? 'Requesting...' : 'Finish Setup'),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],
