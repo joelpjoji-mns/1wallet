@@ -86,7 +86,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
           const Gap(AppSpacing.md),
           if (account != null)
             OutlinedButton.icon(
-              onPressed: () => context.push('/account/${account.id}/secure'),
+              onPressed: () => _handleSecureNavigation(context, account.id),
               icon: const Icon(Icons.lock_outline_rounded),
               label: const Text('Manage secure details'),
             ),
@@ -291,6 +291,21 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _handleSecureNavigation(BuildContext context, String accountId) async {
+    final auth = LocalAuthentication();
+    try {
+      final authenticated = await auth.authenticate(
+        localizedReason: 'Authenticate to access secure details',
+        biometricOnly: false,
+      );
+      if (authenticated && context.mounted) {
+        context.push('/account/$accountId/secure');
+      }
+    } catch (e) {
+      debugPrint('Auth error: $e');
+    }
   }
 
   void _syncForm(Account? account) {
