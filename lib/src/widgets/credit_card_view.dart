@@ -91,37 +91,35 @@ class _CreditCardViewState extends State<CreditCardView>
   Widget _buildFront() {
     return Container(
       width: 400,
-      height: 250,
+      height: 230,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
           colors: [widget.gradientStart, widget.gradientEnd],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
+        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 10, offset: const Offset(0, 5))],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Icon(Icons.credit_card, color: Colors.white),
-                IconButton(
-                  icon: const Icon(Icons.copy, color: Colors.white, size: 16),
-                  onPressed: () => _copyToClipboard(widget.cardNumber),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Text(widget.cardNumber, style: const TextStyle(color: Colors.white, fontSize: 24, letterSpacing: 2)),
-            const Spacer(),
-            Text(widget.cardHolder, style: const TextStyle(color: Colors.white, fontSize: 16)),
-            Text('EXP: ${widget.expiry}', style: const TextStyle(color: Colors.white, fontSize: 12)),
-          ],
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Icon(Icons.credit_card, color: Colors.white, size: 32),
+              Text(widget.expiry, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+            ],
+          ),
+          const Spacer(),
+          Text(
+            widget.cardNumber.isEmpty ? '0000 0000 0000 0000' : widget.cardNumber,
+            style: const TextStyle(color: Colors.white, fontSize: 22, letterSpacing: 2, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 15),
+          Text(widget.cardHolder.isEmpty ? 'YOUR NAME' : widget.cardHolder.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+        ],
       ),
     );
   }
@@ -129,14 +127,14 @@ class _CreditCardViewState extends State<CreditCardView>
   Widget _buildBack() {
     return Container(
       width: 400,
-      height: 250,
+      height: 230,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
-        color: Colors.grey[700],
+        borderRadius: BorderRadius.circular(20),
+        color: Colors.grey[800],
       ),
       child: Column(
         children: [
-          const SizedBox(height: 20),
+          const SizedBox(height: 30),
           Container(height: 50, color: Colors.black),
           const SizedBox(height: 20),
           Container(
@@ -144,17 +142,8 @@ class _CreditCardViewState extends State<CreditCardView>
             width: 350,
             color: Colors.white,
             alignment: Alignment.centerRight,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Text(widget.ccv, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                IconButton(
-                  icon: const Icon(Icons.copy, color: Colors.black, size: 16),
-                  onPressed: () => _copyToClipboard(widget.ccv),
-                ),
-              ],
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Text(widget.ccv.isEmpty ? '***' : widget.ccv, style: const TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
