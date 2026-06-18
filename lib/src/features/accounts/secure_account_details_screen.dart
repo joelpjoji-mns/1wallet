@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
-import '../../../data/ledger_models.dart';
-import '../../../data/ledger_providers.dart';
-import '../../common/route_scaffold.dart';
+
+import '../../data/ledger_models.dart';
+import '../../data/ledger_providers.dart';
+import '../../features/common/route_scaffold.dart';
 
 class SecureAccountDetailsScreen extends ConsumerStatefulWidget {
   final String accountId;
@@ -37,9 +39,7 @@ class _SecureAccountDetailsScreenState extends ConsumerState<SecureAccountDetail
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(ledgerProvider);
-    final account = accountById(state, widget.accountId);
-    
-    if (account == null) return const Scaffold(body: Center(child: Text('Account not found')));
+    final account = state.accounts.firstWhere((a) => a.id == widget.accountId);
 
     if (!_authenticated) {
       return RouteScaffold(
@@ -85,8 +85,7 @@ class _SecureAccountDetailsScreenState extends ConsumerState<SecureAccountDetail
   }
 
   void _saveSecureDetails(Account account) async {
-    // Basic encryption implementation
-    final key = encrypt.Key.fromLength(32); // In prod, store this securely!
+    final key = encrypt.Key.fromLength(32);
     final iv = encrypt.IV.fromLength(16);
     final encrypter = encrypt.Encrypter(encrypt.AES(key));
 
