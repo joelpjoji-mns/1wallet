@@ -1074,13 +1074,20 @@ class _LoanCompactCard extends StatelessWidget {
                   ),
                 ],
               ),
-              if (details.principal != null && mode != 'past') ...[
+              if (details.principal != null) ...[
                 const SizedBox(height: AppSpacing.md),
                 Builder(builder: (context) {
                   final principal = details.principal!.amountMinor.abs();
-                  final remaining = balance.amountMinor.abs();
-                  final paid = (principal - remaining).clamp(0, principal);
-                  final progress = principal > 0 ? paid / principal : 0.0;
+                  final repayments = _postedLoanRepayments(state, loan.id);
+                  final paid = repayments.fold<int>(0, (sum, t) {
+                    final amountInBase = convertMoneyForDisplay(
+                      state,
+                      t.amount,
+                      loan.currency,
+                    ).amountMinor.abs();
+                    return sum + amountInBase;
+                  });
+                  final progress = principal > 0 ? (paid / principal).clamp(0.0, 1.0) : 0.0;
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -1226,7 +1233,7 @@ List<TransactionRecord> _loanHistoryRepayments(
             transaction.type == 'loan_repayment' &&
             (transaction.accountId == loanId ||
                 transaction.counterAccountId == loanId) &&
-            (transaction.status == 'skipped' || _isHistoricalLoanRepayment(transaction)),
+            _isHistoricalLoanRepayment(transaction),
       )
       .toList();
   items.sort((left, right) => right.occurredAt.compareTo(left.occurredAt));
@@ -1234,7 +1241,6 @@ List<TransactionRecord> _loanHistoryRepayments(
 }
 
 bool _isHistoricalLoanRepayment(TransactionRecord transaction) {
-  if (transaction.status == 'skipped') return true;
   if (transaction.status != 'scheduled') return true;
   final today = _loanStartOfToday();
   final occurredDay = DateTime(
