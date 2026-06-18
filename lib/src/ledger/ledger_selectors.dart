@@ -959,16 +959,8 @@ Color accountDisplayColor(Account account) {
   return AppColors.accountPalette[hash % AppColors.accountPalette.length];
 }
 
-IconData transactionIcon(TransactionRecord transaction) {
-  if (incomeTypes.contains(transaction.type)) {
-    return Icons.arrow_downward_rounded;
-  }
-  if (transaction.type == 'transfer') return Icons.swap_horiz_rounded;
-  if (transaction.type == 'card_payment') return Icons.credit_card_outlined;
-  if (transaction.type == 'loan_repayment') {
-    return Icons.account_balance_outlined;
-  }
-  return Icons.arrow_upward_rounded;
+List<Account> sortAccounts(Iterable<Account> accounts) {
+  return accounts.toList()..sort((left, right) => left.sortOrder.compareTo(right.sortOrder));
 }
 
 Color categoryColor(Category? category, BuildContext context) {
@@ -984,3 +976,5 @@ Color categoryColor(Category? category, BuildContext context) {
   }
   return AppColors.accountPalette[hash % AppColors.accountPalette.length];
 }
+
+IconData transactionIcon(TransactionRecord transaction) {
