@@ -1,6 +1,6 @@
 package com.joelpjoji.one.wallet
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugins.firebase.firestore.FlutterFirebaseFirestorePlugin
 import io.flutter.plugin.common.MethodChannel
@@ -10,7 +10,7 @@ import android.net.Uri
 import org.json.JSONArray
 import org.json.JSONObject
 
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
 	private val CHANNEL = "com.joelpjoji.one.wallet/sms"
 
 	override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
