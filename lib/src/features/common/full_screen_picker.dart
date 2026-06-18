@@ -10,6 +10,7 @@ class PickerOption<T> {
     this.subtitle,
     this.icon,
     this.iconColor,
+    this.color,
     this.searchText,
   });
 
@@ -18,6 +19,7 @@ class PickerOption<T> {
   final String? subtitle;
   final IconData? icon;
   final Color? iconColor;
+  final Color? color;
   final String? searchText;
 }
 
