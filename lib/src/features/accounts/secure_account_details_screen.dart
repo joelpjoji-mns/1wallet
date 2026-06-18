@@ -64,19 +64,6 @@ class _SecureAccountDetailsScreenState extends ConsumerState<SecureAccountDetail
     final state = ref.watch(ledgerProvider);
     final account = state.accounts.firstWhere((a) => a.id == widget.accountId);
 
-    if (!_authenticated) {
-      return RouteScaffold(
-        title: 'Secure Details',
-        child: Center(
-          child: FilledButton.icon(
-            onPressed: _authenticate,
-            icon: const Icon(Icons.fingerprint),
-            label: const Text('Unlock secure details'),
-          ),
-        ),
-      );
-    }
-
     return RouteScaffold(
       title: 'Secure Details',
       actions: [
