@@ -702,7 +702,8 @@ class LoanDetailView extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.lg),
                   Builder(builder: (context) {
                     final principal = details.principal!.amountMinor.abs();
-                    // Convert all repayments to the same currency to get a consistent sum
+                    // Fix: calculate repayments inside scope
+                    final repayments = _postedLoanRepayments(state, loan.id);
                     final paid = repayments.fold<int>(0, (sum, t) {
                       final amountInBase = convertMoneyForDisplay(
                         state,
