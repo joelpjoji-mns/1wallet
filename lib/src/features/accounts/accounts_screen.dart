@@ -106,6 +106,8 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
+          _CurrencySummaryHeader(state: state, accounts: rows),
+          const SizedBox(height: AppSpacing.xs),
           Row(
             children: [
               Expanded(
@@ -192,6 +194,86 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
   }
 }
 
+
+class _CurrencySummaryHeader extends StatelessWidget {
+  const _CurrencySummaryHeader({
+    required this.state,
+    required this.accounts,
+  });
+
+  final LedgerState state;
+  final List<Account> accounts;
+
+  @override
+  Widget build(BuildContext context) {
+    if (accounts.isEmpty) return const SizedBox.shrink();
+
+    final balancesMap = accountBalanceMap(state);
+    final totalsByCurrency = <String, int>{};
+
+    for (final account in accounts) {
+      final currency = account.currency.toUpperCase();
+      final balance = accountBalanceFromMap(balancesMap, account);
+      totalsByCurrency.update(
+        currency,
+        (value) => value + balance.amountMinor,
+        ifAbsent: () => balance.amountMinor,
+      );
+    }
+
+    final currencyEntries = totalsByCurrency.entries.toList()
+      ..sort((a, b) {
+        if (a.key == state.preferences.baseCurrency) return -1;
+        if (b.key == state.preferences.baseCurrency) return 1;
+        return b.value.abs().compareTo(a.value.abs());
+      });
+
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(100),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        side: BorderSide(
+          color: Theme.of(context).colorScheme.outlineVariant.withAlpha(100),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final entry in currencyEntries)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      entry.key == state.preferences.baseCurrency ? '${entry.key} (Base)' : entry.key,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: entry.key == state.preferences.baseCurrency ? FontWeight.bold : FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      formatMoney(Money(amountMinor: entry.value, currency: entry.key), state.preferences.locale),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: entry.value < 0 ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _AccountRow extends StatelessWidget {
   const _AccountRow({required this.state, required this.account});
