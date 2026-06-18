@@ -61,10 +61,49 @@ class RecurringScreen extends ConsumerWidget {
         _ => 'Planned payments',
       },
       actions: [
-        IconButton(
-          onPressed: () => context.push('/recurring/new'),
-          icon: const Icon(Icons.add_rounded),
-        ),
+        if (recordId != null && mode != 'edit' && mode != 'new' && selected != null)
+          IconButton(
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Delete plan?'),
+                  content: const Text(
+                      'This will permanently delete this scheduled payment. Historical payments posted from this plan will not be deleted.'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                await ref.read(ledgerProvider.notifier).deleteTransaction(selected.id);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Plan deleted.')),
+                  );
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/recurring');
+                  }
+                }
+              }
+            },
+            icon: const Icon(Icons.delete_outline_rounded),
+            color: Theme.of(context).colorScheme.error,
+          )
+        else if (mode != 'edit' && mode != 'new' && mode != 'past')
+          IconButton(
+            onPressed: () => context.push('/recurring/new'),
+            icon: const Icon(Icons.add_rounded),
+          ),
       ],
       child: Column(
         children: [
