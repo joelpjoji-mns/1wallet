@@ -294,6 +294,7 @@ class Account {
     this.cardLast4,
     this.accountLast4,
     this.loanDetails,
+    this.encryptedDetails,
     this.includeInTotals = true,
     this.includeInReports = true,
     this.includeInNetWorth = true,
