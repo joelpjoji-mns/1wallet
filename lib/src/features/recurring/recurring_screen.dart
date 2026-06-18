@@ -1302,7 +1302,7 @@ class _RecurringHistoryList extends ConsumerWidget {
     final history = state.transactions
         .where((t) =>
             t.originalTransactionId == plan.id &&
-            t.status != 'scheduled' &&
+            (t.status != 'scheduled' || (t.status == 'void' && t.notes?.toLowerCase() == 'skipped')) &&
             t.id != plan.id)
         .toList();
 
