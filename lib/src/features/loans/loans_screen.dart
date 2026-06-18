@@ -1234,6 +1234,7 @@ List<TransactionRecord> _loanHistoryRepayments(
 }
 
 bool _isHistoricalLoanRepayment(TransactionRecord transaction) {
+  if (transaction.status == 'skipped') return true;
   if (transaction.status != 'scheduled') return true;
   final today = _loanStartOfToday();
   final occurredDay = DateTime(
