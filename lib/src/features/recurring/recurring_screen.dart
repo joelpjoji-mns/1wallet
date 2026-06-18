@@ -729,10 +729,13 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
     if (_loadedRecordId == key) return;
     _loadedRecordId = key;
     _type = record?.type ?? 'expense';
-    _currency = record?.amount.currency ?? state.preferences.baseCurrency;
-    _amountController.text = record == null
+    
+    final draftMoney = record?.originalAmount ?? record?.amount;
+    _currency = draftMoney?.currency ?? state.preferences.baseCurrency;
+    _amountController.text = draftMoney == null
         ? ''
-        : _formatAmountInput(record.amount.amountMinor.abs());
+        : _formatAmountInput(draftMoney.amountMinor.abs(), _currency!);
+        
     _nameController.text = record?.name ?? '';
     _accountId = record?.accountId ?? state.accounts.firstOrNull?.id;
     _counterAccountId = record?.counterAccountId;
@@ -863,7 +866,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
     LedgerState state,
     TransactionRecord? existing,
   ) async {
-    final amountMinor = _amountMinorFromInput(_amountController.text).abs();
+    final amountMinor = _amountMinorFromInput(_amountController.text, _currency ?? state.preferences.baseCurrency).abs();
     final account = accountById(state, _accountId);
     if (amountMinor <= 0) {
       _showRouteMessage(context, 'Enter an amount.');
@@ -878,6 +881,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
       return;
     }
     try {
+      final originalCurrency = _currency ?? state.preferences.baseCurrency;
       await ref
           .read(ledgerProvider.notifier)
           .upsertTransaction(
@@ -887,8 +891,8 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
             counterAccountId: _needsCounterAccount ? _counterAccountId : null,
             categoryId: _needsCounterAccount ? null : _categoryId,
             amountMinor: amountMinor,
-            originalCurrency: _currency != account.currency ? _currency : null,
-            originalAmountMinor: _currency != account.currency ? amountMinor : null,
+            originalCurrency: originalCurrency != account.currency ? originalCurrency : null,
+            originalAmountMinor: originalCurrency != account.currency ? amountMinor : null,
             status: 'scheduled',
             source: 'recurring',
             name: _nameController.text,
@@ -1307,23 +1311,24 @@ String? _firstCategoryId(LedgerState state, {String? preferred}) {
   return firstActiveCategory(state, preferred: preferred)?.id;
 }
 
-String _formatAmountInput(int amountMinor) {
+String _formatAmountInput(int amountMinor, String currency) {
   if (amountMinor == 0) return '';
-  final integer = amountMinor ~/ 100;
-  final fraction = amountMinor % 100;
+  final minors = math.pow(10, minorUnits(currency)).toInt();
+  final integer = amountMinor ~/ minors;
+  final fraction = amountMinor % minors;
   if (fraction == 0) return '$integer';
-  return '$integer.${fraction.toString().padLeft(2, '0')}';
+  return '$integer.${fraction.toString().padLeft(minorUnits(currency), '0')}';
 }
 
-int _amountMinorFromInput(String value) {
+int _amountMinorFromInput(String value, String currency) {
   final clean = value.replaceAll(RegExp(r'[^0-9.]'), '');
   if (clean.isEmpty) return 0;
   final parts = clean.split('.');
   final integer = int.tryParse(parts[0]) ?? 0;
   final fraction = parts.length > 1
-      ? (int.tryParse(parts[1].padRight(2, '0').substring(0, 2)) ?? 0)
+      ? (int.tryParse(parts[1].padRight(minorUnits(currency), '0').substring(0, minorUnits(currency))) ?? 0)
       : 0;
-  return integer * 100 + fraction;
+  return integer * math.pow(10, minorUnits(currency)).toInt() + fraction;
 }
 
 void _showRouteMessage(BuildContext context, String message) {
@@ -1468,7 +1473,8 @@ String? _recurringExtraLine(
 String _recurringAmountLabel(LedgerState state, TransactionRecord transaction) {
   final isNegative = !incomeTypes.contains(transaction.type);
   final sign = isNegative ? '-' : '+';
-  return '$sign${formatMoney(transaction.amount.copyWith(amountMinor: transaction.amount.amountMinor.abs()), state.preferences.locale)}';
+  final displayMoney = transaction.originalAmount ?? transaction.amount;
+  return '$sign${formatMoney(displayMoney.copyWith(amountMinor: displayMoney.amountMinor.abs()), state.preferences.locale)}';
 }
 
 Color _recurringAmountColor(
