@@ -28,18 +28,18 @@ class _SecureAccountDetailsScreenState extends ConsumerState<SecureAccountDetail
   @override
   void initState() {
     super.initState();
-    // Pre-fill if already exists
-    final account = ref.read(ledgerProvider).accounts.firstWhere((a) => a.id == widget.accountId);
-    if (account.encryptedDetails != null) {
-      // In a real app, we'd decrypt here *after* auth. 
-      // For now, storing last4 publicly is okay if it's just for matching.
-    }
-    _last4Controller.text = account.accountLast4 ?? '';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final state = ref.read(ledgerProvider);
+      final account = state.accounts.firstWhere((a) => a.id == widget.accountId);
+      _last4Controller.text = account.accountLast4 ?? account.cardLast4 ?? '';
+    });
   }
+
+  Future<void> _authenticate() async {
     try {
       final authenticated = await _auth.authenticate(
         localizedReason: 'Authenticate to view secure card details',
-        biometricOnly: false,
+        options: const AuthenticationOptions(biometricOnly: false),
       );
       setState(() => _authenticated = authenticated);
     } catch (e) {
