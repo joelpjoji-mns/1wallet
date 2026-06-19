@@ -11,6 +11,7 @@ import 'add_record_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
+import '../../utils/recurrence_utils.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
@@ -673,8 +674,10 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
         originalTransactionId: widget.plannedId,
       );
 
-      if (widget.plannedId != null && plannedTransaction != null) {
-        final nextDate = _advanceCursor(plannedTransaction.occurredAt, plannedTransaction.recurrenceFrequency ?? 'monthly');
+      if (plannedTransaction != null &&
+          plannedTransaction.recurrenceFrequency != null &&
+          plannedTransaction.recurrenceFrequency != 'manual') {
+        final nextDate = advanceTransactionRecurrence(plannedTransaction.occurredAt, plannedTransaction);
         await ref.read(ledgerProvider.notifier).updateTransactionStatus(widget.plannedId!, 'scheduled', occurredAt: nextDate);
       }
 
@@ -730,23 +733,6 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
   void _clearInvalidCategory(LedgerState state, TransactionRecord? source) {
     if (source != null || _type == 'transfer') return;
     if (categoryById(state, _categoryId) == null) _categoryId = null;
-  }
-
-  DateTime _advanceCursor(DateTime current, String freq) {
-    if (freq == 'daily') return current.add(const Duration(days: 1));
-    if (freq == 'weekly') return current.add(const Duration(days: 7));
-    if (freq == 'yearly') return _addMonths(current, 12);
-    return _addMonths(current, 1);
-  }
-
-  DateTime _addMonths(DateTime date, int months) {
-    var year = date.year;
-    var month = date.month + months;
-    while (month > 12) { year++; month -= 12; }
-    var day = date.day;
-    final daysInNext = DateTime(year, month + 1, 0).day;
-    if (day > daysInNext) day = daysInNext;
-    return DateTime(year, month, day, date.hour, date.minute, date.second);
   }
 }
 

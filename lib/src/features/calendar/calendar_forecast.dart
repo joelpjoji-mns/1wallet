@@ -1,5 +1,6 @@
 import '../../data/ledger_models.dart';
 import '../../ledger/ledger_selectors.dart';
+import '../../utils/recurrence_utils.dart';
 
 
 List<TransactionRecord> forecastRecurringTransactions(
@@ -54,45 +55,11 @@ List<TransactionRecord> forecastRecurringTransactions(
         ));
       }
       
-      cursor = _advanceCursor(cursor, frequency);
+      cursor = advanceTransactionRecurrence(cursor, template);
       count++;
       if (count > 200) break; // Safety break
     }
   }
   
   return occurrences;
-}
-
-DateTime _advanceCursor(DateTime current, String frequency) {
-  switch (frequency.toLowerCase()) {
-    case 'daily':
-      return current.add(const Duration(days: 1));
-    case 'weekly':
-      return current.add(const Duration(days: 7));
-    case 'monthly':
-      return _addMonths(current, 1);
-    case 'yearly':
-      return _addMonths(current, 12);
-    default:
-      return _addMonths(current, 1);
-  }
-}
-
-DateTime _addMonths(DateTime date, int months) {
-  var year = date.year;
-  var month = date.month + months;
-  while (month > 12) {
-    year++;
-    month -= 12;
-  }
-  while (month < 1) {
-    year--;
-    month += 12;
-  }
-  var day = date.day;
-  final daysInNextMonth = DateTime(year, month + 1, 0).day;
-  if (day > daysInNextMonth) {
-    day = daysInNextMonth;
-  }
-  return DateTime(year, month, day, date.hour, date.minute, date.second);
 }
