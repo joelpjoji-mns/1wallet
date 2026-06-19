@@ -404,9 +404,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               children: [
                 LiquidGlassSwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  value: true,
-                  onChanged: (value) =>
-                      _showMessage('Notification toggle saved.'),
+                  value: state.preferences.notificationInboxEnabled,
+                  onChanged: (value) {
+                    ref.read(ledgerProvider.notifier).updatePreferences(
+                      state.preferences.copyWith(notificationInboxEnabled: value),
+                    );
+                    _showMessage(value ? 'Notification inbox enabled.' : 'Notification inbox paused.');
+                  },
                   title: const Text('Notification inbox'),
                   subtitle: Text(
                     'Active reminder, budget, or goal alerts.',
@@ -419,9 +423,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const Divider(height: 1),
                 LiquidGlassSwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  value: false,
-                  onChanged: (value) =>
-                      _showMessage('Device notifications toggled.'),
+                  value: state.preferences.deviceNotificationsEnabled,
+                  onChanged: (value) {
+                    ref.read(ledgerProvider.notifier).updatePreferences(
+                      state.preferences.copyWith(deviceNotificationsEnabled: value),
+                    );
+                    _showMessage(value ? 'Device notifications enabled.' : 'Device notifications disabled.');
+                  },
                   title: const Text('Device notifications'),
                   subtitle: Text(
                     'Updates use native alerts when permission is granted.',
@@ -434,10 +442,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const Divider(height: 1),
                 LiquidGlassSwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  value: false,
-                  onChanged: (value) => _showMessage(
-                    value ? 'Quiet hours enabled' : 'Quiet hours disabled',
-                  ),
+                  value: state.preferences.quietHoursEnabled,
+                  onChanged: (value) {
+                    ref.read(ledgerProvider.notifier).updatePreferences(
+                      state.preferences.copyWith(quietHoursEnabled: value),
+                    );
+                    _showMessage(
+                      value ? 'Quiet hours enabled' : 'Quiet hours disabled',
+                    );
+                  },
                   title: const Text('Quiet hours'),
                   subtitle: Text(
                     '22:00 to 07:00',
@@ -451,10 +464,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 for (final channel in _notificationChannels) ...[
                   LiquidGlassSwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    value: true,
-                    onChanged: (value) => _showMessage(
-                      value ? '${channel.$2} enabled' : '${channel.$2} paused',
-                    ),
+                    value: channel.$1 == 'scheduled'
+                        ? state.preferences.channelScheduledEnabled
+                        : channel.$1 == 'budgets'
+                            ? state.preferences.channelBudgetsEnabled
+                            : state.preferences.channelGoalsEnabled,
+                    onChanged: (value) {
+                      final prefs = state.preferences;
+                      if (channel.$1 == 'scheduled') {
+                        ref.read(ledgerProvider.notifier).updatePreferences(prefs.copyWith(channelScheduledEnabled: value));
+                      } else if (channel.$1 == 'budgets') {
+                        ref.read(ledgerProvider.notifier).updatePreferences(prefs.copyWith(channelBudgetsEnabled: value));
+                      } else {
+                        ref.read(ledgerProvider.notifier).updatePreferences(prefs.copyWith(channelGoalsEnabled: value));
+                      }
+                      _showMessage(
+                        value ? '${channel.$2} enabled' : '${channel.$2} paused',
+                      );
+                    },
                     title: Row(
                       children: [
                         Icon(
@@ -502,8 +529,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               children: [
                 LiquidGlassSwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  value: false,
-                  onChanged: null,
+                  value: state.preferences.privacyModeEnabled,
+                  onChanged: (value) {
+                    ref.read(ledgerProvider.notifier).updatePreferences(
+                      state.preferences.copyWith(privacyModeEnabled: value),
+                    );
+                    _showMessage(value ? 'Privacy mode enabled' : 'Privacy mode disabled');
+                  },
                   title: const Text('Privacy mode'),
                   subtitle: Text(
                     'Hide amounts in widgets and screenshots once native widgets are added.',
@@ -515,8 +547,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 LiquidGlassSwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  value: false,
-                  onChanged: null,
+                  value: state.preferences.biometricLockEnabled,
+                  onChanged: (value) {
+                    ref.read(ledgerProvider.notifier).updatePreferences(
+                      state.preferences.copyWith(biometricLockEnabled: value),
+                    );
+                    _showMessage(value ? 'Biometric lock enabled' : 'Biometric lock disabled');
+                  },
                   title: const Text('Biometric lock'),
                   subtitle: Text(
                     'Requires a native security slice after the app shell is stable.',

@@ -148,6 +148,12 @@ abstract final class AppTheme {
         color: scheme.primary,
         linearTrackColor: scheme.surfaceContainerHighest,
       ),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: ZoomPageTransitionsBuilder(),
+          TargetPlatform.iOS: ZoomPageTransitionsBuilder(),
+        },
+      ),
     );
   }
 

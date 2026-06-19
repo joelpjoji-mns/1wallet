@@ -105,20 +105,20 @@ class _MainShellState extends ConsumerState<MainShell> {
         _selectTab(0);
         return true;
       },
-      child: Scaffold(
-        key: _scaffoldKey,
-        drawerEnableOpenDragGesture: true,
-        drawerEdgeDragWidth: 40,
-        drawer: ValueListenableBuilder<int>(
-          valueListenable: _selectedIndex,
-          builder: (context, selectedIndex, child) => _MainDrawer(
+      child: ValueListenableBuilder<int>(
+        valueListenable: _selectedIndex,
+        builder: (context, selectedIndex, child) => Scaffold(
+          key: _scaffoldKey,
+          drawerEnableOpenDragGesture: true,
+          drawerEdgeDragWidth: selectedIndex == 0 ? MediaQuery.sizeOf(context).width : 40,
+          drawer: _MainDrawer(
             selectedIndex: selectedIndex,
             onTabSelected: (index) {
               Navigator.of(context).pop();
               _selectTab(index);
             },
           ),
-        ),
+
         body: Stack(
           children: [
             NotificationListener<ScrollNotification>(
@@ -131,17 +131,25 @@ class _MainShellState extends ConsumerState<MainShell> {
                 }
                 return false;
               },
-              child: PageView.builder(
-                controller: _pageController,
-                dragStartBehavior: DragStartBehavior.down,
-                itemCount: _tabs.length,
-                onPageChanged: (index) {
-                  // Index update deferred to ScrollEndNotification to prevent mid-swipe jank.
-                },
-                itemBuilder: (context, index) {
-                  return _KeepAliveWrapper(
-                    key: PageStorageKey<String>('main-shell-tab-$index'),
-                    child: _buildScreen(index),
+              child: ValueListenableBuilder<int>(
+                valueListenable: _selectedIndex,
+                builder: (context, selectedIndex, child) {
+                  return PageView.builder(
+                    controller: _pageController,
+                    physics: selectedIndex == 0
+                        ? const NeverScrollableScrollPhysics()
+                        : const PageScrollPhysics(),
+                    dragStartBehavior: DragStartBehavior.down,
+                    itemCount: _tabs.length,
+                    onPageChanged: (index) {
+                      // Index update deferred to ScrollEndNotification to prevent mid-swipe jank.
+                    },
+                    itemBuilder: (context, index) {
+                      return _KeepAliveWrapper(
+                        key: PageStorageKey<String>('main-shell-tab-$index'),
+                        child: _buildScreen(index),
+                      );
+                    },
                   );
                 },
               ),
@@ -187,7 +195,7 @@ class _MainShellState extends ConsumerState<MainShell> {
           ],
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildScreen(int index) {

@@ -346,6 +346,7 @@ Money totalBalance(
   final now = DateTime.now();
   final start = DateTime(now.year, now.month);
   final end = DateTime(now.year, now.month + 1);
+  final displayCurrency = state.preferences.displayCurrency;
   var income = 0;
   var expense = 0;
   for (final transaction in state.transactions) {
@@ -359,26 +360,25 @@ Money totalBalance(
       continue;
     }
     if (incomeTypes.contains(transaction.type)) {
-      income += transaction.baseAmount.amountMinor;
+      final converted = convertMoneyForDisplay(
+        state,
+        transaction.amount,
+        displayCurrency,
+      );
+      income += converted.amountMinor;
     }
     if (expenseTypes.contains(transaction.type)) {
-      expense += transaction.baseAmount.amountMinor;
+      final converted = convertMoneyForDisplay(
+        state,
+        transaction.amount,
+        displayCurrency,
+      );
+      expense += converted.amountMinor;
     }
   }
-  final currency = state.preferences.baseCurrency;
-  final baseIncome = Money(amountMinor: income, currency: currency);
-  final baseExpense = Money(amountMinor: expense, currency: currency);
   return (
-    income: convertMoneyForDisplay(
-      state,
-      baseIncome,
-      state.preferences.displayCurrency,
-    ),
-    expense: convertMoneyForDisplay(
-      state,
-      baseExpense,
-      state.preferences.displayCurrency,
-    ),
+    income: Money(amountMinor: income, currency: displayCurrency),
+    expense: Money(amountMinor: expense, currency: displayCurrency),
   );
 }
 
@@ -413,6 +413,7 @@ Money totalBalance(
       end = DateTime(now.year, now.month + 1);
   }
 
+  final displayCurrency = targetCurrency ?? state.preferences.displayCurrency;
   var income = 0;
   var expense = 0;
   final cashAccountIds = accountId == 'cash_group'
@@ -443,51 +444,75 @@ Money totalBalance(
 
     if (accountId != null) {
       if (accountId == 'cash_group') {
-        if (cashAccountIds.contains(transaction.accountId)) {
-          final delta = sourceDelta(transaction);
-          if (delta > 0) income += transaction.baseAmount.amountMinor;
-          if (delta < 0) expense += transaction.baseAmount.amountMinor;
+        final hasSource = cashAccountIds.contains(transaction.accountId);
+        final hasCounter = cashAccountIds.contains(transaction.counterAccountId);
+        if (hasSource && hasCounter) {
+          continue;
         }
-        if (cashAccountIds.contains(transaction.counterAccountId)) {
+        if (hasSource) {
+          final delta = sourceDelta(transaction);
+          final converted = convertMoneyForDisplay(
+            state,
+            Money(amountMinor: delta.abs(), currency: transaction.amount.currency),
+            displayCurrency,
+          );
+          if (delta > 0) income += converted.amountMinor;
+          if (delta < 0) expense += converted.amountMinor;
+        }
+        if (hasCounter) {
           final delta = counterDelta(transaction);
-          if (delta > 0) income += transaction.baseAmount.amountMinor;
-          if (delta < 0) expense += transaction.baseAmount.amountMinor;
+          final converted = convertMoneyForDisplay(
+            state,
+            Money(amountMinor: delta.abs(), currency: (transaction.counterAmount ?? transaction.amount).currency),
+            displayCurrency,
+          );
+          if (delta > 0) income += converted.amountMinor;
+          if (delta < 0) expense += converted.amountMinor;
         }
       } else {
         if (transaction.accountId == accountId) {
           final delta = sourceDelta(transaction);
-          if (delta > 0) income += transaction.baseAmount.amountMinor;
-          if (delta < 0) expense += transaction.baseAmount.amountMinor;
+          final converted = convertMoneyForDisplay(
+            state,
+            Money(amountMinor: delta.abs(), currency: transaction.amount.currency),
+            displayCurrency,
+          );
+          if (delta > 0) income += converted.amountMinor;
+          if (delta < 0) expense += converted.amountMinor;
         }
         if (transaction.counterAccountId == accountId) {
           final delta = counterDelta(transaction);
-          if (delta > 0) income += transaction.baseAmount.amountMinor;
-          if (delta < 0) expense += transaction.baseAmount.amountMinor;
+          final converted = convertMoneyForDisplay(
+            state,
+            Money(amountMinor: delta.abs(), currency: (transaction.counterAmount ?? transaction.amount).currency),
+            displayCurrency,
+          );
+          if (delta > 0) income += converted.amountMinor;
+          if (delta < 0) expense += converted.amountMinor;
         }
       }
     } else {
       if (incomeTypes.contains(transaction.type)) {
-        income += transaction.baseAmount.amountMinor;
+        final converted = convertMoneyForDisplay(
+          state,
+          transaction.amount,
+          displayCurrency,
+        );
+        income += converted.amountMinor;
       }
       if (expenseTypes.contains(transaction.type)) {
-        expense += transaction.baseAmount.amountMinor;
+        final converted = convertMoneyForDisplay(
+          state,
+          transaction.amount,
+          displayCurrency,
+        );
+        expense += converted.amountMinor;
       }
     }
   }
-  final currency = state.preferences.baseCurrency;
-  final baseIncome = Money(amountMinor: income, currency: currency);
-  final baseExpense = Money(amountMinor: expense, currency: currency);
   return (
-    income: convertMoneyForDisplay(
-      state,
-      baseIncome,
-      targetCurrency ?? state.preferences.displayCurrency,
-    ),
-    expense: convertMoneyForDisplay(
-      state,
-      baseExpense,
-      targetCurrency ?? state.preferences.displayCurrency,
-    ),
+    income: Money(amountMinor: income, currency: displayCurrency),
+    expense: Money(amountMinor: expense, currency: displayCurrency),
   );
 }
 

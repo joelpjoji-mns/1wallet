@@ -60,9 +60,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       state,
       through: DateTime(_visibleMonth.year, _visibleMonth.month + 1),
     );
-    final plannedCount = monthTransactions
-        .where((tx) => tx.status == 'forecast')
-        .length;
 
     final locale = state.preferences.locale.replaceAll('_', '-');
     final selectedAccount = accountById(state, _accountFilter);
@@ -178,17 +175,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            plannedCount > 0
-                ? '$plannedCount planned records included'
-                : 'Actual records only',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.xs),
+
           Row(
             children: [
               Expanded(

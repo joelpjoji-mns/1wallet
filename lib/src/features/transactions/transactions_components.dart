@@ -6,9 +6,6 @@ import '../../widgets/app_kit.dart';
 class TransactionCommandStrip extends StatelessWidget {
   const TransactionCommandStrip({
     required this.query,
-    required this.income,
-    required this.expense,
-    required this.net,
     required this.typeLabel,
     required this.dateLabel,
     required this.accountLabel,
@@ -28,9 +25,6 @@ class TransactionCommandStrip extends StatelessWidget {
   });
 
   final String query;
-  final String income;
-  final String expense;
-  final String net;
   final String typeLabel;
   final String dateLabel;
   final String accountLabel;
@@ -125,8 +119,6 @@ class TransactionCommandStrip extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                MiniFlowRail(income: income, expense: expense, net: net),
               ],
             ),
           ),

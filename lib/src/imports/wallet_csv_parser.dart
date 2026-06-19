@@ -212,15 +212,38 @@ DateTime? _parseDate(String value) {
   if (value.trim().isEmpty) return null;
   final direct = DateTime.tryParse(value.trim());
   if (direct != null) return direct;
+  
+  // Replace slashes with dashes to help tryParse, or match manually
+  var cleaned = value.trim().replaceAll('/', '-');
+  final directCleaned = DateTime.tryParse(cleaned);
+  if (directCleaned != null) return directCleaned;
+
+  // Match DD-MM-YYYY or MM-DD-YYYY with optional time
   final match = RegExp(
-    r'^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$',
-  ).firstMatch(value.trim());
+    r'^(\d{1,2})[-](\d{1,2})[-](\d{2,4})(?:\s+.*)?$',
+  ).firstMatch(cleaned);
+  
   if (match == null) return null;
-  final day = int.tryParse(match.group(1)!);
-  final month = int.tryParse(match.group(2)!);
+  final part1 = int.tryParse(match.group(1)!);
+  final part2 = int.tryParse(match.group(2)!);
   final yearValue = int.tryParse(match.group(3)!);
-  if (day == null || month == null || yearValue == null) return null;
+  if (part1 == null || part2 == null || yearValue == null) return null;
+  
   final year = yearValue < 100 ? 2000 + yearValue : yearValue;
+  
+  // Try to intelligently guess month vs day (if part2 > 12, it must be the day, so format is MM-DD)
+  // Default to DD-MM
+  var day = part1;
+  var month = part2;
+  if (part2 > 12) {
+    month = part1;
+    day = part2;
+  }
+  
+  // Safe bounds check
+  if (month > 12 || month < 1) return null;
+  if (day > 31 || day < 1) return null;
+
   return DateTime(year, month, day);
 }
 

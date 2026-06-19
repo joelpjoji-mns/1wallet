@@ -159,6 +159,16 @@ class LedgerPreferences {
     this.glassBlurLevel = 9.0,
     this.glassProgressiveBlurStrength = 0.0,
     this.glassBackgroundOpacity = 0.15,
+    this.notificationInboxEnabled = true,
+    this.deviceNotificationsEnabled = false,
+    this.quietHoursEnabled = false,
+    this.channelScheduledEnabled = true,
+    this.channelBudgetsEnabled = true,
+    this.channelGoalsEnabled = true,
+    this.readNotificationIds = const [],
+    this.dismissedNotificationIds = const [],
+    this.privacyModeEnabled = false,
+    this.biometricLockEnabled = false,
   });
 
   final String baseCurrency;
@@ -177,6 +187,16 @@ class LedgerPreferences {
   final double glassBlurLevel;
   final double glassProgressiveBlurStrength;
   final double glassBackgroundOpacity;
+  final bool notificationInboxEnabled;
+  final bool deviceNotificationsEnabled;
+  final bool quietHoursEnabled;
+  final bool channelScheduledEnabled;
+  final bool channelBudgetsEnabled;
+  final bool channelGoalsEnabled;
+  final List<String> readNotificationIds;
+  final List<String> dismissedNotificationIds;
+  final bool privacyModeEnabled;
+  final bool biometricLockEnabled;
 
   LedgerPreferences copyWith({
     String? baseCurrency,
@@ -195,6 +215,16 @@ class LedgerPreferences {
     double? glassBlurLevel,
     double? glassProgressiveBlurStrength,
     double? glassBackgroundOpacity,
+    bool? notificationInboxEnabled,
+    bool? deviceNotificationsEnabled,
+    bool? quietHoursEnabled,
+    bool? channelScheduledEnabled,
+    bool? channelBudgetsEnabled,
+    bool? channelGoalsEnabled,
+    List<String>? readNotificationIds,
+    List<String>? dismissedNotificationIds,
+    bool? privacyModeEnabled,
+    bool? biometricLockEnabled,
   }) {
     return LedgerPreferences(
       baseCurrency: baseCurrency ?? this.baseCurrency,
@@ -213,6 +243,16 @@ class LedgerPreferences {
       glassBlurLevel: glassBlurLevel ?? this.glassBlurLevel,
       glassProgressiveBlurStrength: glassProgressiveBlurStrength ?? this.glassProgressiveBlurStrength,
       glassBackgroundOpacity: glassBackgroundOpacity ?? this.glassBackgroundOpacity,
+      notificationInboxEnabled: notificationInboxEnabled ?? this.notificationInboxEnabled,
+      deviceNotificationsEnabled: deviceNotificationsEnabled ?? this.deviceNotificationsEnabled,
+      quietHoursEnabled: quietHoursEnabled ?? this.quietHoursEnabled,
+      channelScheduledEnabled: channelScheduledEnabled ?? this.channelScheduledEnabled,
+      channelBudgetsEnabled: channelBudgetsEnabled ?? this.channelBudgetsEnabled,
+      channelGoalsEnabled: channelGoalsEnabled ?? this.channelGoalsEnabled,
+      readNotificationIds: readNotificationIds ?? this.readNotificationIds,
+      dismissedNotificationIds: dismissedNotificationIds ?? this.dismissedNotificationIds,
+      privacyModeEnabled: privacyModeEnabled ?? this.privacyModeEnabled,
+      biometricLockEnabled: biometricLockEnabled ?? this.biometricLockEnabled,
     );
   }
 }
