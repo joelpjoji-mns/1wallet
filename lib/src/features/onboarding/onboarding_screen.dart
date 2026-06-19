@@ -316,6 +316,20 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   decoration: const InputDecoration(hintText: 'Account name (e.g. Cash, Chase)'),
                 ),
                 const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: _currentDraft.type,
+                  decoration: const InputDecoration(hintText: 'Account Type'),
+                  items: ['bank', 'cash', 'credit_card', 'digital', 'savings', 'loan', 'investment'].map((t) {
+                    return DropdownMenuItem(
+                      value: t,
+                      child: Text(t.toUpperCase().replaceAll('_', ' ')),
+                    );
+                  }).toList(),
+                  onChanged: (v) {
+                    if (v != null) setState(() => _currentDraft.type = v);
+                  },
+                ),
+                const SizedBox(height: 16),
                 TextField(
                   onChanged: (v) => setState(() => _currentDraft.opening = v),
                   keyboardType: TextInputType.number,

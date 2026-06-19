@@ -175,6 +175,13 @@ class LedgerController extends StateNotifier<LedgerState> {
         LedgerLoadState.ready(hasPersistedLedger: restored != null),
       );
       unawaited(processSpooledSms());
+      
+      // Start active foreground polling for instant updates
+      Timer.periodic(const Duration(seconds: 5), (_) {
+        if (!mounted) return;
+        unawaited(processSpooledSms());
+      });
+      
     } catch (error) {
       if (!mounted) return;
       _setLoadState(
