@@ -278,7 +278,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   ) {
     final result = <String, List<TransactionRecord>>{};
     for (final transaction in _filteredTransactions(state)) {
-      if (transaction.status == 'void') {
+      if (transaction.status == 'void' || transaction.status == 'paused') {
         continue;
       }
       if (transaction.status == 'scheduled' &&

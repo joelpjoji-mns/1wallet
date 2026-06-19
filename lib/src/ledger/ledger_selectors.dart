@@ -79,7 +79,9 @@ Map<String, Money> accountBalanceMap(LedgerState state) {
   };
 
   for (final transaction in state.transactions) {
-    if (transaction.status == 'scheduled' || transaction.status == 'void') {
+    if (transaction.status == 'scheduled' ||
+        transaction.status == 'paused' ||
+        transaction.status == 'void') {
       continue;
     }
 
@@ -112,7 +114,9 @@ Money accountBalanceFromMap(Map<String, Money> balances, Account account) {
 Money accountBalance(LedgerState state, Account account) {
   var amountMinor = account.openingBalance.amountMinor;
   for (final transaction in state.transactions) {
-    if (transaction.status == 'scheduled' || transaction.status == 'void') {
+    if (transaction.status == 'scheduled' ||
+        transaction.status == 'paused' ||
+        transaction.status == 'void') {
       continue;
     }
     if (transaction.accountId == account.id) {
@@ -177,7 +181,9 @@ List<Money> cashCurrencyBalancesForAccount(LedgerState state, Account account) {
   addMoney(account.openingBalance, 1);
 
   for (final transaction in state.transactions) {
-    if (transaction.status == 'scheduled' || transaction.status == 'void') {
+    if (transaction.status == 'scheduled' ||
+        transaction.status == 'paused' ||
+        transaction.status == 'void') {
       continue;
     }
 
@@ -350,7 +356,9 @@ Money totalBalance(
   var income = 0;
   var expense = 0;
   for (final transaction in state.transactions) {
-    if (transaction.status == 'scheduled' || transaction.status == 'void') {
+    if (transaction.status == 'scheduled' ||
+        transaction.status == 'paused' ||
+        transaction.status == 'void') {
       continue;
     }
     if (transaction.isExcludedFromReports) continue;
@@ -421,7 +429,9 @@ Money totalBalance(
       : const <String>{};
 
   for (final transaction in state.transactions) {
-    if (transaction.status == 'scheduled' || transaction.status == 'void') {
+    if (transaction.status == 'scheduled' ||
+        transaction.status == 'paused' ||
+        transaction.status == 'void') {
       continue;
     }
     if (transaction.isExcludedFromReports) continue;
