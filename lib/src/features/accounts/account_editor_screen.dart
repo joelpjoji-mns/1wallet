@@ -1,7 +1,9 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:encrypt/encrypt.dart' as encrypt;
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -10,7 +12,6 @@ import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/currency_picker.dart';
 import '../../widgets/credit_card_view.dart';
-import 'secure_account_details_screen.dart';
 import '../common/full_screen_picker.dart';
 import '../common/route_scaffold.dart';
 
@@ -27,7 +28,6 @@ class AccountEditorScreen extends ConsumerStatefulWidget {
 class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
   final _nameController = TextEditingController();
   final _institutionController = TextEditingController();
-  final _last4Controller = TextEditingController();
   String? _loadedAccountId;
   var _includeInTotals = true;
   var _includeInReports = true;
@@ -37,13 +37,17 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
   Color? _selectedColor;
   String? _selectedType;
   String? _selectedCurrency;
-  double _liquidValue = 0.5;
+  
+  bool _isCardUnlocked = false;
+  String _unlockedNumber = '';
+  String _unlockedExpiry = '';
+  String _unlockedCcv = '';
+  Map<String, String> _unlockedCustomFields = {};
 
   @override
   void dispose() {
     _nameController.dispose();
     _institutionController.dispose();
-    _last4Controller.dispose();
     super.dispose();
   }
 
@@ -58,6 +62,9 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     final selectedForeground = selectedColor.computeLuminance() > 0.5
       ? Theme.of(context).colorScheme.onSurface
       : Theme.of(context).colorScheme.surface;
+    
+    final isCardType = _selectedType == 'card' || _selectedType == 'credit_card';
+
     return RouteScaffold(
       title: isNew ? 'New account' : account.name,
       actions: [
@@ -75,22 +82,35 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (account != null)
-             CreditCardView(
-               cardNumber: account.displayLast4 ?? '0000',
-               expiry: '11/26',
-               ccv: '123',
-               cardHolder: account.name,
-               gradientStart: account.color ?? Theme.of(context).colorScheme.primary,
-               gradientEnd: (account.color ?? Theme.of(context).colorScheme.primary).withAlpha(150),
+          if (account != null) ...[
+             GestureDetector(
+               onTap: () {
+                 if (_isCardUnlocked) {
+                   setState(() => _isCardUnlocked = false);
+                 } else {
+                   _unlockCardInline(account);
+                 }
+               },
+               child: CreditCardView(
+                 type: isCardType ? 'card' : 'bank',
+                 cardNumber: _isCardUnlocked ? _unlockedNumber : (account.displayLast4 ?? '0000'),
+                 expiry: isCardType ? (_isCardUnlocked ? _unlockedExpiry : (account.encryptedDetails != null ? 'MM/YY' : '')) : '',
+                 ccv: isCardType ? (_isCardUnlocked ? _unlockedCcv : (account.encryptedDetails != null ? '***' : '')) : '',
+                 cardHolder: account.name,
+                 gradientStart: _selectedColor ?? account.color ?? Theme.of(context).colorScheme.primary,
+                 gradientEnd: (_selectedColor ?? account.color ?? Theme.of(context).colorScheme.primary).withAlpha(150),
+                 isUnlocked: _isCardUnlocked,
+                 customFields: _unlockedCustomFields,
+               ),
              ),
-          const Gap(AppSpacing.md),
-          if (account != null)
-            OutlinedButton.icon(
-              onPressed: () => _handleSecureNavigation(context, account.id),
-              icon: const Icon(Icons.lock_outline_rounded),
-              label: const Text('Manage secure details'),
-            ),
+             const Gap(AppSpacing.md),
+             OutlinedButton.icon(
+               onPressed: () => _handleSecureNavigation(context, account.id),
+               icon: const Icon(Icons.edit_note_rounded),
+               label: const Text('Manage secure details'),
+             ),
+          ],
+          
           const Gap(AppSpacing.lg),
           SectionCard(
             title: isNew ? 'Account setup' : 'Account profile',
@@ -239,33 +259,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
               ],
             ),
           ),
-          const Gap(AppSpacing.lg),
-          SectionCard(
-            title: 'Automation identifiers',
-            subtitle:
-                'Used to match incoming SMS alerts to this account automatically.',
-            child: Column(
-              children: [
-                if (account?.type != 'cash') ...[
-                  TextFormField(
-                    controller: _last4Controller,
-                    decoration: InputDecoration(
-                      labelText:
-                          account?.displayLast4Label ?? 'Account last 4 digits',
-                      hintText: 'e.g. 1234',
-                    ),
-                    keyboardType: TextInputType.number,
-                    maxLength: 4,
-                  ),
-                ] else ...[
-                  const Text(
-                    'Cash accounts do not have account numbers.',
-                    style: TextStyle(fontStyle: FontStyle.italic),
-                  ),
-                ],
-              ],
-            ),
-          ),
+
           if (account != null) ...[
             const Gap(AppSpacing.lg),
             SectionCard(
@@ -294,15 +288,98 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     );
   }
 
-  Future<void> _handleSecureNavigation(BuildContext context, String accountId) async {
+  Future<void> _unlockCardInline(Account account) async {
     final auth = LocalAuthentication();
     try {
       final authenticated = await auth.authenticate(
-        localizedReason: 'Authenticate to access secure details',
+        localizedReason: 'Authenticate to view secure details',
+        biometricOnly: false,
+      );
+      if (authenticated && mounted) {
+        if (account.encryptedDetails != null) {
+          final key = encrypt.Key.fromUtf8('my32lengthsupersecretkey12345678');
+          final iv = encrypt.IV(Uint8List(16));
+          final encrypter = encrypt.Encrypter(encrypt.AES(key));
+
+          String uNum = '';
+          String uExp = '';
+          String uCcv = '';
+          Map<String, String> uCustom = {};
+
+          try {
+            final details = account.encryptedDetails!;
+            print('DEBUG: AccountEditorScreen details = $details');
+            details.forEach((k, v) {
+              try {
+                final decrypted = encrypter.decrypt64(v, iv: iv);
+                if (k == 'number' || k == 'account_number') {
+                  uNum = decrypted;
+                } else if (k == 'expiry') {
+                  uExp = decrypted;
+                } else if (k == 'ccv') {
+                  uCcv = decrypted;
+                } else if (k == 'routing_number') {
+                  // Legacy support: convert to custom field
+                  uCustom['Routing Number'] = decrypted;
+                } else if (k != 'name' && k != 'bank_name') {
+                  uCustom[k] = decrypted;
+                }
+              } catch (e) {
+                print('DEBUG: Decryption error on key $k with value $v: $e');
+              }
+            });
+          } catch (e) {
+            debugPrint('Decryption error: $e');
+          }
+
+          setState(() {
+            _unlockedNumber = uNum;
+            _unlockedExpiry = uExp;
+            _unlockedCcv = uCcv;
+            _unlockedCustomFields = uCustom;
+            _isCardUnlocked = true;
+          });
+        } else {
+          // If no details exist, just unlock to show empty fields
+          setState(() {
+            _isCardUnlocked = true;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Auth error: $e');
+    }
+  }
+
+  Future<void> _handleSecureNavigation(BuildContext context, String accountId) async {
+    if (_isCardUnlocked) {
+      await context.push('/account/$accountId/secure');
+      if (mounted) {
+        setState(() {
+          _isCardUnlocked = false;
+        });
+      }
+      return;
+    }
+    
+    final auth = LocalAuthentication();
+    try {
+      final authenticated = await auth.authenticate(
+        localizedReason: 'Authenticate to edit secure details',
         biometricOnly: false,
       );
       if (authenticated && context.mounted) {
-        context.push('/account/$accountId/secure');
+        // Since they authenticated successfully, let's also unlock inline.
+        setState(() {
+          _isCardUnlocked = true;
+        });
+        await context.push('/account/$accountId/secure');
+        // When they return from secure details, lock it again so they can fetch fresh details if they want.
+        if (mounted) {
+          setState(() {
+            _isCardUnlocked = false;
+          });
+        }
       }
     } catch (e) {
       debugPrint('Auth error: $e');
@@ -315,7 +392,6 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     _loadedAccountId = key;
     _nameController.text = account?.name ?? '';
     _institutionController.text = account?.institution ?? '';
-    _last4Controller.text = account?.displayLast4 ?? '';
     _includeInTotals = account?.includeInTotals ?? true;
     _includeInReports = account?.includeInReports ?? true;
     _includeInNetWorth = account?.includeInNetWorth ?? true;
@@ -324,6 +400,12 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     _selectedColor = account?.color;
     _selectedType = account?.type ?? 'bank';
     _selectedCurrency = account?.currency;
+    
+    // Reset unlock state on account change
+    _isCardUnlocked = false;
+    _unlockedNumber = '';
+    _unlockedExpiry = '';
+    _unlockedCcv = '';
   }
 
   Future<void> _saveAccount(LedgerState state, Account? account) async {
@@ -342,10 +424,8 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
             currency: _selectedCurrency ?? account?.currency ?? state.preferences.baseCurrency,
             color: _selectedColor,
             institution: _institutionController.text,
-            cardLast4: (account?.type == 'card') ? _last4Controller.text : '',
-            accountLast4: (account?.type != 'card' && account?.type != 'cash')
-                ? _last4Controller.text
-                : '',
+            cardLast4: account?.cardLast4,
+            accountLast4: account?.accountLast4,
             includeInTotals: _includeInTotals,
             includeInReports: _includeInReports,
             includeInNetWorth: _includeInNetWorth,

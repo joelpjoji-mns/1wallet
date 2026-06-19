@@ -282,11 +282,16 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
   ) async {
     final saved = await _saveDraft(candidate, state);
     if (!saved) return;
-    await ref
-        .read(ledgerProvider.notifier)
-        .approveCaptureCandidate(candidate.id);
-    if (!mounted) return;
-    _showCaptureMessage('Capture candidate posted as a transaction.');
+    final router = GoRouter.of(context);
+    try {
+      final tx = await ref
+          .read(ledgerProvider.notifier)
+          .approveCaptureCandidate(candidate.id);
+      router.push('/add?transactionId=${tx.id}');
+    } catch (e) {
+      if (!mounted) return;
+      _showCaptureMessage(e.toString());
+    }
   }
 
   Future<void> _dismissCandidate() async {

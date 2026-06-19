@@ -838,16 +838,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     );
     if (parsed.ignored) return null;
 
-    String? matchedAccountId;
-    if (parsed.last4 != null) {
-      for (final account in state.accounts) {
-        if (!account.isArchived &&
-            (account.cardLast4 == parsed.last4 || account.accountLast4 == parsed.last4)) {
-          matchedAccountId = account.id;
-          break;
-        }
-      }
-    }
+    String? matchedAccountId = _matchAccountToSms(state, parsed);
 
     final candidate = CaptureCandidate(
       id: _newId('cap'),
@@ -887,16 +878,7 @@ class LedgerController extends StateNotifier<LedgerState> {
       );
       if (parsed.ignored) continue;
 
-      String? matchedAccountId;
-      if (parsed.last4 != null) {
-        for (final account in state.accounts) {
-          if (!account.isArchived &&
-              (account.cardLast4 == parsed.last4 || account.accountLast4 == parsed.last4)) {
-            matchedAccountId = account.id;
-            break;
-          }
-        }
-      }
+      String? matchedAccountId = _matchAccountToSms(state, parsed);
 
       final candidate = CaptureCandidate(
         id: '${_newId('cap')}-${idx++}',
@@ -1267,6 +1249,70 @@ Category? _matchCategory(LedgerState state, String? name, String kind) {
     if (category.kind == kind) return category;
   }
   return active.firstOrNull;
+}
+
+String? _matchAccountToSms(LedgerState state, ParsedTransactionMessage parsed) {
+  final activeAccounts = state.accounts.where((a) => !a.isArchived).toList();
+  if (activeAccounts.isEmpty) return null;
+
+  final rawTextLower = parsed.rawText.toLowerCase();
+  
+  Account? bestMatch;
+  int highestScore = -1;
+
+  for (final account in activeAccounts) {
+    int score = 0;
+
+    // 1. Exact Account Number Match (Overkill)
+    // Try to match exact account number from encrypted details if we have access to it in memory
+    // or from accountLast4 / cardLast4
+    if (parsed.last4 != null) {
+      if (account.accountLast4 == parsed.last4 || account.cardLast4 == parsed.last4) {
+        score += 100; // Strongest indicator
+      }
+      
+      // If the parsed "last4" is actually longer (like a full account number)
+      // we check if it matches the encrypted details 'accountNumber'
+      if (parsed.last4!.length > 4 && account.encryptedDetails != null) {
+        final accNum = account.encryptedDetails!['accountNumber'];
+        if (accNum != null && accNum.replaceAll(RegExp(r'\D'), '').endsWith(parsed.last4!)) {
+          score += 150;
+        }
+      }
+    }
+
+    // 2. Institution Match
+    if (parsed.institutionName != null && account.institution != null) {
+      if (account.institution!.toLowerCase().contains(parsed.institutionName!.toLowerCase())) {
+        score += 50;
+      }
+    } else if (account.institution != null) {
+      // Look for the institution directly in the raw SMS
+      if (rawTextLower.contains(account.institution!.toLowerCase())) {
+        score += 30;
+      }
+    }
+
+    // 3. Name or Group Name Match
+    if (rawTextLower.contains(account.name.toLowerCase())) {
+      score += 40;
+    }
+    if (account.groupName != null && rawTextLower.contains(account.groupName!.toLowerCase())) {
+      score += 20;
+    }
+
+    // 4. Currency tie-breaker
+    if (parsed.amount != null && parsed.amount!.currency == account.currency) {
+      score += 5;
+    }
+
+    if (score > highestScore && score > 0) {
+      highestScore = score;
+      bestMatch = account;
+    }
+  }
+
+  return bestMatch?.id;
 }
 
 String _rowSignature(

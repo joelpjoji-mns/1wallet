@@ -137,7 +137,7 @@ class CloudSyncMetadata {
       syncedCaptureCandidateIds: (json['syncedCaptureCandidateIds'] as List?)?.cast<String>(),
       syncedImportBatchIds: (json['syncedImportBatchIds'] as List?)?.cast<String>(),
       syncedDocumentHashes: (json['syncedDocumentHashes'] as Map?)?.cast<String, String>(),
-      syncIntervalHours: json['syncIntervalHours'] as int?,
+      syncIntervalHours: json['syncIntervalHours'] as int? ?? 4,
     );
   }
 
