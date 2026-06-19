@@ -12,6 +12,7 @@ import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 import '../transactions/transaction_row.dart';
+import '../transactions/transactions_screen.dart';
 import 'home_async_providers.dart';
 import 'home_components.dart';
 import 'home_dashboard_selectors.dart';
@@ -44,7 +45,10 @@ Widget buildHomeDashboardWidget({
   required ValueChanged<int> onTabSelected,
 }) {
   return switch (id) {
-    HomeDashboardWidgetId.balanceHero => BalanceHomeWidget(state: state),
+    HomeDashboardWidgetId.balanceHero => BalanceHomeWidget(
+      state: state,
+      onTabSelected: onTabSelected,
+    ),
     HomeDashboardWidgetId.accountGrid => AccountGridHomeWidget(
       state: state,
       onManage: () => onTabSelected(4),
@@ -108,9 +112,14 @@ Widget buildHomeDashboardWidget({
 }
 
 class BalanceHomeWidget extends ConsumerStatefulWidget {
-  const BalanceHomeWidget({required this.state, super.key});
+  const BalanceHomeWidget({
+    required this.state,
+    required this.onTabSelected,
+    super.key,
+  });
 
   final LedgerState state;
+  final ValueChanged<int> onTabSelected;
 
   @override
   ConsumerState<BalanceHomeWidget> createState() => _BalanceHomeWidgetState();
@@ -300,20 +309,36 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
           Row(
             children: [
               Expanded(
-                child: HomeFlowPanel(
-                  label: 'Income',
-                  value: flow.income,
-                  locale: widget.state.preferences.locale,
-                  tone: MetricTone.positive,
+                child: InkWell(
+                  onTap: () {
+                    ref.read(transactionsTypeFilterProvider.notifier).state = 'income';
+                    ref.read(transactionsDateFilterProvider.notifier).state = _mapPeriodToDateFilter(_period);
+                    widget.onTabSelected(1);
+                  },
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                  child: HomeFlowPanel(
+                    label: 'Income',
+                    value: flow.income,
+                    locale: widget.state.preferences.locale,
+                    tone: MetricTone.positive,
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
-                child: HomeFlowPanel(
-                  label: 'Expense',
-                  value: flow.expense,
-                  locale: widget.state.preferences.locale,
-                  tone: MetricTone.danger,
+                child: InkWell(
+                  onTap: () {
+                    ref.read(transactionsTypeFilterProvider.notifier).state = 'expense';
+                    ref.read(transactionsDateFilterProvider.notifier).state = _mapPeriodToDateFilter(_period);
+                    widget.onTabSelected(1);
+                  },
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                  child: HomeFlowPanel(
+                    label: 'Expense',
+                    value: flow.expense,
+                    locale: widget.state.preferences.locale,
+                    tone: MetricTone.danger,
+                  ),
                 ),
               ),
             ],
@@ -321,6 +346,16 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
         ],
       ),
     );
+  }
+
+  String _mapPeriodToDateFilter(String period) {
+    return switch (period) {
+      'Today' => 'today',
+      'This week' => 'this_week',
+      'This month' => 'this_month',
+      'This year' => 'this_year',
+      _ => 'all',
+    };
   }
 }
 
@@ -347,7 +382,7 @@ class AccountGridHomeWidget extends ConsumerWidget {
       title: 'All accounts',
       subtitle: selectedAccountId != null
           ? 'Tap selected account again to show all'
-          : 'Choose an account to filter the rest of Home',
+          : 'Select an account to filter',
       icon: Icons.grid_view_rounded,
       iconColor: Theme.of(context).colorScheme.primary,
       actionLabel: 'Manage',
@@ -358,7 +393,7 @@ class AccountGridHomeWidget extends ConsumerWidget {
         builder: (context, constraints) {
           final availableWidth = constraints.maxWidth.isFinite
               ? constraints.maxWidth
-              : MediaQuery.sizeOf(context).width;
+              : MediaQuery.sizeOf(context).width - AppSpacing.md * 2;
           const columns = 3;
           const spacing = AppSpacing.xs;
           final tileWidth =
@@ -367,6 +402,17 @@ class AccountGridHomeWidget extends ConsumerWidget {
             spacing: spacing,
             runSpacing: spacing,
             children: [
+              SizedBox(
+                width: tileWidth.clamp(0, availableWidth),
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 200),
+                  opacity: selectedAccountId == null ? 1.0 : 0.35,
+                  child: _AllAccountsTile(
+                    state: state,
+                    selected: selectedAccountId == null,
+                  ),
+                ),
+              ),
               for (final account in accounts)
                 SizedBox(
                   width: tileWidth.clamp(0, availableWidth),
@@ -387,6 +433,79 @@ class AccountGridHomeWidget extends ConsumerWidget {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _AllAccountsTile extends ConsumerWidget {
+  const _AllAccountsTile({required this.state, required this.selected});
+
+  final LedgerState state;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final balance = netWorth(state).total;
+    final color = scheme.surfaceContainerHighest;
+    final foreground = scheme.onSurface;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      onTap: () {
+        ref.read(homeSelectedAccountProvider.notifier).state = null;
+      },
+      child: Container(
+        height: 60,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? scheme.primaryContainer : color,
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          border: selected ? Border.all(color: scheme.primary) : null,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.all_inclusive_rounded,
+                  color: selected ? scheme.onPrimaryContainer.withAlpha(200) : foreground.withAlpha(200),
+                  size: 13,
+                ),
+                const SizedBox(width: 3),
+                Expanded(
+                  child: Text(
+                    'All',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: selected ? scheme.onPrimaryContainer : foreground,
+                      fontSize: 11,
+                      height: 1.1,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 3),
+            Text(
+              formatMoney(balance, state.preferences.locale),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: selected ? scheme.onPrimaryContainer.withAlpha(240) : foreground.withAlpha(240),
+                fontSize: 13,
+                height: 1.1,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.2,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -645,7 +764,7 @@ class _CurrencyValuesHomeWidgetState extends ConsumerState<CurrencyValuesHomeWid
     if (snapshot == null) {
       return const HomeWidgetCard(
         title: 'Currency values',
-        icon: Icons.currency_pound_rounded,
+        icon: Icons.currency_exchange_outlined,
         child: Center(child: CircularProgressIndicator()),
       );
     }
@@ -655,7 +774,7 @@ class _CurrencyValuesHomeWidgetState extends ConsumerState<CurrencyValuesHomeWid
     if (quote == null || snapshot.rate == null) {
       return const HomeWidgetCard(
         title: 'Currency values',
-        icon: Icons.currency_pound_rounded,
+        icon: Icons.currency_exchange_outlined,
         child: EmptyState(
           icon: Icons.currency_exchange_outlined,
           title: 'No foreign currency yet',
@@ -697,7 +816,7 @@ class _CurrencyValuesHomeWidgetState extends ConsumerState<CurrencyValuesHomeWid
     return HomeWidgetCard(
       title: 'Currency values',
       subtitle: '1 rates to ${snapshot.baseCurrency}',
-      icon: Icons.currency_pound_rounded,
+      icon: Icons.currency_exchange_outlined,
       iconColor: scheme.tertiary,
       actionLabel: 'Rates',
       onAction: () => context.push('/currencies'),
@@ -1758,7 +1877,7 @@ class CurrencyExposureHomeWidget extends StatelessWidget {
               children: [
                 for (final money in exposure.take(5)) ...[
                   HomeDetailRow(
-                    icon: Icons.currency_pound_rounded,
+                    icon: Icons.monetization_on_outlined,
                     title: money.currency,
                     trailing: _formatDisplayMoney(state, money),
                     iconColor: Theme.of(context).colorScheme.tertiary,

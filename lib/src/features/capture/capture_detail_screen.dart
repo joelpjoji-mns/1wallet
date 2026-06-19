@@ -284,10 +284,7 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
     if (!saved) return;
     final router = GoRouter.of(context);
     try {
-      final tx = await ref
-          .read(ledgerProvider.notifier)
-          .approveCaptureCandidate(candidate.id);
-      router.push('/add?transactionId=${tx.id}');
+      router.push('/add?captureCandidateId=${candidate.id}');
     } catch (e) {
       if (!mounted) return;
       _showCaptureMessage(e.toString());

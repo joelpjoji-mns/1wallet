@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -20,6 +21,67 @@ class DataBackupScreen extends ConsumerStatefulWidget {
 
 class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
   String? _status;
+  File? _latestAutoBackup;
+  DateTime? _latestAutoBackupTime;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLatestAutoBackup();
+  }
+
+  Future<void> _checkLatestAutoBackup() async {
+    final notifier = ref.read(ledgerProvider.notifier);
+    final file = await notifier.getLatestAutoBackupFile();
+    if (file != null) {
+      final stat = await file.stat();
+      if (mounted) {
+        setState(() {
+          _latestAutoBackup = file;
+          _latestAutoBackupTime = stat.modified;
+        });
+      }
+    }
+  }
+
+  String _formatDateTime(DateTime dt) {
+    return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _restoreFromAutoBackup() async {
+    if (_latestAutoBackup == null) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Restore auto-backup?'),
+        content: const Text(
+            'This will overwrite your current local data with the snapshot from this auto-backup file. Are you sure?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Restore', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      await ref.read(ledgerProvider.notifier).restoreFromAutoBackup(_latestAutoBackup!);
+      if (!mounted) return;
+      setState(() => _status = 'Restored successfully from auto-backup.');
+      _showBackupMessage('Auto-backup restored successfully.');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _status = 'Auto-backup restore failed: $e');
+      _showBackupMessage('Auto-backup restore failed.');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +118,23 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
               ],
             ),
           ),
+          if (_latestAutoBackup != null) ...[
+            const Gap(AppSpacing.lg),
+            SectionCard(
+              title: 'Auto-Backup Found',
+              subtitle:
+                  'A recent automatic local backup was found:\nLast modified: ${_formatDateTime(_latestAutoBackupTime!)}\nPath: ${_latestAutoBackup!.path}',
+              child: FilledButton.icon(
+                onPressed: _restoreFromAutoBackup,
+                icon: const Icon(Icons.history_toggle_off_rounded),
+                label: const Text('Restore latest auto-backup'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.tertiary,
+                  foregroundColor: Theme.of(context).colorScheme.onTertiary,
+                ),
+              ),
+            ),
+          ],
           const Gap(AppSpacing.lg),
           SectionCard(
             title: 'Export',

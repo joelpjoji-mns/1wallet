@@ -56,6 +56,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             transactionId: state.uri.queryParameters['transactionId'],
             initialAccountId: state.uri.queryParameters['accountId'],
             plannedId: state.uri.queryParameters['plannedId'],
+            captureCandidateId: state.uri.queryParameters['captureCandidateId'],
             initialTab: initialTab,
           );
         },

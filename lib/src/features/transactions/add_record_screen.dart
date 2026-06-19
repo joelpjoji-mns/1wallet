@@ -23,12 +23,14 @@ class AddRecordScreen extends ConsumerStatefulWidget {
     this.transactionId,
     this.initialAccountId,
     this.plannedId,
+    this.captureCandidateId,
     this.initialTab = 0,
   });
 
   final String? transactionId;
   final String? initialAccountId;
   final String? plannedId;
+  final String? captureCandidateId;
   final int initialTab;
 
   @override
@@ -86,7 +88,13 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
         : state.transactions.firstWhereOrNull(
             (transaction) => transaction.id == widget.plannedId,
           );
+    final captureCandidate = widget.captureCandidateId == null
+        ? null
+        : state.captureCandidates.firstWhereOrNull(
+            (c) => c.id == widget.captureCandidateId,
+          );
     _syncEditDraft(editingTransaction, plannedTransaction, state);
+    _syncCaptureDraft(captureCandidate, state);
     _syncCreateDraftAccount(state, editingTransaction ?? plannedTransaction);
     _clearInvalidCategory(state, editingTransaction ?? plannedTransaction);
     final sourceAccount = accountById(state, _accountId);
@@ -670,6 +678,10 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
         await ref.read(ledgerProvider.notifier).updateTransactionStatus(widget.plannedId!, 'scheduled', occurredAt: nextDate);
       }
 
+      if (widget.captureCandidateId != null) {
+        await ref.read(ledgerProvider.notifier).updateCaptureCandidateStatus(widget.captureCandidateId!, 'approved');
+      }
+
       if (!mounted) return;
       if (context.canPop()) context.pop(); else context.go('/');
     } catch (e) { _showMessage(e.toString()); }
@@ -692,6 +704,22 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
     _notesController.text = source.notes ?? '';
     _transactionCurrency = source.originalAmount?.currency ?? source.amount.currency;
     _amount = _formatAmountInput((source.originalAmount ?? source.amount).amountMinor, _transactionCurrency);
+  }
+
+  void _syncCaptureDraft(CaptureCandidate? candidate, LedgerState state) {
+    if (candidate == null) return;
+    final key = 'cap_${candidate.id}';
+    if (_loadedTransactionId == key) return;
+    _loadedTransactionId = key;
+    _type = candidate.transactionType == 'income' ? 'income' : 'expense';
+    _accountId = candidate.suggestedAccountId ?? accountById(state, _accountId)?.id ?? state.accounts.firstWhereOrNull((a) => !a.isArchived)?.id;
+    _categoryId = candidate.suggestedCategoryId;
+    _notesController.text = candidate.merchant ?? candidate.rawText ?? '';
+    if (candidate.parsedAmount != null) {
+      _transactionCurrency = candidate.parsedAmount!.currency;
+      _amount = _formatAmountInput(candidate.parsedAmount!.amountMinor, _transactionCurrency);
+    }
+    _occurredAt = candidate.createdAt;
   }
 
   void _syncCreateDraftAccount(LedgerState state, TransactionRecord? source) {
