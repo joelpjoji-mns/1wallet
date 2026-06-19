@@ -17,76 +17,52 @@ class NotificationsScreen extends ConsumerStatefulWidget {
 }
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
-  static const _readKey = 'one_wallet_flutter.notifications.read.v1';
-  static const _dismissedKey = 'one_wallet_flutter.notifications.dismissed.v1';
-
-  final Set<String> _readIds = <String>{};
-  final Set<String> _dismissedIds = <String>{};
-  var _prefsReady = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadState();
-  }
-
-  Future<void> _loadState() async {
-    final preferences = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    setState(() {
-      _readIds
-        ..clear()
-        ..addAll(preferences.getStringList(_readKey) ?? const <String>[]);
-      _dismissedIds
-        ..clear()
-        ..addAll(preferences.getStringList(_dismissedKey) ?? const <String>[]);
-      _prefsReady = true;
-    });
-  }
-
-  Future<void> _persistState() async {
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setStringList(_readKey, _readIds.toList()..sort());
-    await preferences.setStringList(
-      _dismissedKey,
-      _dismissedIds.toList()..sort(),
+  Future<void> _markRead(String id, {bool read = true}) async {
+    final prefs = ref.read(ledgerProvider).preferences;
+    final nextRead = Set<String>.from(prefs.readNotificationIds);
+    if (read) {
+      nextRead.add(id);
+    } else {
+      nextRead.remove(id);
+    }
+    await ref.read(ledgerProvider.notifier).updatePreferences(
+      prefs.copyWith(readNotificationIds: nextRead.toList()..sort()),
     );
   }
 
-  Future<void> _markRead(String id, {bool read = true}) async {
-    setState(() {
-      if (read) {
-        _readIds.add(id);
-      } else {
-        _readIds.remove(id);
-      }
-    });
-    await _persistState();
-  }
-
   Future<void> _dismiss(String id) async {
-    setState(() {
-      _dismissedIds.add(id);
-      _readIds.remove(id);
-    });
-    await _persistState();
+    final prefs = ref.read(ledgerProvider).preferences;
+    final nextDismissed = Set<String>.from(prefs.dismissedNotificationIds)..add(id);
+    final nextRead = Set<String>.from(prefs.readNotificationIds)..remove(id);
+    await ref.read(ledgerProvider.notifier).updatePreferences(
+      prefs.copyWith(
+        dismissedNotificationIds: nextDismissed.toList()..sort(),
+        readNotificationIds: nextRead.toList()..sort(),
+      ),
+    );
   }
 
   Future<void> _markAllRead(Iterable<AppNotification> notifications) async {
-    setState(() {
-      _readIds.addAll(notifications.map((notification) => notification.id));
-    });
-    await _persistState();
+    final prefs = ref.read(ledgerProvider).preferences;
+    final nextRead = Set<String>.from(prefs.readNotificationIds)
+      ..addAll(notifications.map((notification) => notification.id));
+    await ref.read(ledgerProvider.notifier).updatePreferences(
+      prefs.copyWith(readNotificationIds: nextRead.toList()..sort()),
+    );
   }
 
   Future<void> _dismissAll(Iterable<AppNotification> notifications) async {
-    setState(() {
-      _dismissedIds.addAll(
-        notifications.map((notification) => notification.id),
-      );
-      _readIds.removeAll(notifications.map((notification) => notification.id));
-    });
-    await _persistState();
+    final prefs = ref.read(ledgerProvider).preferences;
+    final nextDismissed = Set<String>.from(prefs.dismissedNotificationIds)
+      ..addAll(notifications.map((notification) => notification.id));
+    final nextRead = Set<String>.from(prefs.readNotificationIds)
+      ..removeAll(notifications.map((notification) => notification.id));
+    await ref.read(ledgerProvider.notifier).updatePreferences(
+      prefs.copyWith(
+        dismissedNotificationIds: nextDismissed.toList()..sort(),
+        readNotificationIds: nextRead.toList()..sort(),
+      ),
+    );
   }
 
   void _openNotification(AppNotification notification) {
@@ -99,12 +75,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     final ledger = ref.watch(ledgerProvider);
-    final allNotifications = buildNotificationInbox(ledger)
-        .where((notification) => !_dismissedIds.contains(notification.id))
-        .toList();
-    final unreadCount = allNotifications
-        .where((notification) => !_readIds.contains(notification.id))
-        .length;
+    final allNotifications = buildNotificationInbox(ledger);
+    final unreadCount = allNotifications.where((notification) => !notification.read).length;
 
     return RouteScaffold(
       title: 'Notifications',
@@ -127,15 +99,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             onAction: allNotifications.isEmpty
                 ? null
                 : () => _dismissAll(allNotifications),
-            child: !_prefsReady
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text('Loading notification state…'),
-                    ),
-                  )
-                : allNotifications.isEmpty
+            child: allNotifications.isEmpty
                 ? const EmptyState(
                     icon: Icons.notifications_off_outlined,
                     title: 'Nothing waiting',
@@ -146,7 +110,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                       for (final notification in allNotifications)
                         _NotificationRow(
                           notification: notification,
-                          read: _readIds.contains(notification.id),
+                          read: notification.read,
                           onOpen: () => _openNotification(notification),
                           onDismiss: () => _dismiss(notification.id),
                         ),

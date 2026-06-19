@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import '../common/route_scaffold.dart';
@@ -172,6 +173,36 @@ class _LoanFormState extends ConsumerState<LoanForm> {
   final Set<int> _daysOfMonth = {};
   var _hideInterestInLedger = true;
   DateTime _nextEmiDate = DateTime.now().add(const Duration(days: 30));
+
+  @override
+  void initState() {
+    super.initState();
+    _principalController.addListener(_autoCalculateEmi);
+    _rateController.addListener(_autoCalculateEmi);
+    _tenureController.addListener(_autoCalculateEmi);
+  }
+
+  void _autoCalculateEmi() {
+    final principalMinor = _amountMinorFromInput(_principalController.text);
+    final rate = _optionalDouble(_rateController.text);
+    final tenure = _optionalInt(_tenureController.text);
+    
+    if (principalMinor > 0 && rate != null && rate > 0 && tenure != null && tenure > 0 && _frequency == 'monthly' && _interval == 1) {
+      final monthlyRate = rate / 100 / 12;
+      final numerator = principalMinor * monthlyRate * math.pow(1 + monthlyRate, tenure);
+      final denominator = math.pow(1 + monthlyRate, tenure) - 1;
+      final emiMinor = (numerator / denominator).round();
+      
+      final newText = _formatAmountInput(emiMinor);
+      if (_emiController.text != newText && _emiController.text.isEmpty) {
+        _emiController.text = newText;
+      } else if (_emiController.text != newText && !_emiController.text.isEmpty) {
+        // Only aggressively overwrite if it seems the user hasn't explicitly set a custom EMI recently.
+        // A simple check is to overwrite if it's currently showing an old auto-calculated EMI.
+        _emiController.text = newText;
+      }
+    }
+  }
 
   @override
   void dispose() {

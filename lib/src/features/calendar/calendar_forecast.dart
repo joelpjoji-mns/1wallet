@@ -1,4 +1,6 @@
 import '../../data/ledger_models.dart';
+import '../../ledger/ledger_selectors.dart';
+
 
 List<TransactionRecord> forecastRecurringTransactions(
   LedgerState state,
@@ -33,10 +35,22 @@ List<TransactionRecord> forecastRecurringTransactions(
         // It's cleaner to generate a 'forecast' record for ALL occurrences, including the first one,
         // so that we have a uniform 'forecast' status for UI coloring/logic.
         
+        Money forecastAmount = template.amount;
+        Money forecastBaseAmount = template.baseAmount;
+        
+        if (template.originalAmount != null) {
+          forecastAmount = convertMoneyForDisplay(state, template.originalAmount!, template.amount.currency);
+          forecastBaseAmount = convertMoneyForDisplay(state, template.originalAmount!, state.preferences.baseCurrency);
+        } else {
+          forecastBaseAmount = convertMoneyForDisplay(state, template.amount, state.preferences.baseCurrency);
+        }
+
         occurrences.add(template.copyWith(
           id: 'forecast-${template.id}-${cursor.toIso8601String()}',
           status: 'forecast',
           occurredAt: cursor,
+          amount: forecastAmount,
+          baseAmount: forecastBaseAmount,
         ));
       }
       

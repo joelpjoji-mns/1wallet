@@ -323,8 +323,7 @@ class ReviewQueueScreen extends ConsumerWidget {
     try {
       if (status == 'approved') {
         final router = GoRouter.of(context);
-        final tx = await ref.read(ledgerProvider.notifier).approveCaptureCandidate(id);
-        router.push('/add?transactionId=${tx.id}');
+        router.push('/add?captureCandidateId=$id');
         return;
       } else {
         await ref

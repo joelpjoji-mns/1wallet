@@ -189,7 +189,7 @@ class WidgetsManagerScreen extends ConsumerWidget {
       'currencyExposure',
       'Currency exposure',
       'Non-base currency balances like forex cards.',
-      Icons.currency_pound_outlined,
+      Icons.monetization_on_outlined,
       'medium',
     ),
   ];

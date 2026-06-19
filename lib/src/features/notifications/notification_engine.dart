@@ -204,8 +204,24 @@ List<AppNotification> buildNotificationInbox(LedgerState state) {
     }
   }
 
-  notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-  return notifications;
+  final readIds = state.preferences.readNotificationIds.toSet();
+  final dismissedIds = state.preferences.dismissedNotificationIds.toSet();
+
+  final filtered = notifications
+      .where((n) => !dismissedIds.contains(n.id))
+      .map((n) => AppNotification(
+            id: n.id,
+            channel: n.channel,
+            title: n.title,
+            body: n.body,
+            createdAt: n.createdAt,
+            read: readIds.contains(n.id),
+            actionRoute: n.actionRoute,
+          ))
+      .toList();
+
+  filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  return filtered;
 }
 
 /// Count of unread notifications.

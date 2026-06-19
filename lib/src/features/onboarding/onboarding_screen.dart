@@ -7,6 +7,9 @@ import '../../auth/auth_controller.dart';
 import '../common/full_screen_picker.dart';
 import '../launch/brand_widgets.dart';
 import 'onboarding_controller.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:uuid/uuid.dart';
+import '../../data/ledger_providers.dart';
 
 class _AccountDraft {
   String name;
@@ -88,7 +91,37 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final authUser = ref.read(authControllerProvider).user;
     if (authUser == null) return;
     
-    // In a real app we'd save these preferences to the backend/ledger here.
+    // Save display name to Firebase Auth
+    if (_displayNameController.text.trim().isNotEmpty) {
+      await firebase_auth.FirebaseAuth.instance.currentUser?.updateDisplayName(_displayNameController.text.trim());
+    }
+
+    // Save preferences to ledger
+    final ledgerNotifier = ref.read(ledgerProvider.notifier);
+    final currentState = ref.read(ledgerProvider);
+    
+    var newPrefs = currentState.preferences.copyWith(
+      baseCurrency: _baseCurrency,
+      displayCurrency: _baseCurrency,
+      enabledCurrencies: { _baseCurrency, kDefaultCurrency }.toList(),
+    );
+    if (!_enableReminders) {
+      newPrefs = newPrefs.copyWith(notificationInboxEnabled: false);
+    }
+    await ledgerNotifier.updatePreferences(newPrefs);
+
+    // Save accounts to ledger
+    for (final draft in _accounts) {
+      final parsedOpening = int.tryParse(draft.opening) ?? 0;
+      await ledgerNotifier.upsertAccount(
+        id: const Uuid().v4(),
+        name: draft.name,
+        type: draft.type,
+        currency: draft.currency,
+        openingBalanceMinor: parsedOpening * 100,
+        color: draft.color,
+      );
+    }
     
     await ref.read(onboardingControllerProvider.notifier).setCompleted(authUser.id, true);
     

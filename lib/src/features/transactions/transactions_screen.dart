@@ -124,6 +124,9 @@ final _transactionsFlowProvider = Provider.autoDispose
       );
     });
 
+final transactionsTypeFilterProvider = StateProvider<String>((ref) => 'all');
+final transactionsDateFilterProvider = StateProvider<String>((ref) => 'this_year');
+
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({required this.onMenuPressed, super.key});
 
@@ -137,8 +140,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   static const _defaultDateFilter = 'this_year';
 
   var _query = '';
-  var _typeFilter = 'all';
-  var _dateFilter = _defaultDateFilter;
   final Set<String> _categoryFilters = <String>{};
   var _includeUncategorizedCategory = false;
 
@@ -146,10 +147,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(ledgerProvider);
     final accountFilter = ref.watch(homeSelectedAccountProvider);
+    final typeFilter = ref.watch(transactionsTypeFilterProvider);
+    final dateFilter = ref.watch(transactionsDateFilterProvider);
     final filterState = _TransactionFilterState(
       query: _query,
-      typeFilter: _typeFilter,
-      dateFilter: _dateFilter,
+      typeFilter: typeFilter,
+      dateFilter: dateFilter,
       categoryFilterIds: _categoryFilters,
       includeUncategorizedCategory: _includeUncategorizedCategory,
       accountFilter: accountFilter,
@@ -191,22 +194,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         children: [
           TransactionCommandStrip(
             query: _query,
-            income: formatCompactMoney(flow.income, state.preferences.locale),
-            expense: formatCompactMoney(flow.expense, state.preferences.locale),
-            net: formatCompactMoney(
-              Money(
-                amountMinor: flow.income.amountMinor - flow.expense.amountMinor,
-                currency: flow.income.currency,
-              ),
-              state.preferences.locale,
-            ),
-            typeLabel: _typeFilterLabel(_typeFilter),
-            dateLabel: _dateFilterLabel(_dateFilter),
+            typeLabel: _typeFilterLabel(typeFilter),
+            dateLabel: _dateFilterLabel(dateFilter),
             accountLabel:
                 accountById(state, accountFilter)?.name ?? 'All accounts',
             categoryLabel: _categoryFilterLabel(state),
-            typeActive: _typeFilter != 'all',
-            dateActive: _dateFilter != _defaultDateFilter,
+            typeActive: typeFilter != 'all',
+            dateActive: dateFilter != _defaultDateFilter,
             accountActive: accountFilter != null,
             categoryActive:
                 _categoryFilters.isNotEmpty || _includeUncategorizedCategory,
@@ -218,7 +212,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             onAccountTap: () => _showAccountFilter(state, accountFilter),
             onCategoryTap: () => _showCategoryFilter(state),
           ),
-          const SizedBox(height: AppSpacing.sm),
           Expanded(
             child: transactions.isEmpty
                 ? EmptyState(
@@ -292,7 +285,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                             final balanceStr = formatMoney(Money(amountMinor: item.balance, currency: state.preferences.displayCurrency), state.preferences.locale);
                             final flowStr = formatMoney(Money(amountMinor: item.netFlow, currency: state.preferences.displayCurrency), state.preferences.locale);
                             return Padding(
-                              padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.lg, AppSpacing.sm, AppSpacing.xs),
+                              padding: EdgeInsets.fromLTRB(
+                                AppSpacing.sm,
+                                index == 0 ? 0 : AppSpacing.md,
+                                AppSpacing.sm,
+                                AppSpacing.xs,
+                              ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
@@ -350,9 +348,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   bool _hasActiveFilters(String? accountFilter) {
+    final typeFilter = ref.read(transactionsTypeFilterProvider);
+    final dateFilter = ref.read(transactionsDateFilterProvider);
     return _query.trim().isNotEmpty ||
-        _typeFilter != 'all' ||
-        _dateFilter != _defaultDateFilter ||
+        typeFilter != 'all' ||
+        dateFilter != _defaultDateFilter ||
         accountFilter != null ||
         _categoryFilters.isNotEmpty ||
         _includeUncategorizedCategory;
@@ -361,11 +361,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   void _clearFilters() {
     setState(() {
       _query = '';
-      _typeFilter = 'all';
-      _dateFilter = _defaultDateFilter;
       _categoryFilters.clear();
       _includeUncategorizedCategory = false;
     });
+    ref.read(transactionsTypeFilterProvider.notifier).state = 'all';
+    ref.read(transactionsDateFilterProvider.notifier).state = _defaultDateFilter;
     ref.read(homeSelectedAccountProvider.notifier).state = null;
   }
 
@@ -392,11 +392,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   Future<void> _showTypeFilter(LedgerState state) async {
+    final current = ref.read(transactionsTypeFilterProvider);
     final next = await showFullScreenPicker<String>(
       context: context,
       title: 'Choose type',
       searchable: false,
-      selectedValue: _typeFilter,
+      selectedValue: current,
       options: const [
         PickerOption(
           value: 'all',
@@ -420,20 +421,33 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         ),
       ],
     );
-    if (next != null) setState(() => _typeFilter = next);
+    if (next != null) {
+      ref.read(transactionsTypeFilterProvider.notifier).state = next;
+    }
   }
 
   Future<void> _showDateFilter() async {
+    final current = ref.read(transactionsDateFilterProvider);
     final next = await showFullScreenPicker<String>(
       context: context,
       title: 'Choose date range',
       searchable: false,
-      selectedValue: _dateFilter,
+      selectedValue: current,
       options: const [
         PickerOption(
           value: 'all',
           title: 'All time',
           icon: Icons.all_inclusive_rounded,
+        ),
+        PickerOption(
+          value: 'today',
+          title: 'Today',
+          icon: Icons.today_outlined,
+        ),
+        PickerOption(
+          value: 'this_week',
+          title: 'This week',
+          icon: Icons.calendar_view_week_outlined,
         ),
         PickerOption(
           value: 'this_month',
@@ -452,7 +466,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         ),
       ],
     );
-    if (next != null) setState(() => _dateFilter = next);
+    if (next != null) {
+      ref.read(transactionsDateFilterProvider.notifier).state = next;
+    }
   }
 
   Future<void> _showAccountFilter(
@@ -660,6 +676,13 @@ bool _matchesDateFilter(DateTime date, String dateFilter) {
   final now = DateTime.now();
   final day = DateTime(date.year, date.month, date.day);
   return switch (dateFilter) {
+    'today' => date.year == now.year && date.month == now.month && date.day == now.day,
+    'this_week' => () {
+      final diff = now.weekday - 1; // 0 for Monday
+      final start = DateTime(now.year, now.month, now.day).subtract(Duration(days: diff));
+      final end = start.add(const Duration(days: 7));
+      return !date.isBefore(start) && date.isBefore(end);
+    }(),
     'this_month' => date.year == now.year && date.month == now.month,
     'last_30_days' => !day.isBefore(
       DateTime(now.year, now.month, now.day).subtract(const Duration(days: 30)),
@@ -690,6 +713,8 @@ String _typeFilterLabel(String value) {
 
 String _dateFilterLabel(String value) {
   return switch (value) {
+    'today' => 'Today',
+    'this_week' => 'This week',
     'this_month' => 'This month',
     'last_30_days' => 'Last 30 days',
     'this_year' => 'This year',

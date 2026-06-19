@@ -400,6 +400,16 @@ Map<String, Object?> _preferencesToJson(LedgerPreferences preferences) {
     'glassBlurLevel': preferences.glassBlurLevel,
     'glassProgressiveBlurStrength': preferences.glassProgressiveBlurStrength,
     'glassBackgroundOpacity': preferences.glassBackgroundOpacity,
+    'notificationInboxEnabled': preferences.notificationInboxEnabled,
+    'deviceNotificationsEnabled': preferences.deviceNotificationsEnabled,
+    'quietHoursEnabled': preferences.quietHoursEnabled,
+    'channelScheduledEnabled': preferences.channelScheduledEnabled,
+    'channelBudgetsEnabled': preferences.channelBudgetsEnabled,
+    'channelGoalsEnabled': preferences.channelGoalsEnabled,
+    'readNotificationIds': preferences.readNotificationIds,
+    'dismissedNotificationIds': preferences.dismissedNotificationIds,
+    'privacyModeEnabled': preferences.privacyModeEnabled,
+    'biometricLockEnabled': preferences.biometricLockEnabled,
   };
 }
 
@@ -464,6 +474,16 @@ LedgerPreferences _preferencesFromJson(Map<String, dynamic> json) {
     glassBlurLevel: _double(json['glassBlurLevel'], fallback: fallback.glassBlurLevel),
     glassProgressiveBlurStrength: _double(json['glassProgressiveBlurStrength'], fallback: fallback.glassProgressiveBlurStrength),
     glassBackgroundOpacity: _double(json['glassBackgroundOpacity'], fallback: fallback.glassBackgroundOpacity),
+    notificationInboxEnabled: _bool(json['notificationInboxEnabled'], fallback: fallback.notificationInboxEnabled),
+    deviceNotificationsEnabled: _bool(json['deviceNotificationsEnabled'], fallback: fallback.deviceNotificationsEnabled),
+    quietHoursEnabled: _bool(json['quietHoursEnabled'], fallback: fallback.quietHoursEnabled),
+    channelScheduledEnabled: _bool(json['channelScheduledEnabled'], fallback: fallback.channelScheduledEnabled),
+    channelBudgetsEnabled: _bool(json['channelBudgetsEnabled'], fallback: fallback.channelBudgetsEnabled),
+    channelGoalsEnabled: _bool(json['channelGoalsEnabled'], fallback: fallback.channelGoalsEnabled),
+    readNotificationIds: _stringList(json['readNotificationIds'], fallback: fallback.readNotificationIds),
+    dismissedNotificationIds: _stringList(json['dismissedNotificationIds'], fallback: fallback.dismissedNotificationIds),
+    privacyModeEnabled: _bool(json['privacyModeEnabled'], fallback: fallback.privacyModeEnabled),
+    biometricLockEnabled: _bool(json['biometricLockEnabled'], fallback: fallback.biometricLockEnabled),
   );
 }
 

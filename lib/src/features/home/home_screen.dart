@@ -30,7 +30,7 @@ final _homePendingCountProvider = Provider.autoDispose<int>((ref) {
 
 final _homeNotificationCountProvider = Provider.autoDispose<int>((ref) {
   return ref.watch(
-    ledgerProvider.select((state) => buildNotificationInbox(state).length),
+    ledgerProvider.select((state) => unreadNotificationCount(state)),
   );
 });
 

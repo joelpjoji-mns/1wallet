@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart' as foundation;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../capture/message_parser.dart';
@@ -1132,6 +1134,96 @@ class LedgerController extends StateNotifier<LedgerState> {
     final normalized = normalizeLedgerState(next);
     state = normalized;
     await _repository.save(normalized);
+    unawaited(_performAutoBackup(normalized));
+  }
+
+  Future<void> _performAutoBackup(LedgerState ledger) async {
+    try {
+      final archive = exportArchive();
+      
+      // 1. App documents directory -> 1Wallet subfolder
+      final docsDir = await getApplicationDocumentsDirectory();
+      final docsSubDir = Directory('${docsDir.path}/1Wallet');
+      await docsSubDir.create(recursive: true);
+      final docsFile = File('${docsSubDir.path}/1wallet_auto_backup.onewallet');
+      await docsFile.writeAsString(archive);
+      
+      // 2. App external storage directory -> 1Wallet subfolder (Android only)
+      if (Platform.isAndroid) {
+        final extDir = await getExternalStorageDirectory();
+        if (extDir != null) {
+          final extSubDir = Directory('${extDir.path}/1Wallet');
+          await extSubDir.create(recursive: true);
+          final extFile = File('${extSubDir.path}/1wallet_auto_backup.onewallet');
+          await extFile.writeAsString(archive);
+        }
+        
+        // 3. Public Download directory -> 1Wallet subfolder (best-effort)
+        try {
+          final downloadDir = Directory('/storage/emulated/0/Download');
+          if (await downloadDir.exists()) {
+            final downloadSubDir = Directory('${downloadDir.path}/1Wallet');
+            await downloadSubDir.create(recursive: true);
+            final downloadFile = File('${downloadSubDir.path}/1wallet_auto_backup.onewallet');
+            await downloadFile.writeAsString(archive);
+          }
+        } catch (_) {}
+
+        // 4. Public Documents directory -> 1Wallet subfolder (best-effort)
+        try {
+          final documentsDir = Directory('/storage/emulated/0/Documents');
+          if (await documentsDir.exists()) {
+            final documentsSubDir = Directory('${documentsDir.path}/1Wallet');
+            await documentsSubDir.create(recursive: true);
+            final documentsFile = File('${documentsSubDir.path}/1wallet_auto_backup.onewallet');
+            await documentsFile.writeAsString(archive);
+          }
+        } catch (_) {}
+      }
+    } catch (e) {
+      debugPrint('Auto backup failed: $e');
+    }
+  }
+
+  Future<File?> getLatestAutoBackupFile() async {
+    final candidates = <File>[];
+    try {
+      final docsDir = await getApplicationDocumentsDirectory();
+      candidates.add(File('${docsDir.path}/1Wallet/1wallet_auto_backup.onewallet'));
+      candidates.add(File('${docsDir.path}/1wallet_auto_backup.onewallet'));
+      
+      if (Platform.isAndroid) {
+        final extDir = await getExternalStorageDirectory();
+        if (extDir != null) {
+          candidates.add(File('${extDir.path}/1Wallet/1wallet_auto_backup.onewallet'));
+          candidates.add(File('${extDir.path}/1wallet_auto_backup.onewallet'));
+        }
+        candidates.add(File('/storage/emulated/0/Download/1Wallet/1wallet_auto_backup.onewallet'));
+        candidates.add(File('/storage/emulated/0/Download/1wallet_auto_backup.onewallet'));
+        candidates.add(File('/storage/emulated/0/Documents/1Wallet/1wallet_auto_backup.onewallet'));
+        candidates.add(File('/storage/emulated/0/Documents/1wallet_auto_backup.onewallet'));
+      }
+    } catch (_) {}
+
+    File? newest;
+    DateTime? newestTime;
+    for (final file in candidates) {
+      try {
+        if (await file.exists()) {
+          final stat = await file.stat();
+          if (newestTime == null || stat.modified.isAfter(newestTime)) {
+            newestTime = stat.modified;
+            newest = file;
+          }
+        }
+      } catch (_) {}
+    }
+    return newest;
+  }
+
+  Future<void> restoreFromAutoBackup(File file) async {
+    final content = await file.readAsString();
+    await importArchive(content);
   }
 }
 

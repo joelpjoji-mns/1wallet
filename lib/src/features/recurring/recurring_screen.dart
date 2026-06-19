@@ -38,39 +38,30 @@ class RecurringScreen extends ConsumerWidget {
           );
     final listed = mode == 'past' ? recurringHistory : scheduled;
     
+    final targetCurrency = state.preferences.displayCurrency;
+    
     int plannedIncomeMinor = 0;
     int plannedExpenseMinor = 0;
     
     for (final t in listed) {
       if (t.status == 'paused') continue;
 
-      // Convert individual transaction to base currency first to avoid summing different currency values
-      final baseAmount = t.baseAmount.amountMinor.abs();
+      final moneyToConvert = t.originalAmount ?? t.amount;
+      final converted = convertMoneyForDisplay(state, moneyToConvert, targetCurrency);
+      final amount = converted.amountMinor.abs();
+
       if (incomeTypes.contains(t.type)) {
-        plannedIncomeMinor += baseAmount;
+        plannedIncomeMinor += amount;
       } else if (t.type != 'transfer') {
-        plannedExpenseMinor += baseAmount;
+        plannedExpenseMinor += amount;
       }
     }
 
     final netMinor = plannedIncomeMinor - plannedExpenseMinor;
-    final targetCurrency = state.preferences.displayCurrency;
 
-    final displayIncome = convertMoneyForDisplay(
-      state, 
-      Money(amountMinor: plannedIncomeMinor, currency: state.preferences.baseCurrency),
-      targetCurrency,
-    );
-    final displayExpense = convertMoneyForDisplay(
-      state, 
-      Money(amountMinor: plannedExpenseMinor, currency: state.preferences.baseCurrency),
-      targetCurrency,
-    );
-    final displayNet = convertMoneyForDisplay(
-      state, 
-      Money(amountMinor: netMinor, currency: state.preferences.baseCurrency),
-      targetCurrency,
-    );
+    final displayIncome = Money(amountMinor: plannedIncomeMinor, currency: targetCurrency);
+    final displayExpense = Money(amountMinor: plannedExpenseMinor, currency: targetCurrency);
+    final displayNet = Money(amountMinor: netMinor, currency: targetCurrency);
     
     final incomeText = formatMoney(displayIncome, state.preferences.locale);
     final expenseText = formatMoney(displayExpense, state.preferences.locale);
@@ -712,9 +703,11 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                             if (selected) {
                               if (_daysOfWeek.length < _interval) {
                                 _daysOfWeek.add(i);
+                                _updateNextDateToMatchRecurrence();
                               }
                             } else {
                               _daysOfWeek.remove(i);
+                              _updateNextDateToMatchRecurrence();
                             }
                           });
                         },
@@ -741,9 +734,11 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                             if (selected) {
                               if (_daysOfMonth.length < _interval) {
                                 _daysOfMonth.add(i);
+                                _updateNextDateToMatchRecurrence();
                               }
                             } else {
                               _daysOfMonth.remove(i);
+                              _updateNextDateToMatchRecurrence();
                             }
                           });
                         },
@@ -820,6 +815,49 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
     }
   }
 
+  void _updateNextDateToMatchRecurrence() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    if (_frequency == 'monthly' && _daysOfMonth.isNotEmpty) {
+      DateTime? bestDate;
+      for (final day in _daysOfMonth) {
+        var year = today.year;
+        var month = today.month;
+        
+        DateTime candidate;
+        if (day >= today.day) {
+          final maxDay = DateTime(year, month + 1, 0).day;
+          candidate = DateTime(year, month, math.min(day, maxDay));
+        } else {
+          final maxDay = DateTime(year, month + 2, 0).day;
+          candidate = DateTime(year, month + 1, math.min(day, maxDay));
+        }
+        if (bestDate == null || candidate.isBefore(bestDate)) {
+          bestDate = candidate;
+        }
+      }
+      if (bestDate != null) {
+        _nextDate = bestDate;
+      }
+    } else if (_frequency == 'weekly' && _daysOfWeek.isNotEmpty) {
+      DateTime? bestDate;
+      for (final weekday in _daysOfWeek) {
+        var daysToAdd = weekday - today.weekday;
+        if (daysToAdd < 0) {
+          daysToAdd += 7;
+        }
+        final candidate = today.add(Duration(days: daysToAdd));
+        if (bestDate == null || candidate.isBefore(bestDate)) {
+          bestDate = candidate;
+        }
+      }
+      if (bestDate != null) {
+        _nextDate = bestDate;
+      }
+    }
+  }
+
   Future<void> _showCurrencyPicker(LedgerState state) async {
     final next = await showCurrencyPicker(
       context: context,
@@ -881,10 +919,10 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
       searchHint: 'Search accounts',
       selectedValue: counter ? _counterAccountId : _accountId,
       options: [
-        for (final account in state.accounts.where(
+        for (final account in sortAccounts(state.accounts.where(
           (account) =>
               !account.isArchived && (!counter || account.id != _accountId),
-        ))
+        )))
           PickerOption(
             value: account.id,
             title: account.name,
@@ -947,6 +985,17 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
     }
     try {
       final originalCurrency = _currency ?? state.preferences.baseCurrency;
+      
+      int finalAmountMinor = amountMinor;
+      if (originalCurrency != account.currency) {
+        final converted = convertMoneyForDisplay(
+          state, 
+          Money(amountMinor: amountMinor, currency: originalCurrency), 
+          account.currency,
+        );
+        finalAmountMinor = converted.amountMinor;
+      }
+
       await ref
           .read(ledgerProvider.notifier)
           .upsertTransaction(
@@ -955,7 +1004,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
             accountId: account.id,
             counterAccountId: _needsCounterAccount ? _counterAccountId : null,
             categoryId: _needsCounterAccount ? null : _categoryId,
-            amountMinor: amountMinor,
+            amountMinor: finalAmountMinor,
             originalCurrency: originalCurrency != account.currency ? originalCurrency : null,
             originalAmountMinor: originalCurrency != account.currency ? amountMinor : null,
             status: 'scheduled',
