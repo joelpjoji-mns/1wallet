@@ -8,6 +8,7 @@ class ParsedTransactionMessage {
     this.merchant,
     this.transactionType,
     this.last4,
+    this.institutionName,
   });
 
   final String rawText;
@@ -16,6 +17,7 @@ class ParsedTransactionMessage {
   final String? merchant;
   final String? transactionType;
   final String? last4;
+  final String? institutionName;
 }
 
 ParsedTransactionMessage parseTransactionMessage(
@@ -43,6 +45,7 @@ ParsedTransactionMessage parseTransactionMessage(
   final merchant = _extractMerchant(text);
   final transactionType = _detectTransactionType(normalized);
   final last4 = _extractLast4(text);
+  final institutionName = _detectInstitution(normalized);
   if (amountMinor == null || transactionType == null) {
     return ParsedTransactionMessage(
       rawText: text,
@@ -57,7 +60,43 @@ ParsedTransactionMessage parseTransactionMessage(
     merchant: merchant,
     transactionType: transactionType,
     last4: last4,
+    institutionName: institutionName,
   );
+}
+
+String? _detectInstitution(String normalized) {
+  // Common banks and institutions
+  final patterns = {
+    'HDFC': RegExp(r'\b(?:hdfc|hdfcbank)\b'),
+    'ICICI': RegExp(r'\b(?:icici|icicibank)\b'),
+    'SBI': RegExp(r'\b(?:sbi|state bank)\b'),
+    'Axis': RegExp(r'\b(?:axis|axisbank)\b'),
+    'Kotak': RegExp(r'\b(?:kotak)\b'),
+    'Yes Bank': RegExp(r'\b(?:yes bank|yesbank)\b'),
+    'IndusInd': RegExp(r'\b(?:indusind)\b'),
+    'Chase': RegExp(r'\b(?:chase)\b'),
+    'Citi': RegExp(r'\b(?:citi|citibank)\b'),
+    'Wells Fargo': RegExp(r'\b(?:wells fargo)\b'),
+    'BoA': RegExp(r'\b(?:bank of america|bofa)\b'),
+    'Amex': RegExp(r'\b(?:amex|american express)\b'),
+    'Discover': RegExp(r'\b(?:discover)\b'),
+    'Revolut': RegExp(r'\b(?:revolut)\b'),
+    'Monzo': RegExp(r'\b(?:monzo)\b'),
+    'Wise': RegExp(r'\b(?:wise|transferwise)\b'),
+    'Barclays': RegExp(r'\b(?:barclays)\b'),
+    'HSBC': RegExp(r'\b(?:hsbc)\b'),
+    'Standard Chartered': RegExp(r'\b(?:standard chartered|stanchart)\b'),
+    'Paytm': RegExp(r'\b(?:paytm|paytm bank)\b'),
+    'PhonePe': RegExp(r'\b(?:phonepe)\b'),
+    'GPay': RegExp(r'\b(?:gpay|google pay)\b'),
+  };
+
+  for (final entry in patterns.entries) {
+    if (entry.value.hasMatch(normalized)) {
+      return entry.key;
+    }
+  }
+  return null;
 }
 
 bool _looksLikeSecurityMessage(String normalized) {
@@ -214,9 +253,9 @@ String? _detectTransactionType(String normalized) {
 
 String? _extractLast4(String text) {
   final patterns = [
-    RegExp(r'(?:card|acct|account|a\/c|ending|ending in)[^\d]*(\d{3,4})\b', caseSensitive: false),
-    RegExp(r'\b[xX*]{2,4}(\d{3,4})\b', caseSensitive: false),
-    RegExp(r'\b(\d{3,4})\s*(?:debited|credited)', caseSensitive: false),
+    RegExp(r'(?:card|acct|account|a\/c|ending|ending in)[^\d]*(\d{3,16})\b', caseSensitive: false),
+    RegExp(r'\b[xX*]{2,12}(\d{3,16})\b', caseSensitive: false),
+    RegExp(r'\b(\d{3,16})\s*(?:debited|credited)', caseSensitive: false),
   ];
 
   for (final pattern in patterns) {
