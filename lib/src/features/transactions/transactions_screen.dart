@@ -91,7 +91,9 @@ final _transactionsFlowProvider = Provider.autoDispose
       var income = 0;
       var expense = 0;
       for (final transaction in transactions) {
-        if (transaction.status == 'scheduled' || transaction.status == 'void') {
+        if (transaction.status == 'scheduled' ||
+            transaction.status == 'paused' ||
+            transaction.status == 'void') {
           continue;
         }
         if (transaction.isExcludedFromReports) continue;

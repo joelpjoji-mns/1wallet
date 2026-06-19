@@ -161,7 +161,9 @@ List<Money> _accountCurrencyNet(LedgerState state, Account account) {
   _addMoney(totals, account.openingBalance.copyWith(currency: account.currency));
 
   for (final transaction in state.transactions) {
-    if (transaction.status == 'scheduled' || transaction.status == 'void') {
+    if (transaction.status == 'scheduled' ||
+        transaction.status == 'paused' ||
+        transaction.status == 'void') {
       continue;
     }
 
