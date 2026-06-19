@@ -10,6 +10,12 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.os.Build
+
 class SmsReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
         if (context == null || intent == null || intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
@@ -28,6 +34,7 @@ class SmsReceiver : BroadcastReceiver() {
         val body = combinedBody.toString()
         if (body.isNotEmpty()) {
             spoolMessage(context, sender, body)
+            showNotification(context)
         }
     }
 
@@ -35,20 +42,61 @@ class SmsReceiver : BroadcastReceiver() {
         val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
         val spoolKey = "flutter.one_wallet_flutter.sms_spool"
         
-        // Flutter's shared_preferences stores StringList as a Set<String> on Android
-        val existingSpooled = prefs.getStringSet(spoolKey, null) ?: mutableSetOf<String>()
-        val newSpooled = existingSpooled.toMutableSet()
+        val prefix = "VGhpcyBpcyB0aGUgcHJlZml4IGZvciBhIGxpc3Qu!"
         
-        val payload = JSONObject()
+        val existingRaw = try { prefs.getString(spoolKey, "") ?: "" } catch (e: Exception) { "" }
+        val jsonArray = if (existingRaw.startsWith(prefix)) {
+            val jsonStr = existingRaw.substring(prefix.length)
+            try {
+                org.json.JSONArray(jsonStr)
+            } catch (e: Exception) {
+                org.json.JSONArray()
+            }
+        } else {
+            org.json.JSONArray()
+        }
+        
+        val payload = org.json.JSONObject()
         payload.put("sender", sender)
         payload.put("body", body)
         
-        val df = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
-        df.timeZone = TimeZone.getTimeZone("UTC")
-        payload.put("timestamp", df.format(Date()))
+        val df = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
+        df.timeZone = java.util.TimeZone.getTimeZone("UTC")
+        payload.put("timestamp", df.format(java.util.Date()))
         
-        newSpooled.add(payload.toString())
+        jsonArray.put(payload.toString())
         
-        prefs.edit().putStringSet(spoolKey, newSpooled).apply()
+        val newRaw = prefix + jsonArray.toString()
+        // If there's a legacy StringSet, remove it to avoid ClassCastException
+        try { prefs.edit().remove(spoolKey).apply() } catch (e: Exception) {}
+        
+        prefs.edit().putString(spoolKey, newRaw).apply()
+    }
+
+    private fun showNotification(context: Context) {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channelId = "one_wallet_capture"
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(channelId, "Transaction Capture", NotificationManager.IMPORTANCE_DEFAULT)
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+        val pendingIntent = PendingIntent.getActivity(context, 0, launchIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(context, channelId)
+        } else {
+            Notification.Builder(context)
+        }
+        
+        builder.setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("New Transaction Detected")
+            .setContentText("A new transaction was added to your review queue.")
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+
+        notificationManager.notify((System.currentTimeMillis() % 10000).toInt(), builder.build())
     }
 }
