@@ -749,6 +749,9 @@ TransactionRecord _transactionFromJson(Map<String, dynamic> json) {
     notes: _nullableString(json['notes']),
     importBatchId: _nullableString(json['importBatchId']),
     recurrenceFrequency: _nullableString(json['recurrenceFrequency']) ?? _extractFrequencyFromTags(json['tags']),
+    recurrenceInterval: _int(json['recurrenceInterval'], fallback: 1),
+    recurrenceDaysOfWeek: _nullableIntList(json['recurrenceDaysOfWeek']),
+    recurrenceDaysOfMonth: _nullableIntList(json['recurrenceDaysOfMonth']),
     attachments: _list(
       json['attachments'],
     ).map(_transactionAttachmentFromJson).toList(),

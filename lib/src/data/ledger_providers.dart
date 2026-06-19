@@ -11,6 +11,7 @@ import '../capture/message_parser.dart';
 import '../features/capture/sms_spooler.dart';
 import '../imports/wallet_csv_parser.dart';
 import '../ledger/ledger_selectors.dart';
+import '../utils/recurrence_utils.dart';
 import 'ledger_archive.dart';
 import 'ledger_codec.dart';
 import 'ledger_defaults.dart';
@@ -105,40 +106,7 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
       final freq = scheduled.recurrenceFrequency ?? 'monthly';
 
       while (nextDate.isBefore(latestOccurredAt) || nextDate.isAtSameMomentAs(latestOccurredAt)) {
-         switch (freq.toLowerCase()) {
-          case 'daily':
-            nextDate = nextDate.add(const Duration(days: 1));
-            break;
-          case 'weekly':
-            nextDate = nextDate.add(const Duration(days: 7));
-            break;
-          case 'monthly':
-            var year = nextDate.year;
-            var month = nextDate.month + 1;
-            if (month > 12) { year++; month -= 12; }
-            var day = nextDate.day;
-            final daysInNextMonth = DateTime(year, month + 1, 0).day;
-            if (day > daysInNextMonth) day = daysInNextMonth;
-            nextDate = DateTime(year, month, day, nextDate.hour, nextDate.minute, nextDate.second);
-            break;
-          case 'yearly':
-            var year = nextDate.year + 1;
-            var month = nextDate.month;
-            var day = nextDate.day;
-            final daysInNextMonth = DateTime(year, month + 1, 0).day;
-            if (day > daysInNextMonth) day = daysInNextMonth;
-            nextDate = DateTime(year, month, day, nextDate.hour, nextDate.minute, nextDate.second);
-            break;
-          default:
-            var year = nextDate.year;
-            var month = nextDate.month + 1;
-            if (month > 12) { year++; month -= 12; }
-            var day = nextDate.day;
-            final daysInNextMonth = DateTime(year, month + 1, 0).day;
-            if (day > daysInNextMonth) day = daysInNextMonth;
-            nextDate = DateTime(year, month, day, nextDate.hour, nextDate.minute, nextDate.second);
-            break;
-        }
+         nextDate = advanceTransactionRecurrence(nextDate, scheduled);
       }
       return scheduled.copyWith(occurredAt: nextDate);
     }
@@ -1141,6 +1109,8 @@ class LedgerController extends StateNotifier<LedgerState> {
     final normalized = normalizeLedgerState(next);
     state = normalized;
     await _repository.save(normalized);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_unsynced_changes', true);
     unawaited(_performAutoBackup(normalized));
   }
 

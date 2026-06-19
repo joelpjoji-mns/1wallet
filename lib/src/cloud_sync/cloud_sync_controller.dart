@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../auth/auth_controller.dart';
 import '../data/ledger_codec.dart';
@@ -218,8 +219,14 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           .get()
           .timeout(cloudSyncReadTimeout);
           
+      final lastWriterDeviceId = userDoc.data()?['lastWriterDeviceId'];
+      final prefs = await SharedPreferences.getInstance();
+      final hasUnsyncedChanges = prefs.getBool('has_unsynced_changes') ?? false;
+      
       final bool shouldPull = userDoc.exists &&
-          userDoc.data()?['lastWriterDeviceId'] != metadata.deviceId;
+          lastWriterDeviceId != null &&
+          lastWriterDeviceId != metadata.deviceId &&
+          !hasUnsyncedChanges;
 
       if (shouldPull) {
         await _restoreFromCloud(user.id, metadata);
@@ -261,9 +268,15 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
             .doc('users/$userId')
             .get()
             .timeout(cloudSyncReadTimeout);
+        final lastWriterDeviceId = userDoc.data()?['lastWriterDeviceId'];
+        final hasUserData = _walletHasUserData(_ref.read(ledgerProvider));
+        final prefs = await SharedPreferences.getInstance();
+        final hasUnsyncedChanges = prefs.getBool('has_unsynced_changes') ?? false;
+        
+        debugPrint('CloudSync _bootstrap: userDoc.exists=${userDoc.exists}, lastWriterDeviceId=$lastWriterDeviceId, metadata.deviceId=${metadata.deviceId}, hasUserData=$hasUserData, hasUnsyncedChanges=$hasUnsyncedChanges');
         final bool shouldPull = !userDoc.exists ||
-            userDoc.data()?['lastWriterDeviceId'] != metadata.deviceId ||
-            !_walletHasUserData(_ref.read(ledgerProvider));
+            (lastWriterDeviceId != null && lastWriterDeviceId != metadata.deviceId && !hasUnsyncedChanges) ||
+            !hasUserData;
 
         if (shouldPull) {
           // We have cloud data. Restore it locally.
@@ -564,6 +577,9 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       if (opCount > 0) {
         await currentBatch.commit().timeout(cloudSyncReadTimeout);
       }
+      
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('has_unsynced_changes', false);
 
       final now = DateTime.now().toIso8601String();
       metadata = metadata.copyWith(

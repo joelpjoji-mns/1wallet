@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
+import '../../utils/recurrence_utils.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
@@ -701,10 +702,8 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                         onSelected: (selected) {
                           setState(() {
                             if (selected) {
-                              if (_daysOfWeek.length < _interval) {
-                                _daysOfWeek.add(i);
-                                _updateNextDateToMatchRecurrence();
-                              }
+                              _daysOfWeek.add(i);
+                              _updateNextDateToMatchRecurrence();
                             } else {
                               _daysOfWeek.remove(i);
                               _updateNextDateToMatchRecurrence();
@@ -732,10 +731,8 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                         onSelected: (selected) {
                           setState(() {
                             if (selected) {
-                              if (_daysOfMonth.length < _interval) {
-                                _daysOfMonth.add(i);
-                                _updateNextDateToMatchRecurrence();
-                              }
+                              _daysOfMonth.add(i);
+                              _updateNextDateToMatchRecurrence();
                             } else {
                               _daysOfMonth.remove(i);
                               _updateNextDateToMatchRecurrence();
@@ -818,44 +815,16 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
   void _updateNextDateToMatchRecurrence() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    // Subtract one day so that if today is a valid day, it gets picked immediately.
+    final currentCursor = today.subtract(const Duration(days: 1));
     
-    if (_frequency == 'monthly' && _daysOfMonth.isNotEmpty) {
-      DateTime? bestDate;
-      for (final day in _daysOfMonth) {
-        var year = today.year;
-        var month = today.month;
-        
-        DateTime candidate;
-        if (day >= today.day) {
-          final maxDay = DateTime(year, month + 1, 0).day;
-          candidate = DateTime(year, month, math.min(day, maxDay));
-        } else {
-          final maxDay = DateTime(year, month + 2, 0).day;
-          candidate = DateTime(year, month + 1, math.min(day, maxDay));
-        }
-        if (bestDate == null || candidate.isBefore(bestDate)) {
-          bestDate = candidate;
-        }
-      }
-      if (bestDate != null) {
-        _nextDate = bestDate;
-      }
-    } else if (_frequency == 'weekly' && _daysOfWeek.isNotEmpty) {
-      DateTime? bestDate;
-      for (final weekday in _daysOfWeek) {
-        var daysToAdd = weekday - today.weekday;
-        if (daysToAdd < 0) {
-          daysToAdd += 7;
-        }
-        final candidate = today.add(Duration(days: daysToAdd));
-        if (bestDate == null || candidate.isBefore(bestDate)) {
-          bestDate = candidate;
-        }
-      }
-      if (bestDate != null) {
-        _nextDate = bestDate;
-      }
-    }
+    _nextDate = advanceRecurrenceCursor(
+      current: currentCursor,
+      frequency: _frequency,
+      interval: _interval,
+      daysOfWeek: _daysOfWeek.toList(),
+      daysOfMonth: _daysOfMonth.toList(),
+    );
   }
 
   Future<void> _showCurrencyPicker(LedgerState state) async {
@@ -1226,7 +1195,7 @@ class RecurringDetailView extends ConsumerWidget {
 
   Future<void> _skip(BuildContext context, WidgetRef ref) async {
     final notifier = ref.read(ledgerProvider.notifier);
-    final nextDate = _advanceCursor(transaction.occurredAt, transaction.recurrenceFrequency ?? 'monthly');
+    final nextDate = advanceTransactionRecurrence(transaction.occurredAt, transaction);
     
     await notifier.upsertTransaction(
       type: transaction.type,
@@ -1254,40 +1223,6 @@ class RecurringDetailView extends ConsumerWidget {
     if (!context.mounted) return;
     _showRouteMessage(context, 'Scheduled record skipped.');
     context.go('/recurring');
-  }
-
-  DateTime _advanceCursor(DateTime current, String frequency) {
-    switch (frequency.toLowerCase()) {
-      case 'daily':
-        return current.add(const Duration(days: 1));
-      case 'weekly':
-        return current.add(const Duration(days: 7));
-      case 'monthly':
-        return _addMonths(current, 1);
-      case 'yearly':
-        return _addMonths(current, 12);
-      default:
-        return _addMonths(current, 1);
-    }
-  }
-
-  DateTime _addMonths(DateTime date, int months) {
-    var year = date.year;
-    var month = date.month + months;
-    while (month > 12) {
-      year++;
-      month -= 12;
-    }
-    while (month < 1) {
-      year--;
-      month += 12;
-    }
-    var day = date.day;
-    final daysInNextMonth = DateTime(year, month + 1, 0).day;
-    if (day > daysInNextMonth) {
-      day = daysInNextMonth;
-    }
-    return DateTime(year, month, day, date.hour, date.minute, date.second);
   }
 
   Future<void> _pause(BuildContext context, WidgetRef ref) async {
@@ -1325,7 +1260,7 @@ class RecurringDetailView extends ConsumerWidget {
         originalCurrency: transaction.originalAmount?.currency,
         counterAmountMinor: transaction.counterAmount?.amountMinor,
       );
-      nextDate = _advanceCursor(nextDate, transaction.recurrenceFrequency ?? 'monthly');
+      nextDate = advanceTransactionRecurrence(nextDate, transaction);
     }
 
     await notifier.updateTransactionStatus(

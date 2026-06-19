@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 
 import '../../imports/picked_text_file.dart';
@@ -12,7 +15,14 @@ Future<PickedTextFile?> pickTextFile({
   );
   if (result == null || result.files.isEmpty) return null;
   final file = result.files.single;
-  final bytes = file.bytes;
+  
+  Uint8List? bytes = file.bytes;
+  if (bytes == null && file.path != null) {
+    try {
+      bytes = await File(file.path!).readAsBytes();
+    } catch (_) {}
+  }
+  
   if (bytes == null) {
     throw FormatException('Could not read ${file.name}.');
   }
