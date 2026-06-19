@@ -144,7 +144,7 @@ class SyncScreen extends ConsumerWidget {
                 children: [
                   const SizedBox(height: 8),
                   DropdownButtonFormField<int?>(
-                    initialValue: sync.metadata?.syncIntervalHours,
+                    value: sync.metadata?.syncIntervalHours ?? 4,
                     decoration: InputDecoration(
                       labelText: 'Periodic Sync Interval',
                       labelStyle: theme.textTheme.bodyMedium,
@@ -153,6 +153,7 @@ class SyncScreen extends ConsumerWidget {
                     ),
                     items: const [
                       DropdownMenuItem(value: null, child: Text('Automatic (On change)')),
+                      DropdownMenuItem(value: 4, child: Text('Every 4 hours (Default)')),
                       DropdownMenuItem(value: 6, child: Text('Every 6 hours')),
                       DropdownMenuItem(value: 12, child: Text('Every 12 hours')),
                       DropdownMenuItem(value: 24, child: Text('Daily')),

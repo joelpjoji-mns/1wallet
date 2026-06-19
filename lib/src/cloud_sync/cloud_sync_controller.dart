@@ -140,7 +140,11 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         return;
       }
 
-      _scheduleUpload();
+      if (state.metadata?.syncIntervalHours == null) {
+        _scheduleUpload();
+      } else {
+        state = state.copyWith(pendingUpload: true);
+      }
     });
 
     final initialUser = _ref.read(authControllerProvider).user;
@@ -392,8 +396,24 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       }
 
       state = state.copyWith(
+        phase: state.phase == CloudSyncPhase.checking 
+            ? CloudSyncPhase.idle 
+            : state.phase,
         bootstrappedUserId: userId,
         bootstrapComplete: true,
+      );
+    } on TimeoutException catch (e) {
+      debugPrint('Cloud sync bootstrap timeout, fetching actual error...');
+      Object actualError = e;
+      try {
+        await _firestore.doc('users/$userId').get(const GetOptions(source: Source.server));
+      } catch (fe) {
+        actualError = fe;
+      }
+      state = state.copyWith(
+        phase: CloudSyncPhase.error,
+        error: 'Network timeout / Quota hit. Actual error: $actualError',
+        bootstrappedUserId: null,
       );
     } catch (e) {
       debugPrint('Cloud sync bootstrap error: $e');
@@ -450,7 +470,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         currentBatch.set(doc, data, SetOptions(merge: true));
         opCount++;
         if (opCount >= 450) {
-          await currentBatch.commit();
+          await currentBatch.commit().timeout(cloudSyncReadTimeout);
           currentBatch = _firestore.batch();
           opCount = 0;
         }
@@ -484,7 +504,13 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         for (final item in items) {
           final docId = item['id'] as String;
           final hashKey = '$collection/$docId';
-          final currentHash = jsonEncode(item).hashCode.toString();
+          final jsonStr = jsonEncode(item);
+          int stableHash = 0x811c9dc5;
+          for (int i = 0; i < jsonStr.length; i++) {
+            stableHash ^= jsonStr.codeUnitAt(i);
+            stableHash = (stableHash * 0x01000193) & 0xFFFFFFFF;
+          }
+          final currentHash = stableHash.toString();
           
           if (newSyncedHashes[hashKey] == currentHash) {
             continue; // Skip writing this document because it hasn't changed
@@ -519,7 +545,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
             currentBatch.delete(doc.reference);
             opCount++;
             if (opCount >= 450) {
-              await currentBatch.commit();
+              await currentBatch.commit().timeout(cloudSyncReadTimeout);
               currentBatch = _firestore.batch();
               opCount = 0;
             }
@@ -536,7 +562,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       await processCollection('importBatches', encodedData['importBatches']!, metadata.syncedImportBatchIds);
 
       if (opCount > 0) {
-        await currentBatch.commit();
+        await currentBatch.commit().timeout(cloudSyncReadTimeout);
       }
 
       final now = DateTime.now().toIso8601String();
@@ -557,7 +583,27 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       _uploadFailureCount = 0;
       _uploadCircuitOpenUntil = 0;
       state = state.copyWith(phase: CloudSyncPhase.idle, metadata: metadata);
+      debugPrint('uploadSnapshot: completed successfully!');
+    } on TimeoutException catch (e) {
+      debugPrint('uploadSnapshot: timeout exception, fetching actual error...');
+      _uploadFailureCount++;
+      if (_uploadFailureCount >= uploadFailureCircuitBreakerThreshold) {
+        _uploadCircuitOpenUntil =
+            DateTime.now().millisecondsSinceEpoch + uploadCircuitBreakerMs;
+      }
+      Object actualError = e;
+      try {
+        await _firestore.doc('users/${user.id}').get(const GetOptions(source: Source.server));
+      } catch (fe) {
+        actualError = fe;
+      }
+      state = state.copyWith(
+        pendingUpload: true,
+        phase: CloudSyncPhase.error,
+        error: 'Network timeout / Quota hit. Actual error: $actualError',
+      );
     } catch (e) {
+      debugPrint('uploadSnapshot: caught error $e');
       _uploadFailureCount++;
       if (_uploadFailureCount >= uploadFailureCircuitBreakerThreshold) {
         _uploadCircuitOpenUntil =

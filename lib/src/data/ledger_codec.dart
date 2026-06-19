@@ -538,6 +538,10 @@ Map<String, Object?> _accountToJson(Account account) {
     'loanDetails': account.loanDetails == null
         ? null
         : _loanDetailsToJson(account.loanDetails!),
+    'encryptedDetails': () {
+      print('DEBUG: Codec saving account ${account.id} - encryptedDetails is ${account.encryptedDetails == null ? 'NULL' : 'NOT NULL, length: ${account.encryptedDetails!.length}'}');
+      return account.encryptedDetails;
+    }(),
     'cardLast4': account.cardLast4,
     'accountLast4': account.accountLast4,
     'includeInTotals': account.includeInTotals,
@@ -587,6 +591,11 @@ Account _accountFromJson(Map<String, dynamic> json) {
     cardLast4: _nullableString(json['cardLast4']),
     accountLast4: _nullableString(json['accountLast4']),
     loanDetails: _loanDetailsFromJson(json['loanDetails'], currency),
+    encryptedDetails: () {
+      final res = json['encryptedDetails'] != null ? Map<String, String>.from(json['encryptedDetails']) : null;
+      print('DEBUG: Codec loading account ${json['id']} - encryptedDetails is ${res == null ? 'NULL' : 'NOT NULL, length: ${res.length}'}');
+      return res;
+    }(),
     includeInTotals: _bool(json['includeInTotals'], fallback: true),
     includeInReports: _bool(json['includeInReports'], fallback: true),
     includeInNetWorth: _bool(json['includeInNetWorth'], fallback: true),
