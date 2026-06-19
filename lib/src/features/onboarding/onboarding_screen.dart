@@ -10,7 +10,7 @@ import 'onboarding_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:uuid/uuid.dart';
 import '../../data/ledger_providers.dart';
-
+import '../../widgets/currency_picker.dart';
 class _AccountDraft {
   String name;
   String type;
@@ -66,7 +66,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     _currentDraft = _AccountDraft(
       name: '',
       type: 'checking',
-      currency: kDefaultCurrency,
+      currency: _baseCurrency,
       color: Colors.blueAccent,
       opening: '',
       icon: Icons.account_balance_rounded,
@@ -213,15 +213,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   tileColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   onTap: () async {
-                    final curr = await showFullScreenPicker<String>(
+                    final curr = await showCurrencyPicker(
                       context: context,
-                      title: 'Base currency',
-                      options: [
-                        const PickerOption(value: 'USD', title: 'US Dollar (USD)'),
-                        const PickerOption(value: 'EUR', title: 'Euro (EUR)'),
-                        const PickerOption(value: 'INR', title: 'Indian Rupee (INR)'),
-                        const PickerOption(value: 'GBP', title: 'British Pound (GBP)'),
-                      ],
+                      state: ref.read(ledgerProvider),
                       selectedValue: _baseCurrency,
                     );
                     if (curr != null) setState(() => _baseCurrency = curr);
