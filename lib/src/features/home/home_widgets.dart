@@ -2194,7 +2194,9 @@ List<_CategoryTotal> _categoryTotals(
   final end = DateTime(now.year, now.month + 1);
   final totals = <String, _CategoryTotal>{};
   for (final transaction in state.transactions) {
-    if (transaction.status == 'scheduled' || transaction.status == 'void') {
+    if (transaction.status == 'scheduled' ||
+        transaction.status == 'paused' ||
+        transaction.status == 'void') {
       continue;
     }
     if (transaction.isExcludedFromReports) continue;
