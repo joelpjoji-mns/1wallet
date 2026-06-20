@@ -1031,55 +1031,98 @@ class RecurringDetailView extends ConsumerWidget {
           ),
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.md),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                IconBubble(
-                  icon: category == null ? Icons.event_repeat_rounded : Icons.category_rounded,
-                  color: scheme.primary,
-                  compact: true,
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        transaction.name?.trim().isNotEmpty == true
-                            ? transaction.name!.trim()
-                            : (category?.name ?? transactionTypeLabel(transaction.type)),
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      if (transaction.name?.trim().isNotEmpty == true) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          category?.name ?? transactionTypeLabel(transaction.type),
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: scheme.onSurfaceVariant,
+                Row(
+                  children: [
+                    IconBubble(
+                      icon: category == null ? Icons.event_repeat_rounded : Icons.category_rounded,
+                      color: scheme.primary,
+                      compact: true,
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            transaction.name?.trim().isNotEmpty == true
+                                ? transaction.name!.trim()
+                                : (category?.name ?? transactionTypeLabel(transaction.type)),
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
+                          if (transaction.name?.trim().isNotEmpty == true) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              category?.name ?? transactionTypeLabel(transaction.type),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 2),
+                          Text(
+                            '${transaction.status.toUpperCase()} · ${transactionTypeLabel(frequency).toUpperCase()}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      _recurringAmountLabel(state, transaction),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+                if (account?.loanDetails != null || counter?.loanDetails != null)
+                  Builder(builder: (context) {
+                    final loanAccount = account?.loanDetails != null ? account : counter;
+                    final total = loanAccount?.loanDetails?.repaymentCount;
+                    if (total == null || total <= 0) return const SizedBox();
+                    final postedCount = state.transactions.where((t) =>
+                       (t.status == 'posted' || t.status == 'cleared') &&
+                       (t.accountId == loanAccount!.id || t.counterAccountId == loanAccount.id) &&
+                       t.type == 'loan_repayment'
+                    ).length;
+                    final progress = (postedCount / total).clamp(0.0, 1.0);
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SizedBox(height: AppSpacing.md),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Payment $postedCount of $total',
+                              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant, fontWeight: FontWeight.w600),
+                            ),
+                            Text(
+                              '${total - postedCount} left',
+                              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        LinearProgressIndicator(
+                          value: progress,
+                          backgroundColor: scheme.surfaceContainerHighest,
+                          color: scheme.primary,
+                          borderRadius: BorderRadius.circular(4),
                         ),
                       ],
-                      const SizedBox(height: 2),
-                      Text(
-                        '${transaction.status.toUpperCase()} · ${transactionTypeLabel(frequency).toUpperCase()}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Text(
-                  _recurringAmountLabel(state, transaction),
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
+                    );
+                  }),
               ],
             ),
           ),
