@@ -340,7 +340,37 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     }
 
     final now = DateTime.now();
-    if (through.isBefore(now)) return balanceMinor;
+    
+    // For past months, undo the effect of any transactions that happened after `through`
+    if (through.isBefore(DateTime(now.year, now.month, now.day))) {
+      // Ensure through covers the entire day of the month end by setting it to 23:59:59
+      final endOfDayThrough = DateTime(through.year, through.month, through.day, 23, 59, 59);
+      for (final tx in state.transactions) {
+        if (tx.status != 'posted' && tx.status != 'cleared') continue;
+        if (tx.occurredAt.isAfter(endOfDayThrough)) {
+          if (selectedAccountIds.contains(tx.accountId)) {
+            final delta = convertMoneyForDisplay(
+              state,
+              Money(amountMinor: sourceDelta(tx), currency: tx.amount.currency),
+              state.preferences.baseCurrency,
+            );
+            balanceMinor -= delta.amountMinor;
+          }
+          if (tx.counterAccountId != null && selectedAccountIds.contains(tx.counterAccountId)) {
+            final delta = convertMoneyForDisplay(
+              state,
+              Money(
+                amountMinor: counterDelta(tx),
+                currency: tx.counterAmount?.currency ?? tx.amount.currency
+              ),
+              state.preferences.baseCurrency,
+            );
+            balanceMinor -= delta.amountMinor;
+          }
+        }
+      }
+      return balanceMinor;
+    }
 
     final allForecasts = forecastRecurringTransactions(state, now, through);
 
