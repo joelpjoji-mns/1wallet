@@ -395,6 +395,7 @@ class _TopCategoriesWidgetState extends State<TopCategoriesWidget> {
      showModalBottomSheet<void>(
         context: context,
         showDragHandle: true,
+        constraints: const BoxConstraints(maxWidth: 640),
         builder: (context) => Padding(
            padding: const EdgeInsets.all(AppSpacing.lg),
            child: SingleChildScrollView(

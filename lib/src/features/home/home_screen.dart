@@ -166,8 +166,10 @@ class _HomeDashboardList extends ConsumerWidget {
       AppSpacing.md,
       AppSizes.bottomBarClearance,
     );
+
+    Widget mobileView;
     if (reorderMode) {
-      return ReorderableListView.builder(
+      mobileView = ReorderableListView.builder(
         padding: padding,
         itemCount: widgetOrder.length,
         onReorderItem: (oldIndex, newIndex) {
@@ -181,18 +183,69 @@ class _HomeDashboardList extends ConsumerWidget {
           );
         },
       );
+    } else {
+      mobileView = ListView.separated(
+        padding: padding,
+        itemCount: widgetOrder.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 12),
+        itemBuilder: (context, index) => _buildScopedHomeWidget(
+          context,
+          ref,
+          state,
+          index,
+        ),
+      );
+    }
+    final leftColIds = <HomeDashboardWidgetId>[];
+    final rightColIds = <HomeDashboardWidgetId>[];
+    for (var i = 0; i < widgetOrder.length; i++) {
+      if (i % 2 == 0) {
+        leftColIds.add(widgetOrder[i]);
+      } else {
+        rightColIds.add(widgetOrder[i]);
+      }
     }
 
-    return ListView.separated(
+    final desktopView = SingleChildScrollView(
       padding: padding,
-      itemCount: widgetOrder.length,
-      separatorBuilder: (context, index) => const Gap(12),
-      itemBuilder: (context, index) => _buildScopedHomeWidget(
-        context,
-        ref,
-        state,
-        index,
+      child: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 900),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  children: leftColIds.map((id) {
+                    final index = widgetOrder.indexOf(id);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                      child: _buildScopedHomeWidget(context, ref, state, index),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  children: rightColIds.map((id) {
+                    final index = widgetOrder.indexOf(id);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                      child: _buildScopedHomeWidget(context, ref, state, index),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
+    );
+
+    return AppResponsiveLayout(
+      mobile: mobileView,
+      desktop: desktopView,
     );
   }
 

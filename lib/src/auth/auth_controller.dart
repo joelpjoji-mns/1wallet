@@ -254,7 +254,7 @@ class AuthRepository {
     final googleSignIn = GoogleSignIn(
       scopes: const ['email', 'profile'],
       clientId: FirebaseEnv.googleClientIdForPlatform,
-      serverClientId: FirebaseEnv.googleWebClientId,
+      serverClientId: kIsWeb ? null : FirebaseEnv.googleWebClientId,
     );
 
     final googleUser = await googleSignIn.signIn();

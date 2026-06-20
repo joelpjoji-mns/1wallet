@@ -472,6 +472,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      constraints: const BoxConstraints(maxWidth: 640),
       builder: (context) => Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: SingleChildScrollView(

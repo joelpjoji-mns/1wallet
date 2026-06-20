@@ -284,7 +284,9 @@ class _DrawerRouteTileState extends State<DrawerRouteTile> {
                   widget.onTabSelected(widget.config.tabIndex!);
                 } else if (widget.config.route != null) {
                   final router = GoRouter.of(context);
-                  Navigator.of(context).pop();
+                  if (Scaffold.maybeOf(context)?.isDrawerOpen == true) {
+                    Navigator.of(context).pop();
+                  }
                   router.push(widget.config.route!);
                 }
               },
