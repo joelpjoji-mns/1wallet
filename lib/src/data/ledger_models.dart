@@ -341,6 +341,7 @@ class Account {
     this.showOnHome = true,
     this.isArchived = false,
     this.sortOrder = 0,
+    this.creditLimit,
   });
 
   final String id;
@@ -361,6 +362,7 @@ class Account {
   final bool showOnHome;
   final bool isArchived;
   final int sortOrder;
+  final Money? creditLimit;
 
   String? get displayLast4 => cardLast4 ?? accountLast4;
   
@@ -389,6 +391,7 @@ class Account {
     bool? showOnHome,
     bool? isArchived,
     int? sortOrder,
+    Money? creditLimit,
   }) {
     return Account(
       id: id ?? this.id,
@@ -409,6 +412,7 @@ class Account {
       showOnHome: showOnHome ?? this.showOnHome,
       isArchived: isArchived ?? this.isArchived,
       sortOrder: sortOrder ?? this.sortOrder,
+      creditLimit: creditLimit ?? this.creditLimit,
     );
   }
 }

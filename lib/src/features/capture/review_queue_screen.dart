@@ -361,21 +361,17 @@ class ReviewQueueScreen extends ConsumerWidget {
     String status,
   ) async {
     final notifier = ref.read(ledgerProvider.notifier);
-    int count = 0;
-    for (final id in ids) {
-      if (status == 'approved') {
-        await notifier.approveCaptureCandidate(id);
-      } else {
-        await notifier.updateCaptureCandidateStatus(id, status);
-      }
-      count++;
+    if (status == 'approved') {
+      await notifier.approveCaptureCandidates(ids);
+    } else {
+      await notifier.updateCaptureCandidateStatuses(ids, status);
     }
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text('$count candidates marked $status.'),
+          content: Text('${ids.length} candidates marked $status.'),
           behavior: SnackBarBehavior.floating,
         ),
       );

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../auth/auth_controller.dart';
 import '../../auth/auth_user.dart';
 import '../../cloud_sync/cloud_sync_controller.dart';
+import '../../data/exchange_rate_service.dart';
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
@@ -28,10 +29,11 @@ class MainShell extends ConsumerStatefulWidget {
   ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends ConsumerState<MainShell> {
+class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserver {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   late final PageController _pageController;
   final ValueNotifier<int> _selectedIndex = ValueNotifier(0);
+  double _dragDistance = 0;
 
   static const _tabs = [
     IslandTabItem(
@@ -69,10 +71,22 @@ class _MainShellState extends ConsumerState<MainShell> {
   void initState() {
     super.initState();
     _pageController = PageController();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(exchangeRateServiceProvider).refreshRatesIfStale();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.read(exchangeRateServiceProvider).refreshRatesIfStale();
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pageController.dispose();
     super.dispose();
   }
@@ -110,7 +124,7 @@ class _MainShellState extends ConsumerState<MainShell> {
         builder: (context, selectedIndex, child) => Scaffold(
           key: _scaffoldKey,
           drawerEnableOpenDragGesture: true,
-          drawerEdgeDragWidth: selectedIndex == 0 ? MediaQuery.sizeOf(context).width : 40,
+          drawerEdgeDragWidth: 40,
           drawer: _MainDrawer(
             selectedIndex: selectedIndex,
             onTabSelected: (index) {
@@ -119,8 +133,23 @@ class _MainShellState extends ConsumerState<MainShell> {
             },
           ),
 
-        body: Stack(
-          children: [
+        body: Listener(
+          onPointerDown: (_) => _dragDistance = 0,
+          onPointerMove: (event) {
+            if (_selectedIndex.value == 0) {
+              _dragDistance += event.delta.dx;
+              if (_dragDistance > 60) {
+                if (!(_scaffoldKey.currentState?.isDrawerOpen ?? false)) {
+                  _scaffoldKey.currentState?.openDrawer();
+                }
+                _dragDistance = 0;
+              } else if (_dragDistance < -20) {
+                _dragDistance = -1000; // prevent triggering if swiped left first
+              }
+            }
+          },
+          child: Stack(
+            children: [
             NotificationListener<ScrollNotification>(
               onNotification: (notification) {
                 if (notification is ScrollEndNotification) {
@@ -136,9 +165,7 @@ class _MainShellState extends ConsumerState<MainShell> {
                 builder: (context, selectedIndex, child) {
                   return PageView.builder(
                     controller: _pageController,
-                    physics: selectedIndex == 0
-                        ? const NeverScrollableScrollPhysics()
-                        : const PageScrollPhysics(),
+                    physics: const ClampingScrollPhysics(),
                     dragStartBehavior: DragStartBehavior.down,
                     itemCount: _tabs.length,
                     onPageChanged: (index) {
@@ -193,6 +220,7 @@ class _MainShellState extends ConsumerState<MainShell> {
               ),
             ),
           ],
+        ),
         ),
       ),
     ));

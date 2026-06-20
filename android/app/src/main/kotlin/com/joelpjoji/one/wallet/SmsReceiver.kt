@@ -33,8 +33,32 @@ class SmsReceiver : BroadcastReceiver() {
 
         val body = combinedBody.toString()
         if (body.isNotEmpty()) {
-            spoolMessage(context, sender, body)
-            showNotification(context)
+            val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            val triggerWordsStr = prefs.getString("flutter.one_wallet_flutter.sms_trigger_words", "") ?: ""
+            var shouldSpool = true
+            
+            if (triggerWordsStr.isNotEmpty()) {
+                try {
+                    val jsonArray = org.json.JSONArray(triggerWordsStr)
+                    var matched = false
+                    val lowerBody = body.lowercase()
+                    for (i in 0 until jsonArray.length()) {
+                        val word = jsonArray.getString(i).lowercase()
+                        if (lowerBody.contains(word)) {
+                            matched = true
+                            break
+                        }
+                    }
+                    shouldSpool = matched
+                } catch (e: Exception) {
+                    // Ignore and spool to be safe if parsing fails
+                }
+            }
+
+            if (shouldSpool) {
+                spoolMessage(context, sender, body)
+                showNotification(context)
+            }
         }
     }
 

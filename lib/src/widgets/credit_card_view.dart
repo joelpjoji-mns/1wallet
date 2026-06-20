@@ -30,12 +30,24 @@ class CreditCardView extends StatelessWidget {
 
   void _copyToClipboard(BuildContext context, String text, String label) {
     if (text.isEmpty || text == '***' || text.contains('****')) return;
-    Clipboard.setData(ClipboardData(text: text));
+    Clipboard.setData(ClipboardData(text: text.replaceAll(RegExp(r'\s+'), '')));
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(content: Text('Copied $label to clipboard'), behavior: SnackBarBehavior.floating),
       );
+  }
+
+  String _formatCardNumber(String number) {
+    final clean = number.replaceAll(RegExp(r'\s+'), '');
+    final buffer = StringBuffer();
+    for (int i = 0; i < clean.length; i++) {
+      buffer.write(clean[i]);
+      if ((i + 1) % 4 == 0 && i != clean.length - 1) {
+        buffer.write(' ');
+      }
+    }
+    return buffer.toString();
   }
 
   Widget _buildCopyButton(BuildContext context, String text, String label, {Color color = Colors.white70}) {
@@ -60,7 +72,7 @@ class CreditCardView extends StatelessWidget {
     final displayRouting = isUnlocked ? routingNumber : (routingNumber.isEmpty ? '' : '***');
     
     final displayNumber = isUnlocked 
-        ? cardNumber 
+        ? _formatCardNumber(cardNumber) 
         : (cardNumber.isNotEmpty 
             ? (type == 'bank' ? '●●●● ●●●● ${cardNumber.substring(math.max(0, cardNumber.length - 4))}' : '**** **** **** ${cardNumber.substring(math.max(0, cardNumber.length - 4))}')
             : (type == 'bank' ? '●●●● ●●●● 0000' : '**** **** **** 0000'));
