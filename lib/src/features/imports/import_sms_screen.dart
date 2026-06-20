@@ -228,12 +228,12 @@ class _ImportSmsScreenState extends ConsumerState<ImportSmsScreen> {
       final state = ref.read(ledgerProvider);
       final fallbackCurrency = state.preferences.baseCurrency;
       final notifier = ref.read(ledgerProvider.notifier);
-      final validTexts = <String>[];
+      final validTexts = <({String text, DateTime receivedAt})>[];
       
       for (final msg in messages) {
         final parsed = parseTransactionMessage(msg.body, fallbackCurrency: fallbackCurrency);
         if (!parsed.ignored && parsed.transactionType != null) {
-          validTexts.add(msg.body);
+          validTexts.add((text: msg.body, receivedAt: DateTime.tryParse(msg.receivedAt) ?? DateTime.now()));
           found++;
         }
       }

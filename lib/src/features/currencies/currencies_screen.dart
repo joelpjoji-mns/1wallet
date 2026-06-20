@@ -1,30 +1,82 @@
 import 'package:flutter/material.dart';
-import '../common/route_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import '../common/route_scaffold.dart';
+import '../../data/exchange_rate_service.dart';
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
+import '../../utils/currency_utils.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 import '../common/full_screen_picker.dart';
 
-class CurrenciesScreen extends ConsumerWidget {
+class CurrenciesScreen extends ConsumerStatefulWidget {
   const CurrenciesScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CurrenciesScreen> createState() => _CurrenciesScreenState();
+}
+
+class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
+  final _selectedForDeletion = <String>{};
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(ledgerProvider);
     final currencies = availableCurrencies(state);
     final total = totalBalance(state);
+    final isSelectionMode = _selectedForDeletion.isNotEmpty;
+
     return RouteScaffold(
-      title: 'Currencies',
+      title: isSelectionMode ? '${_selectedForDeletion.length} selected' : 'Currencies',
       actions: [
-        IconButton(
-          tooltip: 'Choose display currency',
-          icon: const Icon(Icons.currency_exchange_rounded),
-          onPressed: () => _chooseDisplayCurrency(context, ref, state),
-        ),
+        if (isSelectionMode)
+          IconButton(
+            tooltip: 'Delete selected',
+            icon: const Icon(Icons.delete_outline),
+            color: Theme.of(context).colorScheme.error,
+            onPressed: () {
+              for (final c in _selectedForDeletion) {
+                ref.read(ledgerProvider.notifier).removeEnabledCurrency(c);
+              }
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(
+                  SnackBar(
+                    content: Text('${_selectedForDeletion.length} currencies removed.'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              setState(() => _selectedForDeletion.clear());
+            },
+          )
+        else ...[
+          IconButton(
+            tooltip: 'Refresh rates',
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: () async {
+              try {
+                await ref.read(exchangeRateServiceProvider).refreshRates();
+                if (mounted) {
+                  ScaffoldMessenger.of(context)
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(const SnackBar(content: Text('Live rates updated.'), behavior: SnackBarBehavior.floating));
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context)
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(SnackBar(content: Text('Failed to update: $e'), behavior: SnackBarBehavior.floating));
+                }
+              }
+            },
+          ),
+          IconButton(
+            tooltip: 'Choose display currency',
+            icon: const Icon(Icons.currency_exchange_rounded),
+            onPressed: () => _chooseDisplayCurrency(context, ref, state),
+          ),
+        ],
       ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -93,12 +145,36 @@ class CurrenciesScreen extends ConsumerWidget {
                       icon: currency == state.preferences.baseCurrency
                           ? Icons.flag_outlined
                           : Icons.currency_exchange_outlined,
-                      title: currency,
+                      title: getCurrencyInfo(currency).fullName,
                       subtitle: _currencySubtitle(state, currency),
-                      selected: currency == state.preferences.displayCurrency,
-                      onTap: () => ref
-                          .read(ledgerProvider.notifier)
-                          .setDisplayCurrency(currency),
+                      selected: isSelectionMode 
+                          ? _selectedForDeletion.contains(currency)
+                          : currency == state.preferences.displayCurrency,
+                      onTap: () {
+                        if (isSelectionMode) {
+                          if (currency == state.preferences.baseCurrency) return;
+                          setState(() {
+                            if (_selectedForDeletion.contains(currency)) {
+                              _selectedForDeletion.remove(currency);
+                            } else {
+                              _selectedForDeletion.add(currency);
+                            }
+                          });
+                        } else {
+                          ref.read(ledgerProvider.notifier).setDisplayCurrency(currency);
+                        }
+                      },
+                      onLongPress: currency == state.preferences.baseCurrency
+                          ? null
+                          : () {
+                              setState(() {
+                                if (_selectedForDeletion.contains(currency)) {
+                                  _selectedForDeletion.remove(currency);
+                                } else {
+                                  _selectedForDeletion.add(currency);
+                                }
+                              });
+                            },
                     ),
                   ),
                   if (currency != currencies.last)
@@ -113,13 +189,37 @@ class CurrenciesScreen extends ConsumerWidget {
             subtitle: state.exchangeRates.isEmpty
                 ? 'No explicit rates saved; inferred ledger rates are used when possible.'
                 : '${state.exchangeRates.length} explicit rate records saved.',
+            actionLabel: 'Refresh',
+            onAction: () async {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Fetching live exchange rates...'), behavior: SnackBarBehavior.floating),
+              );
+              try {
+                await ref.read(exchangeRateServiceProvider).refreshRates();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context)
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(
+                      const SnackBar(content: Text('Exchange rates updated successfully!'), behavior: SnackBarBehavior.floating),
+                    );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context)
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(
+                      SnackBar(content: Text('Failed to update rates: $e'), behavior: SnackBarBehavior.floating),
+                    );
+                }
+              }
+            },
             child: Column(
               children: [
                 for (final currency in currencies)
                   if (currency != state.preferences.baseCurrency) ...[
                     PremiumRow(
                       icon: Icons.swap_horiz_rounded,
-                      title: '$currency to ${state.preferences.baseCurrency}',
+                      title: '${getCurrencyInfo(currency).shortName} to ${getCurrencyInfo(state.preferences.baseCurrency).shortName}',
                       subtitle: _rateSubtitle(state, currency),
                       onTap: () => _editRate(context, ref, state, currency),
                     ),
@@ -152,7 +252,8 @@ class CurrenciesScreen extends ConsumerWidget {
         for (final currency in availableCurrencies(state))
           PickerOption(
             value: currency,
-            title: currency,
+            title: getCurrencyInfo(currency).shortName,
+            searchText: '$currency ${getCurrencyInfo(currency).name}',
             subtitle: _currencySubtitle(state, currency),
             icon: currency == state.preferences.baseCurrency
                 ? Icons.flag_outlined
@@ -194,33 +295,26 @@ class CurrenciesScreen extends ConsumerWidget {
       title: 'Add Currency',
       searchHint: 'Search currencies',
       options: [
-        for (final currency in {
-          'USD', 'EUR', 'GBP', 'INR', 'JPY', 'CAD', 'AUD', 'SGD', 'CHF', 'CNY', 
-          'NZD', 'ZAR', 'AED', 'AFN', 'ALL', 'AMD', 'ANG', 'AOA', 'ARS', 'AWG',
-          'AZN', 'BAM', 'BBD', 'BDT', 'BGN', 'BHD', 'BIF', 'BMD', 'BND', 'BOB',
-          'BRL', 'BSD', 'BTN', 'BWP', 'BYN', 'BZD', 'CDF', 'CLP', 'COP', 'CRC',
-          'CUP', 'CVE', 'CZK', 'DJF', 'DKK', 'DOP', 'DZD', 'EGP', 'ERN', 'ETB',
-          'FJD', 'FKP', 'FOK', 'GEL', 'GGP', 'GHS', 'GIP', 'GMD', 'GNF', 'GTQ',
-          'GYD', 'HKD', 'HNL', 'HRK', 'HTG', 'HUF', 'IDR', 'ILS', 'IMP', 'IQD',
-          'IRR', 'ISK', 'JEP', 'JMD', 'JOD', 'KES', 'KGS', 'KHR', 'KID', 'KMF',
-          'KRW', 'KWD', 'KYD', 'KZT', 'LAK', 'LBP', 'LKR', 'LRD', 'LSL', 'LYD',
-          'MAD', 'MDL', 'MGA', 'MKD', 'MMK', 'MNT', 'MOP', 'MRU', 'MUR', 'MVR',
-          'MWK', 'MXN', 'MYR', 'MZN', 'NAD', 'NGN', 'NIO', 'NOK', 'NPR', 'OMR',
-          'PAB', 'PEN', 'PGK', 'PHP', 'PKR', 'PLN', 'PYG', 'QAR', 'RON', 'RSD',
-          'RUB', 'RWF', 'SAR', 'SBD', 'SCR', 'SDG', 'SEK', 'SHP', 'SLL', 'SOS',
-          'SRD', 'SSP', 'STN', 'SYP', 'SZL', 'THB', 'TJS', 'TMT', 'TND', 'TOP',
-          'TRY', 'TTD', 'TVD', 'TWD', 'TZS', 'UAH', 'UGX', 'UYU', 'UZS', 'VES',
-          'VND', 'VUV', 'WST', 'XAF', 'XCD', 'XDR', 'XOF', 'XPF', 'YER', 'ZMW', 'ZWL'
-        }.where((c) => !state.preferences.enabledCurrencies.contains(c)).toList()..sort())
+        for (final currency in currencyDetails.keys
+            .where((c) => !state.preferences.enabledCurrencies.contains(c))
+            .toList()
+          ..sort())
           PickerOption(
             value: currency,
-            title: currency,
+            title: getCurrencyInfo(currency).fullName,
+            searchText: '$currency ${getCurrencyInfo(currency).name}',
             icon: Icons.add_circle_outline,
           ),
       ],
     );
     if (next != null) {
       await ref.read(ledgerProvider.notifier).addEnabledCurrency(next);
+      // Fetch rates immediately so the new currency has a valid rate
+      try {
+        await ref.read(exchangeRateServiceProvider).refreshRates();
+      } catch (e) {
+        debugPrint('Failed to fetch initial rate for new currency: $e');
+      }
     }
   }
 

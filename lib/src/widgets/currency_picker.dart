@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../data/ledger_models.dart';
 import '../ledger/ledger_selectors.dart';
 import '../features/common/full_screen_picker.dart';
+import '../utils/currency_utils.dart';
 
 const commonCurrencies = [
   'USD', 'EUR', 'GBP', 'INR', 'JPY', 'CAD', 'AUD', 'SGD', 'CHF', 'CNY', 'NZD', 
@@ -30,7 +31,8 @@ Future<String?> showCurrencyPicker({
       for (final currency in currencies)
         PickerOption(
           value: currency,
-          title: currency,
+          title: getCurrencyInfo(currency).fullName,
+          searchText: '$currency ${getCurrencyInfo(currency).name}',
           icon: Icons.currency_exchange_outlined,
         ),
     ],

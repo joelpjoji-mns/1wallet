@@ -47,6 +47,7 @@ abstract final class AppColors {
   static const Color launchMutedText = Color(0xFFC8D3DF);
 
   static const List<Color> accountPalette = [
+    // Original colors
     Color(0xFF315DA8),
     Color(0xFF2F6B4F),
     Color(0xFF6B5F47),
@@ -55,6 +56,35 @@ abstract final class AppColors {
     Color(0xFFA84731),
     Color(0xFF7256A8),
     Color(0xFF3D6A25),
+    
+    // Additional Material-like curated colors
+    Color(0xFFD32F2F), // Red
+    Color(0xFFC2185B), // Pink
+    Color(0xFF7B1FA2), // Purple
+    Color(0xFF512DA8), // Deep Purple
+    Color(0xFF303F9F), // Indigo
+    Color(0xFF1976D2), // Blue
+    Color(0xFF0288D1), // Light Blue
+    Color(0xFF0097A7), // Cyan
+    Color(0xFF00796B), // Teal
+    Color(0xFF388E3C), // Green
+    Color(0xFF689F38), // Light Green
+    Color(0xFFAFB42B), // Lime
+    Color(0xFFFBC02D), // Yellow
+    Color(0xFFFFA000), // Amber
+    Color(0xFFF57C00), // Orange
+    Color(0xFFE64A19), // Deep Orange
+    Color(0xFF5D4037), // Brown
+    Color(0xFF616161), // Grey
+    Color(0xFF455A64), // Blue Grey
+    
+    // More vibrant modern tones
+    Color(0xFFE040FB), // Vibrant Purple
+    Color(0xFF536DFE), // Vibrant Blue
+    Color(0xFF18FFFF), // Vibrant Cyan
+    Color(0xFF00E676), // Vibrant Green
+    Color(0xFFFFEA00), // Vibrant Yellow
+    Color(0xFFFF3D00), // Vibrant Red
   ];
 }
 
