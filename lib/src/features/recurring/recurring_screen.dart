@@ -1044,11 +1044,24 @@ class RecurringDetailView extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        category?.name ?? transactionTypeLabel(transaction.type),
+                        transaction.name?.trim().isNotEmpty == true
+                            ? transaction.name!.trim()
+                            : (category?.name ?? transactionTypeLabel(transaction.type)),
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
                       ),
+                      if (transaction.name?.trim().isNotEmpty == true) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          category?.name ?? transactionTypeLabel(transaction.type),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 2),
                       Text(
                         '${transaction.status.toUpperCase()} · ${transactionTypeLabel(frequency).toUpperCase()}',
