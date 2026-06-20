@@ -205,6 +205,27 @@ List<Category> lifeCategoryTaxonomy() {
       parentId: 'cat-food',
       sortOrder: 202,
     ),
+    Category(
+      id: 'cat-breakfast',
+      name: 'Breakfast',
+      kind: 'expense',
+      parentId: 'cat-dining',
+      sortOrder: 203,
+    ),
+    Category(
+      id: 'cat-lunch',
+      name: 'Lunch',
+      kind: 'expense',
+      parentId: 'cat-dining',
+      sortOrder: 204,
+    ),
+    Category(
+      id: 'cat-dinner',
+      name: 'Dinner',
+      kind: 'expense',
+      parentId: 'cat-dining',
+      sortOrder: 205,
+    ),
 
 
     Category(id: 'cat-vehicle', name: 'Vehicle', kind: 'expense', sortOrder: 300),

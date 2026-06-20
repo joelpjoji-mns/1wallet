@@ -10,6 +10,7 @@ import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
+import '../../utils/currency_utils.dart';
 import '../../widgets/app_kit.dart';
 import '../transactions/transaction_row.dart';
 import '../transactions/transactions_screen.dart';
@@ -18,6 +19,7 @@ import 'home_components.dart';
 import 'home_dashboard_selectors.dart';
 import 'home_widget_card.dart';
 import 'home_widget_models.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 
 final _homeScheduledTransactionsProvider =
@@ -170,7 +172,7 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
     final currencyBreakdown = balanceBreakdownByCurrency(
       widget.state,
       accountId: selectedAccountId,
-    );
+    ).map((m) => m.amountMinor < 0 ? m.copyWith(amountMinor: 0) : m).toList();
 
     return Container(
       constraints: const BoxConstraints(minHeight: 178),
@@ -287,13 +289,23 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                               ),
                               border: Border.all(color: scheme.outlineVariant),
                             ),
-                            child: Text(
-                              '${money.currency} ${formatMoney(money, widget.state.preferences.locale)}',
-                              style: TextStyle(
-                                color: scheme.onSurfaceVariant,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
+                            child: TweenAnimationBuilder<double>(
+                              duration: const Duration(milliseconds: 600),
+                              curve: Curves.easeOutCubic,
+                              tween: Tween<double>(
+                                begin: money.amountMinor.toDouble(),
+                                end: money.amountMinor.toDouble(),
                               ),
+                              builder: (context, value, child) {
+                                return Text(
+                                  '${money.currency} ${formatMoney(money.copyWith(amountMinor: value.round()), widget.state.preferences.locale)}',
+                                  style: TextStyle(
+                                    color: scheme.onSurfaceVariant,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                );
+                              },
                             ),
                           ),
                           if (money != currencyBreakdown.last)
@@ -402,17 +414,6 @@ class AccountGridHomeWidget extends ConsumerWidget {
             spacing: spacing,
             runSpacing: spacing,
             children: [
-              SizedBox(
-                width: tileWidth.clamp(0, availableWidth),
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 200),
-                  opacity: selectedAccountId == null ? 1.0 : 0.35,
-                  child: _AllAccountsTile(
-                    state: state,
-                    selected: selectedAccountId == null,
-                  ),
-                ),
-              ),
               for (final account in accounts)
                 SizedBox(
                   width: tileWidth.clamp(0, availableWidth),
@@ -438,78 +439,6 @@ class AccountGridHomeWidget extends ConsumerWidget {
   }
 }
 
-class _AllAccountsTile extends ConsumerWidget {
-  const _AllAccountsTile({required this.state, required this.selected});
-
-  final LedgerState state;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    final balance = netWorth(state).total;
-    final color = scheme.surfaceContainerHighest;
-    final foreground = scheme.onSurface;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      onTap: () {
-        ref.read(homeSelectedAccountProvider.notifier).state = null;
-      },
-      child: Container(
-        height: 60,
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
-        decoration: BoxDecoration(
-          color: selected ? scheme.primaryContainer : color,
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          border: selected ? Border.all(color: scheme.primary) : null,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.all_inclusive_rounded,
-                  color: selected ? scheme.onPrimaryContainer.withAlpha(200) : foreground.withAlpha(200),
-                  size: 13,
-                ),
-                const SizedBox(width: 3),
-                Expanded(
-                  child: Text(
-                    'All',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: selected ? scheme.onPrimaryContainer : foreground,
-                      fontSize: 11,
-                      height: 1.1,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 3),
-            Text(
-              formatMoney(balance, state.preferences.locale),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: selected ? scheme.onPrimaryContainer.withAlpha(240) : foreground.withAlpha(240),
-                fontSize: 13,
-                height: 1.1,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.2,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class RecentRecordsHomeWidget extends ConsumerWidget {
   const RecentRecordsHomeWidget({
@@ -624,26 +553,53 @@ class _BalanceTrendHomeWidgetState extends ConsumerState<BalanceTrendHomeWidget>
       }
     }
 
+    final spanChart = maxY - minY;
+    double niceInterval = 1.0;
+    if (spanChart > 0) {
+      final roughStep = spanChart / 4;
+      final magnitude = math.pow(10, (math.log(roughStep > 0 ? roughStep : 1) / math.ln10).floor()).toDouble();
+      final normalizedStep = roughStep / magnitude;
+      
+      double niceStep;
+      if (normalizedStep < 1.5) {
+        niceStep = 1.0;
+      } else if (normalizedStep < 3.5) {
+        niceStep = 2.0;
+      } else if (normalizedStep < 7.5) {
+        niceStep = 5.0;
+      } else {
+        niceStep = 10.0;
+      }
+      
+      niceInterval = niceStep * magnitude;
+      if (spanChart >= 100000 && niceInterval < 100000) {
+        niceInterval = 100000.0;
+      } else if (spanChart >= 1000 && niceInterval < 1000) {
+        niceInterval = 1000.0;
+      }
+    }
+
     String formatCompact(num amountMinor) {
       if (amountMinor == 0) return '0';
       final absVal = (amountMinor / 100.0).abs();
       final sign = amountMinor < 0 ? '-' : '';
-      if (absVal >= 100000) {
-        final l = absVal / 100000;
-        return '$sign${l.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '')}L';
-      } else if (absVal >= 1000) {
-        final k = absVal / 1000;
-        return '$sign${k.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '')}K';
+      
+      if (niceInterval >= 100000) {
+        if (absVal >= 100000) {
+          final l = (absVal / 100000).round();
+          return '$sign${l}L';
+        } else if (absVal >= 1000) {
+          final k = (absVal / 1000).round();
+          return '$sign${k}K';
+        }
+      } else if (niceInterval >= 1000) {
+        if (absVal >= 1000) {
+          final k = (absVal / 1000).round();
+          return '$sign${k}K';
+        }
       }
       return '$sign${absVal.toInt()}';
     }
-
-    final yLabels = [
-      formatCompact(maxY),
-      formatCompact(minY + (maxY - minY) * 2 / 3),
-      formatCompact(minY + (maxY - minY) * 1 / 3),
-      formatCompact(minY),
-    ];
 
     final xLabels = [
       if (start != null) _shortDate(start, widget.state.preferences.locale) else trend.isNotEmpty ? _shortDate(trend.first.date, widget.state.preferences.locale) : '',
@@ -690,21 +646,136 @@ class _BalanceTrendHomeWidgetState extends ConsumerState<BalanceTrendHomeWidget>
         onTap: () => context.push('/balance-trend'),
         child: Column(
           children: [
-            MiniLineChart(
-              values: values,
-              color: Theme.of(context).colorScheme.primary,
-              yAxisLabels: yLabels,
-              xAxisLabels: xLabels,
-              minY: minY,
-              maxY: maxY,
-              tooltipFormatter: (val) => formatMoney(
-                Money(
-                  amountMinor: val.toInt(),
-                  currency: widget.state.preferences.displayCurrency,
+            if (values.isEmpty)
+              const SizedBox(
+                height: 200,
+                child: Center(child: Text('No data for this period')),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.only(right: 16.0, top: 16.0),
+                child: SizedBox(
+                   height: 200,
+                   width: double.infinity,
+                   child: LineChart(
+                      LineChartData(
+                         gridData: FlGridData(
+                            show: true,
+                            drawVerticalLine: false,
+                            horizontalInterval: niceInterval,
+                             getDrawingHorizontalLine: (value) => FlLine(
+                                color: Theme.of(context).colorScheme.outlineVariant.withAlphaFactor(0.3),
+                                strokeWidth: 1,
+                                dashArray: [4, 4],
+                             ),
+                         ),
+                         titlesData: FlTitlesData(
+                            show: true,
+                            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            leftTitles: AxisTitles(
+                               sideTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 40,
+                                  interval: niceInterval,
+                                  getTitlesWidget: (value, meta) {
+                                     return Text(formatCompact(value), style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant));
+                                  },
+                               ),
+                            ),
+                            bottomTitles: AxisTitles(
+                               sideTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 22,
+                                  getTitlesWidget: (value, meta) {
+                                     final intValue = value.toInt();
+                                     final lastIndex = values.length - 1;
+                                     final middleIndex = lastIndex ~/ 2;
+                                     if (intValue == 0) return Padding(padding: const EdgeInsets.only(top: 8.0), child: Text(xLabels[0], style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant)));
+                                     if (intValue == lastIndex && lastIndex > 0) return Padding(padding: const EdgeInsets.only(top: 8.0), child: Text(xLabels[2], style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant)));
+                                     if (intValue == middleIndex && middleIndex > 0 && middleIndex < lastIndex) return Padding(padding: const EdgeInsets.only(top: 8.0), child: Text(xLabels[1], style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant)));
+                                     return const SizedBox.shrink();
+                                  },
+                               ),
+                            ),
+                         ),
+                         borderData: FlBorderData(show: false),
+                         minX: 0,
+                         maxX: (values.length - 1).toDouble(),
+                         minY: minY,
+                         maxY: maxY,
+                         lineBarsData: [
+                            LineChartBarData(
+                               spots: [
+                                 for (int i = 0; i < values.length; i++)
+                                   FlSpot(i.toDouble(), values[i].toDouble())
+                               ],
+                               isCurved: true,
+                               color: Theme.of(context).colorScheme.primary,
+                               barWidth: 4,
+                               isStrokeCapRound: true,
+                               shadow: Shadow(
+                                  color: Theme.of(context).colorScheme.primary.withAlphaFactor(0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                               ),
+                               dotData: FlDotData(
+                                  show: true,
+                                  checkToShowDot: (spot, barData) => spot.x == barData.spots.last.x,
+                                  getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+                                     radius: 5,
+                                     color: Theme.of(context).colorScheme.primary,
+                                     strokeWidth: 2,
+                                     strokeColor: Theme.of(context).colorScheme.surface,
+                                  ),
+                               ),
+                               belowBarData: BarAreaData(
+                                  show: true,
+                                  gradient: LinearGradient(
+                                     colors: [
+                                        Theme.of(context).colorScheme.primary.withAlphaFactor(0.4),
+                                        Theme.of(context).colorScheme.primary.withAlphaFactor(0.0),
+                                     ],
+                                     begin: Alignment.topCenter,
+                                     end: Alignment.bottomCenter,
+                                  ),
+                               ),
+                            ),
+                         ],
+                         lineTouchData: LineTouchData(
+                            enabled: true,
+                            getTouchedSpotIndicator: (LineChartBarData barData, List<int> spotIndexes) {
+                               return spotIndexes.map((index) {
+                                  return TouchedSpotIndicatorData(
+                                     FlLine(color: Theme.of(context).colorScheme.primary.withAlphaFactor(0.5), strokeWidth: 2, dashArray: [4, 4]),
+                                     FlDotData(
+                                        getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+                                           radius: 5,
+                                           color: Theme.of(context).colorScheme.primary,
+                                           strokeWidth: 2,
+                                           strokeColor: Theme.of(context).colorScheme.surface,
+                                        ),
+                                     ),
+                                  );
+                               }).toList();
+                            },
+                            touchTooltipData: LineTouchTooltipData(
+                               getTooltipColor: (touchedSpot) => Theme.of(context).colorScheme.onSurface,
+                               getTooltipItems: (touchedSpots) {
+                                  return touchedSpots.map((spot) => LineTooltipItem(
+                                     formatMoney(
+                                        Money(amountMinor: spot.y.toInt(), currency: widget.state.preferences.displayCurrency),
+                                        widget.state.preferences.locale,
+                                     ),
+                                     TextStyle(color: Theme.of(context).colorScheme.surface, fontWeight: FontWeight.bold, fontSize: 12),
+                                  )).toList();
+                               },
+                            ),
+                         ),
+                      ),
+                   ),
                 ),
-                widget.state.preferences.locale,
               ),
-            ),
           ],
         ),
       ),
@@ -723,213 +794,251 @@ class CurrencyValuesHomeWidget extends ConsumerStatefulWidget {
 }
 
 class _CurrencyValuesHomeWidgetState extends ConsumerState<CurrencyValuesHomeWidget> {
-  final _baseController = TextEditingController(text: '1');
-  final _quoteController = TextEditingController();
-  double _rate = 1.0;
-  bool _initialized = false;
+  final Map<String, TextEditingController> _controllers = {};
+  final Map<String, double> _ratesToBase = {}; 
 
-  void _updateQuote() {
-    final baseVal = double.tryParse(_baseController.text) ?? 0.0;
-    _quoteController.text = (baseVal * _rate).toStringAsFixed(5);
-  }
-
-  void _updateBase() {
-    final quoteVal = double.tryParse(_quoteController.text) ?? 0.0;
-    if (_rate > 0) {
-      _baseController.text = (quoteVal / _rate).toStringAsFixed(5);
-    }
+  String _baseCurrency = '';
+  
+  @override
+  void initState() {
+    super.initState();
+    _initData();
   }
 
   @override
+  void didUpdateWidget(CurrencyValuesHomeWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.state.preferences.enabledCurrencies != widget.state.preferences.enabledCurrencies ||
+        oldWidget.state.preferences.baseCurrency != widget.state.preferences.baseCurrency ||
+        oldWidget.state.exchangeRates != widget.state.exchangeRates) {
+      _initData();
+    }
+  }
+
+  void _initData() {
+    _baseCurrency = widget.state.preferences.baseCurrency.toUpperCase();
+    final enabled = widget.state.preferences.enabledCurrencies
+        .where((c) => c.toUpperCase() != _baseCurrency)
+        .toList()..sort();
+        
+    final allCurrencies = [_baseCurrency, ...enabled];
+    
+    final defaultCurrency = enabled.isNotEmpty ? enabled.first : _baseCurrency;
+    
+    final oldKeys = _controllers.keys.toSet();
+    for (final c in allCurrencies) {
+      if (!_controllers.containsKey(c)) {
+         _controllers[c] = TextEditingController(text: c == defaultCurrency ? '1' : '');
+      }
+    }
+    
+    for (final c in oldKeys) {
+      if (!allCurrencies.contains(c)) {
+        _controllers[c]?.dispose();
+        _controllers.remove(c);
+      }
+    }
+    
+    _ratesToBase.clear();
+    _ratesToBase[_baseCurrency] = 1.0;
+    for (final c in enabled) {
+       final matches = widget.state.exchangeRates
+            .where((r) =>
+                r.base.toUpperCase() == c &&
+                r.quote.toUpperCase() == _baseCurrency &&
+                r.rate > 0)
+            .toList();
+       if (matches.isNotEmpty) {
+         matches.sort((a, b) {
+            final aDate = a.updatedAt ?? a.asOfDate;
+            final bDate = b.updatedAt ?? b.asOfDate;
+            return bDate.compareTo(aDate);
+         });
+         _ratesToBase[c] = matches.first.rate;
+       } else {
+         _ratesToBase[c] = 0.0;
+       }
+    }
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _onTextChanged(defaultCurrency, _controllers[defaultCurrency]!.text);
+    });
+  }
+  
+  @override
   void dispose() {
-    _baseController.dispose();
-    _quoteController.dispose();
+    for (final c in _controllers.values) {
+      c.dispose();
+    }
     super.dispose();
+  }
+  
+  void _onTextChanged(String editedCurrency, String value) {
+     final amount = double.tryParse(value) ?? 0.0;
+     final editedRate = _ratesToBase[editedCurrency] ?? 0.0;
+     if (editedRate <= 0) return;
+     
+     final amountInBase = amount * editedRate;
+     
+     for (final entry in _controllers.entries) {
+        final c = entry.key;
+        if (c == editedCurrency) continue;
+        
+        final r = _ratesToBase[c] ?? 0.0;
+        if (r <= 0) {
+           entry.value.text = 'No rate';
+        } else {
+           final val = amountInBase / r;
+           // Format to 1 decimal place to maintain simplicity, then strip trailing zeros
+           var formatted = val.toStringAsFixed(1);
+           if (formatted.contains('.')) {
+              formatted = formatted.replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
+           }
+           entry.value.text = formatted;
+        }
+     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final snapshot = ref.watch(homeCurrencySnapshotProvider);
-    
-    if (snapshot?.rate != null) {
-      if (!_initialized || _rate != snapshot!.rate!) {
-        _rate = snapshot!.rate!;
-        _initialized = true;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _updateQuote();
-        });
-      }
-    }
+    final enabled = widget.state.preferences.enabledCurrencies
+        .where((c) => c.toUpperCase() != _baseCurrency)
+        .toList()..sort();
+    final allCurrencies = [_baseCurrency, ...enabled];
 
-    if (snapshot == null) {
+    final scheme = Theme.of(context).colorScheme;
+
+    if (enabled.isEmpty) {
       return const HomeWidgetCard(
-        title: 'Currency values',
-        icon: Icons.currency_exchange_outlined,
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    final quote = snapshot.quoteCurrency;
-
-    if (quote == null || snapshot.rate == null) {
-      return const HomeWidgetCard(
-        title: 'Currency values',
-        icon: Icons.currency_exchange_outlined,
+        title: 'Currency calculator',
+        icon: Icons.calculate_outlined,
         child: EmptyState(
           icon: Icons.currency_exchange_outlined,
-          title: 'No foreign currency yet',
-          body: 'Foreign accounts or refreshed rates will appear here.',
+          title: 'No currencies enabled',
+          body: 'Add currencies in the Rates page to calculate them here.',
         ),
       );
     }
 
-    final rates =
-        widget.state.exchangeRates
-            .where(
-              (r) =>
-                  r.base.toUpperCase() == quote.toUpperCase() &&
-                  r.quote.toUpperCase() ==
-                      snapshot.baseCurrency.toUpperCase() &&
-                  r.rate > 0,
-            )
-            .toList()
-          ..sort((a, b) => a.asOfDate.compareTo(b.asOfDate));
-
-    final values = rates.map((r) => r.rate).toList();
-
-    final yLabels = values.isEmpty
-        ? <String>[]
-        : [
-            values.reduce(math.max).toStringAsFixed(1),
-            values.reduce(math.min).toStringAsFixed(1),
-          ];
-    final xLabels = rates.isEmpty
-        ? <String>[]
-        : [
-            _shortDate(rates.first.asOfDate, widget.state.preferences.locale),
-            '${rates.length} changes',
-            _shortDate(rates.last.asOfDate, widget.state.preferences.locale),
-          ];
-
-    final scheme = Theme.of(context).colorScheme;
-
     return HomeWidgetCard(
-      title: 'Currency values',
-      subtitle: '1 rates to ${snapshot.baseCurrency}',
-      icon: Icons.currency_exchange_outlined,
+      title: 'Currency calculator',
+      subtitle: 'Live conversions',
+      icon: Icons.calculate_outlined,
       iconColor: scheme.tertiary,
       actionLabel: 'Rates',
       onAction: () => context.push('/currencies'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            '1 $quote',
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-          ),
-          Text(
-            formatMoney(
-              snapshot.convertedUnit!,
-              widget.state.preferences.locale,
-            ),
-            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
-          ),
-          if (values.length >= 2) ...[
-            const SizedBox(height: AppSpacing.sm),
-            MiniLineChart(
-              values: values,
-              color: scheme.error,
-              yAxisLabels: yLabels,
-              xAxisLabels: xLabels,
-            ),
-          ],
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'Latest ${_shortDate(DateTime.now(), widget.state.preferences.locale)} 1 $quote = ${_rate.toStringAsFixed(2)} ${snapshot.baseCurrency}',
-            style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _CurrencyInput(
-            label: quote,
-            controller: _baseController,
-            onChanged: (_) => _updateQuote(),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _CurrencyInput(
-            label: 'Active input\n${snapshot.baseCurrency}',
-            controller: _quoteController,
-            onChanged: (_) => _updateBase(),
-          ),
-          if (snapshot.exposure.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.md),
-            for (final money in snapshot.exposure.take(2)) ...[
-              HomeDetailRow(
-                icon: Icons.account_balance_wallet_outlined,
-                title: '${money.currency} exposure',
-                subtitle: 'Foreign-currency account balance',
-                trailing: _formatDisplayMoney(widget.state, money),
-                iconColor: scheme.tertiary,
-              ),
-              if (money != snapshot.exposure.take(2).last)
-                const SizedBox(height: AppSpacing.xs),
-            ],
-          ],
+          for (final c in allCurrencies) ...[
+             Builder(builder: (context) {
+                String? rateSubtitle;
+                if (c != _baseCurrency) {
+                   final r = _ratesToBase[c] ?? 0.0;
+                   if (r > 0) {
+                      var formatted = r.toStringAsFixed(1);
+                      if (formatted.contains('.')) {
+                         formatted = formatted.replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
+                      }
+                      rateSubtitle = '1 $c = $formatted $_baseCurrency';
+                   }
+                }
+                return _CalculatorRow(
+                   currency: c,
+                   isBase: c == _baseCurrency,
+                   controller: _controllers[c]!,
+                   onChanged: (val) => _onTextChanged(c, val),
+                   hasRate: (_ratesToBase[c] ?? 0) > 0,
+                   rateSubtitle: rateSubtitle,
+                );
+             }),
+             if (c != allCurrencies.last) const SizedBox(height: AppSpacing.sm),
+          ]
         ],
       ),
     );
   }
 }
 
-class _CurrencyInput extends StatelessWidget {
-  const _CurrencyInput({
-    required this.label,
+class _CalculatorRow extends StatelessWidget {
+  const _CalculatorRow({
+    required this.currency,
+    required this.isBase,
     required this.controller,
     required this.onChanged,
+    required this.hasRate,
+    this.rateSubtitle,
   });
-  final String label;
+
+  final String currency;
+  final bool isBase;
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
+  final bool hasRate;
+  final String? rateSubtitle;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final info = getCurrencyInfo(currency);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withAlphaFactor(0.3),
+        color: isBase ? scheme.tertiaryContainer.withAlphaFactor(0.3) : scheme.surfaceContainerHighest.withAlphaFactor(0.3),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.outlineVariant),
+        border: Border.all(color: isBase ? scheme.tertiary.withAlphaFactor(0.5) : scheme.outlineVariant),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text(
-            label,
-            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
-          ),
-          Row(
-            children: [
-              Icon(Icons.payments_outlined, size: 20, color: scheme.onSurface),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: controller,
-                  onChanged: onChanged,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+          Expanded(
+            flex: 2,
+            child: TextField(
+              controller: controller,
+              onChanged: onChanged,
+              enabled: hasRate,
+              textAlign: TextAlign.left,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+                hintText: hasRate ? '0' : 'No rate',
               ),
-            ],
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: hasRate ? scheme.onSurface : scheme.error,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  info.fullName,
+                  style: TextStyle(
+                    fontWeight: isBase ? FontWeight.bold : FontWeight.w600, 
+                    fontSize: 13,
+                    color: isBase ? scheme.onSurface : scheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.right,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (isBase)
+                  Text('Base Currency', style: TextStyle(fontSize: 11, color: scheme.tertiary), textAlign: TextAlign.right)
+                else if (rateSubtitle != null && rateSubtitle!.isNotEmpty)
+                  Text(rateSubtitle!, style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant), textAlign: TextAlign.right)
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Icon(
+            isBase ? Icons.account_balance_outlined : Icons.payments_outlined, 
+            color: isBase ? scheme.tertiary : scheme.onSurfaceVariant,
+            size: 20,
           ),
         ],
       ),

@@ -103,7 +103,6 @@ class LiquidGlassContainer extends ConsumerWidget {
               borderRadius: shape == BoxShape.rectangle ? borderRadius : null,
               shape: shape,
               gradient: innerHighlight,
-              backgroundBlendMode: BlendMode.overlay,
             ),
           ),
           child,
@@ -111,10 +110,12 @@ class LiquidGlassContainer extends ConsumerWidget {
       ),
     );
 
-    inner = BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-      child: inner,
-    );
+    if (blur > 0.01) {
+      inner = BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+        child: inner,
+      );
+    }
 
     // Apply progressive blur using a shader mask if strength > 0
     if (progBlur > 0.01) {
@@ -730,6 +731,8 @@ class PremiumRow extends StatelessWidget {
     this.metaSubtitle,
     this.iconColor,
     this.selected = false,
+    this.trailing,
+    this.onLongPress,
   });
 
   final IconData icon;
@@ -739,7 +742,9 @@ class PremiumRow extends StatelessWidget {
   final String? metaSubtitle;
   final Color? iconColor;
   final bool selected;
+  final Widget? trailing;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -760,6 +765,7 @@ class PremiumRow extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadii.md),
         onTap: onTap,
+        onLongPress: onLongPress,
         child: Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
@@ -829,6 +835,10 @@ class PremiumRow extends StatelessWidget {
                             ),
                         ],
                       ),
+                    ],
+                    if (trailing != null) ...[
+                      const SizedBox(width: AppSpacing.sm),
+                      trailing!,
                     ],
                   ],
                 ),

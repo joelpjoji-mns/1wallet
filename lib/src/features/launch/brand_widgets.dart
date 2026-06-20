@@ -510,11 +510,13 @@ class BrandedLoadingState extends StatelessWidget {
   const BrandedLoadingState({
     required this.stage,
     required this.message,
+    this.progress,
     super.key,
   });
 
   final StartupStage stage;
   final String message;
+  final double? progress;
 
   @override
   Widget build(BuildContext context) {
@@ -550,6 +552,20 @@ class BrandedLoadingState extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (progress != null) ...[
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: 200,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

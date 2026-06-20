@@ -48,7 +48,7 @@ List<BalanceTrendPoint> balanceTrendForRange(
 
   final includedAccounts = {
     for (final account in state.accounts)
-      if (account.includeInNetWorth && account.type != 'loan') account.id,
+      if (!account.isArchived && account.includeInTotals) account.id,
   };
   final displayCurrency = state.preferences.displayCurrency;
   var running = state.accounts
@@ -130,7 +130,16 @@ List<Money> balanceBreakdownByCurrency(
       : state.accounts.where(
           (account) => !account.isArchived && account.includeInTotals,
         );
+  final allAccounts = state.accounts.where(
+    (account) => !account.isArchived && account.includeInTotals,
+  );
   final totals = <String, int>{};
+  for (final account in allAccounts) {
+    for (final money in _accountCurrencyNet(state, account)) {
+      totals.putIfAbsent(money.currency, () => 0);
+    }
+  }
+
   for (final account in accounts) {
     for (final money in _accountCurrencyNet(state, account)) {
       _addMoney(totals, money);

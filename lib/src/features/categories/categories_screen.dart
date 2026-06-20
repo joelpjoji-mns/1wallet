@@ -6,6 +6,7 @@ import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../../widgets/color_picker_dialog.dart';
 import '../common/full_screen_picker.dart';
 import '../common/route_scaffold.dart';
 
@@ -127,6 +128,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     var kind = parentCategory?.kind ?? category?.kind ?? 'expense';
     var archived = category?.isArchived ?? false;
     String? parentId = category?.parentId ?? parentCategory?.id;
+    Color? color = category?.color;
     String? errorText;
 
     await showDialog<void>(
@@ -197,6 +199,28 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                     });
                   },
                 ),
+                const SizedBox(height: AppSpacing.md),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor: color ?? Theme.of(context).colorScheme.primary,
+                    radius: 12,
+                  ),
+                  title: const Text('Color'),
+                  subtitle: const Text('Choose a custom color'),
+                  trailing: const Icon(Icons.palette_outlined),
+                  onTap: () async {
+                    final selected = await showAppColorPicker(
+                      context: context,
+                      initialColor: color ?? Theme.of(context).colorScheme.primary,
+                      title: 'Category color',
+                    );
+                    if (selected != null) {
+                      setDialogState(() => color = selected);
+                    }
+                  },
+                ),
+                const SizedBox(height: AppSpacing.md),
                 if (category != null)
                   LiquidGlassSwitchListTile(
                     contentPadding: EdgeInsets.zero,
@@ -228,6 +252,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                       kind: kind,
                       parentId: parentId,
                       isArchived: archived,
+                      color: color,
                     );
                 if (!dialogContext.mounted) return;
                 Navigator.of(dialogContext).pop();
@@ -384,7 +409,6 @@ class _CategoryTreeNode extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          margin: EdgeInsets.only(left: depth * 18.0),
           decoration: BoxDecoration(
             color: depth == 0
                 ? scheme.surfaceContainerLow
@@ -496,7 +520,7 @@ class _CategoryTreeNode extends StatelessWidget {
         ),
         if (children.isNotEmpty)
           Padding(
-            padding: EdgeInsets.only(left: depth * 18.0 + 14),
+            padding: const EdgeInsets.only(left: 18.0 + 14.0),
             child: Container(
               margin: const EdgeInsets.only(top: AppSpacing.xs),
               padding: const EdgeInsets.only(left: AppSpacing.sm),

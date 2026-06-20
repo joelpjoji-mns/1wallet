@@ -33,6 +33,7 @@ class LaunchScreen extends ConsumerWidget {
     return BrandedLoadingState(
       stage: startup.stage,
       message: startup.message ?? 'Wallet ready',
+      progress: startup.progress,
     );
   }
 }

@@ -111,9 +111,10 @@ final startupStateProvider = Provider<StartupState>((ref) {
 
   if (cloudSync.phase == CloudSyncPhase.checking ||
       cloudSync.phase == CloudSyncPhase.restoring) {
-    return const StartupState.pending(
+    return StartupState.pending(
       stage: StartupStage.wallet,
-      message: 'Restoring your Google wallet data',
+      message: cloudSync.progressMessage ?? 'Restoring your Google wallet data',
+      progress: cloudSync.progress,
     );
   }
 
@@ -145,12 +146,7 @@ final startupStateProvider = Provider<StartupState>((ref) {
 });
 
 bool _hasWalletData(LedgerState ledger) {
-  return ledger.accounts.isNotEmpty ||
-      ledger.transactions.isNotEmpty ||
-      ledger.captureCandidates.isNotEmpty ||
-      ledger.importBatches.isNotEmpty ||
-      ledger.budgets.isNotEmpty ||
-      ledger.goals.isNotEmpty;
+  return ledger.accounts.isNotEmpty || ledger.transactions.isNotEmpty;
 }
 
 enum StartupStage { session, wallet, ready }
@@ -166,16 +162,19 @@ class StartupState {
     this.title,
     this.message,
     this.isRecoverableError = false,
+    this.progress,
   });
 
   const StartupState.pending({
     required StartupStage stage,
     required String message,
+    double? progress,
   }) : this._(
          stage: stage,
          destination: StartupDestination.launch,
          isPending: true,
          message: message,
+         progress: progress,
        );
 
   const StartupState.ready({
@@ -206,4 +205,5 @@ class StartupState {
   final String? title;
   final String? message;
   final bool isRecoverableError;
+  final double? progress;
 }

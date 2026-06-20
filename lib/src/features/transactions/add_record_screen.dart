@@ -64,6 +64,12 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
   bool _counterAmountEdited = false;
 
   @override
+  void initState() {
+    super.initState();
+    _accountId = widget.initialAccountId;
+  }
+
+  @override
   void dispose() {
     _notesController.dispose();
     _locationController.dispose();

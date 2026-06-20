@@ -85,7 +85,7 @@ class _SecureAccountDetailsScreenState extends ConsumerState<SecureAccountDetail
 
   void _copyToClipboard(String text) {
     if (text.isEmpty) return;
-    Clipboard.setData(ClipboardData(text: text));
+    Clipboard.setData(ClipboardData(text: text.replaceAll(RegExp(r'\s+'), '')));
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(

@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,9 +10,11 @@ import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
+import '../../utils/currency_utils.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/currency_picker.dart';
 import '../../widgets/credit_card_view.dart';
+import '../../widgets/color_picker_dialog.dart';
 import '../common/full_screen_picker.dart';
 import '../common/route_scaffold.dart';
 
@@ -28,6 +31,7 @@ class AccountEditorScreen extends ConsumerStatefulWidget {
 class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
   final _nameController = TextEditingController();
   final _institutionController = TextEditingController();
+  final _creditLimitController = TextEditingController();
   String? _loadedAccountId;
   var _includeInTotals = true;
   var _includeInReports = true;
@@ -48,6 +52,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
   void dispose() {
     _nameController.dispose();
     _institutionController.dispose();
+    _creditLimitController.dispose();
     super.dispose();
   }
 
@@ -152,6 +157,17 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                               labelText: 'Institution',
                             ),
                           ),
+                          if (isCardType) ...[
+                            const SizedBox(height: AppSpacing.sm),
+                            TextFormField(
+                              controller: _creditLimitController,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: const InputDecoration(
+                                labelText: 'Credit Limit',
+                                prefixIcon: Icon(Icons.credit_score_outlined),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -171,42 +187,31 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                     Expanded(
                       child: _DetailField(
                         icon: Icons.currency_exchange_outlined,
-                        label: _selectedCurrency ?? account?.currency ?? state.preferences.baseCurrency,
+                        label: getCurrencyInfo(_selectedCurrency ?? account?.currency ?? state.preferences.baseCurrency).shortName,
                         onTap: () => _chooseCurrency(context, state),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.md),
-                Wrap(
-                  spacing: AppSpacing.xs,
-                  runSpacing: AppSpacing.xs,
+                Row(
                   children: [
-                    for (final color in AppColors.accountPalette)
-                      Tooltip(
-                        message: 'Use account color',
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(AppRadii.pill),
-                          onTap: () => setState(() => _selectedColor = color),
-                          child: CircleAvatar(
-                            backgroundColor: color,
-                            radius: 16,
-                            child: color == selectedColor
-                                ? Icon(
-                                    Icons.check,
-                                    size: 16,
-                                    color: color.computeLuminance() > 0.5
-                                        ? Theme.of(context)
-                                            .colorScheme
-                                            .onSurface
-                                        : Theme.of(context)
-                                            .colorScheme
-                                            .surface,
-                                  )
-                                : null,
-                          ),
-                        ),
+                    Expanded(
+                      child: _DetailField(
+                        icon: Icons.palette_outlined,
+                        label: 'Choose Color',
+                        onTap: () async {
+                          final color = await showAppColorPicker(
+                            context: context,
+                            initialColor: selectedColor,
+                            title: 'Account color',
+                          );
+                          if (color != null) {
+                            setState(() => _selectedColor = color);
+                          }
+                        },
                       ),
+                    ),
                   ],
                 ),
               ],
@@ -392,6 +397,12 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     _loadedAccountId = key;
     _nameController.text = account?.name ?? '';
     _institutionController.text = account?.institution ?? '';
+    if (account?.creditLimit != null) {
+      final amt = account!.creditLimit!.amountMinor / math.pow(10, minorUnits(account.creditLimit!.currency));
+      _creditLimitController.text = amt.toStringAsFixed(minorUnits(account.creditLimit!.currency));
+    } else {
+      _creditLimitController.text = '';
+    }
     _includeInTotals = account?.includeInTotals ?? true;
     _includeInReports = account?.includeInReports ?? true;
     _includeInNetWorth = account?.includeInNetWorth ?? true;
@@ -414,6 +425,18 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
       _showAccountMessage('Enter an account name before saving.');
       return;
     }
+    final isCardType = _selectedType == 'card' || _selectedType == 'credit_card';
+    Money? parsedCreditLimit;
+    if (isCardType && _creditLimitController.text.trim().isNotEmpty) {
+      final currency = _selectedCurrency ?? account?.currency ?? state.preferences.baseCurrency;
+      final normalized = _creditLimitController.text.replaceAll(',', '').trim();
+      final parsed = double.tryParse(normalized) ?? 0;
+      parsedCreditLimit = Money(
+        amountMinor: (parsed * math.pow(10, minorUnits(currency))).round(),
+        currency: currency,
+      );
+    }
+
     try {
       await ref
           .read(ledgerProvider.notifier)
@@ -432,6 +455,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
             showOnHome: _showOnHome,
             isArchived: _isArchived,
             encryptedDetails: account?.encryptedDetails,
+            creditLimit: parsedCreditLimit,
           );
       if (!mounted) return;
       _showAccountMessage(

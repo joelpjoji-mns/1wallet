@@ -9,6 +9,7 @@ import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
 import '../../theme/theme_controller.dart';
 import '../../widgets/app_kit.dart';
+import '../../widgets/color_picker_dialog.dart';
 import '../common/full_screen_picker.dart';
 import '../../widgets/bottom_island_nav.dart';
 import 'settings_components.dart';
@@ -681,14 +682,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
     if (next == null || !mounted) return;
     if (next == 'custom') {
-      final color = await showDialog<String>(
+      final currentColor = ref.read(themeControllerProvider).accentColor;
+      Color initialColor = Theme.of(context).colorScheme.primary;
+      if (currentColor != null && currentColor.length == 7 && currentColor.startsWith('#')) {
+        final intValue = int.tryParse(currentColor.substring(1), radix: 16);
+        if (intValue != null) {
+          initialColor = Color(intValue | 0xFF000000);
+        }
+      }
+      
+      final color = await showAppColorPicker(
         context: context,
-        builder: (context) => _ColorPickerInlineDialog(),
+        initialColor: initialColor,
+        title: 'Custom accent',
       );
       if (color != null && mounted) {
-        await ref.read(themeControllerProvider.notifier).setAccentColor(color);
+        final hex = '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
+        await ref.read(themeControllerProvider.notifier).setAccentColor(hex);
         if (!mounted) return;
-        _showMessage('Custom accent saved: $color');
+        _showMessage('Custom accent saved: $hex');
       }
     } else {
       await ref.read(themeControllerProvider.notifier).setAccentColor(null);
@@ -738,166 +750,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 }
 
-class _ColorPickerInlineDialog extends StatefulWidget {
-  @override
-  State<_ColorPickerInlineDialog> createState() =>
-      _ColorPickerInlineDialogState();
-}
 
-class _ColorPickerInlineDialogState extends State<_ColorPickerInlineDialog> {
-  double _hue = 220;
-  double _saturation = 0.65;
-  double _lightness = 0.42;
-
-  static const _presetHexColors = [
-    '#315DA8',
-    '#1976D2',
-    '#0097A7',
-    '#388E3C',
-    '#689F38',
-    '#F57C00',
-    '#E64A19',
-    '#D32F2F',
-    '#C2185B',
-    '#7B1FA2',
-    '#512DA8',
-    '#303F9F',
-    '#455A64',
-    '#5D4037',
-    '#616161',
-  ];
-
-  Color get _currentColor =>
-      HSLColor.fromAHSL(1.0, _hue, _saturation, _lightness).toColor();
-
-  String get _currentHex =>
-      '#${_currentColor.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return AlertDialog(
-      title: const Text('Custom accent'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              height: 56,
-              decoration: BoxDecoration(
-                color: _currentColor,
-                borderRadius: BorderRadius.circular(AppRadii.lg),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                _currentHex,
-                style: TextStyle(
-                  color:
-                      _currentColor.computeLuminance() > 0.5
-                          ? theme.colorScheme.onSurface
-                          : theme.colorScheme.surface,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _buildSlider('Hue', _hue, 360, (v) => setState(() => _hue = v)),
-            _buildSlider(
-              'Sat',
-              _saturation,
-              1,
-              (v) => setState(() => _saturation = v),
-            ),
-            _buildSlider(
-              'Light',
-              _lightness,
-              1,
-              (v) => setState(() => _lightness = v),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text('Presets', style: theme.textTheme.labelMedium),
-            const SizedBox(height: AppSpacing.xs),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final hex in _presetHexColors)
-                  GestureDetector(
-                    onTap: () {
-                      final c = Color(
-                        int.parse(hex.substring(1), radix: 16) | 0xFF000000,
-                      );
-                      final hsl = HSLColor.fromColor(c);
-                      setState(() {
-                        _hue = hsl.hue;
-                        _saturation = hsl.saturation;
-                        _lightness = hsl.lightness;
-                      });
-                    },
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: Color(
-                          int.parse(hex.substring(1), radix: 16) | 0xFF000000,
-                        ),
-                        shape: BoxShape.circle,
-                        border: _currentHex.toUpperCase() == hex.toUpperCase()
-                            ? Border.all(
-                                color: theme.colorScheme.onSurface,
-                                width: 2.5,
-                              )
-                            : null,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(null),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(_currentHex),
-          child: const Text('Save'),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSlider(
-    String label,
-    double value,
-    double max,
-    ValueChanged<double> onChanged,
-  ) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 44,
-          child: Text(label, style: const TextStyle(fontSize: 12)),
-        ),
-        Expanded(
-          child: Slider(value: value, min: 0, max: max, onChanged: onChanged),
-        ),
-        SizedBox(
-          width: 40,
-          child: Text(
-            max == 1 ? '${(value * 100).round()}%' : '${value.round()}°',
-            textAlign: TextAlign.end,
-            style: const TextStyle(fontSize: 11),
-          ),
-        ),
-      ],
-    );
-  }
-}
 
 class _SliderRow extends StatelessWidget {
   const _SliderRow({

@@ -310,7 +310,7 @@ Money totalBalance(
             ? state.accounts.where((a) => a.type == 'cash' && !a.isArchived)
             : state.accounts.where((a) => a.id == accountId))
       : state.accounts.where(
-          (account) => account.includeInNetWorth && account.type != 'loan',
+          (account) => !account.isArchived && account.includeInTotals,
         );
   final total = accounts.fold<int>(0, (sum, account) {
     final converted = convertMoneyForDisplay(

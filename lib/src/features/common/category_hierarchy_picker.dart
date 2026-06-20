@@ -118,11 +118,11 @@ class _CategoryHierarchyPickerState extends State<_CategoryHierarchyPicker> {
               const SizedBox(height: AppSpacing.md),
               if (showingSubcategories) ...[
                 PremiumRow(
-                  icon: Icons.swap_horiz_rounded,
-                  title: 'All categories',
-                  subtitle: 'Go back to parent categories',
+                  icon: Icons.arrow_upward_rounded,
+                  title: root.parentId == null ? 'All categories' : 'Back to parent',
+                  subtitle: 'Go up one level',
                   iconColor: scheme.primary,
-                  onTap: _showCategoryList,
+                  onTap: _handleBack,
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 PremiumRow(
@@ -168,7 +168,11 @@ class _CategoryHierarchyPickerState extends State<_CategoryHierarchyPicker> {
 
   void _handleBack() {
     if (_activeRoot != null) {
-      _showCategoryList();
+      final parentId = _activeRoot!.parentId;
+      setState(() {
+        _activeRoot = parentId == null ? null : categoryById(widget.state, parentId);
+        _query = '';
+      });
       return;
     }
     Navigator.of(context).pop();
@@ -196,12 +200,6 @@ class _CategoryHierarchyPickerState extends State<_CategoryHierarchyPicker> {
   }
 
   void _select(Category category) {
-    final root = _activeRoot;
-    if (root != null) {
-      Navigator.of(context).pop(category.id);
-      return;
-    }
-
     final children = childCategories(widget.state, category.id);
     if (children.isEmpty) {
       Navigator.of(context).pop(category.id);

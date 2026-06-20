@@ -67,7 +67,7 @@ service cloud.firestore {
     }
 
     function isValidUserDocument(data) {
-      return data.keys().hasOnly(['email', 'displayName', 'authProvider', 'createdAt', 'updatedAt', 'lastWriterDeviceId']) &&
+      return data.keys().hasOnly(['email', 'displayName', 'authProvider', 'createdAt', 'updatedAt', 'lastWriterDeviceId', 'cloudRevision', 'ledgerVersion']) &&
         isOptionalStringOrNull(data, 'email') &&
         isOptionalStringOrNull(data, 'displayName') &&
         (!('authProvider' in data) || data.authProvider == 'google') &&
@@ -316,6 +316,10 @@ service cloud.firestore {
       }
 
       match /importBatches/{documentId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+
+      match /wallet_backups/{chunkId} {
         allow read, create, update, delete: if isOwner(userId);
       }
 

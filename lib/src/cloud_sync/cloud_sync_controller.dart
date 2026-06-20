@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as developer;
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:firebase_core/firebase_core.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -37,6 +40,8 @@ class CloudSyncState {
     this.pendingUpload = false,
     this.bootstrapComplete = false,
     this.bootstrappedUserId,
+    this.progress,
+    this.progressMessage,
   });
 
   final CloudSyncPhase phase;
@@ -46,6 +51,8 @@ class CloudSyncState {
   final bool pendingUpload;
   final bool bootstrapComplete;
   final String? bootstrappedUserId;
+  final double? progress;
+  final String? progressMessage;
 
   bool get isChecking => phase == CloudSyncPhase.checking;
   bool get isRestoring => phase == CloudSyncPhase.restoring;
@@ -58,6 +65,8 @@ class CloudSyncState {
     bool? pendingUpload,
     bool? bootstrapComplete,
     Object? bootstrappedUserId = _unset,
+    Object? progress = _unset,
+    Object? progressMessage = _unset,
   }) {
     return CloudSyncState(
       phase: phase ?? this.phase,
@@ -73,6 +82,12 @@ class CloudSyncState {
       bootstrappedUserId: identical(bootstrappedUserId, _unset)
           ? this.bootstrappedUserId
           : bootstrappedUserId as String?,
+      progress: identical(progress, _unset)
+          ? this.progress
+          : progress as double?,
+      progressMessage: identical(progressMessage, _unset)
+          ? this.progressMessage
+          : progressMessage as String?,
     );
   }
 }
@@ -474,110 +489,52 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       );
 
       WriteBatch currentBatch = _firestore.batch();
-      int opCount = 0;
-
-      Future<void> addWrite(
-        DocumentReference doc,
-        Map<String, dynamic> data,
-      ) async {
-        currentBatch.set(doc, data, SetOptions(merge: true));
-        opCount++;
-        if (opCount >= 450) {
-          await currentBatch.commit().timeout(cloudSyncReadTimeout);
-          currentBatch = _firestore.batch();
-          opCount = 0;
-        }
-      }
-
-      // Write metadata
-      await addWrite(
-        _firestore.doc('users/${user.id}/metadata/preferences'),
-        preferencesToJson(currentLedger.preferences).cast<String, dynamic>(),
-      );
-
-      await addWrite(_firestore.doc('users/${user.id}'), {
+      
+      // Update user document
+      currentBatch.set(_firestore.doc('users/${user.id}'), {
         'email': user.email,
         'displayName': user.displayName,
         'authProvider': 'google',
         'updatedAt': FieldValue.serverTimestamp(),
         'lastWriterDeviceId': metadata.deviceId,
-      });
+      }, SetOptions(merge: true));
 
       final encodedData = await compute(
         _encodeCloudSnapshotData,
         currentLedger,
       );
-      
-      final newSyncedHashes = Map<String, String>.from(metadata.syncedDocumentHashes ?? {});
 
-      Future<void> processCollection(
-          String collection, List<Map<String, dynamic>> items, List<String>? syncedIds) async {
-        final currentIds = items.map((item) => item['id'] as String).toSet();
-        
-        for (final item in items) {
-          final docId = item['id'] as String;
-          final hashKey = '$collection/$docId';
-          final jsonStr = jsonEncode(item);
-          int stableHash = 0x811c9dc5;
-          for (int i = 0; i < jsonStr.length; i++) {
-            stableHash ^= jsonStr.codeUnitAt(i);
-            stableHash = (stableHash * 0x01000193) & 0xFFFFFFFF;
-          }
-          final currentHash = stableHash.toString();
-          
-          if (newSyncedHashes[hashKey] == currentHash) {
-            continue; // Skip writing this document because it hasn't changed
-          }
-          
-          await addWrite(_firestore.doc('users/${user.id}/$collection/$docId'), item);
-          newSyncedHashes[hashKey] = currentHash;
-        }
-        
-        if (syncedIds != null) {
-          for (final id in syncedIds) {
-            if (!currentIds.contains(id)) {
-              final hashKey = '$collection/$id';
-              currentBatch.delete(_firestore.doc('users/${user.id}/$collection/$id'));
-              newSyncedHashes.remove(hashKey);
-              opCount++;
-              if (opCount >= 450) {
-                await currentBatch.commit();
-                currentBatch = _firestore.batch();
-                opCount = 0;
-              }
-            }
-          }
-        } else {
-          // Fallback if syncedIds is null (e.g. first sync after upgrade and didn't reinstall)
-          final cloudDocs = await _firestore
-              .collection('users/${user.id}/$collection')
-              .get()
-              .timeout(cloudSyncReadTimeout);
-          for (final doc in cloudDocs.docs) {
-            if (currentIds.contains(doc.id)) continue;
-            currentBatch.delete(doc.reference);
-            opCount++;
-            if (opCount >= 450) {
-              await currentBatch.commit().timeout(cloudSyncReadTimeout);
-              currentBatch = _firestore.batch();
-              opCount = 0;
-            }
-          }
-        }
+      final jsonStr = jsonEncode(encodedData);
+      final bytes = utf8.encode(jsonStr);
+      final compressedBytes = gzip.encode(bytes);
+
+      const chunkSize = 900 * 1024; // 900 KB limit for Firestore Blobs
+      final chunks = <Uint8List>[];
+      for (var i = 0; i < compressedBytes.length; i += chunkSize) {
+        final end = (i + chunkSize < compressedBytes.length)
+            ? i + chunkSize
+            : compressedBytes.length;
+        chunks.add(Uint8List.fromList(compressedBytes.sublist(i, end)));
       }
 
-      await processCollection('accounts', encodedData['accounts']!, metadata.syncedAccountIds);
-      await processCollection('categories', encodedData['categories']!, metadata.syncedCategoryIds);
-      await processCollection('transactions', encodedData['transactions']!, metadata.syncedTransactionIds);
-      await processCollection('budgets', encodedData['budgets']!, metadata.syncedBudgetIds);
-      await processCollection('goals', encodedData['goals']!, metadata.syncedGoalIds);
-      await processCollection('captureCandidates', encodedData['captureCandidates']!, metadata.syncedCaptureCandidateIds);
-      await processCollection('importBatches', encodedData['importBatches']!, metadata.syncedImportBatchIds);
-
-      if (opCount > 0) {
-        await currentBatch.commit().timeout(cloudSyncReadTimeout);
+      // Overwrite chunks 0 to N
+      for (var i = 0; i < chunks.length; i++) {
+        currentBatch.set(
+          _firestore.doc('users/${user.id}/wallet_backups/chunk_$i'),
+          {
+            'index': i,
+            'data': Blob(chunks[i]),
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+        );
       }
-      
+      // Delete potentially old trailing chunks (up to chunks.length + 10 just in case)
+      for (var i = chunks.length; i < chunks.length + 10; i++) {
+        currentBatch.delete(_firestore.doc('users/${user.id}/wallet_backups/chunk_$i'));
+      }
+
+      await currentBatch.commit().timeout(cloudSyncReadTimeout);
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('has_unsynced_changes', false);
 
@@ -585,14 +542,8 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       metadata = metadata.copyWith(
         userId: user.id, 
         lastPushedAt: now,
-        syncedAccountIds: encodedData['accounts']!.map((m) => m['id'] as String).toList(),
-        syncedCategoryIds: encodedData['categories']!.map((m) => m['id'] as String).toList(),
-        syncedTransactionIds: encodedData['transactions']!.map((m) => m['id'] as String).toList(),
-        syncedBudgetIds: encodedData['budgets']!.map((m) => m['id'] as String).toList(),
-        syncedGoalIds: encodedData['goals']!.map((m) => m['id'] as String).toList(),
-        syncedCaptureCandidateIds: encodedData['captureCandidates']!.map((m) => m['id'] as String).toList(),
-        syncedImportBatchIds: encodedData['importBatches']!.map((m) => m['id'] as String).toList(),
-        syncedDocumentHashes: newSyncedHashes,
+        // We no longer track individual synced IDs since the whole blob is synced
+        syncedDocumentHashes: {},
       );
       await metadata.save();
 
@@ -635,49 +586,98 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
   Future<void> _restoreFromCloud(
     String userId,
-    CloudSyncMetadata metadata,
+    CloudSyncMetadata currentMetadata,
   ) async {
-    state = state.copyWith(phase: CloudSyncPhase.restoring, error: null);
-
+    state = state.copyWith(phase: CloudSyncPhase.restoring);
     try {
-      final results = await Future.wait([
-        _firestore.collection('users/$userId/accounts').get(),
-        _firestore.collection('users/$userId/categories').get(),
-        _firestore.collection('users/$userId/transactions').get(),
-        _firestore.collection('users/$userId/budgets').get(),
-        _firestore.collection('users/$userId/goals').get(),
-        _firestore.collection('users/$userId/captureCandidates').get(),
-        _firestore.collection('users/$userId/importBatches').get(),
-        _firestore.doc('users/$userId/metadata/preferences').get(),
-      ]).timeout(const Duration(seconds: 45));
+      final backupQuery = await _firestore
+          .collection('users/$userId/wallet_backups')
+          .orderBy('index')
+          .get()
+          .timeout(cloudSyncReadTimeout);
 
-      final accountsQuery = results[0] as QuerySnapshot<Map<String, dynamic>>;
-      final categoriesQuery = results[1] as QuerySnapshot<Map<String, dynamic>>;
-      final txnsQuery = results[2] as QuerySnapshot<Map<String, dynamic>>;
-      final budgetsQuery = results[3] as QuerySnapshot<Map<String, dynamic>>;
-      final goalsQuery = results[4] as QuerySnapshot<Map<String, dynamic>>;
-      final captureQuery = results[5] as QuerySnapshot<Map<String, dynamic>>;
-      final importsQuery = results[6] as QuerySnapshot<Map<String, dynamic>>;
-      final prefsDoc = results[7] as DocumentSnapshot<Map<String, dynamic>>;
+      Map<String, dynamic> restoreData;
+      
+      if (backupQuery.docs.isNotEmpty) {
+        state = state.copyWith(
+          progressMessage: 'Downloading backup...',
+          progress: 0.1,
+        );
+        final compressedBytes = <int>[];
+        int processedChunks = 0;
+        final totalChunks = backupQuery.docs.length;
 
-      final restoreData = {
-        'userId': userId,
-        'preferences': prefsDoc.exists ? prefsDoc.data() : null,
-        'accounts': accountsQuery.docs.map((d) => d.data()).toList(),
-        'categories': categoriesQuery.docs.map((d) => d.data()).toList(),
-        'transactions': txnsQuery.docs.map((d) => d.data()).toList(),
-        'budgets': budgetsQuery.docs.map((d) => d.data()).toList(),
-        'goals': goalsQuery.docs.map((d) => d.data()).toList(),
-        'captureCandidates': captureQuery.docs.map((d) => d.data()).toList(),
-        'importBatches': importsQuery.docs.map((d) => d.data()).toList(),
-      };
+        for (final doc in backupQuery.docs) {
+          final blob = doc.data()['data'] as Blob?;
+          if (blob != null) {
+            compressedBytes.addAll(blob.bytes);
+          }
+          processedChunks++;
+          state = state.copyWith(
+            progressMessage: 'Downloading chunk $processedChunks of $totalChunks...',
+            progress: 0.1 + (0.7 * (processedChunks / totalChunks)),
+          );
+        }
+        
+        state = state.copyWith(
+          progressMessage: 'Extracting data...',
+          progress: 0.85,
+        );
+        // Using compute for heavy unzipping
+        final bytes = await compute(gzip.decode, compressedBytes);
+        final jsonStr = await compute(utf8.decode, bytes);
+        restoreData = await compute(jsonDecode, jsonStr) as Map<String, dynamic>;
+        restoreData['userId'] = userId;
+      } else {
+        state = state.copyWith(
+          progressMessage: 'Loading legacy collections...',
+          progress: 0.5,
+        );
+        // Fallback to legacy uncompressed collections if no compressed backup exists
+        final results = await Future.wait([
+          _firestore.collection('users/$userId/accounts').get(),
+          _firestore.collection('users/$userId/categories').get(),
+          _firestore.collection('users/$userId/transactions').get(),
+          _firestore.collection('users/$userId/budgets').get(),
+          _firestore.collection('users/$userId/goals').get(),
+          _firestore.collection('users/$userId/captureCandidates').get(),
+          _firestore.collection('users/$userId/importBatches').get(),
+          _firestore.doc('users/$userId/metadata/preferences').get(),
+        ]).timeout(const Duration(seconds: 45));
 
+        final accountsQuery = results[0] as QuerySnapshot<Map<String, dynamic>>;
+        final categoriesQuery = results[1] as QuerySnapshot<Map<String, dynamic>>;
+        final txnsQuery = results[2] as QuerySnapshot<Map<String, dynamic>>;
+        final budgetsQuery = results[3] as QuerySnapshot<Map<String, dynamic>>;
+        final goalsQuery = results[4] as QuerySnapshot<Map<String, dynamic>>;
+        final captureQuery = results[5] as QuerySnapshot<Map<String, dynamic>>;
+        final importsQuery = results[6] as QuerySnapshot<Map<String, dynamic>>;
+        final prefsDoc = results[7] as DocumentSnapshot<Map<String, dynamic>>;
+
+        restoreData = {
+          'userId': userId,
+          'preferences': prefsDoc.exists ? prefsDoc.data() : null,
+          'accounts': accountsQuery.docs.map((d) => d.data()).toList(),
+          'categories': categoriesQuery.docs.map((d) => d.data()).toList(),
+          'transactions': txnsQuery.docs.map((d) => d.data()).toList(),
+          'budgets': budgetsQuery.docs.map((d) => d.data()).toList(),
+          'goals': goalsQuery.docs.map((d) => d.data()).toList(),
+          'captureCandidates': captureQuery.docs.map((d) => d.data()).toList(),
+          'importBatches': importsQuery.docs.map((d) => d.data()).toList(),
+        };
+      }
+
+      state = state.copyWith(
+        progressMessage: 'Loading transactions...',
+        progress: 0.95,
+      );
       final ledger = await compute(_parseCloudRestoreData, restoreData);
 
       final currentLedger = _ref.read(ledgerProvider);
       if (!_walletHasUserData(ledger) && _walletHasUserData(currentLedger)) {
         state = state.copyWith(
           phase: CloudSyncPhase.idle,
+          progress: 1.0,
           error:
               'Cloud backup is empty, so the existing local wallet was kept.',
         );
@@ -686,24 +686,19 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
       await _ledger.restoreLedgerState(ledger);
 
-      metadata = metadata.copyWith(
+      final newMetadata = currentMetadata.copyWith(
         userId: userId,
         lastPulledAt: DateTime.now().toIso8601String(),
-        syncedAccountIds: ledger.accounts.map((a) => a.id).toList(),
-        syncedCategoryIds: ledger.categories.map((c) => c.id).toList(),
-        syncedTransactionIds: ledger.transactions.map((t) => t.id).toList(),
-        syncedBudgetIds: ledger.budgets.map((b) => b.id).toList(),
-        syncedGoalIds: ledger.goals.map((g) => g.id).toList(),
-        syncedCaptureCandidateIds: ledger.captureCandidates.map((c) => c.id).toList(),
-        syncedImportBatchIds: ledger.importBatches.map((i) => i.id).toList(),
+        syncedDocumentHashes: {},
       );
-      await metadata.save();
+      await newMetadata.save();
 
-      state = state.copyWith(phase: CloudSyncPhase.idle, metadata: metadata);
-    } catch (e) {
+      state = state.copyWith(phase: CloudSyncPhase.idle, metadata: newMetadata, progress: 1.0);
+    } catch (e, st) {
+      developer.log('Firebase restore failed', error: e, stackTrace: st);
       state = state.copyWith(
         phase: CloudSyncPhase.error,
-        error: 'Restore failed: $e',
+        error: 'Failed to restore your wallet data.',
       );
     }
   }
@@ -784,12 +779,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
   }
 
   bool _walletHasUserData(LedgerState ledger) {
-    return ledger.accounts.isNotEmpty ||
-        ledger.transactions.isNotEmpty ||
-        ledger.captureCandidates.isNotEmpty ||
-        ledger.importBatches.isNotEmpty ||
-        ledger.budgets.isNotEmpty ||
-        ledger.goals.isNotEmpty;
+    return ledger.accounts.isNotEmpty || ledger.transactions.isNotEmpty;
   }
 }
 
@@ -838,10 +828,11 @@ LedgerState _parseCloudRestoreData(Map<String, dynamic> data) {
   );
 }
 
-Map<String, List<Map<String, dynamic>>> _encodeCloudSnapshotData(
+Map<String, dynamic> _encodeCloudSnapshotData(
   LedgerState ledger,
 ) {
   return {
+    'preferences': preferencesToJson(ledger.preferences).cast<String, dynamic>(),
     'accounts': ledger.accounts
         .map((a) => accountToJson(a).cast<String, dynamic>())
         .toList(),
