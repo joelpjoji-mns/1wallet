@@ -45,11 +45,22 @@ bool isHiddenInterest(LedgerState state, TransactionRecord transaction) {
   return false;
 }
 
+final _sortedIncludeScheduledExpando = Expando<List<TransactionRecord>>();
+final _sortedExcludeScheduledExpando = Expando<List<TransactionRecord>>();
+
 List<TransactionRecord> sortedTransactions(
   LedgerState state, {
   bool includeScheduled = true,
   bool hideInterest = false,
 }) {
+  final canCache = !hideInterest;
+  if (canCache) {
+    final cached = includeScheduled 
+        ? _sortedIncludeScheduledExpando[state]
+        : _sortedExcludeScheduledExpando[state];
+    if (cached != null) return cached;
+  }
+
   final items = state.transactions
       .where(
         (transaction) => includeScheduled || transaction.status != 'scheduled',
@@ -59,6 +70,15 @@ List<TransactionRecord> sortedTransactions(
       )
       .toList();
   items.sort((left, right) => right.occurredAt.compareTo(left.occurredAt));
+  
+  if (canCache) {
+    if (includeScheduled) {
+      _sortedIncludeScheduledExpando[state] = items;
+    } else {
+      _sortedExcludeScheduledExpando[state] = items;
+    }
+  }
+  
   return items;
 }
 
@@ -72,7 +92,12 @@ List<TransactionRecord> transactionsForAccount(
   }).toList();
 }
 
+final _accountBalanceMapExpando = Expando<Map<String, Money>>();
+
 Map<String, Money> accountBalanceMap(LedgerState state) {
+  final cached = _accountBalanceMapExpando[state];
+  if (cached != null) return cached;
+
   final balances = <String, Money>{
     for (final account in state.accounts)
       account.id: account.openingBalance.copyWith(currency: account.currency),
@@ -103,6 +128,7 @@ Map<String, Money> accountBalanceMap(LedgerState state) {
     }
   }
 
+  _accountBalanceMapExpando[state] = balances;
   return balances;
 }
 

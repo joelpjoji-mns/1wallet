@@ -708,48 +708,46 @@ class _DayCell extends StatelessWidget {
             color: isToday ? scheme.primary : scheme.outlineVariant,
           ),
         ),
-        child: Opacity(
-          opacity: inMonth ? 1 : 0.42,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${date.day}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 12,
-                    ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${date.day}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 12,
+                    color: scheme.onSurface.withAlphaFactor(inMonth ? 1.0 : 0.42),
                   ),
-                  if (records.isNotEmpty)
-                    Icon(Icons.circle, size: 6, color: scheme.primary),
-                ],
+                ),
+                if (records.isNotEmpty)
+                  Icon(Icons.circle, size: 6, color: scheme.primary.withAlphaFactor(inMonth ? 1.0 : 0.42)),
+              ],
+            ),
+            const Spacer(),
+            if (income > 0)
+              Text(
+                '+${formatCompactMoney(convertMoneyForDisplay(state, Money(amountMinor: income, currency: state.preferences.baseCurrency)), state.preferences.locale)}',
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 9,
+                  color: amountColor(context, income).withAlphaFactor(inMonth ? 1.0 : 0.42),
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-              const Spacer(),
-              if (income > 0)
-                Text(
-                  '+${formatCompactMoney(convertMoneyForDisplay(state, Money(amountMinor: income, currency: state.preferences.baseCurrency)), state.preferences.locale)}',
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: amountColor(context, income),
-                    fontWeight: FontWeight.w800,
-                  ),
+            if (expense > 0)
+              Text(
+                '-${formatCompactMoney(convertMoneyForDisplay(state, Money(amountMinor: expense, currency: state.preferences.baseCurrency)), state.preferences.locale)}',
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 9,
+                  color: amountColor(context, -expense).withAlphaFactor(inMonth ? 1.0 : 0.42),
+                  fontWeight: FontWeight.w800,
                 ),
-              if (expense > 0)
-                Text(
-                  '-${formatCompactMoney(convertMoneyForDisplay(state, Money(amountMinor: expense, currency: state.preferences.baseCurrency)), state.preferences.locale)}',
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: amountColor(context, -expense),
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );

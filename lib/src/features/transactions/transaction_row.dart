@@ -33,8 +33,9 @@ class TransactionRow extends StatelessWidget {
     final title = _title(category, account, counter);
     final details = transaction.notes?.trim() ?? '';
 
-    return Card(
-      elevation: 0,
+    return RepaintBoundary(
+      child: Card(
+        elevation: 0,
       margin: EdgeInsets.zero,
       color: Theme.of(context).colorScheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(
@@ -125,8 +126,9 @@ class TransactionRow extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Money _displayAmount() {
     if (side == 'transferOut') {
