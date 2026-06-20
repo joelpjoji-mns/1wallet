@@ -135,7 +135,7 @@ class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserv
             },
             child: PageView.builder(
               controller: _pageController,
-              physics: const ClampingScrollPhysics(),
+              physics: _FastPageScrollPhysics(),
               dragStartBehavior: DragStartBehavior.down,
               itemCount: _tabs.length,
               onPageChanged: (index) {
