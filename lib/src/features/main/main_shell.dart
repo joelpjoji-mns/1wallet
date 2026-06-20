@@ -21,6 +21,7 @@ import '../../services/notification_service.dart';
 import '../planner/planner_screen.dart';
 import '../transactions/transactions_screen.dart';
 import '../updates/app_update_provider.dart';
+import '../../widgets/app_kit.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
@@ -121,109 +122,121 @@ class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserv
       },
       child: ValueListenableBuilder<int>(
         valueListenable: _selectedIndex,
-        builder: (context, selectedIndex, child) => Scaffold(
-          key: _scaffoldKey,
-          drawerEnableOpenDragGesture: true,
-          drawerEdgeDragWidth: 40,
-          drawer: _MainDrawer(
-            selectedIndex: selectedIndex,
-            onTabSelected: (index) {
-              Navigator.of(context).pop();
-              _selectTab(index);
-            },
-          ),
-
-        body: Listener(
-          onPointerDown: (_) => _dragDistance = 0,
-          onPointerMove: (event) {
-            if (_selectedIndex.value == 0) {
-              _dragDistance += event.delta.dx;
-              if (_dragDistance > 60) {
-                if (!(_scaffoldKey.currentState?.isDrawerOpen ?? false)) {
-                  _scaffoldKey.currentState?.openDrawer();
+        builder: (context, selectedIndex, child) {
+          Widget mainBody = NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              if (notification is ScrollEndNotification) {
+                final page = _pageController.page?.round() ?? 0;
+                if (_selectedIndex.value != page) {
+                  _selectedIndex.value = page;
                 }
-                _dragDistance = 0;
-              } else if (_dragDistance < -20) {
-                _dragDistance = -1000; // prevent triggering if swiped left first
               }
-            }
-          },
-          child: Stack(
-            children: [
-            NotificationListener<ScrollNotification>(
-              onNotification: (notification) {
-                if (notification is ScrollEndNotification) {
-                  final page = _pageController.page?.round() ?? 0;
-                  if (_selectedIndex.value != page) {
-                    _selectedIndex.value = page;
-                  }
-                }
-                return false;
+              return false;
+            },
+            child: PageView.builder(
+              controller: _pageController,
+              physics: const ClampingScrollPhysics(),
+              dragStartBehavior: DragStartBehavior.down,
+              itemCount: _tabs.length,
+              onPageChanged: (index) {
+                // Index update deferred to ScrollEndNotification to prevent mid-swipe jank.
               },
-              child: ValueListenableBuilder<int>(
-                valueListenable: _selectedIndex,
-                builder: (context, selectedIndex, child) {
-                  return PageView.builder(
-                    controller: _pageController,
-                    physics: const ClampingScrollPhysics(),
-                    dragStartBehavior: DragStartBehavior.down,
-                    itemCount: _tabs.length,
-                    onPageChanged: (index) {
-                      // Index update deferred to ScrollEndNotification to prevent mid-swipe jank.
-                    },
-                    itemBuilder: (context, index) {
-                      return _KeepAliveWrapper(
-                        key: PageStorageKey<String>('main-shell-tab-$index'),
-                        child: _buildScreen(index),
-                      );
-                    },
-                  );
-                },
-              ),
+              itemBuilder: (context, index) {
+                return _KeepAliveWrapper(
+                  key: PageStorageKey<String>('main-shell-tab-$index'),
+                  child: _buildScreen(index),
+                );
+              },
             ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: IgnorePointer(
-                child: Container(
-                  height:
-                      AppSizes.bottomBarClearance +
-                      MediaQuery.paddingOf(context).bottom,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Theme.of(context).colorScheme.surface.withAlpha(0),
-                        Theme.of(context).colorScheme.surface.withAlpha(120),
-                        Theme.of(context).colorScheme.surface.withAlpha(190),
-                      ],
-                      stops: const [0.0, 0.5, 1.0],
+          );
+
+          Widget mobileBody = Listener(
+            onPointerDown: (_) => _dragDistance = 0,
+            onPointerMove: (event) {
+              if (_selectedIndex.value == 0) {
+                _dragDistance += event.delta.dx;
+                if (_dragDistance > 60) {
+                  if (!(_scaffoldKey.currentState?.isDrawerOpen ?? false)) {
+                    _scaffoldKey.currentState?.openDrawer();
+                  }
+                  _dragDistance = 0;
+                } else if (_dragDistance < -20) {
+                  _dragDistance = -1000; // prevent triggering if swiped left first
+                }
+              }
+            },
+            child: Stack(
+              children: [
+                mainBody,
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: IgnorePointer(
+                    child: Container(
+                      height:
+                          AppSizes.bottomBarClearance +
+                          MediaQuery.paddingOf(context).bottom,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Theme.of(context).colorScheme.surface.withAlpha(0),
+                            Theme.of(context).colorScheme.surface.withAlpha(120),
+                            Theme.of(context).colorScheme.surface.withAlpha(190),
+                          ],
+                          stops: const [0.0, 0.5, 1.0],
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: ValueListenableBuilder<int>(
-                valueListenable: _selectedIndex,
-                builder: (context, selectedIndex, child) => BottomIslandNavBar(
-                  items: _tabs,
-                  selectedIndex: selectedIndex,
-                  onSelected: _selectTab,
-                  pageController: _pageController,
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: BottomIslandNavBar(
+                    items: _tabs,
+                    selectedIndex: selectedIndex,
+                    onSelected: _selectTab,
+                    pageController: _pageController,
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-        ),
+          );
+
+          Widget desktopBody = Row(
+            children: [
+              _MainDrawer(
+                selectedIndex: selectedIndex,
+                isStatic: true,
+                onTabSelected: _selectTab,
+              ),
+              Expanded(child: mobileBody),
+            ],
+          );
+
+          return Scaffold(
+            key: _scaffoldKey,
+            drawerEnableOpenDragGesture: true,
+            drawerEdgeDragWidth: 40,
+            drawer: AppResponsiveLayout.isDesktop(context) ? null : _MainDrawer(
+              selectedIndex: selectedIndex,
+              onTabSelected: (index) {
+                Navigator.of(context).pop();
+                _selectTab(index);
+              },
+            ),
+            body: AppResponsiveLayout(
+              mobile: mobileBody,
+              desktop: desktopBody,
+            ),
+          );
+        },
       ),
-    ));
+    );
   }
 
   Widget _buildScreen(int index) {
@@ -239,10 +252,15 @@ class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserv
 }
 
 class _MainDrawer extends ConsumerWidget {
-  const _MainDrawer({required this.selectedIndex, required this.onTabSelected});
+  const _MainDrawer({
+    required this.selectedIndex,
+    required this.onTabSelected,
+    this.isStatic = false,
+  });
 
   final int selectedIndex;
   final ValueChanged<int> onTabSelected;
+  final bool isStatic;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -258,11 +276,8 @@ class _MainDrawer extends ConsumerWidget {
     final profileName = _profileName(auth.user, ledger);
     final profileSubtitle = _profileSubtitle(auth.user, ledger);
     final profileInitials = auth.user?.initials ?? _walletInitials(profileName);
-    return Drawer(
-      width: MediaQuery.sizeOf(context).width * 0.82,
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      child: SafeArea(
+
+    Widget content = SafeArea(
         child: Container(
           margin: const EdgeInsets.all(AppSpacing.sm),
           decoration: BoxDecoration(
@@ -527,7 +542,20 @@ class _MainDrawer extends ConsumerWidget {
             ],
           ),
         ),
-      ),
+      );
+
+    if (isStatic) {
+      return SizedBox(
+        width: 320,
+        child: content,
+      );
+    }
+
+    return Drawer(
+      width: MediaQuery.sizeOf(context).width * 0.82,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: content,
     );
   }
 }

@@ -1197,6 +1197,7 @@ class LedgerController extends StateNotifier<LedgerState> {
   }
 
   Future<void> _performAutoBackup(LedgerState ledger) async {
+    if (foundation.kIsWeb) return;
     try {
       final archive = await foundation.compute(_encodeForBackup, ledger);
       
@@ -1208,7 +1209,7 @@ class LedgerController extends StateNotifier<LedgerState> {
       await docsFile.writeAsString(archive);
       
       // 2. App external storage directory -> 1Wallet subfolder (Android only)
-      if (Platform.isAndroid) {
+      if (!foundation.kIsWeb && Platform.isAndroid) {
         final extDir = await getExternalStorageDirectory();
         if (extDir != null) {
           final extSubDir = Directory('${extDir.path}/1Wallet');
@@ -1245,6 +1246,7 @@ class LedgerController extends StateNotifier<LedgerState> {
   }
 
   Future<File?> getLatestAutoBackupFile() async {
+    if (foundation.kIsWeb) return null;
     final candidates = <File>[];
     try {
       final docsDir = await getApplicationDocumentsDirectory();
