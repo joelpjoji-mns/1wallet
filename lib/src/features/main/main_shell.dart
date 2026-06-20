@@ -616,6 +616,6 @@ class _KeepAliveWrapperState extends State<_KeepAliveWrapper>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return widget.child;
+    return RepaintBoundary(child: widget.child);
   }
 }
