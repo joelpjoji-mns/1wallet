@@ -167,6 +167,35 @@ class LiquidGlassContainer extends ConsumerWidget {
   }
 }
 
+class AppResponsiveLayout extends StatelessWidget {
+  const AppResponsiveLayout({
+    required this.mobile,
+    required this.desktop,
+    this.desktopBreakpoint = 800,
+    super.key,
+  });
+
+  final Widget mobile;
+  final Widget desktop;
+  final double desktopBreakpoint;
+
+  static bool isDesktop(BuildContext context, {double breakpoint = 800}) {
+    return MediaQuery.sizeOf(context).width >= breakpoint;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= desktopBreakpoint) {
+          return desktop;
+        }
+        return mobile;
+      },
+    );
+  }
+}
+
 class AppScreen extends StatelessWidget {
   const AppScreen({
     required this.title,
@@ -177,6 +206,7 @@ class AppScreen extends StatelessWidget {
     this.padding = const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.xs, AppSpacing.md, AppSpacing.md),
     this.scrollable = true,
     this.floatingActionButton,
+    this.maxWidth = 1200,
   });
 
   final String title;
@@ -186,18 +216,37 @@ class AppScreen extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final bool scrollable;
   final Widget? floatingActionButton;
+  final double maxWidth;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final body = scrollable
+    final isDesktop = AppResponsiveLayout.isDesktop(context);
+    
+    // Adjust bottom clearance to account for bottom navigation bar
+    final contentPadding = scrollable 
+      ? padding.add(const EdgeInsets.only(bottom: AppSizes.bottomBarClearance))
+      : padding;
+
+    Widget body = scrollable
         ? ListView(
-            padding: padding.add(
-              const EdgeInsets.only(bottom: AppSizes.bottomBarClearance),
-            ),
+            padding: contentPadding,
             children: [child],
           )
-        : Padding(padding: padding, child: child);
+        : Padding(padding: contentPadding, child: child);
+
+    // Apply width constraint but preserve tight vertical constraints
+    body = Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: SizedBox(
+          width: double.infinity,
+          height: double.infinity,
+          child: body,
+        ),
+      ),
+    );
 
     return ColoredBox(
       color: theme.colorScheme.surface,
@@ -207,10 +256,15 @@ class AppScreen extends StatelessWidget {
             bottom: false,
             child: Column(
               children: [
-                AppHeader(
-                  title: title,
-                  onMenuPressed: onMenuPressed,
-                  actions: actions,
+                Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: maxWidth),
+                    child: AppHeader(
+                      title: title,
+                      onMenuPressed: isDesktop ? null : onMenuPressed, // Hide menu button on desktop since drawer is persistent
+                      actions: actions,
+                    ),
+                  ),
                 ),
                 Expanded(child: body),
               ],
@@ -218,8 +272,8 @@ class AppScreen extends StatelessWidget {
           ),
           if (floatingActionButton != null)
             Positioned(
-              right: AppSpacing.lg,
-              bottom: AppSizes.bottomBarClearance,
+              right: isDesktop ? AppSpacing.xl : AppSpacing.lg,
+              bottom: isDesktop ? AppSpacing.xl : AppSizes.bottomBarClearance,
               child: floatingActionButton!,
             ),
         ],

@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:archive/archive.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
@@ -506,7 +506,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
       final jsonStr = jsonEncode(encodedData);
       final bytes = utf8.encode(jsonStr);
-      final compressedBytes = gzip.encode(bytes);
+      final compressedBytes = GZipEncoder().encode(bytes)!;
 
       const chunkSize = 900 * 1024; // 900 KB limit for Firestore Blobs
       final chunks = <Uint8List>[];
@@ -624,7 +624,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           progress: 0.85,
         );
         // Using compute for heavy unzipping
-        final bytes = await compute(gzip.decode, compressedBytes);
+        final bytes = await compute(_decodeGzipBytes, compressedBytes);
         final jsonStr = await compute(utf8.decode, bytes);
         restoreData = await compute(jsonDecode, jsonStr) as Map<String, dynamic>;
         restoreData['userId'] = userId;
@@ -855,4 +855,8 @@ Map<String, dynamic> _encodeCloudSnapshotData(
         .map((i) => importBatchToJson(i).cast<String, dynamic>())
         .toList(),
   };
+}
+
+List<int> _decodeGzipBytes(List<int> bytes) {
+  return GZipDecoder().decodeBytes(bytes);
 }

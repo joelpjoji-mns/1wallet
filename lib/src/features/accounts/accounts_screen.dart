@@ -143,41 +143,58 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
                     body:
                         'Add a cash, bank, card, loan, or wallet account to start tracking.',
                   )
-                : ReorderableListView.builder(
-                    padding: const EdgeInsets.only(
-                      bottom: AppSizes.bottomBarClearance + AppSpacing.xl,
-                    ),
-                    itemCount: rows.length,
-                    onReorderItem: (oldIndex, newIndex) {
-                      setState(() {
-                        if (oldIndex == newIndex) return;
+                : AppResponsiveLayout(
+                    mobile: ReorderableListView.builder(
+                      padding: const EdgeInsets.only(
+                        bottom: AppSizes.bottomBarClearance + AppSpacing.xl,
+                      ),
+                      itemCount: rows.length,
+                      onReorderItem: (oldIndex, newIndex) {
+                        setState(() {
+                          if (oldIndex == newIndex) return;
 
-                        final ids = _order!.toList();
-                        final moved = rows[oldIndex].id;
-                        final target = rows[newIndex].id;
-                        ids.remove(moved);
-                        final targetIndex = ids.indexOf(target);
-                        if (targetIndex != -1) {
-                          if (oldIndex < newIndex) {
-                            ids.insert(targetIndex + 1, moved);
+                          final ids = _order!.toList();
+                          final moved = rows[oldIndex].id;
+                          final target = rows[newIndex].id;
+                          ids.remove(moved);
+                          final targetIndex = ids.indexOf(target);
+                          if (targetIndex != -1) {
+                            if (oldIndex < newIndex) {
+                              ids.insert(targetIndex + 1, moved);
+                            } else {
+                              ids.insert(targetIndex, moved);
+                            }
                           } else {
-                            ids.insert(targetIndex, moved);
+                            ids.add(moved);
                           }
-                        } else {
-                          ids.add(moved);
-                        }
-                        _order = ids;
-                        ref.read(ledgerProvider.notifier).reorderAccounts(ids);
-                      });
-                    },
-                    itemBuilder: (context, index) {
-                      final account = rows[index];
-                      return Padding(
-                        key: ValueKey(account.id),
-                        padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                        child: _AccountRow(state: state, account: account),
-                      );
-                    },
+                          _order = ids;
+                          ref.read(ledgerProvider.notifier).reorderAccounts(ids);
+                        });
+                      },
+                      itemBuilder: (context, index) {
+                        final account = rows[index];
+                        return Padding(
+                          key: ValueKey(account.id),
+                          padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                          child: _AccountRow(state: state, account: account),
+                        );
+                      },
+                    ),
+                    desktop: SingleChildScrollView(
+                      padding: const EdgeInsets.only(
+                        bottom: AppSpacing.xl,
+                      ),
+                      child: Wrap(
+                        spacing: AppSpacing.md,
+                        runSpacing: AppSpacing.md,
+                        children: rows.map((account) {
+                          return SizedBox(
+                            width: 360,
+                            child: _AccountRow(state: state, account: account),
+                          );
+                        }).toList(),
+                      ),
+                    ),
                   ),
           ),
         ],

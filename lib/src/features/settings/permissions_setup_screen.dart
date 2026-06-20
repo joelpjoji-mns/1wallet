@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -28,13 +29,18 @@ class _PermissionsSetupScreenState extends ConsumerState<PermissionsSetupScreen>
 
     setState(() => _requestingAll = true);
     try {
-      await [
-        Permission.notification,
-        Permission.camera,
-        Permission.photos,
-        Permission.storage,
-        Permission.sms,
-      ].request();
+      if (!kIsWeb) {
+        await [
+          Permission.notification,
+          Permission.camera,
+          Permission.photos,
+          Permission.storage,
+          Permission.sms,
+        ].request();
+      } else {
+        try { await Permission.notification.request(); } catch (_) {}
+        try { await Permission.camera.request(); } catch (_) {}
+      }
       
       await ref
           .read(permissionSetupControllerProvider.notifier)

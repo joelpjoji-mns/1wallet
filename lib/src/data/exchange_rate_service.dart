@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,7 +11,7 @@ final exchangeRateServiceProvider = Provider((ref) => ExchangeRateService(ref));
 
 class ExchangeRateService {
   final Ref _ref;
-  final HttpClient _client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
+  final Dio _client = Dio(BaseOptions(connectTimeout: const Duration(seconds: 10)));
 
   ExchangeRateService(this._ref);
 
@@ -55,14 +55,13 @@ class ExchangeRateService {
     final url = 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/$base.json';
     
     try {
-      final request = await _client.getUrl(Uri.parse(url));
-      final response = await request.close();
+      final response = await _client.get<String>(url);
       
       if (response.statusCode != 200) {
         throw Exception('Failed to fetch rates: ${response.statusCode}');
       }
       
-      final responseBody = await response.transform(utf8.decoder).join();
+      final responseBody = response.data ?? '{}';
       final data = jsonDecode(responseBody) as Map<String, dynamic>;
       
       if (!data.containsKey(base)) {

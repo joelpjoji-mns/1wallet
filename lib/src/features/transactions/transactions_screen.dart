@@ -165,6 +165,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
     return AppScreen(
       title: 'Transactions',
+      maxWidth: 768,
       onMenuPressed: widget.onMenuPressed,
       floatingActionButton: IslandFloatingActionButton(
         icon: Icons.add_rounded,
