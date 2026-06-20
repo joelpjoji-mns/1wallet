@@ -712,7 +712,7 @@ class _BalanceTrendHomeWidgetState extends ConsumerState<BalanceTrendHomeWidget>
                                ],
                                isCurved: true,
                                color: Theme.of(context).colorScheme.primary,
-                               barWidth: 4,
+                               barWidth: 2,
                                isStrokeCapRound: true,
                                shadow: Shadow(
                                   color: Theme.of(context).colorScheme.primary.withAlphaFactor(0.3),
