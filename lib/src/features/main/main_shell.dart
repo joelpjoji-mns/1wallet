@@ -35,6 +35,7 @@ class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserv
   late final PageController _pageController;
   final ValueNotifier<int> _selectedIndex = ValueNotifier(0);
   double _dragDistance = 0;
+  double _dragVertical = 0;
 
   static const _tabs = [
     IslandTabItem(
@@ -151,15 +152,26 @@ class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserv
           );
 
           Widget mobileBody = Listener(
-            onPointerDown: (_) => _dragDistance = 0,
+            onPointerDown: (_) {
+              _dragDistance = 0;
+              _dragVertical = 0;
+            },
             onPointerMove: (event) {
-              if (_selectedIndex.value == 0) {
+              if (_selectedIndex.value == 0 && _dragDistance > -1000) {
                 _dragDistance += event.delta.dx;
+                _dragVertical += event.delta.dy;
+
+                // If the user is scrolling vertically, cancel the horizontal drawer swipe
+                if (_dragVertical.abs() > 20 && _dragVertical.abs() > _dragDistance.abs()) {
+                  _dragDistance = -1000;
+                  return;
+                }
+
                 if (_dragDistance > 60) {
                   if (!(_scaffoldKey.currentState?.isDrawerOpen ?? false)) {
                     _scaffoldKey.currentState?.openDrawer();
                   }
-                  _dragDistance = 0;
+                  _dragDistance = -1000;
                 } else if (_dragDistance < -20) {
                   _dragDistance = -1000; // prevent triggering if swiped left first
                 }
