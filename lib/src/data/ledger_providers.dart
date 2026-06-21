@@ -91,16 +91,22 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
     if (scheduled.status == 'scheduled' && scheduled.postMode == 'auto') {
       DateTime nextDate = scheduled.occurredAt;
       while (nextDate.isBefore(now)) {
-        changed = true;
-        newAutoPosted.add(
-          scheduled.copyWith(
-            id: 'tx-${DateTime.now().microsecondsSinceEpoch}-${newAutoPosted.length}',
-            status: 'posted',
-            occurredAt: nextDate,
-            originalTransactionId: scheduled.id,
-            postMode: null, // Clear postMode on the posted instance
-          ),
-        );
+        final dateStr = '${nextDate.year}${nextDate.month.toString().padLeft(2, '0')}${nextDate.day.toString().padLeft(2, '0')}';
+        final autoId = '${scheduled.id}-auto-$dateStr';
+        
+        final alreadyExists = ledger.transactions.any((t) => t.id == autoId);
+        if (!alreadyExists && !newAutoPosted.any((t) => t.id == autoId)) {
+          changed = true;
+          newAutoPosted.add(
+            scheduled.copyWith(
+              id: autoId,
+              status: 'cleared',
+              occurredAt: nextDate,
+              originalTransactionId: scheduled.id,
+              postMode: null, // Clear postMode on the posted instance
+            ),
+          );
+        }
         nextDate = advanceTransactionRecurrence(nextDate, scheduled);
       }
     }
