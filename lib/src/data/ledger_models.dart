@@ -524,6 +524,7 @@ class TransactionRecord {
     this.sourceConfidence,
     this.externalRef,
     this.originalTransactionId,
+    this.postMode,
   });
 
   final String id;
@@ -556,6 +557,7 @@ class TransactionRecord {
   final double? sourceConfidence;
   final String? externalRef;
   final String? originalTransactionId;
+  final String? postMode;
 
   TransactionRecord copyWith({
     String? id,
@@ -588,6 +590,7 @@ class TransactionRecord {
     double? sourceConfidence,
     String? externalRef,
     String? originalTransactionId,
+    String? postMode,
   }) {
     return TransactionRecord(
       id: id ?? this.id,
@@ -622,6 +625,7 @@ class TransactionRecord {
       externalRef: externalRef ?? this.externalRef,
       originalTransactionId:
           originalTransactionId ?? this.originalTransactionId,
+      postMode: postMode ?? this.postMode,
     );
   }
 }
