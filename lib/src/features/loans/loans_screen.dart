@@ -14,6 +14,7 @@ import '../../widgets/currency_picker.dart';
 import '../common/full_screen_picker.dart';
 import '../transactions/transaction_row.dart';
 import '../../utils/recurrence_utils.dart';
+import 'loan_forecast_simulator.dart';
 
 class LoansScreen extends ConsumerWidget {
   const LoansScreen({super.key, this.mode = 'overview', this.accountId});
@@ -174,7 +175,6 @@ class _LoanFormState extends ConsumerState<LoanForm> {
   final Set<int> _daysOfMonth = {};
   var _hideInterestInLedger = true;
   DateTime _nextEmiDate = DateTime.now().add(const Duration(days: 30));
-  var _postMode = 'manual';
 
   @override
   void initState() {
@@ -272,7 +272,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.sm),
               Row(
                 children: [
                   Expanded(
@@ -488,7 +488,6 @@ class _LoanFormState extends ConsumerState<LoanForm> {
     if (details?.recurrenceDaysOfMonth != null) {
       _daysOfMonth.addAll(details!.recurrenceDaysOfMonth!);
     }
-    _postMode = existingEmi?.postMode ?? 'manual';
   }
 
   Future<void> _showLoanKindPicker() async {
@@ -640,7 +639,6 @@ class _LoanFormState extends ConsumerState<LoanForm> {
               recurrenceInterval: _interval,
               recurrenceDaysOfWeek: _daysOfWeek.isEmpty ? null : (List<int>.from(_daysOfWeek)..sort()),
               recurrenceDaysOfMonth: _daysOfMonth.isEmpty ? null : (List<int>.from(_daysOfMonth)..sort()),
-              postMode: _postMode == 'manual' ? null : _postMode,
             );
       } else {
         final latestState = ref.read(ledgerProvider);
@@ -838,75 +836,36 @@ class LoanDetailView extends ConsumerWidget {
         const Gap(AppSpacing.xl),
 
         // Action Buttons
-        if (nextEmi != null && nextEmi.status == 'scheduled')
-          FilledButton.icon(
-            onPressed: () => _postNow(context, ref, nextEmi),
-            icon: const Icon(Icons.check_circle_rounded),
-            label: const Text('Post payment now'),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-            ),
+        FilledButton.icon(
+          onPressed: () => context.push('/loans/${loan.id}/edit'),
+          icon: const Icon(Icons.edit_rounded),
+          label: const Text('Edit loan details'),
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            foregroundColor: Theme.of(context).colorScheme.onPrimary,
           ),
+        ),
         const Gap(AppSpacing.sm),
         Row(
           children: [
             Expanded(
-              child: OutlinedButton(
-                onPressed: () => context.push('/loans/${loan.id}/edit'),
-                style: OutlinedButton.styleFrom(padding: EdgeInsets.zero),
-                child: const Text('Edit loan', style: TextStyle(fontSize: 13)),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: OutlinedButton(
+              child: FilledButton.tonalIcon(
                 onPressed: () => context.push('/loans/forecast'),
-                style: OutlinedButton.styleFrom(padding: EdgeInsets.zero),
-                child: const Text('Forecast', style: TextStyle(fontSize: 13)),
+                icon: const Icon(Icons.show_chart_rounded),
+                label: const Text('Forecast'),
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
-              child: OutlinedButton(
+              child: OutlinedButton.icon(
                 onPressed: () => _confirmArchiveLoan(context, ref, loan),
-                style: OutlinedButton.styleFrom(padding: EdgeInsets.zero, foregroundColor: Theme.of(context).colorScheme.error),
-                child: const Text('Archive', style: TextStyle(fontSize: 13)),
+                icon: const Icon(Icons.archive_outlined),
+                label: const Text('Archive'),
               ),
             ),
           ],
         ),
-        if (nextEmi != null && (nextEmi.status == 'scheduled' || nextEmi.status == 'paused')) ...[
-          const Gap(AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: nextEmi.status == 'scheduled' ? () => _postpone(context, ref, nextEmi) : null,
-                  style: OutlinedButton.styleFrom(padding: EdgeInsets.zero),
-                  child: const Text('Postpone EMI', style: TextStyle(fontSize: 13)),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: nextEmi.status == 'scheduled' ? () => _skip(context, ref, nextEmi) : null,
-                  style: OutlinedButton.styleFrom(padding: EdgeInsets.zero),
-                  child: const Text('Skip EMI', style: TextStyle(fontSize: 13)),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => nextEmi.status == 'paused' ? _resume(context, ref, nextEmi) : _pause(context, ref, nextEmi),
-                  style: nextEmi.status == 'paused' 
-                      ? OutlinedButton.styleFrom(padding: EdgeInsets.zero, foregroundColor: Theme.of(context).colorScheme.primary)
-                      : OutlinedButton.styleFrom(padding: EdgeInsets.zero),
-                  child: Text(nextEmi.status == 'paused' ? 'Resume EMI' : 'Pause EMI', style: const TextStyle(fontSize: 13)),
-                ),
-              ),
-            ],
-          ),
-        ],
         const Gap(AppSpacing.xxl),
 
         // Repayment History
@@ -975,106 +934,6 @@ class LoanDetailView extends ConsumerWidget {
     if (!context.mounted) return;
     _showRouteMessage(context, 'Loan archived.');
     context.go('/loans');
-  }
-
-  Future<void> _postNow(BuildContext context, WidgetRef ref, TransactionRecord nextEmi) async {
-    context.push('/add?plannedId=${nextEmi.id}');
-  }
-
-  Future<void> _postpone(BuildContext context, WidgetRef ref, TransactionRecord nextEmi) async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: nextEmi.occurredAt.isBefore(DateTime.now())
-          ? DateTime.now().add(const Duration(days: 1))
-          : nextEmi.occurredAt.add(const Duration(days: 1)),
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 3650)),
-    );
-    if (picked == null) return;
-
-    await ref.read(ledgerProvider.notifier).postponeTransaction(nextEmi.id, picked);
-    if (!context.mounted) return;
-
-    final locale = ref.read(ledgerProvider).preferences.locale;
-    _showRouteMessage(context, 'EMI postponed to ${formatLedgerDate(picked, locale)}.');
-  }
-
-  Future<void> _skip(BuildContext context, WidgetRef ref, TransactionRecord nextEmi) async {
-    final notifier = ref.read(ledgerProvider.notifier);
-    final nextDate = advanceTransactionRecurrence(nextEmi.occurredAt, nextEmi);
-    
-    await notifier.upsertTransaction(
-      type: nextEmi.type,
-      accountId: nextEmi.accountId,
-      amountMinor: nextEmi.amount.amountMinor,
-      status: 'void',
-      source: nextEmi.source,
-      counterAccountId: nextEmi.counterAccountId,
-      categoryId: nextEmi.categoryId,
-      paymentMethod: nextEmi.paymentMethod,
-      notes: 'Skipped EMI',
-      occurredAt: nextEmi.occurredAt,
-      originalTransactionId: nextEmi.id,
-      recurrenceFrequency: nextEmi.recurrenceFrequency,
-      originalAmountMinor: nextEmi.originalAmount?.amountMinor,
-      originalCurrency: nextEmi.originalAmount?.currency,
-      counterAmountMinor: nextEmi.counterAmount?.amountMinor,
-    );
-    
-    await notifier.updateTransactionStatus(
-      nextEmi.id,
-      'scheduled',
-      occurredAt: nextDate,
-    );
-    if (!context.mounted) return;
-    _showRouteMessage(context, 'EMI skipped.');
-  }
-
-  Future<void> _pause(BuildContext context, WidgetRef ref, TransactionRecord nextEmi) async {
-    await ref.read(ledgerProvider.notifier).updateTransactionStatus(
-      nextEmi.id,
-      'paused',
-    );
-    if (!context.mounted) return;
-    _showRouteMessage(context, 'EMI paused.');
-  }
-
-  Future<void> _resume(BuildContext context, WidgetRef ref, TransactionRecord nextEmi) async {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    var nextDate = nextEmi.occurredAt;
-    final notifier = ref.read(ledgerProvider.notifier);
-
-    // Advance the date until it's tomorrow or later
-    while (!nextDate.isAfter(today)) {
-      await notifier.upsertTransaction(
-        type: nextEmi.type,
-        accountId: nextEmi.accountId,
-        amountMinor: nextEmi.amount.amountMinor,
-        status: 'void',
-        source: nextEmi.source,
-        counterAccountId: nextEmi.counterAccountId,
-        categoryId: nextEmi.categoryId,
-        paymentMethod: nextEmi.paymentMethod,
-        notes: 'Skipped (Paused EMI)',
-        occurredAt: nextDate,
-        originalTransactionId: nextEmi.id,
-        recurrenceFrequency: nextEmi.recurrenceFrequency,
-        originalAmountMinor: nextEmi.originalAmount?.amountMinor,
-        originalCurrency: nextEmi.originalAmount?.currency,
-        counterAmountMinor: nextEmi.counterAmount?.amountMinor,
-      );
-      nextDate = advanceTransactionRecurrence(nextDate, nextEmi);
-    }
-
-    await notifier.updateTransactionStatus(
-      nextEmi.id,
-      'scheduled',
-      occurredAt: nextDate,
-    );
-    if (!context.mounted) return;
-    final locale = ref.read(ledgerProvider).preferences.locale;
-    _showRouteMessage(context, 'EMI resumed for ${formatLedgerDate(nextDate, locale)}.');
   }
 }
 
@@ -1319,45 +1178,183 @@ class _RoundTileIcon extends StatelessWidget {
   }
 }
 
-class LoanForecastView extends StatelessWidget {
+class LoanForecastView extends ConsumerStatefulWidget {
   const LoanForecastView({required this.state, required this.loans, super.key});
 
   final LedgerState state;
   final List<Account> loans;
 
   @override
+  ConsumerState<LoanForecastView> createState() => _LoanForecastViewState();
+}
+
+class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
+  final _incomeController = TextEditingController();
+  final _emergencyController = TextEditingController();
+  double _extraAllocationPercent = 0.5; // 50% extra to loans
+  String _strategy = 'avalanche';
+
+  @override
+  void dispose() {
+    _incomeController.dispose();
+    _emergencyController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (loans.isEmpty) {
+    if (widget.loans.isEmpty) {
       return const EmptyState(
         icon: Icons.account_balance_outlined,
         title: 'No loans yet',
         body: 'Create a loan account to see payoff projections.',
       );
     }
+
+    final incomeMinor = _amountMinorFromInput(_incomeController.text).abs();
+    final emergencyMinor = _amountMinorFromInput(_emergencyController.text).abs();
+
+    final result = simulateAcceleratedPayoff(
+      state: widget.state,
+      loans: widget.loans,
+      monthlyIncomeMinor: incomeMinor,
+      monthlyEmergencySavingMinor: emergencyMinor,
+      extraPaymentAllocationPercent: _extraAllocationPercent,
+      priorityStrategy: _strategy,
+    );
+
+    final locale = widget.state.preferences.locale;
+    final currency = widget.state.preferences.baseCurrency;
+    final scheme = Theme.of(context).colorScheme;
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final loan in loans) ...[
+        SectionCard(
+          title: 'Budget & Control',
+          subtitle: 'Adjust your expected income and emergency targets.',
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _incomeController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Monthly Income',
+                        prefixIcon: Icon(Icons.account_balance_wallet_outlined),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _emergencyController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Emergency Save',
+                        prefixIcon: Icon(Icons.savings_outlined),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Extra Cash Allocation', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: scheme.onSurfaceVariant)),
+                      Text('${(_extraAllocationPercent * 100).toInt()}% to Loans', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: scheme.primary)),
+                    ],
+                  ),
+                  Slider(
+                    value: _extraAllocationPercent,
+                    min: 0.0,
+                    max: 1.0,
+                    divisions: 20,
+                    onChanged: (val) => setState(() => _extraAllocationPercent = val),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('0% (Base EMI only)', style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant)),
+                      Text('100% (Aggressive)', style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant)),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              DropdownButtonFormField<String>(
+                value: _strategy,
+                decoration: const InputDecoration(
+                  labelText: 'Payoff Priority Strategy',
+                  prefixIcon: Icon(Icons.sort_rounded),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'avalanche', child: Text('Avalanche (Highest Interest First)')),
+                  DropdownMenuItem(value: 'snowball', child: Text('Snowball (Lowest Balance First)')),
+                ],
+                onChanged: (val) => setState(() => _strategy = val ?? 'avalanche'),
+              ),
+            ],
+          ),
+        ),
+        const Gap(AppSpacing.lg),
+        Row(
+          children: [
+            Expanded(
+              child: MetricTile(
+                label: 'Interest Saved',
+                value: formatMoney(Money(amountMinor: result.totalInterestSavedMinor, currency: currency), locale),
+                icon: Icons.savings_rounded,
+                tone: result.totalInterestSavedMinor > 0 ? MetricTone.success : MetricTone.standard,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: MetricTile(
+                label: 'Months Saved',
+                value: '${result.totalBaseMonths - result.totalAcceleratedMonths} mos',
+                icon: Icons.calendar_month_rounded,
+                tone: (result.totalBaseMonths - result.totalAcceleratedMonths) > 0 ? MetricTone.success : MetricTone.standard,
+              ),
+            ),
+          ],
+        ),
+        const Gap(AppSpacing.lg),
+        for (final proj in result.projections) ...[
           SectionCard(
-            title: loan.name,
-            subtitle: _loanProjection(state, loan).payoffLabel,
+            title: proj.loan.name,
+            subtitle: proj.monthsSaved > 0 ? 'Payoff accelerated by ${proj.monthsSaved} months' : 'Standard payoff schedule',
             child: Column(
               children: [
-                for (final month in _forecastMonthsForLoan(state, loan))
-                  InfoRow(
-                    label: month == 0 ? 'Current' : '+$month months',
-                    value: formatMoney(
-                      Money(
-                        amountMinor: _projectedLoanRemaining(
-                          state,
-                          loan,
-                          month,
-                        ),
-                        currency: loan.currency,
-                      ),
-                      state.preferences.locale,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('New Payoff Date', style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
+                    Text(
+                      formatLedgerDate(DateTime.now().add(Duration(days: proj.acceleratedMonthsRemaining * 30)), locale),
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                     ),
-                    icon: Icons.timeline_outlined,
-                  ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Interest Saved', style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
+                    Text(
+                      formatMoney(Money(amountMinor: proj.interestSavedMinor, currency: proj.loan.currency), locale),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: proj.interestSavedMinor > 0 ? scheme.primary : null),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -1544,7 +1541,6 @@ String _nextEmiLabel(
   final parts = [
     if (date != null) formatLedgerDate(date, state.preferences.locale),
     if (amount != null) formatMoney(amount, state.preferences.locale),
-    if (scheduledEmi?.postMode == 'auto') '(AUTO)',
   ];
   return parts.join(' · ');
 }
