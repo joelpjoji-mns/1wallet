@@ -83,9 +83,35 @@ class LedgerRepository {
 
 LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
   bool changed = false;
+  final now = DateTime.now();
+  final List<TransactionRecord> newAutoPosted = [];
 
+  // 1. Generate auto-posted transactions
+  for (final scheduled in ledger.transactions) {
+    if (scheduled.status == 'scheduled' && scheduled.postMode == 'auto') {
+      DateTime nextDate = scheduled.occurredAt;
+      while (nextDate.isBefore(now)) {
+        changed = true;
+        newAutoPosted.add(
+          scheduled.copyWith(
+            id: 'tx-${DateTime.now().microsecondsSinceEpoch}-${newAutoPosted.length}',
+            status: 'posted',
+            occurredAt: nextDate,
+            originalTransactionId: scheduled.id,
+            postMode: null, // Clear postMode on the posted instance
+          ),
+        );
+        nextDate = advanceTransactionRecurrence(nextDate, scheduled);
+      }
+    }
+  }
+
+  // Combine original with new
+  final combinedTransactions = [...ledger.transactions, ...newAutoPosted];
+
+  // 2. Build history map
   final Map<String, DateTime> latestHistory = {};
-  for (final t in ledger.transactions) {
+  for (final t in combinedTransactions) {
     if (t.originalTransactionId != null && t.status != 'scheduled' && t.status != 'void') {
       final currentLatest = latestHistory[t.originalTransactionId!];
       if (currentLatest == null || t.occurredAt.isAfter(currentLatest)) {
@@ -94,7 +120,8 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
     }
   }
 
-  final updated = ledger.transactions.map((scheduled) {
+  // 3. Advance scheduled cursors based on history map
+  final updated = combinedTransactions.map((scheduled) {
     if (scheduled.status != 'scheduled') return scheduled;
 
     final latestOccurredAt = latestHistory[scheduled.id];
@@ -103,8 +130,6 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
     if (scheduled.occurredAt.isBefore(latestOccurredAt) || scheduled.occurredAt.isAtSameMomentAs(latestOccurredAt)) {
       changed = true;
       DateTime nextDate = scheduled.occurredAt;
-      final freq = scheduled.recurrenceFrequency ?? 'monthly';
-
       while (nextDate.isBefore(latestOccurredAt) || nextDate.isAtSameMomentAs(latestOccurredAt)) {
          nextDate = advanceTransactionRecurrence(nextDate, scheduled);
       }
@@ -398,6 +423,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     List<int>? recurrenceDaysOfMonth,
     bool? isExcludedFromReports,
     String? originalTransactionId,
+    String? postMode,
   }) async {
     final sourceAccount = accountById(state, accountId);
     if (sourceAccount == null) {
@@ -478,6 +504,7 @@ class LedgerController extends StateNotifier<LedgerState> {
       sourceConfidence: existing?.sourceConfidence,
       externalRef: existing?.externalRef,
       originalTransactionId: originalTransactionId ?? existing?.originalTransactionId,
+      postMode: postMode ?? existing?.postMode,
     );
     final transactions = [...state.transactions];
     final index = transactions.indexWhere((item) => item.id == transaction.id);
