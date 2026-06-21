@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:fl_chart/fl_chart.dart';
 
 import '../../data/ledger_models.dart';
-import '../../data/ledger_providers.dart';
-import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
-import '../../widgets/app_kit.dart';
 import '../transactions/transaction_row.dart';
+import 'planner_widgets.dart'; // for DashboardCard
 import 'planner_widgets.dart'; // for DashboardCard
 
 // 1. Daily Spending Limit
