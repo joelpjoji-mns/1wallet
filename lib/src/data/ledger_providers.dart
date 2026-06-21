@@ -881,6 +881,10 @@ class LedgerController extends StateNotifier<LedgerState> {
       fallbackCurrency: state.preferences.baseCurrency,
     );
     if (parsed.ignored) return null;
+    
+    // Check for duplicates
+    final isDuplicate = state.captureCandidates.any((c) => c.rawText == parsed.rawText);
+    if (isDuplicate) return null;
 
     String? matchedAccountId = _matchAccountToSms(state, parsed);
 
@@ -921,6 +925,11 @@ class LedgerController extends StateNotifier<LedgerState> {
         fallbackCurrency: state.preferences.baseCurrency,
       );
       if (parsed.ignored) continue;
+
+      // Check against existing state and newly added candidates in this batch
+      final isDuplicate = state.captureCandidates.any((c) => c.rawText == parsed.rawText) || 
+                          newCandidates.any((c) => c.rawText == parsed.rawText);
+      if (isDuplicate) continue;
 
       String? matchedAccountId = _matchAccountToSms(state, parsed);
 
@@ -1370,11 +1379,38 @@ Category? _matchCategory(LedgerState state, String? name, String kind) {
       .where((category) => !category.isArchived)
       .toList();
   final normalized = name?.trim().toLowerCase();
+  
   if (normalized != null && normalized.isNotEmpty) {
+    // 1. Check previous transactions for exact or partial name match
+    // to find the most recently used category for this merchant.
+    for (final tx in state.transactions) {
+      final txNotes = tx.notes?.trim().toLowerCase();
+      final txName = tx.name?.trim().toLowerCase();
+      
+      bool isStrongMatch(String? pastString) {
+        if (pastString == null) return false;
+        if (pastString == normalized) return true;
+        if (pastString.length > 4 && normalized.contains(pastString)) return true;
+        if (normalized.length > 4 && pastString.contains(normalized)) return true;
+        return false;
+      }
+
+      if (isStrongMatch(txNotes) || isStrongMatch(txName)) {
+        if (tx.categoryId != null) {
+          final cat = categoryById(state, tx.categoryId);
+          if (cat != null && !cat.isArchived) {
+            return cat;
+          }
+        }
+      }
+    }
+
+    // 2. Exact match against category names
     for (final category in active) {
       if (category.name.toLowerCase() == normalized) return category;
     }
 
+    // 3. Keyword matching
     String? guessedKind;
     if (RegExp(r'\b(zomato|swiggy|food|restaurant|cafe|dining|mcdonalds|starbucks)\b').hasMatch(normalized)) {
       guessedKind = 'food';
@@ -1398,10 +1434,8 @@ Category? _matchCategory(LedgerState state, String? name, String kind) {
       }
     }
   }
-  for (final category in active) {
-    if (category.kind == kind) return category;
-  }
-  return active.firstOrNull;
+  
+  return null;
 }
 
 String? _matchAccountToSms(LedgerState state, ParsedTransactionMessage parsed) {
