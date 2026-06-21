@@ -742,7 +742,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       _notesController.text = source.notes ?? '';
       _transactionCurrency = source.originalAmount?.currency ?? source.amount.currency;
       _amount = _formatAmountInput((source.originalAmount ?? source.amount).amountMinor, _transactionCurrency!);
-      _status = source.status;
+      _status = (tx == null && planned != null) ? 'cleared' : source.status;
     }
   }
 
