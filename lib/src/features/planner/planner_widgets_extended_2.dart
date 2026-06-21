@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/ledger_models.dart';
-import '../../data/ledger_providers.dart';
 import '../../ledger/ledger_selectors.dart';
-import '../../widgets/app_kit.dart';
 import 'planner_widgets.dart'; // for DashboardCard
 
 // 6. Debt Free Target
@@ -65,7 +63,7 @@ class ActiveSavingsGoalsWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
-    final goals = state.accounts.where((a) => a.type == 'savings' && a.groupId != null).toList();
+    final goals = state.accounts.where((a) => a.type == 'savings').toList();
 
     return DashboardCard(
       child: Column(
