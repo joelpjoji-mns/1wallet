@@ -135,7 +135,7 @@ class LoansScreen extends ConsumerWidget {
                 mode: mode,
                 onTap: () => context.push('/loans/${loan.id}'),
               ),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: 6),
             ],
           if (mode == 'forecast') ...[
             const Gap(AppSpacing.lg),
@@ -995,7 +995,7 @@ class _LoanCompactCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.md),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
