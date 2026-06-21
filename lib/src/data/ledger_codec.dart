@@ -720,6 +720,7 @@ Map<String, Object?> _transactionToJson(TransactionRecord transaction) {
     'sourceConfidence': transaction.sourceConfidence,
     'externalRef': transaction.externalRef,
     'originalTransactionId': transaction.originalTransactionId,
+    'postMode': transaction.postMode,
   };
 }
 
@@ -762,6 +763,7 @@ TransactionRecord _transactionFromJson(Map<String, dynamic> json) {
     sourceConfidence: _nullableDouble(json['sourceConfidence']),
     externalRef: _nullableString(json['externalRef']),
     originalTransactionId: _nullableString(json['originalTransactionId']),
+    postMode: _nullableString(json['postMode']),
   );
 }
 

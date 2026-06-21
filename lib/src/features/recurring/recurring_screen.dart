@@ -534,6 +534,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
   String? _counterAccountId;
   String? _categoryId;
   DateTime _nextDate = DateTime.now().add(const Duration(days: 1));
+  String? _postMode;
 
   @override
   void dispose() {
@@ -664,6 +665,19 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              DropdownButtonFormField<String>(
+                initialValue: _postMode == 'auto' ? 'auto' : 'manual',
+                decoration: const InputDecoration(
+                  labelText: 'Automation',
+                  prefixIcon: Icon(Icons.smart_toy_outlined),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'manual', child: Text('Manual review (Require confirmation)')),
+                  DropdownMenuItem(value: 'auto', child: Text('Auto-post payment on date')),
+                ],
+                onChanged: (value) => setState(() => _postMode = value == 'auto' ? 'auto' : null),
+              ),
+              const SizedBox(height: AppSpacing.md),
               DropdownButtonFormField<String>(
                 initialValue: _frequency,
                 decoration: const InputDecoration(
@@ -800,6 +814,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
     _nextDate =
         record?.occurredAt ?? DateTime.now().add(const Duration(days: 1));
     _notesController.text = record?.notes ?? '';
+    _postMode = record?.postMode;
     _frequency = record?.recurrenceFrequency ?? 'monthly';
     _interval = record?.recurrenceInterval ?? 1;
     _daysOfWeek.clear();
@@ -985,6 +1000,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
             recurrenceInterval: _interval,
             recurrenceDaysOfWeek: _daysOfWeek.isEmpty ? null : (List<int>.from(_daysOfWeek)..sort()),
             recurrenceDaysOfMonth: _daysOfMonth.isEmpty ? null : (List<int>.from(_daysOfMonth)..sort()),
+            postMode: _postMode == 'auto' ? 'auto' : null,
           );
       if (!mounted) return;
       _showRouteMessage(
@@ -1024,6 +1040,7 @@ class RecurringDetailView extends ConsumerWidget {
       children: [
         Card(
           elevation: 0,
+          margin: EdgeInsets.zero,
           color: scheme.surfaceContainerLow,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.md),
@@ -1035,13 +1052,18 @@ class RecurringDetailView extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    IconBubble(
-                      icon: category == null ? Icons.event_repeat_rounded : Icons.category_rounded,
-                      color: scheme.primary,
-                      compact: true,
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: scheme.primaryContainer,
+                      foregroundColor: scheme.onPrimaryContainer,
+                      child: Icon(
+                        category == null ? Icons.event_repeat_rounded : Icons.category_rounded,
+                        size: 20,
+                      ),
                     ),
-                    const SizedBox(width: AppSpacing.md),
+                    const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1053,23 +1075,14 @@ class RecurringDetailView extends ConsumerWidget {
                             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w800,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          if (transaction.name?.trim().isNotEmpty == true) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              category?.name ?? transactionTypeLabel(transaction.type),
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: scheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
                           const SizedBox(height: 2),
                           Text(
-                            '${transaction.status.toUpperCase()} · ${transactionTypeLabel(frequency).toUpperCase()}',
+                            '${transaction.status.toUpperCase()} · ${transactionTypeLabel(frequency).toUpperCase()}${transaction.postMode == 'auto' ? ' (AUTO)' : ''}',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: scheme.onSurfaceVariant,
                             ),
@@ -1084,6 +1097,43 @@ class RecurringDetailView extends ConsumerWidget {
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainer,
+                    borderRadius: BorderRadius.circular(AppRadii.sm),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Next payment', style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
+                          Text(formatLedgerDate(transaction.occurredAt, state.preferences.locale), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(counter != null ? 'From account' : 'Account', style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
+                          Text(account?.name ?? 'Unknown', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      if (counter != null) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('To account', style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
+                            Text(counter.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
                 if (account?.loanDetails != null || counter?.loanDetails != null)
                   Builder(builder: (context) {
@@ -1129,39 +1179,6 @@ class RecurringDetailView extends ConsumerWidget {
         ),
         const Gap(AppSpacing.lg),
 
-        // Metadata Grid
-        Row(
-          children: [
-            Expanded(
-              child: MetricTile(
-                label: 'Next payment',
-                value: formatLedgerDate(
-                  transaction.occurredAt,
-                  state.preferences.locale,
-                ),
-                icon: Icons.calendar_month_outlined,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        PremiumRow(
-          icon: Icons.account_balance_wallet_outlined,
-          title: counter != null ? 'From account' : 'Account',
-          subtitle: account?.name ?? 'Unknown',
-          onTap: account != null ? () => context.push('/account/${account.id}') : () {},
-        ),
-        if (counter != null) ...[
-          const SizedBox(height: AppSpacing.sm),
-          PremiumRow(
-            icon: Icons.account_balance_outlined,
-            title: 'To account',
-            subtitle: counter.name,
-            onTap: () => context.push('/account/${counter.id}'),
-          ),
-        ],
-        const Gap(AppSpacing.xl),
-
         // Action Buttons
         if (transaction.status == 'scheduled')
           FilledButton.icon(
@@ -1169,50 +1186,40 @@ class RecurringDetailView extends ConsumerWidget {
             icon: const Icon(Icons.check_circle_rounded),
             label: const Text('Post payment now'),
             style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 12),
             ),
           ),
         const Gap(AppSpacing.sm),
-        Row(
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
           children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: transaction.status == 'scheduled'
-                    ? () => _postpone(context, ref)
-                    : null,
-                icon: const Icon(Icons.snooze_outlined),
-                label: const Text('Postpone'),
-              ),
+            OutlinedButton.icon(
+              onPressed: transaction.status == 'scheduled' ? () => _postpone(context, ref) : null,
+              icon: const Icon(Icons.snooze_outlined, size: 18),
+              label: const Text('Postpone'),
             ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: transaction.status == 'scheduled'
-                    ? () => _skip(context, ref)
-                    : null,
-                icon: const Icon(Icons.skip_next_rounded),
-                label: const Text('Skip next'),
-              ),
+            OutlinedButton.icon(
+              onPressed: transaction.status == 'scheduled' ? () => _skip(context, ref) : null,
+              icon: const Icon(Icons.skip_next_rounded, size: 18),
+              label: const Text('Skip next'),
             ),
+            OutlinedButton.icon(
+              onPressed: () => context.push('/recurring/${transaction.id}/edit'),
+              icon: const Icon(Icons.edit_rounded, size: 18),
+              label: const Text('Edit'),
+            ),
+            if (transaction.status == 'scheduled' || transaction.status == 'paused')
+              OutlinedButton.icon(
+                onPressed: () => transaction.status == 'paused' ? _resume(context, ref) : _pause(context, ref),
+                icon: Icon(transaction.status == 'paused' ? Icons.play_circle_outline_rounded : Icons.pause_circle_outline_rounded, size: 18),
+                label: Text(transaction.status == 'paused' ? 'Resume' : 'Pause'),
+                style: transaction.status == 'paused' 
+                    ? OutlinedButton.styleFrom(foregroundColor: scheme.primary)
+                    : null,
+              ),
           ],
         ),
-        const Gap(AppSpacing.sm),
-        FilledButton.tonalIcon(
-          onPressed: () =>
-              context.push('/recurring/${transaction.id}/edit'),
-          icon: const Icon(Icons.edit_rounded),
-          label: const Text('Edit planned details'),
-        ),
-        const Gap(AppSpacing.sm),
-        if (transaction.status == 'scheduled' || transaction.status == 'paused')
-          FilledButton.tonalIcon(
-            onPressed: () => transaction.status == 'paused' ? _resume(context, ref) : _pause(context, ref),
-            icon: Icon(transaction.status == 'paused' ? Icons.play_circle_outline_rounded : Icons.pause_circle_outline_rounded),
-            label: Text(transaction.status == 'paused' ? 'Resume plan' : 'Pause plan'),
-            style: transaction.status == 'paused' 
-                ? FilledButton.styleFrom(backgroundColor: scheme.primaryContainer, foregroundColor: scheme.onPrimaryContainer)
-                : null,
-          ),
         const Gap(AppSpacing.xxl),
 
         // History
