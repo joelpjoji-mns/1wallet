@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 enum AndroidSmsPermissionStatus { granted, denied, blocked, unavailable }
 
@@ -42,34 +43,15 @@ Future<bool> isAndroidSmsInboxAvailable() async {
 
 Future<AndroidSmsPermissionState> getAndroidSmsPermissionState() async {
   try {
-    final result = await _channel.invokeMapMethod<String, String>(
-      'getPermissionState',
-    );
-    if (result == null) {
-      return const AndroidSmsPermissionState(
-        read: AndroidSmsPermissionStatus.unavailable,
-        receive: AndroidSmsPermissionStatus.unavailable,
-        overall: 'unavailable',
-      );
-    }
-
-    final read = _parsePermissionStatus(result['read']);
-    final receive = _parsePermissionStatus(result['receive']);
-
-    String overall;
-    if (read == AndroidSmsPermissionStatus.granted &&
-        receive == AndroidSmsPermissionStatus.granted) {
-      overall = 'granted';
-    } else if (read == receive) {
-      overall = 'denied';
-    } else {
-      overall = 'partial';
-    }
-
+    final status = await Permission.sms.status;
+    final parsed = status.isGranted 
+        ? AndroidSmsPermissionStatus.granted 
+        : (status.isPermanentlyDenied ? AndroidSmsPermissionStatus.blocked : AndroidSmsPermissionStatus.denied);
+    
     return AndroidSmsPermissionState(
-      read: read,
-      receive: receive,
-      overall: overall,
+      read: parsed,
+      receive: parsed,
+      overall: status.isGranted ? 'granted' : 'denied',
     );
   } catch (e) {
     return const AndroidSmsPermissionState(
@@ -82,8 +64,11 @@ Future<AndroidSmsPermissionState> getAndroidSmsPermissionState() async {
 
 Future<AndroidSmsPermissionStatus> requestAndroidSmsPermission() async {
   try {
-    final result = await _channel.invokeMethod<String>('requestPermissions');
-    return _parsePermissionStatus(result);
+    final status = await Permission.sms.request();
+    if (status.isGranted) return AndroidSmsPermissionStatus.granted;
+    if (status.isDenied) return AndroidSmsPermissionStatus.denied;
+    if (status.isPermanentlyDenied) return AndroidSmsPermissionStatus.blocked;
+    return AndroidSmsPermissionStatus.unavailable;
   } catch (e) {
     return AndroidSmsPermissionStatus.unavailable;
   }
@@ -148,4 +133,20 @@ AndroidSmsPermissionStatus _parsePermissionStatus(String? status) {
     default:
       return AndroidSmsPermissionStatus.unavailable;
   }
+}
+
+Future<String?> getInitialSmsRoute() async {
+  try {
+    return await _channel.invokeMethod<String>('getInitialRoute');
+  } catch (e) {
+    return null;
+  }
+}
+
+void listenForSmsRoute(void Function(String route) onRoute) {
+  _channel.setMethodCallHandler((call) async {
+    if (call.method == 'onRoute') {
+      onRoute(call.arguments as String);
+    }
+  });
 }
