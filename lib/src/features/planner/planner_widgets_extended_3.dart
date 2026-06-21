@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/ledger_models.dart';
-import '../../data/ledger_providers.dart';
 import '../../ledger/ledger_selectors.dart';
-import '../../widgets/app_kit.dart';
 import 'planner_widgets.dart'; // for DashboardCard
 
 // 11. Planned vs Actual
@@ -149,7 +147,7 @@ class InvestmentTargetWidget extends ConsumerWidget {
       }
     }
 
-    final annualTarget = 600000; // Mock target: e.g. $6000 or similar
+    const annualTarget = 600000; // Mock target: e.g. $6000 or similar
     final progress = (ytdInvested / annualTarget).clamp(0.0, 1.0);
 
     return DashboardCard(
