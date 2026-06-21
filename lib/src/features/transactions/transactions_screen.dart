@@ -23,6 +23,11 @@ final _filteredTransactionsProvider = Provider.autoDispose
       );
       return sortedTransactions(state, includeScheduled: false)
           .where((transaction) {
+            if (filter.statusFilter != 'all') {
+              if (filter.statusFilter == 'cleared' && transaction.status != 'cleared') return false;
+              if (filter.statusFilter == 'pending' && transaction.status != 'pending') return false;
+              if (filter.statusFilter == 'void' && transaction.status != 'void') return false;
+            }
             if (filter.typeFilter == 'income' &&
                 !incomeTypes.contains(transaction.type)) {
               return false;
@@ -128,6 +133,7 @@ final _transactionsFlowProvider = Provider.autoDispose
 
 final transactionsTypeFilterProvider = StateProvider<String>((ref) => 'all');
 final transactionsDateFilterProvider = StateProvider<String>((ref) => 'this_year');
+final transactionsStatusFilterProvider = StateProvider<String>((ref) => 'all');
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({required this.onMenuPressed, super.key});
@@ -151,10 +157,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final accountFilter = ref.watch(homeSelectedAccountProvider);
     final typeFilter = ref.watch(transactionsTypeFilterProvider);
     final dateFilter = ref.watch(transactionsDateFilterProvider);
+    final statusFilter = ref.watch(transactionsStatusFilterProvider);
     final filterState = _TransactionFilterState(
       query: _query,
       typeFilter: typeFilter,
       dateFilter: dateFilter,
+      statusFilter: statusFilter,
       categoryFilterIds: _categoryFilters,
       includeUncategorizedCategory: _includeUncategorizedCategory,
       accountFilter: accountFilter,
@@ -202,11 +210,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             accountLabel:
                 accountById(state, accountFilter)?.name ?? 'All accounts',
             categoryLabel: _categoryFilterLabel(state),
+            statusLabel: _statusFilterLabel(statusFilter),
             typeActive: typeFilter != 'all',
             dateActive: dateFilter != _defaultDateFilter,
             accountActive: accountFilter != null,
             categoryActive:
                 _categoryFilters.isNotEmpty || _includeUncategorizedCategory,
+            statusActive: statusFilter != 'all',
             hasActiveFilters: hasActiveFilters,
             onQueryChanged: (value) => setState(() => _query = value),
             onClear: _clearFilters,
@@ -214,6 +224,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             onDateTap: _showDateFilter,
             onAccountTap: () => _showAccountFilter(state, accountFilter),
             onCategoryTap: () => _showCategoryFilter(state),
+            onStatusTap: _showStatusFilter,
           ),
           Expanded(
             child: transactions.isEmpty
@@ -353,9 +364,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   bool _hasActiveFilters(String? accountFilter) {
     final typeFilter = ref.read(transactionsTypeFilterProvider);
     final dateFilter = ref.read(transactionsDateFilterProvider);
+    final statusFilter = ref.read(transactionsStatusFilterProvider);
     return _query.trim().isNotEmpty ||
         typeFilter != 'all' ||
         dateFilter != _defaultDateFilter ||
+        statusFilter != 'all' ||
         accountFilter != null ||
         _categoryFilters.isNotEmpty ||
         _includeUncategorizedCategory;
@@ -369,6 +382,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     });
     ref.read(transactionsTypeFilterProvider.notifier).state = 'all';
     ref.read(transactionsDateFilterProvider.notifier).state = _defaultDateFilter;
+    ref.read(transactionsStatusFilterProvider.notifier).state = 'all';
     ref.read(homeSelectedAccountProvider.notifier).state = null;
   }
 
@@ -610,6 +624,41 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
     return '$count categories';
   }
+
+  Future<void> _showStatusFilter() async {
+    final current = ref.read(transactionsStatusFilterProvider);
+    final next = await showFullScreenPicker<String>(
+      context: context,
+      title: 'Choose status',
+      searchable: false,
+      selectedValue: current,
+      options: const [
+        PickerOption(
+          value: 'all',
+          title: 'All statuses',
+          icon: Icons.all_inclusive_rounded,
+        ),
+        PickerOption(
+          value: 'cleared',
+          title: 'Cleared',
+          icon: Icons.check_circle_outline,
+        ),
+        PickerOption(
+          value: 'pending',
+          title: 'Pending',
+          icon: Icons.hourglass_empty_rounded,
+        ),
+        PickerOption(
+          value: 'void',
+          title: 'Skipped / Void',
+          icon: Icons.block_rounded,
+        ),
+      ],
+    );
+    if (next != null) {
+      ref.read(transactionsStatusFilterProvider.notifier).state = next;
+    }
+  }
 }
 
 class _TransactionFilterState {
@@ -617,6 +666,7 @@ class _TransactionFilterState {
     required String query,
     required this.typeFilter,
     required this.dateFilter,
+    required this.statusFilter,
     required Set<String> categoryFilterIds,
     required this.includeUncategorizedCategory,
     required this.accountFilter,
@@ -626,6 +676,7 @@ class _TransactionFilterState {
   final String query;
   final String typeFilter;
   final String dateFilter;
+  final String statusFilter;
   final String categoryFilterIds;
   final bool includeUncategorizedCategory;
   final String? accountFilter;
@@ -641,6 +692,7 @@ class _TransactionFilterState {
         other.query == query &&
         other.typeFilter == typeFilter &&
         other.dateFilter == dateFilter &&
+        other.statusFilter == statusFilter &&
         other.categoryFilterIds == categoryFilterIds &&
         other.includeUncategorizedCategory == includeUncategorizedCategory &&
         other.accountFilter == accountFilter;
@@ -651,6 +703,7 @@ class _TransactionFilterState {
     query,
     typeFilter,
     dateFilter,
+    statusFilter,
     categoryFilterIds,
     includeUncategorizedCategory,
     accountFilter,
@@ -722,6 +775,15 @@ String _dateFilterLabel(String value) {
     'last_30_days' => 'Last 30 days',
     'this_year' => 'This year',
     _ => 'All time',
+  };
+}
+
+String _statusFilterLabel(String value) {
+  return switch (value) {
+    'cleared' => 'Cleared',
+    'pending' => 'Pending',
+    'void' => 'Skipped / Void',
+    _ => 'All statuses',
   };
 }
 
