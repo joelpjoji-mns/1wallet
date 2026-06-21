@@ -8,6 +8,7 @@ import '../theme/theme_controller.dart';
 
 import '../data/ledger_providers.dart';
 import '../features/capture/sms_inbox_reader.dart';
+import '../startup/startup_state.dart';
 
 class OneWalletApp extends ConsumerStatefulWidget {
   const OneWalletApp({super.key});
@@ -19,6 +20,8 @@ class OneWalletApp extends ConsumerStatefulWidget {
 class _OneWalletAppState extends ConsumerState<OneWalletApp> {
   late final AppLifecycleListener _listener;
 
+  String? _pendingSmsRoute;
+
   @override
   void initState() {
     super.initState();
@@ -29,14 +32,25 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
       ref.read(ledgerProvider.notifier).processSpooledSms();
       final route = await getInitialSmsRoute();
       if (route != null && mounted) {
-        ref.read(appRouterProvider).push(route);
+        _pendingSmsRoute = route;
+        _tryPushPendingRoute();
       }
     });
     listenForSmsRoute((route) {
       if (mounted) {
-        ref.read(appRouterProvider).push(route);
+        _pendingSmsRoute = route;
+        _tryPushPendingRoute();
       }
     });
+  }
+
+  void _tryPushPendingRoute() {
+    if (_pendingSmsRoute == null || !mounted) return;
+    final startup = ref.read(startupStateProvider);
+    if (!startup.isPending && startup.destination == StartupDestination.home) {
+      ref.read(appRouterProvider).push(_pendingSmsRoute!);
+      _pendingSmsRoute = null;
+    }
   }
 
   @override
@@ -53,6 +67,12 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(startupStateProvider, (prev, next) {
+      if (!next.isPending && next.destination == StartupDestination.home) {
+        _tryPushPendingRoute();
+      }
+    });
+
     final router = ref.watch(appRouterProvider);
     final themeState = ref.watch(themeControllerProvider);
 
