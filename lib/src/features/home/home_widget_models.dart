@@ -24,7 +24,8 @@ enum HomeDashboardWidgetId {
   currencyValues('currencyValues'),
   budgetPressure('budgetPressure'),
   goalProgress('goalProgress'),
-  currencyExposure('currencyExposure');
+  currencyExposure('currencyExposure'),
+  creditUtilization('creditUtilization');
 
   const HomeDashboardWidgetId(this.storageKey);
 
@@ -42,6 +43,7 @@ const defaultHomeWidgetOrder = [
   HomeDashboardWidgetId.topCategories,
   HomeDashboardWidgetId.budgetPressure,
   HomeDashboardWidgetId.goalProgress,
+  HomeDashboardWidgetId.creditUtilization,
 ];
 
 const homeWidgetDatePresets = [
