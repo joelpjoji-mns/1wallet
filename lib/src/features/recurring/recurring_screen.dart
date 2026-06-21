@@ -77,7 +77,11 @@ class RecurringScreen extends ConsumerWidget {
         _ => 'Planned payments',
       },
       actions: [
-        if (recordId != null && mode != 'edit' && mode != 'new' && selected != null)
+        if (recordId != null && mode != 'edit' && mode != 'new' && selected != null) ...[
+          IconButton(
+            onPressed: () => context.push('/recurring/${selected.id}/edit'),
+            icon: const Icon(Icons.edit_rounded),
+          ),
           IconButton(
             onPressed: () async {
               final confirm = await showDialog<bool>(
@@ -114,7 +118,8 @@ class RecurringScreen extends ConsumerWidget {
             },
             icon: const Icon(Icons.delete_outline_rounded),
             color: Theme.of(context).colorScheme.error,
-          )
+          ),
+        ]
         else if (mode != 'edit' && mode != 'new' && mode != 'past')
           IconButton(
             onPressed: () => context.push('/recurring/new'),
@@ -217,7 +222,7 @@ class RecurringScreen extends ConsumerWidget {
                   onTap: () => context.push('/recurring/${transaction.id}'),
                   historyMode: false,
                 ),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: 6),
             ],
         ],
       ),
@@ -342,7 +347,7 @@ class _RecurringCompactCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.md),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1190,34 +1195,35 @@ class RecurringDetailView extends ConsumerWidget {
             ),
           ),
         const Gap(AppSpacing.sm),
-        Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
+        Row(
           children: [
-            OutlinedButton.icon(
-              onPressed: transaction.status == 'scheduled' ? () => _postpone(context, ref) : null,
-              icon: const Icon(Icons.snooze_outlined, size: 18),
-              label: const Text('Postpone'),
-            ),
-            OutlinedButton.icon(
-              onPressed: transaction.status == 'scheduled' ? () => _skip(context, ref) : null,
-              icon: const Icon(Icons.skip_next_rounded, size: 18),
-              label: const Text('Skip next'),
-            ),
-            OutlinedButton.icon(
-              onPressed: () => context.push('/recurring/${transaction.id}/edit'),
-              icon: const Icon(Icons.edit_rounded, size: 18),
-              label: const Text('Edit'),
-            ),
-            if (transaction.status == 'scheduled' || transaction.status == 'paused')
-              OutlinedButton.icon(
-                onPressed: () => transaction.status == 'paused' ? _resume(context, ref) : _pause(context, ref),
-                icon: Icon(transaction.status == 'paused' ? Icons.play_circle_outline_rounded : Icons.pause_circle_outline_rounded, size: 18),
-                label: Text(transaction.status == 'paused' ? 'Resume' : 'Pause'),
-                style: transaction.status == 'paused' 
-                    ? OutlinedButton.styleFrom(foregroundColor: scheme.primary)
-                    : null,
+            Expanded(
+              child: OutlinedButton(
+                onPressed: transaction.status == 'scheduled' ? () => _postpone(context, ref) : null,
+                style: OutlinedButton.styleFrom(padding: EdgeInsets.zero),
+                child: const Text('Postpone', style: TextStyle(fontSize: 13)),
               ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: OutlinedButton(
+                onPressed: transaction.status == 'scheduled' ? () => _skip(context, ref) : null,
+                style: OutlinedButton.styleFrom(padding: EdgeInsets.zero),
+                child: const Text('Skip next', style: TextStyle(fontSize: 13)),
+              ),
+            ),
+            if (transaction.status == 'scheduled' || transaction.status == 'paused') ...[
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => transaction.status == 'paused' ? _resume(context, ref) : _pause(context, ref),
+                  style: transaction.status == 'paused' 
+                      ? OutlinedButton.styleFrom(padding: EdgeInsets.zero, foregroundColor: scheme.primary)
+                      : OutlinedButton.styleFrom(padding: EdgeInsets.zero),
+                  child: Text(transaction.status == 'paused' ? 'Resume' : 'Pause', style: const TextStyle(fontSize: 13)),
+                ),
+              ),
+            ],
           ],
         ),
         const Gap(AppSpacing.xxl),
