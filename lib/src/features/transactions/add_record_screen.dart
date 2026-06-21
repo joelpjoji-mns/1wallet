@@ -62,6 +62,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
   bool _isScanning = false;
   bool _localAmountEdited = false;
   bool _counterAmountEdited = false;
+  String? _status;
 
   @override
   void initState() {
@@ -480,6 +481,21 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                           ),
                         ),
                         const SizedBox(height: AppSpacing.md),
+                        DropdownButtonFormField<String>(
+                          value: _status ?? 'cleared',
+                          decoration: InputDecoration(
+                            labelText: 'Status',
+                            prefixIcon: const Icon(Icons.info_outline),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadii.md)),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'cleared', child: Text('Cleared')),
+                            DropdownMenuItem(value: 'pending', child: Text('Pending')),
+                            DropdownMenuItem(value: 'void', child: Text('Skipped / Void')),
+                          ],
+                          onChanged: (val) => setState(() => _status = val),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
                         FilledButton.icon(
                           onPressed: _saveRecord,
                           icon: const Icon(Icons.save_outlined),
@@ -661,6 +677,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
     if (_type != 'transfer' && selectedCategory == null) { _showMessage('Choose a category.'); return; }
 
     try {
+      final editingTransaction = widget.transactionId == null ? null : state.transactions.firstWhereOrNull((t) => t.id == widget.transactionId);
       final plannedTransaction = widget.plannedId == null ? null : state.transactions.firstWhereOrNull((t) => t.id == widget.plannedId);
       final savedTx = await ref.read(ledgerProvider.notifier).upsertTransaction(
         id: widget.transactionId,
@@ -672,11 +689,11 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
         originalCurrency: finalOriginalCurrency,
         counterAmountMinor: finalCounterAmountMinor,
         categoryId: _type == 'transfer' ? null : selectedCategory!.id,
-        status: 'cleared',
-        source: plannedTransaction?.source ?? 'manual',
+        status: _status ?? editingTransaction?.status ?? 'cleared',
+        source: editingTransaction?.source ?? plannedTransaction?.source ?? 'manual',
         notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
         occurredAt: _occurredAt,
-        originalTransactionId: widget.plannedId,
+        originalTransactionId: widget.plannedId ?? editingTransaction?.originalTransactionId,
       );
 
       if (plannedTransaction != null &&
@@ -725,6 +742,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       _notesController.text = source.notes ?? '';
       _transactionCurrency = source.originalAmount?.currency ?? source.amount.currency;
       _amount = _formatAmountInput((source.originalAmount ?? source.amount).amountMinor, _transactionCurrency!);
+      _status = source.status;
     }
   }
 

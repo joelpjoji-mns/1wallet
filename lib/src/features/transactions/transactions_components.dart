@@ -10,10 +10,12 @@ class TransactionCommandStrip extends StatelessWidget {
     required this.dateLabel,
     required this.accountLabel,
     required this.categoryLabel,
+    required this.statusLabel,
     required this.typeActive,
     required this.dateActive,
     required this.accountActive,
     required this.categoryActive,
+    required this.statusActive,
     required this.hasActiveFilters,
     required this.onQueryChanged,
     required this.onClear,
@@ -21,6 +23,7 @@ class TransactionCommandStrip extends StatelessWidget {
     required this.onDateTap,
     required this.onAccountTap,
     required this.onCategoryTap,
+    required this.onStatusTap,
     super.key,
   });
 
@@ -29,10 +32,12 @@ class TransactionCommandStrip extends StatelessWidget {
   final String dateLabel;
   final String accountLabel;
   final String categoryLabel;
+  final String statusLabel;
   final bool typeActive;
   final bool dateActive;
   final bool accountActive;
   final bool categoryActive;
+  final bool statusActive;
   final bool hasActiveFilters;
   final ValueChanged<String> onQueryChanged;
   final VoidCallback onClear;
@@ -40,6 +45,7 @@ class TransactionCommandStrip extends StatelessWidget {
   final VoidCallback onDateTap;
   final VoidCallback onAccountTap;
   final VoidCallback onCategoryTap;
+  final VoidCallback onStatusTap;
 
   @override
   Widget build(BuildContext context) {
@@ -112,6 +118,12 @@ class TransactionCommandStrip extends StatelessWidget {
                               label: categoryLabel,
                               active: categoryActive,
                               onTap: onCategoryTap,
+                            ),
+                            FilterPill(
+                              icon: Icons.info_outline,
+                              label: statusLabel,
+                              active: statusActive,
+                              onTap: onStatusTap,
                             ),
                           ],
                         ),
