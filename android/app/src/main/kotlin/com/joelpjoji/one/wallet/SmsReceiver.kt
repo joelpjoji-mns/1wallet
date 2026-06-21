@@ -107,6 +107,7 @@ class SmsReceiver : BroadcastReceiver() {
         }
 
         val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+        launchIntent?.putExtra("flutter_route", "/review")
         val pendingIntent = PendingIntent.getActivity(context, 0, launchIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -121,6 +122,6 @@ class SmsReceiver : BroadcastReceiver() {
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
 
-        notificationManager.notify((System.currentTimeMillis() % 10000).toInt(), builder.build())
+        notificationManager.notify(1001, builder.build())
     }
 }

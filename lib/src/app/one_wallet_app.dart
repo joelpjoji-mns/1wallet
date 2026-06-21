@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../theme/theme_controller.dart';
 
 import '../data/ledger_providers.dart';
+import '../features/capture/sms_inbox_reader.dart';
 
 class OneWalletApp extends ConsumerStatefulWidget {
   const OneWalletApp({super.key});
@@ -24,8 +25,17 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     _listener = AppLifecycleListener(
       onStateChange: _onStateChanged,
     );
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       ref.read(ledgerProvider.notifier).processSpooledSms();
+      final route = await getInitialSmsRoute();
+      if (route != null && mounted) {
+        ref.read(appRouterProvider).push(route);
+      }
+    });
+    listenForSmsRoute((route) {
+      if (mounted) {
+        ref.read(appRouterProvider).push(route);
+      }
     });
   }
 

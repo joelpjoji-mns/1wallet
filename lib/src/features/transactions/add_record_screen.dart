@@ -100,8 +100,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
         : state.captureCandidates.firstWhereOrNull(
             (c) => c.id == widget.captureCandidateId,
           );
-    _syncEditDraft(editingTransaction, plannedTransaction, state);
-    _syncCaptureDraft(captureCandidate, state);
+    _syncDrafts(editingTransaction, plannedTransaction, captureCandidate, state);
     _syncCreateDraftAccount(state, editingTransaction ?? plannedTransaction);
     _clearInvalidCategory(state, editingTransaction ?? plannedTransaction);
     final sourceAccount = accountById(state, _accountId);
@@ -700,35 +699,33 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
     ScaffoldMessenger.of(context)..hideCurrentSnackBar()..showSnackBar(SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating));
   }
 
-  void _syncEditDraft(TransactionRecord? tx, TransactionRecord? planned, LedgerState state) {
-    final key = tx?.id ?? planned?.id ?? '__new__';
+  void _syncDrafts(TransactionRecord? tx, TransactionRecord? planned, CaptureCandidate? candidate, LedgerState state) {
+    final hasCapture = widget.captureCandidateId != null;
+    final key = tx?.id ?? planned?.id ?? (hasCapture ? 'cap_${widget.captureCandidateId}' : '__new__');
     if (_loadedTransactionId == key) return;
     _loadedTransactionId = key;
-    final source = tx ?? planned;
-    if (source == null) return;
-    _type = source.type;
-    _accountId = source.accountId;
-    _counterAccountId = source.counterAccountId;
-    _categoryId = source.categoryId;
-    _notesController.text = source.notes ?? '';
-    _transactionCurrency = source.originalAmount?.currency ?? source.amount.currency;
-    _amount = _formatAmountInput((source.originalAmount ?? source.amount).amountMinor, _transactionCurrency);
-  }
 
-  void _syncCaptureDraft(CaptureCandidate? candidate, LedgerState state) {
-    if (candidate == null) return;
-    final key = 'cap_${candidate.id}';
-    if (_loadedTransactionId == key) return;
-    _loadedTransactionId = key;
-    _type = candidate.transactionType == 'income' ? 'income' : 'expense';
-    _accountId = candidate.suggestedAccountId ?? accountById(state, _accountId)?.id ?? state.accounts.firstWhereOrNull((a) => !a.isArchived)?.id;
-    _categoryId = candidate.suggestedCategoryId;
-    _notesController.text = candidate.merchant ?? candidate.rawText ?? '';
-    if (candidate.parsedAmount != null) {
-      _transactionCurrency = candidate.parsedAmount!.currency;
-      _amount = _formatAmountInput(candidate.parsedAmount!.amountMinor, _transactionCurrency);
+    if (hasCapture && candidate != null) {
+      _type = candidate.transactionType == 'income' ? 'income' : 'expense';
+      _accountId = candidate.suggestedAccountId ?? accountById(state, _accountId)?.id ?? state.accounts.firstWhereOrNull((a) => !a.isArchived)?.id;
+      _categoryId = candidate.suggestedCategoryId;
+      _notesController.text = candidate.merchant ?? candidate.rawText ?? '';
+      if (candidate.parsedAmount != null) {
+        _transactionCurrency = candidate.parsedAmount!.currency;
+        _amount = _formatAmountInput(candidate.parsedAmount!.amountMinor, _transactionCurrency!);
+      }
+      _occurredAt = candidate.createdAt;
+    } else {
+      final source = tx ?? planned;
+      if (source == null) return;
+      _type = source.type;
+      _accountId = source.accountId;
+      _counterAccountId = source.counterAccountId;
+      _categoryId = source.categoryId;
+      _notesController.text = source.notes ?? '';
+      _transactionCurrency = source.originalAmount?.currency ?? source.amount.currency;
+      _amount = _formatAmountInput((source.originalAmount ?? source.amount).amountMinor, _transactionCurrency!);
     }
-    _occurredAt = candidate.createdAt;
   }
 
   void _syncCreateDraftAccount(LedgerState state, TransactionRecord? source) {

@@ -362,19 +362,30 @@ class ReviewQueueScreen extends ConsumerWidget {
   ) async {
     final notifier = ref.read(ledgerProvider.notifier);
     if (status == 'approved') {
-      await notifier.approveCaptureCandidates(ids);
+      final newTxs = await notifier.approveCaptureCandidates(ids);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(newTxs.length == ids.length 
+                ? '${newTxs.length} candidates marked approved.' 
+                : '${newTxs.length} out of ${ids.length} candidates approved. Check if an account is set.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
     } else {
       await notifier.updateCaptureCandidateStatuses(ids, status);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('${ids.length} candidates marked $status.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
     }
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('${ids.length} candidates marked $status.'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
   }
 
 

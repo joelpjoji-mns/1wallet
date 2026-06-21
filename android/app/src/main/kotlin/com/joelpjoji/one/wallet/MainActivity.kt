@@ -7,11 +7,29 @@ import io.flutter.plugin.common.MethodChannel
 import android.content.pm.PackageManager
 import android.provider.Telephony
 import android.net.Uri
+import android.os.Bundle
+import android.content.Intent
 import org.json.JSONArray
 import org.json.JSONObject
 
 class MainActivity : FlutterFragmentActivity() {
 	private val CHANNEL = "com.joelpjoji.one.wallet/sms"
+    private var initialRoute: String? = null
+    private var methodChannel: MethodChannel? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        initialRoute = intent?.getStringExtra("flutter_route")
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        val route = intent.getStringExtra("flutter_route")
+        if (route != null) {
+            initialRoute = route
+            methodChannel?.invokeMethod("onRoute", route)
+        }
+    }
 
 	override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
 		super.configureFlutterEngine(flutterEngine)
@@ -19,8 +37,14 @@ class MainActivity : FlutterFragmentActivity() {
 			flutterEngine.plugins.add(FlutterFirebaseFirestorePlugin())
 		}
 
-		MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+		methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+		methodChannel!!.setMethodCallHandler { call, result ->
 			when (call.method) {
+				"getInitialRoute" -> {
+					val r = initialRoute
+					initialRoute = null
+					result.success(r)
+				}
 				"isAvailable" -> result.success(true)
 				"getPermissionState" -> {
 					val read = if (checkSelfPermission(android.Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED) "granted" else "denied"
