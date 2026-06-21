@@ -355,5 +355,6 @@ String _homeWidgetLabel(HomeDashboardWidgetId id) {
     HomeDashboardWidgetId.budgetPressure => 'Budget Pressure',
     HomeDashboardWidgetId.goalProgress => 'Goal Progress',
     HomeDashboardWidgetId.currencyExposure => 'Currency Exposure',
+    HomeDashboardWidgetId.creditUtilization => 'Credit Utilization',
   };
 }

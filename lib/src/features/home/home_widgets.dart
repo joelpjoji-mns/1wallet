@@ -20,6 +20,7 @@ import 'home_dashboard_selectors.dart';
 import 'home_widget_card.dart';
 import 'home_widget_models.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../planner/planner_widgets.dart';
 
 
 final _homeScheduledTransactionsProvider =
@@ -59,7 +60,7 @@ Widget buildHomeDashboardWidget({
       state: state,
       onView: () => onTabSelected(1),
     ),
-    HomeDashboardWidgetId.balanceTrend => BalanceTrendHomeWidget(state: state),
+    HomeDashboardWidgetId.balanceTrend => BalanceTrendWidget(state: state),
     HomeDashboardWidgetId.currencyValues => CurrencyValuesHomeWidget(
       state: state,
     ),
@@ -95,10 +96,7 @@ Widget buildHomeDashboardWidget({
       state: state,
     ),
     HomeDashboardWidgetId.cashflowBook => CashflowBookHomeWidget(state: state),
-    HomeDashboardWidgetId.topCategories => TopCategoriesHomeWidget(
-      state: state,
-      onRecords: () => onTabSelected(1),
-    ),
+    HomeDashboardWidgetId.topCategories => TopCategoriesWidget(state: state),
     HomeDashboardWidgetId.incomeMix => IncomeMixHomeWidget(
       state: state,
       onRecords: () => onTabSelected(1),
@@ -110,6 +108,7 @@ Widget buildHomeDashboardWidget({
     HomeDashboardWidgetId.currencyExposure => CurrencyExposureHomeWidget(
       state: state,
     ),
+    HomeDashboardWidgetId.creditUtilization => CreditUtilizationWidget(state: state),
   };
 }
 
