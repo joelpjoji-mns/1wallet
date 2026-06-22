@@ -25,7 +25,8 @@ class _DebtFreeTargetWidgetState extends ConsumerState<DebtFreeTargetWidget> {
     int maxMonthsStandard = 0;
     for (final loan in activeLoans) {
       final proj = loanProjection(widget.state, loan);
-      totalPrincipal += proj.principalRemaining ?? 0;
+      final bal = accountBalance(widget.state, loan).amountMinor.abs().toDouble();
+      totalPrincipal += bal;
       if (proj.monthsRemaining != null && proj.monthsRemaining! > maxMonthsStandard) {
         maxMonthsStandard = proj.monthsRemaining!;
       }
@@ -37,8 +38,9 @@ class _DebtFreeTargetWidgetState extends ConsumerState<DebtFreeTargetWidget> {
     double totalStandardMonthly = 0;
     for (final loan in activeLoans) {
       final proj = loanProjection(widget.state, loan);
+      final bal = accountBalance(widget.state, loan).amountMinor.abs().toDouble();
       if (proj.monthsRemaining != null && proj.monthsRemaining! > 0) {
-        totalStandardMonthly += (proj.principalRemaining ?? 0) / proj.monthsRemaining!;
+        totalStandardMonthly += bal / proj.monthsRemaining!;
       }
     }
     

@@ -39,7 +39,7 @@ void main() {
         overrides: authenticatedSampleOverrides(ledger: state),
         child: MaterialApp(
           home: Scaffold(
-            body: AccountGridHomeWidget(state: state, onManage: () {}),
+            body: AccountGridHomeWidget(state: state, onTabSelected: (int index) {}),
           ),
         ),
       ),
@@ -80,7 +80,7 @@ void main() {
         overrides: authenticatedSampleOverrides(ledger: state),
         child: MaterialApp(
           home: Scaffold(
-            body: AccountGridHomeWidget(state: state, onManage: () {}),
+            body: AccountGridHomeWidget(state: state, onTabSelected: (int index) {}),
           ),
         ),
       ),

@@ -15,6 +15,7 @@ class HomeWidgetCard extends StatelessWidget {
     this.iconColor,
     this.actionLabel,
     this.onAction,
+    this.headerTrailing,
   });
 
   final String title;
@@ -23,6 +24,7 @@ class HomeWidgetCard extends StatelessWidget {
   final Color? iconColor;
   final String? actionLabel;
   final VoidCallback? onAction;
+  final Widget? headerTrailing;
   final Widget child;
 
   @override
@@ -101,6 +103,10 @@ class HomeWidgetCard extends StatelessWidget {
                   onPressed: onAction,
                   child: Text(actionLabel!),
                 ),
+              ],
+              if (headerTrailing != null) ...[
+                const SizedBox(width: AppSpacing.xs),
+                headerTrailing!,
               ],
             ],
           ),
