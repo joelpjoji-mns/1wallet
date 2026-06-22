@@ -70,46 +70,7 @@ class DailySpendingLimitWidget extends ConsumerWidget {
 }
 
 // 2. Upcoming Planned Bills
-class UpcomingPlannedBillsWidget extends ConsumerWidget {
-  const UpcomingPlannedBillsWidget({required this.state, super.key});
-  final LedgerState state;
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final now = DateTime.now();
-    final nextWeek = now.add(const Duration(days: 7));
-    
-    final upcoming = scheduledTransactions(state).where((tx) {
-      return expenseTypes.contains(tx.type) && tx.occurredAt.isAfter(now) && tx.occurredAt.isBefore(nextWeek);
-    }).toList();
-    
-    upcoming.sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
-    final scheme = Theme.of(context).colorScheme;
-
-    return DashboardCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.receipt_long_rounded, color: scheme.error),
-              const SizedBox(width: 8),
-              const Text('Upcoming Bills (7 Days)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          if (upcoming.isEmpty)
-            Text('No bills due in the next 7 days!', style: TextStyle(color: scheme.primary))
-          else
-            ...upcoming.map((tx) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: TransactionRow(state: state, transaction: tx, onTap: () => context.push('/transaction/${tx.id}')),
-            )),
-        ],
-      ),
-    );
-  }
-}
 
 // 3. Upcoming Income
 class UpcomingIncomeWidget extends ConsumerWidget {

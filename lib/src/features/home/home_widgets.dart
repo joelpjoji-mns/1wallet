@@ -1020,58 +1020,7 @@ class _CalculatorRow extends StatelessWidget {
   }
 }
 
-class FinanceSummaryHomeWidget extends ConsumerWidget {
-  const FinanceSummaryHomeWidget({required this.state, super.key});
 
-  final LedgerState state;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final worth = ref.watch(homeNetWorthProvider);
-    final scheduled = ref
-        .watch(_homeScheduledTransactionsProvider)
-        .fold<int>(0, (sum, tx) => sum + tx.baseAmount.amountMinor);
-    return HomeWidgetCard(
-      title: 'Finance summary',
-      icon: Icons.grid_view_rounded,
-      iconColor: Theme.of(context).colorScheme.error,
-      child: Row(
-        children: [
-          Expanded(
-            child: HomeMetricTile(
-              label: 'Planned',
-              value: _formatDisplayBaseMoney(state, scheduled),
-              icon: Icons.event_repeat_outlined,
-              tone: MetricTone.warning,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          Expanded(
-            child: HomeMetricTile(
-              label: 'Debts',
-              value: formatMoney(
-                worth.liabilities.copyWith(
-                  amountMinor: worth.liabilities.amountMinor.abs(),
-                ),
-                state.preferences.locale,
-              ),
-              icon: Icons.credit_card_outlined,
-              tone: MetricTone.danger,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          Expanded(
-            child: HomeMetricTile(
-              label: 'Net worth',
-              value: formatMoney(worth.total, state.preferences.locale),
-              icon: Icons.balance_outlined,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class UpcomingDueHomeWidget extends ConsumerWidget {
   const UpcomingDueHomeWidget({required this.state, super.key});
@@ -1517,88 +1466,7 @@ class CardsHomeWidget extends ConsumerWidget {
   }
 }
 
-class CashflowForecastHomeWidget extends ConsumerWidget {
-  const CashflowForecastHomeWidget({required this.state, super.key});
 
-  final LedgerState state;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final end = DateTime.now().add(const Duration(days: 30));
-    final upcoming = ref
-        .watch(_homeScheduledTransactionsProvider)
-        .where((transaction) => !transaction.occurredAt.isAfter(end))
-        .toList();
-    var income = 0;
-    var outflow = 0;
-    for (final transaction in upcoming) {
-      if (incomeTypes.contains(transaction.type)) {
-        income += transaction.baseAmount.amountMinor;
-      } else {
-        outflow += transaction.baseAmount.amountMinor;
-      }
-    }
-    final next = upcoming.isEmpty ? null : upcoming.first;
-    return HomeWidgetCard(
-      title: '30-day forecast',
-      subtitle: 'Next 30 days',
-      icon: Icons.calendar_month_outlined,
-      iconColor: Theme.of(context).colorScheme.tertiary,
-      actionLabel: 'Plan',
-      onAction: () => context.push('/recurring'),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: HomeMetricTile(
-                  label: 'Income',
-                  value: _formatDisplayBaseMoney(state, income),
-                  icon: Icons.arrow_downward_rounded,
-                  tone: MetricTone.positive,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: HomeMetricTile(
-                  label: 'Outflow',
-                  value: _formatDisplayBaseMoney(state, outflow),
-                  icon: Icons.arrow_upward_rounded,
-                  tone: MetricTone.danger,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: HomeMetricTile(
-                  label: 'Net',
-                  value: _formatDisplayBaseMoney(state, income - outflow),
-                  icon: Icons.swap_vert_rounded,
-                  tone: income >= outflow
-                      ? MetricTone.positive
-                      : MetricTone.danger,
-                ),
-              ),
-            ],
-          ),
-          if (next != null) ...[
-            const SizedBox(height: AppSpacing.sm),
-            HomeDetailRow(
-              icon: Icons.schedule_outlined,
-              title: 'Next scheduled',
-              subtitle:
-                  '${_shortDate(next.occurredAt, state.preferences.locale)} · ${transactionTypeLabel(next.type)}',
-              trailing: _formatDisplayMoney(state, next.baseAmount),
-              iconColor: Theme.of(context).colorScheme.error,
-              tone: incomeTypes.contains(next.type)
-                  ? MetricTone.positive
-                  : MetricTone.danger,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
 
 class AccountGroupsHomeWidget extends StatelessWidget {
   const AccountGroupsHomeWidget({required this.state, super.key});
@@ -1644,206 +1512,11 @@ class AccountGroupsHomeWidget extends StatelessWidget {
   }
 }
 
-class AutomationReviewHomeWidget extends StatelessWidget {
-  const AutomationReviewHomeWidget({required this.state, super.key});
 
-  final LedgerState state;
 
-  @override
-  Widget build(BuildContext context) {
-    final pending = state.captureCandidates
-        .where((candidate) => candidate.status == 'pending')
-        .toList();
-    final sources = pending.map((candidate) => candidate.source).toSet().length;
-    return HomeWidgetCard(
-      title: 'Automation & review',
-      subtitle: 'Queue, imports, and sources',
-      icon: Icons.verified_user_outlined,
-      iconColor: Theme.of(context).colorScheme.tertiary,
-      actionLabel: 'Review',
-      onAction: () => context.push('/review'),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: HomeMetricTile(
-                  label: 'Review',
-                  value: '${pending.length}',
-                  icon: Icons.smart_toy_outlined,
-                  tone: pending.isEmpty
-                      ? MetricTone.standard
-                      : MetricTone.warning,
-                ),
-              ),
 
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: HomeMetricTile(
-                  label: 'Sources',
-                  value: '$sources',
-                  icon: Icons.hub_outlined,
-                  tone: MetricTone.standard,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          HomeDetailRow(
-            icon: Icons.import_export_outlined,
-            title: 'Import batches',
-            subtitle: 'CSV, SMS, and migration imports',
-            trailing: '${state.importBatches.length}',
-            iconColor: Theme.of(context).colorScheme.secondary,
-          ),
-        ],
-      ),
-    );
-  }
-}
 
-class SavingsRunwayHomeWidget extends StatelessWidget {
-  const SavingsRunwayHomeWidget({required this.state, super.key});
 
-  final LedgerState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final liquid = state.accounts
-        .where(
-          (account) =>
-              !account.isArchived &&
-              !isLiabilityAccount(account) &&
-              {'bank', 'cash', 'wallet'}.contains(account.type),
-        )
-        .fold<int>(
-          0,
-          (sum, account) => sum + _displayAccountBalanceMinor(state, account),
-        );
-    final since = DateTime.now().subtract(const Duration(days: 30));
-    final expenses = state.transactions
-        .where((transaction) {
-          return transaction.status != 'scheduled' &&
-              transaction.status != 'void' &&
-              expenseTypes.contains(transaction.type) &&
-              !transaction.isExcludedFromReports &&
-              !transaction.occurredAt.isBefore(since);
-        })
-        .fold<int>(
-          0,
-          (sum, transaction) =>
-              sum +
-              _displayBaseMinor(state, transaction.baseAmount.amountMinor),
-        );
-    final dailyBurn = (expenses / 30).round();
-    final runway = dailyBurn <= 0 ? null : (liquid / dailyBurn).floor();
-    return HomeWidgetCard(
-      title: 'Savings runway',
-      subtitle: 'Liquid cash vs last 30 days',
-      icon: Icons.hourglass_bottom_rounded,
-      iconColor: Theme.of(context).colorScheme.secondary,
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: HomeMetricTile(
-                  label: 'Liquid',
-                  value: formatMoney(
-                    Money(
-                      amountMinor: liquid,
-                      currency: state.preferences.displayCurrency,
-                    ),
-                    state.preferences.locale,
-                  ),
-                  icon: Icons.account_balance_wallet_outlined,
-                  tone: MetricTone.positive,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: HomeMetricTile(
-                  label: 'Runway',
-                  value: runway == null ? '—' : '${runway}d',
-                  icon: Icons.hourglass_empty_rounded,
-                  tone: MetricTone.warning,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          HomeDetailRow(
-            icon: Icons.trending_up_rounded,
-            title: 'Daily burn',
-            subtitle: 'Based on cleared expenses',
-            trailing: formatMoney(
-              Money(
-                amountMinor: dailyBurn,
-                currency: state.preferences.displayCurrency,
-              ),
-              state.preferences.locale,
-            ),
-            iconColor: Theme.of(context).colorScheme.error,
-            tone: MetricTone.danger,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class CashflowBookHomeWidget extends ConsumerWidget {
-  const CashflowBookHomeWidget({required this.state, super.key});
-
-  final LedgerState state;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final flow = ref.watch(_homeCurrentMonthFlowProvider);
-    final net = flow.income.amountMinor - flow.expense.amountMinor;
-    return HomeWidgetCard(
-      title: 'Cashflow book',
-      subtitle: _monthRangeLabel(DateTime.now(), state.preferences.locale),
-      icon: Icons.receipt_long_outlined,
-      iconColor: Theme.of(context).colorScheme.error,
-      child: Column(
-        children: [
-          HomeDetailRow(
-            icon: Icons.arrow_downward_rounded,
-            title: 'Income',
-            trailing: formatMoney(flow.income, state.preferences.locale),
-            iconColor: Theme.of(context).colorScheme.tertiary,
-            tone: MetricTone.positive,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          HomeDetailRow(
-            icon: Icons.arrow_upward_rounded,
-            title: 'Expenses',
-            trailing: formatMoney(flow.expense, state.preferences.locale),
-            iconColor: Theme.of(context).colorScheme.error,
-            tone: MetricTone.danger,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          HomeDetailRow(
-            icon: Icons.swap_vert_rounded,
-            title: 'Net',
-            trailing: formatMoney(
-              Money(
-                amountMinor: net,
-                currency: state.preferences.displayCurrency,
-              ),
-              state.preferences.locale,
-            ),
-            iconColor: net >= 0
-              ? Theme.of(context).colorScheme.tertiary
-              : Theme.of(context).colorScheme.error,
-            tone: net >= 0 ? MetricTone.positive : MetricTone.danger,
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class TopCategoriesHomeWidget extends StatelessWidget {
   const TopCategoriesHomeWidget({
@@ -1870,30 +1543,7 @@ class TopCategoriesHomeWidget extends StatelessWidget {
   }
 }
 
-class IncomeMixHomeWidget extends StatelessWidget {
-  const IncomeMixHomeWidget({
-    required this.state,
-    required this.onRecords,
-    super.key,
-  });
 
-  final LedgerState state;
-  final VoidCallback onRecords;
-
-  @override
-  Widget build(BuildContext context) {
-    final items = _categoryTotals(state, income: true).take(4).toList();
-    return _CategoryListWidget(
-      state: state,
-      title: 'Income mix',
-      icon: Icons.donut_large_outlined,
-      iconColor: Theme.of(context).colorScheme.tertiary,
-      actionLabel: 'Records',
-      onRecords: onRecords,
-      items: items,
-    );
-  }
-}
 
 class BudgetPressureHomeWidget extends StatelessWidget {
   const BudgetPressureHomeWidget({required this.state, super.key});
@@ -1977,44 +1627,7 @@ class GoalProgressHomeWidget extends StatelessWidget {
   }
 }
 
-class CurrencyExposureHomeWidget extends StatelessWidget {
-  const CurrencyExposureHomeWidget({required this.state, super.key});
 
-  final LedgerState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final exposure = foreignCurrencyExposure(state);
-    return HomeWidgetCard(
-      title: 'Currency exposure',
-      icon: Icons.currency_exchange_outlined,
-      iconColor: Theme.of(context).colorScheme.tertiary,
-      actionLabel: 'Rates',
-      onAction: () => context.push('/currencies'),
-      child: exposure.isEmpty
-          ? Text(
-              'No non-${state.preferences.baseCurrency} balances yet.',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            )
-          : Column(
-              children: [
-                for (final money in exposure.take(5)) ...[
-                  HomeDetailRow(
-                    icon: Icons.monetization_on_outlined,
-                    title: money.currency,
-                    trailing: _formatDisplayMoney(state, money),
-                    iconColor: Theme.of(context).colorScheme.tertiary,
-                  ),
-                  if (money != exposure.take(5).last)
-                    const Divider(height: AppSpacing.md),
-                ],
-              ],
-            ),
-    );
-  }
-}
 
 class _CategoryListWidget extends StatelessWidget {
   const _CategoryListWidget({
