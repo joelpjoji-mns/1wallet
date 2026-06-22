@@ -12,6 +12,7 @@ import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 import '../common/category_hierarchy_picker.dart';
 import '../common/full_screen_picker.dart';
+import '../../utils/number_formatter.dart';
 
 class CaptureDetailScreen extends ConsumerStatefulWidget {
   const CaptureDetailScreen({required this.candidateId, super.key});
@@ -96,7 +97,8 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
               children: [
                 TextField(
                   controller: _amountController,
-                  keyboardType: TextInputType.number,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [ThousandsSeparatorInputFormatter()],
                   decoration: const InputDecoration(
                     labelText: 'Amount',
                     prefixIcon: Icon(Icons.payments_outlined),

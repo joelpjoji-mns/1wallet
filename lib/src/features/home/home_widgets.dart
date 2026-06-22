@@ -11,6 +11,7 @@ import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../utils/currency_utils.dart';
+import '../../utils/number_formatter.dart';
 import '../../widgets/app_kit.dart';
 import '../transactions/transaction_row.dart';
 import '../transactions/transactions_screen.dart';
@@ -972,6 +973,7 @@ class _CalculatorRow extends StatelessWidget {
               enabled: hasRate,
               textAlign: TextAlign.left,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [ThousandsSeparatorInputFormatter()],
               decoration: InputDecoration(
                 border: InputBorder.none,
                 isDense: true,
