@@ -14,6 +14,7 @@ import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/currency_picker.dart';
+import '../../utils/number_formatter.dart';
 import '../common/category_hierarchy_picker.dart';
 import '../common/full_screen_picker.dart';
 import '../transactions/transaction_row.dart';
@@ -608,7 +609,8 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                   Expanded(
                     child: TextFormField(
                       controller: _amountController,
-                      keyboardType: TextInputType.number,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [ThousandsSeparatorInputFormatter()],
                       decoration: const InputDecoration(
                         labelText: 'Amount',
                         prefixIcon: Icon(Icons.payments_outlined),

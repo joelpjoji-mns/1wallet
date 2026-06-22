@@ -14,6 +14,7 @@ import '../../widgets/currency_picker.dart';
 import '../common/full_screen_picker.dart';
 import '../transactions/transaction_row.dart';
 import '../../utils/recurrence_utils.dart';
+import '../../utils/number_formatter.dart';
 import 'loan_forecast_simulator.dart';
 
 class LoansScreen extends ConsumerWidget {
@@ -252,7 +253,8 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                   Expanded(
                     child: TextFormField(
                       controller: _principalController,
-                      keyboardType: TextInputType.number,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [ThousandsSeparatorInputFormatter()],
                       decoration: const InputDecoration(
                         labelText: 'Principal',
                         prefixIcon: Icon(Icons.payments_outlined),
@@ -263,7 +265,8 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                   Expanded(
                     child: TextFormField(
                       controller: _emiController,
-                      keyboardType: TextInputType.number,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [ThousandsSeparatorInputFormatter()],
                       decoration: const InputDecoration(
                         labelText: 'Repayment amount',
                         prefixIcon: Icon(Icons.event_repeat_outlined),
@@ -278,7 +281,8 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                   Expanded(
                     child: TextFormField(
                       controller: _rateController,
-                      keyboardType: TextInputType.number,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [ThousandsSeparatorInputFormatter()],
                       decoration: const InputDecoration(
                         labelText: 'Rate %',
                         prefixIcon: Icon(Icons.percent_rounded),

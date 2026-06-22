@@ -10,7 +10,9 @@ import 'onboarding_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:uuid/uuid.dart';
 import '../../data/ledger_providers.dart';
+import '../../data/ledger_providers.dart';
 import '../../widgets/currency_picker.dart';
+import '../../utils/number_formatter.dart';
 class _AccountDraft {
   String name;
   String type;
@@ -112,7 +114,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
     // Save accounts to ledger
     for (final draft in _accounts) {
-      final parsedOpening = int.tryParse(draft.opening) ?? 0;
+      final parsedOpening = int.tryParse(draft.opening.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
       await ledgerNotifier.upsertAccount(
         id: const Uuid().v4(),
         name: draft.name,
@@ -332,7 +334,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 const SizedBox(height: 16),
                 TextField(
                   onChanged: (v) => setState(() => _currentDraft.opening = v),
-                  keyboardType: TextInputType.number,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [ThousandsSeparatorInputFormatter()],
                   decoration: InputDecoration(hintText: 'Current balance', suffixText: _currentDraft.currency),
                 ),
               ],

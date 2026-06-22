@@ -15,6 +15,7 @@ import '../../widgets/app_kit.dart';
 import '../../widgets/currency_picker.dart';
 import '../../widgets/credit_card_view.dart';
 import '../../widgets/color_picker_dialog.dart';
+import '../../utils/number_formatter.dart';
 import '../common/full_screen_picker.dart';
 import '../common/route_scaffold.dart';
 
@@ -162,6 +163,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                             TextFormField(
                               controller: _creditLimitController,
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: [ThousandsSeparatorInputFormatter()],
                               decoration: const InputDecoration(
                                 labelText: 'Credit Limit',
                                 prefixIcon: Icon(Icons.credit_score_outlined),
@@ -429,7 +431,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     Money? parsedCreditLimit;
     if (isCardType && _creditLimitController.text.trim().isNotEmpty) {
       final currency = _selectedCurrency ?? account?.currency ?? state.preferences.baseCurrency;
-      final normalized = _creditLimitController.text.replaceAll(',', '').trim();
+      final normalized = _creditLimitController.text.replaceAll(RegExp(r'[^0-9.]'), '');
       final parsed = double.tryParse(normalized) ?? 0;
       parsedCreditLimit = Money(
         amountMinor: (parsed * math.pow(10, minorUnits(currency))).round(),
