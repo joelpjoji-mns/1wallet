@@ -170,9 +170,12 @@ class BudgetHealth503020Widget extends ConsumerWidget {
       if (tx.occurredAt.year == now.year && tx.occurredAt.month == now.month) {
         if (incomeTypes.contains(tx.type)) totalIncome += tx.amount.amountMinor;
         if (expenseTypes.contains(tx.type)) {
-          // Simplistic logic: assume groceries/bills are needs, dining/entertainment are wants
           final catName = tx.categoryId != null ? categoryById(state, tx.categoryId!)?.name.toLowerCase() ?? '' : '';
-          if (catName.contains('grocer') || catName.contains('bill') || catName.contains('rent') || catName.contains('utilit')) {
+          
+          final needsKeywords = ['grocer', 'bill', 'rent', 'utilit', 'mortgage', 'insur', 'medic', 'tax', 'debt', 'emi', 'loan', 'educat'];
+          final isNeed = needsKeywords.any((k) => catName.contains(k));
+
+          if (isNeed) {
             totalNeeds += tx.amount.amountMinor;
           } else {
             totalWants += tx.amount.amountMinor;
@@ -259,7 +262,7 @@ class EmergencyFundHealthWidget extends ConsumerWidget {
     int totalCash = 0;
     final balances = accountBalanceMap(state);
     for (final acc in state.accounts) {
-      if (acc.type == 'cash' || acc.type == 'bank') {
+      if (acc.type == 'emergency' || acc.name.toLowerCase().contains('emergency')) {
         totalCash += accountBalanceFromMap(balances, acc).amountMinor;
       }
     }

@@ -54,24 +54,19 @@ Widget buildHomeDashboardWidget({
     ),
     HomeDashboardWidgetId.accountGrid => AccountGridHomeWidget(
       state: state,
-      onManage: () => onTabSelected(4),
+      onTabSelected: onTabSelected,
     ),
     HomeDashboardWidgetId.recentRecords => RecentRecordsHomeWidget(
       state: state,
-      onView: () => onTabSelected(1),
+      onTabSelected: onTabSelected,
     ),
     HomeDashboardWidgetId.balanceTrend => BalanceTrendWidget(state: state),
     HomeDashboardWidgetId.currencyValues => CurrencyValuesHomeWidget(
       state: state,
     ),
-    HomeDashboardWidgetId.summaryTiles => FinanceSummaryHomeWidget(
-      state: state,
-    ),
     HomeDashboardWidgetId.upcomingScheduled => UpcomingDueHomeWidget(
       state: state,
     ),
-    HomeDashboardWidgetId.dueNow => UpcomingDueHomeWidget(state: state),
-    HomeDashboardWidgetId.billWatch => UpcomingDueHomeWidget(state: state),
     HomeDashboardWidgetId.emiTracker => LoansAndEmisHomeWidget(state: state),
     HomeDashboardWidgetId.loanPayoff => LoansAndEmisHomeWidget(state: state),
     HomeDashboardWidgetId.plannedPaymentsTile => PlannedPaymentsHomeWidget(
@@ -80,34 +75,14 @@ Widget buildHomeDashboardWidget({
     HomeDashboardWidgetId.loansTile => LoansHomeWidget(state: state),
     HomeDashboardWidgetId.cardDebt => CardsHomeWidget(state: state),
     HomeDashboardWidgetId.cardPaymentPlan => CardsHomeWidget(state: state),
-    HomeDashboardWidgetId.cashflowForecast => CashflowForecastHomeWidget(
-      state: state,
-    ),
     HomeDashboardWidgetId.accountGroups => AccountGroupsHomeWidget(
       state: state,
     ),
-    HomeDashboardWidgetId.reviewQueue => AutomationReviewHomeWidget(
-      state: state,
-    ),
-    HomeDashboardWidgetId.automationHealth => AutomationReviewHomeWidget(
-      state: state,
-    ),
-    HomeDashboardWidgetId.savingsRunway => SavingsRunwayHomeWidget(
-      state: state,
-    ),
-    HomeDashboardWidgetId.cashflowBook => CashflowBookHomeWidget(state: state),
     HomeDashboardWidgetId.topCategories => TopCategoriesWidget(state: state),
-    HomeDashboardWidgetId.incomeMix => IncomeMixHomeWidget(
-      state: state,
-      onRecords: () => onTabSelected(1),
-    ),
     HomeDashboardWidgetId.budgetPressure => BudgetPressureHomeWidget(
       state: state,
     ),
     HomeDashboardWidgetId.goalProgress => GoalProgressHomeWidget(state: state),
-    HomeDashboardWidgetId.currencyExposure => CurrencyExposureHomeWidget(
-      state: state,
-    ),
     HomeDashboardWidgetId.creditUtilization => CreditUtilizationWidget(state: state),
   };
 }
@@ -1108,6 +1083,16 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
     final selectedAccountId = ref.watch(homeSelectedAccountProvider);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    
+    final filter = state.preferences.homeWidgetFilters['upcomingScheduled'] ?? '1_week';
+    final int daysLimit = switch (filter) {
+      '1_week' => 7,
+      '2_weeks' => 14,
+      '1_month' => 30,
+      _ => 7,
+    };
+    final limitDate = today.add(Duration(days: daysLimit));
+
     final scheduled = ref
         .watch(_homeScheduledTransactionsProvider)
         .where(
@@ -1116,20 +1101,25 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
               t.accountId == selectedAccountId ||
               t.counterAccountId == selectedAccountId,
         )
+        .where((t) {
+           final day = DateTime(
+             t.occurredAt.year,
+             t.occurredAt.month,
+             t.occurredAt.day,
+           );
+           return day.isAfter(today.subtract(const Duration(days: 1))) && !day.isAfter(limitDate);
+        })
         .toList();
-    final due = scheduled.where((transaction) {
-      final day = DateTime(
-        transaction.occurredAt.year,
-        transaction.occurredAt.month,
-        transaction.occurredAt.day,
-      );
-      return !day.isAfter(today);
-    }).toList();
-    final next = scheduled.take(4).toList();
-    final dueAmount = due.fold<int>(
+        
+    scheduled.sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
+
+    final dueAmount = scheduled.fold<int>(
       0,
       (sum, transaction) => sum + transaction.baseAmount.amountMinor,
     );
+    
+    final next = scheduled.take(4).toList();
+
     return HomeWidgetCard(
       title: 'Upcoming & due',
       subtitle: 'Scheduled payments and bills',
@@ -1137,16 +1127,43 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
       iconColor: Theme.of(context).colorScheme.secondary,
       actionLabel: 'Open',
       onAction: () => context.push('/recurring'),
+      headerTrailing: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: filter,
+          isDense: true,
+          iconSize: 16,
+          style: TextStyle(
+            fontSize: 12,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          items: const [
+            DropdownMenuItem(value: '1_week', child: Text('Next 7 days')),
+            DropdownMenuItem(value: '2_weeks', child: Text('Next 14 days')),
+            DropdownMenuItem(value: '1_month', child: Text('Next 30 days')),
+          ],
+          onChanged: (value) {
+            if (value != null) {
+              final newFilters = Map<String, String>.from(
+                state.preferences.homeWidgetFilters,
+              );
+              newFilters['upcomingScheduled'] = value;
+              ref.read(ledgerProvider.notifier).updatePreferences(
+                    state.preferences.copyWith(homeWidgetFilters: newFilters),
+                  );
+            }
+          },
+        ),
+      ),
       child: Column(
         children: [
           Row(
             children: [
               Expanded(
                 child: HomeMetricTile(
-                  label: 'Due now',
-                  value: '${due.length}',
+                  label: 'Due soon',
+                  value: '${scheduled.length}',
                   icon: Icons.event_busy_outlined,
-                  tone: due.isEmpty ? MetricTone.standard : MetricTone.danger,
+                  tone: scheduled.isEmpty ? MetricTone.standard : MetricTone.danger,
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),

@@ -6,23 +6,49 @@ import '../../ledger/ledger_selectors.dart';
 import 'planner_widgets.dart'; // for DashboardCard
 
 // 6. Debt Free Target
-class DebtFreeTargetWidget extends ConsumerWidget {
+class DebtFreeTargetWidget extends ConsumerStatefulWidget {
   const DebtFreeTargetWidget({required this.state, super.key});
   final LedgerState state;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final activeLoans = state.accounts.where((a) => !a.isArchived && a.type == 'loan').toList();
-    int maxMonths = 0;
+  ConsumerState<DebtFreeTargetWidget> createState() => _DebtFreeTargetWidgetState();
+}
+
+class _DebtFreeTargetWidgetState extends ConsumerState<DebtFreeTargetWidget> {
+  double _extraPayment = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final activeLoans = widget.state.accounts.where((a) => !a.isArchived && a.type == 'loan').toList();
+    
+    double totalPrincipal = 0;
+    int maxMonthsStandard = 0;
     for (final loan in activeLoans) {
-      final proj = loanProjection(state, loan);
-      if (proj.monthsRemaining != null && proj.monthsRemaining! > maxMonths) {
-        maxMonths = proj.monthsRemaining!;
+      final proj = loanProjection(widget.state, loan);
+      totalPrincipal += proj.principalRemaining ?? 0;
+      if (proj.monthsRemaining != null && proj.monthsRemaining! > maxMonthsStandard) {
+        maxMonthsStandard = proj.monthsRemaining!;
       }
     }
     
+    // Simplistic calculation: if we add extra payment, how many months does it take?
+    // We assume current total monthly EMI is totalPrincipal / maxMonthsStandard (roughly).
+    // Let's just calculate total standard monthly payment.
+    double totalStandardMonthly = 0;
+    for (final loan in activeLoans) {
+      final proj = loanProjection(widget.state, loan);
+      if (proj.monthsRemaining != null && proj.monthsRemaining! > 0) {
+        totalStandardMonthly += (proj.principalRemaining ?? 0) / proj.monthsRemaining!;
+      }
+    }
+    
+    int projectedMonths = maxMonthsStandard;
+    if (totalStandardMonthly + _extraPayment > 0 && totalPrincipal > 0) {
+       projectedMonths = (totalPrincipal / (totalStandardMonthly + _extraPayment)).ceil();
+    }
+
     final scheme = Theme.of(context).colorScheme;
-    final debtFreeDate = DateTime.now().add(Duration(days: maxMonths * 30));
+    final debtFreeDate = DateTime.now().add(Duration(days: projectedMonths * 30));
     final hasDebt = activeLoans.isNotEmpty;
 
     return DashboardCard(
@@ -33,21 +59,34 @@ class DebtFreeTargetWidget extends ConsumerWidget {
             children: [
               Icon(Icons.celebration_rounded, color: scheme.primary),
               const SizedBox(width: 8),
-              const Text('Debt Free Target', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Flexible(child: Text('Debt Free Target', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
             ],
           ),
           const SizedBox(height: 16),
           if (!hasDebt)
             const Text('You are completely debt free!', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))
           else ...[
-            Text('Expected date based on current EMIs:', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+            Text('Expected date based on EMIs + Extra Payment:', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
             const SizedBox(height: 8),
             Text(
               '${debtFreeDate.month}/${debtFreeDate.year}',
               style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: scheme.primary),
             ),
             const SizedBox(height: 4),
-            Text('In about $maxMonths months', style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
+            Text('In about $projectedMonths months', style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
+            const SizedBox(height: 16),
+            Text('Extra Monthly Payment: ${_extraPayment > 0 ? formatMoney(Money(amountMinor: _extraPayment.toInt(), currency: widget.state.preferences.displayCurrency), widget.state.preferences.locale) : 'None'}', style: const TextStyle(fontSize: 14)),
+            Slider(
+              value: _extraPayment,
+              max: 500000, // 5000.00 assuming minor units
+              divisions: 100,
+              label: formatMoney(Money(amountMinor: _extraPayment.toInt(), currency: widget.state.preferences.displayCurrency), widget.state.preferences.locale),
+              onChanged: (val) {
+                setState(() {
+                  _extraPayment = val;
+                });
+              },
+            ),
           ],
         ],
       ),
