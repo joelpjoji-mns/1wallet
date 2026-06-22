@@ -547,12 +547,15 @@ class _CreditUtilizationWidgetState extends State<CreditUtilizationWidget> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                                Expanded(child: Text(acc.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
-                               Text('${(util * 100).round()}%', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+                               if (limit > 0)
+                                  Text('${(util * 100).round()}%', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18))
+                               else
+                                  const Text('N/A', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
                             ],
                          ),
                          const SizedBox(height: 8),
                          LinearProgressIndicator(
-                            value: util,
+                            value: limit > 0 ? util : 0.0,
                             color: acc.color ?? scheme.primary,
                             backgroundColor: scheme.surfaceContainerHighest,
                             minHeight: 16,
@@ -562,7 +565,7 @@ class _CreditUtilizationWidgetState extends State<CreditUtilizationWidget> {
                          Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                               Text('Utilization ${formatMoney(Money(amountMinor: bal, currency: widget.state.preferences.displayCurrency), widget.state.preferences.locale)}', style: TextStyle(fontSize: 10, color: scheme.onSurfaceVariant)),
+                               Text('Balance ${formatMoney(Money(amountMinor: bal, currency: widget.state.preferences.displayCurrency), widget.state.preferences.locale)}', style: TextStyle(fontSize: 10, color: scheme.onSurfaceVariant)),
                                Text('Limit ${limit > 0 ? formatMoney(Money(amountMinor: limit, currency: widget.state.preferences.displayCurrency), widget.state.preferences.locale) : 'Not Set'}', style: TextStyle(fontSize: 10, color: scheme.onSurfaceVariant)),
                             ],
                          ),
