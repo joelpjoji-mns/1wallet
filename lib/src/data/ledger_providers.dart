@@ -148,6 +148,10 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
   return ledger.copyWith(transactions: updated);
 }
 
+abstract final class LedgerProvidersConfig {
+  static bool disableAutoBackup = false;
+}
+
 class LedgerController extends StateNotifier<LedgerState> {
   LedgerController(
     this._repository, {
@@ -1233,9 +1237,11 @@ class LedgerController extends StateNotifier<LedgerState> {
     unawaited(SmsSpooler.updateTriggerWords(normalized));
     
     _autoBackupTimer?.cancel();
-    _autoBackupTimer = Timer(const Duration(seconds: 3), () {
-      unawaited(_performAutoBackup(normalized));
-    });
+    if (!LedgerProvidersConfig.disableAutoBackup) {
+      _autoBackupTimer = Timer(const Duration(seconds: 3), () {
+        unawaited(_performAutoBackup(normalized));
+      });
+    }
   }
 
   Future<void> _performAutoBackup(LedgerState ledger) async {

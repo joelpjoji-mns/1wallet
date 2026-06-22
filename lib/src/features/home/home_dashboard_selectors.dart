@@ -130,11 +130,8 @@ List<Money> balanceBreakdownByCurrency(
       : state.accounts.where(
           (account) => !account.isArchived && account.includeInTotals,
         );
-  final allAccounts = state.accounts.where(
-    (account) => !account.isArchived && account.includeInTotals,
-  );
   final totals = <String, int>{};
-  for (final account in allAccounts) {
+  for (final account in accounts) {
     for (final money in _accountCurrencyNet(state, account)) {
       totals.putIfAbsent(money.currency, () => 0);
     }

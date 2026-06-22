@@ -348,12 +348,12 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
 class AccountGridHomeWidget extends ConsumerWidget {
   const AccountGridHomeWidget({
     required this.state,
-    required this.onManage,
+    required this.onTabSelected,
     super.key,
   });
 
   final LedgerState state;
-  final VoidCallback onManage;
+  final ValueChanged<int> onTabSelected;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -374,7 +374,7 @@ class AccountGridHomeWidget extends ConsumerWidget {
       actionLabel: 'Manage',
       onAction: selectedAccountId != null
           ? () => context.push('/account/$selectedAccountId')
-          : onManage,
+          : () => onTabSelected(0),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final availableWidth = constraints.maxWidth.isFinite
@@ -417,12 +417,12 @@ class AccountGridHomeWidget extends ConsumerWidget {
 class RecentRecordsHomeWidget extends ConsumerWidget {
   const RecentRecordsHomeWidget({
     required this.state,
-    required this.onView,
+    required this.onTabSelected,
     super.key,
   });
 
   final LedgerState state;
-  final VoidCallback onView;
+  final ValueChanged<int> onTabSelected;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -442,7 +442,7 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
       icon: Icons.format_list_bulleted_rounded,
       iconColor: Theme.of(context).colorScheme.error,
       actionLabel: 'View',
-      onAction: onView,
+      onAction: () => onTabSelected(1),
       child: recent.isEmpty
           ? const EmptyState(
               icon: Icons.receipt_long_outlined,
