@@ -12,6 +12,7 @@ import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 import '../common/full_screen_picker.dart';
 import '../../widgets/currency_picker.dart';
+import '../../utils/number_formatter.dart';
 
 class BudgetGoalEditorScreen extends ConsumerStatefulWidget {
 
@@ -87,7 +88,8 @@ class _BudgetGoalEditorScreenState
                 const SizedBox(height: AppSpacing.sm),
                 TextFormField(
                   controller: _amountController,
-                  keyboardType: TextInputType.number,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [ThousandsSeparatorInputFormatter()],
                   decoration: const InputDecoration(
                     labelText: 'Target amount',
                     prefixIcon: Icon(Icons.payments_outlined),
@@ -382,7 +384,7 @@ class _DetailField extends StatelessWidget {
 
 
 int _amountMinorFromInput(String value, String currency) {
-  final normalized = value.replaceAll(',', '').trim();
+  final normalized = value.replaceAll(RegExp(r'[^0-9.]'), '');
   final parsed = double.tryParse(normalized) ?? 0;
   return (parsed * math.pow(10, minorUnits(currency))).round();
 }

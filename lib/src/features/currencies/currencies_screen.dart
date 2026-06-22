@@ -8,6 +8,7 @@ import '../../utils/currency_utils.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../../utils/number_formatter.dart';
 import '../common/full_screen_picker.dart';
 
 class CurrenciesScreen extends ConsumerStatefulWidget {
@@ -340,6 +341,7 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
         content: TextField(
           controller: controller,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [ThousandsSeparatorInputFormatter()],
           decoration: InputDecoration(
             labelText: '1 $currency = ? ${state.preferences.baseCurrency}',
           ),
@@ -358,7 +360,7 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
     );
 
     if (result != null && result.isNotEmpty) {
-      final value = double.tryParse(result);
+      final value = double.tryParse(result.replaceAll(',', ''));
       if (value != null && value > 0) {
         await ref.read(ledgerProvider.notifier).setExchangeRate(
           base: currency,

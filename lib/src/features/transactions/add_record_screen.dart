@@ -15,6 +15,8 @@ import '../../utils/recurrence_utils.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../../widgets/currency_picker.dart';
+import '../../utils/number_formatter.dart';
 import '../common/category_hierarchy_picker.dart';
 import '../common/full_screen_picker.dart';
 
@@ -832,7 +834,7 @@ String _formatAmountInput(int amountMinor, [String? currency]) {
 
 String _trimNumber(double value) => value.isFinite ? value.toString().replaceAll(RegExp(r'\.0$'), '') : '0';
 
-String _formatExpression(String expr, String locale) => expr;
+String _formatExpression(String expr, String locale) => formatNumberExpression(expr, locale);
 
 extension _FirstWhereOrNull<T> on Iterable<T> {
   T? firstWhereOrNull(bool Function(T value) test) {
