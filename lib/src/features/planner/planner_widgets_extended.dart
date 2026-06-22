@@ -6,7 +6,7 @@ import '../../data/ledger_models.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../transactions/transaction_row.dart';
 import 'planner_widgets.dart'; // for DashboardCard
-import 'planner_widgets.dart'; // for DashboardCard
+import 'planner_providers.dart';
 
 // 1. Daily Spending Limit
 class DailySpendingLimitWidget extends ConsumerWidget {
@@ -121,29 +121,11 @@ class BudgetHealth503020Widget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final now = DateTime.now();
-    int totalIncome = 0;
-    int totalNeeds = 0; // Categories marked as needs (simulation: just take 60% of expenses for now, or specific categories if available)
-    int totalWants = 0;
+    final data = ref.watch(budgetHealthProvider);
     
-    for (final tx in state.transactions) {
-      if (tx.status == 'void' || tx.status == 'scheduled' || tx.status == 'paused') continue;
-      if (tx.occurredAt.year == now.year && tx.occurredAt.month == now.month) {
-        if (incomeTypes.contains(tx.type)) totalIncome += tx.amount.amountMinor;
-        if (expenseTypes.contains(tx.type)) {
-          final catName = tx.categoryId != null ? categoryById(state, tx.categoryId!)?.name.toLowerCase() ?? '' : '';
-          
-          final needsKeywords = ['grocer', 'bill', 'rent', 'utilit', 'mortgage', 'insur', 'medic', 'tax', 'debt', 'emi', 'loan', 'educat'];
-          final isNeed = needsKeywords.any((k) => catName.contains(k));
-
-          if (isNeed) {
-            totalNeeds += tx.amount.amountMinor;
-          } else {
-            totalWants += tx.amount.amountMinor;
-          }
-        }
-      }
-    }
+    final totalIncome = data.totalIncome;
+    final totalNeeds = data.totalNeeds;
+    final totalWants = data.totalWants;
 
     final saved = totalIncome - totalNeeds - totalWants;
     final scheme = Theme.of(context).colorScheme;
@@ -207,26 +189,9 @@ class EmergencyFundHealthWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Target is 3x monthly average expenses
-    final now = DateTime.now();
-    final start = now.subtract(const Duration(days: 90));
-    int totalExp = 0;
-    for (final tx in state.transactions) {
-      if (tx.status == 'void' || tx.status == 'scheduled') continue;
-      if (expenseTypes.contains(tx.type) && tx.occurredAt.isAfter(start)) {
-        totalExp += tx.amount.amountMinor;
-      }
-    }
-    final avgMonthlyExp = totalExp ~/ 3;
-    final target = avgMonthlyExp * 3;
-
-    int totalCash = 0;
-    final balances = accountBalanceMap(state);
-    for (final acc in state.accounts) {
-      if (acc.type == 'emergency' || acc.name.toLowerCase().contains('emergency')) {
-        totalCash += accountBalanceFromMap(balances, acc).amountMinor;
-      }
-    }
+    final data = ref.watch(emergencyFundProvider);
+    final target = data.target;
+    final totalCash = data.totalCash;
 
     final progress = target > 0 ? (totalCash / target) : 0.0;
     final scheme = Theme.of(context).colorScheme;
