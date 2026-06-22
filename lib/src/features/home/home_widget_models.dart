@@ -3,28 +3,18 @@ enum HomeDashboardWidgetId {
   plannedPaymentsTile('plannedPaymentsTile'),
   loansTile('loansTile'),
   accountGrid('accountGrid'),
-  summaryTiles('summaryTiles'),
   recentRecords('recentRecords'),
   upcomingScheduled('upcomingScheduled'),
-  dueNow('dueNow'),
   emiTracker('emiTracker'),
   cardDebt('cardDebt'),
   accountGroups('accountGroups'),
-  reviewQueue('reviewQueue'),
-  automationHealth('automationHealth'),
-  cashflowForecast('cashflowForecast'),
-  billWatch('billWatch'),
   cardPaymentPlan('cardPaymentPlan'),
   loanPayoff('loanPayoff'),
-  savingsRunway('savingsRunway'),
-  cashflowBook('cashflowBook'),
   balanceTrend('balanceTrend'),
   topCategories('topCategories'),
-  incomeMix('incomeMix'),
   currencyValues('currencyValues'),
   budgetPressure('budgetPressure'),
   goalProgress('goalProgress'),
-  currencyExposure('currencyExposure'),
   creditUtilization('creditUtilization');
 
   const HomeDashboardWidgetId(this.storageKey);
@@ -39,7 +29,6 @@ const defaultHomeWidgetOrder = [
   HomeDashboardWidgetId.balanceTrend,
   HomeDashboardWidgetId.currencyValues,
   HomeDashboardWidgetId.upcomingScheduled,
-  HomeDashboardWidgetId.reviewQueue,
   HomeDashboardWidgetId.topCategories,
   HomeDashboardWidgetId.budgetPressure,
   HomeDashboardWidgetId.goalProgress,
@@ -80,7 +69,6 @@ List<HomeDashboardWidgetId> resolveHomeWidgetOrder(
   const legacyDefault = [
     'balanceHero',
     'accountGrid',
-    'summaryTiles',
     'recentRecords',
     'upcomingScheduled',
   ];
@@ -110,11 +98,9 @@ List<HomeDashboardWidgetId> resolveHomeWidgetOrder(
 HomeDashboardWidgetId? homeWidgetIdFromStorageKey(String key) {
   final byKey = {
     for (final item in HomeDashboardWidgetId.values) item.storageKey: item,
-    'financeSummary': HomeDashboardWidgetId.summaryTiles,
     'upcomingDue': HomeDashboardWidgetId.upcomingScheduled,
     'loansAndEmis': HomeDashboardWidgetId.emiTracker,
     'cards': HomeDashboardWidgetId.cardDebt,
-    'automationReview': HomeDashboardWidgetId.reviewQueue,
   };
   return byKey[key];
 }
@@ -122,7 +108,7 @@ HomeDashboardWidgetId? homeWidgetIdFromStorageKey(String key) {
 String defaultDatePresetForHomeWidget(String id) {
   return switch (id) {
     'balanceHero' => 'thisMonth',
-    'accountGrid' || 'accountGroups' || 'currencyExposure' => 'allTime',
+    'accountGrid' || 'accountGroups' => 'allTime',
     'currencyValues' => 'thisMonth',
     'balanceTrend' => 'thisYear',
     _ => 'thisMonth',
