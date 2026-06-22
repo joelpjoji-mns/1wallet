@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../design/tokens.dart';
 
 abstract final class AppTheme {
+  static bool disableGoogleFonts = false;
+
   static ThemeData light({String? accentColor, ColorScheme? systemColorScheme}) =>
       _theme(
         Brightness.light,
@@ -100,7 +102,7 @@ abstract final class AppTheme {
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
-      fontFamily: GoogleFonts.outfit().fontFamily,
+      fontFamily: disableGoogleFonts ? 'Outfit' : GoogleFonts.outfit().fontFamily,
       scaffoldBackgroundColor: amoled
           ? AppColors.amoledBackground
           : dark

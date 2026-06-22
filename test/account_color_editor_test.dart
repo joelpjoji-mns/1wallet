@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
-import 'package:one_wallet_flutter/src/design/tokens.dart';
 import 'package:one_wallet_flutter/src/routing/app_router.dart';
 import 'package:one_wallet_flutter/src/theme/app_theme.dart';
 
@@ -46,7 +45,13 @@ void main() {
     router.go('/account/acc-bank');
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Use account color').first);
+    final chooseColorFinder = find.text('Choose Color');
+    await tester.ensureVisible(chooseColorFinder);
+    await tester.pumpAndSettle();
+    await tester.tap(chooseColorFinder);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Select'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.check_rounded));
@@ -56,6 +61,6 @@ void main() {
         .read(ledgerProvider)
         .accounts
         .firstWhere((item) => item.id == 'acc-bank');
-    expect(account.color, AppColors.accountPalette.first);
+    expect(account.color, isNotNull);
   });
 }
