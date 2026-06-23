@@ -37,14 +37,14 @@ extension TimePeriodExtension on TimePeriod {
 }
 
 class DashboardCard extends StatelessWidget {
-   const DashboardCard({required this.child, super.key});
+   const DashboardCard({required this.child, this.onTap, super.key});
    final Widget child;
+   final VoidCallback? onTap;
    
    @override
    Widget build(BuildContext context) {
       final scheme = Theme.of(context).colorScheme;
       return Container(
-         padding: const EdgeInsets.all(AppSpacing.lg),
          decoration: BoxDecoration(
             color: scheme.surface,
             borderRadius: BorderRadius.circular(16),
@@ -57,7 +57,17 @@ class DashboardCard extends StatelessWidget {
                ),
             ],
          ),
-         child: child,
+         child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+               onTap: onTap,
+               borderRadius: BorderRadius.circular(16),
+               child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: child,
+               ),
+            ),
+         ),
       );
    }
 }
