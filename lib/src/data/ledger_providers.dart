@@ -86,8 +86,21 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
   final now = DateTime.now();
   final List<TransactionRecord> newAutoPosted = [];
 
+  // 0. Fix broken zero-amount transfers (where counterAmount was incorrectly saved as 0 due to a bug)
+  final updatedTransactions = <TransactionRecord>[];
+  for (final t in ledger.transactions) {
+    if (t.type == 'transfer' && t.counterAmount != null && t.counterAmount!.amountMinor == 0 && t.amount.amountMinor > 0) {
+      if (t.counterAmount!.currency.toUpperCase() == t.amount.currency.toUpperCase()) {
+        updatedTransactions.add(t.copyWith(counterAmount: t.amount));
+        changed = true;
+        continue;
+      }
+    }
+    updatedTransactions.add(t);
+  }
+
   // 1. Generate auto-posted transactions
-  for (final scheduled in ledger.transactions) {
+  for (final scheduled in updatedTransactions) {
     if (scheduled.status == 'scheduled' && scheduled.postMode == 'auto') {
       DateTime nextDate = scheduled.occurredAt;
       while (nextDate.isBefore(now)) {
@@ -113,7 +126,7 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
   }
 
   // Combine original with new
-  final combinedTransactions = [...ledger.transactions, ...newAutoPosted];
+  final combinedTransactions = [...updatedTransactions, ...newAutoPosted];
 
   // 2. Build history map
   final Map<String, DateTime> latestHistory = {};

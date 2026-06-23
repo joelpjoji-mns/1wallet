@@ -671,8 +671,19 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
     }
 
     final counterAcc = accountById(state, _counterAccountId);
-    if (_type == 'transfer' && counterAcc != null) {
-      finalCounterAmountMinor = _amountMinorFromInput(_counterAmountController.text, counterAcc.currency);
+    if (_type == 'transfer') {
+      if (counterAcc == null) {
+        _showMessage('Choose a destination account.');
+        return;
+      }
+      final isCrossTransfer = counterAcc.currency.toUpperCase() != account.currency.toUpperCase();
+      if (isCrossTransfer) {
+        finalCounterAmountMinor = _amountMinorFromInput(_counterAmountController.text, counterAcc.currency);
+        if (finalCounterAmountMinor <= 0) {
+          _showMessage('Enter received amount.');
+          return;
+        }
+      }
     }
 
     final selectedCategory = categoryById(state, _categoryId);

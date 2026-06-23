@@ -315,7 +315,13 @@ int sourceDelta(TransactionRecord transaction) {
 
 int counterDelta(TransactionRecord transaction) {
   if (transferTypes.contains(transaction.type)) {
-    return (transaction.counterAmount ?? transaction.amount).amountMinor.abs();
+    final counterAmt = transaction.counterAmount ?? transaction.amount;
+    if (counterAmt.amountMinor == 0 && transaction.amount.amountMinor != 0) {
+      if (transaction.counterAmount?.currency.toUpperCase() == transaction.amount.currency.toUpperCase()) {
+        return transaction.amount.amountMinor.abs();
+      }
+    }
+    return counterAmt.amountMinor.abs();
   }
   if (transaction.type == 'card_payment' ||
       transaction.type == 'loan_repayment') {
