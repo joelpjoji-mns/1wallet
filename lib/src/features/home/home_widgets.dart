@@ -849,7 +849,8 @@ class _CurrencyValuesHomeWidgetState extends ConsumerState<CurrencyValuesHomeWid
   }
   
   void _onTextChanged(String editedCurrency, String value) {
-     final amount = double.tryParse(value) ?? 0.0;
+     final cleanValue = value.replaceAll(',', '');
+     final amount = double.tryParse(cleanValue) ?? 0.0;
      final editedRate = _ratesToBase[editedCurrency] ?? 0.0;
      if (editedRate <= 0) return;
      
@@ -966,30 +967,43 @@ class _CalculatorRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            flex: 2,
-            child: TextField(
-              controller: controller,
-              onChanged: onChanged,
-              enabled: hasRate,
-              textAlign: TextAlign.left,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [ThousandsSeparatorInputFormatter()],
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-                hintText: hasRate ? '0' : 'No rate',
-              ),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: hasRate ? scheme.onSurface : scheme.error,
-              ),
+            flex: 3,
+            child: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: controller,
+              builder: (context, value, child) {
+                final textLen = value.text.length;
+                double fontSize = 18;
+                if (textLen > 15) {
+                  fontSize = 11;
+                } else if (textLen > 11) {
+                  fontSize = 14;
+                }
+                
+                return TextField(
+                  controller: controller,
+                  onChanged: onChanged,
+                  enabled: hasRate,
+                  textAlign: TextAlign.left,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [ThousandsSeparatorInputFormatter()],
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                    hintText: hasRate ? '0' : 'No rate',
+                  ),
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.w700,
+                    color: hasRate ? scheme.onSurface : scheme.error,
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
-            flex: 3,
+            flex: 2,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
