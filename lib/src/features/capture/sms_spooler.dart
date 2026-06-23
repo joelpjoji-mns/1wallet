@@ -52,6 +52,9 @@ class SmsSpooler {
       // Common transaction words
       'debited', 'credited', 'spent', 'paid', 'received', 'transaction', 
       'payment', 'a/c', 'acct', 'tx', 'txn', 'balance', 'deducted',
+      'refund', 'reversal', 'reversed', 'charge', 'withdrawal', 'purchase',
+      'fee', 'remitted', 'deposited', 'salary', 'cashback', 'added', 
+      'withdrawn', 'sent', 'transfer', 'remittance', 'dr', 'cr',
     };
 
     for (final account in state.accounts) {
