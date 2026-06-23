@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/ledger_models.dart';
 import '../../ledger/ledger_selectors.dart';
+import '../../design/tokens.dart'; // For AppSpacing
 import '../transactions/transaction_row.dart';
 import 'planner_widgets.dart'; // for DashboardCard
 import 'planner_providers.dart';
@@ -26,9 +27,9 @@ class DailySpendingLimitWidget extends ConsumerWidget {
       if (tx.status == 'void' || tx.status == 'scheduled' || tx.status == 'paused') continue;
       if (tx.occurredAt.year == now.year && tx.occurredAt.month == now.month) {
         if (incomeTypes.contains(tx.type)) {
-          totalIncome += tx.amount.amountMinor;
+          totalIncome += convertMoneyForDisplay(state, tx.amount, state.preferences.displayCurrency).amountMinor;
         } else if (expenseTypes.contains(tx.type)) {
-          totalExpense += tx.amount.amountMinor;
+          totalExpense += convertMoneyForDisplay(state, tx.amount, state.preferences.displayCurrency).amountMinor;
         }
       }
     }
@@ -38,6 +39,7 @@ class DailySpendingLimitWidget extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return DashboardCard(
+      onTap: () => context.push('/budgets'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -119,6 +121,37 @@ class BudgetHealth503020Widget extends ConsumerWidget {
   const BudgetHealth503020Widget({required this.state, super.key});
   final LedgerState state;
 
+  void _showRecords(BuildContext context, String title, List<TransactionRecord> records) {
+    if (records.isEmpty) return;
+    records.sort((a,b) => b.occurredAt.compareTo(a.occurredAt));
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      constraints: const BoxConstraints(maxWidth: 640),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+              const SizedBox(height: AppSpacing.md),
+              for (final transaction in records) ...[
+                TransactionRow(
+                  state: state,
+                  transaction: transaction,
+                  onTap: () => context.push('/transaction/${transaction.id}'),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final data = ref.watch(budgetHealthProvider);
@@ -135,6 +168,7 @@ class BudgetHealth503020Widget extends ConsumerWidget {
     double savedPct = totalIncome > 0 ? saved / totalIncome : 0;
 
     return DashboardCard(
+      onTap: () => context.push('/budgets'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -148,11 +182,11 @@ class BudgetHealth503020Widget extends ConsumerWidget {
           const SizedBox(height: 16),
           Row(
             children: [
-              _buildBudgetBar(context, 'Needs (50%)', needsPct, 0.50, scheme.primary),
+              _buildBudgetBar(context, 'Needs (50%)', needsPct, 0.50, scheme.primary, data.needsRecords),
               const SizedBox(width: 8),
-              _buildBudgetBar(context, 'Wants (30%)', wantsPct, 0.30, scheme.secondary),
+              _buildBudgetBar(context, 'Wants (30%)', wantsPct, 0.30, scheme.secondary, data.wantsRecords),
               const SizedBox(width: 8),
-              _buildBudgetBar(context, 'Savings (20%)', savedPct, 0.20, scheme.tertiary),
+              _buildBudgetBar(context, 'Savings (20%)', savedPct, 0.20, scheme.tertiary, []),
             ],
           ),
         ],
@@ -160,23 +194,30 @@ class BudgetHealth503020Widget extends ConsumerWidget {
     );
   }
 
-  Widget _buildBudgetBar(BuildContext context, String label, double actual, double target, Color color) {
+  Widget _buildBudgetBar(BuildContext context, String label, double actual, double target, Color color, List<TransactionRecord> records) {
     return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          LinearProgressIndicator(
-            value: actual.clamp(0.0, 1.0),
-            color: actual > target && label != 'Savings (20%)' ? Theme.of(context).colorScheme.error : color,
-            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-            minHeight: 12,
-            borderRadius: BorderRadius.circular(4),
+      child: InkWell(
+        onTap: records.isNotEmpty ? () => _showRecords(context, label, records) : null,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              LinearProgressIndicator(
+                value: actual.clamp(0.0, 1.0),
+                color: actual > target && label != 'Savings (20%)' ? Theme.of(context).colorScheme.error : color,
+                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                minHeight: 12,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              const SizedBox(height: 4),
+              Text('${(actual * 100).toStringAsFixed(1)}%', style: const TextStyle(fontSize: 10)),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text('${(actual * 100).toStringAsFixed(1)}%', style: const TextStyle(fontSize: 10)),
-        ],
+        ),
       ),
     );
   }
@@ -197,6 +238,7 @@ class EmergencyFundHealthWidget extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return DashboardCard(
+      onTap: () => context.push('/accounts'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
