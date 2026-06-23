@@ -932,8 +932,11 @@ class LedgerController extends StateNotifier<LedgerState> {
     );
     if (parsed.ignored) return null;
     
-    // Check for duplicates
-    final isDuplicate = state.captureCandidates.any((c) => c.rawText == parsed.rawText);
+    // Check for duplicates within the last 24 hours
+    final isDuplicate = state.captureCandidates.any((c) => 
+        c.rawText == parsed.rawText &&
+        c.createdAt.difference(receivedAt ?? DateTime.now()).abs().inHours < 24
+    );
     if (isDuplicate) return null;
 
     String? matchedAccountId = _matchAccountToSms(state, parsed);
@@ -977,8 +980,10 @@ class LedgerController extends StateNotifier<LedgerState> {
       if (parsed.ignored) continue;
 
       // Check against existing state and newly added candidates in this batch
-      final isDuplicate = state.captureCandidates.any((c) => c.rawText == parsed.rawText) || 
-                          newCandidates.any((c) => c.rawText == parsed.rawText);
+      final isDuplicate = state.captureCandidates.any((c) => 
+          c.rawText == parsed.rawText &&
+          c.createdAt.difference(message.receivedAt).abs().inHours < 24
+      ) || newCandidates.any((c) => c.rawText == parsed.rawText);
       if (isDuplicate) continue;
 
       String? matchedAccountId = _matchAccountToSms(state, parsed);
