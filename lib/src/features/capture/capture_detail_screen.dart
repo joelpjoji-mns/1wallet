@@ -97,7 +97,9 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
               children: [
                 TextField(
                   controller: _amountController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   inputFormatters: [ThousandsSeparatorInputFormatter()],
                   decoration: const InputDecoration(
                     labelText: 'Amount',
@@ -188,8 +190,7 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
         state.accounts.firstWhereOrNull((account) => !account.isArchived)?.id ??
         state.accounts.firstOrNull?.id;
     _categoryId =
-        candidate.suggestedCategoryId ??
-        firstActiveCategory(state)?.id;
+        candidate.suggestedCategoryId ?? firstActiveCategory(state)?.id;
   }
 
   Future<void> _showTypePicker() async {

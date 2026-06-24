@@ -23,7 +23,6 @@ import 'home_widget_models.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../planner/planner_widgets.dart';
 
-
 final _homeScheduledTransactionsProvider =
     Provider.autoDispose<List<TransactionRecord>>((ref) {
       final state = ref.watch(ledgerProvider);
@@ -84,7 +83,9 @@ Widget buildHomeDashboardWidget({
       state: state,
     ),
     HomeDashboardWidgetId.goalProgress => GoalProgressHomeWidget(state: state),
-    HomeDashboardWidgetId.creditUtilization => CreditUtilizationWidget(state: state),
+    HomeDashboardWidgetId.creditUtilization => CreditUtilizationWidget(
+      state: state,
+    ),
   };
 }
 
@@ -298,8 +299,10 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
               Expanded(
                 child: InkWell(
                   onTap: () {
-                    ref.read(transactionsTypeFilterProvider.notifier).state = 'income';
-                    ref.read(transactionsDateFilterProvider.notifier).state = _mapPeriodToDateFilter(_period);
+                    ref.read(transactionsTypeFilterProvider.notifier).state =
+                        'income';
+                    ref.read(transactionsDateFilterProvider.notifier).state =
+                        _mapPeriodToDateFilter(_period);
                     widget.onTabSelected(1);
                   },
                   borderRadius: BorderRadius.circular(AppRadii.md),
@@ -315,8 +318,10 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
               Expanded(
                 child: InkWell(
                   onTap: () {
-                    ref.read(transactionsTypeFilterProvider.notifier).state = 'expense';
-                    ref.read(transactionsDateFilterProvider.notifier).state = _mapPeriodToDateFilter(_period);
+                    ref.read(transactionsTypeFilterProvider.notifier).state =
+                        'expense';
+                    ref.read(transactionsDateFilterProvider.notifier).state =
+                        _mapPeriodToDateFilter(_period);
                     widget.onTabSelected(1);
                   },
                   borderRadius: BorderRadius.circular(AppRadii.md),
@@ -414,7 +419,6 @@ class AccountGridHomeWidget extends ConsumerWidget {
   }
 }
 
-
 class RecentRecordsHomeWidget extends ConsumerWidget {
   const RecentRecordsHomeWidget({
     required this.state,
@@ -473,10 +477,12 @@ class BalanceTrendHomeWidget extends ConsumerStatefulWidget {
   final LedgerState state;
 
   @override
-  ConsumerState<BalanceTrendHomeWidget> createState() => _BalanceTrendHomeWidgetState();
+  ConsumerState<BalanceTrendHomeWidget> createState() =>
+      _BalanceTrendHomeWidgetState();
 }
 
-class _BalanceTrendHomeWidgetState extends ConsumerState<BalanceTrendHomeWidget> {
+class _BalanceTrendHomeWidgetState
+    extends ConsumerState<BalanceTrendHomeWidget> {
   String _period = 'This year';
 
   @override
@@ -506,7 +512,7 @@ class _BalanceTrendHomeWidgetState extends ConsumerState<BalanceTrendHomeWidget>
 
     var minY = values.isEmpty ? 0.0 : values.reduce(math.min).toDouble();
     var maxY = values.isEmpty ? 0.0 : values.reduce(math.max).toDouble();
-    
+
     if (maxY == minY) {
       maxY += 100000;
       minY -= 100000;
@@ -532,9 +538,14 @@ class _BalanceTrendHomeWidgetState extends ConsumerState<BalanceTrendHomeWidget>
     double niceInterval = 1.0;
     if (spanChart > 0) {
       final roughStep = spanChart / 4;
-      final magnitude = math.pow(10, (math.log(roughStep > 0 ? roughStep : 1) / math.ln10).floor()).toDouble();
+      final magnitude = math
+          .pow(
+            10,
+            (math.log(roughStep > 0 ? roughStep : 1) / math.ln10).floor(),
+          )
+          .toDouble();
       final normalizedStep = roughStep / magnitude;
-      
+
       double niceStep;
       if (normalizedStep < 1.5) {
         niceStep = 1.0;
@@ -545,7 +556,7 @@ class _BalanceTrendHomeWidgetState extends ConsumerState<BalanceTrendHomeWidget>
       } else {
         niceStep = 10.0;
       }
-      
+
       niceInterval = niceStep * magnitude;
       if (spanChart >= 100000 && niceInterval < 100000) {
         niceInterval = 100000.0;
@@ -558,7 +569,7 @@ class _BalanceTrendHomeWidgetState extends ConsumerState<BalanceTrendHomeWidget>
       if (amountMinor == 0) return '0';
       final absVal = (amountMinor / 100.0).abs();
       final sign = amountMinor < 0 ? '-' : '';
-      
+
       if (niceInterval >= 100000) {
         if (absVal >= 100000) {
           final l = (absVal / 100000).round();
@@ -577,7 +588,12 @@ class _BalanceTrendHomeWidgetState extends ConsumerState<BalanceTrendHomeWidget>
     }
 
     final xLabels = [
-      if (start != null) _shortDate(start, widget.state.preferences.locale) else trend.isNotEmpty ? _shortDate(trend.first.date, widget.state.preferences.locale) : '',
+      if (start != null)
+        _shortDate(start, widget.state.preferences.locale)
+      else
+        trend.isNotEmpty
+            ? _shortDate(trend.first.date, widget.state.preferences.locale)
+            : '',
       '${trend.length} moves',
       _shortDate(now, widget.state.preferences.locale),
     ];
@@ -630,125 +646,217 @@ class _BalanceTrendHomeWidgetState extends ConsumerState<BalanceTrendHomeWidget>
               Padding(
                 padding: const EdgeInsets.only(right: 16.0, top: 16.0),
                 child: SizedBox(
-                   height: 200,
-                   width: double.infinity,
-                   child: LineChart(
-                      LineChartData(
-                         gridData: FlGridData(
-                            show: true,
-                            drawVerticalLine: false,
-                            horizontalInterval: niceInterval,
-                             getDrawingHorizontalLine: (value) => FlLine(
-                                color: Theme.of(context).colorScheme.outlineVariant.withAlphaFactor(0.3),
-                                strokeWidth: 1,
-                                dashArray: [4, 4],
-                             ),
-                         ),
-                         titlesData: FlTitlesData(
-                            show: true,
-                            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                            leftTitles: AxisTitles(
-                               sideTitles: SideTitles(
-                                  showTitles: true,
-                                  reservedSize: 40,
-                                  interval: niceInterval,
-                                  getTitlesWidget: (value, meta) {
-                                     return Text(formatCompact(value), style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant));
-                                  },
-                               ),
-                            ),
-                            bottomTitles: AxisTitles(
-                               sideTitles: SideTitles(
-                                  showTitles: true,
-                                  reservedSize: 22,
-                                  getTitlesWidget: (value, meta) {
-                                     final intValue = value.toInt();
-                                     final lastIndex = values.length - 1;
-                                     final middleIndex = lastIndex ~/ 2;
-                                     if (intValue == 0) return Padding(padding: const EdgeInsets.only(top: 8.0), child: Text(xLabels[0], style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant)));
-                                     if (intValue == lastIndex && lastIndex > 0) return Padding(padding: const EdgeInsets.only(top: 8.0), child: Text(xLabels[2], style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant)));
-                                     if (intValue == middleIndex && middleIndex > 0 && middleIndex < lastIndex) return Padding(padding: const EdgeInsets.only(top: 8.0), child: Text(xLabels[1], style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant)));
-                                     return const SizedBox.shrink();
-                                  },
-                               ),
-                            ),
-                         ),
-                         borderData: FlBorderData(show: false),
-                         minX: 0,
-                         maxX: (values.length - 1).toDouble(),
-                         minY: minY,
-                         maxY: maxY,
-                         lineBarsData: [
-                            LineChartBarData(
-                               spots: [
-                                 for (int i = 0; i < values.length; i++)
-                                   FlSpot(i.toDouble(), values[i].toDouble())
-                               ],
-                               isCurved: true,
-                               color: Theme.of(context).colorScheme.primary,
-                               barWidth: 2,
-                               isStrokeCapRound: true,
-                               shadow: Shadow(
-                                  color: Theme.of(context).colorScheme.primary.withAlphaFactor(0.3),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                               ),
-                               dotData: FlDotData(
-                                  show: true,
-                                  checkToShowDot: (spot, barData) => spot.x == barData.spots.last.x,
-                                  getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                                     radius: 5,
-                                     color: Theme.of(context).colorScheme.primary,
-                                     strokeWidth: 2,
-                                     strokeColor: Theme.of(context).colorScheme.surface,
-                                  ),
-                               ),
-                               belowBarData: BarAreaData(
-                                  show: true,
-                                  gradient: LinearGradient(
-                                     colors: [
-                                        Theme.of(context).colorScheme.primary.withAlphaFactor(0.4),
-                                        Theme.of(context).colorScheme.primary.withAlphaFactor(0.0),
-                                     ],
-                                     begin: Alignment.topCenter,
-                                     end: Alignment.bottomCenter,
-                                  ),
-                               ),
-                            ),
-                         ],
-                         lineTouchData: LineTouchData(
-                            enabled: true,
-                            getTouchedSpotIndicator: (LineChartBarData barData, List<int> spotIndexes) {
-                               return spotIndexes.map((index) {
-                                  return TouchedSpotIndicatorData(
-                                     FlLine(color: Theme.of(context).colorScheme.primary.withAlphaFactor(0.5), strokeWidth: 2, dashArray: [4, 4]),
-                                     FlDotData(
-                                        getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                                           radius: 5,
-                                           color: Theme.of(context).colorScheme.primary,
-                                           strokeWidth: 2,
-                                           strokeColor: Theme.of(context).colorScheme.surface,
-                                        ),
-                                     ),
-                                  );
-                               }).toList();
-                            },
-                            touchTooltipData: LineTouchTooltipData(
-                               getTooltipColor: (touchedSpot) => Theme.of(context).colorScheme.onSurface,
-                               getTooltipItems: (touchedSpots) {
-                                  return touchedSpots.map((spot) => LineTooltipItem(
-                                     formatMoney(
-                                        Money(amountMinor: spot.y.toInt(), currency: widget.state.preferences.displayCurrency),
-                                        widget.state.preferences.locale,
-                                     ),
-                                     TextStyle(color: Theme.of(context).colorScheme.surface, fontWeight: FontWeight.bold, fontSize: 12),
-                                  )).toList();
-                               },
-                            ),
-                         ),
+                  height: 200,
+                  width: double.infinity,
+                  child: LineChart(
+                    LineChartData(
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        horizontalInterval: niceInterval,
+                        getDrawingHorizontalLine: (value) => FlLine(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outlineVariant.withAlphaFactor(0.3),
+                          strokeWidth: 1,
+                          dashArray: [4, 4],
+                        ),
                       ),
-                   ),
+                      titlesData: FlTitlesData(
+                        show: true,
+                        topTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        rightTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 40,
+                            interval: niceInterval,
+                            getTitlesWidget: (value, meta) {
+                              return Text(
+                                formatCompact(value),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 22,
+                            getTitlesWidget: (value, meta) {
+                              final intValue = value.toInt();
+                              final lastIndex = values.length - 1;
+                              final middleIndex = lastIndex ~/ 2;
+                              if (intValue == 0)
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(
+                                    xLabels[0],
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                );
+                              if (intValue == lastIndex && lastIndex > 0)
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(
+                                    xLabels[2],
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                );
+                              if (intValue == middleIndex &&
+                                  middleIndex > 0 &&
+                                  middleIndex < lastIndex)
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(
+                                    xLabels[1],
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                );
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      minX: 0,
+                      maxX: (values.length - 1).toDouble(),
+                      minY: minY,
+                      maxY: maxY,
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: [
+                            for (int i = 0; i < values.length; i++)
+                              FlSpot(i.toDouble(), values[i].toDouble()),
+                          ],
+                          isCurved: true,
+                          color: Theme.of(context).colorScheme.primary,
+                          barWidth: 2,
+                          isStrokeCapRound: true,
+                          shadow: Shadow(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primary.withAlphaFactor(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                          dotData: FlDotData(
+                            show: true,
+                            checkToShowDot: (spot, barData) =>
+                                spot.x == barData.spots.last.x,
+                            getDotPainter: (spot, percent, barData, index) =>
+                                FlDotCirclePainter(
+                                  radius: 5,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  strokeWidth: 2,
+                                  strokeColor: Theme.of(
+                                    context,
+                                  ).colorScheme.surface,
+                                ),
+                          ),
+                          belowBarData: BarAreaData(
+                            show: true,
+                            gradient: LinearGradient(
+                              colors: [
+                                Theme.of(
+                                  context,
+                                ).colorScheme.primary.withAlphaFactor(0.4),
+                                Theme.of(
+                                  context,
+                                ).colorScheme.primary.withAlphaFactor(0.0),
+                              ],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
+                          ),
+                        ),
+                      ],
+                      lineTouchData: LineTouchData(
+                        enabled: true,
+                        getTouchedSpotIndicator:
+                            (LineChartBarData barData, List<int> spotIndexes) {
+                              return spotIndexes.map((index) {
+                                return TouchedSpotIndicatorData(
+                                  FlLine(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary.withAlphaFactor(0.5),
+                                    strokeWidth: 2,
+                                    dashArray: [4, 4],
+                                  ),
+                                  FlDotData(
+                                    getDotPainter:
+                                        (spot, percent, barData, index) =>
+                                            FlDotCirclePainter(
+                                              radius: 5,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.primary,
+                                              strokeWidth: 2,
+                                              strokeColor: Theme.of(
+                                                context,
+                                              ).colorScheme.surface,
+                                            ),
+                                  ),
+                                );
+                              }).toList();
+                            },
+                        touchTooltipData: LineTouchTooltipData(
+                          getTooltipColor: (touchedSpot) =>
+                              Theme.of(context).colorScheme.onSurface,
+                          getTooltipItems: (touchedSpots) {
+                            return touchedSpots
+                                .map(
+                                  (spot) => LineTooltipItem(
+                                    formatMoney(
+                                      Money(
+                                        amountMinor: spot.y.toInt(),
+                                        currency: widget
+                                            .state
+                                            .preferences
+                                            .displayCurrency,
+                                      ),
+                                      widget.state.preferences.locale,
+                                    ),
+                                    TextStyle(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.surface,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                )
+                                .toList();
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
           ],
@@ -768,12 +876,13 @@ class CurrencyValuesHomeWidget extends ConsumerStatefulWidget {
       _CurrencyValuesHomeWidgetState();
 }
 
-class _CurrencyValuesHomeWidgetState extends ConsumerState<CurrencyValuesHomeWidget> {
+class _CurrencyValuesHomeWidgetState
+    extends ConsumerState<CurrencyValuesHomeWidget> {
   final Map<String, TextEditingController> _controllers = {};
-  final Map<String, double> _ratesToBase = {}; 
+  final Map<String, double> _ratesToBase = {};
 
   String _baseCurrency = '';
-  
+
   @override
   void initState() {
     super.initState();
@@ -783,8 +892,10 @@ class _CurrencyValuesHomeWidgetState extends ConsumerState<CurrencyValuesHomeWid
   @override
   void didUpdateWidget(CurrencyValuesHomeWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.state.preferences.enabledCurrencies != widget.state.preferences.enabledCurrencies ||
-        oldWidget.state.preferences.baseCurrency != widget.state.preferences.baseCurrency ||
+    if (oldWidget.state.preferences.enabledCurrencies !=
+            widget.state.preferences.enabledCurrencies ||
+        oldWidget.state.preferences.baseCurrency !=
+            widget.state.preferences.baseCurrency ||
         oldWidget.state.exchangeRates != widget.state.exchangeRates) {
       _initData();
     }
@@ -792,54 +903,61 @@ class _CurrencyValuesHomeWidgetState extends ConsumerState<CurrencyValuesHomeWid
 
   void _initData() {
     _baseCurrency = widget.state.preferences.baseCurrency.toUpperCase();
-    final enabled = widget.state.preferences.enabledCurrencies
-        .where((c) => c.toUpperCase() != _baseCurrency)
-        .toList()..sort();
-        
+    final enabled =
+        widget.state.preferences.enabledCurrencies
+            .where((c) => c.toUpperCase() != _baseCurrency)
+            .toList()
+          ..sort();
+
     final allCurrencies = [_baseCurrency, ...enabled];
-    
+
     final defaultCurrency = enabled.isNotEmpty ? enabled.first : _baseCurrency;
-    
+
     final oldKeys = _controllers.keys.toSet();
     for (final c in allCurrencies) {
       if (!_controllers.containsKey(c)) {
-         _controllers[c] = TextEditingController(text: c == defaultCurrency ? '1' : '');
+        _controllers[c] = TextEditingController(
+          text: c == defaultCurrency ? '1' : '',
+        );
       }
     }
-    
+
     for (final c in oldKeys) {
       if (!allCurrencies.contains(c)) {
         _controllers[c]?.dispose();
         _controllers.remove(c);
       }
     }
-    
+
     _ratesToBase.clear();
     _ratesToBase[_baseCurrency] = 1.0;
     for (final c in enabled) {
-       final matches = widget.state.exchangeRates
-            .where((r) =>
+      final matches = widget.state.exchangeRates
+          .where(
+            (r) =>
                 r.base.toUpperCase() == c &&
                 r.quote.toUpperCase() == _baseCurrency &&
-                r.rate > 0)
-            .toList();
-       if (matches.isNotEmpty) {
-         matches.sort((a, b) {
-            final aDate = a.updatedAt ?? a.asOfDate;
-            final bDate = b.updatedAt ?? b.asOfDate;
-            return bDate.compareTo(aDate);
-         });
-         _ratesToBase[c] = matches.first.rate;
-       } else {
-         _ratesToBase[c] = 0.0;
-       }
+                r.rate > 0,
+          )
+          .toList();
+      if (matches.isNotEmpty) {
+        matches.sort((a, b) {
+          final aDate = a.updatedAt ?? a.asOfDate;
+          final bDate = b.updatedAt ?? b.asOfDate;
+          return bDate.compareTo(aDate);
+        });
+        _ratesToBase[c] = matches.first.rate;
+      } else {
+        _ratesToBase[c] = 0.0;
+      }
     }
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _onTextChanged(defaultCurrency, _controllers[defaultCurrency]!.text);
+      if (mounted)
+        _onTextChanged(defaultCurrency, _controllers[defaultCurrency]!.text);
     });
   }
-  
+
   @override
   void dispose() {
     for (final c in _controllers.values) {
@@ -847,39 +965,43 @@ class _CurrencyValuesHomeWidgetState extends ConsumerState<CurrencyValuesHomeWid
     }
     super.dispose();
   }
-  
+
   void _onTextChanged(String editedCurrency, String value) {
-     final cleanValue = value.replaceAll(',', '');
-     final amount = double.tryParse(cleanValue) ?? 0.0;
-     final editedRate = _ratesToBase[editedCurrency] ?? 0.0;
-     if (editedRate <= 0) return;
-     
-     final amountInBase = amount * editedRate;
-     
-     for (final entry in _controllers.entries) {
-        final c = entry.key;
-        if (c == editedCurrency) continue;
-        
-        final r = _ratesToBase[c] ?? 0.0;
-        if (r <= 0) {
-           entry.value.text = 'No rate';
-        } else {
-           final val = amountInBase / r;
-           // Format to 1 decimal place to maintain simplicity, then strip trailing zeros
-           var formatted = val.toStringAsFixed(1);
-           if (formatted.contains('.')) {
-              formatted = formatted.replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
-           }
-           entry.value.text = formatted;
+    final cleanValue = value.replaceAll(',', '');
+    final amount = double.tryParse(cleanValue) ?? 0.0;
+    final editedRate = _ratesToBase[editedCurrency] ?? 0.0;
+    if (editedRate <= 0) return;
+
+    final amountInBase = amount * editedRate;
+
+    for (final entry in _controllers.entries) {
+      final c = entry.key;
+      if (c == editedCurrency) continue;
+
+      final r = _ratesToBase[c] ?? 0.0;
+      if (r <= 0) {
+        entry.value.text = 'No rate';
+      } else {
+        final val = amountInBase / r;
+        // Format to 1 decimal place to maintain simplicity, then strip trailing zeros
+        var formatted = val.toStringAsFixed(1);
+        if (formatted.contains('.')) {
+          formatted = formatted
+              .replaceAll(RegExp(r'0*$'), '')
+              .replaceAll(RegExp(r'\.$'), '');
         }
-     }
+        entry.value.text = formatted;
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final enabled = widget.state.preferences.enabledCurrencies
-        .where((c) => c.toUpperCase() != _baseCurrency)
-        .toList()..sort();
+    final enabled =
+        widget.state.preferences.enabledCurrencies
+            .where((c) => c.toUpperCase() != _baseCurrency)
+            .toList()
+          ..sort();
     final allCurrencies = [_baseCurrency, ...enabled];
 
     final scheme = Theme.of(context).colorScheme;
@@ -907,29 +1029,33 @@ class _CurrencyValuesHomeWidgetState extends ConsumerState<CurrencyValuesHomeWid
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (final c in allCurrencies) ...[
-             Builder(builder: (context) {
+            Builder(
+              builder: (context) {
                 String? rateSubtitle;
                 if (c != _baseCurrency) {
-                   final r = _ratesToBase[c] ?? 0.0;
-                   if (r > 0) {
-                      var formatted = r.toStringAsFixed(1);
-                      if (formatted.contains('.')) {
-                         formatted = formatted.replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
-                      }
-                      rateSubtitle = '1 $c = $formatted $_baseCurrency';
-                   }
+                  final r = _ratesToBase[c] ?? 0.0;
+                  if (r > 0) {
+                    var formatted = r.toStringAsFixed(1);
+                    if (formatted.contains('.')) {
+                      formatted = formatted
+                          .replaceAll(RegExp(r'0*$'), '')
+                          .replaceAll(RegExp(r'\.$'), '');
+                    }
+                    rateSubtitle = '1 $c = $formatted $_baseCurrency';
+                  }
                 }
                 return _CalculatorRow(
-                   currency: c,
-                   isBase: c == _baseCurrency,
-                   controller: _controllers[c]!,
-                   onChanged: (val) => _onTextChanged(c, val),
-                   hasRate: (_ratesToBase[c] ?? 0) > 0,
-                   rateSubtitle: rateSubtitle,
+                  currency: c,
+                  isBase: c == _baseCurrency,
+                  controller: _controllers[c]!,
+                  onChanged: (val) => _onTextChanged(c, val),
+                  hasRate: (_ratesToBase[c] ?? 0) > 0,
+                  rateSubtitle: rateSubtitle,
                 );
-             }),
-             if (c != allCurrencies.last) const SizedBox(height: AppSpacing.sm),
-          ]
+              },
+            ),
+            if (c != allCurrencies.last) const SizedBox(height: AppSpacing.sm),
+          ],
         ],
       ),
     );
@@ -960,9 +1086,15 @@ class _CalculatorRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: isBase ? scheme.tertiaryContainer.withAlphaFactor(0.3) : scheme.surfaceContainerHighest.withAlphaFactor(0.3),
+        color: isBase
+            ? scheme.tertiaryContainer.withAlphaFactor(0.3)
+            : scheme.surfaceContainerHighest.withAlphaFactor(0.3),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isBase ? scheme.tertiary.withAlphaFactor(0.5) : scheme.outlineVariant),
+        border: Border.all(
+          color: isBase
+              ? scheme.tertiary.withAlphaFactor(0.5)
+              : scheme.outlineVariant,
+        ),
       ),
       child: Row(
         children: [
@@ -978,13 +1110,15 @@ class _CalculatorRow extends StatelessWidget {
                 } else if (textLen > 11) {
                   fontSize = 14;
                 }
-                
+
                 return TextField(
                   controller: controller,
                   onChanged: onChanged,
                   enabled: hasRate,
                   textAlign: TextAlign.left,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   inputFormatters: [ThousandsSeparatorInputFormatter()],
                   decoration: InputDecoration(
                     border: InputBorder.none,
@@ -1010,7 +1144,7 @@ class _CalculatorRow extends StatelessWidget {
                 Text(
                   info.fullName,
                   style: TextStyle(
-                    fontWeight: isBase ? FontWeight.bold : FontWeight.w600, 
+                    fontWeight: isBase ? FontWeight.bold : FontWeight.w600,
                     fontSize: 13,
                     color: isBase ? scheme.onSurface : scheme.onSurfaceVariant,
                   ),
@@ -1018,15 +1152,26 @@ class _CalculatorRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 if (isBase)
-                  Text('Base Currency', style: TextStyle(fontSize: 11, color: scheme.tertiary), textAlign: TextAlign.right)
+                  Text(
+                    'Base Currency',
+                    style: TextStyle(fontSize: 11, color: scheme.tertiary),
+                    textAlign: TextAlign.right,
+                  )
                 else if (rateSubtitle != null && rateSubtitle!.isNotEmpty)
-                  Text(rateSubtitle!, style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant), textAlign: TextAlign.right)
+                  Text(
+                    rateSubtitle!,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.right,
+                  ),
               ],
             ),
           ),
           const SizedBox(width: 12),
           Icon(
-            isBase ? Icons.account_balance_outlined : Icons.payments_outlined, 
+            isBase ? Icons.account_balance_outlined : Icons.payments_outlined,
             color: isBase ? scheme.tertiary : scheme.onSurfaceVariant,
             size: 20,
           ),
@@ -1035,8 +1180,6 @@ class _CalculatorRow extends StatelessWidget {
     );
   }
 }
-
-
 
 class UpcomingDueHomeWidget extends ConsumerWidget {
   const UpcomingDueHomeWidget({required this.state, super.key});
@@ -1048,8 +1191,9 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
     final selectedAccountId = ref.watch(homeSelectedAccountProvider);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    
-    final filter = state.preferences.homeWidgetFilters['upcomingScheduled'] ?? '1_week';
+
+    final filter =
+        state.preferences.homeWidgetFilters['upcomingScheduled'] ?? '1_week';
     final int daysLimit = switch (filter) {
       '1_week' => 7,
       '2_weeks' => 14,
@@ -1067,22 +1211,23 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
               t.counterAccountId == selectedAccountId,
         )
         .where((t) {
-           final day = DateTime(
-             t.occurredAt.year,
-             t.occurredAt.month,
-             t.occurredAt.day,
-           );
-           return day.isAfter(today.subtract(const Duration(days: 1))) && !day.isAfter(limitDate);
+          final day = DateTime(
+            t.occurredAt.year,
+            t.occurredAt.month,
+            t.occurredAt.day,
+          );
+          return day.isAfter(today.subtract(const Duration(days: 1))) &&
+              !day.isAfter(limitDate);
         })
         .toList();
-        
+
     scheduled.sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
 
     final dueAmount = scheduled.fold<int>(
       0,
       (sum, transaction) => sum + transaction.baseAmount.amountMinor,
     );
-    
+
     final next = scheduled.take(4).toList();
 
     return HomeWidgetCard(
@@ -1112,7 +1257,9 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
                 state.preferences.homeWidgetFilters,
               );
               newFilters['upcomingScheduled'] = value;
-              ref.read(ledgerProvider.notifier).updatePreferences(
+              ref
+                  .read(ledgerProvider.notifier)
+                  .updatePreferences(
                     state.preferences.copyWith(homeWidgetFilters: newFilters),
                   );
             }
@@ -1128,7 +1275,9 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
                   label: 'Due soon',
                   value: '${scheduled.length}',
                   icon: Icons.event_busy_outlined,
-                  tone: scheduled.isEmpty ? MetricTone.standard : MetricTone.danger,
+                  tone: scheduled.isEmpty
+                      ? MetricTone.standard
+                      : MetricTone.danger,
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),
@@ -1482,8 +1631,6 @@ class CardsHomeWidget extends ConsumerWidget {
   }
 }
 
-
-
 class AccountGroupsHomeWidget extends StatelessWidget {
   const AccountGroupsHomeWidget({required this.state, super.key});
 
@@ -1528,12 +1675,6 @@ class AccountGroupsHomeWidget extends StatelessWidget {
   }
 }
 
-
-
-
-
-
-
 class TopCategoriesHomeWidget extends StatelessWidget {
   const TopCategoriesHomeWidget({
     required this.state,
@@ -1558,8 +1699,6 @@ class TopCategoriesHomeWidget extends StatelessWidget {
     );
   }
 }
-
-
 
 class BudgetPressureHomeWidget extends StatelessWidget {
   const BudgetPressureHomeWidget({required this.state, super.key});
@@ -1642,8 +1781,6 @@ class GoalProgressHomeWidget extends StatelessWidget {
     );
   }
 }
-
-
 
 class _CategoryListWidget extends StatelessWidget {
   const _CategoryListWidget({
@@ -1909,7 +2046,11 @@ List<_AccountGroupSummary> _accountGroupSummaries(LedgerState state) {
   for (final account in state.accounts.where(
     (account) => !account.isArchived,
   )) {
-    final balance = _displayAccountBalanceMinor(state, account, balances: balancesMap);
+    final balance = _displayAccountBalanceMinor(
+      state,
+      account,
+      balances: balancesMap,
+    );
     final current = byType[account.type] ?? (count: 0, amountMinor: 0);
     byType[account.type] = (
       count: current.count + 1,
@@ -1982,7 +2123,8 @@ String _monthRangeLabel(DateTime value, String locale) {
   return '${formatLedgerDate(start, locale)} to ${formatLedgerDate(end, locale)}';
 }
 
-String _shortDate(DateTime date, String locale) => formatLedgerDate(date, locale);
+String _shortDate(DateTime date, String locale) =>
+    formatLedgerDate(date, locale);
 
 class _AccountGroupSummary {
   const _AccountGroupSummary({

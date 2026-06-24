@@ -70,9 +70,7 @@ class LiquidGlassContainer extends ConsumerWidget {
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
       colors: [
-        specularColor.withAlphaFactor(
-          highlightOpacity * highlightSaturation,
-        ),
+        specularColor.withAlphaFactor(highlightOpacity * highlightSaturation),
         specularColor.withAlphaFactor(
           highlightOpacity * 0.2 * highlightSaturation,
         ),
@@ -203,7 +201,12 @@ class AppScreen extends StatelessWidget {
     super.key,
     this.onMenuPressed,
     this.actions = const [],
-    this.padding = const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.xs, AppSpacing.md, AppSpacing.md),
+    this.padding = const EdgeInsets.fromLTRB(
+      AppSpacing.md,
+      AppSpacing.xs,
+      AppSpacing.md,
+      AppSpacing.md,
+    ),
     this.scrollable = true,
     this.floatingActionButton,
     this.maxWidth = 1200,
@@ -222,17 +225,16 @@ class AppScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDesktop = AppResponsiveLayout.isDesktop(context);
-    
+
     // Adjust bottom clearance to account for bottom navigation bar
-    final contentPadding = scrollable 
-      ? padding.add(const EdgeInsets.only(bottom: AppSizes.bottomBarClearance))
-      : padding;
+    final contentPadding = scrollable
+        ? padding.add(
+            const EdgeInsets.only(bottom: AppSizes.bottomBarClearance),
+          )
+        : padding;
 
     Widget body = scrollable
-        ? ListView(
-            padding: contentPadding,
-            children: [child],
-          )
+        ? ListView(padding: contentPadding, children: [child])
         : Padding(padding: contentPadding, child: child);
 
     // Apply width constraint but preserve tight vertical constraints
@@ -261,7 +263,9 @@ class AppScreen extends StatelessWidget {
                     constraints: BoxConstraints(maxWidth: maxWidth),
                     child: AppHeader(
                       title: title,
-                      onMenuPressed: isDesktop ? null : onMenuPressed, // Hide menu button on desktop since drawer is persistent
+                      onMenuPressed: isDesktop
+                          ? null
+                          : onMenuPressed, // Hide menu button on desktop since drawer is persistent
                       actions: actions,
                     ),
                   ),
@@ -492,10 +496,7 @@ class AppMenuAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassHeaderButton(
-      icon: Icons.menu_rounded,
-      onPressed: onPressed,
-    );
+    return GlassHeaderButton(icon: Icons.menu_rounded, onPressed: onPressed);
   }
 }
 
@@ -1048,7 +1049,8 @@ class LiquidGlassSwitchListTile extends StatelessWidget {
       onTap: onChanged == null ? null : () => onChanged!(!value),
       borderRadius: BorderRadius.circular(AppRadii.md),
       child: Padding(
-        padding: contentPadding ??
+        padding:
+            contentPadding ??
             const EdgeInsets.symmetric(
               vertical: AppSpacing.sm,
               horizontal: AppSpacing.xs,
@@ -1085,10 +1087,7 @@ class LiquidGlassSwitchListTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.md),
-            LiquidGlassSwitch(
-              value: value,
-              onChanged: onChanged ?? (_) {},
-            ),
+            LiquidGlassSwitch(value: value, onChanged: onChanged ?? (_) {}),
           ],
         ),
       ),

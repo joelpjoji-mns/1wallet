@@ -23,7 +23,7 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(ledgerProvider);
     final scheme = Theme.of(context).colorScheme;
-    
+
     final now = DateTime.now();
     DateTime? start;
     switch (_period) {
@@ -42,16 +42,13 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
     }
 
     final trend = ref.watch(homeBalanceTrendProvider((start: start, end: now)));
-    final current = ref.watch(homeTotalBalanceProvider((accountId: null, targetCurrency: null)));
-    
-
+    final current = ref.watch(
+      homeTotalBalanceProvider((accountId: null, targetCurrency: null)),
+    );
 
     return Scaffold(
       backgroundColor: scheme.surface,
-      appBar: AppBar(
-        title: const Text('Balance Trend'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Balance Trend'), centerTitle: true),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -76,7 +73,9 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
               decoration: BoxDecoration(
                 color: scheme.surface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+                border: Border.all(
+                  color: scheme.outlineVariant.withValues(alpha: 0.5),
+                ),
               ),
               child: Column(
                 children: [
@@ -94,7 +93,9 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
                     style: TextStyle(
                       fontSize: 40,
                       fontWeight: FontWeight.bold,
-                      color: current.amountMinor >= 0 ? const Color(0xff22c55e) : const Color(0xffef4444),
+                      color: current.amountMinor >= 0
+                          ? const Color(0xff22c55e)
+                          : const Color(0xffef4444),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -118,7 +119,9 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
                 decoration: BoxDecoration(
                   color: scheme.surface,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+                  border: Border.all(
+                    color: scheme.outlineVariant.withValues(alpha: 0.5),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,7 +136,11 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     Expanded(
-                      child: _buildChart(trend, scheme, state.preferences.locale),
+                      child: _buildChart(
+                        trend,
+                        scheme,
+                        state.preferences.locale,
+                      ),
                     ),
                   ],
                 ),
@@ -145,10 +152,13 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
       ),
     );
   }
-  
+
   String _formatMoney(Money money, String locale) {
     final amount = money.amountMinor / 100.0;
-    return NumberFormat.simpleCurrency(name: money.currency, locale: locale).format(amount);
+    return NumberFormat.simpleCurrency(
+      name: money.currency,
+      locale: locale,
+    ).format(amount);
   }
 
   String _formatYAxisLabel(double value) {
@@ -165,7 +175,11 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
     return '$sign${absVal.toInt()}';
   }
 
-  Widget _buildChart(List<BalanceTrendPoint> trend, ColorScheme scheme, String locale) {
+  Widget _buildChart(
+    List<BalanceTrendPoint> trend,
+    ColorScheme scheme,
+    String locale,
+  ) {
     if (trend.isEmpty) {
       return const Center(child: Text('No data for this period'));
     }
@@ -242,37 +256,37 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
           horizontalInterval: interval,
           getDrawingHorizontalLine: (value) {
             if (value == 0) {
-              return FlLine(
-                color: scheme.onSurfaceVariant,
-                strokeWidth: 2,
-              );
+              return FlLine(color: scheme.onSurfaceVariant, strokeWidth: 2);
             }
-            return FlLine(
-              color: scheme.outlineVariant,
-              strokeWidth: 1,
-            );
+            return FlLine(color: scheme.outlineVariant, strokeWidth: 1);
           },
-          getDrawingVerticalLine: (value) => FlLine(
-            color: scheme.outlineVariant,
-            strokeWidth: 1,
-          ),
+          getDrawingVerticalLine: (value) =>
+              FlLine(color: scheme.outlineVariant, strokeWidth: 1),
         ),
         titlesData: FlTitlesData(
           show: true,
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 30,
               getTitlesWidget: (value, meta) {
-                if (value == minX || value == maxX) return const SizedBox.shrink();
+                if (value == minX || value == maxX)
+                  return const SizedBox.shrink();
                 final date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
                 return Padding(
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
                     DateFormat.yMMMd().format(date),
-                    style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 10),
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 10,
+                    ),
                   ),
                 );
               },
@@ -284,13 +298,17 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
               reservedSize: 40,
               interval: interval,
               getTitlesWidget: (value, meta) {
-                if (value == minY || value == maxY) return const SizedBox.shrink();
+                if (value == minY || value == maxY)
+                  return const SizedBox.shrink();
                 return Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: Text(
                     _formatYAxisLabel(value),
                     textAlign: TextAlign.right,
-                    style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 10),
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 10,
+                    ),
                   ),
                 );
               },
@@ -330,13 +348,21 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
             fitInsideVertically: true,
             getTooltipItems: (touchedSpots) {
               return touchedSpots.map((spot) {
-                final date = DateTime.fromMillisecondsSinceEpoch(spot.x.toInt());
+                final date = DateTime.fromMillisecondsSinceEpoch(
+                  spot.x.toInt(),
+                );
                 return LineTooltipItem(
                   '${DateFormat.yMMMd().format(date)}\n',
-                  const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                  const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                   children: [
                     TextSpan(
-                      text: NumberFormat.simpleCurrency(name: trend.first.balance.currency, locale: locale).format(spot.y),
+                      text: NumberFormat.simpleCurrency(
+                        name: trend.first.balance.currency,
+                        locale: locale,
+                      ).format(spot.y),
                       style: const TextStyle(fontWeight: FontWeight.normal),
                     ),
                   ],

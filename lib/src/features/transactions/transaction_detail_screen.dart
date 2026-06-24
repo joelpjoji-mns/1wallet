@@ -68,98 +68,98 @@ class _TransactionDetailScreenState
         children: [
           // Premium Hero Section
           GestureDetector(
-            onTap: () => context.push('/add?transactionId=${transaction.id}&tab=0'),
+            onTap: () =>
+                context.push('/add?transactionId=${transaction.id}&tab=0'),
             child: Container(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  (category?.color ?? Theme.of(context).colorScheme.primary)
-                      .withAlphaFactor(0.2),
-                  Theme.of(context).colorScheme.surface,
-                ],
-              ),
-              borderRadius: BorderRadius.circular(AppRadii.xl),
-              border: Border.all(
-                color:
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
                     (category?.color ?? Theme.of(context).colorScheme.primary)
-                        .withAlphaFactor(0.3),
+                        .withAlphaFactor(0.2),
+                    Theme.of(context).colorScheme.surface,
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(AppRadii.xl),
+                border: Border.all(
+                  color:
+                      (category?.color ?? Theme.of(context).colorScheme.primary)
+                          .withAlphaFactor(0.3),
+                ),
               ),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  category?.name ?? transactionTypeLabel(transaction.type),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.1,
+              child: Column(
+                children: [
+                  Text(
+                    category?.name ?? transactionTypeLabel(transaction.type),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.1,
+                    ),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  formatMoney(
-                    transaction.amount.copyWith(amountMinor: signedAmount),
-                    state.preferences.locale,
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    formatMoney(
+                      transaction.amount.copyWith(amountMinor: signedAmount),
+                      state.preferences.locale,
+                    ),
+                    style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: amountColor(context, signedAmount),
+                    ),
                   ),
-                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: amountColor(context, signedAmount),
-                  ),
-                ),
-                for (final amountLine in secondaryAmounts)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
+                  for (final amountLine in secondaryAmounts)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        amountLine,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: AppSpacing.lg),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.xs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surface.withAlphaFactor(0.5),
+                      borderRadius: BorderRadius.circular(AppRadii.pill),
+                    ),
                     child: Text(
-                      amountLine,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      formatLedgerDate(
+                        transaction.occurredAt,
+                        state.preferences.locale,
+                      ),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
-                const SizedBox(height: AppSpacing.lg),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.xs,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surface.withAlphaFactor(0.5),
-                    borderRadius: BorderRadius.circular(AppRadii.pill),
-                  ),
-                  child: Text(
-                    formatLedgerDate(
-                      transaction.occurredAt,
-                      state.preferences.locale,
-                    ),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                if (transaction.locationLabel != null) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.place_outlined, size: 16),
-                      const SizedBox(width: 4),
-                      Text(
-                        transaction.locationLabel!,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
+                  if (transaction.locationLabel != null) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.place_outlined, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          transaction.locationLabel!,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
           ),
           const Gap(AppSpacing.lg),
           SectionCard(
@@ -181,7 +181,9 @@ class _TransactionDetailScreenState
                           state.preferences.locale,
                         ),
                   iconColor: account?.color,
-                  onTap: () => context.push('/add?transactionId=${transaction.id}&tab=0'),
+                  onTap: () => context.push(
+                    '/add?transactionId=${transaction.id}&tab=0',
+                  ),
                 ),
                 if (counterAccount != null) ...[
                   const SizedBox(height: AppSpacing.sm),
@@ -194,7 +196,9 @@ class _TransactionDetailScreenState
                       state.preferences.locale,
                     ),
                     iconColor: counterAccount.color,
-                    onTap: () => context.push('/add?transactionId=${transaction.id}&tab=0'),
+                    onTap: () => context.push(
+                      '/add?transactionId=${transaction.id}&tab=0',
+                    ),
                   ),
                 ],
                 if (category != null) ...[
@@ -204,7 +208,9 @@ class _TransactionDetailScreenState
                     title: category.name,
                     subtitle: categoryPath(state, category),
                     iconColor: category.color,
-                    onTap: () => context.push('/add?transactionId=${transaction.id}&tab=0'),
+                    onTap: () => context.push(
+                      '/add?transactionId=${transaction.id}&tab=0',
+                    ),
                   ),
                 ],
               ],
@@ -216,7 +222,9 @@ class _TransactionDetailScreenState
             child: Column(
               children: [
                 GestureDetector(
-                  onTap: () => context.push('/add?transactionId=${transaction.id}&tab=1'),
+                  onTap: () => context.push(
+                    '/add?transactionId=${transaction.id}&tab=1',
+                  ),
                   behavior: HitTestBehavior.opaque,
                   child: InfoRow(
                     label: 'Date',
@@ -228,7 +236,9 @@ class _TransactionDetailScreenState
                   ),
                 ),
                 GestureDetector(
-                  onTap: () => context.push('/add?transactionId=${transaction.id}&tab=1'),
+                  onTap: () => context.push(
+                    '/add?transactionId=${transaction.id}&tab=1',
+                  ),
                   behavior: HitTestBehavior.opaque,
                   child: InfoRow(
                     label: 'Time',
@@ -260,7 +270,9 @@ class _TransactionDetailScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 GestureDetector(
-                  onTap: () => context.push('/add?transactionId=${transaction.id}&tab=1'),
+                  onTap: () => context.push(
+                    '/add?transactionId=${transaction.id}&tab=1',
+                  ),
                   behavior: HitTestBehavior.opaque,
                   child: Text(
                     transaction.notes ?? 'No notes added.',

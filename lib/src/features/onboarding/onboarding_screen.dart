@@ -13,6 +13,7 @@ import '../../data/ledger_providers.dart';
 import '../../data/ledger_providers.dart';
 import '../../widgets/currency_picker.dart';
 import '../../utils/number_formatter.dart';
+
 class _AccountDraft {
   String name;
   String type;
@@ -41,7 +42,7 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _pageController = PageController();
   int _currentPage = 0;
-  
+
   final _displayNameController = TextEditingController();
   final _selectedUseCases = <String>{'daily_spending', 'budgeting'};
 
@@ -58,7 +59,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     _resetDraft();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = ref.read(authControllerProvider);
-      if (auth.user?.displayName != null && auth.user!.displayName!.isNotEmpty) {
+      if (auth.user?.displayName != null &&
+          auth.user!.displayName!.isNotEmpty) {
         _displayNameController.text = auth.user!.displayName!;
       }
     });
@@ -77,7 +79,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   void _nextPage() {
     if (_currentPage < 4) {
-      _pageController.nextPage(duration: const Duration(milliseconds: 600), curve: Curves.easeOutCubic);
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeOutCubic,
+      );
     } else {
       _finishOnboarding();
     }
@@ -85,27 +90,32 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   void _prevPage() {
     if (_currentPage > 0) {
-      _pageController.previousPage(duration: const Duration(milliseconds: 600), curve: Curves.easeOutCubic);
+      _pageController.previousPage(
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeOutCubic,
+      );
     }
   }
 
   Future<void> _finishOnboarding() async {
     final authUser = ref.read(authControllerProvider).user;
     if (authUser == null) return;
-    
+
     // Save display name to Firebase Auth
     if (_displayNameController.text.trim().isNotEmpty) {
-      await firebase_auth.FirebaseAuth.instance.currentUser?.updateDisplayName(_displayNameController.text.trim());
+      await firebase_auth.FirebaseAuth.instance.currentUser?.updateDisplayName(
+        _displayNameController.text.trim(),
+      );
     }
 
     // Save preferences to ledger
     final ledgerNotifier = ref.read(ledgerProvider.notifier);
     final currentState = ref.read(ledgerProvider);
-    
+
     var newPrefs = currentState.preferences.copyWith(
       baseCurrency: _baseCurrency,
       displayCurrency: _baseCurrency,
-      enabledCurrencies: { _baseCurrency, kDefaultCurrency }.toList(),
+      enabledCurrencies: {_baseCurrency, kDefaultCurrency}.toList(),
     );
     if (!_enableReminders) {
       newPrefs = newPrefs.copyWith(notificationInboxEnabled: false);
@@ -114,7 +124,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
     // Save accounts to ledger
     for (final draft in _accounts) {
-      final parsedOpening = int.tryParse(draft.opening.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
+      final parsedOpening =
+          int.tryParse(draft.opening.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
       await ledgerNotifier.upsertAccount(
         id: const Uuid().v4(),
         name: draft.name,
@@ -124,9 +135,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         color: draft.color,
       );
     }
-    
-    await ref.read(onboardingControllerProvider.notifier).setCompleted(authUser.id, true);
-    
+
+    await ref
+        .read(onboardingControllerProvider.notifier)
+        .setCompleted(authUser.id, true);
+
     if (!mounted) return;
     context.go('/permissions-setup');
   }
@@ -154,7 +167,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       'Step ${_currentPage + 1} of 5',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.5),
                       ),
                     ),
                     const Spacer(),
@@ -190,7 +205,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         const StaggeredFadeIn(
           child: Text(
             'Welcome.\nLet\'s set you up.',
-            style: TextStyle(fontSize: 40, fontWeight: FontWeight.w900, height: 1.1, letterSpacing: -1),
+            style: TextStyle(
+              fontSize: 40,
+              fontWeight: FontWeight.w900,
+              height: 1.1,
+              letterSpacing: -1,
+            ),
           ),
         ),
         const SizedBox(height: 32),
@@ -200,20 +220,33 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('What should we call you?', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text(
+                  'What should we call you?',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _displayNameController,
-                  decoration: const InputDecoration(hintText: 'Your name', filled: true),
+                  decoration: const InputDecoration(
+                    hintText: 'Your name',
+                    filled: true,
+                  ),
                 ),
                 const SizedBox(height: 24),
-                const Text('Main currency', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text(
+                  'Main currency',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 8),
                 ListTile(
                   title: Text(_baseCurrency),
                   trailing: const Icon(Icons.chevron_right_rounded),
-                  tileColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  tileColor: Theme.of(
+                    context,
+                  ).colorScheme.surface.withValues(alpha: 0.5),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   onTap: () async {
                     final curr = await showCurrencyPicker(
                       context: context,
@@ -232,7 +265,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           delay: const Duration(milliseconds: 200),
           child: FilledButton(
             onPressed: _nextPage,
-            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(56),
+            ),
             child: const Text('Continue'),
           ),
         ),
@@ -242,10 +277,26 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Widget _buildUseCasesStep() {
     final useCases = [
-      {'id': 'daily_spending', 'title': 'Daily spending', 'icon': Icons.coffee_rounded},
-      {'id': 'budgeting', 'title': 'Budgeting', 'icon': Icons.pie_chart_rounded},
-      {'id': 'net_worth', 'title': 'Net worth tracking', 'icon': Icons.trending_up_rounded},
-      {'id': 'loans', 'title': 'Loan EMIs', 'icon': Icons.real_estate_agent_rounded},
+      {
+        'id': 'daily_spending',
+        'title': 'Daily spending',
+        'icon': Icons.coffee_rounded,
+      },
+      {
+        'id': 'budgeting',
+        'title': 'Budgeting',
+        'icon': Icons.pie_chart_rounded,
+      },
+      {
+        'id': 'net_worth',
+        'title': 'Net worth tracking',
+        'icon': Icons.trending_up_rounded,
+      },
+      {
+        'id': 'loans',
+        'title': 'Loan EMIs',
+        'icon': Icons.real_estate_agent_rounded,
+      },
     ];
 
     return ListView(
@@ -254,7 +305,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         const StaggeredFadeIn(
           child: Text(
             'What do you want\nto track?',
-            style: TextStyle(fontSize: 40, fontWeight: FontWeight.w900, height: 1.1, letterSpacing: -1),
+            style: TextStyle(
+              fontSize: 40,
+              fontWeight: FontWeight.w900,
+              height: 1.1,
+              letterSpacing: -1,
+            ),
           ),
         ),
         const SizedBox(height: 32),
@@ -288,7 +344,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           delay: const Duration(milliseconds: 200),
           child: FilledButton(
             onPressed: _nextPage,
-            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(56),
+            ),
             child: const Text('Continue'),
           ),
         ),
@@ -303,7 +361,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         const StaggeredFadeIn(
           child: Text(
             'Add your first\nwallet.',
-            style: TextStyle(fontSize: 40, fontWeight: FontWeight.w900, height: 1.1, letterSpacing: -1),
+            style: TextStyle(
+              fontSize: 40,
+              fontWeight: FontWeight.w900,
+              height: 1.1,
+              letterSpacing: -1,
+            ),
           ),
         ),
         const SizedBox(height: 32),
@@ -315,18 +378,29 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               children: [
                 TextField(
                   onChanged: (v) => setState(() => _currentDraft.name = v),
-                  decoration: const InputDecoration(hintText: 'Account name (e.g. Cash, Chase)'),
+                  decoration: const InputDecoration(
+                    hintText: 'Account name (e.g. Cash, Chase)',
+                  ),
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   value: _currentDraft.type,
                   decoration: const InputDecoration(hintText: 'Account Type'),
-                  items: ['bank', 'cash', 'credit_card', 'digital', 'savings', 'loan', 'investment'].map((t) {
-                    return DropdownMenuItem(
-                      value: t,
-                      child: Text(t.toUpperCase().replaceAll('_', ' ')),
-                    );
-                  }).toList(),
+                  items:
+                      [
+                        'bank',
+                        'cash',
+                        'credit_card',
+                        'digital',
+                        'savings',
+                        'loan',
+                        'investment',
+                      ].map((t) {
+                        return DropdownMenuItem(
+                          value: t,
+                          child: Text(t.toUpperCase().replaceAll('_', ' ')),
+                        );
+                      }).toList(),
                   onChanged: (v) {
                     if (v != null) setState(() => _currentDraft.type = v);
                   },
@@ -334,9 +408,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 const SizedBox(height: 16),
                 TextField(
                   onChanged: (v) => setState(() => _currentDraft.opening = v),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   inputFormatters: [ThousandsSeparatorInputFormatter()],
-                  decoration: InputDecoration(hintText: 'Current balance', suffixText: _currentDraft.currency),
+                  decoration: InputDecoration(
+                    hintText: 'Current balance',
+                    suffixText: _currentDraft.currency,
+                  ),
                 ),
               ],
             ),
@@ -355,7 +434,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 _nextPage();
               }
             },
-            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(56),
+            ),
             child: const Text('Save Wallet'),
           ),
         ),
@@ -371,24 +452,34 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         const StaggeredFadeIn(
           child: Text(
             'Your wallets',
-            style: TextStyle(fontSize: 40, fontWeight: FontWeight.w900, height: 1.1, letterSpacing: -1),
+            style: TextStyle(
+              fontSize: 40,
+              fontWeight: FontWeight.w900,
+              height: 1.1,
+              letterSpacing: -1,
+            ),
           ),
         ),
         const SizedBox(height: 32),
         if (_accounts.isEmpty)
           const Text('No accounts added yet.')
         else
-          ..._accounts.map((a) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: GlassCard(
-              padding: const EdgeInsets.all(16),
-              child: ListTile(
-                leading: Icon(a.icon, color: a.color),
-                title: Text(a.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text('${a.opening} ${a.currency}'),
+          ..._accounts.map(
+            (a) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: GlassCard(
+                padding: const EdgeInsets.all(16),
+                child: ListTile(
+                  leading: Icon(a.icon, color: a.color),
+                  title: Text(
+                    a.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text('${a.opening} ${a.currency}'),
+                ),
               ),
             ),
-          )),
+          ),
         const SizedBox(height: 32),
         FilledButton(
           onPressed: _nextPage,
@@ -406,7 +497,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         const StaggeredFadeIn(
           child: Text(
             'Just one last\nthing.',
-            style: TextStyle(fontSize: 40, fontWeight: FontWeight.w900, height: 1.1, letterSpacing: -1),
+            style: TextStyle(
+              fontSize: 40,
+              fontWeight: FontWeight.w900,
+              height: 1.1,
+              letterSpacing: -1,
+            ),
           ),
         ),
         const SizedBox(height: 32),
@@ -417,13 +513,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               children: [
                 SwitchListTile(
                   title: const Text('Auto-capture transactions'),
-                  subtitle: const Text('Scan SMS and notifications for expenses.'),
+                  subtitle: const Text(
+                    'Scan SMS and notifications for expenses.',
+                  ),
                   value: _enableAutoCapture,
                   onChanged: (v) => setState(() => _enableAutoCapture = v),
                 ),
                 SwitchListTile(
                   title: const Text('Reminders'),
-                  subtitle: const Text('Get notified for upcoming bills and EMIs.'),
+                  subtitle: const Text(
+                    'Get notified for upcoming bills and EMIs.',
+                  ),
                   value: _enableReminders,
                   onChanged: (v) => setState(() => _enableReminders = v),
                 ),
@@ -436,7 +536,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           delay: const Duration(milliseconds: 200),
           child: FilledButton(
             onPressed: _nextPage,
-            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(56),
+            ),
             child: const Text('Finish Setup'),
           ),
         ),

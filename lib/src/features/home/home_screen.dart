@@ -111,9 +111,8 @@ class HomeScreen extends ConsumerWidget {
           IconButton(
             tooltip: 'Done reordering widgets',
             icon: const Icon(Icons.check_rounded),
-            onPressed: () => ref
-                .read(_homeWidgetReorderModeProvider.notifier)
-                .state = false,
+            onPressed: () =>
+                ref.read(_homeWidgetReorderModeProvider.notifier).state = false,
           ),
         HeaderIconButton(
           icon: Icons.search_rounded,
@@ -188,12 +187,8 @@ class _HomeDashboardList extends ConsumerWidget {
         padding: padding,
         itemCount: widgetOrder.length,
         separatorBuilder: (context, index) => const SizedBox(height: 12),
-        itemBuilder: (context, index) => _buildScopedHomeWidget(
-          context,
-          ref,
-          state,
-          index,
-        ),
+        itemBuilder: (context, index) =>
+            _buildScopedHomeWidget(context, ref, state, index),
       );
     }
     final leftColIds = <HomeDashboardWidgetId>[];
@@ -243,10 +238,7 @@ class _HomeDashboardList extends ConsumerWidget {
       ),
     );
 
-    return AppResponsiveLayout(
-      mobile: mobileView,
-      desktop: desktopView,
-    );
+    return AppResponsiveLayout(mobile: mobileView, desktop: desktopView);
   }
 
   Widget _buildScopedHomeWidget(
@@ -317,10 +309,7 @@ class _HomeDashboardList extends ConsumerWidget {
     _saveHomeWidgetOrder(ref, next);
   }
 
-  void _saveHomeWidgetOrder(
-    WidgetRef ref,
-    List<HomeDashboardWidgetId> next,
-  ) {
+  void _saveHomeWidgetOrder(WidgetRef ref, List<HomeDashboardWidgetId> next) {
     ref
         .read(ledgerProvider.notifier)
         .setHomeWidgetOrder(next.map((item) => item.storageKey).toList());

@@ -182,7 +182,11 @@ Future<ReceiptPhotoFields> extractReceiptFieldsFromPhoto(
     await textRecognizer.close();
     return parseReceiptText(recognizedText.text, options);
   } catch (error) {
-    return _emptyReceiptFields(ReceiptOcrStatus.failed, options, errorMessage: error.toString());
+    return _emptyReceiptFields(
+      ReceiptOcrStatus.failed,
+      options,
+      errorMessage: error.toString(),
+    );
   }
 }
 
@@ -687,5 +691,3 @@ int _toMinor(double amount, String currencyCode) {
   }
   return (amount * 100).round();
 }
-
-

@@ -56,8 +56,8 @@ class _CategoryHierarchyPickerState extends State<_CategoryHierarchyPicker> {
         ? selectedCategory?.id
         : null;
     final selectedRoot = selectedCategory == null
-      ? null
-      : rootCategoryFor(widget.state, selectedCategory);
+        ? null
+        : rootCategoryFor(widget.state, selectedCategory);
     final options = showingSubcategories
         ? childCategories(widget.state, root.id)
         : rootCategories(widget.state);
@@ -119,7 +119,9 @@ class _CategoryHierarchyPickerState extends State<_CategoryHierarchyPicker> {
               if (showingSubcategories) ...[
                 PremiumRow(
                   icon: Icons.arrow_upward_rounded,
-                  title: root.parentId == null ? 'All categories' : 'Back to parent',
+                  title: root.parentId == null
+                      ? 'All categories'
+                      : 'Back to parent',
                   subtitle: 'Go up one level',
                   iconColor: scheme.primary,
                   onTap: _handleBack,
@@ -154,7 +156,7 @@ class _CategoryHierarchyPickerState extends State<_CategoryHierarchyPicker> {
                     iconColor: categoryColor(category, context),
                     selected: showingSubcategories
                         ? selectedChildId == category.id
-                      : selectedRoot?.id == category.id,
+                        : selectedRoot?.id == category.id,
                     onTap: () => _select(category),
                   ),
                   const SizedBox(height: AppSpacing.sm),
@@ -170,7 +172,9 @@ class _CategoryHierarchyPickerState extends State<_CategoryHierarchyPicker> {
     if (_activeRoot != null) {
       final parentId = _activeRoot!.parentId;
       setState(() {
-        _activeRoot = parentId == null ? null : categoryById(widget.state, parentId);
+        _activeRoot = parentId == null
+            ? null
+            : categoryById(widget.state, parentId);
         _query = '';
       });
       return;
@@ -188,7 +192,7 @@ class _CategoryHierarchyPickerState extends State<_CategoryHierarchyPicker> {
   List<Category> _filtered(List<Category> options) {
     final query = _query.trim().toLowerCase();
     if (query.isEmpty) return options;
-    
+
     // Always search all categories, not just the currently active group
     return activeCategories(widget.state).where((category) {
       final searchable = [

@@ -26,8 +26,11 @@ class TransactionRow extends StatelessWidget {
     final account = accountById(state, transaction.accountId);
     final counter = accountById(state, transaction.counterAccountId);
     final category = categoryById(state, transaction.categoryId);
-    final inactive = transaction.status == 'void' || transaction.status == 'paused';
-    final color = inactive ? Theme.of(context).colorScheme.outline : _rowAmountColor(context);
+    final inactive =
+        transaction.status == 'void' || transaction.status == 'paused';
+    final color = inactive
+        ? Theme.of(context).colorScheme.outline
+        : _rowAmountColor(context);
     final amount = _primaryAmount();
     final secondaryTexts = _secondaryAmounts(amount);
     final title = _title(category, account, counter);
@@ -36,99 +39,107 @@ class TransactionRow extends StatelessWidget {
     return RepaintBoundary(
       child: Card(
         elevation: 0,
-      margin: EdgeInsets.zero,
-      color: Theme.of(context).colorScheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm,
-            vertical: AppSpacing.xs,
-          ),
-          child: Row(
-            children: [
-              IconBubble(
-                icon: category == null || transaction.type == 'transfer'
-                    ? transactionIcon(transaction)
-                    : categoryIcon(category),
-                color: categoryColor(category, context),
-                compact: true,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: inactive ? Theme.of(context).colorScheme.outline : null,
-                        decoration: transaction.status == 'void' ? TextDecoration.lineThrough : null,
-                      ),
-                    ),
-                    Text(
-                      _accountLine(account, counter),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    if (details.isNotEmpty)
+        margin: EdgeInsets.zero,
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: AppSpacing.xs,
+            ),
+            child: Row(
+              children: [
+                IconBubble(
+                  icon: category == null || transaction.type == 'transfer'
+                      ? transactionIcon(transaction)
+                      : categoryIcon(category),
+                  color: categoryColor(category, context),
+                  compact: true,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        details,
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: inactive
+                              ? Theme.of(context).colorScheme.outline
+                              : null,
+                          decoration: transaction.status == 'void'
+                              ? TextDecoration.lineThrough
+                              : null,
+                        ),
+                      ),
+                      Text(
+                        _accountLine(account, counter),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontSize: 12,
-                          fontStyle: FontStyle.italic,
                         ),
                       ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    _formatSignedMoney(amount),
-                    style: TextStyle(
-                      color: color, 
-                      fontWeight: FontWeight.w900,
-                      decoration: transaction.status == 'void' ? TextDecoration.lineThrough : null,
-                    ),
+                      if (details.isNotEmpty)
+                        Text(
+                          details,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                    ],
                   ),
-                  for (final text in secondaryTexts)
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
                     Text(
-                      text,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
+                      _formatSignedMoney(amount),
+                      style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.w900,
+                        decoration: transaction.status == 'void'
+                            ? TextDecoration.lineThrough
+                            : null,
                       ),
                     ),
-                  Text(
-                    _dateLabel(transaction.occurredAt),
-                    style: Theme.of(context).textTheme.labelSmall,
-                  ),
-                ],
-              ),
-            ],
+                    for (final text in secondaryTexts)
+                      Text(
+                        text,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    Text(
+                      _dateLabel(transaction.occurredAt),
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Money _displayAmount() {
     if (side == 'transferOut') {

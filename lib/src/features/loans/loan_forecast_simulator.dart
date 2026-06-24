@@ -8,7 +8,7 @@ class AcceleratedLoanProjection {
   final int baseEmiMinor;
   final int baseMonthsRemaining;
   final int baseInterestMinor;
-  
+
   final int acceleratedMonthsRemaining;
   final int acceleratedInterestMinor;
 
@@ -77,7 +77,7 @@ LoanForecastSimulationResult simulateAcceleratedPayoff({
   for (final loan in loans) {
     final projection = loanProjection(state, loan);
     baseProjections[loan.id] = projection;
-    
+
     if (projection.monthsRemaining != null) {
       if (projection.monthsRemaining! > totalBaseMonths) {
         totalBaseMonths = projection.monthsRemaining!;
@@ -88,7 +88,7 @@ LoanForecastSimulationResult simulateAcceleratedPayoff({
     final balanceMinor = accountBalance(state, loan).amountMinor.abs();
     final loanDetails = loan.loanDetails;
     final annualRate = loanDetails?.interestRatePercent ?? 0.0;
-    
+
     activeSims.add(
       _ActiveLoanSim(
         loan: loan,
@@ -100,10 +100,10 @@ LoanForecastSimulationResult simulateAcceleratedPayoff({
   }
 
   int simulatedMonths = 0;
-  
+
   while (activeSims.any((sim) => !sim.isPaidOff) && simulatedMonths < 1200) {
     simulatedMonths++;
-    
+
     int totalBaseEmisDueThisMonth = 0;
     for (final sim in activeSims) {
       if (!sim.isPaidOff) {
@@ -112,10 +112,14 @@ LoanForecastSimulationResult simulateAcceleratedPayoff({
     }
 
     // Calculate free cash
-    int freeCashMinor = monthlyIncomeMinor - monthlyEmergencySavingMinor - totalBaseEmisDueThisMonth;
+    int freeCashMinor =
+        monthlyIncomeMinor -
+        monthlyEmergencySavingMinor -
+        totalBaseEmisDueThisMonth;
     if (freeCashMinor < 0) freeCashMinor = 0;
 
-    int extraPaymentAvailable = (freeCashMinor * extraPaymentAllocationPercent).round();
+    int extraPaymentAvailable = (freeCashMinor * extraPaymentAllocationPercent)
+        .round();
 
     // Sort active loans by priority
     final pendingLoans = activeSims.where((sim) => !sim.isPaidOff).toList();
@@ -136,7 +140,7 @@ LoanForecastSimulationResult simulateAcceleratedPayoff({
     for (final sim in pendingLoans) {
       final interestThisMonth = (sim.balanceMinor * sim.monthlyRate).round();
       sim.totalInterestPaidMinor += interestThisMonth;
-      
+
       // Pay base EMI
       final principalPortion = sim.baseEmiMinor - interestThisMonth;
       if (principalPortion > 0) {
@@ -177,17 +181,19 @@ LoanForecastSimulationResult simulateAcceleratedPayoff({
     if (sim.monthsToPayoff > totalAcceleratedMonths) {
       totalAcceleratedMonths = sim.monthsToPayoff;
     }
-    
+
     final baseProj = baseProjections[sim.loan.id]!;
-    
-    projections.add(AcceleratedLoanProjection(
-      loan: sim.loan,
-      baseEmiMinor: sim.baseEmiMinor,
-      baseMonthsRemaining: baseProj.monthsRemaining ?? 0,
-      baseInterestMinor: baseProj.estimatedInterestMinor,
-      acceleratedMonthsRemaining: sim.monthsToPayoff,
-      acceleratedInterestMinor: sim.totalInterestPaidMinor,
-    ));
+
+    projections.add(
+      AcceleratedLoanProjection(
+        loan: sim.loan,
+        baseEmiMinor: sim.baseEmiMinor,
+        baseMonthsRemaining: baseProj.monthsRemaining ?? 0,
+        baseInterestMinor: baseProj.estimatedInterestMinor,
+        acceleratedMonthsRemaining: sim.monthsToPayoff,
+        acceleratedInterestMinor: sim.totalInterestPaidMinor,
+      ),
+    );
   }
 
   return LoanForecastSimulationResult(
@@ -196,6 +202,7 @@ LoanForecastSimulationResult simulateAcceleratedPayoff({
     totalAcceleratedInterestMinor: totalAcceleratedInterestMinor,
     totalBaseMonths: totalBaseMonths,
     totalAcceleratedMonths: totalAcceleratedMonths,
-    totalInterestSavedMinor: totalBaseInterestMinor - totalAcceleratedInterestMinor,
+    totalInterestSavedMinor:
+        totalBaseInterestMinor - totalAcceleratedInterestMinor,
   );
 }

@@ -24,9 +24,14 @@ final _filteredTransactionsProvider = Provider.autoDispose
       return sortedTransactions(state, includeScheduled: false)
           .where((transaction) {
             if (filter.statusFilter != 'all') {
-              if (filter.statusFilter == 'cleared' && transaction.status != 'cleared') return false;
-              if (filter.statusFilter == 'pending' && transaction.status != 'pending') return false;
-              if (filter.statusFilter == 'void' && transaction.status != 'void') return false;
+              if (filter.statusFilter == 'cleared' &&
+                  transaction.status != 'cleared')
+                return false;
+              if (filter.statusFilter == 'pending' &&
+                  transaction.status != 'pending')
+                return false;
+              if (filter.statusFilter == 'void' && transaction.status != 'void')
+                return false;
             }
             if (filter.typeFilter == 'income' &&
                 !incomeTypes.contains(transaction.type)) {
@@ -52,7 +57,8 @@ final _filteredTransactionsProvider = Provider.autoDispose
               return false;
             }
             if (isHiddenInterest(state, transaction)) {
-              if (filter.accountFilter != transaction.accountId && filter.accountFilter != transaction.counterAccountId) {
+              if (filter.accountFilter != transaction.accountId &&
+                  filter.accountFilter != transaction.counterAccountId) {
                 return false;
               }
             }
@@ -132,7 +138,9 @@ final _transactionsFlowProvider = Provider.autoDispose
     });
 
 final transactionsTypeFilterProvider = StateProvider<String>((ref) => 'all');
-final transactionsDateFilterProvider = StateProvider<String>((ref) => 'this_year');
+final transactionsDateFilterProvider = StateProvider<String>(
+  (ref) => 'this_year',
+);
 final transactionsStatusFilterProvider = StateProvider<String>((ref) => 'all');
 
 class TransactionsScreen extends ConsumerStatefulWidget {
@@ -245,59 +253,124 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                     builder: (context) {
                       final monthlyFlows = <String, int>{};
                       for (final t in transactions) {
-                        final monthStr = DateFormat('MMM yyyy', state.preferences.locale.replaceAll('_', '-')).format(t.occurredAt).toUpperCase();
-                        final sign = (incomeTypes.contains(t.type) || t.type == 'transferIn') ? 1 : -1;
-                        final converted = convertMoneyForDisplay(state, t.amount, state.preferences.displayCurrency);
-                        monthlyFlows[monthStr] = (monthlyFlows[monthStr] ?? 0) + (converted.amountMinor * sign);
+                        final monthStr = DateFormat(
+                          'MMM yyyy',
+                          state.preferences.locale.replaceAll('_', '-'),
+                        ).format(t.occurredAt).toUpperCase();
+                        final sign =
+                            (incomeTypes.contains(t.type) ||
+                                t.type == 'transferIn')
+                            ? 1
+                            : -1;
+                        final converted = convertMoneyForDisplay(
+                          state,
+                          t.amount,
+                          state.preferences.displayCurrency,
+                        );
+                        monthlyFlows[monthStr] =
+                            (monthlyFlows[monthStr] ?? 0) +
+                            (converted.amountMinor * sign);
                       }
 
                       final includedAccounts = accountFilter != null
                           ? {accountFilter}
-                          : { for (final a in state.accounts) if (!a.isArchived && a.includeInTotals) a.id };
+                          : {
+                              for (final a in state.accounts)
+                                if (!a.isArchived && a.includeInTotals) a.id,
+                            };
 
                       var running = state.accounts
                           .where((a) => includedAccounts.contains(a.id))
-                          .fold<int>(0, (sum, a) => sum + convertMoneyForDisplay(state, a.openingBalance, state.preferences.displayCurrency).amountMinor);
+                          .fold<int>(
+                            0,
+                            (sum, a) =>
+                                sum +
+                                convertMoneyForDisplay(
+                                  state,
+                                  a.openingBalance,
+                                  state.preferences.displayCurrency,
+                                ).amountMinor,
+                          );
 
                       final monthlyBalances = <String, int>{};
-                      final fullLedger = sortedTransactions(state, includeScheduled: false).reversed;
+                      final fullLedger = sortedTransactions(
+                        state,
+                        includeScheduled: false,
+                      ).reversed;
 
                       for (final t in fullLedger) {
-                          final monthStr = DateFormat('MMM yyyy', state.preferences.locale.replaceAll('_', '-')).format(t.occurredAt).toUpperCase();
-                          var delta = 0;
-                          if (includedAccounts.contains(t.accountId)) {
-                              delta += convertMoneyForDisplay(state, Money(amountMinor: sourceDelta(t), currency: t.amount.currency), state.preferences.displayCurrency).amountMinor;
-                          }
-                          if (t.counterAccountId != null && includedAccounts.contains(t.counterAccountId)) {
-                              delta += convertMoneyForDisplay(state, Money(amountMinor: counterDelta(t), currency: (t.counterAmount ?? t.amount).currency), state.preferences.displayCurrency).amountMinor;
-                          }
-                          running += delta;
-                          monthlyBalances[monthStr] = running;
+                        final monthStr = DateFormat(
+                          'MMM yyyy',
+                          state.preferences.locale.replaceAll('_', '-'),
+                        ).format(t.occurredAt).toUpperCase();
+                        var delta = 0;
+                        if (includedAccounts.contains(t.accountId)) {
+                          delta += convertMoneyForDisplay(
+                            state,
+                            Money(
+                              amountMinor: sourceDelta(t),
+                              currency: t.amount.currency,
+                            ),
+                            state.preferences.displayCurrency,
+                          ).amountMinor;
+                        }
+                        if (t.counterAccountId != null &&
+                            includedAccounts.contains(t.counterAccountId)) {
+                          delta += convertMoneyForDisplay(
+                            state,
+                            Money(
+                              amountMinor: counterDelta(t),
+                              currency: (t.counterAmount ?? t.amount).currency,
+                            ),
+                            state.preferences.displayCurrency,
+                          ).amountMinor;
+                        }
+                        running += delta;
+                        monthlyBalances[monthStr] = running;
                       }
 
                       final items = <Object>[];
                       String? currentMonth;
                       for (final t in transactions) {
-                        final monthStr = DateFormat('MMM yyyy', state.preferences.locale.replaceAll('_', '-')).format(t.occurredAt).toUpperCase();
+                        final monthStr = DateFormat(
+                          'MMM yyyy',
+                          state.preferences.locale.replaceAll('_', '-'),
+                        ).format(t.occurredAt).toUpperCase();
                         if (currentMonth != monthStr) {
                           currentMonth = monthStr;
-                          items.add(_MonthHeaderItem(
-                            monthStr: monthStr,
-                            netFlow: monthlyFlows[monthStr] ?? 0,
-                            balance: monthlyBalances[monthStr] ?? 0,
-                          ));
+                          items.add(
+                            _MonthHeaderItem(
+                              monthStr: monthStr,
+                              netFlow: monthlyFlows[monthStr] ?? 0,
+                              balance: monthlyBalances[monthStr] ?? 0,
+                            ),
+                          );
                         }
                         items.add(t);
                       }
 
                       return ListView.builder(
-                        padding: const EdgeInsets.only(bottom: AppSizes.bottomBarClearance),
+                        padding: const EdgeInsets.only(
+                          bottom: AppSizes.bottomBarClearance,
+                        ),
                         itemCount: items.length,
                         itemBuilder: (context, index) {
                           final item = items[index];
                           if (item is _MonthHeaderItem) {
-                            final balanceStr = formatMoney(Money(amountMinor: item.balance, currency: state.preferences.displayCurrency), state.preferences.locale);
-                            final flowStr = formatMoney(Money(amountMinor: item.netFlow, currency: state.preferences.displayCurrency), state.preferences.locale);
+                            final balanceStr = formatMoney(
+                              Money(
+                                amountMinor: item.balance,
+                                currency: state.preferences.displayCurrency,
+                              ),
+                              state.preferences.locale,
+                            );
+                            final flowStr = formatMoney(
+                              Money(
+                                amountMinor: item.netFlow,
+                                currency: state.preferences.displayCurrency,
+                              ),
+                              state.preferences.locale,
+                            );
                             return Padding(
                               padding: EdgeInsets.fromLTRB(
                                 AppSpacing.sm,
@@ -310,10 +383,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                                 children: [
                                   Text(
                                     item.monthStr,
-                                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                      color: Theme.of(context).colorScheme.primary,
-                                    ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleSmall
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w800,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
+                                        ),
                                   ),
                                   const SizedBox(height: 2),
                                   Row(
@@ -321,18 +399,28 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                                       Expanded(
                                         child: Text(
                                           'Balance $balanceStr',
-                                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                            fontWeight: FontWeight.w700,
-                                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                          ),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurfaceVariant,
+                                              ),
                                         ),
                                       ),
                                       Text(
                                         '∑ $flowStr',
-                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                          fontWeight: FontWeight.w700,
-                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                        ),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onSurfaceVariant,
+                                            ),
                                       ),
                                     ],
                                   ),
@@ -343,12 +431,16 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
                           final transaction = item as TransactionRecord;
                           return Padding(
-                            padding: const EdgeInsets.only(bottom: AppSpacing.xxs),
+                            padding: const EdgeInsets.only(
+                              bottom: AppSpacing.xxs,
+                            ),
                             child: TransactionRow(
                               state: state,
                               transaction: transaction,
                               selectedAccountId: accountFilter,
-                              onTap: () => context.push('/transaction/${transaction.id}'),
+                              onTap: () => context.push(
+                                '/transaction/${transaction.id}',
+                              ),
                             ),
                           );
                         },
@@ -381,7 +473,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       _includeUncategorizedCategory = false;
     });
     ref.read(transactionsTypeFilterProvider.notifier).state = 'all';
-    ref.read(transactionsDateFilterProvider.notifier).state = _defaultDateFilter;
+    ref.read(transactionsDateFilterProvider.notifier).state =
+        _defaultDateFilter;
     ref.read(transactionsStatusFilterProvider.notifier).state = 'all';
     ref.read(homeSelectedAccountProvider.notifier).state = null;
   }
@@ -732,10 +825,15 @@ bool _matchesDateFilter(DateTime date, String dateFilter) {
   final now = DateTime.now();
   final day = DateTime(date.year, date.month, date.day);
   return switch (dateFilter) {
-    'today' => date.year == now.year && date.month == now.month && date.day == now.day,
+    'today' =>
+      date.year == now.year && date.month == now.month && date.day == now.day,
     'this_week' => () {
       final diff = now.weekday - 1; // 0 for Monday
-      final start = DateTime(now.year, now.month, now.day).subtract(Duration(days: diff));
+      final start = DateTime(
+        now.year,
+        now.month,
+        now.day,
+      ).subtract(Duration(days: diff));
       final end = start.add(const Duration(days: 7));
       return !date.isBefore(start) && date.isBefore(end);
     }(),

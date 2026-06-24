@@ -34,7 +34,10 @@ class CreditCardView extends StatelessWidget {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(content: Text('Copied $label to clipboard'), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text('Copied $label to clipboard'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
   }
 
@@ -50,8 +53,14 @@ class CreditCardView extends StatelessWidget {
     return buffer.toString();
   }
 
-  Widget _buildCopyButton(BuildContext context, String text, String label, {Color color = Colors.white70}) {
-    if (!isUnlocked || text.isEmpty || text == '***' || text.contains('****')) return const SizedBox.shrink();
+  Widget _buildCopyButton(
+    BuildContext context,
+    String text,
+    String label, {
+    Color color = Colors.white70,
+  }) {
+    if (!isUnlocked || text.isEmpty || text == '***' || text.contains('****'))
+      return const SizedBox.shrink();
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -69,19 +78,25 @@ class CreditCardView extends StatelessWidget {
   Widget build(BuildContext context) {
     final displayExpiry = isUnlocked ? expiry : (expiry.isEmpty ? '' : 'MM/YY');
     final displayCcv = isUnlocked ? ccv : (ccv.isEmpty ? '' : '***');
-    final displayRouting = isUnlocked ? routingNumber : (routingNumber.isEmpty ? '' : '***');
-    
-    final displayNumber = isUnlocked 
-        ? _formatCardNumber(cardNumber) 
-        : (cardNumber.isNotEmpty 
-            ? (type == 'bank' ? '●●●● ●●●● ${cardNumber.substring(math.max(0, cardNumber.length - 4))}' : '**** **** **** ${cardNumber.substring(math.max(0, cardNumber.length - 4))}')
-            : (type == 'bank' ? '●●●● ●●●● 0000' : '**** **** **** 0000'));
-            
+    final displayRouting = isUnlocked
+        ? routingNumber
+        : (routingNumber.isEmpty ? '' : '***');
+
+    final displayNumber = isUnlocked
+        ? _formatCardNumber(cardNumber)
+        : (cardNumber.isNotEmpty
+              ? (type == 'bank'
+                    ? '●●●● ●●●● ${cardNumber.substring(math.max(0, cardNumber.length - 4))}'
+                    : '**** **** **** ${cardNumber.substring(math.max(0, cardNumber.length - 4))}')
+              : (type == 'bank' ? '●●●● ●●●● 0000' : '**** **** **** 0000'));
+
     final Map<String, String> dynamicFields = {};
     if (displayCcv.isNotEmpty) dynamicFields['CVV'] = displayCcv;
-    if (displayRouting.isNotEmpty) dynamicFields['ROUTING NO.'] = displayRouting;
+    if (displayRouting.isNotEmpty)
+      dynamicFields['ROUTING NO.'] = displayRouting;
     for (final entry in customFields.entries) {
-      if (entry.value.isNotEmpty) dynamicFields[entry.key.toUpperCase()] = entry.value;
+      if (entry.value.isNotEmpty)
+        dynamicFields[entry.key.toUpperCase()] = entry.value;
     }
 
     return Container(
@@ -95,7 +110,13 @@ class CreditCardView extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 5))],
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          ),
+        ],
       ),
       child: IntrinsicHeight(
         child: Column(
@@ -104,15 +125,32 @@ class CreditCardView extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(type == 'bank' ? Icons.account_balance : Icons.credit_card, color: Colors.white, size: 32),
+                Icon(
+                  type == 'bank' ? Icons.account_balance : Icons.credit_card,
+                  color: Colors.white,
+                  size: 32,
+                ),
                 if (displayExpiry.isNotEmpty)
                   Row(
                     children: [
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          const Text('VALID THRU', style: TextStyle(color: Colors.white54, fontSize: 8)),
-                          Text(displayExpiry, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                          const Text(
+                            'VALID THRU',
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 8,
+                            ),
+                          ),
+                          Text(
+                            displayExpiry,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(width: 4),
@@ -128,13 +166,22 @@ class CreditCardView extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (type == 'bank') const Text('ACCOUNT NO.', style: TextStyle(color: Colors.white54, fontSize: 8)),
+                      if (type == 'bank')
+                        const Text(
+                          'ACCOUNT NO.',
+                          style: TextStyle(color: Colors.white54, fontSize: 8),
+                        ),
                       FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
                         child: Text(
                           displayNumber,
-                          style: const TextStyle(color: Colors.white, fontSize: 22, letterSpacing: 2, fontWeight: FontWeight.w700),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            letterSpacing: 2,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ],
@@ -156,13 +203,25 @@ class CreditCardView extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(type == 'bank' ? 'ACCOUNT HOLDER' : 'CARD HOLDER', style: const TextStyle(color: Colors.white54, fontSize: 8)),
+                      Text(
+                        type == 'bank' ? 'ACCOUNT HOLDER' : 'CARD HOLDER',
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 8,
+                        ),
+                      ),
                       FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          cardHolder.isEmpty ? 'YOUR NAME' : cardHolder.toUpperCase(), 
-                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                          cardHolder.isEmpty
+                              ? 'YOUR NAME'
+                              : cardHolder.toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],
@@ -181,8 +240,21 @@ class CreditCardView extends StatelessWidget {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                Text(entry.key, style: const TextStyle(color: Colors.white54, fontSize: 8)),
-                                Text(entry.value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                                Text(
+                                  entry.key,
+                                  style: const TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 8,
+                                  ),
+                                ),
+                                Text(
+                                  entry.value,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ],
                             ),
                             const SizedBox(width: 4),

@@ -340,11 +340,18 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     }
 
     final now = DateTime.now();
-    
+
     // For past months, undo the effect of any transactions that happened after `through`
     if (through.isBefore(DateTime(now.year, now.month, now.day))) {
       // Ensure through covers the entire day of the month end by setting it to 23:59:59
-      final endOfDayThrough = DateTime(through.year, through.month, through.day, 23, 59, 59);
+      final endOfDayThrough = DateTime(
+        through.year,
+        through.month,
+        through.day,
+        23,
+        59,
+        59,
+      );
       for (final tx in state.transactions) {
         if (tx.status != 'posted' && tx.status != 'cleared') continue;
         if (tx.occurredAt.isAfter(endOfDayThrough)) {
@@ -356,12 +363,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             );
             balanceMinor -= delta.amountMinor;
           }
-          if (tx.counterAccountId != null && selectedAccountIds.contains(tx.counterAccountId)) {
+          if (tx.counterAccountId != null &&
+              selectedAccountIds.contains(tx.counterAccountId)) {
             final delta = convertMoneyForDisplay(
               state,
               Money(
                 amountMinor: counterDelta(tx),
-                currency: tx.counterAmount?.currency ?? tx.amount.currency
+                currency: tx.counterAmount?.currency ?? tx.amount.currency,
               ),
               state.preferences.baseCurrency,
             );
@@ -383,18 +391,23 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       if (selectedAccountIds.contains(forecast.accountId)) {
         final delta = convertMoneyForDisplay(
           state,
-          Money(amountMinor: sourceDelta(forecast), currency: forecast.amount.currency),
+          Money(
+            amountMinor: sourceDelta(forecast),
+            currency: forecast.amount.currency,
+          ),
           state.preferences.baseCurrency,
         );
         balanceMinor += delta.amountMinor;
       }
 
-      if (forecast.counterAccountId != null && selectedAccountIds.contains(forecast.counterAccountId)) {
+      if (forecast.counterAccountId != null &&
+          selectedAccountIds.contains(forecast.counterAccountId)) {
         final delta = convertMoneyForDisplay(
           state,
           Money(
             amountMinor: counterDelta(forecast),
-            currency: forecast.counterAmount?.currency ?? forecast.amount.currency
+            currency:
+                forecast.counterAmount?.currency ?? forecast.amount.currency,
           ),
           state.preferences.baseCurrency,
         );
@@ -541,8 +554,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     );
   }
 }
-
-
 
 class SummaryPill extends StatelessWidget {
   const SummaryPill({
@@ -749,11 +760,17 @@ class _DayCell extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.w900,
                     fontSize: 12,
-                    color: scheme.onSurface.withAlphaFactor(inMonth ? 1.0 : 0.42),
+                    color: scheme.onSurface.withAlphaFactor(
+                      inMonth ? 1.0 : 0.42,
+                    ),
                   ),
                 ),
                 if (records.isNotEmpty)
-                  Icon(Icons.circle, size: 6, color: scheme.primary.withAlphaFactor(inMonth ? 1.0 : 0.42)),
+                  Icon(
+                    Icons.circle,
+                    size: 6,
+                    color: scheme.primary.withAlphaFactor(inMonth ? 1.0 : 0.42),
+                  ),
               ],
             ),
             const Spacer(),
@@ -763,7 +780,10 @@ class _DayCell extends StatelessWidget {
                 maxLines: 1,
                 style: TextStyle(
                   fontSize: 9,
-                  color: amountColor(context, income).withAlphaFactor(inMonth ? 1.0 : 0.42),
+                  color: amountColor(
+                    context,
+                    income,
+                  ).withAlphaFactor(inMonth ? 1.0 : 0.42),
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -773,7 +793,10 @@ class _DayCell extends StatelessWidget {
                 maxLines: 1,
                 style: TextStyle(
                   fontSize: 9,
-                  color: amountColor(context, -expense).withAlphaFactor(inMonth ? 1.0 : 0.42),
+                  color: amountColor(
+                    context,
+                    -expense,
+                  ).withAlphaFactor(inMonth ? 1.0 : 0.42),
                   fontWeight: FontWeight.w800,
                 ),
               ),

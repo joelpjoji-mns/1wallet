@@ -209,15 +209,17 @@ List<AppNotification> buildNotificationInbox(LedgerState state) {
 
   final filtered = notifications
       .where((n) => !dismissedIds.contains(n.id))
-      .map((n) => AppNotification(
-            id: n.id,
-            channel: n.channel,
-            title: n.title,
-            body: n.body,
-            createdAt: n.createdAt,
-            read: readIds.contains(n.id),
-            actionRoute: n.actionRoute,
-          ))
+      .map(
+        (n) => AppNotification(
+          id: n.id,
+          channel: n.channel,
+          title: n.title,
+          body: n.body,
+          createdAt: n.createdAt,
+          read: readIds.contains(n.id),
+          actionRoute: n.actionRoute,
+        ),
+      )
       .toList();
 
   filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));

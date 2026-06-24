@@ -42,7 +42,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
   Color? _selectedColor;
   String? _selectedType;
   String? _selectedCurrency;
-  
+
   bool _isCardUnlocked = false;
   String _unlockedNumber = '';
   String _unlockedExpiry = '';
@@ -64,12 +64,15 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     _syncForm(account);
     final isNew = account == null;
     final selectedColor =
-      _selectedColor ?? account?.color ?? Theme.of(context).colorScheme.primary;
+        _selectedColor ??
+        account?.color ??
+        Theme.of(context).colorScheme.primary;
     final selectedForeground = selectedColor.computeLuminance() > 0.5
-      ? Theme.of(context).colorScheme.onSurface
-      : Theme.of(context).colorScheme.surface;
-    
-    final isCardType = _selectedType == 'card' || _selectedType == 'credit_card';
+        ? Theme.of(context).colorScheme.onSurface
+        : Theme.of(context).colorScheme.surface;
+
+    final isCardType =
+        _selectedType == 'card' || _selectedType == 'credit_card';
 
     return RouteScaffold(
       title: isNew ? 'New account' : account.name,
@@ -89,34 +92,51 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (account != null) ...[
-             GestureDetector(
-               onTap: () {
-                 if (_isCardUnlocked) {
-                   setState(() => _isCardUnlocked = false);
-                 } else {
-                   _unlockCardInline(account);
-                 }
-               },
-               child: CreditCardView(
-                 type: isCardType ? 'card' : 'bank',
-                 cardNumber: _isCardUnlocked ? _unlockedNumber : (account.displayLast4 ?? '0000'),
-                 expiry: isCardType ? (_isCardUnlocked ? _unlockedExpiry : (account.encryptedDetails != null ? 'MM/YY' : '')) : '',
-                 ccv: isCardType ? (_isCardUnlocked ? _unlockedCcv : (account.encryptedDetails != null ? '***' : '')) : '',
-                 cardHolder: account.name,
-                 gradientStart: _selectedColor ?? account.color ?? Theme.of(context).colorScheme.primary,
-                 gradientEnd: (_selectedColor ?? account.color ?? Theme.of(context).colorScheme.primary).withAlpha(150),
-                 isUnlocked: _isCardUnlocked,
-                 customFields: _unlockedCustomFields,
-               ),
-             ),
-             const Gap(AppSpacing.md),
-             OutlinedButton.icon(
-               onPressed: () => _handleSecureNavigation(context, account.id),
-               icon: const Icon(Icons.edit_note_rounded),
-               label: const Text('Manage secure details'),
-             ),
+            GestureDetector(
+              onTap: () {
+                if (_isCardUnlocked) {
+                  setState(() => _isCardUnlocked = false);
+                } else {
+                  _unlockCardInline(account);
+                }
+              },
+              child: CreditCardView(
+                type: isCardType ? 'card' : 'bank',
+                cardNumber: _isCardUnlocked
+                    ? _unlockedNumber
+                    : (account.displayLast4 ?? '0000'),
+                expiry: isCardType
+                    ? (_isCardUnlocked
+                          ? _unlockedExpiry
+                          : (account.encryptedDetails != null ? 'MM/YY' : ''))
+                    : '',
+                ccv: isCardType
+                    ? (_isCardUnlocked
+                          ? _unlockedCcv
+                          : (account.encryptedDetails != null ? '***' : ''))
+                    : '',
+                cardHolder: account.name,
+                gradientStart:
+                    _selectedColor ??
+                    account.color ??
+                    Theme.of(context).colorScheme.primary,
+                gradientEnd:
+                    (_selectedColor ??
+                            account.color ??
+                            Theme.of(context).colorScheme.primary)
+                        .withAlpha(150),
+                isUnlocked: _isCardUnlocked,
+                customFields: _unlockedCustomFields,
+              ),
+            ),
+            const Gap(AppSpacing.md),
+            OutlinedButton.icon(
+              onPressed: () => _handleSecureNavigation(context, account.id),
+              icon: const Icon(Icons.edit_note_rounded),
+              label: const Text('Manage secure details'),
+            ),
           ],
-          
+
           const Gap(AppSpacing.lg),
           SectionCard(
             title: isNew ? 'Account setup' : 'Account profile',
@@ -162,8 +182,13 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                             const SizedBox(height: AppSpacing.sm),
                             TextFormField(
                               controller: _creditLimitController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              inputFormatters: [ThousandsSeparatorInputFormatter()],
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              inputFormatters: [
+                                ThousandsSeparatorInputFormatter(),
+                              ],
                               decoration: const InputDecoration(
                                 labelText: 'Credit Limit',
                                 prefixIcon: Icon(Icons.credit_score_outlined),
@@ -181,7 +206,9 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                     Expanded(
                       child: _DetailField(
                         icon: Icons.category_outlined,
-                        label: accountTypeLabel(_selectedType ?? account?.type ?? 'bank'),
+                        label: accountTypeLabel(
+                          _selectedType ?? account?.type ?? 'bank',
+                        ),
                         onTap: () => _chooseAccountType(context),
                       ),
                     ),
@@ -189,7 +216,11 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                     Expanded(
                       child: _DetailField(
                         icon: Icons.currency_exchange_outlined,
-                        label: getCurrencyInfo(_selectedCurrency ?? account?.currency ?? state.preferences.baseCurrency).shortName,
+                        label: getCurrencyInfo(
+                          _selectedCurrency ??
+                              account?.currency ??
+                              state.preferences.baseCurrency,
+                        ).shortName,
                         onTap: () => _chooseCurrency(context, state),
                       ),
                     ),
@@ -358,7 +389,10 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     }
   }
 
-  Future<void> _handleSecureNavigation(BuildContext context, String accountId) async {
+  Future<void> _handleSecureNavigation(
+    BuildContext context,
+    String accountId,
+  ) async {
     if (_isCardUnlocked) {
       await context.push('/account/$accountId/secure');
       if (mounted) {
@@ -368,7 +402,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
       }
       return;
     }
-    
+
     final auth = LocalAuthentication();
     try {
       final authenticated = await auth.authenticate(
@@ -400,8 +434,12 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     _nameController.text = account?.name ?? '';
     _institutionController.text = account?.institution ?? '';
     if (account?.creditLimit != null) {
-      final amt = account!.creditLimit!.amountMinor / math.pow(10, minorUnits(account.creditLimit!.currency));
-      _creditLimitController.text = amt.toStringAsFixed(minorUnits(account.creditLimit!.currency));
+      final amt =
+          account!.creditLimit!.amountMinor /
+          math.pow(10, minorUnits(account.creditLimit!.currency));
+      _creditLimitController.text = amt.toStringAsFixed(
+        minorUnits(account.creditLimit!.currency),
+      );
     } else {
       _creditLimitController.text = '';
     }
@@ -413,7 +451,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     _selectedColor = account?.color;
     _selectedType = account?.type ?? 'bank';
     _selectedCurrency = account?.currency;
-    
+
     // Reset unlock state on account change
     _isCardUnlocked = false;
     _unlockedNumber = '';
@@ -427,11 +465,18 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
       _showAccountMessage('Enter an account name before saving.');
       return;
     }
-    final isCardType = _selectedType == 'card' || _selectedType == 'credit_card';
+    final isCardType =
+        _selectedType == 'card' || _selectedType == 'credit_card';
     Money? parsedCreditLimit;
     if (isCardType && _creditLimitController.text.trim().isNotEmpty) {
-      final currency = _selectedCurrency ?? account?.currency ?? state.preferences.baseCurrency;
-      final normalized = _creditLimitController.text.replaceAll(RegExp(r'[^0-9.]'), '');
+      final currency =
+          _selectedCurrency ??
+          account?.currency ??
+          state.preferences.baseCurrency;
+      final normalized = _creditLimitController.text.replaceAll(
+        RegExp(r'[^0-9.]'),
+        '',
+      );
       final parsed = double.tryParse(normalized) ?? 0;
       parsedCreditLimit = Money(
         amountMinor: (parsed * math.pow(10, minorUnits(currency))).round(),
@@ -446,7 +491,10 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
             id: account?.id,
             name: name,
             type: _selectedType ?? account?.type ?? 'bank',
-            currency: _selectedCurrency ?? account?.currency ?? state.preferences.baseCurrency,
+            currency:
+                _selectedCurrency ??
+                account?.currency ??
+                state.preferences.baseCurrency,
             color: _selectedColor,
             institution: _institutionController.text,
             cardLast4: account?.cardLast4,
@@ -593,7 +641,9 @@ class _DetailField extends StatelessWidget {
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainerLow,
           borderRadius: BorderRadius.circular(AppRadii.lg),
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,

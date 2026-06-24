@@ -29,7 +29,9 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
     final isSelectionMode = _selectedForDeletion.isNotEmpty;
 
     return RouteScaffold(
-      title: isSelectionMode ? '${_selectedForDeletion.length} selected' : 'Currencies',
+      title: isSelectionMode
+          ? '${_selectedForDeletion.length} selected'
+          : 'Currencies',
       actions: [
         if (isSelectionMode)
           IconButton(
@@ -44,7 +46,9 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                 ..hideCurrentSnackBar()
                 ..showSnackBar(
                   SnackBar(
-                    content: Text('${_selectedForDeletion.length} currencies removed.'),
+                    content: Text(
+                      '${_selectedForDeletion.length} currencies removed.',
+                    ),
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
@@ -61,13 +65,23 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                 if (mounted) {
                   ScaffoldMessenger.of(context)
                     ..hideCurrentSnackBar()
-                    ..showSnackBar(const SnackBar(content: Text('Live rates updated.'), behavior: SnackBarBehavior.floating));
+                    ..showSnackBar(
+                      const SnackBar(
+                        content: Text('Live rates updated.'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
                 }
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context)
                     ..hideCurrentSnackBar()
-                    ..showSnackBar(SnackBar(content: Text('Failed to update: $e'), behavior: SnackBarBehavior.floating));
+                    ..showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to update: $e'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
                 }
               }
             },
@@ -126,11 +140,18 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                         ? DismissDirection.none
                         : DismissDirection.endToStart,
                     onDismissed: (_) {
-                      ref.read(ledgerProvider.notifier).removeEnabledCurrency(currency);
+                      ref
+                          .read(ledgerProvider.notifier)
+                          .removeEnabledCurrency(currency);
                       ScaffoldMessenger.of(context)
                         ..hideCurrentSnackBar()
                         ..showSnackBar(
-                          SnackBar(content: Text('$currency removed from explicitly enabled list.'), behavior: SnackBarBehavior.floating),
+                          SnackBar(
+                            content: Text(
+                              '$currency removed from explicitly enabled list.',
+                            ),
+                            behavior: SnackBarBehavior.floating,
+                          ),
                         );
                     },
                     background: Container(
@@ -140,7 +161,10 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                         color: Theme.of(context).colorScheme.error,
                         borderRadius: BorderRadius.circular(AppRadii.lg),
                       ),
-                      child: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.onError),
+                      child: Icon(
+                        Icons.delete_outline,
+                        color: Theme.of(context).colorScheme.onError,
+                      ),
                     ),
                     child: PremiumRow(
                       icon: currency == state.preferences.baseCurrency
@@ -148,12 +172,13 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                           : Icons.currency_exchange_outlined,
                       title: getCurrencyInfo(currency).fullName,
                       subtitle: _currencySubtitle(state, currency),
-                      selected: isSelectionMode 
+                      selected: isSelectionMode
                           ? _selectedForDeletion.contains(currency)
                           : currency == state.preferences.displayCurrency,
                       onTap: () {
                         if (isSelectionMode) {
-                          if (currency == state.preferences.baseCurrency) return;
+                          if (currency == state.preferences.baseCurrency)
+                            return;
                           setState(() {
                             if (_selectedForDeletion.contains(currency)) {
                               _selectedForDeletion.remove(currency);
@@ -162,7 +187,9 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                             }
                           });
                         } else {
-                          ref.read(ledgerProvider.notifier).setDisplayCurrency(currency);
+                          ref
+                              .read(ledgerProvider.notifier)
+                              .setDisplayCurrency(currency);
                         }
                       },
                       onLongPress: currency == state.preferences.baseCurrency
@@ -193,7 +220,10 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
             actionLabel: 'Refresh',
             onAction: () async {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Fetching live exchange rates...'), behavior: SnackBarBehavior.floating),
+                const SnackBar(
+                  content: Text('Fetching live exchange rates...'),
+                  behavior: SnackBarBehavior.floating,
+                ),
               );
               try {
                 await ref.read(exchangeRateServiceProvider).refreshRates();
@@ -201,7 +231,10 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                   ScaffoldMessenger.of(context)
                     ..hideCurrentSnackBar()
                     ..showSnackBar(
-                      const SnackBar(content: Text('Exchange rates updated successfully!'), behavior: SnackBarBehavior.floating),
+                      const SnackBar(
+                        content: Text('Exchange rates updated successfully!'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
                     );
                 }
               } catch (e) {
@@ -209,7 +242,10 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                   ScaffoldMessenger.of(context)
                     ..hideCurrentSnackBar()
                     ..showSnackBar(
-                      SnackBar(content: Text('Failed to update rates: $e'), behavior: SnackBarBehavior.floating),
+                      SnackBar(
+                        content: Text('Failed to update rates: $e'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
                     );
                 }
               }
@@ -220,7 +256,8 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                   if (currency != state.preferences.baseCurrency) ...[
                     PremiumRow(
                       icon: Icons.swap_horiz_rounded,
-                      title: '${getCurrencyInfo(currency).shortName} to ${getCurrencyInfo(state.preferences.baseCurrency).shortName}',
+                      title:
+                          '${getCurrencyInfo(currency).shortName} to ${getCurrencyInfo(state.preferences.baseCurrency).shortName}',
                       subtitle: _rateSubtitle(state, currency),
                       onTap: () => _editRate(context, ref, state, currency),
                     ),
@@ -290,16 +327,21 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
     return parts.isEmpty ? 'Available for display' : parts.join(' · ');
   }
 
-  Future<void> _addCurrency(BuildContext context, WidgetRef ref, LedgerState state) async {
+  Future<void> _addCurrency(
+    BuildContext context,
+    WidgetRef ref,
+    LedgerState state,
+  ) async {
     final next = await showFullScreenPicker<String>(
       context: context,
       title: 'Add Currency',
       searchHint: 'Search currencies',
       options: [
-        for (final currency in currencyDetails.keys
-            .where((c) => !state.preferences.enabledCurrencies.contains(c))
-            .toList()
-          ..sort())
+        for (final currency
+            in currencyDetails.keys
+                .where((c) => !state.preferences.enabledCurrencies.contains(c))
+                .toList()
+              ..sort())
           PickerOption(
             value: currency,
             title: getCurrencyInfo(currency).fullName,
@@ -320,18 +362,36 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
   }
 
   String _rateSubtitle(LedgerState state, String currency) {
-    final rate = latestExchangeRate(state, currency, state.preferences.baseCurrency);
-    if (rate != null) return '1 $currency = ${rate.rate} ${state.preferences.baseCurrency}';
-    final inferred = rateBetween(state, currency, state.preferences.baseCurrency);
+    final rate = latestExchangeRate(
+      state,
+      currency,
+      state.preferences.baseCurrency,
+    );
+    if (rate != null)
+      return '1 $currency = ${rate.rate} ${state.preferences.baseCurrency}';
+    final inferred = rateBetween(
+      state,
+      currency,
+      state.preferences.baseCurrency,
+    );
     if (inferred != null) {
       return 'Inferred: 1 $currency = ${inferred.toStringAsFixed(4)} ${state.preferences.baseCurrency}';
     }
     return 'Not set. Tap to set explicit rate.';
   }
 
-  Future<void> _editRate(BuildContext context, WidgetRef ref, LedgerState state, String currency) async {
+  Future<void> _editRate(
+    BuildContext context,
+    WidgetRef ref,
+    LedgerState state,
+    String currency,
+  ) async {
     final controller = TextEditingController();
-    final rate = latestExchangeRate(state, currency, state.preferences.baseCurrency);
+    final rate = latestExchangeRate(
+      state,
+      currency,
+      state.preferences.baseCurrency,
+    );
     if (rate != null) controller.text = rate.rate.toString();
 
     final result = await showDialog<String>(
@@ -362,11 +422,13 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
     if (result != null && result.isNotEmpty) {
       final value = double.tryParse(result.replaceAll(',', ''));
       if (value != null && value > 0) {
-        await ref.read(ledgerProvider.notifier).setExchangeRate(
-          base: currency,
-          quote: state.preferences.baseCurrency,
-          rate: value,
-        );
+        await ref
+            .read(ledgerProvider.notifier)
+            .setExchangeRate(
+              base: currency,
+              quote: state.preferences.baseCurrency,
+              rate: value,
+            );
       }
     }
   }

@@ -16,7 +16,9 @@ class NotificationService {
   static Future<void> initialize() async {
     if (_initialized) return;
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const darwinSettings = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
@@ -36,13 +38,12 @@ class NotificationService {
   static Future<void> requestPermissions() async {
     await _notificationsPlugin
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.requestNotificationsPermission();
   }
 
-  static Future<void> showUpdateNotification(
-    String version,
-  ) async {
+  static Future<void> showUpdateNotification(String version) async {
     await requestPermissions();
 
     final androidDetails = AndroidNotificationDetails(
@@ -65,7 +66,7 @@ class NotificationService {
 
   static Future<void> checkAndShowAlerts(LedgerState state) async {
     if (!_initialized) return;
-    
+
     final notifications = buildNotificationInbox(state);
     if (notifications.isEmpty) return;
 

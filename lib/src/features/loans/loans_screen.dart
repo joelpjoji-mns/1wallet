@@ -169,7 +169,8 @@ class _LoanFormState extends ConsumerState<LoanForm> {
   String? _loadedAccountId;
   String? _sourceAccountId;
   var _loanKind = 'loan';
-  var _currency = kDefaultCurrency; // will be synced from state in _syncLoanDraft
+  var _currency =
+      kDefaultCurrency; // will be synced from state in _syncLoanDraft
   var _frequency = 'monthly';
   int _interval = 1;
   final Set<int> _daysOfWeek = {};
@@ -189,17 +190,25 @@ class _LoanFormState extends ConsumerState<LoanForm> {
     final principalMinor = _amountMinorFromInput(_principalController.text);
     final rate = _optionalDouble(_rateController.text);
     final tenure = _optionalInt(_tenureController.text);
-    
-    if (principalMinor > 0 && rate != null && rate > 0 && tenure != null && tenure > 0 && _frequency == 'monthly' && _interval == 1) {
+
+    if (principalMinor > 0 &&
+        rate != null &&
+        rate > 0 &&
+        tenure != null &&
+        tenure > 0 &&
+        _frequency == 'monthly' &&
+        _interval == 1) {
       final monthlyRate = rate / 100 / 12;
-      final numerator = principalMinor * monthlyRate * math.pow(1 + monthlyRate, tenure);
+      final numerator =
+          principalMinor * monthlyRate * math.pow(1 + monthlyRate, tenure);
       final denominator = math.pow(1 + monthlyRate, tenure) - 1;
       final emiMinor = (numerator / denominator).round();
-      
+
       final newText = _formatAmountInput(emiMinor);
       if (_emiController.text != newText && _emiController.text.isEmpty) {
         _emiController.text = newText;
-      } else if (_emiController.text != newText && !_emiController.text.isEmpty) {
+      } else if (_emiController.text != newText &&
+          !_emiController.text.isEmpty) {
         // Only aggressively overwrite if it seems the user hasn't explicitly set a custom EMI recently.
         // A simple check is to overwrite if it's currently showing an old auto-calculated EMI.
         _emiController.text = newText;
@@ -253,7 +262,9 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                   Expanded(
                     child: TextFormField(
                       controller: _principalController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       inputFormatters: [ThousandsSeparatorInputFormatter()],
                       decoration: const InputDecoration(
                         labelText: 'Principal',
@@ -265,7 +276,9 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                   Expanded(
                     child: TextFormField(
                       controller: _emiController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       inputFormatters: [ThousandsSeparatorInputFormatter()],
                       decoration: const InputDecoration(
                         labelText: 'Repayment amount',
@@ -281,7 +294,9 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                   Expanded(
                     child: TextFormField(
                       controller: _rateController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       inputFormatters: [ThousandsSeparatorInputFormatter()],
                       decoration: const InputDecoration(
                         labelText: 'Rate %',
@@ -330,21 +345,26 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                   DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
                   DropdownMenuItem(value: 'yearly', child: Text('Yearly')),
                 ],
-                onChanged: (value) => setState(() => _frequency = value ?? 'monthly'),
+                onChanged: (value) =>
+                    setState(() => _frequency = value ?? 'monthly'),
               ),
               const SizedBox(height: AppSpacing.sm),
               TextFormField(
                 initialValue: _interval.toString(),
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  labelText: 'Every X ${_frequency == 'daily' ? 'day' : _frequency.replaceAll('ly', '')}s',
+                  labelText:
+                      'Every X ${_frequency == 'daily' ? 'day' : _frequency.replaceAll('ly', '')}s',
                   prefixIcon: const Icon(Icons.timer_outlined),
                 ),
                 onChanged: (value) => _interval = int.tryParse(value) ?? 1,
               ),
               if (_frequency == 'weekly') ...[
                 const SizedBox(height: AppSpacing.md),
-                Text('On these days:', style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  'On these days:',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
                 const SizedBox(height: AppSpacing.xs),
                 Wrap(
                   spacing: 8,
@@ -370,7 +390,10 @@ class _LoanFormState extends ConsumerState<LoanForm> {
               ],
               if (_frequency == 'monthly') ...[
                 const SizedBox(height: AppSpacing.md),
-                Text('On these days of the month:', style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  'On these days of the month:',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
                 const SizedBox(height: AppSpacing.xs),
                 Wrap(
                   spacing: 8,
@@ -404,20 +427,26 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                     : accountIcon(sourceAccount),
                 title: 'Pay from',
                 subtitle: sourceAccount?.name ?? 'Choose source account',
-                iconColor: sourceAccount == null ? null : accountDisplayColor(sourceAccount),
+                iconColor: sourceAccount == null
+                    ? null
+                    : accountDisplayColor(sourceAccount),
                 onTap: () => _showSourceAccountPicker(state),
               ),
               const SizedBox(height: AppSpacing.sm),
               LiquidGlassSwitchListTile(
                 title: const Text('Hide interest in main ledger'),
                 value: _hideInterestInLedger,
-                onChanged: (value) => setState(() => _hideInterestInLedger = value),
+                onChanged: (value) =>
+                    setState(() => _hideInterestInLedger = value),
               ),
               const SizedBox(height: AppSpacing.sm),
               PremiumRow(
                 icon: Icons.calendar_month_outlined,
                 title: 'Start date',
-                subtitle: formatLedgerDate(_nextEmiDate, state.preferences.locale),
+                subtitle: formatLedgerDate(
+                  _nextEmiDate,
+                  state.preferences.locale,
+                ),
                 onTap: _pickNextEmiDate,
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -598,8 +627,12 @@ class _LoanFormState extends ConsumerState<LoanForm> {
         repaymentSourceAccountId: _sourceAccountId,
         recurrenceFrequency: _frequency,
         recurrenceInterval: _interval,
-        recurrenceDaysOfWeek: _daysOfWeek.isEmpty ? null : (List<int>.from(_daysOfWeek)..sort()),
-        recurrenceDaysOfMonth: _daysOfMonth.isEmpty ? null : (List<int>.from(_daysOfMonth)..sort()),
+        recurrenceDaysOfWeek: _daysOfWeek.isEmpty
+            ? null
+            : (List<int>.from(_daysOfWeek)..sort()),
+        recurrenceDaysOfMonth: _daysOfMonth.isEmpty
+            ? null
+            : (List<int>.from(_daysOfMonth)..sort()),
         hideInterestInLedger: _hideInterestInLedger,
       );
       final loan = await ref
@@ -632,17 +665,18 @@ class _LoanFormState extends ConsumerState<LoanForm> {
               amountMinor: emiMinor,
               status: 'scheduled',
               source: 'recurring',
-              categoryId: _firstCategoryId(
-                latestState,
-                preferred: 'emi',
-              ),
+              categoryId: _firstCategoryId(latestState, preferred: 'emi'),
               paymentMethod: 'Auto debit',
               notes: 'Scheduled EMI for ${loan.name}',
               occurredAt: _nextEmiDate,
               recurrenceFrequency: _frequency,
               recurrenceInterval: _interval,
-              recurrenceDaysOfWeek: _daysOfWeek.isEmpty ? null : (List<int>.from(_daysOfWeek)..sort()),
-              recurrenceDaysOfMonth: _daysOfMonth.isEmpty ? null : (List<int>.from(_daysOfMonth)..sort()),
+              recurrenceDaysOfWeek: _daysOfWeek.isEmpty
+                  ? null
+                  : (List<int>.from(_daysOfWeek)..sort()),
+              recurrenceDaysOfMonth: _daysOfMonth.isEmpty
+                  ? null
+                  : (List<int>.from(_daysOfMonth)..sort()),
             );
       } else {
         final latestState = ref.read(ledgerProvider);
@@ -687,7 +721,9 @@ class LoanDetailView extends ConsumerWidget {
           color: Theme.of(context).colorScheme.surfaceContainerLow,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.md),
-            side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
           ),
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.md),
@@ -708,9 +744,8 @@ class LoanDetailView extends ConsumerWidget {
                         children: [
                           Text(
                             loan.name,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w800),
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -718,7 +753,9 @@ class LoanDetailView extends ConsumerWidget {
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -726,7 +763,9 @@ class LoanDetailView extends ConsumerWidget {
                     ),
                     Text(
                       formatMoney(
-                        balance.copyWith(amountMinor: balance.amountMinor.abs()),
+                        balance.copyWith(
+                          amountMinor: balance.amountMinor.abs(),
+                        ),
                         state.preferences.locale,
                       ),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -737,55 +776,65 @@ class LoanDetailView extends ConsumerWidget {
                 ),
                 if (details.principal != null) ...[
                   const SizedBox(height: AppSpacing.lg),
-                  Builder(builder: (context) {
-                    final principal = details.principal!.amountMinor.abs();
-                    // Fix: calculate repayments inside scope
-                    final repayments = _postedLoanRepayments(state, loan.id);
-                    final paid = repayments.fold<int>(0, (sum, t) {
-                      final amountInBase = convertMoneyForDisplay(
-                        state,
-                        t.amount,
-                        loan.currency,
-                      ).amountMinor.abs();
-                      return sum + amountInBase;
-                    });
-                    final progress = principal > 0 ? (paid / principal).clamp(0.0, 1.0) : 0.0;
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Paid: ${formatMoney(Money(amountMinor: paid, currency: loan.currency), state.preferences.locale)}',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            if (projection.monthsRemaining != null)
+                  Builder(
+                    builder: (context) {
+                      final principal = details.principal!.amountMinor.abs();
+                      // Fix: calculate repayments inside scope
+                      final repayments = _postedLoanRepayments(state, loan.id);
+                      final paid = repayments.fold<int>(0, (sum, t) {
+                        final amountInBase = convertMoneyForDisplay(
+                          state,
+                          t.amount,
+                          loan.currency,
+                        ).amountMinor.abs();
+                        return sum + amountInBase;
+                      });
+                      final progress = principal > 0
+                          ? (paid / principal).clamp(0.0, 1.0)
+                          : 0.0;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
                               Text(
-                                '${projection.monthsRemaining} mos left',
+                                'Paid: ${formatMoney(Money(amountMinor: paid, currency: loan.currency), state.preferences.locale)}',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        LinearProgressIndicator(
-                          value: progress,
-                          minHeight: 8,
-                          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                          color: Theme.of(context).colorScheme.primary,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ],
-                    );
-                  }),
+                              if (projection.monthsRemaining != null)
+                                Text(
+                                  '${projection.monthsRemaining} mos left',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          LinearProgressIndicator(
+                            value: progress,
+                            minHeight: 8,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
+                            color: Theme.of(context).colorScheme.primary,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 ],
               ],
             ),
@@ -801,7 +850,9 @@ class LoanDetailView extends ConsumerWidget {
                 label: 'Next EMI',
                 value: _nextEmiLabel(state, details, nextEmi),
                 icon: Icons.event_repeat_rounded,
-                tone: projection.monthlyEmi <= 0 ? MetricTone.warning : MetricTone.danger,
+                tone: projection.monthlyEmi <= 0
+                    ? MetricTone.warning
+                    : MetricTone.danger,
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
@@ -821,7 +872,9 @@ class LoanDetailView extends ConsumerWidget {
             Expanded(
               child: MetricTile(
                 label: 'Interest Rate',
-                value: details.interestRatePercent != null ? '${_formatOptionalDecimal(details.interestRatePercent)}% p.a.' : 'N/A',
+                value: details.interestRatePercent != null
+                    ? '${_formatOptionalDecimal(details.interestRatePercent)}% p.a.'
+                    : 'N/A',
                 icon: Icons.percent_rounded,
                 tone: MetricTone.standard,
               ),
@@ -830,7 +883,9 @@ class LoanDetailView extends ConsumerWidget {
             Expanded(
               child: MetricTile(
                 label: 'Tenure',
-                value: details.repaymentCount != null ? '${details.repaymentCount} mo' : 'N/A',
+                value: details.repaymentCount != null
+                    ? '${details.repaymentCount} mo'
+                    : 'N/A',
                 icon: Icons.timelapse_rounded,
                 tone: MetricTone.standard,
               ),
@@ -909,7 +964,7 @@ class LoanDetailView extends ConsumerWidget {
     );
   }
 
-    Future<void> _confirmArchiveLoan(
+  Future<void> _confirmArchiveLoan(
     BuildContext context,
     WidgetRef ref,
     Account loan,
@@ -1001,7 +1056,10 @@ class _LoanCompactCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.md),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: 12,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1113,45 +1171,57 @@ class _LoanCompactCard extends StatelessWidget {
               ),
               if (details.principal != null) ...[
                 const SizedBox(height: AppSpacing.md),
-                Builder(builder: (context) {
-                  final principal = details.principal!.amountMinor.abs();
-                  final repayments = _postedLoanRepayments(state, loan.id);
-                  final paid = repayments.fold<int>(0, (sum, t) {
-                    final amountInBase = convertMoneyForDisplay(
-                      state,
-                      t.amount,
-                      loan.currency,
-                    ).amountMinor.abs();
-                    return sum + amountInBase;
-                  });
-                  final progress = principal > 0 ? (paid / principal).clamp(0.0, 1.0) : 0.0;
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Paid: ${formatMoney(Money(amountMinor: paid, currency: loan.currency), state.preferences.locale)}',
-                            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant, fontWeight: FontWeight.w600),
-                          ),
-                          if (projection.monthsRemaining != null)
+                Builder(
+                  builder: (context) {
+                    final principal = details.principal!.amountMinor.abs();
+                    final repayments = _postedLoanRepayments(state, loan.id);
+                    final paid = repayments.fold<int>(0, (sum, t) {
+                      final amountInBase = convertMoneyForDisplay(
+                        state,
+                        t.amount,
+                        loan.currency,
+                      ).amountMinor.abs();
+                      return sum + amountInBase;
+                    });
+                    final progress = principal > 0
+                        ? (paid / principal).clamp(0.0, 1.0)
+                        : 0.0;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
                             Text(
-                              '${projection.monthsRemaining} mos left',
-                              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant, fontWeight: FontWeight.w600),
+                              'Paid: ${formatMoney(Money(amountMinor: paid, currency: loan.currency), state.preferences.locale)}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: scheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      LinearProgressIndicator(
-                        value: progress,
-                        backgroundColor: scheme.surfaceContainerHighest,
-                        color: scheme.primary,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ],
-                  );
-                }),
+                            if (projection.monthsRemaining != null)
+                              Text(
+                                '${projection.monthsRemaining} mos left',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: scheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        LinearProgressIndicator(
+                          value: progress,
+                          backgroundColor: scheme.surfaceContainerHighest,
+                          color: scheme.primary,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ],
             ],
           ),
@@ -1216,7 +1286,9 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
     }
 
     final incomeMinor = _amountMinorFromInput(_incomeController.text).abs();
-    final emergencyMinor = _amountMinorFromInput(_emergencyController.text).abs();
+    final emergencyMinor = _amountMinorFromInput(
+      _emergencyController.text,
+    ).abs();
 
     final result = simulateAcceleratedPayoff(
       state: widget.state,
@@ -1273,8 +1345,22 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Extra Cash Allocation', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: scheme.onSurfaceVariant)),
-                      Text('${(_extraAllocationPercent * 100).toInt()}% to Loans', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: scheme.primary)),
+                      Text(
+                        'Extra Cash Allocation',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                      Text(
+                        '${(_extraAllocationPercent * 100).toInt()}% to Loans',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          color: scheme.primary,
+                        ),
+                      ),
                     ],
                   ),
                   Slider(
@@ -1282,13 +1368,26 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                     min: 0.0,
                     max: 1.0,
                     divisions: 20,
-                    onChanged: (val) => setState(() => _extraAllocationPercent = val),
+                    onChanged: (val) =>
+                        setState(() => _extraAllocationPercent = val),
                   ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('0% (Base EMI only)', style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant)),
-                      Text('100% (Aggressive)', style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant)),
+                      Text(
+                        '0% (Base EMI only)',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                      Text(
+                        '100% (Aggressive)',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -1301,10 +1400,17 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                   prefixIcon: Icon(Icons.sort_rounded),
                 ),
                 items: const [
-                  DropdownMenuItem(value: 'avalanche', child: Text('Avalanche (Highest Interest First)')),
-                  DropdownMenuItem(value: 'snowball', child: Text('Snowball (Lowest Balance First)')),
+                  DropdownMenuItem(
+                    value: 'avalanche',
+                    child: Text('Avalanche (Highest Interest First)'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'snowball',
+                    child: Text('Snowball (Lowest Balance First)'),
+                  ),
                 ],
-                onChanged: (val) => setState(() => _strategy = val ?? 'avalanche'),
+                onChanged: (val) =>
+                    setState(() => _strategy = val ?? 'avalanche'),
               ),
             ],
           ),
@@ -1315,18 +1421,30 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
             Expanded(
               child: MetricTile(
                 label: 'Interest Saved',
-                value: formatMoney(Money(amountMinor: result.totalInterestSavedMinor, currency: currency), locale),
+                value: formatMoney(
+                  Money(
+                    amountMinor: result.totalInterestSavedMinor,
+                    currency: currency,
+                  ),
+                  locale,
+                ),
                 icon: Icons.savings_rounded,
-                tone: result.totalInterestSavedMinor > 0 ? MetricTone.positive : MetricTone.standard,
+                tone: result.totalInterestSavedMinor > 0
+                    ? MetricTone.positive
+                    : MetricTone.standard,
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: MetricTile(
                 label: 'Months Saved',
-                value: '${result.totalBaseMonths - result.totalAcceleratedMonths} mos',
+                value:
+                    '${result.totalBaseMonths - result.totalAcceleratedMonths} mos',
                 icon: Icons.calendar_month_rounded,
-                tone: (result.totalBaseMonths - result.totalAcceleratedMonths) > 0 ? MetricTone.positive : MetricTone.standard,
+                tone:
+                    (result.totalBaseMonths - result.totalAcceleratedMonths) > 0
+                    ? MetricTone.positive
+                    : MetricTone.standard,
               ),
             ),
           ],
@@ -1335,16 +1453,32 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
         for (final proj in result.projections) ...[
           SectionCard(
             title: proj.loan.name,
-            subtitle: proj.monthsSaved > 0 ? 'Payoff accelerated by ${proj.monthsSaved} months' : 'Standard payoff schedule',
+            subtitle: proj.monthsSaved > 0
+                ? 'Payoff accelerated by ${proj.monthsSaved} months'
+                : 'Standard payoff schedule',
             child: Column(
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('New Payoff Date', style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
                     Text(
-                      formatLedgerDate(DateTime.now().add(Duration(days: proj.acceleratedMonthsRemaining * 30)), locale),
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      'New Payoff Date',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      formatLedgerDate(
+                        DateTime.now().add(
+                          Duration(days: proj.acceleratedMonthsRemaining * 30),
+                        ),
+                        locale,
+                      ),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
@@ -1352,10 +1486,28 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Interest Saved', style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
                     Text(
-                      formatMoney(Money(amountMinor: proj.interestSavedMinor, currency: proj.loan.currency), locale),
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: proj.interestSavedMinor > 0 ? scheme.primary : null),
+                      'Interest Saved',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      formatMoney(
+                        Money(
+                          amountMinor: proj.interestSavedMinor,
+                          currency: proj.loan.currency,
+                        ),
+                        locale,
+                      ),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: proj.interestSavedMinor > 0
+                            ? scheme.primary
+                            : null,
+                      ),
                     ),
                   ],
                 ),
@@ -1394,7 +1546,8 @@ List<TransactionRecord> _postedLoanRepayments(
                 transaction.counterAccountId == loanId) &&
             transaction.status != 'scheduled' &&
             (transaction.type == 'loan_repayment' ||
-                (transaction.status == 'void' && transaction.notes?.toLowerCase() == 'skipped')),
+                (transaction.status == 'void' &&
+                    transaction.notes?.toLowerCase() == 'skipped')),
       )
       .toList();
 }
@@ -1408,8 +1561,8 @@ List<TransactionRecord> _loanHistoryRepayments(
         (transaction) =>
             (transaction.accountId == loanId ||
                 transaction.counterAccountId == loanId) &&
-            (transaction.status != 'scheduled' || 
-             transaction.notes?.toLowerCase() == 'skipped'),
+            (transaction.status != 'scheduled' ||
+                transaction.notes?.toLowerCase() == 'skipped'),
       )
       .toList();
   items.sort((left, right) => right.occurredAt.compareTo(left.occurredAt));
@@ -1417,7 +1570,8 @@ List<TransactionRecord> _loanHistoryRepayments(
 }
 
 bool _isHistoricalLoanRepayment(TransactionRecord transaction) {
-  if (transaction.status == 'void' && transaction.notes == 'Skipped') return true;
+  if (transaction.status == 'void' && transaction.notes == 'Skipped')
+    return true;
   if (transaction.status != 'scheduled') return true;
   final today = _loanStartOfToday();
   final occurredDay = DateTime(
@@ -1611,7 +1765,6 @@ String? _nonLoanGroupName(String? value) {
 String? _firstCategoryId(LedgerState state, {String? preferred}) {
   return firstActiveCategory(state, preferred: preferred)?.id;
 }
-
 
 _LoanProjection _loanProjection(LedgerState state, Account loan) {
   final remaining = accountBalance(state, loan).amountMinor.abs();

@@ -56,7 +56,8 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Restore auto-backup?'),
         content: const Text(
-            'This will overwrite your current local data with the snapshot from this auto-backup file. Are you sure?'),
+          'This will overwrite your current local data with the snapshot from this auto-backup file. Are you sure?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -72,7 +73,9 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
     if (confirm != true) return;
 
     try {
-      await ref.read(ledgerProvider.notifier).restoreFromAutoBackup(_latestAutoBackup!);
+      await ref
+          .read(ledgerProvider.notifier)
+          .restoreFromAutoBackup(_latestAutoBackup!);
       if (!mounted) return;
       setState(() => _status = 'Restored successfully from auto-backup.');
       _showBackupMessage('Auto-backup restored successfully.');
