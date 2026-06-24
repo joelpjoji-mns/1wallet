@@ -341,7 +341,6 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
     }
   }
 
-
   Future<void> downloadUpdate() async {
     if (state.latestRelease?.apk == null) return;
 

@@ -185,7 +185,9 @@ class _DevicePermissionsScreenState extends State<DevicePermissionsScreen> {
                     FilledButton.icon(
                       onPressed: _requestingMedia ? null : _requestMedia,
                       icon: const Icon(Icons.shield_outlined),
-                      label: Text(_requestingMedia ? 'Requesting…' : 'Allow media'),
+                      label: Text(
+                        _requestingMedia ? 'Requesting…' : 'Allow media',
+                      ),
                     ),
                     FilledButton.tonalIcon(
                       onPressed: () => context.push('/add'),

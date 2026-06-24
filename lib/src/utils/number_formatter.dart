@@ -15,14 +15,16 @@ class ThousandsSeparatorInputFormatter extends TextInputFormatter {
 
     // Keep only numbers and decimal points
     final numericString = newValue.text.replaceAll(RegExp(r'[^0-9.]'), '');
-    
+
     // Prevent multiple decimal points
     if (numericString.indexOf('.') != numericString.lastIndexOf('.')) {
       return oldValue;
     }
 
     final parts = numericString.split('.');
-    String formattedText = parts[0].isEmpty ? '' : _formatter.format(int.parse(parts[0]));
+    String formattedText = parts[0].isEmpty
+        ? ''
+        : _formatter.format(int.parse(parts[0]));
 
     if (parts.length > 1) {
       formattedText += '.${parts[1]}';
@@ -31,8 +33,9 @@ class ThousandsSeparatorInputFormatter extends TextInputFormatter {
     }
 
     // Calculate new cursor position
-    int selectionIndex = formattedText.length - (newValue.text.length - newValue.selection.end);
-    
+    int selectionIndex =
+        formattedText.length - (newValue.text.length - newValue.selection.end);
+
     // Safety bounds for cursor
     if (selectionIndex < 0) {
       selectionIndex = 0;
@@ -49,7 +52,7 @@ class ThousandsSeparatorInputFormatter extends TextInputFormatter {
 
 String formatNumberExpression(String expr, String locale) {
   if (expr.isEmpty) return expr;
-  
+
   final formatter = NumberFormat.decimalPattern(locale);
   // Match numbers that might have decimals
   return expr.replaceAllMapped(RegExp(r'\d+(\.\d+)?'), (match) {

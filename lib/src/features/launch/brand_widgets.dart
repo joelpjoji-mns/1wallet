@@ -167,14 +167,14 @@ class _LaunchBackdropState extends State<LaunchBackdrop>
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final bg = isDark ? const Color(0xFF000000) : const Color(0xFFF0F4F8);
-    
+
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
         final t = _controller.value;
         final xOffset1 = 50 * math.sin(t * math.pi * 2);
         final yOffset1 = 50 * math.cos(t * math.pi * 2);
-        
+
         final xOffset2 = -40 * math.cos(t * math.pi * 2);
         final yOffset2 = 60 * math.sin(t * math.pi * 2);
 
@@ -190,7 +190,9 @@ class _LaunchBackdropState extends State<LaunchBackdrop>
                   height: 400,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.4 : 0.6),
+                    color: theme.colorScheme.primary.withValues(
+                      alpha: isDark ? 0.4 : 0.6,
+                    ),
                   ),
                 ),
               ),
@@ -202,7 +204,9 @@ class _LaunchBackdropState extends State<LaunchBackdrop>
                   height: 350,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: theme.colorScheme.tertiary.withValues(alpha: isDark ? 0.3 : 0.5),
+                    color: theme.colorScheme.tertiary.withValues(
+                      alpha: isDark ? 0.3 : 0.5,
+                    ),
                   ),
                 ),
               ),
@@ -243,10 +247,14 @@ class GlassCard extends StatelessWidget {
         child: Container(
           padding: padding,
           decoration: BoxDecoration(
-            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.4),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.white.withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(radius),
             border: Border.all(
-              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.5),
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : Colors.white.withValues(alpha: 0.5),
             ),
           ),
           child: child,
@@ -257,7 +265,11 @@ class GlassCard extends StatelessWidget {
 }
 
 class StaggeredFadeIn extends StatefulWidget {
-  const StaggeredFadeIn({super.key, required this.child, this.delay = Duration.zero});
+  const StaggeredFadeIn({
+    super.key,
+    required this.child,
+    this.delay = Duration.zero,
+  });
   final Widget child;
   final Duration delay;
 
@@ -265,10 +277,20 @@ class StaggeredFadeIn extends StatefulWidget {
   State<StaggeredFadeIn> createState() => _StaggeredFadeInState();
 }
 
-class _StaggeredFadeInState extends State<StaggeredFadeIn> with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
-  late final Animation<double> _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
-  late final Animation<Offset> _slide = Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+class _StaggeredFadeInState extends State<StaggeredFadeIn>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 600),
+  );
+  late final Animation<double> _fade = CurvedAnimation(
+    parent: _ctrl,
+    curve: Curves.easeOut,
+  );
+  late final Animation<Offset> _slide = Tween<Offset>(
+    begin: const Offset(0, 0.1),
+    end: Offset.zero,
+  ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
 
   @override
   void initState() {
@@ -277,7 +299,7 @@ class _StaggeredFadeInState extends State<StaggeredFadeIn> with SingleTickerProv
       if (mounted) _ctrl.forward();
     });
   }
-  
+
   @override
   void dispose() {
     _ctrl.dispose();
@@ -288,17 +310,10 @@ class _StaggeredFadeInState extends State<StaggeredFadeIn> with SingleTickerProv
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _fade,
-      child: SlideTransition(
-        position: _slide,
-        child: widget.child,
-      ),
+      child: SlideTransition(position: _slide, child: widget.child),
     );
   }
 }
-
-
-
-
 
 class LaunchBrandMark extends StatefulWidget {
   const LaunchBrandMark({super.key, this.size = 112, this.animated = true});
@@ -533,10 +548,16 @@ class BrandedLoadingState extends StatelessWidget {
                     height: 80,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.1),
                     ),
                     child: Center(
-                      child: Icon(Icons.wallet_rounded, size: 40, color: Theme.of(context).colorScheme.primary),
+                      child: Icon(
+                        Icons.wallet_rounded,
+                        size: 40,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -560,7 +581,9 @@ class BrandedLoadingState extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
                           value: progress,
-                          backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.1),
                           color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
@@ -585,7 +608,8 @@ class _ProgressTrack extends StatefulWidget {
   State<_ProgressTrack> createState() => _ProgressTrackState();
 }
 
-class _ProgressTrackState extends State<_ProgressTrack> with SingleTickerProviderStateMixin {
+class _ProgressTrackState extends State<_ProgressTrack>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override
@@ -628,8 +652,6 @@ class _ProgressTrackState extends State<_ProgressTrack> with SingleTickerProvide
     );
   }
 }
-
-
 
 class RecoveryState extends StatelessWidget {
   const RecoveryState({

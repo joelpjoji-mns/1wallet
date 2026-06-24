@@ -9,7 +9,7 @@ class BudgetHealthData {
   final int totalWants;
   final List<TransactionRecord> needsRecords;
   final List<TransactionRecord> wantsRecords;
-  
+
   const BudgetHealthData({
     required this.totalIncome,
     required this.totalNeeds,
@@ -27,19 +27,45 @@ final budgetHealthProvider = Provider<BudgetHealthData>((ref) {
   int totalWants = 0;
   final needsRecords = <TransactionRecord>[];
   final wantsRecords = <TransactionRecord>[];
-  
+
   for (final tx in state.transactions) {
-    if (tx.status == 'void' || tx.status == 'scheduled' || tx.status == 'paused') continue;
+    if (tx.status == 'void' ||
+        tx.status == 'scheduled' ||
+        tx.status == 'paused')
+      continue;
     if (tx.occurredAt.year == now.year && tx.occurredAt.month == now.month) {
       if (incomeTypes.contains(tx.type)) {
-        totalIncome += convertMoneyForDisplay(state, tx.amount, state.preferences.displayCurrency).amountMinor;
+        totalIncome += convertMoneyForDisplay(
+          state,
+          tx.amount,
+          state.preferences.displayCurrency,
+        ).amountMinor;
       }
       if (expenseTypes.contains(tx.type)) {
-        final catName = tx.categoryId != null ? categoryById(state, tx.categoryId!)?.name.toLowerCase() ?? '' : '';
-        final needsKeywords = ['grocer', 'bill', 'rent', 'utilit', 'mortgage', 'insur', 'medic', 'tax', 'debt', 'emi', 'loan', 'educat'];
+        final catName = tx.categoryId != null
+            ? categoryById(state, tx.categoryId!)?.name.toLowerCase() ?? ''
+            : '';
+        final needsKeywords = [
+          'grocer',
+          'bill',
+          'rent',
+          'utilit',
+          'mortgage',
+          'insur',
+          'medic',
+          'tax',
+          'debt',
+          'emi',
+          'loan',
+          'educat',
+        ];
         final isNeed = needsKeywords.any((k) => catName.contains(k));
 
-        final amt = convertMoneyForDisplay(state, tx.amount, state.preferences.displayCurrency).amountMinor;
+        final amt = convertMoneyForDisplay(
+          state,
+          tx.amount,
+          state.preferences.displayCurrency,
+        ).amountMinor;
         if (isNeed) {
           totalNeeds += amt;
           needsRecords.add(tx);
@@ -62,11 +88,8 @@ final budgetHealthProvider = Provider<BudgetHealthData>((ref) {
 class EmergencyFundData {
   final int totalCash;
   final int target;
-  
-  const EmergencyFundData({
-    required this.totalCash,
-    required this.target,
-  });
+
+  const EmergencyFundData({required this.totalCash, required this.target});
 }
 
 final emergencyFundProvider = Provider<EmergencyFundData>((ref) {
@@ -77,7 +100,11 @@ final emergencyFundProvider = Provider<EmergencyFundData>((ref) {
   for (final tx in state.transactions) {
     if (tx.status == 'void' || tx.status == 'scheduled') continue;
     if (expenseTypes.contains(tx.type) && tx.occurredAt.isAfter(start)) {
-      totalExp += convertMoneyForDisplay(state, tx.amount, state.preferences.displayCurrency).amountMinor;
+      totalExp += convertMoneyForDisplay(
+        state,
+        tx.amount,
+        state.preferences.displayCurrency,
+      ).amountMinor;
     }
   }
   final avgMonthlyExp = totalExp ~/ 3;
@@ -86,8 +113,13 @@ final emergencyFundProvider = Provider<EmergencyFundData>((ref) {
   int totalCash = 0;
   final balances = accountBalanceMap(state);
   for (final acc in state.accounts) {
-    if (acc.type == 'emergency' || acc.name.toLowerCase().contains('emergency')) {
-      totalCash += convertMoneyForDisplay(state, accountBalanceFromMap(balances, acc), state.preferences.displayCurrency).amountMinor;
+    if (acc.type == 'emergency' ||
+        acc.name.toLowerCase().contains('emergency')) {
+      totalCash += convertMoneyForDisplay(
+        state,
+        accountBalanceFromMap(balances, acc),
+        state.preferences.displayCurrency,
+      ).amountMinor;
     }
   }
   return EmergencyFundData(totalCash: totalCash, target: target);

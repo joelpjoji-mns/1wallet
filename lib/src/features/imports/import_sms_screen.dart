@@ -51,7 +51,8 @@ class _ImportSmsScreenState extends ConsumerState<ImportSmsScreen> {
         children: [
           SectionCard(
             title: 'Batch scan SMS',
-            subtitle: 'Automatically find and queue transactions from your inbox.',
+            subtitle:
+                'Automatically find and queue transactions from your inbox.',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -62,20 +63,36 @@ class _ImportSmsScreenState extends ConsumerState<ImportSmsScreen> {
                     prefixIcon: Icon(Icons.history_rounded),
                   ),
                   items: const [
-                    DropdownMenuItem(value: 'today', child: Text('Today (since midnight)')),
-                    DropdownMenuItem(value: '24h', child: Text('Last 24 hours')),
+                    DropdownMenuItem(
+                      value: 'today',
+                      child: Text('Today (since midnight)'),
+                    ),
+                    DropdownMenuItem(
+                      value: '24h',
+                      child: Text('Last 24 hours'),
+                    ),
                     DropdownMenuItem(value: '7d', child: Text('Last 7 days')),
                     DropdownMenuItem(value: '30d', child: Text('Last 30 days')),
                   ],
-                  onChanged: _isScanning ? null : (value) {
-                    if (value != null) setState(() => _scanTimeframe = value);
-                  },
+                  onChanged: _isScanning
+                      ? null
+                      : (value) {
+                          if (value != null)
+                            setState(() => _scanTimeframe = value);
+                        },
                 ),
                 const SizedBox(height: AppSpacing.md),
                 FilledButton.icon(
                   onPressed: _isScanning ? null : _startBatchScan,
-                  icon: _isScanning 
-                      ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary)) 
+                  icon: _isScanning
+                      ? SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Theme.of(context).colorScheme.onPrimary,
+                          ),
+                        )
                       : const Icon(Icons.manage_search_rounded),
                   label: Text(_isScanning ? 'Scanning...' : 'Start scan'),
                 ),
@@ -196,7 +213,7 @@ class _ImportSmsScreenState extends ConsumerState<ImportSmsScreen> {
     }
 
     setState(() => _isScanning = true);
-    
+
     try {
       final now = DateTime.now();
       DateTime minDate;
@@ -215,10 +232,13 @@ class _ImportSmsScreenState extends ConsumerState<ImportSmsScreen> {
           minDate = now.subtract(const Duration(hours: 24));
           break;
       }
-      
+
       final minDateMs = minDate.millisecondsSinceEpoch;
-      
-      final messages = await readAndroidSmsInbox(maxCount: 500, minDate: minDateMs);
+
+      final messages = await readAndroidSmsInbox(
+        maxCount: 500,
+        minDate: minDateMs,
+      );
       if (messages.isEmpty) {
         _showImportMessage('No messages found in the selected timeframe.');
         return;
@@ -229,18 +249,26 @@ class _ImportSmsScreenState extends ConsumerState<ImportSmsScreen> {
       final fallbackCurrency = state.preferences.baseCurrency;
       final notifier = ref.read(ledgerProvider.notifier);
       final validTexts = <({String text, DateTime receivedAt})>[];
-      
+
       for (final msg in messages) {
-        final parsed = parseTransactionMessage(msg.body, fallbackCurrency: fallbackCurrency);
-        if (!parsed.ignored && parsed.transactionType != null) {
-          validTexts.add((text: msg.body, receivedAt: DateTime.tryParse(msg.receivedAt) ?? DateTime.now()));
+        final parsed = parseTransactionMessage(
+          msg.body,
+          fallbackCurrency: fallbackCurrency,
+        );
+        if (!parsed.ignored) {
+          validTexts.add((
+            text: msg.body,
+            receivedAt: DateTime.tryParse(msg.receivedAt) ?? DateTime.now(),
+          ));
           found++;
         }
       }
-      
+
       final candidates = await notifier.importSmsMessagesBatch(validTexts);
-      
-      _showImportMessage('Scan complete. Found $found candidates, queued ${candidates.length}.');
+
+      _showImportMessage(
+        'Scan complete. Found $found candidates, queued ${candidates.length}.',
+      );
     } catch (e) {
       _showImportMessage('Error scanning SMS: $e');
     } finally {

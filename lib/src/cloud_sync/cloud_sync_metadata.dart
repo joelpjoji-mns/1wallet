@@ -86,7 +86,8 @@ class CloudSyncMetadata {
       syncedTransactionIds: syncedTransactionIds ?? this.syncedTransactionIds,
       syncedBudgetIds: syncedBudgetIds ?? this.syncedBudgetIds,
       syncedGoalIds: syncedGoalIds ?? this.syncedGoalIds,
-      syncedCaptureCandidateIds: syncedCaptureCandidateIds ?? this.syncedCaptureCandidateIds,
+      syncedCaptureCandidateIds:
+          syncedCaptureCandidateIds ?? this.syncedCaptureCandidateIds,
       syncedImportBatchIds: syncedImportBatchIds ?? this.syncedImportBatchIds,
       syncedDocumentHashes: syncedDocumentHashes ?? this.syncedDocumentHashes,
       syncIntervalHours: syncIntervalHours ?? this.syncIntervalHours,
@@ -131,12 +132,16 @@ class CloudSyncMetadata {
       lastRestoreBackupUri: json['lastRestoreBackupUri'] as String?,
       syncedAccountIds: (json['syncedAccountIds'] as List?)?.cast<String>(),
       syncedCategoryIds: (json['syncedCategoryIds'] as List?)?.cast<String>(),
-      syncedTransactionIds: (json['syncedTransactionIds'] as List?)?.cast<String>(),
+      syncedTransactionIds: (json['syncedTransactionIds'] as List?)
+          ?.cast<String>(),
       syncedBudgetIds: (json['syncedBudgetIds'] as List?)?.cast<String>(),
       syncedGoalIds: (json['syncedGoalIds'] as List?)?.cast<String>(),
-      syncedCaptureCandidateIds: (json['syncedCaptureCandidateIds'] as List?)?.cast<String>(),
-      syncedImportBatchIds: (json['syncedImportBatchIds'] as List?)?.cast<String>(),
-      syncedDocumentHashes: (json['syncedDocumentHashes'] as Map?)?.cast<String, String>(),
+      syncedCaptureCandidateIds: (json['syncedCaptureCandidateIds'] as List?)
+          ?.cast<String>(),
+      syncedImportBatchIds: (json['syncedImportBatchIds'] as List?)
+          ?.cast<String>(),
+      syncedDocumentHashes: (json['syncedDocumentHashes'] as Map?)
+          ?.cast<String, String>(),
       syncIntervalHours: json['syncIntervalHours'] as int? ?? 4,
     );
   }

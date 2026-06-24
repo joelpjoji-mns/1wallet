@@ -89,8 +89,12 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
   // 0. Fix broken zero-amount transfers (where counterAmount was incorrectly saved as 0 due to a bug)
   final updatedTransactions = <TransactionRecord>[];
   for (final t in ledger.transactions) {
-    if (t.type == 'transfer' && t.counterAmount != null && t.counterAmount!.amountMinor == 0 && t.amount.amountMinor > 0) {
-      if (t.counterAmount!.currency.toUpperCase() == t.amount.currency.toUpperCase()) {
+    if (t.type == 'transfer' &&
+        t.counterAmount != null &&
+        t.counterAmount!.amountMinor == 0 &&
+        t.amount.amountMinor > 0) {
+      if (t.counterAmount!.currency.toUpperCase() ==
+          t.amount.currency.toUpperCase()) {
         updatedTransactions.add(t.copyWith(counterAmount: t.amount));
         changed = true;
         continue;
@@ -104,9 +108,10 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
     if (scheduled.status == 'scheduled' && scheduled.postMode == 'auto') {
       DateTime nextDate = scheduled.occurredAt;
       while (nextDate.isBefore(now)) {
-        final dateStr = '${nextDate.year}${nextDate.month.toString().padLeft(2, '0')}${nextDate.day.toString().padLeft(2, '0')}';
+        final dateStr =
+            '${nextDate.year}${nextDate.month.toString().padLeft(2, '0')}${nextDate.day.toString().padLeft(2, '0')}';
         final autoId = '${scheduled.id}-auto-$dateStr';
-        
+
         final alreadyExists = ledger.transactions.any((t) => t.id == autoId);
         if (!alreadyExists && !newAutoPosted.any((t) => t.id == autoId)) {
           changed = true;
@@ -131,7 +136,9 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
   // 2. Build history map
   final Map<String, DateTime> latestHistory = {};
   for (final t in combinedTransactions) {
-    if (t.originalTransactionId != null && t.status != 'scheduled' && t.status != 'void') {
+    if (t.originalTransactionId != null &&
+        t.status != 'scheduled' &&
+        t.status != 'void') {
       final currentLatest = latestHistory[t.originalTransactionId!];
       if (currentLatest == null || t.occurredAt.isAfter(currentLatest)) {
         latestHistory[t.originalTransactionId!] = t.occurredAt;
@@ -146,11 +153,13 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
     final latestOccurredAt = latestHistory[scheduled.id];
     if (latestOccurredAt == null) return scheduled;
 
-    if (scheduled.occurredAt.isBefore(latestOccurredAt) || scheduled.occurredAt.isAtSameMomentAs(latestOccurredAt)) {
+    if (scheduled.occurredAt.isBefore(latestOccurredAt) ||
+        scheduled.occurredAt.isAtSameMomentAs(latestOccurredAt)) {
       changed = true;
       DateTime nextDate = scheduled.occurredAt;
-      while (nextDate.isBefore(latestOccurredAt) || nextDate.isAtSameMomentAs(latestOccurredAt)) {
-         nextDate = advanceTransactionRecurrence(nextDate, scheduled);
+      while (nextDate.isBefore(latestOccurredAt) ||
+          nextDate.isAtSameMomentAs(latestOccurredAt)) {
+        nextDate = advanceTransactionRecurrence(nextDate, scheduled);
       }
       return scheduled.copyWith(occurredAt: nextDate);
     }
@@ -183,7 +192,10 @@ class LedgerController extends StateNotifier<LedgerState> {
       final restored = await _repository.load();
       if (!mounted) return;
       if (restored != null) {
-        final fixed = await foundation.compute(fixStaleScheduledTransactions, restored);
+        final fixed = await foundation.compute(
+          fixStaleScheduledTransactions,
+          restored,
+        );
         state = fixed;
         unawaited(_repository.save(fixed));
         unawaited(SmsSpooler.updateTriggerWords(fixed));
@@ -194,13 +206,12 @@ class LedgerController extends StateNotifier<LedgerState> {
         LedgerLoadState.ready(hasPersistedLedger: restored != null),
       );
       unawaited(processSpooledSms());
-      
+
       // Start active foreground polling for instant updates
       Timer.periodic(const Duration(seconds: 5), (_) {
         if (!mounted) return;
         unawaited(processSpooledSms());
       });
-      
     } catch (error) {
       if (!mounted) return;
       _setLoadState(
@@ -208,8 +219,6 @@ class LedgerController extends StateNotifier<LedgerState> {
       );
     }
   }
-
-
 
   Future<void> clearLocalWallet({String userId = 'local-user'}) async {
     final next = emptyLedgerState(userId: userId);
@@ -225,7 +234,9 @@ class LedgerController extends StateNotifier<LedgerState> {
       for (final payload in spooled) {
         final body = payload['body'] as String?;
         final timestampStr = payload['timestamp'] as String?;
-        final receivedAt = timestampStr != null ? DateTime.tryParse(timestampStr) : null;
+        final receivedAt = timestampStr != null
+            ? DateTime.tryParse(timestampStr)
+            : null;
         if (body != null && body.isNotEmpty) {
           await importSmsMessage(body, receivedAt: receivedAt);
         }
@@ -461,11 +472,21 @@ class LedgerController extends StateNotifier<LedgerState> {
       amountMinor: effectiveAmountMinor,
       currency: sourceAccount.currency,
     );
-    final baseAmount = convertMoneyForDisplay(state, amount, state.preferences.baseCurrency);
+    final baseAmount = convertMoneyForDisplay(
+      state,
+      amount,
+      state.preferences.baseCurrency,
+    );
 
     Money? originalAmount;
-    if (originalAmountMinor != null && originalCurrency != null && originalCurrency.toUpperCase() != sourceAccount.currency.toUpperCase()) {
-      originalAmount = Money(amountMinor: originalAmountMinor, currency: originalCurrency.toUpperCase());
+    if (originalAmountMinor != null &&
+        originalCurrency != null &&
+        originalCurrency.toUpperCase() !=
+            sourceAccount.currency.toUpperCase()) {
+      originalAmount = Money(
+        amountMinor: originalAmountMinor,
+        currency: originalCurrency.toUpperCase(),
+      );
     } else {
       originalAmount = existing?.originalAmount;
     }
@@ -473,21 +494,34 @@ class LedgerController extends StateNotifier<LedgerState> {
     Money? counterAmount;
     if (counterAccount != null) {
       if (counterAmountMinor != null) {
-        counterAmount = Money(amountMinor: counterAmountMinor, currency: counterAccount.currency);
-      } else if (counterAccount.currency.toUpperCase() == sourceAccount.currency.toUpperCase()) {
+        counterAmount = Money(
+          amountMinor: counterAmountMinor,
+          currency: counterAccount.currency,
+        );
+      } else if (counterAccount.currency.toUpperCase() ==
+          sourceAccount.currency.toUpperCase()) {
         counterAmount = amount;
       } else {
-        counterAmount = convertMoneyForDisplay(state, amount, counterAccount.currency);
+        counterAmount = convertMoneyForDisplay(
+          state,
+          amount,
+          counterAccount.currency,
+        );
       }
     }
 
     double? fxRate = existing?.fxRate;
-    if (counterAmount != null && counterAmount.currency.toUpperCase() != amount.currency.toUpperCase() && amount.amountMinor != 0) {
+    if (counterAmount != null &&
+        counterAmount.currency.toUpperCase() != amount.currency.toUpperCase() &&
+        amount.amountMinor != 0) {
       fxRate = counterAmount.amountMinor / amount.amountMinor;
     }
 
     double? originalFxRate = existing?.originalFxRate;
-    if (originalAmount != null && originalAmount.currency.toUpperCase() != amount.currency.toUpperCase() && originalAmount.amountMinor != 0) {
+    if (originalAmount != null &&
+        originalAmount.currency.toUpperCase() !=
+            amount.currency.toUpperCase() &&
+        originalAmount.amountMinor != 0) {
       originalFxRate = amount.amountMinor / originalAmount.amountMinor;
     }
 
@@ -514,7 +548,8 @@ class LedgerController extends StateNotifier<LedgerState> {
       importBatchId: existing?.importBatchId,
       occurredAt: occurredAt ?? existing?.occurredAt ?? DateTime.now(),
       recurrenceFrequency: recurrenceFrequency ?? existing?.recurrenceFrequency,
-      recurrenceInterval: recurrenceInterval ?? existing?.recurrenceInterval ?? 1,
+      recurrenceInterval:
+          recurrenceInterval ?? existing?.recurrenceInterval ?? 1,
       recurrenceDaysOfWeek:
           recurrenceDaysOfWeek ?? existing?.recurrenceDaysOfWeek,
       recurrenceDaysOfMonth:
@@ -526,7 +561,8 @@ class LedgerController extends StateNotifier<LedgerState> {
           isExcludedFromReports ?? existing?.isExcludedFromReports ?? false,
       sourceConfidence: existing?.sourceConfidence,
       externalRef: existing?.externalRef,
-      originalTransactionId: originalTransactionId ?? existing?.originalTransactionId,
+      originalTransactionId:
+          originalTransactionId ?? existing?.originalTransactionId,
       postMode: postMode ?? existing?.postMode,
     );
     final transactions = [...state.transactions];
@@ -575,11 +611,7 @@ class LedgerController extends StateNotifier<LedgerState> {
   ) async {
     final existing = _transactionById(state, id);
     if (existing == null) throw StateError('Transaction not found.');
-    return updateTransactionStatus(
-      id,
-      existing.status,
-      occurredAt: newDate,
-    );
+    return updateTransactionStatus(id, existing.status, occurredAt: newDate);
   }
 
   Future<void> deleteTransaction(String id) async {
@@ -592,7 +624,10 @@ class LedgerController extends StateNotifier<LedgerState> {
     );
   }
 
-  Future<void> addAttachment(String transactionId, TransactionAttachment attachment) async {
+  Future<void> addAttachment(
+    String transactionId,
+    TransactionAttachment attachment,
+  ) async {
     final transactions = [...state.transactions];
     final index = transactions.indexWhere((item) => item.id == transactionId);
     if (index == -1) throw StateError('Transaction not found.');
@@ -712,9 +747,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     for (final account in state.accounts) {
       final index = orderedIds.indexOf(account.id);
       updated.add(
-        account.copyWith(
-          sortOrder: index == -1 ? account.sortOrder : index,
-        ),
+        account.copyWith(sortOrder: index == -1 ? account.sortOrder : index),
       );
     }
     await _commit(state.copyWith(accounts: updated));
@@ -731,7 +764,8 @@ class LedgerController extends StateNotifier<LedgerState> {
     final existing = categoryById(state, id);
     final normalizedParentId = _blankToNull(parentId);
     final parent = categoryById(state, normalizedParentId);
-    final normalizedKind = parent?.kind ??
+    final normalizedKind =
+        parent?.kind ??
         existing?.kind ??
         (kind.trim().isEmpty ? 'expense' : kind.trim());
     final category = Category(
@@ -763,10 +797,17 @@ class LedgerController extends StateNotifier<LedgerState> {
 
   Future<void> deleteCategory(String id) async {
     final isUsedInTx = state.transactions.any((t) => t.categoryId == id);
-    final isUsedInRules = state.preferences.futureGenerationRules?.any((r) => r.categoryId == id) ?? false;
-    final isUsedInCaptures = state.captureCandidates.any((c) => c.suggestedCategoryId == id);
+    final isUsedInRules =
+        state.preferences.futureGenerationRules?.any(
+          (r) => r.categoryId == id,
+        ) ??
+        false;
+    final isUsedInCaptures = state.captureCandidates.any(
+      (c) => c.suggestedCategoryId == id,
+    );
     final hasChildren = state.categories.any((c) => c.parentId == id);
-    final isUsed = isUsedInTx || isUsedInRules || isUsedInCaptures || hasChildren;
+    final isUsed =
+        isUsedInTx || isUsedInRules || isUsedInCaptures || hasChildren;
 
     if (isUsed) {
       final categories = [
@@ -775,7 +816,9 @@ class LedgerController extends StateNotifier<LedgerState> {
       ];
       await _commit(state.copyWith(categories: categories));
     } else {
-      final categories = state.categories.where((category) => category.id != id).toList();
+      final categories = state.categories
+          .where((category) => category.id != id)
+          .toList();
       await _commit(state.copyWith(categories: categories));
     }
   }
@@ -788,16 +831,19 @@ class LedgerController extends StateNotifier<LedgerState> {
     await _commit(state.copyWith(captureCandidates: candidates));
   }
 
-  Future<void> updateCaptureCandidateStatuses(Iterable<String> ids, String status) async {
+  Future<void> updateCaptureCandidateStatuses(
+    Iterable<String> ids,
+    String status,
+  ) async {
     final idSet = ids.toSet();
     final candidates = [
       for (final candidate in state.captureCandidates)
-        idSet.contains(candidate.id) ? candidate.copyWith(status: status) : candidate,
+        idSet.contains(candidate.id)
+            ? candidate.copyWith(status: status)
+            : candidate,
     ];
     await _commit(state.copyWith(captureCandidates: candidates));
   }
-
-
 
   Future<TransactionRecord> approveCaptureCandidate(String id) async {
     final candidate = _candidateById(state, id);
@@ -845,42 +891,59 @@ class LedgerController extends StateNotifier<LedgerState> {
     return transaction;
   }
 
-  Future<List<TransactionRecord>> approveCaptureCandidates(Iterable<String> ids) async {
+  Future<List<TransactionRecord>> approveCaptureCandidates(
+    Iterable<String> ids,
+  ) async {
     final idSet = ids.toSet();
     final newTransactions = <TransactionRecord>[];
-    
+
     final candidates = [
       for (final candidate in state.captureCandidates)
-        if (idSet.contains(candidate.id)) () {
-          if (candidate.parsedAmount == null) return candidate;
-          
-          final account = accountById(state, candidate.suggestedAccountId) ??
-              state.accounts.where((account) => !account.isArchived).firstOrNull ??
-              (state.accounts.isEmpty ? null : state.accounts.first);
-          
-          if (account == null) return candidate;
+        if (idSet.contains(candidate.id))
+          () {
+            if (candidate.parsedAmount == null) return candidate;
 
-          final type = candidate.transactionType == 'income' ? 'income' : 'expense';
-          final category = categoryById(state, candidate.suggestedCategoryId) ??
-              _matchCategory(state, candidate.merchant, type);
-          final amount = candidate.parsedAmount!.copyWith(currency: account.currency);
-          
-          newTransactions.add(TransactionRecord(
-            id: _newId('cap-tx'),
-            type: type,
-            status: 'cleared',
-            source: candidate.source,
-            accountId: account.id,
-            amount: amount,
-            baseAmount: amount.copyWith(currency: state.preferences.baseCurrency),
-            categoryId: category?.id,
-            occurredAt: candidate.createdAt,
-            paymentMethod: candidate.source.toUpperCase(),
-            notes: _blankToNull(candidate.merchant) ?? candidate.rawText,
-          ));
-          
-          return candidate.copyWith(status: 'approved');
-        }() else candidate
+            final account =
+                accountById(state, candidate.suggestedAccountId) ??
+                state.accounts
+                    .where((account) => !account.isArchived)
+                    .firstOrNull ??
+                (state.accounts.isEmpty ? null : state.accounts.first);
+
+            if (account == null) return candidate;
+
+            final type = candidate.transactionType == 'income'
+                ? 'income'
+                : 'expense';
+            final category =
+                categoryById(state, candidate.suggestedCategoryId) ??
+                _matchCategory(state, candidate.merchant, type);
+            final amount = candidate.parsedAmount!.copyWith(
+              currency: account.currency,
+            );
+
+            newTransactions.add(
+              TransactionRecord(
+                id: _newId('cap-tx'),
+                type: type,
+                status: 'cleared',
+                source: candidate.source,
+                accountId: account.id,
+                amount: amount,
+                baseAmount: amount.copyWith(
+                  currency: state.preferences.baseCurrency,
+                ),
+                categoryId: category?.id,
+                occurredAt: candidate.createdAt,
+                paymentMethod: candidate.source.toUpperCase(),
+                notes: _blankToNull(candidate.merchant) ?? candidate.rawText,
+              ),
+            );
+
+            return candidate.copyWith(status: 'approved');
+          }()
+        else
+          candidate,
     ];
 
     if (newTransactions.isNotEmpty) {
@@ -891,7 +954,7 @@ class LedgerController extends StateNotifier<LedgerState> {
         ),
       );
     }
-    
+
     return newTransactions;
   }
 
@@ -925,17 +988,22 @@ class LedgerController extends StateNotifier<LedgerState> {
     await _commit(state.copyWith(captureCandidates: candidates));
   }
 
-  Future<CaptureCandidate?> importSmsMessage(String rawText, {DateTime? receivedAt}) async {
+  Future<CaptureCandidate?> importSmsMessage(
+    String rawText, {
+    DateTime? receivedAt,
+  }) async {
     final parsed = parseTransactionMessage(
       rawText,
       fallbackCurrency: state.preferences.baseCurrency,
     );
     if (parsed.ignored) return null;
-    
+
     // Check for duplicates within the last 24 hours
-    final isDuplicate = state.captureCandidates.any((c) => 
-        c.rawText == parsed.rawText &&
-        c.createdAt.difference(receivedAt ?? DateTime.now()).abs().inHours < 24
+    final isDuplicate = state.captureCandidates.any(
+      (c) =>
+          c.rawText == parsed.rawText &&
+          c.createdAt.difference(receivedAt ?? DateTime.now()).abs().inHours <
+              24,
     );
     if (isDuplicate) return null;
 
@@ -950,10 +1018,12 @@ class LedgerController extends StateNotifier<LedgerState> {
       parsedAmount: parsed.amount,
       merchant: parsed.merchant,
       transactionType: parsed.transactionType,
-      suggestedAccountId: matchedAccountId ?? state.accounts
-          .where((account) => !account.isArchived)
-          .firstOrNull
-          ?.id,
+      suggestedAccountId:
+          matchedAccountId ??
+          state.accounts
+              .where((account) => !account.isArchived)
+              .firstOrNull
+              ?.id,
       suggestedCategoryId: _matchCategory(
         state,
         parsed.merchant,
@@ -968,7 +1038,9 @@ class LedgerController extends StateNotifier<LedgerState> {
     return candidate;
   }
 
-  Future<List<CaptureCandidate>> importSmsMessagesBatch(List<({String text, DateTime receivedAt})> messages) async {
+  Future<List<CaptureCandidate>> importSmsMessagesBatch(
+    List<({String text, DateTime receivedAt})> messages,
+  ) async {
     final newCandidates = <CaptureCandidate>[];
     int idx = 0;
 
@@ -980,10 +1052,13 @@ class LedgerController extends StateNotifier<LedgerState> {
       if (parsed.ignored) continue;
 
       // Check against existing state and newly added candidates in this batch
-      final isDuplicate = state.captureCandidates.any((c) => 
-          c.rawText == parsed.rawText &&
-          c.createdAt.difference(message.receivedAt).abs().inHours < 24
-      ) || newCandidates.any((c) => c.rawText == parsed.rawText);
+      final isDuplicate =
+          state.captureCandidates.any(
+            (c) =>
+                c.rawText == parsed.rawText &&
+                c.createdAt.difference(message.receivedAt).abs().inHours < 24,
+          ) ||
+          newCandidates.any((c) => c.rawText == parsed.rawText);
       if (isDuplicate) continue;
 
       String? matchedAccountId = _matchAccountToSms(state, parsed);
@@ -997,10 +1072,12 @@ class LedgerController extends StateNotifier<LedgerState> {
         parsedAmount: parsed.amount,
         merchant: parsed.merchant,
         transactionType: parsed.transactionType,
-        suggestedAccountId: matchedAccountId ?? state.accounts
-            .where((account) => !account.isArchived)
-            .firstOrNull
-            ?.id,
+        suggestedAccountId:
+            matchedAccountId ??
+            state.accounts
+                .where((account) => !account.isArchived)
+                .firstOrNull
+                ?.id,
         suggestedCategoryId: _matchCategory(
           state,
           parsed.merchant,
@@ -1183,9 +1260,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     }.toList()..sort();
     await _commit(
       state.copyWith(
-        preferences: state.preferences.copyWith(
-          enabledCurrencies: enabled,
-        ),
+        preferences: state.preferences.copyWith(enabledCurrencies: enabled),
       ),
     );
   }
@@ -1196,14 +1271,16 @@ class LedgerController extends StateNotifier<LedgerState> {
     final enabled = state.preferences.enabledCurrencies
         .where((c) => c.toUpperCase() != normalized)
         .toList();
-    final newRates = state.exchangeRates.where((r) => 
-      r.base.toUpperCase() != normalized && r.quote.toUpperCase() != normalized
-    ).toList();
+    final newRates = state.exchangeRates
+        .where(
+          (r) =>
+              r.base.toUpperCase() != normalized &&
+              r.quote.toUpperCase() != normalized,
+        )
+        .toList();
     await _commit(
       state.copyWith(
-        preferences: state.preferences.copyWith(
-          enabledCurrencies: enabled,
-        ),
+        preferences: state.preferences.copyWith(enabledCurrencies: enabled),
         exchangeRates: newRates,
       ),
     );
@@ -1219,7 +1296,9 @@ class LedgerController extends StateNotifier<LedgerState> {
     if (normalizedBase == normalizedQuote) return;
 
     final existingIndex = state.exchangeRates.indexWhere(
-      (r) => r.base.toUpperCase() == normalizedBase && r.quote.toUpperCase() == normalizedQuote,
+      (r) =>
+          r.base.toUpperCase() == normalizedBase &&
+          r.quote.toUpperCase() == normalizedQuote,
     );
 
     final record = ExchangeRateRecord(
@@ -1251,9 +1330,9 @@ class LedgerController extends StateNotifier<LedgerState> {
     await _repository.save(normalized);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('has_unsynced_changes', true);
-    
+
     unawaited(SmsSpooler.updateTriggerWords(normalized));
-    
+
     _autoBackupTimer?.cancel();
     if (!LedgerProvidersConfig.disableAutoBackup) {
       _autoBackupTimer = Timer(const Duration(seconds: 3), () {
@@ -1266,31 +1345,35 @@ class LedgerController extends StateNotifier<LedgerState> {
     if (foundation.kIsWeb) return;
     try {
       final archive = await foundation.compute(_encodeForBackup, ledger);
-      
+
       // 1. App documents directory -> 1Wallet subfolder
       final docsDir = await getApplicationDocumentsDirectory();
       final docsSubDir = Directory('${docsDir.path}/1Wallet');
       await docsSubDir.create(recursive: true);
       final docsFile = File('${docsSubDir.path}/1wallet_auto_backup.onewallet');
       await docsFile.writeAsString(archive);
-      
+
       // 2. App external storage directory -> 1Wallet subfolder (Android only)
       if (!foundation.kIsWeb && Platform.isAndroid) {
         final extDir = await getExternalStorageDirectory();
         if (extDir != null) {
           final extSubDir = Directory('${extDir.path}/1Wallet');
           await extSubDir.create(recursive: true);
-          final extFile = File('${extSubDir.path}/1wallet_auto_backup.onewallet');
+          final extFile = File(
+            '${extSubDir.path}/1wallet_auto_backup.onewallet',
+          );
           await extFile.writeAsString(archive);
         }
-        
+
         // 3. Public Download directory -> 1Wallet subfolder (best-effort)
         try {
           final downloadDir = Directory('/storage/emulated/0/Download');
           if (await downloadDir.exists()) {
             final downloadSubDir = Directory('${downloadDir.path}/1Wallet');
             await downloadSubDir.create(recursive: true);
-            final downloadFile = File('${downloadSubDir.path}/1wallet_auto_backup.onewallet');
+            final downloadFile = File(
+              '${downloadSubDir.path}/1wallet_auto_backup.onewallet',
+            );
             await downloadFile.writeAsString(archive);
           }
         } catch (_) {}
@@ -1301,7 +1384,9 @@ class LedgerController extends StateNotifier<LedgerState> {
           if (await documentsDir.exists()) {
             final documentsSubDir = Directory('${documentsDir.path}/1Wallet');
             await documentsSubDir.create(recursive: true);
-            final documentsFile = File('${documentsSubDir.path}/1wallet_auto_backup.onewallet');
+            final documentsFile = File(
+              '${documentsSubDir.path}/1wallet_auto_backup.onewallet',
+            );
             await documentsFile.writeAsString(archive);
           }
         } catch (_) {}
@@ -1316,19 +1401,35 @@ class LedgerController extends StateNotifier<LedgerState> {
     final candidates = <File>[];
     try {
       final docsDir = await getApplicationDocumentsDirectory();
-      candidates.add(File('${docsDir.path}/1Wallet/1wallet_auto_backup.onewallet'));
+      candidates.add(
+        File('${docsDir.path}/1Wallet/1wallet_auto_backup.onewallet'),
+      );
       candidates.add(File('${docsDir.path}/1wallet_auto_backup.onewallet'));
-      
+
       if (Platform.isAndroid) {
         final extDir = await getExternalStorageDirectory();
         if (extDir != null) {
-          candidates.add(File('${extDir.path}/1Wallet/1wallet_auto_backup.onewallet'));
+          candidates.add(
+            File('${extDir.path}/1Wallet/1wallet_auto_backup.onewallet'),
+          );
           candidates.add(File('${extDir.path}/1wallet_auto_backup.onewallet'));
         }
-        candidates.add(File('/storage/emulated/0/Download/1Wallet/1wallet_auto_backup.onewallet'));
-        candidates.add(File('/storage/emulated/0/Download/1wallet_auto_backup.onewallet'));
-        candidates.add(File('/storage/emulated/0/Documents/1Wallet/1wallet_auto_backup.onewallet'));
-        candidates.add(File('/storage/emulated/0/Documents/1wallet_auto_backup.onewallet'));
+        candidates.add(
+          File(
+            '/storage/emulated/0/Download/1Wallet/1wallet_auto_backup.onewallet',
+          ),
+        );
+        candidates.add(
+          File('/storage/emulated/0/Download/1wallet_auto_backup.onewallet'),
+        );
+        candidates.add(
+          File(
+            '/storage/emulated/0/Documents/1Wallet/1wallet_auto_backup.onewallet',
+          ),
+        );
+        candidates.add(
+          File('/storage/emulated/0/Documents/1wallet_auto_backup.onewallet'),
+        );
       }
     } catch (_) {}
 
@@ -1436,19 +1537,21 @@ Category? _matchCategory(LedgerState state, String? name, String kind) {
       .where((category) => !category.isArchived)
       .toList();
   final normalized = name?.trim().toLowerCase();
-  
+
   if (normalized != null && normalized.isNotEmpty) {
     // 1. Check previous transactions for exact or partial name match
     // to find the most recently used category for this merchant.
     for (final tx in state.transactions) {
       final txNotes = tx.notes?.trim().toLowerCase();
       final txName = tx.name?.trim().toLowerCase();
-      
+
       bool isStrongMatch(String? pastString) {
         if (pastString == null) return false;
         if (pastString == normalized) return true;
-        if (pastString.length > 4 && normalized.contains(pastString)) return true;
-        if (normalized.length > 4 && pastString.contains(normalized)) return true;
+        if (pastString.length > 4 && normalized.contains(pastString))
+          return true;
+        if (normalized.length > 4 && pastString.contains(normalized))
+          return true;
         return false;
       }
 
@@ -1469,17 +1572,29 @@ Category? _matchCategory(LedgerState state, String? name, String kind) {
 
     // 3. Keyword matching
     String? guessedKind;
-    if (RegExp(r'\b(zomato|swiggy|food|restaurant|cafe|dining|mcdonalds|starbucks)\b').hasMatch(normalized)) {
+    if (RegExp(
+      r'\b(zomato|swiggy|food|restaurant|cafe|dining|mcdonalds|starbucks)\b',
+    ).hasMatch(normalized)) {
       guessedKind = 'food';
-    } else if (RegExp(r'\b(uber|ola|rapido|taxi|transit|metro|train|flight)\b').hasMatch(normalized)) {
+    } else if (RegExp(
+      r'\b(uber|ola|rapido|taxi|transit|metro|train|flight)\b',
+    ).hasMatch(normalized)) {
       guessedKind = 'transport';
-    } else if (RegExp(r'\b(amazon|flipkart|myntra|shopping)\b').hasMatch(normalized)) {
+    } else if (RegExp(
+      r'\b(amazon|flipkart|myntra|shopping)\b',
+    ).hasMatch(normalized)) {
       guessedKind = 'shopping';
-    } else if (RegExp(r'\b(netflix|spotify|prime|hotstar|subscription|movie)\b').hasMatch(normalized)) {
+    } else if (RegExp(
+      r'\b(netflix|spotify|prime|hotstar|subscription|movie)\b',
+    ).hasMatch(normalized)) {
       guessedKind = 'entertainment';
-    } else if (RegExp(r'\b(hospital|pharmacy|clinic|medical|health|doctor)\b').hasMatch(normalized)) {
+    } else if (RegExp(
+      r'\b(hospital|pharmacy|clinic|medical|health|doctor)\b',
+    ).hasMatch(normalized)) {
       guessedKind = 'health';
-    } else if (RegExp(r'\b(jio|airtel|vi|recharge|bill|electricity|water|wifi)\b').hasMatch(normalized)) {
+    } else if (RegExp(
+      r'\b(jio|airtel|vi|recharge|bill|electricity|water|wifi)\b',
+    ).hasMatch(normalized)) {
       guessedKind = 'bill';
     }
 
@@ -1491,7 +1606,7 @@ Category? _matchCategory(LedgerState state, String? name, String kind) {
       }
     }
   }
-  
+
   return null;
 }
 
@@ -1500,7 +1615,7 @@ String? _matchAccountToSms(LedgerState state, ParsedTransactionMessage parsed) {
   if (activeAccounts.isEmpty) return null;
 
   final rawTextLower = parsed.rawText.toLowerCase();
-  
+
   Account? bestMatch;
   int highestScore = -1;
 
@@ -1511,15 +1626,17 @@ String? _matchAccountToSms(LedgerState state, ParsedTransactionMessage parsed) {
     // Try to match exact account number from encrypted details if we have access to it in memory
     // or from accountLast4 / cardLast4
     if (parsed.last4 != null) {
-      if (account.accountLast4 == parsed.last4 || account.cardLast4 == parsed.last4) {
+      if (account.accountLast4 == parsed.last4 ||
+          account.cardLast4 == parsed.last4) {
         score += 100; // Strongest indicator
       }
-      
+
       // If the parsed "last4" is actually longer (like a full account number)
       // we check if it matches the encrypted details 'accountNumber'
       if (parsed.last4!.length > 4 && account.encryptedDetails != null) {
         final accNum = account.encryptedDetails!['accountNumber'];
-        if (accNum != null && accNum.replaceAll(RegExp(r'\D'), '').endsWith(parsed.last4!)) {
+        if (accNum != null &&
+            accNum.replaceAll(RegExp(r'\D'), '').endsWith(parsed.last4!)) {
           score += 150;
         }
       }
@@ -1527,7 +1644,9 @@ String? _matchAccountToSms(LedgerState state, ParsedTransactionMessage parsed) {
 
     // 2. Institution Match
     if (parsed.institutionName != null && account.institution != null) {
-      if (account.institution!.toLowerCase().contains(parsed.institutionName!.toLowerCase())) {
+      if (account.institution!.toLowerCase().contains(
+        parsed.institutionName!.toLowerCase(),
+      )) {
         score += 50;
       }
     } else if (account.institution != null) {
@@ -1541,7 +1660,8 @@ String? _matchAccountToSms(LedgerState state, ParsedTransactionMessage parsed) {
     if (rawTextLower.contains(account.name.toLowerCase())) {
       score += 40;
     }
-    if (account.groupName != null && rawTextLower.contains(account.groupName!.toLowerCase())) {
+    if (account.groupName != null &&
+        rawTextLower.contains(account.groupName!.toLowerCase())) {
       score += 20;
     }
 

@@ -18,24 +18,9 @@ class AddRecordTypeTabs extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final options = [
-      (
-        'expense',
-        'Expense',
-        Icons.arrow_upward_rounded,
-        scheme.error,
-      ),
-      (
-        'income',
-        'Income',
-        Icons.arrow_downward_rounded,
-        scheme.tertiary,
-      ),
-      (
-        'transfer',
-        'Transfer',
-        Icons.swap_horiz_rounded,
-        scheme.primary,
-      ),
+      ('expense', 'Expense', Icons.arrow_upward_rounded, scheme.error),
+      ('income', 'Income', Icons.arrow_downward_rounded, scheme.tertiary),
+      ('transfer', 'Transfer', Icons.swap_horiz_rounded, scheme.primary),
     ];
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -161,7 +146,7 @@ class AddRecordSelectorGrid extends StatelessWidget {
             label: type == 'transfer' ? 'From' : 'Account',
             title: sourceAccount?.name ?? 'Choose account',
             subtitle: sourceAccount == null
-              ? 'Required'
+                ? 'Required'
                 : '${sourceAccount!.currency} · ${formatMoney(accountBalance(state, sourceAccount!), state.preferences.locale)}',
             iconColor: sourceAccount == null
                 ? null

@@ -236,21 +236,30 @@ class LedgerPreferences {
       homeWidgetHidden: homeWidgetHidden ?? this.homeWidgetHidden,
       homeWidgetSizes: homeWidgetSizes ?? this.homeWidgetSizes,
       homeWidgetFilters: homeWidgetFilters ?? this.homeWidgetFilters,
-      futureGenerationRules: futureGenerationRules ?? this.futureGenerationRules,
+      futureGenerationRules:
+          futureGenerationRules ?? this.futureGenerationRules,
       glassSpecularOpacity: glassSpecularOpacity ?? this.glassSpecularOpacity,
-      glassSpecularSaturation: glassSpecularSaturation ?? this.glassSpecularSaturation,
+      glassSpecularSaturation:
+          glassSpecularSaturation ?? this.glassSpecularSaturation,
       glassRefractionLevel: glassRefractionLevel ?? this.glassRefractionLevel,
       glassBlurLevel: glassBlurLevel ?? this.glassBlurLevel,
-      glassProgressiveBlurStrength: glassProgressiveBlurStrength ?? this.glassProgressiveBlurStrength,
-      glassBackgroundOpacity: glassBackgroundOpacity ?? this.glassBackgroundOpacity,
-      notificationInboxEnabled: notificationInboxEnabled ?? this.notificationInboxEnabled,
-      deviceNotificationsEnabled: deviceNotificationsEnabled ?? this.deviceNotificationsEnabled,
+      glassProgressiveBlurStrength:
+          glassProgressiveBlurStrength ?? this.glassProgressiveBlurStrength,
+      glassBackgroundOpacity:
+          glassBackgroundOpacity ?? this.glassBackgroundOpacity,
+      notificationInboxEnabled:
+          notificationInboxEnabled ?? this.notificationInboxEnabled,
+      deviceNotificationsEnabled:
+          deviceNotificationsEnabled ?? this.deviceNotificationsEnabled,
       quietHoursEnabled: quietHoursEnabled ?? this.quietHoursEnabled,
-      channelScheduledEnabled: channelScheduledEnabled ?? this.channelScheduledEnabled,
-      channelBudgetsEnabled: channelBudgetsEnabled ?? this.channelBudgetsEnabled,
+      channelScheduledEnabled:
+          channelScheduledEnabled ?? this.channelScheduledEnabled,
+      channelBudgetsEnabled:
+          channelBudgetsEnabled ?? this.channelBudgetsEnabled,
       channelGoalsEnabled: channelGoalsEnabled ?? this.channelGoalsEnabled,
       readNotificationIds: readNotificationIds ?? this.readNotificationIds,
-      dismissedNotificationIds: dismissedNotificationIds ?? this.dismissedNotificationIds,
+      dismissedNotificationIds:
+          dismissedNotificationIds ?? this.dismissedNotificationIds,
       privacyModeEnabled: privacyModeEnabled ?? this.privacyModeEnabled,
       biometricLockEnabled: biometricLockEnabled ?? this.biometricLockEnabled,
     );
@@ -365,7 +374,7 @@ class Account {
   final Money? creditLimit;
 
   String? get displayLast4 => cardLast4 ?? accountLast4;
-  
+
   String? get displayLast4Label {
     if (displayLast4 == null) return null;
     if (type == 'card') return 'Card ending in';
@@ -615,7 +624,8 @@ class TransactionRecord {
       recurrenceFrequency: recurrenceFrequency ?? this.recurrenceFrequency,
       recurrenceInterval: recurrenceInterval ?? this.recurrenceInterval,
       recurrenceDaysOfWeek: recurrenceDaysOfWeek ?? this.recurrenceDaysOfWeek,
-      recurrenceDaysOfMonth: recurrenceDaysOfMonth ?? this.recurrenceDaysOfMonth,
+      recurrenceDaysOfMonth:
+          recurrenceDaysOfMonth ?? this.recurrenceDaysOfMonth,
       attachments: attachments ?? this.attachments,
       isReimbursable: isReimbursable ?? this.isReimbursable,
       isTaxDeductible: isTaxDeductible ?? this.isTaxDeductible,

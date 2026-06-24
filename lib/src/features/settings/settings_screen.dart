@@ -274,23 +274,42 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           children: [
                             Container(
                               height: 60,
-                              margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                              margin: const EdgeInsets.only(
+                                bottom: AppSpacing.sm,
+                              ),
                               decoration: BoxDecoration(
                                 color: theme.colorScheme.surfaceContainer,
-                                borderRadius: BorderRadius.circular(AppRadii.md),
+                                borderRadius: BorderRadius.circular(
+                                  AppRadii.md,
+                                ),
                               ),
                               child: Row(
                                 children: [
                                   const SizedBox(width: 16),
-                                  CircleAvatar(backgroundColor: theme.colorScheme.primary.withAlphaFactor(0.2), radius: 16),
+                                  CircleAvatar(
+                                    backgroundColor: theme.colorScheme.primary
+                                        .withAlphaFactor(0.2),
+                                    radius: 16,
+                                  ),
                                   const SizedBox(width: 16),
                                   Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Container(height: 10, width: 100, color: theme.colorScheme.onSurface.withAlphaFactor(0.2)),
+                                      Container(
+                                        height: 10,
+                                        width: 100,
+                                        color: theme.colorScheme.onSurface
+                                            .withAlphaFactor(0.2),
+                                      ),
                                       const SizedBox(height: 8),
-                                      Container(height: 8, width: 60, color: theme.colorScheme.onSurface.withAlphaFactor(0.1)),
+                                      Container(
+                                        height: 8,
+                                        width: 60,
+                                        color: theme.colorScheme.onSurface
+                                            .withAlphaFactor(0.1),
+                                      ),
                                     ],
                                   ),
                                 ],
@@ -298,23 +317,42 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             ),
                             Container(
                               height: 60,
-                              margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                              margin: const EdgeInsets.only(
+                                bottom: AppSpacing.sm,
+                              ),
                               decoration: BoxDecoration(
                                 color: theme.colorScheme.surfaceContainer,
-                                borderRadius: BorderRadius.circular(AppRadii.md),
+                                borderRadius: BorderRadius.circular(
+                                  AppRadii.md,
+                                ),
                               ),
                               child: Row(
                                 children: [
                                   const SizedBox(width: 16),
-                                  CircleAvatar(backgroundColor: theme.colorScheme.error.withAlphaFactor(0.2), radius: 16),
+                                  CircleAvatar(
+                                    backgroundColor: theme.colorScheme.error
+                                        .withAlphaFactor(0.2),
+                                    radius: 16,
+                                  ),
                                   const SizedBox(width: 16),
                                   Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Container(height: 10, width: 120, color: theme.colorScheme.onSurface.withAlphaFactor(0.2)),
+                                      Container(
+                                        height: 10,
+                                        width: 120,
+                                        color: theme.colorScheme.onSurface
+                                            .withAlphaFactor(0.2),
+                                      ),
                                       const SizedBox(height: 8),
-                                      Container(height: 8, width: 50, color: theme.colorScheme.onSurface.withAlphaFactor(0.1)),
+                                      Container(
+                                        height: 8,
+                                        width: 50,
+                                        color: theme.colorScheme.onSurface
+                                            .withAlphaFactor(0.1),
+                                      ),
                                     ],
                                   ),
                                 ],
@@ -324,7 +362,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               height: 60,
                               decoration: BoxDecoration(
                                 color: theme.colorScheme.surfaceContainer,
-                                borderRadius: BorderRadius.circular(AppRadii.md),
+                                borderRadius: BorderRadius.circular(
+                                  AppRadii.md,
+                                ),
                               ),
                             ),
                           ],
@@ -336,10 +376,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         right: 0,
                         child: BottomIslandNavBar(
                           items: const [
-                            IslandTabItem(title: 'Home', icon: Icons.grid_view, activeIcon: Icons.grid_view_rounded),
-                            IslandTabItem(title: 'Records', icon: Icons.receipt_long_outlined, activeIcon: Icons.receipt_long_rounded),
-                            IslandTabItem(title: 'Budgets', icon: Icons.donut_small_outlined, activeIcon: Icons.donut_small_rounded),
-                            IslandTabItem(title: 'Accounts', icon: Icons.account_balance_wallet_outlined, activeIcon: Icons.account_balance_wallet),
+                            IslandTabItem(
+                              title: 'Home',
+                              icon: Icons.grid_view,
+                              activeIcon: Icons.grid_view_rounded,
+                            ),
+                            IslandTabItem(
+                              title: 'Records',
+                              icon: Icons.receipt_long_outlined,
+                              activeIcon: Icons.receipt_long_rounded,
+                            ),
+                            IslandTabItem(
+                              title: 'Budgets',
+                              icon: Icons.donut_small_outlined,
+                              activeIcon: Icons.donut_small_rounded,
+                            ),
+                            IslandTabItem(
+                              title: 'Accounts',
+                              icon: Icons.account_balance_wallet_outlined,
+                              activeIcon: Icons.account_balance_wallet,
+                            ),
                           ],
                           selectedIndex: 0,
                           onSelected: (i) {},
@@ -354,42 +410,68 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   value: state.preferences.glassSpecularOpacity,
                   min: 0.0,
                   max: 1.0,
-                  onChanged: (v) => ref.read(ledgerProvider.notifier).updatePreferences(state.preferences.copyWith(glassSpecularOpacity: v)),
+                  onChanged: (v) => ref
+                      .read(ledgerProvider.notifier)
+                      .updatePreferences(
+                        state.preferences.copyWith(glassSpecularOpacity: v),
+                      ),
                 ),
                 _SliderRow(
                   label: 'Specular Saturation',
                   value: state.preferences.glassSpecularSaturation,
                   min: 0.0,
                   max: 2.0,
-                  onChanged: (v) => ref.read(ledgerProvider.notifier).updatePreferences(state.preferences.copyWith(glassSpecularSaturation: v)),
+                  onChanged: (v) => ref
+                      .read(ledgerProvider.notifier)
+                      .updatePreferences(
+                        state.preferences.copyWith(glassSpecularSaturation: v),
+                      ),
                 ),
                 _SliderRow(
                   label: 'Refraction Level',
                   value: state.preferences.glassRefractionLevel,
                   min: 0.0,
                   max: 1.0,
-                  onChanged: (v) => ref.read(ledgerProvider.notifier).updatePreferences(state.preferences.copyWith(glassRefractionLevel: v)),
+                  onChanged: (v) => ref
+                      .read(ledgerProvider.notifier)
+                      .updatePreferences(
+                        state.preferences.copyWith(glassRefractionLevel: v),
+                      ),
                 ),
                 _SliderRow(
                   label: 'Blur Level',
                   value: state.preferences.glassBlurLevel,
                   min: 0.0,
                   max: 100.0,
-                  onChanged: (v) => ref.read(ledgerProvider.notifier).updatePreferences(state.preferences.copyWith(glassBlurLevel: v)),
+                  onChanged: (v) => ref
+                      .read(ledgerProvider.notifier)
+                      .updatePreferences(
+                        state.preferences.copyWith(glassBlurLevel: v),
+                      ),
                 ),
                 _SliderRow(
                   label: 'Prog. Blur Strength',
                   value: state.preferences.glassProgressiveBlurStrength,
                   min: 0.0,
                   max: 1.0,
-                  onChanged: (v) => ref.read(ledgerProvider.notifier).updatePreferences(state.preferences.copyWith(glassProgressiveBlurStrength: v)),
+                  onChanged: (v) => ref
+                      .read(ledgerProvider.notifier)
+                      .updatePreferences(
+                        state.preferences.copyWith(
+                          glassProgressiveBlurStrength: v,
+                        ),
+                      ),
                 ),
                 _SliderRow(
                   label: 'Bg Opacity',
                   value: state.preferences.glassBackgroundOpacity,
                   min: 0.0,
                   max: 1.0,
-                  onChanged: (v) => ref.read(ledgerProvider.notifier).updatePreferences(state.preferences.copyWith(glassBackgroundOpacity: v)),
+                  onChanged: (v) => ref
+                      .read(ledgerProvider.notifier)
+                      .updatePreferences(
+                        state.preferences.copyWith(glassBackgroundOpacity: v),
+                      ),
                 ),
               ],
             ),
@@ -407,10 +489,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   contentPadding: EdgeInsets.zero,
                   value: state.preferences.notificationInboxEnabled,
                   onChanged: (value) {
-                    ref.read(ledgerProvider.notifier).updatePreferences(
-                      state.preferences.copyWith(notificationInboxEnabled: value),
+                    ref
+                        .read(ledgerProvider.notifier)
+                        .updatePreferences(
+                          state.preferences.copyWith(
+                            notificationInboxEnabled: value,
+                          ),
+                        );
+                    _showMessage(
+                      value
+                          ? 'Notification inbox enabled.'
+                          : 'Notification inbox paused.',
                     );
-                    _showMessage(value ? 'Notification inbox enabled.' : 'Notification inbox paused.');
                   },
                   title: const Text('Notification inbox'),
                   subtitle: Text(
@@ -426,10 +516,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   contentPadding: EdgeInsets.zero,
                   value: state.preferences.deviceNotificationsEnabled,
                   onChanged: (value) {
-                    ref.read(ledgerProvider.notifier).updatePreferences(
-                      state.preferences.copyWith(deviceNotificationsEnabled: value),
+                    ref
+                        .read(ledgerProvider.notifier)
+                        .updatePreferences(
+                          state.preferences.copyWith(
+                            deviceNotificationsEnabled: value,
+                          ),
+                        );
+                    _showMessage(
+                      value
+                          ? 'Device notifications enabled.'
+                          : 'Device notifications disabled.',
                     );
-                    _showMessage(value ? 'Device notifications enabled.' : 'Device notifications disabled.');
                   },
                   title: const Text('Device notifications'),
                   subtitle: Text(
@@ -445,9 +543,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   contentPadding: EdgeInsets.zero,
                   value: state.preferences.quietHoursEnabled,
                   onChanged: (value) {
-                    ref.read(ledgerProvider.notifier).updatePreferences(
-                      state.preferences.copyWith(quietHoursEnabled: value),
-                    );
+                    ref
+                        .read(ledgerProvider.notifier)
+                        .updatePreferences(
+                          state.preferences.copyWith(quietHoursEnabled: value),
+                        );
                     _showMessage(
                       value ? 'Quiet hours enabled' : 'Quiet hours disabled',
                     );
@@ -468,19 +568,33 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     value: channel.$1 == 'scheduled'
                         ? state.preferences.channelScheduledEnabled
                         : channel.$1 == 'budgets'
-                            ? state.preferences.channelBudgetsEnabled
-                            : state.preferences.channelGoalsEnabled,
+                        ? state.preferences.channelBudgetsEnabled
+                        : state.preferences.channelGoalsEnabled,
                     onChanged: (value) {
                       final prefs = state.preferences;
                       if (channel.$1 == 'scheduled') {
-                        ref.read(ledgerProvider.notifier).updatePreferences(prefs.copyWith(channelScheduledEnabled: value));
+                        ref
+                            .read(ledgerProvider.notifier)
+                            .updatePreferences(
+                              prefs.copyWith(channelScheduledEnabled: value),
+                            );
                       } else if (channel.$1 == 'budgets') {
-                        ref.read(ledgerProvider.notifier).updatePreferences(prefs.copyWith(channelBudgetsEnabled: value));
+                        ref
+                            .read(ledgerProvider.notifier)
+                            .updatePreferences(
+                              prefs.copyWith(channelBudgetsEnabled: value),
+                            );
                       } else {
-                        ref.read(ledgerProvider.notifier).updatePreferences(prefs.copyWith(channelGoalsEnabled: value));
+                        ref
+                            .read(ledgerProvider.notifier)
+                            .updatePreferences(
+                              prefs.copyWith(channelGoalsEnabled: value),
+                            );
                       }
                       _showMessage(
-                        value ? '${channel.$2} enabled' : '${channel.$2} paused',
+                        value
+                            ? '${channel.$2} enabled'
+                            : '${channel.$2} paused',
                       );
                     },
                     title: Row(
@@ -532,10 +646,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   contentPadding: EdgeInsets.zero,
                   value: state.preferences.privacyModeEnabled,
                   onChanged: (value) {
-                    ref.read(ledgerProvider.notifier).updatePreferences(
-                      state.preferences.copyWith(privacyModeEnabled: value),
+                    ref
+                        .read(ledgerProvider.notifier)
+                        .updatePreferences(
+                          state.preferences.copyWith(privacyModeEnabled: value),
+                        );
+                    _showMessage(
+                      value ? 'Privacy mode enabled' : 'Privacy mode disabled',
                     );
-                    _showMessage(value ? 'Privacy mode enabled' : 'Privacy mode disabled');
                   },
                   title: const Text('Privacy mode'),
                   subtitle: Text(
@@ -550,10 +668,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   contentPadding: EdgeInsets.zero,
                   value: state.preferences.biometricLockEnabled,
                   onChanged: (value) {
-                    ref.read(ledgerProvider.notifier).updatePreferences(
-                      state.preferences.copyWith(biometricLockEnabled: value),
+                    ref
+                        .read(ledgerProvider.notifier)
+                        .updatePreferences(
+                          state.preferences.copyWith(
+                            biometricLockEnabled: value,
+                          ),
+                        );
+                    _showMessage(
+                      value
+                          ? 'Biometric lock enabled'
+                          : 'Biometric lock disabled',
                     );
-                    _showMessage(value ? 'Biometric lock enabled' : 'Biometric lock disabled');
                   },
                   title: const Text('Biometric lock'),
                   subtitle: Text(
@@ -665,7 +791,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       title: 'Accent source',
       searchable: false,
-        selectedValue: ref.read(themeControllerProvider).accentColor == null
+      selectedValue: ref.read(themeControllerProvider).accentColor == null
           ? 'system'
           : 'custom',
       options: [
@@ -684,20 +810,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (next == 'custom') {
       final currentColor = ref.read(themeControllerProvider).accentColor;
       Color initialColor = Theme.of(context).colorScheme.primary;
-      if (currentColor != null && currentColor.length == 7 && currentColor.startsWith('#')) {
+      if (currentColor != null &&
+          currentColor.length == 7 &&
+          currentColor.startsWith('#')) {
         final intValue = int.tryParse(currentColor.substring(1), radix: 16);
         if (intValue != null) {
           initialColor = Color(intValue | 0xFF000000);
         }
       }
-      
+
       final color = await showAppColorPicker(
         context: context,
         initialColor: initialColor,
         title: 'Custom accent',
       );
       if (color != null && mounted) {
-        final hex = '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
+        final hex =
+            '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
         await ref.read(themeControllerProvider.notifier).setAccentColor(hex);
         if (!mounted) return;
         _showMessage('Custom accent saved: $hex');
@@ -750,8 +879,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 }
 
-
-
 class _SliderRow extends StatelessWidget {
   const _SliderRow({
     required this.label,
@@ -778,7 +905,12 @@ class _SliderRow extends StatelessWidget {
             child: Text(label, style: const TextStyle(fontSize: 12)),
           ),
           Expanded(
-            child: Slider(value: value, min: min, max: max, onChanged: onChanged),
+            child: Slider(
+              value: value,
+              min: min,
+              max: max,
+              onChanged: onChanged,
+            ),
           ),
           SizedBox(
             width: 40,

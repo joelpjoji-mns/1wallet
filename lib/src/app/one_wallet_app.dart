@@ -25,9 +25,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
   @override
   void initState() {
     super.initState();
-    _listener = AppLifecycleListener(
-      onStateChange: _onStateChanged,
-    );
+    _listener = AppLifecycleListener(onStateChange: _onStateChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       ref.read(ledgerProvider.notifier).processSpooledSms();
       final route = await getInitialSmsRoute();

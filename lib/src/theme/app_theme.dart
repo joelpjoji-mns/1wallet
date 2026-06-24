@@ -6,27 +6,33 @@ import '../design/tokens.dart';
 abstract final class AppTheme {
   static bool disableGoogleFonts = false;
 
-  static ThemeData light({String? accentColor, ColorScheme? systemColorScheme}) =>
-      _theme(
-        Brightness.light,
-        accentColor: accentColor,
-        systemColorScheme: systemColorScheme,
-      );
+  static ThemeData light({
+    String? accentColor,
+    ColorScheme? systemColorScheme,
+  }) => _theme(
+    Brightness.light,
+    accentColor: accentColor,
+    systemColorScheme: systemColorScheme,
+  );
 
-  static ThemeData dark({String? accentColor, ColorScheme? systemColorScheme}) =>
-      _theme(
-        Brightness.dark,
-        accentColor: accentColor,
-        systemColorScheme: systemColorScheme,
-      );
+  static ThemeData dark({
+    String? accentColor,
+    ColorScheme? systemColorScheme,
+  }) => _theme(
+    Brightness.dark,
+    accentColor: accentColor,
+    systemColorScheme: systemColorScheme,
+  );
 
-  static ThemeData amoled({String? accentColor, ColorScheme? systemColorScheme}) =>
-      _theme(
-        Brightness.dark,
-        amoled: true,
-        accentColor: accentColor,
-        systemColorScheme: systemColorScheme,
-      );
+  static ThemeData amoled({
+    String? accentColor,
+    ColorScheme? systemColorScheme,
+  }) => _theme(
+    Brightness.dark,
+    amoled: true,
+    accentColor: accentColor,
+    systemColorScheme: systemColorScheme,
+  );
 
   static ThemeData _theme(
     Brightness brightness, {
@@ -36,7 +42,8 @@ abstract final class AppTheme {
   }) {
     final dark = brightness == Brightness.dark;
     final customAccentColor = _parseAccentColor(accentColor);
-    final baseScheme = customAccentColor == null &&
+    final baseScheme =
+        customAccentColor == null &&
             systemColorScheme != null &&
             systemColorScheme.brightness == brightness
         ? systemColorScheme
@@ -53,44 +60,44 @@ abstract final class AppTheme {
     scheme = scheme.copyWith(
       error: dark ? AppColors.dangerDark : AppColors.dangerLight,
       surface: amoled
-        ? const Color(0xFF050505)
-        : _accentTintedSurface(
-          scheme.surface,
-          scheme.primary,
-          dark ? 0.03 : 0.018,
-        ),
+          ? const Color(0xFF050505)
+          : _accentTintedSurface(
+              scheme.surface,
+              scheme.primary,
+              dark ? 0.03 : 0.018,
+            ),
       surfaceContainerLow: amoled
-        ? const Color(0xFF050505)
-        : _accentTintedSurface(
-          scheme.surfaceContainerLow,
-          scheme.primary,
-          dark ? 0.08 : 0.045,
-        ),
+          ? const Color(0xFF050505)
+          : _accentTintedSurface(
+              scheme.surfaceContainerLow,
+              scheme.primary,
+              dark ? 0.08 : 0.045,
+            ),
       surfaceContainer: amoled
-        ? const Color(0xFF090909)
-        : _accentTintedSurface(
-          scheme.surfaceContainer,
-          scheme.primary,
-          dark ? 0.10 : 0.06,
-        ),
+          ? const Color(0xFF090909)
+          : _accentTintedSurface(
+              scheme.surfaceContainer,
+              scheme.primary,
+              dark ? 0.10 : 0.06,
+            ),
       surfaceContainerHigh: amoled
-        ? const Color(0xFF101010)
-        : _accentTintedSurface(
-          scheme.surfaceContainerHigh,
-          scheme.primary,
-          dark ? 0.12 : 0.075,
-        ),
+          ? const Color(0xFF101010)
+          : _accentTintedSurface(
+              scheme.surfaceContainerHigh,
+              scheme.primary,
+              dark ? 0.12 : 0.075,
+            ),
       surfaceContainerHighest: amoled
-        ? const Color(0xFF171717)
-        : _accentTintedSurface(
-          scheme.surfaceContainerHighest,
-          scheme.primary,
-          dark ? 0.14 : 0.09,
-        ),
+          ? const Color(0xFF171717)
+          : _accentTintedSurface(
+              scheme.surfaceContainerHighest,
+              scheme.primary,
+              dark ? 0.14 : 0.09,
+            ),
       outlineVariant: _accentTintedSurface(
-      scheme.outlineVariant,
-      scheme.primary,
-      dark ? 0.18 : 0.12,
+        scheme.outlineVariant,
+        scheme.primary,
+        dark ? 0.18 : 0.12,
       ),
     );
 
@@ -102,7 +109,9 @@ abstract final class AppTheme {
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
-      fontFamily: disableGoogleFonts ? 'Outfit' : GoogleFonts.outfit().fontFamily,
+      fontFamily: disableGoogleFonts
+          ? 'Outfit'
+          : GoogleFonts.outfit().fontFamily,
       scaffoldBackgroundColor: amoled
           ? AppColors.amoledBackground
           : dark

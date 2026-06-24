@@ -44,9 +44,17 @@ class SmsReceiver : BroadcastReceiver() {
                     val lowerBody = body.lowercase()
                     for (i in 0 until jsonArray.length()) {
                         val word = jsonArray.getString(i).lowercase()
-                        if (lowerBody.contains(word)) {
-                            matched = true
-                            break
+                        if (word.length <= 3) {
+                            val pattern = "(^|\\W)${Regex.escape(word)}($|\\W)".toRegex()
+                            if (pattern.containsMatchIn(lowerBody)) {
+                                matched = true
+                                break
+                            }
+                        } else {
+                            if (lowerBody.contains(word)) {
+                                matched = true
+                                break
+                            }
                         }
                     }
                     shouldSpool = matched

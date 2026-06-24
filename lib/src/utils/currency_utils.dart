@@ -174,5 +174,6 @@ const Map<String, CurrencyInfo> currencyDetails = {
 };
 
 CurrencyInfo getCurrencyInfo(String code) {
-  return currencyDetails[code.toUpperCase()] ?? CurrencyInfo(code.toUpperCase(), 'Unknown Currency', '🏳️');
+  return currencyDetails[code.toUpperCase()] ??
+      CurrencyInfo(code.toUpperCase(), 'Unknown Currency', '🏳️');
 }

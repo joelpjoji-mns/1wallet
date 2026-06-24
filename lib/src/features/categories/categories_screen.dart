@@ -111,7 +111,6 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
               onToggleArchive: _toggleArchive,
               onDelete: _deleteCategory,
             ),
-
           ],
         ],
       ),
@@ -203,7 +202,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: CircleAvatar(
-                    backgroundColor: color ?? Theme.of(context).colorScheme.primary,
+                    backgroundColor:
+                        color ?? Theme.of(context).colorScheme.primary,
                     radius: 12,
                   ),
                   title: const Text('Color'),
@@ -212,7 +212,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   onTap: () async {
                     final selected = await showAppColorPicker(
                       context: context,
-                      initialColor: color ?? Theme.of(context).colorScheme.primary,
+                      initialColor:
+                          color ?? Theme.of(context).colorScheme.primary,
                       title: 'Category color',
                     );
                     if (selected != null) {
@@ -584,10 +585,7 @@ List<Category> _categoryLevel(
   return items;
 }
 
-List<Category> _parentCategoryOptions(
-  LedgerState state, {
-  Category? category,
-}) {
+List<Category> _parentCategoryOptions(LedgerState state, {Category? category}) {
   final descendants = category == null
       ? <String>{}
       : _categoryDescendantIds(state.categories, category.id);

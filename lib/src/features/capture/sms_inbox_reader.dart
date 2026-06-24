@@ -44,10 +44,12 @@ Future<bool> isAndroidSmsInboxAvailable() async {
 Future<AndroidSmsPermissionState> getAndroidSmsPermissionState() async {
   try {
     final status = await Permission.sms.status;
-    final parsed = status.isGranted 
-        ? AndroidSmsPermissionStatus.granted 
-        : (status.isPermanentlyDenied ? AndroidSmsPermissionStatus.blocked : AndroidSmsPermissionStatus.denied);
-    
+    final parsed = status.isGranted
+        ? AndroidSmsPermissionStatus.granted
+        : (status.isPermanentlyDenied
+              ? AndroidSmsPermissionStatus.blocked
+              : AndroidSmsPermissionStatus.denied);
+
     return AndroidSmsPermissionState(
       read: parsed,
       receive: parsed,

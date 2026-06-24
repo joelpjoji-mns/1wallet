@@ -62,10 +62,11 @@ List<BalanceTrendPoint> balanceTrendForRange(
         return sum + converted.amountMinor;
       });
 
-  final txs = state.transactions
-      .where((tx) => tx.status != 'scheduled' && tx.status != 'void')
-      .toList()
-    ..sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
+  final txs =
+      state.transactions
+          .where((tx) => tx.status != 'scheduled' && tx.status != 'void')
+          .toList()
+        ..sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
 
   for (final tx in txs) {
     if (tx.occurredAt.isBefore(rangeStart)) {
@@ -85,12 +86,12 @@ List<BalanceTrendPoint> balanceTrendForRange(
   for (final tx in txs) {
     if (tx.occurredAt.isBefore(rangeStart)) continue;
     if (tx.occurredAt.isAfter(rangeEnd)) break;
-    
+
     final delta = _includedTotalDelta(state, tx, includedAccounts);
     if (delta == 0) continue;
-    
+
     running += delta;
-    
+
     if (lastTime == tx.occurredAt && points.isNotEmpty) {
       points.last = BalanceTrendPoint(
         date: tx.occurredAt,
@@ -119,10 +120,7 @@ List<BalanceTrendPoint> balanceTrendForRange(
   return points;
 }
 
-List<Money> balanceBreakdownByCurrency(
-  LedgerState state, {
-  String? accountId,
-}) {
+List<Money> balanceBreakdownByCurrency(LedgerState state, {String? accountId}) {
   final accounts = accountId != null
       ? (accountId == 'cash_group'
             ? state.accounts.where((a) => a.type == 'cash' && !a.isArchived)
@@ -164,7 +162,10 @@ List<Money> balanceBreakdownByCurrency(
 
 List<Money> _accountCurrencyNet(LedgerState state, Account account) {
   final totals = <String, int>{};
-  _addMoney(totals, account.openingBalance.copyWith(currency: account.currency));
+  _addMoney(
+    totals,
+    account.openingBalance.copyWith(currency: account.currency),
+  );
 
   for (final transaction in state.transactions) {
     if (transaction.status == 'scheduled' ||
@@ -403,8 +404,6 @@ String? _preferredQuoteCurrency(
   }
   return null;
 }
-
-
 
 class _RateSnapshot {
   const _RateSnapshot({

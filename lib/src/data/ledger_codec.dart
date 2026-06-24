@@ -262,7 +262,8 @@ LedgerState _migrateCategoryTaxonomy(LedgerState state) {
     idRedirect[category.id] = targetId;
     final defaultCategory = defaultsById[targetId];
     final current = mergedById[targetId];
-    final normalized = defaultCategory ??
+    final normalized =
+        defaultCategory ??
         Category(
           id: targetId,
           name: _crispCategoryName(category.name),
@@ -274,7 +275,9 @@ LedgerState _migrateCategoryTaxonomy(LedgerState state) {
         );
     mergedById[targetId] = current == null
         ? normalized
-        : current.copyWith(isArchived: current.isArchived && category.isArchived);
+        : current.copyWith(
+            isArchived: current.isArchived && category.isArchived,
+          );
   }
 
   for (final category in defaults) {
@@ -285,8 +288,10 @@ LedgerState _migrateCategoryTaxonomy(LedgerState state) {
 
   final validIds = mergedById.keys.toSet();
   final normalizedCategories = mergedById.values.map((category) {
-    final redirectedParentId = idRedirect[category.parentId] ?? category.parentId;
-    final parentId = redirectedParentId != null && validIds.contains(redirectedParentId)
+    final redirectedParentId =
+        idRedirect[category.parentId] ?? category.parentId;
+    final parentId =
+        redirectedParentId != null && validIds.contains(redirectedParentId)
         ? redirectedParentId
         : defaultsById[category.id]?.parentId;
     final defaultCategory = defaultsById[category.id];
@@ -302,8 +307,7 @@ LedgerState _migrateCategoryTaxonomy(LedgerState state) {
       isArchived: category.isArchived,
       sortOrder: category.sortOrder,
     );
-  }).toList()
-    ..sort(_compareCategoryForMigration);
+  }).toList()..sort(_compareCategoryForMigration);
 
   String? redirectCategoryId(String? id) {
     if (id == null) return null;
@@ -314,12 +318,16 @@ LedgerState _migrateCategoryTaxonomy(LedgerState state) {
     categories: normalizedCategories,
     transactions: [
       for (final transaction in state.transactions)
-        transaction.copyWith(categoryId: redirectCategoryId(transaction.categoryId)),
+        transaction.copyWith(
+          categoryId: redirectCategoryId(transaction.categoryId),
+        ),
     ],
     captureCandidates: [
       for (final candidate in state.captureCandidates)
         candidate.copyWith(
-          suggestedCategoryId: redirectCategoryId(candidate.suggestedCategoryId),
+          suggestedCategoryId: redirectCategoryId(
+            candidate.suggestedCategoryId,
+          ),
         ),
     ],
     preferences: state.preferences.futureGenerationRules == null
@@ -372,7 +380,10 @@ Money _moneyFromJson(Object? value, {Money? fallback}) {
       json['amountMinor'],
       fallback: fallback?.amountMinor ?? 0,
     ),
-    currency: _string(json['currency'], fallback: fallback?.currency ?? kDefaultCurrency),
+    currency: _string(
+      json['currency'],
+      fallback: fallback?.currency ?? kDefaultCurrency,
+    ),
   );
 }
 
@@ -394,7 +405,9 @@ Map<String, Object?> _preferencesToJson(LedgerPreferences preferences) {
       'filters': preferences.homeWidgetFilters,
     },
     if (preferences.futureGenerationRules != null)
-      'futureGenerationRules': preferences.futureGenerationRules!.map(_ruleToJson).toList(),
+      'futureGenerationRules': preferences.futureGenerationRules!
+          .map(_ruleToJson)
+          .toList(),
     'glassSpecularOpacity': preferences.glassSpecularOpacity,
     'glassSpecularSaturation': preferences.glassSpecularSaturation,
     'glassRefractionLevel': preferences.glassRefractionLevel,
@@ -418,10 +431,7 @@ LedgerPreferences _preferencesFromJson(Map<String, dynamic> json) {
   const fallback = LedgerPreferences();
   final homeWidgets = _map(json['homeWidgets']);
   return LedgerPreferences(
-    baseCurrency: _string(
-      json['baseCurrency'],
-      fallback: kDefaultCurrency,
-    ),
+    baseCurrency: _string(json['baseCurrency'], fallback: kDefaultCurrency),
     displayCurrency: _string(
       json['displayCurrency'],
       fallback: kDefaultCurrency,
@@ -465,26 +475,74 @@ LedgerPreferences _preferencesFromJson(Map<String, dynamic> json) {
     ),
     futureGenerationRules: json['futureGenerationRules'] != null
         ? (json['futureGenerationRules'] as List)
-            .whereType<Map<String, dynamic>>()
-            .map(_ruleFromJson)
-            .toList()
+              .whereType<Map<String, dynamic>>()
+              .map(_ruleFromJson)
+              .toList()
         : null,
-    glassSpecularOpacity: _double(json['glassSpecularOpacity'], fallback: fallback.glassSpecularOpacity),
-    glassSpecularSaturation: _double(json['glassSpecularSaturation'], fallback: fallback.glassSpecularSaturation),
-    glassRefractionLevel: _double(json['glassRefractionLevel'], fallback: fallback.glassRefractionLevel),
-    glassBlurLevel: _double(json['glassBlurLevel'], fallback: fallback.glassBlurLevel),
-    glassProgressiveBlurStrength: _double(json['glassProgressiveBlurStrength'], fallback: fallback.glassProgressiveBlurStrength),
-    glassBackgroundOpacity: _double(json['glassBackgroundOpacity'], fallback: fallback.glassBackgroundOpacity),
-    notificationInboxEnabled: _bool(json['notificationInboxEnabled'], fallback: fallback.notificationInboxEnabled),
-    deviceNotificationsEnabled: _bool(json['deviceNotificationsEnabled'], fallback: fallback.deviceNotificationsEnabled),
-    quietHoursEnabled: _bool(json['quietHoursEnabled'], fallback: fallback.quietHoursEnabled),
-    channelScheduledEnabled: _bool(json['channelScheduledEnabled'], fallback: fallback.channelScheduledEnabled),
-    channelBudgetsEnabled: _bool(json['channelBudgetsEnabled'], fallback: fallback.channelBudgetsEnabled),
-    channelGoalsEnabled: _bool(json['channelGoalsEnabled'], fallback: fallback.channelGoalsEnabled),
-    readNotificationIds: _stringList(json['readNotificationIds'], fallback: fallback.readNotificationIds),
-    dismissedNotificationIds: _stringList(json['dismissedNotificationIds'], fallback: fallback.dismissedNotificationIds),
-    privacyModeEnabled: _bool(json['privacyModeEnabled'], fallback: fallback.privacyModeEnabled),
-    biometricLockEnabled: _bool(json['biometricLockEnabled'], fallback: fallback.biometricLockEnabled),
+    glassSpecularOpacity: _double(
+      json['glassSpecularOpacity'],
+      fallback: fallback.glassSpecularOpacity,
+    ),
+    glassSpecularSaturation: _double(
+      json['glassSpecularSaturation'],
+      fallback: fallback.glassSpecularSaturation,
+    ),
+    glassRefractionLevel: _double(
+      json['glassRefractionLevel'],
+      fallback: fallback.glassRefractionLevel,
+    ),
+    glassBlurLevel: _double(
+      json['glassBlurLevel'],
+      fallback: fallback.glassBlurLevel,
+    ),
+    glassProgressiveBlurStrength: _double(
+      json['glassProgressiveBlurStrength'],
+      fallback: fallback.glassProgressiveBlurStrength,
+    ),
+    glassBackgroundOpacity: _double(
+      json['glassBackgroundOpacity'],
+      fallback: fallback.glassBackgroundOpacity,
+    ),
+    notificationInboxEnabled: _bool(
+      json['notificationInboxEnabled'],
+      fallback: fallback.notificationInboxEnabled,
+    ),
+    deviceNotificationsEnabled: _bool(
+      json['deviceNotificationsEnabled'],
+      fallback: fallback.deviceNotificationsEnabled,
+    ),
+    quietHoursEnabled: _bool(
+      json['quietHoursEnabled'],
+      fallback: fallback.quietHoursEnabled,
+    ),
+    channelScheduledEnabled: _bool(
+      json['channelScheduledEnabled'],
+      fallback: fallback.channelScheduledEnabled,
+    ),
+    channelBudgetsEnabled: _bool(
+      json['channelBudgetsEnabled'],
+      fallback: fallback.channelBudgetsEnabled,
+    ),
+    channelGoalsEnabled: _bool(
+      json['channelGoalsEnabled'],
+      fallback: fallback.channelGoalsEnabled,
+    ),
+    readNotificationIds: _stringList(
+      json['readNotificationIds'],
+      fallback: fallback.readNotificationIds,
+    ),
+    dismissedNotificationIds: _stringList(
+      json['dismissedNotificationIds'],
+      fallback: fallback.dismissedNotificationIds,
+    ),
+    privacyModeEnabled: _bool(
+      json['privacyModeEnabled'],
+      fallback: fallback.privacyModeEnabled,
+    ),
+    biometricLockEnabled: _bool(
+      json['biometricLockEnabled'],
+      fallback: fallback.biometricLockEnabled,
+    ),
   );
 }
 
@@ -497,7 +555,8 @@ Map<String, Object?> _ruleToJson(FutureGenerationRule rule) {
     if (rule.postMode != null) 'postMode': rule.postMode,
     'type': rule.type,
     'accountId': rule.accountId,
-    if (rule.counterAccountId != null) 'counterAccountId': rule.counterAccountId,
+    if (rule.counterAccountId != null)
+      'counterAccountId': rule.counterAccountId,
     if (rule.categoryId != null) 'categoryId': rule.categoryId,
     'amountMinor': rule.amountMinor,
     'currency': rule.currency,
@@ -508,7 +567,8 @@ Map<String, Object?> _ruleToJson(FutureGenerationRule rule) {
     'startsOn': rule.startsOn.toIso8601String(),
     if (rule.endsOn != null) 'endsOn': rule.endsOn!.toIso8601String(),
     if (rule.occurrences != null) 'occurrences': rule.occurrences,
-    if (rule.skippedOccurrences != null) 'skippedOccurrences': rule.skippedOccurrences,
+    if (rule.skippedOccurrences != null)
+      'skippedOccurrences': rule.skippedOccurrences,
     if (rule.paymentMethod != null) 'paymentMethod': rule.paymentMethod,
     if (rule.notes != null) 'notes': rule.notes,
     if (rule.tags != null) 'tags': rule.tags,
@@ -560,7 +620,9 @@ Map<String, Object?> _accountToJson(Account account) {
         ? null
         : _loanDetailsToJson(account.loanDetails!),
     'encryptedDetails': () {
-      print('DEBUG: Codec saving account ${account.id} - encryptedDetails is ${account.encryptedDetails == null ? 'NULL' : 'NOT NULL, length: ${account.encryptedDetails!.length}'}');
+      print(
+        'DEBUG: Codec saving account ${account.id} - encryptedDetails is ${account.encryptedDetails == null ? 'NULL' : 'NOT NULL, length: ${account.encryptedDetails!.length}'}',
+      );
       return account.encryptedDetails;
     }(),
     'cardLast4': account.cardLast4,
@@ -613,8 +675,12 @@ Account _accountFromJson(Map<String, dynamic> json) {
     accountLast4: _nullableString(json['accountLast4']),
     loanDetails: _loanDetailsFromJson(json['loanDetails'], currency),
     encryptedDetails: () {
-      final res = json['encryptedDetails'] != null ? Map<String, String>.from(json['encryptedDetails']) : null;
-      print('DEBUG: Codec loading account ${json['id']} - encryptedDetails is ${res == null ? 'NULL' : 'NOT NULL, length: ${res.length}'}');
+      final res = json['encryptedDetails'] != null
+          ? Map<String, String>.from(json['encryptedDetails'])
+          : null;
+      print(
+        'DEBUG: Codec loading account ${json['id']} - encryptedDetails is ${res == null ? 'NULL' : 'NOT NULL, length: ${res.length}'}',
+      );
       return res;
     }(),
     includeInTotals: _bool(json['includeInTotals'], fallback: true),
@@ -650,7 +716,10 @@ AccountLoanDetails? _loanDetailsFromJson(Object? value, String currency) {
         ? null
         : _date(json['repaymentStartsOn']),
     repaymentSourceAccountId: _nullableString(json['repaymentSourceAccountId']),
-    recurrenceFrequency: _string(json['recurrenceFrequency'], fallback: 'monthly'),
+    recurrenceFrequency: _string(
+      json['recurrenceFrequency'],
+      fallback: 'monthly',
+    ),
     recurrenceInterval: _int(json['recurrenceInterval'], fallback: 1),
     recurrenceDaysOfWeek: _nullableIntList(json['recurrenceDaysOfWeek']),
     recurrenceDaysOfMonth: _nullableIntList(json['recurrenceDaysOfMonth']),
@@ -750,7 +819,9 @@ TransactionRecord _transactionFromJson(Map<String, dynamic> json) {
     name: _nullableString(json['name']),
     notes: _nullableString(json['notes']),
     importBatchId: _nullableString(json['importBatchId']),
-    recurrenceFrequency: _nullableString(json['recurrenceFrequency']) ?? _extractFrequencyFromTags(json['tags']),
+    recurrenceFrequency:
+        _nullableString(json['recurrenceFrequency']) ??
+        _extractFrequencyFromTags(json['tags']),
     recurrenceInterval: _int(json['recurrenceInterval'], fallback: 1),
     recurrenceDaysOfWeek: _nullableIntList(json['recurrenceDaysOfWeek']),
     recurrenceDaysOfMonth: _nullableIntList(json['recurrenceDaysOfMonth']),
@@ -1063,16 +1134,18 @@ String? _extractFrequencyFromTags(Object? tagsObj) {
   return null;
 }
 
-
 // Public wrappers for Firestore serialization
 Map<String, Object?> accountToJson(Account account) => _accountToJson(account);
 Account accountFromJson(Map<String, dynamic> json) => _accountFromJson(json);
 
-Map<String, Object?> categoryToJson(Category category) => _categoryToJson(category);
+Map<String, Object?> categoryToJson(Category category) =>
+    _categoryToJson(category);
 Category categoryFromJson(Map<String, dynamic> json) => _categoryFromJson(json);
 
-Map<String, Object?> transactionToJson(TransactionRecord transaction) => _transactionToJson(transaction);
-TransactionRecord transactionFromJson(Map<String, dynamic> json) => _transactionFromJson(json);
+Map<String, Object?> transactionToJson(TransactionRecord transaction) =>
+    _transactionToJson(transaction);
+TransactionRecord transactionFromJson(Map<String, dynamic> json) =>
+    _transactionFromJson(json);
 
 Map<String, Object?> budgetToJson(Budget budget) => _budgetToJson(budget);
 Budget budgetFromJson(Map<String, dynamic> json) => _budgetFromJson(json);
@@ -1080,11 +1153,17 @@ Budget budgetFromJson(Map<String, dynamic> json) => _budgetFromJson(json);
 Map<String, Object?> goalToJson(Goal goal) => _goalToJson(goal);
 Goal goalFromJson(Map<String, dynamic> json) => _goalFromJson(json);
 
-Map<String, Object?> captureCandidateToJson(CaptureCandidate candidate) => _captureCandidateToJson(candidate);
-CaptureCandidate captureCandidateFromJson(Map<String, dynamic> json) => _captureCandidateFromJson(json);
+Map<String, Object?> captureCandidateToJson(CaptureCandidate candidate) =>
+    _captureCandidateToJson(candidate);
+CaptureCandidate captureCandidateFromJson(Map<String, dynamic> json) =>
+    _captureCandidateFromJson(json);
 
-Map<String, Object?> importBatchToJson(ImportBatch batch) => _importBatchToJson(batch);
-ImportBatch importBatchFromJson(Map<String, dynamic> json) => _importBatchFromJson(json);
+Map<String, Object?> importBatchToJson(ImportBatch batch) =>
+    _importBatchToJson(batch);
+ImportBatch importBatchFromJson(Map<String, dynamic> json) =>
+    _importBatchFromJson(json);
 
-Map<String, Object?> preferencesToJson(LedgerPreferences preferences) => _preferencesToJson(preferences);
-LedgerPreferences preferencesFromJson(Map<String, dynamic> json) => _preferencesFromJson(json);
+Map<String, Object?> preferencesToJson(LedgerPreferences preferences) =>
+    _preferencesToJson(preferences);
+LedgerPreferences preferencesFromJson(Map<String, dynamic> json) =>
+    _preferencesFromJson(json);

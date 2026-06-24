@@ -32,23 +32,23 @@ DateTime advanceRecurrenceCursor({
   if (freq == 'daily') {
     return current.add(Duration(days: interval));
   }
-  
+
   if (freq == 'weekly') {
     if (daysOfWeek != null && daysOfWeek.isNotEmpty) {
       final sortedDays = List<int>.from(daysOfWeek)..sort();
       final currentWeekday = current.weekday;
-      
+
       // Look for the next day in the SAME week
       for (final day in sortedDays) {
         if (day > currentWeekday) {
           return current.add(Duration(days: day - currentWeekday));
         }
       }
-      
+
       // If none found in this week, jump to the first day in the NEXT interval week
       final daysToNextWeekMonday = 8 - currentWeekday; // jump to next Monday
       final jumpToIntervalWeek = daysToNextWeekMonday + ((interval - 1) * 7);
-      
+
       // The first selected day in that target week
       final targetDay = sortedDays.first;
       return current.add(Duration(days: jumpToIntervalWeek + (targetDay - 1)));
@@ -56,12 +56,12 @@ DateTime advanceRecurrenceCursor({
       return current.add(Duration(days: 7 * interval));
     }
   }
-  
+
   if (freq == 'monthly') {
     if (daysOfMonth != null && daysOfMonth.isNotEmpty) {
       final sortedDays = List<int>.from(daysOfMonth)..sort();
       final currentDay = current.day;
-      
+
       // Look for the next day in the SAME month
       for (final day in sortedDays) {
         if (day > currentDay) {
@@ -69,31 +69,52 @@ DateTime advanceRecurrenceCursor({
           final maxDay = DateTime(current.year, current.month + 1, 0).day;
           final safeDay = day > maxDay ? maxDay : day;
           if (safeDay > currentDay) {
-            return DateTime(current.year, current.month, safeDay, current.hour, current.minute, current.second);
+            return DateTime(
+              current.year,
+              current.month,
+              safeDay,
+              current.hour,
+              current.minute,
+              current.second,
+            );
           }
         }
       }
-      
+
       // If none found, jump to the next interval month
       final nextMonthDate = _addMonths(current, interval);
       final targetDay = sortedDays.first;
-      final maxDayNextMonth = DateTime(nextMonthDate.year, nextMonthDate.month + 1, 0).day;
+      final maxDayNextMonth = DateTime(
+        nextMonthDate.year,
+        nextMonthDate.month + 1,
+        0,
+      ).day;
       final safeDay = targetDay > maxDayNextMonth ? maxDayNextMonth : targetDay;
-      
-      return DateTime(nextMonthDate.year, nextMonthDate.month, safeDay, current.hour, current.minute, current.second);
+
+      return DateTime(
+        nextMonthDate.year,
+        nextMonthDate.month,
+        safeDay,
+        current.hour,
+        current.minute,
+        current.second,
+      );
     } else {
       return _addMonths(current, interval);
     }
   }
-  
+
   if (freq == 'yearly') {
     return _addMonths(current, 12 * interval);
   }
-  
+
   return _addMonths(current, interval);
 }
 
-DateTime advanceTransactionRecurrence(DateTime current, TransactionRecord record) {
+DateTime advanceTransactionRecurrence(
+  DateTime current,
+  TransactionRecord record,
+) {
   return advanceRecurrenceCursor(
     current: current,
     frequency: record.recurrenceFrequency ?? 'monthly',

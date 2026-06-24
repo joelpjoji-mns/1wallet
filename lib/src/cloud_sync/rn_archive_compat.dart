@@ -12,7 +12,7 @@ LedgerState decodeReactNativeOneWalletArchive(
   if (decoded is! Map<String, dynamic>) {
     throw const FormatException('Archive root must be a JSON object.');
   }
-  
+
   // The old React Native archive has the state directly under the 'ledger' key.
   final ledgerJson = decoded['ledger'];
   if (ledgerJson == null) {
@@ -23,7 +23,7 @@ LedgerState decodeReactNativeOneWalletArchive(
     }
     throw const FormatException('Archive ledger is missing.');
   }
-  
+
   final payloadStr = jsonEncode(ledgerJson);
   return decodeLedgerState(payloadStr).copyWith(userId: userId);
 }
