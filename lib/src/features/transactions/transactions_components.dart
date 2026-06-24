@@ -169,7 +169,10 @@ class CompactSearchField extends StatelessWidget {
             filled: false,
             prefixIcon: Icon(Icons.search_rounded, color: scheme.primary),
             prefixIconConstraints: const BoxConstraints(minWidth: 48),
-            contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 0),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: 0,
+            ),
             border: InputBorder.none,
             enabledBorder: InputBorder.none,
             focusedBorder: InputBorder.none,

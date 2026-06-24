@@ -55,7 +55,7 @@ List<TransactionRecord> sortedTransactions(
 }) {
   final canCache = !hideInterest;
   if (canCache) {
-    final cached = includeScheduled 
+    final cached = includeScheduled
         ? _sortedIncludeScheduledExpando[state]
         : _sortedExcludeScheduledExpando[state];
     if (cached != null) return cached;
@@ -70,7 +70,7 @@ List<TransactionRecord> sortedTransactions(
       )
       .toList();
   items.sort((left, right) => right.occurredAt.compareTo(left.occurredAt));
-  
+
   if (canCache) {
     if (includeScheduled) {
       _sortedIncludeScheduledExpando[state] = items;
@@ -78,7 +78,7 @@ List<TransactionRecord> sortedTransactions(
       _sortedExcludeScheduledExpando[state] = items;
     }
   }
-  
+
   return items;
 }
 
@@ -158,7 +158,7 @@ Money accountBalance(LedgerState state, Account account) {
 Money cashSourceTransactionMoney(TransactionRecord transaction) {
   final originalCurrency = transaction.originalAmount?.currency.toUpperCase();
   final amountCurrency = transaction.amount.currency.toUpperCase();
-  
+
   if (transferTypes.contains(transaction.type)) {
     // For transfers out of a cash wallet, if there's a counter amount in a different currency
     // and an original amount is specified matching the counter amount, we should use that to reflect
@@ -170,7 +170,7 @@ Money cashSourceTransactionMoney(TransactionRecord transaction) {
     }
     return transaction.amount;
   }
-  
+
   return originalCurrency != null && originalCurrency != amountCurrency
       ? transaction.originalAmount!
       : transaction.amount;
@@ -317,7 +317,8 @@ int counterDelta(TransactionRecord transaction) {
   if (transferTypes.contains(transaction.type)) {
     final counterAmt = transaction.counterAmount ?? transaction.amount;
     if (counterAmt.amountMinor == 0 && transaction.amount.amountMinor != 0) {
-      if (transaction.counterAmount?.currency.toUpperCase() == transaction.amount.currency.toUpperCase()) {
+      if (transaction.counterAmount?.currency.toUpperCase() ==
+          transaction.amount.currency.toUpperCase()) {
         return transaction.amount.amountMinor.abs();
       }
     }
@@ -487,7 +488,9 @@ Money totalBalance(
     if (accountId != null) {
       if (accountId == 'cash_group') {
         final hasSource = cashAccountIds.contains(transaction.accountId);
-        final hasCounter = cashAccountIds.contains(transaction.counterAccountId);
+        final hasCounter = cashAccountIds.contains(
+          transaction.counterAccountId,
+        );
         if (hasSource && hasCounter) {
           continue;
         }
@@ -495,7 +498,10 @@ Money totalBalance(
           final delta = sourceDelta(transaction);
           final converted = convertMoneyForDisplay(
             state,
-            Money(amountMinor: delta.abs(), currency: transaction.amount.currency),
+            Money(
+              amountMinor: delta.abs(),
+              currency: transaction.amount.currency,
+            ),
             displayCurrency,
           );
           if (delta > 0) income += converted.amountMinor;
@@ -505,7 +511,11 @@ Money totalBalance(
           final delta = counterDelta(transaction);
           final converted = convertMoneyForDisplay(
             state,
-            Money(amountMinor: delta.abs(), currency: (transaction.counterAmount ?? transaction.amount).currency),
+            Money(
+              amountMinor: delta.abs(),
+              currency:
+                  (transaction.counterAmount ?? transaction.amount).currency,
+            ),
             displayCurrency,
           );
           if (delta > 0) income += converted.amountMinor;
@@ -516,7 +526,10 @@ Money totalBalance(
           final delta = sourceDelta(transaction);
           final converted = convertMoneyForDisplay(
             state,
-            Money(amountMinor: delta.abs(), currency: transaction.amount.currency),
+            Money(
+              amountMinor: delta.abs(),
+              currency: transaction.amount.currency,
+            ),
             displayCurrency,
           );
           if (delta > 0) income += converted.amountMinor;
@@ -526,7 +539,11 @@ Money totalBalance(
           final delta = counterDelta(transaction);
           final converted = convertMoneyForDisplay(
             state,
-            Money(amountMinor: delta.abs(), currency: (transaction.counterAmount ?? transaction.amount).currency),
+            Money(
+              amountMinor: delta.abs(),
+              currency:
+                  (transaction.counterAmount ?? transaction.amount).currency,
+            ),
             displayCurrency,
           );
           if (delta > 0) income += converted.amountMinor;
@@ -559,9 +576,12 @@ Money totalBalance(
 }
 
 List<TransactionRecord> scheduledTransactions(LedgerState state) {
-  final items = sortedTransactions(
-      state,
-    ).where((transaction) => transaction.status == 'scheduled' || transaction.status == 'paused').toList();
+  final items = sortedTransactions(state)
+      .where(
+        (transaction) =>
+            transaction.status == 'scheduled' || transaction.status == 'paused',
+      )
+      .toList();
   items.sort((left, right) => left.occurredAt.compareTo(right.occurredAt));
   return items;
 }
@@ -602,11 +622,7 @@ int compareCategories(Category left, Category right) {
       : left.name.toLowerCase().compareTo(right.name.toLowerCase());
 }
 
-int compareCategoriesByUsage(
-  LedgerState state,
-  Category left,
-  Category right,
-) {
+int compareCategoriesByUsage(LedgerState state, Category left, Category right) {
   final leftUsage = categoryUsageCount(state, left, includeDescendants: true);
   final rightUsage = categoryUsageCount(state, right, includeDescendants: true);
   final usageCompare = rightUsage.compareTo(leftUsage);
@@ -1027,7 +1043,8 @@ Color accountDisplayColor(Account account) {
 }
 
 List<Account> sortAccounts(Iterable<Account> accounts) {
-  return accounts.toList()..sort((left, right) => left.sortOrder.compareTo(right.sortOrder));
+  return accounts.toList()
+    ..sort((left, right) => left.sortOrder.compareTo(right.sortOrder));
 }
 
 Color categoryColor(Category? category, BuildContext context) {

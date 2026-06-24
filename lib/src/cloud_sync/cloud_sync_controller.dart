@@ -226,19 +226,20 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
     try {
       state = state.copyWith(phase: CloudSyncPhase.checking, error: null);
-      
+
       final metadata = state.metadata ?? await CloudSyncMetadata.load();
-      
+
       final userDoc = await _firestore
           .doc('users/${user.id}')
           .get()
           .timeout(cloudSyncReadTimeout);
-          
+
       final lastWriterDeviceId = userDoc.data()?['lastWriterDeviceId'];
       final prefs = await SharedPreferences.getInstance();
       final hasUnsyncedChanges = prefs.getBool('has_unsynced_changes') ?? false;
-      
-      final bool shouldPull = userDoc.exists &&
+
+      final bool shouldPull =
+          userDoc.exists &&
           lastWriterDeviceId != null &&
           lastWriterDeviceId != metadata.deviceId &&
           !hasUnsyncedChanges;
@@ -286,11 +287,17 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         final lastWriterDeviceId = userDoc.data()?['lastWriterDeviceId'];
         final hasUserData = _walletHasUserData(_ref.read(ledgerProvider));
         final prefs = await SharedPreferences.getInstance();
-        final hasUnsyncedChanges = prefs.getBool('has_unsynced_changes') ?? false;
-        
-        debugPrint('CloudSync _bootstrap: userDoc.exists=${userDoc.exists}, lastWriterDeviceId=$lastWriterDeviceId, metadata.deviceId=${metadata.deviceId}, hasUserData=$hasUserData, hasUnsyncedChanges=$hasUnsyncedChanges');
-        final bool shouldPull = !userDoc.exists ||
-            (lastWriterDeviceId != null && lastWriterDeviceId != metadata.deviceId && !hasUnsyncedChanges) ||
+        final hasUnsyncedChanges =
+            prefs.getBool('has_unsynced_changes') ?? false;
+
+        debugPrint(
+          'CloudSync _bootstrap: userDoc.exists=${userDoc.exists}, lastWriterDeviceId=$lastWriterDeviceId, metadata.deviceId=${metadata.deviceId}, hasUserData=$hasUserData, hasUnsyncedChanges=$hasUnsyncedChanges',
+        );
+        final bool shouldPull =
+            !userDoc.exists ||
+            (lastWriterDeviceId != null &&
+                lastWriterDeviceId != metadata.deviceId &&
+                !hasUnsyncedChanges) ||
             !hasUserData;
 
         if (shouldPull) {
@@ -424,8 +431,8 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       }
 
       state = state.copyWith(
-        phase: state.phase == CloudSyncPhase.checking 
-            ? CloudSyncPhase.idle 
+        phase: state.phase == CloudSyncPhase.checking
+            ? CloudSyncPhase.idle
             : state.phase,
         bootstrappedUserId: userId,
         bootstrapComplete: true,
@@ -434,7 +441,9 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       debugPrint('Cloud sync bootstrap timeout, fetching actual error...');
       Object actualError = e;
       try {
-        await _firestore.doc('users/$userId').get(const GetOptions(source: Source.server));
+        await _firestore
+            .doc('users/$userId')
+            .get(const GetOptions(source: Source.server));
       } catch (fe) {
         actualError = fe;
       }
@@ -489,7 +498,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       );
 
       WriteBatch currentBatch = _firestore.batch();
-      
+
       // Update user document
       currentBatch.set(_firestore.doc('users/${user.id}'), {
         'email': user.email,
@@ -519,18 +528,18 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
       // Overwrite chunks 0 to N
       for (var i = 0; i < chunks.length; i++) {
-        currentBatch.set(
-          _firestore.doc('users/${user.id}/wallet_backups/chunk_$i'),
-          {
-            'index': i,
-            'data': Blob(chunks[i]),
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-        );
+        currentBatch
+            .set(_firestore.doc('users/${user.id}/wallet_backups/chunk_$i'), {
+              'index': i,
+              'data': Blob(chunks[i]),
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
       }
       // Delete potentially old trailing chunks (up to chunks.length + 10 just in case)
       for (var i = chunks.length; i < chunks.length + 10; i++) {
-        currentBatch.delete(_firestore.doc('users/${user.id}/wallet_backups/chunk_$i'));
+        currentBatch.delete(
+          _firestore.doc('users/${user.id}/wallet_backups/chunk_$i'),
+        );
       }
 
       await currentBatch.commit().timeout(cloudSyncReadTimeout);
@@ -540,7 +549,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
       final now = DateTime.now().toIso8601String();
       metadata = metadata.copyWith(
-        userId: user.id, 
+        userId: user.id,
         lastPushedAt: now,
         // We no longer track individual synced IDs since the whole blob is synced
         syncedDocumentHashes: {},
@@ -560,7 +569,9 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       }
       Object actualError = e;
       try {
-        await _firestore.doc('users/${user.id}').get(const GetOptions(source: Source.server));
+        await _firestore
+            .doc('users/${user.id}')
+            .get(const GetOptions(source: Source.server));
       } catch (fe) {
         actualError = fe;
       }
@@ -597,7 +608,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           .timeout(cloudSyncReadTimeout);
 
       Map<String, dynamic> restoreData;
-      
+
       if (backupQuery.docs.isNotEmpty) {
         state = state.copyWith(
           progressMessage: 'Downloading backup...',
@@ -614,11 +625,12 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           }
           processedChunks++;
           state = state.copyWith(
-            progressMessage: 'Downloading chunk $processedChunks of $totalChunks...',
+            progressMessage:
+                'Downloading chunk $processedChunks of $totalChunks...',
             progress: 0.1 + (0.7 * (processedChunks / totalChunks)),
           );
         }
-        
+
         state = state.copyWith(
           progressMessage: 'Extracting data...',
           progress: 0.85,
@@ -626,7 +638,8 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         // Using compute for heavy unzipping
         final bytes = await compute(_decodeGzipBytes, compressedBytes);
         final jsonStr = await compute(utf8.decode, bytes);
-        restoreData = await compute(jsonDecode, jsonStr) as Map<String, dynamic>;
+        restoreData =
+            await compute(jsonDecode, jsonStr) as Map<String, dynamic>;
         restoreData['userId'] = userId;
       } else {
         state = state.copyWith(
@@ -646,7 +659,8 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         ]).timeout(const Duration(seconds: 45));
 
         final accountsQuery = results[0] as QuerySnapshot<Map<String, dynamic>>;
-        final categoriesQuery = results[1] as QuerySnapshot<Map<String, dynamic>>;
+        final categoriesQuery =
+            results[1] as QuerySnapshot<Map<String, dynamic>>;
         final txnsQuery = results[2] as QuerySnapshot<Map<String, dynamic>>;
         final budgetsQuery = results[3] as QuerySnapshot<Map<String, dynamic>>;
         final goalsQuery = results[4] as QuerySnapshot<Map<String, dynamic>>;
@@ -693,7 +707,11 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       );
       await newMetadata.save();
 
-      state = state.copyWith(phase: CloudSyncPhase.idle, metadata: newMetadata, progress: 1.0);
+      state = state.copyWith(
+        phase: CloudSyncPhase.idle,
+        metadata: newMetadata,
+        progress: 1.0,
+      );
     } catch (e, st) {
       developer.log('Firebase restore failed', error: e, stackTrace: st);
       state = state.copyWith(
@@ -720,7 +738,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
   void skipBootstrap() {
     final user = _ref.read(authControllerProvider).user;
     if (user == null) return;
-    
+
     state = state.copyWith(
       phase: CloudSyncPhase.idle,
       bootstrapComplete: true,
@@ -828,11 +846,11 @@ LedgerState _parseCloudRestoreData(Map<String, dynamic> data) {
   );
 }
 
-Map<String, dynamic> _encodeCloudSnapshotData(
-  LedgerState ledger,
-) {
+Map<String, dynamic> _encodeCloudSnapshotData(LedgerState ledger) {
   return {
-    'preferences': preferencesToJson(ledger.preferences).cast<String, dynamic>(),
+    'preferences': preferencesToJson(
+      ledger.preferences,
+    ).cast<String, dynamic>(),
     'accounts': ledger.accounts
         .map((a) => accountToJson(a).cast<String, dynamic>())
         .toList(),

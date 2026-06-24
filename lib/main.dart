@@ -34,13 +34,17 @@ Future<void> main() async {
       );
     }
   }
-  await Future.wait([sharedPreferencesWarmup, dateFormattingWarmup, notificationWarmup]);
+  await Future.wait([
+    sharedPreferencesWarmup,
+    dateFormattingWarmup,
+    notificationWarmup,
+  ]);
   final prefs = await SharedPreferences.getInstance();
-  runApp(ProviderScope(
-    overrides: [
-      sharedPreferencesProvider.overrideWithValue(prefs),
-    ],
-    child: const OneWalletApp(),
-  ));
+  runApp(
+    ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      child: const OneWalletApp(),
+    ),
+  );
   FlutterNativeSplash.remove();
 }

@@ -15,9 +15,10 @@ class SyncScreen extends ConsumerWidget {
     final sync = ref.watch(cloudSyncControllerProvider);
     final enabled = sync.phase != CloudSyncPhase.disabled;
 
-    final isWorking = sync.phase == CloudSyncPhase.checking || 
-                      sync.phase == CloudSyncPhase.restoring || 
-                      sync.phase == CloudSyncPhase.uploading;
+    final isWorking =
+        sync.phase == CloudSyncPhase.checking ||
+        sync.phase == CloudSyncPhase.restoring ||
+        sync.phase == CloudSyncPhase.uploading;
 
     return AppScreen(
       title: 'Sync',
@@ -48,7 +49,7 @@ class SyncScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         alignment: Alignment.center,
-                        child: isWorking 
+                        child: isWorking
                             ? SizedBox(
                                 width: 22,
                                 height: 22,
@@ -149,17 +150,31 @@ class SyncScreen extends ConsumerWidget {
                       labelText: 'Periodic Sync Interval',
                       labelStyle: theme.textTheme.bodyMedium,
                       border: const OutlineInputBorder(),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                     ),
                     items: const [
-                      DropdownMenuItem(value: null, child: Text('Automatic (On change)')),
-                      DropdownMenuItem(value: 4, child: Text('Every 4 hours (Default)')),
+                      DropdownMenuItem(
+                        value: null,
+                        child: Text('Automatic (On change)'),
+                      ),
+                      DropdownMenuItem(
+                        value: 4,
+                        child: Text('Every 4 hours (Default)'),
+                      ),
                       DropdownMenuItem(value: 6, child: Text('Every 6 hours')),
-                      DropdownMenuItem(value: 12, child: Text('Every 12 hours')),
+                      DropdownMenuItem(
+                        value: 12,
+                        child: Text('Every 12 hours'),
+                      ),
                       DropdownMenuItem(value: 24, child: Text('Daily')),
                     ],
                     onChanged: (value) {
-                      ref.read(cloudSyncControllerProvider.notifier).updateSyncInterval(value);
+                      ref
+                          .read(cloudSyncControllerProvider.notifier)
+                          .updateSyncInterval(value);
                     },
                   ),
                   const SizedBox(height: 8),
@@ -177,13 +192,17 @@ class SyncScreen extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 8.0),
               child: FilledButton.icon(
-                onPressed: isWorking 
-                    ? null 
+                onPressed: isWorking
+                    ? null
                     : () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Starting manual sync...')),
+                          const SnackBar(
+                            content: Text('Starting manual sync...'),
+                          ),
                         );
-                        ref.read(cloudSyncControllerProvider.notifier).fullSync(reason: 'manual');
+                        ref
+                            .read(cloudSyncControllerProvider.notifier)
+                            .fullSync(reason: 'manual');
                       },
                 icon: const Icon(Icons.sync_rounded),
                 label: Text(isWorking ? 'Syncing...' : 'Sync now'),
@@ -191,7 +210,9 @@ class SyncScreen extends ConsumerWidget {
             ),
           ],
           OutlinedButton.icon(
-            onPressed: isWorking ? null : () => _cleanupLegacyData(context, ref),
+            onPressed: isWorking
+                ? null
+                : () => _cleanupLegacyData(context, ref),
             icon: const Icon(Icons.delete_sweep_outlined),
             label: const Text('Clean up legacy cloud data'),
           ),
@@ -225,16 +246,16 @@ class SyncScreen extends ConsumerWidget {
   Future<void> _cleanupLegacyData(BuildContext context, WidgetRef ref) async {
     final user = ref.read(authControllerProvider).user;
     if (user == null) return;
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Cleaning up legacy cloud data...')),
     );
-    
+
     try {
       final firestore = FirebaseFirestore.instance;
       final defaultWallet = firestore.doc('users/${user.id}/wallets/default');
       final walletDoc = await defaultWallet.get();
-      
+
       if (!walletDoc.exists) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -242,10 +263,12 @@ class SyncScreen extends ConsumerWidget {
         );
         return;
       }
-      
+
       final snapshotId = walletDoc.data()?['latestSnapshotId'] as String?;
       if (snapshotId != null) {
-        final chunks = await defaultWallet.collection('snapshots/$snapshotId/chunks').get();
+        final chunks = await defaultWallet
+            .collection('snapshots/$snapshotId/chunks')
+            .get();
         final batch = firestore.batch();
         for (final doc in chunks.docs) {
           batch.delete(doc.reference);
@@ -253,16 +276,16 @@ class SyncScreen extends ConsumerWidget {
         await batch.commit();
       }
       await defaultWallet.delete();
-      
+
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Legacy data successfully cleaned!')),
       );
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cleanup failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Cleanup failed: $e')));
     }
   }
 }

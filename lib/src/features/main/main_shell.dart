@@ -30,7 +30,8 @@ class MainShell extends ConsumerStatefulWidget {
   ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserver {
+class _MainShellState extends ConsumerState<MainShell>
+    with WidgetsBindingObserver {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   late final PageController _pageController;
   final ValueNotifier<int> _selectedIndex = ValueNotifier(0);
@@ -162,7 +163,8 @@ class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserv
                 _dragVertical += event.delta.dy;
 
                 // If the user is scrolling vertically, cancel the horizontal drawer swipe
-                if (_dragVertical.abs() > 20 && _dragVertical.abs() > _dragDistance.abs()) {
+                if (_dragVertical.abs() > 20 &&
+                    _dragVertical.abs() > _dragDistance.abs()) {
                   _dragDistance = -1000;
                   return;
                 }
@@ -173,7 +175,8 @@ class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserv
                   }
                   _dragDistance = -1000;
                 } else if (_dragDistance < -20) {
-                  _dragDistance = -1000; // prevent triggering if swiped left first
+                  _dragDistance =
+                      -1000; // prevent triggering if swiped left first
                 }
               }
             },
@@ -195,8 +198,12 @@ class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserv
                           end: Alignment.bottomCenter,
                           colors: [
                             Theme.of(context).colorScheme.surface.withAlpha(0),
-                            Theme.of(context).colorScheme.surface.withAlpha(120),
-                            Theme.of(context).colorScheme.surface.withAlpha(190),
+                            Theme.of(
+                              context,
+                            ).colorScheme.surface.withAlpha(120),
+                            Theme.of(
+                              context,
+                            ).colorScheme.surface.withAlpha(190),
                           ],
                           stops: const [0.0, 0.5, 1.0],
                         ),
@@ -234,17 +241,16 @@ class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserv
             key: _scaffoldKey,
             drawerEnableOpenDragGesture: true,
             drawerEdgeDragWidth: 40,
-            drawer: AppResponsiveLayout.isDesktop(context) ? null : _MainDrawer(
-              selectedIndex: selectedIndex,
-              onTabSelected: (index) {
-                Navigator.of(context).pop();
-                _selectTab(index);
-              },
-            ),
-            body: AppResponsiveLayout(
-              mobile: mobileBody,
-              desktop: desktopBody,
-            ),
+            drawer: AppResponsiveLayout.isDesktop(context)
+                ? null
+                : _MainDrawer(
+                    selectedIndex: selectedIndex,
+                    onTabSelected: (index) {
+                      Navigator.of(context).pop();
+                      _selectTab(index);
+                    },
+                  ),
+            body: AppResponsiveLayout(mobile: mobileBody, desktop: desktopBody),
           );
         },
       ),
@@ -284,283 +290,278 @@ class _MainDrawer extends ConsumerWidget {
     final pendingReviewCount = _pendingReviewCount(ledger);
     final notificationCount = buildNotificationInbox(ledger).length;
     final syncBadge = _syncBadge(sync);
-    final updatesBadge = updateState.latestRelease != null && updateState.status == UpdateStatus.idle ? '!' : null;
+    final updatesBadge =
+        updateState.latestRelease != null &&
+            updateState.status == UpdateStatus.idle
+        ? '!'
+        : null;
     final profileName = _profileName(auth.user, ledger);
     final profileSubtitle = _profileSubtitle(auth.user, ledger);
     final profileInitials = auth.user?.initials ?? _walletInitials(profileName);
 
     Widget content = SafeArea(
-        child: Container(
-          margin: const EdgeInsets.all(AppSpacing.sm),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadii.xl),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                scheme.surface,
-                scheme.surfaceContainerLow,
-                scheme.surface,
-              ],
-            ),
-            border: Border.all(color: scheme.outlineVariant.withAlpha(180)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(28),
-                blurRadius: 22,
-                offset: const Offset(0, 10),
-              ),
+      child: Container(
+        margin: const EdgeInsets.all(AppSpacing.sm),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadii.xl),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              scheme.surface,
+              scheme.surfaceContainerLow,
+              scheme.surface,
             ],
           ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  AppSpacing.md,
-                  AppSpacing.md,
-                  AppSpacing.sm,
-                ),
-                child: Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(AppRadii.xl),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        scheme.primaryContainer.withAlpha(220),
-                        scheme.surfaceContainerHigh,
-                        scheme.tertiaryContainer.withAlpha(180),
-                      ],
-                    ),
-                    border: Border.all(
-                      color: scheme.outlineVariant.withAlpha(180),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          AuthUserAvatar(
-                            user: auth.user,
-                            radius: 26,
-                            fallbackLabel: profileInitials,
-                          ),
-                          const SizedBox(width: AppSpacing.md),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  profileName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.titleLarge
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.w900,
-                                        color: scheme.onSurface,
-                                        letterSpacing: -0.6,
-                                      ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  profileSubtitle,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(
-                                        color: scheme.onSurfaceVariant,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      // Metrics and badges removed as requested
+          border: Border.all(color: scheme.outlineVariant.withAlpha(180)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(28),
+              blurRadius: 22,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.sm,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppRadii.xl),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      scheme.primaryContainer.withAlpha(220),
+                      scheme.surfaceContainerHigh,
+                      scheme.tertiaryContainer.withAlpha(180),
                     ],
                   ),
-                ),
-              ),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
+                  border: Border.all(
+                    color: scheme.outlineVariant.withAlpha(180),
                   ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    DrawerSection(
-                      title: 'Main',
-                      titleColor: scheme.primary,
-                      icon: Icons.bolt_rounded,
-                      surfaceTint: scheme.primary,
-                      rows: [
-                        DrawerRowConfig.tab(
-                          'Home',
-                          Icons.dashboard_outlined,
-                          0,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AuthUserAvatar(
+                          user: auth.user,
+                          radius: 26,
+                          fallbackLabel: profileInitials,
                         ),
-                        DrawerRowConfig.route(
-                          'Review',
-                          Icons.smart_toy_outlined,
-                          '/review',
-                          badge: _countBadge(pendingReviewCount),
-                        ),
-                        DrawerRowConfig.route(
-                          'Planned payments',
-                          Icons.event_repeat_outlined,
-                          '/recurring',
-                        ),
-                        DrawerRowConfig.route(
-                          'Loans',
-                          Icons.account_balance_outlined,
-                          '/loans',
-                        ),
-                      ],
-                      selectedIndex: selectedIndex,
-                      onTabSelected: onTabSelected,
-                    ),
-                    DrawerSection(
-                      title: 'Planning & money',
-                      titleColor: scheme.secondary,
-                      icon: Icons.timeline_rounded,
-                      surfaceTint: scheme.secondary,
-                      rows: [
-                        DrawerRowConfig.route(
-                          'Budgets',
-                          Icons.donut_large_outlined,
-                          '/budgets/new',
-                        ),
-                        DrawerRowConfig.route(
-                          'Goals',
-                          Icons.flag_outlined,
-                          '/goals/new',
-                        ),
-                        DrawerRowConfig.route(
-                          'Categories',
-                          Icons.category_outlined,
-                          '/categories',
-                        ),
-                        DrawerRowConfig.route(
-                          'Currencies',
-                          Icons.currency_exchange_outlined,
-                          '/currencies',
-                        ),
-                        DrawerRowConfig.route(
-                          'Widgets',
-                          Icons.dashboard_customize_outlined,
-                          '/widgets',
-                        ),
-                        DrawerRowConfig.route(
-                          'Loan forecast',
-                          Icons.show_chart_rounded,
-                          '/loans/forecast',
-                        ),
-                      ],
-                      selectedIndex: selectedIndex,
-                      onTabSelected: onTabSelected,
-                    ),
-                    DrawerSection(
-                      title: 'Tools',
-                      icon: Icons.build_circle_outlined,
-                      surfaceTint: scheme.primary,
-                      rows: [
-                        DrawerRowConfig.route(
-                          'Sync',
-                          Icons.cloud_done_outlined,
-                          '/sync',
-                          badge: syncBadge,
-                        ),
-                        DrawerRowConfig.route(
-                          'Auto Capture',
-                          Icons.notifications_active_outlined,
-                          '/auto-capture',
-                        ),
-                        DrawerRowConfig.route(
-                          'Import & backup',
-                          Icons.folder_copy_outlined,
-                          '/imports',
-                        ),
-                        DrawerRowConfig.route(
-                          'Notifications',
-                          Icons.notifications_none,
-                          '/notifications',
-                          badge: _countBadge(notificationCount),
-                        ),
-                        DrawerRowConfig.route(
-                          'Updates',
-                          Icons.download_for_offline_outlined,
-                          '/updates',
-                          badge: updatesBadge,
-                        ),
-                      ],
-                      selectedIndex: selectedIndex,
-                      onTabSelected: onTabSelected,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        top: AppSpacing.sm,
-                        bottom: AppSpacing.md,
-                      ),
-                      child: Container(
-                        padding: const EdgeInsets.all(AppSpacing.sm),
-                        decoration: BoxDecoration(
-                          color: scheme.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(AppRadii.xl),
-                          border: Border.all(color: scheme.outlineVariant),
-                        ),
-                        child: Column(
-                          children: [
-                            DrawerRouteTile(
-                              config: DrawerRowConfig.route(
-                                'Settings',
-                                Icons.settings_outlined,
-                                '/settings',
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                profileName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w900,
+                                      color: scheme.onSurface,
+                                      letterSpacing: -0.6,
+                                    ),
                               ),
-                              selectedIndex: selectedIndex,
-                              onTabSelected: onTabSelected,
-                              accentColor: scheme.primary,
-                            ),
-                            const SizedBox(height: AppSpacing.xs),
-                            DrawerRouteTile(
-                              config: DrawerRowConfig.route(
-                                'Sign out',
-                                Icons.logout_outlined,
-                                '/login',
+                              const SizedBox(height: 2),
+                              Text(
+                                profileSubtitle,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: scheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                               ),
-                              selectedIndex: selectedIndex,
-                              onTabSelected: onTabSelected,
-                              danger: true,
-                              accentColor: scheme.error,
-                              onTapOverride: () async {
-                                Navigator.of(context).pop();
-                                await ref
-                                    .read(authControllerProvider.notifier)
-                                    .signOut();
-                                if (context.mounted) context.go('/login');
-                              },
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
+                    // Metrics and badges removed as requested
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                children: [
+                  DrawerSection(
+                    title: 'Main',
+                    titleColor: scheme.primary,
+                    icon: Icons.bolt_rounded,
+                    surfaceTint: scheme.primary,
+                    rows: [
+                      DrawerRowConfig.tab('Home', Icons.dashboard_outlined, 0),
+                      DrawerRowConfig.route(
+                        'Review',
+                        Icons.smart_toy_outlined,
+                        '/review',
+                        badge: _countBadge(pendingReviewCount),
+                      ),
+                      DrawerRowConfig.route(
+                        'Planned payments',
+                        Icons.event_repeat_outlined,
+                        '/recurring',
+                      ),
+                      DrawerRowConfig.route(
+                        'Loans',
+                        Icons.account_balance_outlined,
+                        '/loans',
+                      ),
+                    ],
+                    selectedIndex: selectedIndex,
+                    onTabSelected: onTabSelected,
+                  ),
+                  DrawerSection(
+                    title: 'Planning & money',
+                    titleColor: scheme.secondary,
+                    icon: Icons.timeline_rounded,
+                    surfaceTint: scheme.secondary,
+                    rows: [
+                      DrawerRowConfig.route(
+                        'Budgets',
+                        Icons.donut_large_outlined,
+                        '/budgets/new',
+                      ),
+                      DrawerRowConfig.route(
+                        'Goals',
+                        Icons.flag_outlined,
+                        '/goals/new',
+                      ),
+                      DrawerRowConfig.route(
+                        'Categories',
+                        Icons.category_outlined,
+                        '/categories',
+                      ),
+                      DrawerRowConfig.route(
+                        'Currencies',
+                        Icons.currency_exchange_outlined,
+                        '/currencies',
+                      ),
+                      DrawerRowConfig.route(
+                        'Widgets',
+                        Icons.dashboard_customize_outlined,
+                        '/widgets',
+                      ),
+                      DrawerRowConfig.route(
+                        'Loan forecast',
+                        Icons.show_chart_rounded,
+                        '/loans/forecast',
+                      ),
+                    ],
+                    selectedIndex: selectedIndex,
+                    onTabSelected: onTabSelected,
+                  ),
+                  DrawerSection(
+                    title: 'Tools',
+                    icon: Icons.build_circle_outlined,
+                    surfaceTint: scheme.primary,
+                    rows: [
+                      DrawerRowConfig.route(
+                        'Sync',
+                        Icons.cloud_done_outlined,
+                        '/sync',
+                        badge: syncBadge,
+                      ),
+                      DrawerRowConfig.route(
+                        'Auto Capture',
+                        Icons.notifications_active_outlined,
+                        '/auto-capture',
+                      ),
+                      DrawerRowConfig.route(
+                        'Import & backup',
+                        Icons.folder_copy_outlined,
+                        '/imports',
+                      ),
+                      DrawerRowConfig.route(
+                        'Notifications',
+                        Icons.notifications_none,
+                        '/notifications',
+                        badge: _countBadge(notificationCount),
+                      ),
+                      DrawerRowConfig.route(
+                        'Updates',
+                        Icons.download_for_offline_outlined,
+                        '/updates',
+                        badge: updatesBadge,
+                      ),
+                    ],
+                    selectedIndex: selectedIndex,
+                    onTabSelected: onTabSelected,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      top: AppSpacing.sm,
+                      bottom: AppSpacing.md,
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(AppRadii.xl),
+                        border: Border.all(color: scheme.outlineVariant),
+                      ),
+                      child: Column(
+                        children: [
+                          DrawerRouteTile(
+                            config: DrawerRowConfig.route(
+                              'Settings',
+                              Icons.settings_outlined,
+                              '/settings',
+                            ),
+                            selectedIndex: selectedIndex,
+                            onTabSelected: onTabSelected,
+                            accentColor: scheme.primary,
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          DrawerRouteTile(
+                            config: DrawerRowConfig.route(
+                              'Sign out',
+                              Icons.logout_outlined,
+                              '/login',
+                            ),
+                            selectedIndex: selectedIndex,
+                            onTabSelected: onTabSelected,
+                            danger: true,
+                            accentColor: scheme.error,
+                            onTapOverride: () async {
+                              Navigator.of(context).pop();
+                              await ref
+                                  .read(authControllerProvider.notifier)
+                                  .signOut();
+                              if (context.mounted) context.go('/login');
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-      );
+      ),
+    );
 
     if (isStatic) {
-      return SizedBox(
-        width: 320,
-        child: content,
-      );
+      return SizedBox(width: 320, child: content);
     }
 
     return Drawer(

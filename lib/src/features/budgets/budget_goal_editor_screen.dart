@@ -15,7 +15,6 @@ import '../../widgets/currency_picker.dart';
 import '../../utils/number_formatter.dart';
 
 class BudgetGoalEditorScreen extends ConsumerStatefulWidget {
-
   const BudgetGoalEditorScreen({required this.kind, super.key});
 
   final String kind;
@@ -56,8 +55,8 @@ class _BudgetGoalEditorScreenState
   Widget build(BuildContext context) {
     final isBudget = widget.kind == 'budget';
     final state = ref.watch(ledgerProvider);
-    final category = _selectedCategoryId != null 
-        ? categoryById(state, _selectedCategoryId) 
+    final category = _selectedCategoryId != null
+        ? categoryById(state, _selectedCategoryId)
         : null;
 
     return RouteScaffold(
@@ -88,7 +87,9 @@ class _BudgetGoalEditorScreenState
                 const SizedBox(height: AppSpacing.sm),
                 TextFormField(
                   controller: _amountController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   inputFormatters: [ThousandsSeparatorInputFormatter()],
                   decoration: const InputDecoration(
                     labelText: 'Target amount',
@@ -105,9 +106,12 @@ class _BudgetGoalEditorScreenState
                 else
                   _DetailField(
                     icon: Icons.today_outlined,
-                    label: _targetDate == null 
-                        ? 'Target date' 
-                        : formatLedgerDate(_targetDate!, state.preferences.locale),
+                    label: _targetDate == null
+                        ? 'Target date'
+                        : formatLedgerDate(
+                            _targetDate!,
+                            state.preferences.locale,
+                          ),
                     onTap: _chooseDate,
                   ),
                 const SizedBox(height: AppSpacing.sm),
@@ -135,7 +139,8 @@ class _BudgetGoalEditorScreenState
                     DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
                     DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
                   ],
-                  onChanged: (value) => setState(() => _frequency = value ?? 'once'),
+                  onChanged: (value) =>
+                      setState(() => _frequency = value ?? 'once'),
                 ),
                 if (_frequency != 'once') ...[
                   const SizedBox(height: AppSpacing.sm),
@@ -143,21 +148,27 @@ class _BudgetGoalEditorScreenState
                     initialValue: _interval.toString(),
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
-                      labelText: 'Every X ${_frequency == 'daily' ? 'day' : _frequency.replaceAll('ly', '')}s',
+                      labelText:
+                          'Every X ${_frequency == 'daily' ? 'day' : _frequency.replaceAll('ly', '')}s',
                     ),
                     onChanged: (value) => _interval = int.tryParse(value) ?? 1,
                   ),
                 ],
                 if (_frequency == 'weekly') ...[
                   const SizedBox(height: AppSpacing.md),
-                  Text('On these days:', style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    'On these days:',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                   const SizedBox(height: AppSpacing.xs),
                   Wrap(
                     spacing: 8,
                     children: [
                       for (var i = 1; i <= 7; i++)
                         FilterChip(
-                          label: Text(['', 'M', 'T', 'W', 'T', 'F', 'S', 'S'][i]),
+                          label: Text(
+                            ['', 'M', 'T', 'W', 'T', 'F', 'S', 'S'][i],
+                          ),
                           selected: _daysOfWeek.contains(i),
                           onSelected: (selected) {
                             setState(() {
@@ -176,7 +187,10 @@ class _BudgetGoalEditorScreenState
                 ],
                 if (_frequency == 'monthly') ...[
                   const SizedBox(height: AppSpacing.md),
-                  Text('On these days of the month:', style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    'On these days of the month:',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                   const SizedBox(height: AppSpacing.xs),
                   Wrap(
                     spacing: 8,
@@ -186,7 +200,8 @@ class _BudgetGoalEditorScreenState
                         FilterChip(
                           label: Text('$i'),
                           padding: EdgeInsets.zero,
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
                           selected: _daysOfMonth.contains(i),
                           onSelected: (selected) {
                             setState(() {
@@ -243,8 +258,8 @@ class _BudgetGoalEditorScreenState
       context: context,
       title: 'Choose category',
       searchHint: 'Search categories',
-      selectedValue: _selectedCategoryId != null 
-          ? categoryById(state, _selectedCategoryId) 
+      selectedValue: _selectedCategoryId != null
+          ? categoryById(state, _selectedCategoryId)
           : null,
       options: [
         for (final category in activeCategories(state))
@@ -308,8 +323,12 @@ class _BudgetGoalEditorScreenState
         targetDate: _targetDate,
         frequency: _frequency,
         interval: _interval,
-        daysOfWeek: _daysOfWeek.isEmpty ? null : (List<int>.from(_daysOfWeek)..sort()),
-        daysOfMonth: _daysOfMonth.isEmpty ? null : (List<int>.from(_daysOfMonth)..sort()),
+        daysOfWeek: _daysOfWeek.isEmpty
+            ? null
+            : (List<int>.from(_daysOfWeek)..sort()),
+        daysOfMonth: _daysOfMonth.isEmpty
+            ? null
+            : (List<int>.from(_daysOfMonth)..sort()),
       );
     } else {
       await controller.addGoal(
@@ -319,8 +338,12 @@ class _BudgetGoalEditorScreenState
         targetDate: _targetDate,
         frequency: _frequency,
         interval: _interval,
-        daysOfWeek: _daysOfWeek.isEmpty ? null : (List<int>.from(_daysOfWeek)..sort()),
-        daysOfMonth: _daysOfMonth.isEmpty ? null : (List<int>.from(_daysOfMonth)..sort()),
+        daysOfWeek: _daysOfWeek.isEmpty
+            ? null
+            : (List<int>.from(_daysOfWeek)..sort()),
+        daysOfMonth: _daysOfMonth.isEmpty
+            ? null
+            : (List<int>.from(_daysOfMonth)..sort()),
       );
     }
     if (!mounted) return;
@@ -359,7 +382,9 @@ class _DetailField extends StatelessWidget {
           vertical: AppSpacing.sm,
         ),
         decoration: BoxDecoration(
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -368,7 +393,7 @@ class _DetailField extends StatelessWidget {
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Text(
-                label, 
+                label,
                 style: Theme.of(context).textTheme.bodyLarge,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -381,7 +406,6 @@ class _DetailField extends StatelessWidget {
     );
   }
 }
-
 
 int _amountMinorFromInput(String value, String currency) {
   final normalized = value.replaceAll(RegExp(r'[^0-9.]'), '');

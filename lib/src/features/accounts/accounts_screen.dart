@@ -36,13 +36,13 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(ledgerProvider);
-    
+
     // Initialize or update _order
     _order ??= [];
     final currentIds = state.accounts.map((a) => a.id).toSet();
     _order!.removeWhere((id) => !currentIds.contains(id));
     final existingIds = _order!.toSet();
-    
+
     final sortedAccounts = state.accounts.toList()
       ..sort((left, right) => left.sortOrder.compareTo(right.sortOrder));
     for (final acc in sortedAccounts) {
@@ -79,7 +79,9 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surfaceContainerLow,
               borderRadius: BorderRadius.circular(AppRadii.md),
-              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
             ),
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.sm),
@@ -97,15 +99,19 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
                       children: [
                         FilterPill(
                           icon: Icons.balance_outlined,
-                          label: _showExcluded ? 'Include excluded' : 'Totals only',
+                          label: _showExcluded
+                              ? 'Include excluded'
+                              : 'Totals only',
                           active: _showExcluded,
-                          onTap: () => setState(() => _showExcluded = !_showExcluded),
+                          onTap: () =>
+                              setState(() => _showExcluded = !_showExcluded),
                         ),
                         FilterPill(
                           icon: Icons.archive_outlined,
                           label: _showArchived ? 'All accounts' : 'Active only',
                           active: _showArchived,
-                          onTap: () => setState(() => _showArchived = !_showArchived),
+                          onTap: () =>
+                              setState(() => _showArchived = !_showArchived),
                         ),
                       ],
                     ),
@@ -168,7 +174,9 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
                             ids.add(moved);
                           }
                           _order = ids;
-                          ref.read(ledgerProvider.notifier).reorderAccounts(ids);
+                          ref
+                              .read(ledgerProvider.notifier)
+                              .reorderAccounts(ids);
                         });
                       },
                       itemBuilder: (context, index) {
@@ -181,9 +189,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
                       },
                     ),
                     desktop: SingleChildScrollView(
-                      padding: const EdgeInsets.only(
-                        bottom: AppSpacing.xl,
-                      ),
+                      padding: const EdgeInsets.only(bottom: AppSpacing.xl),
                       child: Wrap(
                         spacing: AppSpacing.md,
                         runSpacing: AppSpacing.md,
@@ -220,12 +226,8 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
   }
 }
 
-
 class _CurrencySummaryHeader extends StatelessWidget {
-  const _CurrencySummaryHeader({
-    required this.state,
-    required this.accounts,
-  });
+  const _CurrencySummaryHeader({required this.state, required this.accounts});
 
   final LedgerState state;
   final List<Account> accounts;
@@ -257,7 +259,9 @@ class _CurrencySummaryHeader extends StatelessWidget {
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
-      color: Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(100),
+      color: Theme.of(
+        context,
+      ).colorScheme.surfaceContainerHighest.withAlpha(100),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadii.md),
         side: BorderSide(
@@ -265,7 +269,10 @@ class _CurrencySummaryHeader extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -276,19 +283,28 @@ class _CurrencySummaryHeader extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      entry.key == state.preferences.baseCurrency ? '${entry.key} (Base)' : entry.key,
+                      entry.key == state.preferences.baseCurrency
+                          ? '${entry.key} (Base)'
+                          : entry.key,
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: entry.key == state.preferences.baseCurrency ? FontWeight.bold : FontWeight.w600,
+                        fontWeight: entry.key == state.preferences.baseCurrency
+                            ? FontWeight.bold
+                            : FontWeight.w600,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                     Text(
-                      formatMoney(Money(amountMinor: entry.value, currency: entry.key), state.preferences.locale),
+                      formatMoney(
+                        Money(amountMinor: entry.value, currency: entry.key),
+                        state.preferences.locale,
+                      ),
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
-                        color: entry.value < 0 ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary,
+                        color: entry.value < 0
+                            ? Theme.of(context).colorScheme.error
+                            : Theme.of(context).colorScheme.primary,
                       ),
                     ),
                   ],
@@ -311,9 +327,14 @@ class _AccountRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final balance = accountBalance(state, account);
     final displayCurrency = state.preferences.displayCurrency;
-    final displayBalance = convertMoneyForDisplay(state, balance, displayCurrency);
-    final isDifferentCurrency = account.currency.toUpperCase() != displayCurrency.toUpperCase();
-    
+    final displayBalance = convertMoneyForDisplay(
+      state,
+      balance,
+      displayCurrency,
+    );
+    final isDifferentCurrency =
+        account.currency.toUpperCase() != displayCurrency.toUpperCase();
+
     return PremiumRow(
       icon: accountIcon(account),
       title: account.name,
@@ -326,7 +347,9 @@ class _AccountRow extends StatelessWidget {
         account.groupName,
       ].whereType<String>().join(' · '),
       meta: formatMoney(balance, state.preferences.locale),
-      metaSubtitle: isDifferentCurrency ? formatMoney(displayBalance, state.preferences.locale) : null,
+      metaSubtitle: isDifferentCurrency
+          ? formatMoney(displayBalance, state.preferences.locale)
+          : null,
       iconColor: accountDisplayColor(account),
       onTap: () => context.push('/account/${account.id}'),
     );

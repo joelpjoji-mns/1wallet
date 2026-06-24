@@ -14,7 +14,8 @@ class LiquidProgressIndicator extends StatefulWidget {
   });
 
   @override
-  State<LiquidProgressIndicator> createState() => _LiquidProgressIndicatorState();
+  State<LiquidProgressIndicator> createState() =>
+      _LiquidProgressIndicatorState();
 }
 
 class _LiquidProgressIndicatorState extends State<LiquidProgressIndicator>
@@ -58,7 +59,11 @@ class _LiquidPainter extends CustomPainter {
   final Color color;
   final double phase;
 
-  _LiquidPainter({required this.value, required this.color, required this.phase});
+  _LiquidPainter({
+    required this.value,
+    required this.color,
+    required this.phase,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {

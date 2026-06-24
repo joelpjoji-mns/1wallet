@@ -95,8 +95,6 @@ List<Category> lifeCategoryTaxonomy() {
       sortOrder: 23,
     ),
 
-
-
     Category(
       id: 'cat-bills',
       name: 'Home & bills',
@@ -227,8 +225,12 @@ List<Category> lifeCategoryTaxonomy() {
       sortOrder: 205,
     ),
 
-
-    Category(id: 'cat-vehicle', name: 'Vehicle', kind: 'expense', sortOrder: 300),
+    Category(
+      id: 'cat-vehicle',
+      name: 'Vehicle',
+      kind: 'expense',
+      sortOrder: 300,
+    ),
     Category(
       id: 'cat-fuel',
       name: 'Fuel',
@@ -315,7 +317,6 @@ List<Category> lifeCategoryTaxonomy() {
       sortOrder: 507,
     ),
 
-
     Category(
       id: 'cat-debt',
       name: 'Loans & finance',
@@ -375,7 +376,12 @@ List<Category> lifeCategoryTaxonomy() {
       sortOrder: 609,
     ),
 
-    Category(id: 'cat-shopping', name: 'Shopping', kind: 'expense', sortOrder: 700),
+    Category(
+      id: 'cat-shopping',
+      name: 'Shopping',
+      kind: 'expense',
+      sortOrder: 700,
+    ),
     Category(
       id: 'cat-clothing',
       name: 'Clothing',
@@ -427,8 +433,6 @@ List<Category> lifeCategoryTaxonomy() {
       parentId: 'cat-shopping',
       sortOrder: 710,
     ),
-
-
 
     Category(
       id: 'cat-family',
@@ -485,8 +489,6 @@ List<Category> lifeCategoryTaxonomy() {
       parentId: 'cat-family',
       sortOrder: 807,
     ),
-
-
 
     Category(
       id: 'cat-entertainment',
@@ -560,9 +562,6 @@ List<Category> lifeCategoryTaxonomy() {
       sortOrder: 911,
     ),
 
-
-
-
     Category(
       id: 'cat-tech',
       name: 'Tech & subscriptions',
@@ -627,7 +626,6 @@ List<Category> lifeCategoryTaxonomy() {
       sortOrder: 1105,
     ),
 
-
     Category(
       id: 'cat-vacations',
       name: 'Travel & vacations',
@@ -670,9 +668,12 @@ List<Category> lifeCategoryTaxonomy() {
       sortOrder: 1206,
     ),
 
-
-
-    Category(id: 'cat-misc', name: 'Miscellaneous', kind: 'expense', sortOrder: 1500),
+    Category(
+      id: 'cat-misc',
+      name: 'Miscellaneous',
+      kind: 'expense',
+      sortOrder: 1500,
+    ),
     Category(
       id: 'cat-uncategorized',
       name: 'Uncategorized',
