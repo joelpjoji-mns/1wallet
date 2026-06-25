@@ -133,28 +133,39 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             RecurringScreen(recordId: state.pathParameters['id']),
       ),
       GoRoute(path: '/cards', builder: (context, state) => const CardsScreen()),
-      GoRoute(path: '/loans', builder: (context, state) => const LoansScreen()),
       GoRoute(
-        path: '/loans/new',
-        builder: (context, state) => const LoansScreen(mode: 'new'),
-      ),
-      GoRoute(
-        path: '/loans/past',
-        builder: (context, state) => const LoansScreen(mode: 'past'),
-      ),
-      GoRoute(
-        path: '/loans/forecast',
-        builder: (context, state) => const LoansScreen(mode: 'forecast'),
-      ),
-      GoRoute(
-        path: '/loans/:id/edit',
-        builder: (context, state) =>
-            LoansScreen(mode: 'edit', accountId: state.pathParameters['id']),
-      ),
-      GoRoute(
-        path: '/loans/:id',
-        builder: (context, state) =>
-            LoansScreen(mode: 'detail', accountId: state.pathParameters['id']),
+        path: '/loans',
+        builder: (context, state) => const LoansScreen(),
+        routes: [
+          GoRoute(
+            path: 'new',
+            builder: (context, state) => const LoansScreen(mode: 'new'),
+          ),
+          GoRoute(
+            path: 'past',
+            builder: (context, state) => const LoansScreen(mode: 'past'),
+          ),
+          GoRoute(
+            path: 'forecast',
+            builder: (context, state) => const LoansScreen(mode: 'forecast'),
+          ),
+          GoRoute(
+            path: ':id',
+            builder: (context, state) => LoansScreen(
+              mode: 'detail',
+              accountId: state.pathParameters['id'],
+            ),
+            routes: [
+              GoRoute(
+                path: 'edit',
+                builder: (context, state) => LoansScreen(
+                  mode: 'edit',
+                  accountId: state.pathParameters['id'],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       GoRoute(
         path: '/budgets/new',
