@@ -13,7 +13,6 @@ import '../../widgets/app_kit.dart';
 import '../../widgets/currency_picker.dart';
 import '../common/full_screen_picker.dart';
 import '../transactions/transaction_row.dart';
-import '../../utils/recurrence_utils.dart';
 import '../../utils/number_formatter.dart';
 import 'loan_forecast_simulator.dart';
 
@@ -163,6 +162,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
   final _nameController = TextEditingController();
   final _lenderController = TextEditingController();
   final _principalController = TextEditingController();
+  final _currentBalanceController = TextEditingController();
   final _emiController = TextEditingController();
   final _rateController = TextEditingController();
   final _tenureController = TextEditingController();
@@ -208,7 +208,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
       if (_emiController.text != newText && _emiController.text.isEmpty) {
         _emiController.text = newText;
       } else if (_emiController.text != newText &&
-          !_emiController.text.isEmpty) {
+          _emiController.text.isNotEmpty) {
         // Only aggressively overwrite if it seems the user hasn't explicitly set a custom EMI recently.
         // A simple check is to overwrite if it's currently showing an old auto-calculated EMI.
         _emiController.text = newText;
@@ -221,6 +221,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
     _nameController.dispose();
     _lenderController.dispose();
     _principalController.dispose();
+    _currentBalanceController.dispose();
     _emiController.dispose();
     _rateController.dispose();
     _tenureController.dispose();
@@ -267,12 +268,30 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                       ),
                       inputFormatters: [ThousandsSeparatorInputFormatter()],
                       decoration: const InputDecoration(
-                        labelText: 'Principal',
+                        labelText: 'Original Principal',
                         prefixIcon: Icon(Icons.payments_outlined),
                       ),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _currentBalanceController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      inputFormatters: [ThousandsSeparatorInputFormatter()],
+                      decoration: const InputDecoration(
+                        labelText: 'Current Balance',
+                        prefixIcon: Icon(Icons.account_balance_wallet_outlined),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
                   Expanded(
                     child: TextFormField(
                       controller: _emiController,
@@ -286,11 +305,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                       ),
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: TextFormField(
                       controller: _rateController,
@@ -304,18 +319,16 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _tenureController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Tenure count',
-                        prefixIcon: Icon(Icons.timelapse_outlined),
-                      ),
-                    ),
-                  ),
                 ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextFormField(
+                controller: _tenureController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Tenure count',
+                  prefixIcon: Icon(Icons.timelapse_outlined),
+                ),
               ),
             ],
           ),
@@ -483,6 +496,10 @@ class _LoanFormState extends ConsumerState<LoanForm> {
               ? ''
               : _formatAmountInput(loan.openingBalance.amountMinor.abs())
         : _formatAmountInput(details!.principal!.amountMinor.abs());
+    final balance = loan == null ? null : accountBalance(state, loan);
+    _currentBalanceController.text = balance == null
+        ? ''
+        : _formatAmountInput(balance.amountMinor.abs());
     final existingEmi = _existingLoanEmi(state, loan?.id);
     final repaymentAmount = details?.repaymentAmount;
     _emiController.text = repaymentAmount == null && existingEmi == null
@@ -598,6 +615,12 @@ class _LoanFormState extends ConsumerState<LoanForm> {
     final principalMinor = _amountMinorFromInput(
       _principalController.text,
     ).abs();
+    final currentBalanceInput = _amountMinorFromInput(
+      _currentBalanceController.text,
+    ).abs();
+    final effectiveCurrentBalanceMinor = _currentBalanceController.text.isEmpty
+        ? principalMinor
+        : currentBalanceInput;
     final emiMinor = _amountMinorFromInput(_emiController.text).abs();
     final rate = _optionalDouble(_rateController.text);
     final tenure = _optionalInt(_tenureController.text);
@@ -635,6 +658,13 @@ class _LoanFormState extends ConsumerState<LoanForm> {
             : (List<int>.from(_daysOfMonth)..sort()),
         hideInterestInLedger: _hideInterestInLedger,
       );
+      int transactionsSum = 0;
+      if (existingLoan != null) {
+        final balance = accountBalance(state, existingLoan).amountMinor;
+        transactionsSum = balance - existingLoan.openingBalance.amountMinor;
+      }
+      final newOpeningBalanceMinor = -effectiveCurrentBalanceMinor - transactionsSum;
+
       final loan = await ref
           .read(ledgerProvider.notifier)
           .upsertAccount(
@@ -642,7 +672,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
             name: name,
             type: _loanKind,
             currency: _currency,
-            openingBalanceMinor: -principalMinor,
+            openingBalanceMinor: newOpeningBalanceMinor,
             institution: _lenderController.text,
             groupName: _nonLoanGroupName(existingLoan?.groupName),
             loanDetails: loanDetails,
@@ -779,16 +809,8 @@ class LoanDetailView extends ConsumerWidget {
                   Builder(
                     builder: (context) {
                       final principal = details.principal!.amountMinor.abs();
-                      // Fix: calculate repayments inside scope
-                      final repayments = _postedLoanRepayments(state, loan.id);
-                      final paid = repayments.fold<int>(0, (sum, t) {
-                        final amountInBase = convertMoneyForDisplay(
-                          state,
-                          t.amount,
-                          loan.currency,
-                        ).amountMinor.abs();
-                        return sum + amountInBase;
-                      });
+                      final remaining = balance.amountMinor.abs();
+                      final paid = math.max(0, principal - remaining);
                       final progress = principal > 0
                           ? (paid / principal).clamp(0.0, 1.0)
                           : 0.0;
@@ -1174,15 +1196,8 @@ class _LoanCompactCard extends StatelessWidget {
                 Builder(
                   builder: (context) {
                     final principal = details.principal!.amountMinor.abs();
-                    final repayments = _postedLoanRepayments(state, loan.id);
-                    final paid = repayments.fold<int>(0, (sum, t) {
-                      final amountInBase = convertMoneyForDisplay(
-                        state,
-                        t.amount,
-                        loan.currency,
-                      ).amountMinor.abs();
-                      return sum + amountInBase;
-                    });
+                    final remaining = balance.amountMinor.abs();
+                    final paid = math.max(0, principal - remaining);
                     final progress = principal > 0
                         ? (paid / principal).clamp(0.0, 1.0)
                         : 0.0;
@@ -1394,7 +1409,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               ),
               const SizedBox(height: AppSpacing.md),
               DropdownButtonFormField<String>(
-                value: _strategy,
+                initialValue: _strategy,
                 decoration: const InputDecoration(
                   labelText: 'Payoff Priority Strategy',
                   prefixIcon: Icon(Icons.sort_rounded),
@@ -1570,8 +1585,9 @@ List<TransactionRecord> _loanHistoryRepayments(
 }
 
 bool _isHistoricalLoanRepayment(TransactionRecord transaction) {
-  if (transaction.status == 'void' && transaction.notes == 'Skipped')
+  if (transaction.status == 'void' && transaction.notes == 'Skipped') {
     return true;
+  }
   if (transaction.status != 'scheduled') return true;
   final today = _loanStartOfToday();
   final occurredDay = DateTime(
@@ -1800,33 +1816,6 @@ _LoanProjection _loanProjection(LedgerState state, Account loan) {
   );
 }
 
-int _projectedLoanRemaining(LedgerState state, Account loan, int months) {
-  final remaining = accountBalance(state, loan).amountMinor.abs();
-  final details = _effectiveLoanDetails(state, loan);
-  final emi =
-      details.repaymentAmount?.amountMinor.abs() ??
-      _existingLoanEmi(state, loan.id)?.amount.amountMinor.abs() ??
-      0;
-  final rate = details.interestRatePercent ?? 0;
-  if (months <= 0 || remaining == 0 || emi <= 0) return remaining;
-  return _simulateLoanForecast(
-    principalMinor: remaining,
-    monthlyEmiMinor: emi,
-    annualRatePercent: rate,
-    maxMonths: months,
-  ).remainingMinor;
-}
-
-List<int> _forecastMonthsForLoan(LedgerState state, Account loan) {
-  final projection = _loanProjection(state, loan);
-  final months = projection.monthsRemaining;
-  final values = <int>{0, 3, 6, 12};
-  if (months != null && months > 0) values.add(months);
-  final sorted = values.toList()..sort();
-  return sorted
-      .where((month) => months == null || month == 0 || month <= months)
-      .toList();
-}
 
 ({int? monthsRemaining, int totalInterestMinor, int remainingMinor})
 _simulateLoanForecast({
