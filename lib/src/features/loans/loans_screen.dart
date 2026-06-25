@@ -1687,15 +1687,20 @@ String _formatSignedMoney(
 }
 
 AccountLoanDetails _effectiveLoanDetails(LedgerState state, Account loan) {
+  final fallbackPrincipal = Money(
+    amountMinor: loan.openingBalance.amountMinor.abs(),
+    currency: loan.currency,
+  );
   final existing = loan.loanDetails;
-  if (existing != null) return existing;
+  if (existing != null) {
+    return existing.copyWith(
+      principal: existing.principal ?? fallbackPrincipal,
+    );
+  }
   final existingEmi = _existingLoanEmi(state, loan.id);
   return AccountLoanDetails(
     loanKind: loan.type,
-    principal: Money(
-      amountMinor: loan.openingBalance.amountMinor.abs(),
-      currency: loan.currency,
-    ),
+    principal: fallbackPrincipal,
     repaymentAmount: existingEmi?.amount.copyWith(currency: loan.currency),
     interestRatePercent: _doubleTagValue(loan.groupName, 'rate'),
     repaymentCount: _intTagValue(loan.groupName, 'tenure'),
@@ -1709,8 +1714,8 @@ String _nextEmiLabel(
   AccountLoanDetails details,
   TransactionRecord? scheduledEmi,
 ) {
-  final amount = details.repaymentAmount ?? scheduledEmi?.amount;
-  final date = details.repaymentStartsOn ?? scheduledEmi?.occurredAt;
+  final amount = scheduledEmi?.amount ?? details.repaymentAmount;
+  final date = scheduledEmi?.occurredAt ?? details.repaymentStartsOn;
   if (amount == null && date == null) return 'Not scheduled';
   final parts = [
     if (date != null) formatLedgerDate(date, state.preferences.locale),
