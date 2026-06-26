@@ -1082,7 +1082,9 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
             type: _type,
             accountId: account.id,
             counterAccountId: _needsCounterAccount ? _counterAccountId : null,
-            categoryId: _type == 'loan_repayment' ? 'cat-emi' : (_needsCounterAccount ? null : _categoryId),
+            categoryId: _type == 'loan_repayment'
+                ? 'cat-emi'
+                : (_needsCounterAccount ? null : _categoryId),
             amountMinor: finalAmountMinor,
             originalCurrency: originalCurrency != account.currency
                 ? originalCurrency
@@ -1429,7 +1431,11 @@ class RecurringDetailView extends ConsumerWidget {
       context,
       'Scheduled record postponed to ${formatLedgerDate(picked, locale)}.',
     );
-    context.go('/recurring');
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/recurring');
+    }
   }
 
   Future<void> _skip(BuildContext context, WidgetRef ref) async {
@@ -1464,7 +1470,11 @@ class RecurringDetailView extends ConsumerWidget {
     );
     if (!context.mounted) return;
     _showRouteMessage(context, 'Scheduled record skipped.');
-    context.go('/recurring');
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/recurring');
+    }
   }
 
   Future<void> _pause(BuildContext context, WidgetRef ref) async {
@@ -1473,7 +1483,11 @@ class RecurringDetailView extends ConsumerWidget {
         .updateTransactionStatus(transaction.id, 'paused');
     if (!context.mounted) return;
     _showRouteMessage(context, 'Scheduled record paused.');
-    context.go('/recurring');
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/recurring');
+    }
   }
 
   Future<void> _resume(BuildContext context, WidgetRef ref) async {
@@ -1515,7 +1529,11 @@ class RecurringDetailView extends ConsumerWidget {
       context,
       'Scheduled record resumed for ${formatLedgerDate(nextDate, locale)}.',
     );
-    context.go('/recurring');
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/recurring');
+    }
   }
 }
 
@@ -1527,23 +1545,19 @@ class _RecurringHistoryList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(ledgerProvider);
-    final history = state.transactions
-        .where(
-          (t) {
-            if (t.id == plan.id) return false;
-            if (t.status == 'scheduled' &&
-                !(t.status == 'void' && t.notes?.toLowerCase() == 'skipped')) {
-              return false;
-            }
-            if (t.originalTransactionId == plan.id) return true;
-            if (plan.type == 'loan_repayment' && t.type == 'loan_repayment') {
-              return t.counterAccountId == plan.counterAccountId ||
-                  t.accountId == plan.counterAccountId;
-            }
-            return false;
-          },
-        )
-        .toList();
+    final history = state.transactions.where((t) {
+      if (t.id == plan.id) return false;
+      if (t.status == 'scheduled' &&
+          !(t.status == 'void' && t.notes?.toLowerCase() == 'skipped')) {
+        return false;
+      }
+      if (t.originalTransactionId == plan.id) return true;
+      if (plan.type == 'loan_repayment' && t.type == 'loan_repayment') {
+        return t.counterAccountId == plan.counterAccountId ||
+            t.accountId == plan.counterAccountId;
+      }
+      return false;
+    }).toList();
 
     if (history.isEmpty) return const SizedBox.shrink();
 
