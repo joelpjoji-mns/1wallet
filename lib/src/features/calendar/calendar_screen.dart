@@ -247,14 +247,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                   inMonth: day.month == _visibleMonth.month,
                                   records: records,
                                   state: state,
-                                  onTap: records.isEmpty
-                                      ? null
-                                      : () => _showDay(
-                                          context,
-                                          state,
-                                          day,
-                                          records,
-                                        ),
+                                  onTap: () =>
+                                      _showDay(context, state, day, records),
                                 );
                               },
                             ),
@@ -512,6 +506,15 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     DateTime date,
     List<TransactionRecord> records,
   ) {
+    final balanceMinor = _projectedNetThroughMonthEnd(state, through: date);
+    final balanceDisplay = formatMoney(
+      Money(
+        amountMinor: balanceMinor,
+        currency: state.preferences.baseCurrency,
+      ),
+      state.preferences.locale,
+    );
+
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -521,32 +524,61 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                DateFormat.yMMMMd(
-                  state.preferences.locale.replaceAll('_', '-'),
-                ).format(date),
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    DateFormat.yMMMMd(
+                      state.preferences.locale.replaceAll('_', '-'),
+                    ).format(date),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    balanceDisplay,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: balanceMinor < 0
+                          ? Theme.of(context).colorScheme.error
+                          : Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: AppSpacing.md),
-              for (final transaction in records) ...[
-                TransactionRow(
-                  state: state,
-                  transaction: transaction,
-                  onTap: () {
-                    if (transaction.status == 'forecast') {
-                      final templateId = transaction.id.split('-')[1];
-                      context.push('/recurring/$templateId/edit');
-                    } else {
-                      context.push('/transaction/${transaction.id}');
-                    }
-                  },
-                ),
-                const SizedBox(height: AppSpacing.sm),
-              ],
+              if (records.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
+                  child: Center(
+                    child: Text(
+                      'No records on this day',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                for (final transaction in records) ...[
+                  TransactionRow(
+                    state: state,
+                    transaction: transaction,
+                    onTap: () {
+                      if (transaction.status == 'forecast') {
+                        final templateId = transaction.id.split('-')[1];
+                        context.push('/recurring/$templateId/edit');
+                      } else {
+                        context.push('/transaction/${transaction.id}');
+                      }
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                ],
             ],
           ),
         ),
