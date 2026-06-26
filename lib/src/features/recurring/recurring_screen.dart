@@ -1315,9 +1315,15 @@ class RecurringDetailView extends ConsumerWidget {
                       final loanAccount = account?.loanDetails != null
                           ? account
                           : counter;
-                      final total = loanAccount?.loanDetails?.repaymentCount;
-                      if (total == null || total <= 0) return const SizedBox();
-                      final postedCount = state.transactions
+                      final principal = loanAccount
+                          ?.loanDetails
+                          ?.principal
+                          ?.amountMinor
+                          .abs();
+                      if (principal == null || principal <= 0)
+                        return const SizedBox();
+
+                      final repaymentHistory = state.transactions
                           .where(
                             (t) =>
                                 (t.status == 'posted' ||
@@ -1326,8 +1332,21 @@ class RecurringDetailView extends ConsumerWidget {
                                     t.counterAccountId == loanAccount.id) &&
                                 t.type == 'loan_repayment',
                           )
-                          .length;
-                      final progress = (postedCount / total).clamp(0.0, 1.0);
+                          .toList();
+
+                      final paid = repaymentHistory
+                          .where((r) => r.status != 'void')
+                          .fold<int>(
+                            0,
+                            (sum, r) => sum + r.amount.amountMinor.abs(),
+                          );
+
+                      final progress = principal > 0
+                          ? (paid / principal).clamp(0.0, 1.0)
+                          : 0.0;
+
+                      final remaining = principal - paid;
+
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -1336,7 +1355,7 @@ class RecurringDetailView extends ConsumerWidget {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'Payment $postedCount of $total',
+                                'Paid: ${formatMoney(Money(amountMinor: paid, currency: loanAccount!.currency), state.preferences.locale)}',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: scheme.onSurfaceVariant,
@@ -1344,7 +1363,7 @@ class RecurringDetailView extends ConsumerWidget {
                                 ),
                               ),
                               Text(
-                                '${total - postedCount} left',
+                                '${formatMoney(Money(amountMinor: remaining > 0 ? remaining : 0, currency: loanAccount.currency), state.preferences.locale)} left',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: scheme.onSurfaceVariant,
