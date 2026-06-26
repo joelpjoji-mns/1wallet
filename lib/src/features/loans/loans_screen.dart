@@ -457,7 +457,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
               const SizedBox(height: AppSpacing.sm),
               PremiumRow(
                 icon: Icons.calendar_month_outlined,
-                title: 'Start date',
+                title: 'Next EMI date',
                 subtitle: formatLedgerDate(
                   _nextEmiDate,
                   state.preferences.locale,
