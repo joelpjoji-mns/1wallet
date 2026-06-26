@@ -63,7 +63,10 @@ List<TransactionRecord> sortedTransactions(
 
   final items = state.transactions
       .where(
-        (transaction) => includeScheduled || transaction.status != 'scheduled',
+        (transaction) =>
+            includeScheduled ||
+            (transaction.status != 'scheduled' &&
+                transaction.status != 'paused'),
       )
       .where(
         (transaction) => !hideInterest || !isHiddenInterest(state, transaction),
