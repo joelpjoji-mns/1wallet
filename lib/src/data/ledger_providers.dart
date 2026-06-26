@@ -572,7 +572,33 @@ class LedgerController extends StateNotifier<LedgerState> {
     } else {
       transactions[index] = transaction;
     }
-    await _commit(state.copyWith(transactions: transactions));
+
+    final accounts = [...state.accounts];
+    if (transaction.type == 'loan_repayment' &&
+        transaction.status == 'scheduled' &&
+        transaction.counterAccountId != null) {
+      final loanIndex = accounts.indexWhere(
+        (a) => a.id == transaction.counterAccountId,
+      );
+      if (loanIndex != -1) {
+        final loan = accounts[loanIndex];
+        if (loan.loanDetails != null) {
+          final updatedDetails = loan.loanDetails!.copyWith(
+            repaymentAmount: transaction.originalAmount ?? transaction.amount,
+            recurrenceFrequency: transaction.recurrenceFrequency,
+            recurrenceInterval: transaction.recurrenceInterval,
+            recurrenceDaysOfWeek: transaction.recurrenceDaysOfWeek,
+            recurrenceDaysOfMonth: transaction.recurrenceDaysOfMonth,
+            repaymentStartsOn: transaction.occurredAt,
+          );
+          accounts[loanIndex] = loan.copyWith(loanDetails: updatedDetails);
+        }
+      }
+    }
+
+    await _commit(
+      state.copyWith(transactions: transactions, accounts: accounts),
+    );
     return transaction;
   }
 
