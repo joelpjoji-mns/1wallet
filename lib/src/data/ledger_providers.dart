@@ -727,17 +727,30 @@ class LedgerController extends StateNotifier<LedgerState> {
       (transaction) =>
           transaction.accountId == id || transaction.counterAccountId == id,
     );
+
+    // Pause any active scheduled transactions connected to this account
+    final transactions = state.transactions.map((transaction) {
+      if ((transaction.accountId == id || transaction.counterAccountId == id) &&
+          transaction.status == 'scheduled') {
+        return transaction.copyWith(status: 'paused');
+      }
+      return transaction;
+    }).toList();
+
     if (isUsed) {
       final accounts = [
         for (final account in state.accounts)
           account.id == id ? account.copyWith(isArchived: true) : account,
       ];
-      await _commit(state.copyWith(accounts: accounts));
+      await _commit(
+        state.copyWith(accounts: accounts, transactions: transactions),
+      );
       return;
     }
     await _commit(
       state.copyWith(
         accounts: state.accounts.where((account) => account.id != id).toList(),
+        transactions: transactions,
       ),
     );
   }
