@@ -215,7 +215,13 @@ class WidgetsManagerScreen extends ConsumerWidget {
         IconButton(
           tooltip: 'Home',
           icon: const Icon(Icons.home_outlined),
-          onPressed: () => context.go('/'),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/');
+            }
+          },
         ),
       ],
       child: Column(
@@ -368,7 +374,11 @@ class _WidgetTile extends ConsumerWidget {
         borderRadius: BorderRadius.circular(AppRadii.lg),
         onTap: () {
           if (isVisible) {
-            context.go('/');
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/');
+            }
           } else {
             _restoreWidget(context, ref);
           }
@@ -463,7 +473,11 @@ class _WidgetTile extends ConsumerWidget {
                   ),
                   onPressed: () {
                     if (isVisible) {
-                      context.go('/');
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/');
+                      }
                     } else {
                       _restoreWidget(context, ref);
                     }
