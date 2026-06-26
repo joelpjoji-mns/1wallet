@@ -54,3 +54,9 @@ app.*.map.json
 
 # Ignored data directories
 importdata/
+
+# Scratch and Generator Files
+scratch_*
+generate_dashboard.js
+dashboard.html
+*.onewallet

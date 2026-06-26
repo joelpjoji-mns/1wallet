@@ -1082,7 +1082,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
             type: _type,
             accountId: account.id,
             counterAccountId: _needsCounterAccount ? _counterAccountId : null,
-            categoryId: _needsCounterAccount ? null : _categoryId,
+            categoryId: _type == 'loan_repayment' ? 'cat-emi' : (_needsCounterAccount ? null : _categoryId),
             amountMinor: finalAmountMinor,
             originalCurrency: originalCurrency != account.currency
                 ? originalCurrency
@@ -1529,12 +1529,19 @@ class _RecurringHistoryList extends ConsumerWidget {
     final state = ref.watch(ledgerProvider);
     final history = state.transactions
         .where(
-          (t) =>
-              t.originalTransactionId == plan.id &&
-              (t.status != 'scheduled' ||
-                  (t.status == 'void' &&
-                      t.notes?.toLowerCase() == 'skipped')) &&
-              t.id != plan.id,
+          (t) {
+            if (t.id == plan.id) return false;
+            if (t.status == 'scheduled' &&
+                !(t.status == 'void' && t.notes?.toLowerCase() == 'skipped')) {
+              return false;
+            }
+            if (t.originalTransactionId == plan.id) return true;
+            if (plan.type == 'loan_repayment' && t.type == 'loan_repayment') {
+              return t.counterAccountId == plan.counterAccountId ||
+                  t.accountId == plan.counterAccountId;
+            }
+            return false;
+          },
         )
         .toList();
 
