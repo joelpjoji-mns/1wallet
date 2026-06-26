@@ -810,9 +810,11 @@ class LoanDetailView extends ConsumerWidget {
                     builder: (context) {
                       final principal = details.principal!.amountMinor.abs();
                       final remaining = balance.amountMinor.abs();
-                      final paid = math.max(0, principal - remaining);
+                      final paid = repaymentHistory
+                          .where((r) => r.status != 'void')
+                          .fold<int>(0, (sum, r) => sum + r.amount.amountMinor.abs());
                       final progress = principal > 0
-                          ? (paid / principal).clamp(0.0, 1.0)
+                          ? (math.max(0, principal - remaining) / principal).clamp(0.0, 1.0)
                           : 0.0;
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1197,9 +1199,11 @@ class _LoanCompactCard extends StatelessWidget {
                   builder: (context) {
                     final principal = details.principal!.amountMinor.abs();
                     final remaining = balance.amountMinor.abs();
-                    final paid = math.max(0, principal - remaining);
+                    final paid = repayments
+                        .where((r) => r.status != 'void')
+                        .fold<int>(0, (sum, r) => sum + r.amount.amountMinor.abs());
                     final progress = principal > 0
-                        ? (paid / principal).clamp(0.0, 1.0)
+                        ? (math.max(0, principal - remaining) / principal).clamp(0.0, 1.0)
                         : 0.0;
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
