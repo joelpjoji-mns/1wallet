@@ -1206,9 +1206,10 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
         .watch(_homeScheduledTransactionsProvider)
         .where(
           (t) =>
-              selectedAccountId == null ||
-              t.accountId == selectedAccountId ||
-              t.counterAccountId == selectedAccountId,
+              (selectedAccountId == null ||
+                  t.accountId == selectedAccountId ||
+                  t.counterAccountId == selectedAccountId) &&
+              t.status != 'paused',
         )
         .where((t) {
           final day = DateTime(
