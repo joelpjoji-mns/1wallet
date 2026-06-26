@@ -55,10 +55,37 @@ class RecurringScreen extends ConsumerWidget {
       );
       final amount = converted.amountMinor.abs();
 
+      double monthlyMultiplier = 1.0;
+      if (t.recurrenceFrequency == 'yearly') {
+        monthlyMultiplier = 1 / 12;
+      } else if (t.recurrenceFrequency == 'weekly') {
+        monthlyMultiplier = 52 / 12;
+      } else if (t.recurrenceFrequency == 'daily') {
+        monthlyMultiplier = 365 / 12;
+      }
+
+      final interval = t.recurrenceInterval != null && t.recurrenceInterval! > 0
+          ? t.recurrenceInterval!
+          : 1;
+      monthlyMultiplier = monthlyMultiplier / interval;
+
+      // Handle multiple days per period
+      if (t.recurrenceFrequency == 'weekly' &&
+          t.recurrenceDaysOfWeek != null &&
+          t.recurrenceDaysOfWeek!.isNotEmpty) {
+        monthlyMultiplier *= t.recurrenceDaysOfWeek!.length;
+      } else if (t.recurrenceFrequency == 'monthly' &&
+          t.recurrenceDaysOfMonth != null &&
+          t.recurrenceDaysOfMonth!.isNotEmpty) {
+        monthlyMultiplier *= t.recurrenceDaysOfMonth!.length;
+      }
+
+      final normalizedAmount = (amount * monthlyMultiplier).round();
+
       if (incomeTypes.contains(t.type)) {
-        plannedIncomeMinor += amount;
+        plannedIncomeMinor += normalizedAmount;
       } else if (t.type != 'transfer') {
-        plannedExpenseMinor += amount;
+        plannedExpenseMinor += normalizedAmount;
       }
     }
 

@@ -830,8 +830,7 @@ class LoanDetailView extends ConsumerWidget {
                             (sum, r) => sum + r.amount.amountMinor.abs(),
                           );
                       final progress = principal > 0
-                          ? (math.max(0, principal - remaining) / principal)
-                                .clamp(0.0, 1.0)
+                          ? (paid / principal).clamp(0.0, 1.0)
                           : 0.0;
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1227,8 +1226,7 @@ class _LoanCompactCard extends StatelessWidget {
                           (sum, r) => sum + r.amount.amountMinor.abs(),
                         );
                     final progress = principal > 0
-                        ? (math.max(0, principal - remaining) / principal)
-                              .clamp(0.0, 1.0)
+                        ? (paid / principal).clamp(0.0, 1.0)
                         : 0.0;
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
