@@ -1498,23 +1498,6 @@ class RecurringDetailView extends ConsumerWidget {
 
     // Advance the date until it's tomorrow or later
     while (!nextDate.isAfter(today)) {
-      await notifier.upsertTransaction(
-        type: transaction.type,
-        accountId: transaction.accountId,
-        amountMinor: transaction.amount.amountMinor,
-        status: 'void',
-        source: transaction.source,
-        counterAccountId: transaction.counterAccountId,
-        categoryId: transaction.categoryId,
-        paymentMethod: transaction.paymentMethod,
-        notes: 'Skipped (Paused)',
-        occurredAt: nextDate,
-        originalTransactionId: transaction.id,
-        recurrenceFrequency: transaction.recurrenceFrequency,
-        originalAmountMinor: transaction.originalAmount?.amountMinor,
-        originalCurrency: transaction.originalAmount?.currency,
-        counterAmountMinor: transaction.counterAmount?.amountMinor,
-      );
       nextDate = advanceTransactionRecurrence(nextDate, transaction);
     }
 
