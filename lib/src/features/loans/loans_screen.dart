@@ -505,7 +505,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
     _emiController.text = repaymentAmount == null && existingEmi == null
         ? ''
         : _formatAmountInput(
-            (repaymentAmount ?? existingEmi!.amount).amountMinor.abs(),
+            (existingEmi?.amount ?? repaymentAmount!).amountMinor.abs(),
           );
     _rateController.text = _formatOptionalDecimal(
       details?.interestRatePercent ?? _doubleTagValue(loan?.groupName, 'rate'),
@@ -528,14 +528,22 @@ class _LoanFormState extends ConsumerState<LoanForm> {
         existingEmi?.occurredAt ??
         DateTime.now().add(const Duration(days: 30));
     _hideInterestInLedger = details?.hideInterestInLedger ?? true;
-    _frequency = details?.recurrenceFrequency ?? 'monthly';
-    _interval = details?.recurrenceInterval ?? 1;
+    _frequency =
+        existingEmi?.recurrenceFrequency ??
+        details?.recurrenceFrequency ??
+        'monthly';
+    _interval =
+        existingEmi?.recurrenceInterval ?? details?.recurrenceInterval ?? 1;
     _daysOfWeek.clear();
-    if (details?.recurrenceDaysOfWeek != null) {
+    if (existingEmi?.recurrenceDaysOfWeek != null) {
+      _daysOfWeek.addAll(existingEmi!.recurrenceDaysOfWeek!);
+    } else if (details?.recurrenceDaysOfWeek != null) {
       _daysOfWeek.addAll(details!.recurrenceDaysOfWeek!);
     }
     _daysOfMonth.clear();
-    if (details?.recurrenceDaysOfMonth != null) {
+    if (existingEmi?.recurrenceDaysOfMonth != null) {
+      _daysOfMonth.addAll(existingEmi!.recurrenceDaysOfMonth!);
+    } else if (details?.recurrenceDaysOfMonth != null) {
       _daysOfMonth.addAll(details!.recurrenceDaysOfMonth!);
     }
   }
@@ -1563,7 +1571,6 @@ TransactionRecord? _existingLoanEmi(LedgerState state, String? loanId) {
       scheduledTransactions(state)
           .where(
             (transaction) =>
-                transaction.status != 'paused' &&
                 transaction.type == 'loan_repayment' &&
                 transaction.counterAccountId == loanId,
           )
