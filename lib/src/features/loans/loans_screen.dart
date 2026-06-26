@@ -663,7 +663,8 @@ class _LoanFormState extends ConsumerState<LoanForm> {
         final balance = accountBalance(state, existingLoan).amountMinor;
         transactionsSum = balance - existingLoan.openingBalance.amountMinor;
       }
-      final newOpeningBalanceMinor = -effectiveCurrentBalanceMinor - transactionsSum;
+      final newOpeningBalanceMinor =
+          -effectiveCurrentBalanceMinor - transactionsSum;
 
       final loan = await ref
           .read(ledgerProvider.notifier)
@@ -722,7 +723,11 @@ class _LoanFormState extends ConsumerState<LoanForm> {
         context,
         existingLoan == null ? 'Loan created.' : 'Loan saved.',
       );
-      context.go('/loans/${loan.id}');
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/loans');
+      }
     } catch (error) {
       if (!mounted) return;
       _showRouteMessage(context, error.toString());
@@ -812,9 +817,13 @@ class LoanDetailView extends ConsumerWidget {
                       final remaining = balance.amountMinor.abs();
                       final paid = repaymentHistory
                           .where((r) => r.status != 'void')
-                          .fold<int>(0, (sum, r) => sum + r.amount.amountMinor.abs());
+                          .fold<int>(
+                            0,
+                            (sum, r) => sum + r.amount.amountMinor.abs(),
+                          );
                       final progress = principal > 0
-                          ? (math.max(0, principal - remaining) / principal).clamp(0.0, 1.0)
+                          ? (math.max(0, principal - remaining) / principal)
+                                .clamp(0.0, 1.0)
                           : 0.0;
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1016,7 +1025,11 @@ class LoanDetailView extends ConsumerWidget {
     await ref.read(ledgerProvider.notifier).deleteAccount(loan.id);
     if (!context.mounted) return;
     _showRouteMessage(context, 'Loan archived.');
-    context.go('/loans');
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/loans');
+    }
   }
 }
 
@@ -1201,9 +1214,13 @@ class _LoanCompactCard extends StatelessWidget {
                     final remaining = balance.amountMinor.abs();
                     final paid = repayments
                         .where((r) => r.status != 'void')
-                        .fold<int>(0, (sum, r) => sum + r.amount.amountMinor.abs());
+                        .fold<int>(
+                          0,
+                          (sum, r) => sum + r.amount.amountMinor.abs(),
+                        );
                     final progress = principal > 0
-                        ? (math.max(0, principal - remaining) / principal).clamp(0.0, 1.0)
+                        ? (math.max(0, principal - remaining) / principal)
+                              .clamp(0.0, 1.0)
                         : 0.0;
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1825,7 +1842,6 @@ _LoanProjection _loanProjection(LedgerState state, Account loan) {
     estimatedInterestMinor: forecast.totalInterestMinor,
   );
 }
-
 
 ({int? monthsRemaining, int totalInterestMinor, int remainingMinor})
 _simulateLoanForecast({

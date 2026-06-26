@@ -841,7 +841,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _signOut(WidgetRef ref) async {
     await ref.read(authControllerProvider.notifier).signOut();
     if (!mounted) return;
-    context.push('/login');
+    context.go('/login');
   }
 
   Future<void> _resetLedger(WidgetRef ref) async {

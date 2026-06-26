@@ -40,7 +40,13 @@ class _TransactionDetailScreenState
           body:
               'The selected transaction is not available in your wallet data.',
           actionLabel: 'Back home',
-          onAction: () => context.go('/'),
+          onAction: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/');
+            }
+          },
         ),
       );
     }
@@ -445,7 +451,11 @@ class _TransactionDetailScreenState
           behavior: SnackBarBehavior.floating,
         ),
       );
-    context.go('/');
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/');
+    }
   }
 }
 
