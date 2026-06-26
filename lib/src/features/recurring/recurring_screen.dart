@@ -1523,8 +1523,8 @@ class RecurringDetailView extends ConsumerWidget {
     var nextDate = transaction.occurredAt;
     final notifier = ref.read(ledgerProvider.notifier);
 
-    // Advance the date until it's tomorrow or later
-    while (!nextDate.isAfter(today)) {
+    // Advance the date until it is today or later
+    while (nextDate.isBefore(today)) {
       nextDate = advanceTransactionRecurrence(nextDate, transaction);
     }
 

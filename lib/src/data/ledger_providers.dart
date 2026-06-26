@@ -718,7 +718,23 @@ class LedgerController extends StateNotifier<LedgerState> {
     } else {
       accounts[index] = account;
     }
-    await _commit(state.copyWith(accounts: accounts));
+
+    // If the account is newly archived, pause any active scheduled transactions connected to it
+    List<TransactionRecord> transactions = state.transactions;
+    if (isArchived && existing?.isArchived != true) {
+      transactions = state.transactions.map((transaction) {
+        if ((transaction.accountId == account.id ||
+                transaction.counterAccountId == account.id) &&
+            transaction.status == 'scheduled') {
+          return transaction.copyWith(status: 'paused');
+        }
+        return transaction;
+      }).toList();
+    }
+
+    await _commit(
+      state.copyWith(accounts: accounts, transactions: transactions),
+    );
     return account;
   }
 
