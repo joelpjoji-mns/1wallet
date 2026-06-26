@@ -1546,6 +1546,7 @@ TransactionRecord? _existingLoanEmi(LedgerState state, String? loanId) {
       scheduledTransactions(state)
           .where(
             (transaction) =>
+                transaction.status != 'paused' &&
                 transaction.type == 'loan_repayment' &&
                 transaction.counterAccountId == loanId,
           )
