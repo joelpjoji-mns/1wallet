@@ -873,6 +873,9 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       }
     }
 
+    if (_type == 'loan_repayment' && _categoryId == null) {
+      _categoryId = 'cat-emi';
+    }
     final selectedCategory = categoryById(state, _categoryId);
     if (_type != 'transfer' && selectedCategory == null) {
       _showMessage('Choose a category.');
