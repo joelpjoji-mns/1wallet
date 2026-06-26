@@ -30,7 +30,8 @@ DateTime advanceRecurrenceCursor({
   if (interval < 1) interval = 1;
 
   if (freq == 'daily') {
-    return current.add(Duration(days: interval));
+    return DateTime(current.year, current.month, current.day + interval,
+        current.hour, current.minute, current.second);
   }
 
   if (freq == 'weekly') {
@@ -41,7 +42,9 @@ DateTime advanceRecurrenceCursor({
       // Look for the next day in the SAME week
       for (final day in sortedDays) {
         if (day > currentWeekday) {
-          return current.add(Duration(days: day - currentWeekday));
+          final diff = day - currentWeekday;
+          return DateTime(current.year, current.month, current.day + diff,
+              current.hour, current.minute, current.second);
         }
       }
 
@@ -51,9 +54,12 @@ DateTime advanceRecurrenceCursor({
 
       // The first selected day in that target week
       final targetDay = sortedDays.first;
-      return current.add(Duration(days: jumpToIntervalWeek + (targetDay - 1)));
+      final diff = jumpToIntervalWeek + (targetDay - 1);
+      return DateTime(current.year, current.month, current.day + diff,
+          current.hour, current.minute, current.second);
     } else {
-      return current.add(Duration(days: 7 * interval));
+      return DateTime(current.year, current.month, current.day + (7 * interval),
+          current.hour, current.minute, current.second);
     }
   }
 
