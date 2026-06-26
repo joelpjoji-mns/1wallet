@@ -58,51 +58,53 @@ class LoansScreen extends ConsumerWidget {
       ],
       child: Column(
         children: [
-          SectionCard(
-            title: 'Loan control center',
-            subtitle: 'Outstanding, next EMI, forecast and payoff pressure.',
-            child: Row(
-              children: [
-                Expanded(
-                  child: MetricTile(
-                    label: mode == 'past' ? 'Past loans' : 'Loans',
-                    value: '${listedLoans.length}',
-                    icon: Icons.account_balance_outlined,
-                    compact: true,
-                    tone: mode == 'past'
-                        ? MetricTone.standard
-                        : MetricTone.warning,
+          if (mode != 'detail' && mode != 'edit' && mode != 'new') ...[
+            SectionCard(
+              title: 'Loan control center',
+              subtitle: 'Outstanding, next EMI, forecast and payoff pressure.',
+              child: Row(
+                children: [
+                  Expanded(
+                    child: MetricTile(
+                      label: mode == 'past' ? 'Past loans' : 'Loans',
+                      value: '${listedLoans.length}',
+                      icon: Icons.account_balance_outlined,
+                      compact: true,
+                      tone: mode == 'past'
+                          ? MetricTone.standard
+                          : MetricTone.warning,
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: MetricTile(
-                    label: mode == 'past' ? 'Archived' : 'Next EMI',
-                    value: mode == 'past'
-                        ? '${pastLoans.length}'
-                        : formatMoney(
-                            convertMoneyForDisplay(
-                              state,
-                              Money(
-                                amountMinor: emi,
-                                currency: state.preferences.baseCurrency,
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: MetricTile(
+                      label: mode == 'past' ? 'Archived' : 'Next EMI',
+                      value: mode == 'past'
+                          ? '${pastLoans.length}'
+                          : formatMoney(
+                              convertMoneyForDisplay(
+                                state,
+                                Money(
+                                  amountMinor: emi,
+                                  currency: state.preferences.baseCurrency,
+                                ),
                               ),
+                              state.preferences.locale,
                             ),
-                            state.preferences.locale,
-                          ),
-                    icon: mode == 'past'
-                        ? Icons.archive_outlined
-                        : Icons.event_repeat_outlined,
-                    compact: true,
-                    tone: mode == 'past'
-                        ? MetricTone.warning
-                        : MetricTone.danger,
+                      icon: mode == 'past'
+                          ? Icons.archive_outlined
+                          : Icons.event_repeat_outlined,
+                      compact: true,
+                      tone: mode == 'past'
+                          ? MetricTone.warning
+                          : MetricTone.danger,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const Gap(AppSpacing.lg),
+            const Gap(AppSpacing.lg),
+          ],
           if (mode == 'new' || mode == 'edit')
             LoanForm(accountId: accountId)
           else if (mode == 'detail')
