@@ -5,6 +5,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/ledger_models.dart';
 import '../design/tokens.dart';
 import '../features/notifications/notification_engine.dart';
+import '../ledger/ledger_selectors.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
+import 'package:flutter_timezone/flutter_timezone.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
@@ -31,6 +35,14 @@ class NotificationService {
     );
 
     await _notificationsPlugin.initialize(settings: initSettings);
+
+    tz.initializeTimeZones();
+    try {
+      final TimezoneInfo timeZoneInfo = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timeZoneInfo.identifier));
+    } catch (_) {
+      // Fallback
+    }
 
     _initialized = true;
   }
@@ -61,6 +73,78 @@ class NotificationService {
       title: 'Update Available',
       body: 'Version $version is ready to install',
       notificationDetails: notificationDetails,
+    );
+  }
+
+  static Future<void> syncScheduledNotifications(LedgerState state) async {
+    if (!_initialized) return;
+
+    // Clear old schedules
+    await _notificationsPlugin.cancelAll();
+
+    final scheduled = scheduledTransactions(state).where((t) => t.status != 'paused').toList();
+    
+    int idCounter = 1000;
+    final now = DateTime.now();
+
+    for (final transaction in scheduled) {
+      final targetDate = transaction.occurredAt;
+      
+      // Calculate 10 AM on the day
+      var dayOf = DateTime(targetDate.year, targetDate.month, targetDate.day, 10, 0);
+      var dayBefore = dayOf.subtract(const Duration(days: 1));
+
+      if (dayBefore.isAfter(now)) {
+        await _scheduleTimezoned(
+          id: idCounter++,
+          title: 'Upcoming: ${transaction.notes ?? transactionTypeLabel(transaction.type)}',
+          body: '${formatMoney(transaction.amount, state.preferences.locale)} is due tomorrow.',
+          scheduledDate: dayBefore,
+          route: '/recurring/${transaction.id}',
+        );
+      }
+
+      if (dayOf.isAfter(now)) {
+        await _scheduleTimezoned(
+          id: idCounter++,
+          title: 'Due Today: ${transaction.notes ?? transactionTypeLabel(transaction.type)}',
+          body: '${formatMoney(transaction.amount, state.preferences.locale)} is due today.',
+          scheduledDate: dayOf,
+          route: '/recurring/${transaction.id}',
+        );
+      }
+    }
+  }
+
+  static Future<void> _scheduleTimezoned({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledDate,
+    required String route,
+  }) async {
+    await requestPermissions();
+
+    final androidDetails = AndroidNotificationDetails(
+      'scheduled_alerts',
+      'Scheduled Alerts',
+      channelDescription: 'Notifications for upcoming payments',
+      importance: Importance.high,
+      priority: Priority.high,
+      color: await _notificationAccentColor(),
+    );
+    final notificationDetails = NotificationDetails(android: androidDetails);
+
+    final tzDate = tz.TZDateTime.from(scheduledDate, tz.local);
+
+    await _notificationsPlugin.zonedSchedule(
+      id: id,
+      title: title,
+      body: body,
+      scheduledDate: tzDate,
+      notificationDetails: notificationDetails,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      payload: route,
     );
   }
 
