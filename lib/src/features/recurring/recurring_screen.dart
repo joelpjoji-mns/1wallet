@@ -705,7 +705,9 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                      inputFormatters: [ThousandsSeparatorInputFormatter()],
+                      inputFormatters: [
+                        ThousandsSeparatorInputFormatter(state.preferences.locale)
+                      ],
                       decoration: const InputDecoration(
                         labelText: 'Amount',
                         prefixIcon: Icon(Icons.payments_outlined),

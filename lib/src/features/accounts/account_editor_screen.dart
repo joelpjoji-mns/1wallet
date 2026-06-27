@@ -187,7 +187,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                                     decimal: true,
                                   ),
                               inputFormatters: [
-                                ThousandsSeparatorInputFormatter(),
+                                ThousandsSeparatorInputFormatter(state.preferences.locale),
                               ],
                               decoration: const InputDecoration(
                                 labelText: 'Credit Limit',

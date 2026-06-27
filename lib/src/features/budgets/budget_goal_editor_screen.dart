@@ -90,7 +90,9 @@ class _BudgetGoalEditorScreenState
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  inputFormatters: [ThousandsSeparatorInputFormatter()],
+                  inputFormatters: [
+                    ThousandsSeparatorInputFormatter(state.preferences.locale)
+                  ],
                   decoration: const InputDecoration(
                     labelText: 'Target amount',
                     prefixIcon: Icon(Icons.payments_outlined),

@@ -268,7 +268,9 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                      inputFormatters: [ThousandsSeparatorInputFormatter()],
+                      inputFormatters: [
+                        ThousandsSeparatorInputFormatter(state.preferences.locale)
+                      ],
                       decoration: const InputDecoration(
                         labelText: 'Original Principal',
                         prefixIcon: Icon(Icons.payments_outlined),
@@ -282,7 +284,9 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                      inputFormatters: [ThousandsSeparatorInputFormatter()],
+                      inputFormatters: [
+                        ThousandsSeparatorInputFormatter(state.preferences.locale)
+                      ],
                       decoration: const InputDecoration(
                         labelText: 'Current Balance',
                         prefixIcon: Icon(Icons.account_balance_wallet_outlined),
@@ -300,7 +304,9 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                      inputFormatters: [ThousandsSeparatorInputFormatter()],
+                      inputFormatters: [
+                        ThousandsSeparatorInputFormatter(state.preferences.locale)
+                      ],
                       decoration: const InputDecoration(
                         labelText: 'Repayment amount',
                         prefixIcon: Icon(Icons.event_repeat_outlined),
@@ -314,7 +320,9 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                      inputFormatters: [ThousandsSeparatorInputFormatter()],
+                      inputFormatters: [
+                        ThousandsSeparatorInputFormatter(state.preferences.locale)
+                      ],
                       decoration: const InputDecoration(
                         labelText: 'Rate %',
                         prefixIcon: Icon(Icons.percent_rounded),
@@ -2015,6 +2023,9 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               TextFormField(
                 controller: _emergencyController,
                 keyboardType: TextInputType.number,
+                inputFormatters: [
+                  ThousandsSeparatorInputFormatter(widget.state.preferences.locale)
+                ],
                 decoration: InputDecoration(
                   labelText: 'Emergency Cash to keep',
                   prefixText: currencySymbol,
