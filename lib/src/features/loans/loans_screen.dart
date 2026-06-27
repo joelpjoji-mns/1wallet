@@ -1295,6 +1295,420 @@ class _RoundTileIcon extends StatelessWidget {
   }
 }
 
+class DynamicForecastLineChart extends StatefulWidget {
+  final List<FlSpot> spots;
+  final double chartWidth;
+  final Color lineColor;
+  final List<ForecastDataPoint> balanceCurve;
+
+  const DynamicForecastLineChart({
+    super.key,
+    required this.spots,
+    required this.chartWidth,
+    required this.lineColor,
+    required this.balanceCurve,
+  });
+
+  @override
+  State<DynamicForecastLineChart> createState() => _DynamicForecastLineChartState();
+}
+
+class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
+  late ScrollController _scrollController;
+  double _currentMinY = 0;
+  double _currentMaxY = 100;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
+  }
+
+  @override
+  void didUpdateWidget(DynamicForecastLineChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.spots != widget.spots || oldWidget.chartWidth != widget.chartWidth) {
+       WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
+    }
+  }
+
+  void _onScroll() {
+    if (!mounted || widget.spots.isEmpty) return;
+    if (!_scrollController.hasClients) return;
+    
+    final viewportWidth = _scrollController.position.viewportDimension;
+    if (viewportWidth == 0) return;
+
+    final offset = math.max(0.0, _scrollController.offset);
+    final totalWidth = widget.chartWidth;
+    
+    final startRatio = offset / totalWidth;
+    final endRatio = (offset + viewportWidth) / totalWidth;
+    
+    final maxXVal = widget.spots.last.x;
+    final startX = startRatio * maxXVal;
+    final endX = endRatio * maxXVal;
+    
+    double minY = double.infinity;
+    double maxY = double.negativeInfinity;
+    
+    for (final spot in widget.spots) {
+      if (spot.x >= startX && spot.x <= endX) {
+        if (spot.y < minY) minY = spot.y;
+        if (spot.y > maxY) maxY = spot.y;
+      }
+    }
+    
+    if (minY == double.infinity) {
+      minY = 0;
+      maxY = 100;
+    }
+    
+    if (minY == maxY) {
+      minY -= 50;
+      maxY += 50;
+    }
+    
+    final range = maxY - minY;
+    minY -= range * 0.1;
+    maxY += range * 0.1;
+    
+    if ((_currentMinY - minY).abs() > 0.01 || (_currentMaxY - maxY).abs() > 0.01) {
+      setState(() {
+        _currentMinY = minY;
+        _currentMaxY = maxY;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.spots.isEmpty) return const SizedBox.shrink();
+    
+    double yInterval = ((_currentMaxY - _currentMinY) / 5).roundToDouble();
+    if (yInterval < 1) yInterval = 1;
+
+    return Row(
+      children: [
+        SizedBox(
+          width: 50,
+          child: LineChart(
+            LineChartData(
+              minY: _currentMinY,
+              maxY: _currentMaxY,
+              minX: 0,
+              maxX: 1,
+              lineBarsData: [
+                LineChartBarData(
+                  spots: const [FlSpot(0, 0)],
+                  color: Colors.transparent,
+                  dotData: const FlDotData(show: false),
+                ),
+              ],
+              titlesData: FlTitlesData(
+                bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 50,
+                    interval: yInterval,
+                    getTitlesWidget: (value, meta) {
+                       return Padding(
+                         padding: const EdgeInsets.only(right: 8.0),
+                         child: Text(
+                           '${(value / 1000).toStringAsFixed(0)}k', 
+                           textAlign: TextAlign.right,
+                           style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+                         ),
+                       );
+                    },
+                  ),
+                ),
+                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              ),
+              gridData: const FlGridData(show: false),
+              borderData: FlBorderData(show: false),
+            ),
+          ),
+        ),
+        Expanded(
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (_) {
+              _onScroll();
+              return false;
+            },
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: widget.chartWidth,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, right: 16.0),
+                  child: LineChart(
+                    LineChartData(
+                      minY: _currentMinY,
+                      maxY: _currentMaxY,
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: widget.spots,
+                          isCurved: true,
+                          color: widget.lineColor,
+                          barWidth: 3,
+                          dotData: const FlDotData(show: false),
+                        ),
+                      ],
+                      titlesData: FlTitlesData(
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 30,
+                            interval: 30,
+                            getTitlesWidget: (value, meta) {
+                              if (widget.balanceCurve.isNotEmpty) {
+                                final date = widget.balanceCurve.first.date.add(Duration(days: value.toInt()));
+                                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                final monthStr = '${months[date.month - 1]} ${date.year % 100}';
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(monthStr, style: const TextStyle(fontSize: 10)),
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ),
+                        leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      ),
+                      gridData: FlGridData(
+                        show: true, 
+                        drawVerticalLine: false,
+                        horizontalInterval: yInterval,
+                      ),
+                      borderData: FlBorderData(show: false),
+                    ),
+                    duration: Duration.zero,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class DynamicForecastBarChart extends StatefulWidget {
+  final List<BarChartGroupData> barGroups;
+  final double chartWidth;
+  final List<DateTime> monthKeys;
+
+  const DynamicForecastBarChart({
+    super.key,
+    required this.barGroups,
+    required this.chartWidth,
+    required this.monthKeys,
+  });
+
+  @override
+  State<DynamicForecastBarChart> createState() => _DynamicForecastBarChartState();
+}
+
+class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
+  late ScrollController _scrollController;
+  double _currentMinY = 0;
+  double _currentMaxY = 100;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
+  }
+
+  @override
+  void didUpdateWidget(DynamicForecastBarChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.barGroups != widget.barGroups || oldWidget.chartWidth != widget.chartWidth) {
+       WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
+    }
+  }
+
+  void _onScroll() {
+    if (!mounted || widget.barGroups.isEmpty) return;
+    if (!_scrollController.hasClients) return;
+    
+    final viewportWidth = _scrollController.position.viewportDimension;
+    if (viewportWidth == 0) return;
+
+    final offset = math.max(0.0, _scrollController.offset);
+    final totalWidth = widget.chartWidth;
+    
+    final startRatio = offset / totalWidth;
+    final endRatio = (offset + viewportWidth) / totalWidth;
+    
+    final maxXVal = widget.barGroups.length - 1.0;
+    final startX = startRatio * maxXVal;
+    final endX = endRatio * maxXVal;
+    
+    double minY = double.infinity;
+    double maxY = double.negativeInfinity;
+    
+    for (int i = 0; i < widget.barGroups.length; i++) {
+      if (i >= startX - 1 && i <= endX + 1) {
+        final group = widget.barGroups[i];
+        final y = group.barRods.first.toY;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+    
+    if (minY == double.infinity) {
+      minY = 0;
+      maxY = 100;
+    }
+    
+    if (minY == maxY) {
+      minY -= 50;
+      maxY += 50;
+    }
+    
+    final range = maxY - minY;
+    minY -= range * 0.1;
+    maxY += range * 0.1;
+    
+    if ((_currentMinY - minY).abs() > 0.01 || (_currentMaxY - maxY).abs() > 0.01) {
+      setState(() {
+        _currentMinY = minY;
+        _currentMaxY = maxY;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.barGroups.isEmpty) return const SizedBox.shrink();
+    
+    double yInterval = ((_currentMaxY - _currentMinY) / 5).roundToDouble();
+    if (yInterval < 1) yInterval = 1;
+
+    return Row(
+      children: [
+        SizedBox(
+          width: 50,
+          child: BarChart(
+            BarChartData(
+              minY: _currentMinY,
+              maxY: _currentMaxY,
+              barGroups: [
+                BarChartGroupData(x: 0, barRods: [BarChartRodData(toY: 0, color: Colors.transparent)])
+              ],
+              titlesData: FlTitlesData(
+                bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 50,
+                    interval: yInterval,
+                    getTitlesWidget: (value, meta) {
+                       return Padding(
+                         padding: const EdgeInsets.only(right: 8.0),
+                         child: Text(
+                           '${(value / 1000).toStringAsFixed(0)}k', 
+                           textAlign: TextAlign.right,
+                           style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+                         ),
+                       );
+                    },
+                  ),
+                ),
+                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              ),
+              gridData: const FlGridData(show: false),
+              borderData: FlBorderData(show: false),
+            ),
+          ),
+        ),
+        Expanded(
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (_) {
+              _onScroll();
+              return false;
+            },
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: widget.chartWidth,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, right: 16.0),
+                  child: BarChart(
+                    BarChartData(
+                      minY: _currentMinY,
+                      maxY: _currentMaxY,
+                      barGroups: widget.barGroups,
+                      titlesData: FlTitlesData(
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 36,
+                            getTitlesWidget: (value, meta) {
+                              final idx = value.toInt();
+                              if (idx >= 0 && idx < widget.monthKeys.length) {
+                                final date = widget.monthKeys[idx];
+                                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                final monthStr = '${months[date.month - 1]}\n${date.year % 100}';
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(monthStr, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10)),
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ),
+                        leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      ),
+                      gridData: FlGridData(
+                        show: true, 
+                        drawVerticalLine: false,
+                        horizontalInterval: yInterval,
+                      ),
+                      borderData: FlBorderData(show: false),
+                    ),
+                    duration: Duration.zero,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class LoanForecastView extends ConsumerStatefulWidget {
   const LoanForecastView({required this.state, required this.loans, super.key});
 
@@ -1307,14 +1721,13 @@ class LoanForecastView extends ConsumerStatefulWidget {
 
 class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
   final _emergencyController = TextEditingController(text: '1000');
-  double _extraAllocationPercent = 0.5; // 50% extra to loans
+  double _extraAllocationPercent = 0.5;
   late List<Account> _priorityLoans;
 
   @override
   void initState() {
     super.initState();
     _priorityLoans = List.from(widget.loans);
-    // Sort by avalanche by default initially
     _priorityLoans.sort((a, b) {
       final aRate = a.loanDetails?.interestRatePercent ?? 0;
       final bRate = b.loanDetails?.interestRatePercent ?? 0;
@@ -1325,7 +1738,6 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
   @override
   void didUpdateWidget(LoanForecastView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Sync priority list if loans change
     final currentIds = _priorityLoans.map((l) => l.id).toSet();
     final newLoans = widget.loans.where((l) => !currentIds.contains(l.id));
     _priorityLoans.removeWhere((l) => !widget.loans.any((wl) => wl.id == l.id));
@@ -1361,49 +1773,34 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
     final locale = widget.state.preferences.locale;
     final scheme = Theme.of(context).colorScheme;
 
-    // Build line chart data
     final spots = <FlSpot>[];
-    double minY = double.infinity;
-    double maxY = double.negativeInfinity;
     final startMillis = result.balanceCurve.isNotEmpty ? result.balanceCurve.first.date.millisecondsSinceEpoch.toDouble() : 0.0;
     
     for (int i = 0; i < result.balanceCurve.length; i++) {
       final pt = result.balanceCurve[i];
-      final x = (pt.date.millisecondsSinceEpoch - startMillis) / 86400000.0; // days
-      final y = pt.netBalanceMinor / 100.0; // assuming minor is 100 for graph display
+      final x = (pt.date.millisecondsSinceEpoch - startMillis) / 86400000.0;
+      final y = pt.netBalanceMinor / 100.0;
       spots.add(FlSpot(x, y));
-      if (y < minY) minY = y;
-      if (y > maxY) maxY = y;
     }
     
     if (spots.isEmpty) {
       spots.add(const FlSpot(0, 0));
-      minY = 0;
-      maxY = 100;
     }
     
     final lineChartWidth = math.max(MediaQuery.of(context).size.width - 64, spots.length * 1.5);
 
-    // Calculate Monthly breakdown
     final monthlyBalances = <DateTime, double>{};
     if (result.balanceCurve.isNotEmpty) {
       for (final pt in result.balanceCurve) {
-        // Group by month
         final monthKey = DateTime(pt.date.year, pt.date.month);
-        monthlyBalances[monthKey] = pt.netBalanceMinor / 100.0; // stores end-of-month implicitly since it's iterating chronologically
+        monthlyBalances[monthKey] = pt.netBalanceMinor / 100.0;
       }
     }
     
     final barGroups = <BarChartGroupData>[];
-    double maxBarY = double.negativeInfinity;
-    double minBarY = 0;
-    
     int monthIndex = 0;
     for (final entry in monthlyBalances.entries) {
       final y = entry.value;
-      if (y > maxBarY) maxBarY = y;
-      if (y < minBarY) minBarY = y;
-      
       barGroups.add(
         BarChartGroupData(
           x: monthIndex,
@@ -1492,142 +1889,36 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
         ),
         const Gap(AppSpacing.lg),
         
-        // The Chart
         SectionCard(
           title: 'Projected Net Balance',
           child: SizedBox(
-            height: 250,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: lineChartWidth,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: AppSpacing.md, right: AppSpacing.lg, bottom: AppSpacing.md, left: AppSpacing.sm),
-                  child: LineChart(
-                    LineChartData(
-                      minY: minY - (maxY - minY) * 0.1,
-                      maxY: maxY + (maxY - minY) * 0.1,
-                      lineBarsData: [
-                        LineChartBarData(
-                          spots: spots,
-                          isCurved: true,
-                          color: scheme.primary,
-                          barWidth: 3,
-                          dotData: const FlDotData(show: false),
-                        ),
-                      ],
-                      titlesData: FlTitlesData(
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 30,
-                            interval: 30, // show a tick roughly every month
-                            getTitlesWidget: (value, meta) {
-                              if (result.balanceCurve.isNotEmpty) {
-                                final date = result.balanceCurve.first.date.add(Duration(days: value.toInt()));
-                                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                                final monthStr = '${months[date.month - 1]} ${date.year % 100}';
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(monthStr, style: const TextStyle(fontSize: 10)),
-                                );
-                              }
-                              return const SizedBox.shrink();
-                            },
-                          ),
-                        ),
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 40,
-                            getTitlesWidget: (value, meta) {
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8.0),
-                                child: Text('${(value / 1000).toStringAsFixed(0)}k', style: const TextStyle(fontSize: 10)),
-                              );
-                            },
-                          ),
-                        ),
-                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      ),
-                      gridData: const FlGridData(show: true, drawVerticalLine: false),
-                      borderData: FlBorderData(show: false),
-                    ),
-                  ),
-                ),
-              ),
+            height: 350,
+            child: DynamicForecastLineChart(
+              spots: spots,
+              chartWidth: lineChartWidth,
+              lineColor: scheme.primary,
+              balanceCurve: result.balanceCurve,
             ),
           ),
         ),
         
         const Gap(AppSpacing.lg),
         
-        // Monthly Breakdown Chart
         SectionCard(
           title: 'Monthly Calendar View',
           subtitle: 'End-of-month projected net balance over time.',
           child: SizedBox(
-            height: 250,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: barChartWidth,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: AppSpacing.md, right: AppSpacing.lg, bottom: AppSpacing.md, left: AppSpacing.sm),
-                  child: BarChart(
-                    BarChartData(
-                      minY: minBarY - (maxBarY - minBarY) * 0.1,
-                      maxY: maxBarY + (maxBarY - minBarY) * 0.1,
-                      barGroups: barGroups,
-                      titlesData: FlTitlesData(
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 36,
-                            getTitlesWidget: (value, meta) {
-                              final idx = value.toInt();
-                              if (idx >= 0 && idx < monthKeys.length) {
-                                final date = monthKeys[idx];
-                                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                                final monthStr = '${months[date.month - 1]}\n${date.year % 100}';
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(monthStr, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10)),
-                                );
-                              }
-                              return const SizedBox.shrink();
-                            },
-                          ),
-                        ),
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 40,
-                            getTitlesWidget: (value, meta) {
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8.0),
-                                child: Text('${(value / 1000).toStringAsFixed(0)}k', style: const TextStyle(fontSize: 10)),
-                              );
-                            },
-                          ),
-                        ),
-                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      ),
-                      gridData: const FlGridData(show: true, drawVerticalLine: false),
-                      borderData: FlBorderData(show: false),
-                    ),
-                  ),
-                ),
-              ),
+            height: 350,
+            child: DynamicForecastBarChart(
+              barGroups: barGroups,
+              chartWidth: barChartWidth,
+              monthKeys: monthKeys,
             ),
           ),
         ),
         
         const Gap(AppSpacing.lg),
         
-        // Payoff Events
         if (result.payoffEvents.isNotEmpty)
           SectionCard(
             title: 'Payoff Timeline',
@@ -1651,7 +1942,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
           child: ReorderableListView(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            onReorder: (oldIndex, newIndex) {
+            onReorderItem: (oldIndex, newIndex) {
               setState(() {
                 if (oldIndex < newIndex) {
                   newIndex -= 1;
