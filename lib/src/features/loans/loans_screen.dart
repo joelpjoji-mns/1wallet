@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -1300,6 +1301,7 @@ class DynamicForecastLineChart extends StatefulWidget {
   final double chartWidth;
   final Color lineColor;
   final List<ForecastDataPoint> balanceCurve;
+  final String locale;
 
   const DynamicForecastLineChart({
     super.key,
@@ -1307,6 +1309,7 @@ class DynamicForecastLineChart extends StatefulWidget {
     required this.chartWidth,
     required this.lineColor,
     required this.balanceCurve,
+    required this.locale,
   });
 
   @override
@@ -1317,6 +1320,9 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
   late ScrollController _scrollController;
   double _currentMinY = 0;
   double _currentMaxY = 100;
+  
+  double _zoomScale = 1.0;
+  double _baseZoomScale = 1.0;
 
   @override
   void initState() {
@@ -1342,7 +1348,7 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
     if (viewportWidth == 0) return;
 
     final offset = math.max(0.0, _scrollController.offset);
-    final totalWidth = widget.chartWidth;
+    final totalWidth = widget.chartWidth * _zoomScale;
     
     final startRatio = offset / totalWidth;
     final endRatio = (offset + viewportWidth) / totalWidth;
@@ -1396,6 +1402,8 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
     double yInterval = ((_currentMaxY - _currentMinY) / 5).roundToDouble();
     if (yInterval < 1) yInterval = 1;
 
+    final numberFormat = NumberFormat.compact(locale: widget.locale);
+
     return Row(
       children: [
         SizedBox(
@@ -1424,7 +1432,7 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                        return Padding(
                          padding: const EdgeInsets.only(right: 8.0),
                          child: Text(
-                           '${(value / 1000).toStringAsFixed(0)}k', 
+                           numberFormat.format(value), 
                            textAlign: TextAlign.right,
                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
                          ),
@@ -1441,63 +1449,74 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
           ),
         ),
         Expanded(
-          child: NotificationListener<ScrollNotification>(
-            onNotification: (_) {
-              _onScroll();
-              return false;
+          child: GestureDetector(
+            onScaleStart: (details) {
+              _baseZoomScale = _zoomScale;
             },
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: widget.chartWidth,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, right: 16.0),
-                  child: LineChart(
-                    LineChartData(
-                      minY: _currentMinY,
-                      maxY: _currentMaxY,
-                      lineBarsData: [
-                        LineChartBarData(
-                          spots: widget.spots,
-                          isCurved: true,
-                          color: widget.lineColor,
-                          barWidth: 3,
-                          dotData: const FlDotData(show: false),
-                        ),
-                      ],
-                      titlesData: FlTitlesData(
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 30,
-                            interval: 30,
-                            getTitlesWidget: (value, meta) {
-                              if (widget.balanceCurve.isNotEmpty) {
-                                final date = widget.balanceCurve.first.date.add(Duration(days: value.toInt()));
-                                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                                final monthStr = '${months[date.month - 1]} ${date.year % 100}';
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(monthStr, style: const TextStyle(fontSize: 10)),
-                                );
-                              }
-                              return const SizedBox.shrink();
-                            },
+            onScaleUpdate: (details) {
+              setState(() {
+                _zoomScale = (_baseZoomScale * details.scale).clamp(1.0, 10.0);
+              });
+              _onScroll();
+            },
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (_) {
+                _onScroll();
+                return false;
+              },
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: widget.chartWidth * _zoomScale,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, right: 16.0),
+                    child: LineChart(
+                      LineChartData(
+                        minY: _currentMinY,
+                        maxY: _currentMaxY,
+                        lineBarsData: [
+                          LineChartBarData(
+                            spots: widget.spots,
+                            isCurved: true,
+                            color: widget.lineColor,
+                            barWidth: 3,
+                            dotData: const FlDotData(show: false),
                           ),
+                        ],
+                        titlesData: FlTitlesData(
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: 30,
+                              interval: 30,
+                              getTitlesWidget: (value, meta) {
+                                if (widget.balanceCurve.isNotEmpty) {
+                                  final date = widget.balanceCurve.first.date.add(Duration(days: value.toInt()));
+                                  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                  final monthStr = '${months[date.month - 1]} ${date.year % 100}';
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 8.0),
+                                    child: Text(monthStr, style: const TextStyle(fontSize: 10)),
+                                  );
+                                }
+                                return const SizedBox.shrink();
+                              },
+                            ),
+                          ),
+                          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                         ),
-                        leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        gridData: FlGridData(
+                          show: true, 
+                          drawVerticalLine: false,
+                          horizontalInterval: yInterval,
+                        ),
+                        borderData: FlBorderData(show: false),
                       ),
-                      gridData: FlGridData(
-                        show: true, 
-                        drawVerticalLine: false,
-                        horizontalInterval: yInterval,
-                      ),
-                      borderData: FlBorderData(show: false),
+                      duration: Duration.zero,
                     ),
-                    duration: Duration.zero,
                   ),
                 ),
               ),
@@ -1513,12 +1532,14 @@ class DynamicForecastBarChart extends StatefulWidget {
   final List<BarChartGroupData> barGroups;
   final double chartWidth;
   final List<DateTime> monthKeys;
+  final String locale;
 
   const DynamicForecastBarChart({
     super.key,
     required this.barGroups,
     required this.chartWidth,
     required this.monthKeys,
+    required this.locale,
   });
 
   @override
@@ -1529,6 +1550,9 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
   late ScrollController _scrollController;
   double _currentMinY = 0;
   double _currentMaxY = 100;
+  
+  double _zoomScale = 1.0;
+  double _baseZoomScale = 1.0;
 
   @override
   void initState() {
@@ -1554,7 +1578,7 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
     if (viewportWidth == 0) return;
 
     final offset = math.max(0.0, _scrollController.offset);
-    final totalWidth = widget.chartWidth;
+    final totalWidth = widget.chartWidth * _zoomScale;
     
     final startRatio = offset / totalWidth;
     final endRatio = (offset + viewportWidth) / totalWidth;
@@ -1610,6 +1634,8 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
     double yInterval = ((_currentMaxY - _currentMinY) / 5).roundToDouble();
     if (yInterval < 1) yInterval = 1;
 
+    final numberFormat = NumberFormat.compact(locale: widget.locale);
+
     return Row(
       children: [
         SizedBox(
@@ -1632,7 +1658,7 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
                        return Padding(
                          padding: const EdgeInsets.only(right: 8.0),
                          child: Text(
-                           '${(value / 1000).toStringAsFixed(0)}k', 
+                           numberFormat.format(value), 
                            textAlign: TextAlign.right,
                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
                          ),
@@ -1649,55 +1675,66 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
           ),
         ),
         Expanded(
-          child: NotificationListener<ScrollNotification>(
-            onNotification: (_) {
-              _onScroll();
-              return false;
+          child: GestureDetector(
+            onScaleStart: (details) {
+              _baseZoomScale = _zoomScale;
             },
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: widget.chartWidth,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, right: 16.0),
-                  child: BarChart(
-                    BarChartData(
-                      minY: _currentMinY,
-                      maxY: _currentMaxY,
-                      barGroups: widget.barGroups,
-                      titlesData: FlTitlesData(
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 36,
-                            getTitlesWidget: (value, meta) {
-                              final idx = value.toInt();
-                              if (idx >= 0 && idx < widget.monthKeys.length) {
-                                final date = widget.monthKeys[idx];
-                                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                                final monthStr = '${months[date.month - 1]}\n${date.year % 100}';
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(monthStr, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10)),
-                                );
-                              }
-                              return const SizedBox.shrink();
-                            },
+            onScaleUpdate: (details) {
+              setState(() {
+                _zoomScale = (_baseZoomScale * details.scale).clamp(1.0, 10.0);
+              });
+              _onScroll();
+            },
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (_) {
+                _onScroll();
+                return false;
+              },
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: widget.chartWidth * _zoomScale,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, right: 16.0),
+                    child: BarChart(
+                      BarChartData(
+                        minY: _currentMinY,
+                        maxY: _currentMaxY,
+                        barGroups: widget.barGroups,
+                        titlesData: FlTitlesData(
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: 36,
+                              getTitlesWidget: (value, meta) {
+                                final idx = value.toInt();
+                                if (idx >= 0 && idx < widget.monthKeys.length) {
+                                  final date = widget.monthKeys[idx];
+                                  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                  final monthStr = '${months[date.month - 1]}\n${date.year % 100}';
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 8.0),
+                                    child: Text(monthStr, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10)),
+                                  );
+                                }
+                                return const SizedBox.shrink();
+                              },
+                            ),
                           ),
+                          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                         ),
-                        leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        gridData: FlGridData(
+                          show: true, 
+                          drawVerticalLine: false,
+                          horizontalInterval: yInterval,
+                        ),
+                        borderData: FlBorderData(show: false),
                       ),
-                      gridData: FlGridData(
-                        show: true, 
-                        drawVerticalLine: false,
-                        horizontalInterval: yInterval,
-                      ),
-                      borderData: FlBorderData(show: false),
+                      duration: Duration.zero,
                     ),
-                    duration: Duration.zero,
                   ),
                 ),
               ),
@@ -1898,6 +1935,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               chartWidth: lineChartWidth,
               lineColor: scheme.primary,
               balanceCurve: result.balanceCurve,
+              locale: locale,
             ),
           ),
         ),
@@ -1913,6 +1951,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               barGroups: barGroups,
               chartWidth: barChartWidth,
               monthKeys: monthKeys,
+              locale: locale,
             ),
           ),
         ),
