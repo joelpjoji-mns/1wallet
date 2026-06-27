@@ -450,19 +450,9 @@ class AppMainDrawer extends ConsumerWidget {
                         '/goals/new',
                       ),
                       DrawerRowConfig.route(
-                        'Currencies',
-                        Icons.currency_exchange_outlined,
-                        '/currencies',
-                      ),
-                      DrawerRowConfig.route(
                         'Categories',
                         Icons.category_outlined,
                         '/categories',
-                      ),
-                      DrawerRowConfig.route(
-                        'Widgets',
-                        Icons.dashboard_customize_outlined,
-                        '/widgets',
                       ),
                     ],
                     selectedIndex: selectedIndex,
@@ -473,6 +463,16 @@ class AppMainDrawer extends ConsumerWidget {
                     icon: Icons.build_circle_outlined,
                     surfaceTint: scheme.primary,
                     rows: [
+                      DrawerRowConfig.route(
+                        'Currencies',
+                        Icons.currency_exchange_outlined,
+                        '/currencies',
+                      ),
+                      DrawerRowConfig.route(
+                        'Widgets',
+                        Icons.dashboard_customize_outlined,
+                        '/widgets',
+                      ),
                       DrawerRowConfig.route(
                         'Sync',
                         Icons.cloud_done_outlined,
@@ -495,12 +495,6 @@ class AppMainDrawer extends ConsumerWidget {
                         '/notifications',
                         badge: _countBadge(notificationCount),
                       ),
-                      DrawerRowConfig.route(
-                        'Updates',
-                        Icons.download_for_offline_outlined,
-                        '/updates',
-                        badge: updatesBadge,
-                      ),
                     ],
                     selectedIndex: selectedIndex,
                     onTabSelected: onTabSelected,
@@ -520,6 +514,18 @@ class AppMainDrawer extends ConsumerWidget {
                       ),
                       child: Column(
                         children: [
+                          DrawerRouteTile(
+                            config: DrawerRowConfig.route(
+                              'Updates',
+                              Icons.download_for_offline_outlined,
+                              '/updates',
+                              badge: updatesBadge,
+                            ),
+                            selectedIndex: selectedIndex,
+                            onTabSelected: onTabSelected,
+                            accentColor: scheme.primary,
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
                           DrawerRouteTile(
                             config: DrawerRowConfig.route(
                               'Settings',
