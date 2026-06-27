@@ -1361,7 +1361,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
     final locale = widget.state.preferences.locale;
     final scheme = Theme.of(context).colorScheme;
 
-    // Build chart data
+    // Build line chart data
     final spots = <FlSpot>[];
     double minY = double.infinity;
     double maxY = double.negativeInfinity;
@@ -1381,6 +1381,47 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
       minY = 0;
       maxY = 100;
     }
+    
+    final lineChartWidth = math.max(MediaQuery.of(context).size.width - 64, spots.length * 1.5);
+
+    // Calculate Monthly breakdown
+    final monthlyBalances = <DateTime, double>{};
+    if (result.balanceCurve.isNotEmpty) {
+      for (final pt in result.balanceCurve) {
+        // Group by month
+        final monthKey = DateTime(pt.date.year, pt.date.month);
+        monthlyBalances[monthKey] = pt.netBalanceMinor / 100.0; // stores end-of-month implicitly since it's iterating chronologically
+      }
+    }
+    
+    final barGroups = <BarChartGroupData>[];
+    double maxBarY = double.negativeInfinity;
+    double minBarY = 0;
+    
+    int monthIndex = 0;
+    for (final entry in monthlyBalances.entries) {
+      final y = entry.value;
+      if (y > maxBarY) maxBarY = y;
+      if (y < minBarY) minBarY = y;
+      
+      barGroups.add(
+        BarChartGroupData(
+          x: monthIndex,
+          barRods: [
+            BarChartRodData(
+              toY: y,
+              color: y >= 0 ? scheme.primary : scheme.error,
+              width: 16,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ],
+        ),
+      );
+      monthIndex++;
+    }
+    
+    final monthKeys = monthlyBalances.keys.toList();
+    final barChartWidth = math.max(MediaQuery.of(context).size.width - 64, monthKeys.length * 40.0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1456,53 +1497,129 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
           title: 'Projected Net Balance',
           child: SizedBox(
             height: 250,
-            child: LineChart(
-              LineChartData(
-                minY: minY - (maxY - minY) * 0.1,
-                maxY: maxY + (maxY - minY) * 0.1,
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: spots,
-                    isCurved: true,
-                    color: scheme.primary,
-                    barWidth: 3,
-                    dotData: const FlDotData(show: false),
-                  ),
-                ],
-                titlesData: FlTitlesData(
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 30,
-                      getTitlesWidget: (value, meta) {
-                        if (value % 365 == 0 && result.balanceCurve.isNotEmpty) {
-                          final yearOffset = (value / 365).floor();
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text('${result.balanceCurve.first.date.year + yearOffset}', style: const TextStyle(fontSize: 10)),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: lineChartWidth,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.md, right: AppSpacing.lg, bottom: AppSpacing.md, left: AppSpacing.sm),
+                  child: LineChart(
+                    LineChartData(
+                      minY: minY - (maxY - minY) * 0.1,
+                      maxY: maxY + (maxY - minY) * 0.1,
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: spots,
+                          isCurved: true,
+                          color: scheme.primary,
+                          barWidth: 3,
+                          dotData: const FlDotData(show: false),
+                        ),
+                      ],
+                      titlesData: FlTitlesData(
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 30,
+                            interval: 30, // show a tick roughly every month
+                            getTitlesWidget: (value, meta) {
+                              if (result.balanceCurve.isNotEmpty) {
+                                final date = result.balanceCurve.first.date.add(Duration(days: value.toInt()));
+                                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                final monthStr = '${months[date.month - 1]} ${date.year % 100}';
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(monthStr, style: const TextStyle(fontSize: 10)),
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 40,
+                            getTitlesWidget: (value, meta) {
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: Text('${(value / 1000).toStringAsFixed(0)}k', style: const TextStyle(fontSize: 10)),
+                              );
+                            },
+                          ),
+                        ),
+                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      ),
+                      gridData: const FlGridData(show: true, drawVerticalLine: false),
+                      borderData: FlBorderData(show: false),
                     ),
                   ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 40,
-                      getTitlesWidget: (value, meta) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: Text('${(value / 1000).toStringAsFixed(0)}k', style: const TextStyle(fontSize: 10)),
-                        );
-                      },
-                    ),
-                  ),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 ),
-                gridData: const FlGridData(show: true, drawVerticalLine: false),
-                borderData: FlBorderData(show: false),
+              ),
+            ),
+          ),
+        ),
+        
+        const Gap(AppSpacing.lg),
+        
+        // Monthly Breakdown Chart
+        SectionCard(
+          title: 'Monthly Calendar View',
+          subtitle: 'End-of-month projected net balance over time.',
+          child: SizedBox(
+            height: 250,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: barChartWidth,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.md, right: AppSpacing.lg, bottom: AppSpacing.md, left: AppSpacing.sm),
+                  child: BarChart(
+                    BarChartData(
+                      minY: minBarY - (maxBarY - minBarY) * 0.1,
+                      maxY: maxBarY + (maxBarY - minBarY) * 0.1,
+                      barGroups: barGroups,
+                      titlesData: FlTitlesData(
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 36,
+                            getTitlesWidget: (value, meta) {
+                              final idx = value.toInt();
+                              if (idx >= 0 && idx < monthKeys.length) {
+                                final date = monthKeys[idx];
+                                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                final monthStr = '${months[date.month - 1]}\n${date.year % 100}';
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(monthStr, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10)),
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 40,
+                            getTitlesWidget: (value, meta) {
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: Text('${(value / 1000).toStringAsFixed(0)}k', style: const TextStyle(fontSize: 10)),
+                              );
+                            },
+                          ),
+                        ),
+                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      ),
+                      gridData: const FlGridData(show: true, drawVerticalLine: false),
+                      borderData: FlBorderData(show: false),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
