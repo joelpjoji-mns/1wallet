@@ -1356,7 +1356,7 @@ class DynamicForecastLineChart extends StatefulWidget {
   final List<FlSpot> spots;
   final double chartWidth;
   final Color lineColor;
-  final List<ForecastDataPoint> balanceCurve;
+  final List<dynamic> balanceCurve;
   final String locale;
   final Map<double, String> payoffDots;
   final String currencySymbol;
@@ -1381,7 +1381,7 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
   double _currentMinY = 0;
   double _currentMaxY = 100;
   
-  double _zoomScale = 1.0;
+  double _zoomScale = 3.0; // Start a bit zoomed in
 
   @override
   void initState() {
@@ -1465,6 +1465,37 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
     }
   }
 
+  void _onSliderChange(double newZoom) {
+    if (!_scrollController.hasClients) return;
+    final oldZoom = _zoomScale;
+    final offset = _scrollController.offset;
+    final viewportWidth = _scrollController.position.viewportDimension;
+    
+    // Calculate ratio of the center of the viewport relative to the total content width
+    final totalWidthOld = widget.chartWidth * oldZoom;
+    final centerRatioOld = (offset + (viewportWidth / 2)) / totalWidthOld;
+    
+    setState(() {
+      _zoomScale = newZoom;
+    });
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      final totalWidthNew = widget.chartWidth * newZoom;
+      final newOffset = (centerRatioOld * totalWidthNew) - (viewportWidth / 2);
+      
+      _scrollController.jumpTo(newOffset.clamp(0.0, _scrollController.position.maxScrollExtent));
+      _onScroll();
+    });
+  }
+
+  double get _xInterval {
+    if (_zoomScale > 20) return 1; // 1 day
+    if (_zoomScale > 8) return 7; // 1 week
+    if (_zoomScale > 3) return 15; // 15 days
+    return 30; // 1 month
+  }
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -1546,6 +1577,78 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                             maxY: _currentMaxY,
                             minX: widget.spots.first.x,
                             maxX: widget.spots.last.x,
+                            lineTouchData: LineTouchData(
+                              enabled: true,
+                              touchTooltipData: LineTouchTooltipData(
+                                getTooltipColor: (spot) => Theme.of(context).colorScheme.surfaceContainerHigh,
+                                getTooltipItems: (touchedSpots) {
+                                  return touchedSpots.map((spot) {
+                                    final now = DateTime.now();
+                                    final today = DateTime(now.year, now.month, now.day);
+                                    final date = today.add(Duration(days: spot.x.toInt()));
+                                    final dateStr = DateFormat('dd MMM yyyy').format(date);
+                                    
+                                    final amt = NumberFormat.decimalPattern(widget.locale).format(spot.y);
+                                    final moneyStr = '${widget.currencySymbol}$amt';
+                                    
+                                    return LineTooltipItem(
+                                      '$moneyStr\n',
+                                      TextStyle(
+                                        color: Theme.of(context).colorScheme.primary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      children: [
+                                        TextSpan(
+                                          text: dateStr,
+                                          style: TextStyle(
+                                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.normal,
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  }).toList();
+                                },
+                              ),
+                            ),
+                            extraLinesData: ExtraLinesData(
+                              verticalLines: [
+                                VerticalLine(
+                                  x: 0,
+                                  color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                                  strokeWidth: 2,
+                                  dashArray: [5, 5],
+                                  label: VerticalLineLabel(
+                                    show: true,
+                                    alignment: Alignment.bottomRight,
+                                    padding: const EdgeInsets.only(bottom: 24, left: 4),
+                                    style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold),
+                                    labelResolver: (_) => "Today",
+                                  ),
+                                ),
+                                ...widget.payoffDots.keys.map((x) {
+                                    final now = DateTime.now();
+                                    final today = DateTime(now.year, now.month, now.day);
+                                    final date = today.add(Duration(days: x.toInt()));
+                                    final dateStr = DateFormat('dd MMM yy').format(date);
+                                    
+                                    return VerticalLine(
+                                      x: x,
+                                      color: Colors.green.withOpacity(0.5),
+                                      strokeWidth: 1,
+                                      dashArray: [3, 3],
+                                      label: VerticalLineLabel(
+                                        show: true,
+                                        alignment: Alignment.bottomRight,
+                                        padding: const EdgeInsets.only(bottom: 4, left: 4),
+                                        style: const TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold),
+                                        labelResolver: (_) => dateStr,
+                                      ),
+                                    );
+                                }),
+                              ],
+                            ),
                             lineBarsData: [
                               LineChartBarData(
                                 spots: widget.spots,
@@ -1570,16 +1673,21 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                                 sideTitles: SideTitles(
                                   showTitles: true,
                                   reservedSize: 30,
-                                  interval: 30,
+                                  interval: _xInterval,
                                   getTitlesWidget: (value, meta) {
                                     final now = DateTime.now();
                                     final today = DateTime(now.year, now.month, now.day);
                                     final date = today.add(Duration(days: value.toInt()));
-                                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                                    final monthStr = '${months[date.month - 1]} ${date.year % 100}';
+                                    
+                                    String dateStr;
+                                    if (_xInterval <= 7) {
+                                      dateStr = DateFormat('dd MMM').format(date);
+                                    } else {
+                                      dateStr = DateFormat('MMM yy').format(date);
+                                    }
                                     return Padding(
                                       padding: const EdgeInsets.only(top: 8.0),
-                                      child: Text(monthStr, style: const TextStyle(fontSize: 10)),
+                                      child: Text(dateStr, style: const TextStyle(fontSize: 10)),
                                     );
                                   },
                                 ),
@@ -1591,7 +1699,7 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                             gridData: FlGridData(
                               show: true, 
                               drawVerticalLine: true,
-                              verticalInterval: 30,
+                              verticalInterval: _xInterval,
                               horizontalInterval: yInterval,
                             ),
                             borderData: FlBorderData(show: false),
@@ -1614,10 +1722,7 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                 value: _zoomScale,
                 min: 0.5,
                 max: 50.0,
-                onChanged: (val) {
-                  setState(() => _zoomScale = val);
-                  _onScroll();
-                },
+                onChanged: _onSliderChange,
               ),
             ),
             const Icon(Icons.zoom_in, size: 20, color: Colors.grey),
@@ -1627,7 +1732,6 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
     );
   }
 }
-
 class DynamicForecastBarChart extends StatefulWidget {
   final List<BarChartGroupData> barGroups;
   final double chartWidth;
