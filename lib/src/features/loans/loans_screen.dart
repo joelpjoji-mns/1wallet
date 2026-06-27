@@ -695,10 +695,10 @@ class _LoanFormState extends ConsumerState<LoanForm> {
             institution: _lenderController.text,
             groupName: _nonLoanGroupName(existingLoan?.groupName),
             loanDetails: loanDetails,
-            includeInTotals: false,
-            includeInReports: true,
-            includeInNetWorth: true,
-            showOnHome: false,
+            includeInTotals: existingLoan?.includeInTotals ?? false,
+            includeInReports: existingLoan?.includeInReports ?? true,
+            includeInNetWorth: existingLoan?.includeInNetWorth ?? true,
+            showOnHome: existingLoan?.showOnHome ?? false,
             isArchived: existingLoan?.isArchived ?? false,
           );
       if (emiMinor > 0 && sourceAccount != null) {
