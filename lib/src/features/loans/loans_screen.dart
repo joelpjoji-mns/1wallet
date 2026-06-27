@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../common/route_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -58,7 +59,7 @@ class LoansScreen extends ConsumerWidget {
       ],
       child: Column(
         children: [
-          if (mode != 'detail' && mode != 'edit' && mode != 'new') ...[
+          if (mode != 'detail' && mode != 'edit' && mode != 'new' && mode != 'forecast') ...[
             SectionCard(
               title: 'Loan control center',
               subtitle: 'Outstanding, next EMI, forecast and payoff pressure.',
@@ -118,6 +119,8 @@ class LoansScreen extends ConsumerWidget {
                     onAction: () => context.push('/loans'),
                   )
                 : LoanDetailView(loan: selectedLoan)
+          else if (mode == 'forecast')
+            LoanForecastView(state: state, loans: activeLoans)
           else if (listedLoans.isEmpty)
             EmptyState(
               icon: mode == 'past'
@@ -141,10 +144,6 @@ class LoansScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 6),
             ],
-          if (mode == 'forecast') ...[
-            const Gap(AppSpacing.lg),
-            LoanForecastView(state: state, loans: activeLoans),
-          ],
         ],
       ),
     );
@@ -1307,14 +1306,34 @@ class LoanForecastView extends ConsumerStatefulWidget {
 }
 
 class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
-  final _incomeController = TextEditingController();
-  final _emergencyController = TextEditingController();
+  final _emergencyController = TextEditingController(text: '1000');
   double _extraAllocationPercent = 0.5; // 50% extra to loans
-  String _strategy = 'avalanche';
+  late List<Account> _priorityLoans;
+
+  @override
+  void initState() {
+    super.initState();
+    _priorityLoans = List.from(widget.loans);
+    // Sort by avalanche by default initially
+    _priorityLoans.sort((a, b) {
+      final aRate = a.loanDetails?.interestRatePercent ?? 0;
+      final bRate = b.loanDetails?.interestRatePercent ?? 0;
+      return bRate.compareTo(aRate);
+    });
+  }
+
+  @override
+  void didUpdateWidget(LoanForecastView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Sync priority list if loans change
+    final currentIds = _priorityLoans.map((l) => l.id).toSet();
+    final newLoans = widget.loans.where((l) => !currentIds.contains(l.id));
+    _priorityLoans.removeWhere((l) => !widget.loans.any((wl) => wl.id == l.id));
+    _priorityLoans.addAll(newLoans);
+  }
 
   @override
   void dispose() {
-    _incomeController.dispose();
     _emergencyController.dispose();
     super.dispose();
   }
@@ -1329,58 +1348,56 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
       );
     }
 
-    final incomeMinor = _amountMinorFromInput(_incomeController.text).abs();
-    final emergencyMinor = _amountMinorFromInput(
-      _emergencyController.text,
-    ).abs();
+    final emergencyMinor = _amountMinorFromInput(_emergencyController.text).abs();
 
-    final result = simulateAcceleratedPayoff(
+    final result = simulateForecastPayoffGraph(
       state: widget.state,
       loans: widget.loans,
-      monthlyIncomeMinor: incomeMinor,
-      monthlyEmergencySavingMinor: emergencyMinor,
+      emergencySavingMinor: emergencyMinor,
       extraPaymentAllocationPercent: _extraAllocationPercent,
-      priorityStrategy: _strategy,
+      loanPriorityIds: _priorityLoans.map((l) => l.id).toList(),
     );
 
     final locale = widget.state.preferences.locale;
-    final currency = widget.state.preferences.baseCurrency;
     final scheme = Theme.of(context).colorScheme;
+
+    // Build chart data
+    final spots = <FlSpot>[];
+    double minY = double.infinity;
+    double maxY = double.negativeInfinity;
+    final startMillis = result.balanceCurve.isNotEmpty ? result.balanceCurve.first.date.millisecondsSinceEpoch.toDouble() : 0.0;
+    
+    for (int i = 0; i < result.balanceCurve.length; i++) {
+      final pt = result.balanceCurve[i];
+      final x = (pt.date.millisecondsSinceEpoch - startMillis) / 86400000.0; // days
+      final y = pt.netBalanceMinor / 100.0; // assuming minor is 100 for graph display
+      spots.add(FlSpot(x, y));
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    
+    if (spots.isEmpty) {
+      spots.add(const FlSpot(0, 0));
+      minY = 0;
+      maxY = 100;
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SectionCard(
-          title: 'Budget & Control',
-          subtitle: 'Adjust your expected income and emergency targets.',
+          title: 'Payoff Simulation',
+          subtitle: 'Adjust your emergency fund and extra cash allocation to see the payoff graph.',
           child: Column(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _incomeController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Monthly Income',
-                        prefixIcon: Icon(Icons.account_balance_wallet_outlined),
-                      ),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _emergencyController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Emergency Save',
-                        prefixIcon: Icon(Icons.savings_outlined),
-                      ),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ),
-                ],
+              TextFormField(
+                controller: _emergencyController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Emergency Cash to keep',
+                  prefixIcon: Icon(Icons.savings_outlined),
+                ),
+                onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: AppSpacing.lg),
               Column(
@@ -1412,154 +1429,139 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                     min: 0.0,
                     max: 1.0,
                     divisions: 20,
-                    onChanged: (val) =>
-                        setState(() => _extraAllocationPercent = val),
+                    onChanged: (val) => setState(() => _extraAllocationPercent = val),
                   ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         '0% (Base EMI only)',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: scheme.onSurfaceVariant,
-                        ),
+                        style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
                       ),
                       Text(
                         '100% (Aggressive)',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: scheme.onSurfaceVariant,
-                        ),
+                        style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
                       ),
                     ],
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.md),
-              DropdownButtonFormField<String>(
-                initialValue: _strategy,
-                decoration: const InputDecoration(
-                  labelText: 'Payoff Priority Strategy',
-                  prefixIcon: Icon(Icons.sort_rounded),
-                ),
-                items: const [
-                  DropdownMenuItem(
-                    value: 'avalanche',
-                    child: Text('Avalanche (Highest Interest First)'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'snowball',
-                    child: Text('Snowball (Lowest Balance First)'),
-                  ),
-                ],
-                onChanged: (val) =>
-                    setState(() => _strategy = val ?? 'avalanche'),
-              ),
             ],
           ),
         ),
         const Gap(AppSpacing.lg),
-        Row(
-          children: [
-            Expanded(
-              child: MetricTile(
-                label: 'Interest Saved',
-                value: formatMoney(
-                  Money(
-                    amountMinor: result.totalInterestSavedMinor,
-                    currency: currency,
+        
+        // The Chart
+        SectionCard(
+          title: 'Projected Net Balance',
+          child: SizedBox(
+            height: 250,
+            child: LineChart(
+              LineChartData(
+                minY: minY - (maxY - minY) * 0.1,
+                maxY: maxY + (maxY - minY) * 0.1,
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: spots,
+                    isCurved: true,
+                    color: scheme.primary,
+                    barWidth: 3,
+                    dotData: const FlDotData(show: false),
                   ),
-                  locale,
+                ],
+                titlesData: FlTitlesData(
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 30,
+                      getTitlesWidget: (value, meta) {
+                        if (value % 365 == 0 && result.balanceCurve.isNotEmpty) {
+                          final yearOffset = (value / 365).floor();
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text('${result.balanceCurve.first.date.year + yearOffset}', style: const TextStyle(fontSize: 10)),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 40,
+                      getTitlesWidget: (value, meta) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: Text('${(value / 1000).toStringAsFixed(0)}k', style: const TextStyle(fontSize: 10)),
+                        );
+                      },
+                    ),
+                  ),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 ),
-                icon: Icons.savings_rounded,
-                tone: result.totalInterestSavedMinor > 0
-                    ? MetricTone.positive
-                    : MetricTone.standard,
+                gridData: const FlGridData(show: true, drawVerticalLine: false),
+                borderData: FlBorderData(show: false),
               ),
             ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: MetricTile(
-                label: 'Months Saved',
-                value:
-                    '${result.totalBaseMonths - result.totalAcceleratedMonths} mos',
-                icon: Icons.calendar_month_rounded,
-                tone:
-                    (result.totalBaseMonths - result.totalAcceleratedMonths) > 0
-                    ? MetricTone.positive
-                    : MetricTone.standard,
-              ),
-            ),
-          ],
+          ),
         ),
+        
         const Gap(AppSpacing.lg),
-        for (final proj in result.projections) ...[
+        
+        // Payoff Events
+        if (result.payoffEvents.isNotEmpty)
           SectionCard(
-            title: proj.loan.name,
-            subtitle: proj.monthsSaved > 0
-                ? 'Payoff accelerated by ${proj.monthsSaved} months'
-                : 'Standard payoff schedule',
+            title: 'Payoff Timeline',
             child: Column(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'New Payoff Date',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                    Text(
-                      formatLedgerDate(
-                        DateTime.now().add(
-                          Duration(days: proj.acceleratedMonthsRemaining * 30),
-                        ),
-                        locale,
-                      ),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Interest Saved',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                    Text(
-                      formatMoney(
-                        Money(
-                          amountMinor: proj.interestSavedMinor,
-                          currency: proj.loan.currency,
-                        ),
-                        locale,
-                      ),
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: proj.interestSavedMinor > 0
-                            ? scheme.primary
-                            : null,
-                      ),
-                    ),
-                  ],
-                ),
+                for (final event in result.payoffEvents)
+                  ListTile(
+                    leading: const Icon(Icons.check_circle_outline, color: Colors.green),
+                    title: Text(event.loan.name),
+                    subtitle: Text(formatLedgerDate(event.payoffDate, locale)),
+                  ),
               ],
             ),
           ),
-          const Gap(AppSpacing.md),
-        ],
+          
+        if (result.payoffEvents.isNotEmpty) const Gap(AppSpacing.lg),
+        
+        SectionCard(
+          title: 'Payoff Priority',
+          subtitle: 'Drag and drop to change the order in which extra cash is applied to loans.',
+          child: ReorderableListView(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            onReorder: (oldIndex, newIndex) {
+              setState(() {
+                if (oldIndex < newIndex) {
+                  newIndex -= 1;
+                }
+                final item = _priorityLoans.removeAt(oldIndex);
+                _priorityLoans.insert(newIndex, item);
+              });
+            },
+            children: [
+              for (int index = 0; index < _priorityLoans.length; index++)
+                ListTile(
+                  key: ValueKey(_priorityLoans[index].id),
+                  leading: ReorderableDragStartListener(
+                    index: index,
+                    child: const Icon(Icons.drag_handle),
+                  ),
+                  title: Text(_priorityLoans[index].name),
+                  subtitle: Text(
+                    formatMoney(
+                      accountBalance(widget.state, _priorityLoans[index]),
+                      locale,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ],
     );
   }

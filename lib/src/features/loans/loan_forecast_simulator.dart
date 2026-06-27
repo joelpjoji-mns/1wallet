@@ -1,208 +1,155 @@
-import 'dart:math' as math;
+import 'package:collection/collection.dart';
 
 import '../../data/ledger_models.dart';
 import '../../ledger/ledger_selectors.dart';
+import '../calendar/calendar_forecast.dart';
 
-class AcceleratedLoanProjection {
+class ForecastDataPoint {
+  final DateTime date;
+  final int netBalanceMinor;
+
+  ForecastDataPoint(this.date, this.netBalanceMinor);
+}
+
+class PayoffEvent {
   final Account loan;
-  final int baseEmiMinor;
-  final int baseMonthsRemaining;
-  final int baseInterestMinor;
+  final DateTime payoffDate;
 
-  final int acceleratedMonthsRemaining;
-  final int acceleratedInterestMinor;
-
-  AcceleratedLoanProjection({
-    required this.loan,
-    required this.baseEmiMinor,
-    required this.baseMonthsRemaining,
-    required this.baseInterestMinor,
-    required this.acceleratedMonthsRemaining,
-    required this.acceleratedInterestMinor,
-  });
-
-  int get interestSavedMinor => baseInterestMinor - acceleratedInterestMinor;
-  int get monthsSaved => baseMonthsRemaining - acceleratedMonthsRemaining;
+  PayoffEvent(this.loan, this.payoffDate);
 }
 
 class LoanForecastSimulationResult {
-  final List<AcceleratedLoanProjection> projections;
-  final int totalBaseInterestMinor;
-  final int totalAcceleratedInterestMinor;
-  final int totalBaseMonths;
-  final int totalAcceleratedMonths;
-  final int totalInterestSavedMinor;
+  final List<ForecastDataPoint> balanceCurve;
+  final List<PayoffEvent> payoffEvents;
+  final int initialBalanceMinor;
 
   LoanForecastSimulationResult({
-    required this.projections,
-    required this.totalBaseInterestMinor,
-    required this.totalAcceleratedInterestMinor,
-    required this.totalBaseMonths,
-    required this.totalAcceleratedMonths,
-    required this.totalInterestSavedMinor,
+    required this.balanceCurve,
+    required this.payoffEvents,
+    required this.initialBalanceMinor,
   });
 }
 
-class _ActiveLoanSim {
-  final Account loan;
-  int balanceMinor;
-  final double monthlyRate;
-  final int baseEmiMinor;
-  int totalInterestPaidMinor = 0;
-  int monthsToPayoff = 0;
-  bool isPaidOff = false;
-
-  _ActiveLoanSim({
-    required this.loan,
-    required this.balanceMinor,
-    required this.monthlyRate,
-    required this.baseEmiMinor,
-  });
-}
-
-LoanForecastSimulationResult simulateAcceleratedPayoff({
+LoanForecastSimulationResult simulateForecastPayoffGraph({
   required LedgerState state,
   required List<Account> loans,
-  required int monthlyIncomeMinor,
-  required int monthlyEmergencySavingMinor,
+  required int emergencySavingMinor,
   required double extraPaymentAllocationPercent,
-  required String priorityStrategy, // 'avalanche' or 'snowball'
+  required List<String> loanPriorityIds,
 }) {
-  final activeSims = <_ActiveLoanSim>[];
-  final baseProjections = <String, LoanProjection>{};
+  // 1. Calculate Initial Net Liquid Balance.
+  // We consider all active accounts that are not liabilities (i.e. checking, cash, savings).
+  int netLiquidBalance = 0;
+  for (final account in state.accounts) {
+    if (!account.isArchived && !isLiabilityAccount(account)) {
+      final balance = convertMoneyForDisplay(
+        state,
+        accountBalance(state, account),
+        state.preferences.baseCurrency,
+      );
+      netLiquidBalance += balance.amountMinor;
+    }
+  }
 
-  int totalBaseInterestMinor = 0;
-  int totalBaseMonths = 0;
+  final initialBalanceMinor = netLiquidBalance;
 
+  // 2. Fetch all forecasted transactions up to 5 years from now
+  final startDate = DateTime.now();
+  final endDate = DateTime(startDate.year + 5, startDate.month, startDate.day);
+  final forecasts = forecastRecurringTransactions(state, startDate, endDate);
+
+  // Group forecasts by day index (days since start)
+  final dailyDeltas = <int, int>{};
+  for (final tx in forecasts) {
+    int delta = 0;
+
+    final sourceAccount = accountById(state, tx.accountId);
+    final isSourceLiquid = sourceAccount != null &&
+        !sourceAccount.isArchived &&
+        !isLiabilityAccount(sourceAccount);
+
+    if (isSourceLiquid) {
+      final sourceMoney = Money(amountMinor: sourceDelta(tx), currency: tx.amount.currency);
+      delta += convertMoneyForDisplay(state, sourceMoney, state.preferences.baseCurrency).amountMinor;
+    }
+
+    if (tx.counterAccountId != null) {
+      final counterAccount = accountById(state, tx.counterAccountId);
+      final isCounterLiquid = counterAccount != null &&
+          !counterAccount.isArchived &&
+          !isLiabilityAccount(counterAccount);
+      if (isCounterLiquid) {
+        final counterMoney = Money(
+          amountMinor: counterDelta(tx),
+          currency: tx.counterAmount?.currency ?? tx.amount.currency,
+        );
+        delta += convertMoneyForDisplay(state, counterMoney, state.preferences.baseCurrency).amountMinor;
+      }
+    }
+
+    if (delta != 0) {
+      final daysSinceStart = tx.occurredAt.difference(startDate).inDays;
+      if (daysSinceStart >= 0) {
+        dailyDeltas[daysSinceStart] = (dailyDeltas[daysSinceStart] ?? 0) + delta;
+      }
+    }
+  }
+
+  // 3. Track active loans
+  final activeLoans = <String, int>{};
   for (final loan in loans) {
-    final projection = loanProjection(state, loan);
-    baseProjections[loan.id] = projection;
-
-    if (projection.monthsRemaining != null) {
-      if (projection.monthsRemaining! > totalBaseMonths) {
-        totalBaseMonths = projection.monthsRemaining!;
-      }
-    }
-    totalBaseInterestMinor += projection.estimatedInterestMinor;
-
-    final balanceMinor = accountBalance(state, loan).amountMinor.abs();
-    final loanDetails = loan.loanDetails;
-    final annualRate = loanDetails?.interestRatePercent ?? 0.0;
-
-    activeSims.add(
-      _ActiveLoanSim(
-        loan: loan,
-        balanceMinor: balanceMinor,
-        monthlyRate: annualRate <= 0 ? 0 : annualRate / 100 / 12,
-        baseEmiMinor: projection.monthlyEmi,
-      ),
-    );
+    final bal = accountBalance(state, loan);
+    final converted = convertMoneyForDisplay(state, bal, state.preferences.baseCurrency);
+    activeLoans[loan.id] = converted.amountMinor.abs();
   }
 
-  int simulatedMonths = 0;
+  final balanceCurve = <ForecastDataPoint>[];
+  final payoffEvents = <PayoffEvent>[];
 
-  while (activeSims.any((sim) => !sim.isPaidOff) && simulatedMonths < 1200) {
-    simulatedMonths++;
+  // 4. Simulate day by day
+  final totalDays = endDate.difference(startDate).inDays;
+  for (int i = 0; i <= totalDays; i++) {
+    final currentDate = startDate.add(Duration(days: i));
 
-    int totalBaseEmisDueThisMonth = 0;
-    for (final sim in activeSims) {
-      if (!sim.isPaidOff) {
-        totalBaseEmisDueThisMonth += sim.baseEmiMinor;
+    // Apply daily delta
+    final delta = dailyDeltas[i] ?? 0;
+    netLiquidBalance += delta;
+
+    // Check payoffs according to priority
+    bool paidSomething = true;
+    while (paidSomething) {
+      paidSomething = false;
+      for (final loanId in loanPriorityIds) {
+        final balance = activeLoans[loanId] ?? 0;
+        if (balance <= 0) continue;
+
+        final cashAboveEmergency = netLiquidBalance - emergencySavingMinor;
+        if (cashAboveEmergency > 0) {
+          final maxPayment = (cashAboveEmergency * extraPaymentAllocationPercent).floor();
+
+          if (maxPayment >= balance) {
+            // We can pay off this loan!
+            netLiquidBalance -= balance;
+            activeLoans[loanId] = 0;
+
+            final loanObj = loans.firstWhereOrNull((l) => l.id == loanId);
+            if (loanObj != null) {
+              payoffEvents.add(PayoffEvent(loanObj, currentDate));
+            }
+
+            paidSomething = true;
+            break; // Break the inner loop to re-evaluate priorities from top
+          }
+        }
       }
     }
 
-    // Calculate free cash
-    int freeCashMinor =
-        monthlyIncomeMinor -
-        monthlyEmergencySavingMinor -
-        totalBaseEmisDueThisMonth;
-    if (freeCashMinor < 0) freeCashMinor = 0;
-
-    int extraPaymentAvailable = (freeCashMinor * extraPaymentAllocationPercent)
-        .round();
-
-    // Sort active loans by priority
-    final pendingLoans = activeSims.where((sim) => !sim.isPaidOff).toList();
-    pendingLoans.sort((a, b) {
-      if (priorityStrategy == 'avalanche') {
-        // Highest rate first
-        final rateDiff = b.monthlyRate.compareTo(a.monthlyRate);
-        if (rateDiff != 0) return rateDiff;
-        // Tie-breaker: lowest balance
-        return a.balanceMinor.compareTo(b.balanceMinor);
-      } else {
-        // Snowball: lowest balance first
-        return a.balanceMinor.compareTo(b.balanceMinor);
-      }
-    });
-
-    // Step 1: Accrue interest and pay base EMIs
-    for (final sim in pendingLoans) {
-      final interestThisMonth = (sim.balanceMinor * sim.monthlyRate).round();
-      sim.totalInterestPaidMinor += interestThisMonth;
-
-      // Pay base EMI
-      final principalPortion = sim.baseEmiMinor - interestThisMonth;
-      if (principalPortion > 0) {
-        sim.balanceMinor -= principalPortion;
-      }
-    }
-
-    // Step 2: Apply extra payments to the highest priority loan
-    for (final sim in pendingLoans) {
-      if (extraPaymentAvailable <= 0) break;
-      if (sim.balanceMinor <= 0) continue;
-
-      final payment = math.min(extraPaymentAvailable, sim.balanceMinor);
-      sim.balanceMinor -= payment;
-      extraPaymentAvailable -= payment;
-    }
-
-    // Check payoff
-    for (final sim in pendingLoans) {
-      if (sim.balanceMinor <= 0) {
-        sim.isPaidOff = true;
-        sim.monthsToPayoff = simulatedMonths;
-      }
-    }
-  }
-
-  // Handle loans that might not be paid off due to max iterations
-  for (final sim in activeSims) {
-    if (!sim.isPaidOff) sim.monthsToPayoff = simulatedMonths;
-  }
-
-  int totalAcceleratedInterestMinor = 0;
-  int totalAcceleratedMonths = 0;
-  final projections = <AcceleratedLoanProjection>[];
-
-  for (final sim in activeSims) {
-    totalAcceleratedInterestMinor += sim.totalInterestPaidMinor;
-    if (sim.monthsToPayoff > totalAcceleratedMonths) {
-      totalAcceleratedMonths = sim.monthsToPayoff;
-    }
-
-    final baseProj = baseProjections[sim.loan.id]!;
-
-    projections.add(
-      AcceleratedLoanProjection(
-        loan: sim.loan,
-        baseEmiMinor: sim.baseEmiMinor,
-        baseMonthsRemaining: baseProj.monthsRemaining ?? 0,
-        baseInterestMinor: baseProj.estimatedInterestMinor,
-        acceleratedMonthsRemaining: sim.monthsToPayoff,
-        acceleratedInterestMinor: sim.totalInterestPaidMinor,
-      ),
-    );
+    balanceCurve.add(ForecastDataPoint(currentDate, netLiquidBalance));
   }
 
   return LoanForecastSimulationResult(
-    projections: projections,
-    totalBaseInterestMinor: totalBaseInterestMinor,
-    totalAcceleratedInterestMinor: totalAcceleratedInterestMinor,
-    totalBaseMonths: totalBaseMonths,
-    totalAcceleratedMonths: totalAcceleratedMonths,
-    totalInterestSavedMinor:
-        totalBaseInterestMinor - totalAcceleratedInterestMinor,
+    balanceCurve: balanceCurve,
+    payoffEvents: payoffEvents,
+    initialBalanceMinor: initialBalanceMinor,
   );
 }
