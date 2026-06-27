@@ -110,6 +110,7 @@ class _MainShellState extends ConsumerState<MainShell>
   Widget build(BuildContext context) {
     ref.listen<LedgerState>(ledgerProvider, (previous, next) {
       NotificationService.checkAndShowAlerts(next);
+      NotificationService.syncScheduledNotifications(next);
     });
 
     return BackButtonListener(

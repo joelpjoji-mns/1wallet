@@ -107,42 +107,7 @@ List<AppNotification> buildNotificationInbox(LedgerState state) {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
 
-  // Scheduled payment notifications
-  final scheduled = scheduledTransactions(state);
-  for (final transaction in scheduled) {
-    final dueDay = DateTime(
-      transaction.occurredAt.year,
-      transaction.occurredAt.month,
-      transaction.occurredAt.day,
-    );
-    if (dueDay.isBefore(today)) {
-      notifications.add(
-        AppNotification(
-          id: 'scheduled_${transaction.id}',
-          channel: AppNotificationChannel.scheduled,
-          title:
-              'Overdue: ${transaction.notes ?? transactionTypeLabel(transaction.type)}',
-          body:
-              '${formatMoney(transaction.amount, state.preferences.locale)} was due ${_relativeDate(dueDay, today)}.',
-          createdAt: transaction.occurredAt,
-          actionRoute: '/recurring/${transaction.id}',
-        ),
-      );
-    } else if (dueDay.difference(today).inDays <= 3) {
-      notifications.add(
-        AppNotification(
-          id: 'upcoming_${transaction.id}',
-          channel: AppNotificationChannel.scheduled,
-          title:
-              'Upcoming: ${transaction.notes ?? transactionTypeLabel(transaction.type)}',
-          body:
-              '${formatMoney(transaction.amount, state.preferences.locale)} due ${_relativeDate(dueDay, today)}.',
-          createdAt: now,
-          actionRoute: '/recurring/${transaction.id}',
-        ),
-      );
-    }
-  }
+  // Scheduled payment notifications are now handled by background timezone scheduling
 
   // Budget overspend notifications
   for (final budget in state.budgets) {
