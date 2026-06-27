@@ -2,7 +2,9 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 class ThousandsSeparatorInputFormatter extends TextInputFormatter {
-  final NumberFormat _formatter = NumberFormat.decimalPattern();
+  final String? locale;
+
+  ThousandsSeparatorInputFormatter([this.locale]);
 
   @override
   TextEditingValue formatEditUpdate(
@@ -21,10 +23,12 @@ class ThousandsSeparatorInputFormatter extends TextInputFormatter {
       return oldValue;
     }
 
+    final formatter = NumberFormat.decimalPattern(locale);
+
     final parts = numericString.split('.');
     String formattedText = parts[0].isEmpty
         ? ''
-        : _formatter.format(int.parse(parts[0]));
+        : formatter.format(int.parse(parts[0]));
 
     if (parts.length > 1) {
       formattedText += '.${parts[1]}';
