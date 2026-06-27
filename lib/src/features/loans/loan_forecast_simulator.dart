@@ -127,20 +127,27 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
         if (cashAboveEmergency > 0) {
           final maxPayment = (cashAboveEmergency * extraPaymentAllocationPercent).floor();
 
-          if (maxPayment >= balance) {
-            // We can pay off this loan!
-            netLiquidBalance -= balance;
-            activeLoans[loanId] = 0;
+          if (maxPayment > 0) {
+            if (maxPayment >= balance) {
+              // We can pay off this loan!
+              netLiquidBalance -= balance;
+              activeLoans[loanId] = 0;
 
-            final loanObj = loans.firstWhereOrNull((l) => l.id == loanId);
-            if (loanObj != null) {
-              payoffEvents.add(PayoffEvent(loanObj, currentDate));
+              final loanObj = loans.firstWhereOrNull((l) => l.id == loanId);
+              if (loanObj != null) {
+                payoffEvents.add(PayoffEvent(loanObj, currentDate));
+              }
+
+              paidSomething = true;
+              break; // Break the inner loop to re-evaluate priorities from top
+            } else {
+              // Partial payment
+              netLiquidBalance -= maxPayment;
+              activeLoans[loanId] = balance - maxPayment;
             }
-
-            paidSomething = true;
-            break; // Break the inner loop to re-evaluate priorities from top
           }
         }
+        break; // Only apply extra cash to the HIGHEST priority active loan!
       }
     }
 

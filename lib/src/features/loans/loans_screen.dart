@@ -1351,6 +1351,7 @@ class DynamicForecastLineChart extends StatefulWidget {
   final List<ForecastDataPoint> balanceCurve;
   final String locale;
   final Map<double, String> payoffDots;
+  final String currencySymbol;
 
   const DynamicForecastLineChart({
     super.key,
@@ -1360,6 +1361,7 @@ class DynamicForecastLineChart extends StatefulWidget {
     required this.balanceCurve,
     required this.locale,
     required this.payoffDots,
+    required this.currencySymbol,
   });
 
   @override
@@ -1452,7 +1454,7 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
     double yInterval = ((_currentMaxY - _currentMinY) / 5).roundToDouble();
     if (yInterval < 1) yInterval = 1;
 
-    final numberFormat = NumberFormat.compact(locale: widget.locale);
+    final numberFormat = NumberFormat.compactCurrency(locale: widget.locale, symbol: widget.currencySymbol);
 
     return Row(
       children: [
@@ -1505,7 +1507,7 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
             },
             onScaleUpdate: (details) {
               setState(() {
-                _zoomScale = (_baseZoomScale * details.scale).clamp(1.0, 10.0);
+                _zoomScale = (_baseZoomScale * details.scale).clamp(0.5, 50.0);
               });
               _onScroll();
             },
@@ -1593,6 +1595,7 @@ class DynamicForecastBarChart extends StatefulWidget {
   final double chartWidth;
   final List<DateTime> monthKeys;
   final String locale;
+  final String currencySymbol;
 
   const DynamicForecastBarChart({
     super.key,
@@ -1600,6 +1603,7 @@ class DynamicForecastBarChart extends StatefulWidget {
     required this.chartWidth,
     required this.monthKeys,
     required this.locale,
+    required this.currencySymbol,
   });
 
   @override
@@ -1694,7 +1698,7 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
     double yInterval = ((_currentMaxY - _currentMinY) / 5).roundToDouble();
     if (yInterval < 1) yInterval = 1;
 
-    final numberFormat = NumberFormat.compact(locale: widget.locale);
+    final numberFormat = NumberFormat.compactCurrency(locale: widget.locale, symbol: widget.currencySymbol);
 
     return Row(
       children: [
@@ -1741,7 +1745,7 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
             },
             onScaleUpdate: (details) {
               setState(() {
-                _zoomScale = (_baseZoomScale * details.scale).clamp(1.0, 10.0);
+                _zoomScale = (_baseZoomScale * details.scale).clamp(0.5, 50.0);
               });
               _onScroll();
             },
@@ -1869,6 +1873,8 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
 
     final locale = widget.state.preferences.locale;
     final scheme = Theme.of(context).colorScheme;
+    final currencyFormat = NumberFormat.simpleCurrency(locale: locale, name: widget.state.preferences.displayCurrency);
+    final currencySymbol = currencyFormat.currencySymbol;
 
     final spots = <FlSpot>[];
     final startMillis = result.balanceCurve.isNotEmpty ? result.balanceCurve.first.date.millisecondsSinceEpoch.toDouble() : 0.0;
@@ -1955,9 +1961,10 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               TextFormField(
                 controller: _emergencyController,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Emergency Cash to keep',
-                  prefixIcon: Icon(Icons.savings_outlined),
+                  prefixText: currencySymbol,
+                  prefixIcon: const Icon(Icons.savings_outlined),
                 ),
                 onChanged: (_) => setState(() {}),
               ),
@@ -1977,7 +1984,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                         ),
                       ),
                       Text(
-                        '${(_extraAllocationPercent * 100).toInt()}% to Loans',
+                        '${(_extraAllocationPercent * 100).toInt()}% to priority loans',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w900,
@@ -2024,6 +2031,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               balanceCurve: result.balanceCurve,
               locale: locale,
               payoffDots: payoffDots,
+              currencySymbol: currencySymbol,
             ),
           ),
         ),
@@ -2040,39 +2048,16 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               chartWidth: barChartWidth,
               monthKeys: monthKeys,
               locale: locale,
+              currencySymbol: currencySymbol,
             ),
           ),
         ),
         
         const Gap(AppSpacing.lg),
         
-        if (result.payoffEvents.isNotEmpty)
-          SectionCard(
-            title: 'Payoff Timeline',
-            child: Column(
-              children: [
-                for (final event in result.payoffEvents)
-                  ListTile(
-                    leading: CircleAvatar(
-                      radius: 12,
-                      backgroundColor: Colors.green,
-                      child: Text(
-                        loanNumberMap[event.loan.id]?.toString() ?? '',
-                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    title: Text(event.loan.name),
-                    subtitle: Text(formatLedgerDate(event.payoffDate, locale)),
-                  ),
-              ],
-            ),
-          ),
-          
-        if (result.payoffEvents.isNotEmpty) const Gap(AppSpacing.lg),
-        
         SectionCard(
-          title: 'Payoff Priority',
-          subtitle: 'Drag and drop to change the order in which extra cash is applied to loans.',
+          title: 'Payoff Priority & Timeline',
+          subtitle: 'Drag and drop to change priority. The timeline reflects exactly when each loan pays off.',
           child: ReorderableListView(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -2085,37 +2070,37 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                 _priorityLoans.insert(newIndex, item);
               });
             },
-            children: [
-              for (int index = 0; index < _priorityLoans.length; index++)
-                ListTile(
-                  key: ValueKey(_priorityLoans[index].id),
-                  leading: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ReorderableDragStartListener(
-                        index: index,
-                        child: const Icon(Icons.drag_handle),
-                      ),
-                      const SizedBox(width: 8),
-                      CircleAvatar(
-                        radius: 12,
-                        backgroundColor: Colors.green,
-                        child: Text(
-                          '${index + 1}',
-                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ),
-                  title: Text(_priorityLoans[index].name),
-                  subtitle: Text(
-                    formatMoney(
-                      accountBalance(widget.state, _priorityLoans[index]),
-                      locale,
+            children: _priorityLoans.asMap().entries.map((entry) {
+              final index = entry.key;
+              final loan = entry.value;
+              final event = result.payoffEvents.firstWhereOrNull((e) => e.loan.id == loan.id);
+              final payoffStr = event != null ? ' · Pays off ${formatLedgerDate(event.payoffDate, locale)}' : '';
+              final balStr = formatMoney(accountBalance(widget.state, loan), locale);
+
+              return ListTile(
+                key: ValueKey(loan.id),
+                leading: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ReorderableDragStartListener(
+                      index: index,
+                      child: const Icon(Icons.drag_handle),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    CircleAvatar(
+                      radius: 12,
+                      backgroundColor: Colors.green,
+                      child: Text(
+                        '${index + 1}',
+                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
                 ),
-            ],
+                title: Text(loan.name),
+                subtitle: Text('$balStr$payoffStr'),
+              );
+            }).toList(),
           ),
         ),
       ],
