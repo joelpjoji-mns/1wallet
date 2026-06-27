@@ -37,65 +37,94 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   required double extraPaymentAllocationPercent,
   required List<String> loanPriorityIds,
 }) {
-  // 1. Calculate Initial Net Liquid Balance.
-  // We consider all active accounts that are not liabilities (i.e. checking, cash, savings).
-  int netLiquidBalance = 0;
+  int initialNetLiquidBalance = 0;
+  int initialNetWorth = 0;
+  
   for (final account in state.accounts) {
-    if (!account.isArchived && !isLiabilityAccount(account)) {
+    if (!account.isArchived) {
       final balance = convertMoneyForDisplay(
         state,
         accountBalance(state, account),
         state.preferences.baseCurrency,
       );
-      netLiquidBalance += balance.amountMinor;
+      initialNetWorth += balance.amountMinor;
+      if (!isLiabilityAccount(account)) {
+        initialNetLiquidBalance += balance.amountMinor;
+      }
     }
   }
 
-  final initialBalanceMinor = netLiquidBalance;
+  final today = DateTime.now();
+  final startDate = DateTime(today.year, today.month, today.day);
+  final pastStart = startDate.subtract(const Duration(days: 365));
+  final futureEnd = startDate.add(const Duration(days: 1825)); // 5 years
 
-  // 2. Fetch all forecasted transactions up to 5 years from now
-  final startDate = DateTime.now();
-  final endDate = DateTime(startDate.year + 5, startDate.month, startDate.day);
-  final forecasts = forecastRecurringTransactions(state, startDate, endDate);
+  final liquidDeltas = <int, int>{};
+  final nwDeltas = <int, int>{};
 
-  // Group forecasts by day index (days since start)
-  final dailyDeltas = <int, int>{};
-  for (final tx in forecasts) {
-    int delta = 0;
+  void addDeltas(TransactionRecord tx) {
+    int lDelta = 0;
+    int nwDelta = 0;
 
     final sourceAccount = accountById(state, tx.accountId);
-    final isSourceLiquid = sourceAccount != null &&
-        !sourceAccount.isArchived &&
-        !isLiabilityAccount(sourceAccount);
+    final isSourceTracked = sourceAccount != null && !sourceAccount.isArchived;
+    final isSourceLiquid = isSourceTracked && !isLiabilityAccount(sourceAccount);
 
-    if (isSourceLiquid) {
+    if (isSourceTracked) {
       final sourceMoney = Money(amountMinor: sourceDelta(tx), currency: tx.amount.currency);
-      delta += convertMoneyForDisplay(state, sourceMoney, state.preferences.baseCurrency).amountMinor;
+      final val = convertMoneyForDisplay(state, sourceMoney, state.preferences.baseCurrency).amountMinor;
+      nwDelta += val;
+      if (isSourceLiquid) lDelta += val;
     }
 
     if (tx.counterAccountId != null) {
       final counterAccount = accountById(state, tx.counterAccountId);
-      final isCounterLiquid = counterAccount != null &&
-          !counterAccount.isArchived &&
-          !isLiabilityAccount(counterAccount);
-      if (isCounterLiquid) {
-        final counterMoney = Money(
-          amountMinor: counterDelta(tx),
-          currency: tx.counterAmount?.currency ?? tx.amount.currency,
-        );
-        delta += convertMoneyForDisplay(state, counterMoney, state.preferences.baseCurrency).amountMinor;
+      final isCounterTracked = counterAccount != null && !counterAccount.isArchived;
+      final isCounterLiquid = isCounterTracked && !isLiabilityAccount(counterAccount);
+
+      if (isCounterTracked) {
+        final counterMoney = Money(amountMinor: counterDelta(tx), currency: tx.counterAmount?.currency ?? tx.amount.currency);
+        final val = convertMoneyForDisplay(state, counterMoney, state.preferences.baseCurrency).amountMinor;
+        nwDelta += val;
+        if (isCounterLiquid) lDelta += val;
       }
     }
 
-    if (delta != 0) {
+    if (lDelta != 0 || nwDelta != 0) {
       final daysSinceStart = tx.occurredAt.difference(startDate).inDays;
-      if (daysSinceStart >= 0) {
-        dailyDeltas[daysSinceStart] = (dailyDeltas[daysSinceStart] ?? 0) + delta;
-      }
+      if (lDelta != 0) liquidDeltas[daysSinceStart] = (liquidDeltas[daysSinceStart] ?? 0) + lDelta;
+      if (nwDelta != 0) nwDeltas[daysSinceStart] = (nwDeltas[daysSinceStart] ?? 0) + nwDelta;
     }
   }
 
-  // 3. Track active loans
+  // Process Past Transactions
+  for (final tx in state.transactions) {
+    if (tx.status == 'scheduled' || tx.status == 'void' || tx.status == 'forecast') continue;
+    if (tx.occurredAt.isBefore(pastStart) || tx.occurredAt.isAfter(startDate)) continue;
+    addDeltas(tx);
+  }
+
+  // Process Future Forecasts
+  final forecasts = forecastRecurringTransactions(state, startDate.add(const Duration(days: 1)), futureEnd);
+  for (final tx in forecasts) {
+    addDeltas(tx);
+  }
+
+  final balanceCurve = <ForecastDataPoint>[];
+  final payoffEvents = <PayoffEvent>[];
+
+  // 1. Simulate backwards for past 365 days
+  int currentPastNw = initialNetWorth;
+  final pastCurve = <ForecastDataPoint>[];
+  for (int i = 0; i >= -365; i--) {
+    final date = startDate.add(Duration(days: i));
+    pastCurve.add(ForecastDataPoint(date, currentPastNw));
+    final delta = nwDeltas[i] ?? 0;
+    currentPastNw -= delta;
+  }
+  balanceCurve.addAll(pastCurve.reversed);
+
+  // 2. Track active loans for the future
   final activeLoans = <String, int>{};
   for (final loan in loans) {
     final bal = accountBalance(state, loan);
@@ -103,19 +132,16 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
     activeLoans[loan.id] = converted.amountMinor.abs();
   }
 
-  final balanceCurve = <ForecastDataPoint>[];
-  final payoffEvents = <PayoffEvent>[];
+  // 3. Simulate forwards for 5 years
+  int currentFutureLiquid = initialNetLiquidBalance;
+  int currentFutureNw = initialNetWorth;
 
-  // 4. Simulate day by day
-  final totalDays = endDate.difference(startDate).inDays;
-  for (int i = 0; i <= totalDays; i++) {
-    final currentDate = startDate.add(Duration(days: i));
+  for (int i = 1; i <= 1825; i++) {
+    final date = startDate.add(Duration(days: i));
+    
+    currentFutureLiquid += (liquidDeltas[i] ?? 0);
+    currentFutureNw += (nwDeltas[i] ?? 0);
 
-    // Apply daily delta
-    final delta = dailyDeltas[i] ?? 0;
-    netLiquidBalance += delta;
-
-    // Check payoffs according to priority
     bool paidSomething = true;
     while (paidSomething) {
       paidSomething = false;
@@ -123,40 +149,35 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
         final balance = activeLoans[loanId] ?? 0;
         if (balance <= 0) continue;
 
-        final cashAboveEmergency = netLiquidBalance - emergencySavingMinor;
+        final cashAboveEmergency = currentFutureLiquid - emergencySavingMinor;
         if (cashAboveEmergency > 0) {
           final maxPayment = (cashAboveEmergency * extraPaymentAllocationPercent).floor();
-
+          
           if (maxPayment > 0) {
             if (maxPayment >= balance) {
-              // We can pay off this loan!
-              netLiquidBalance -= balance;
+              currentFutureLiquid -= balance;
               activeLoans[loanId] = 0;
-
               final loanObj = loans.firstWhereOrNull((l) => l.id == loanId);
               if (loanObj != null) {
-                payoffEvents.add(PayoffEvent(loanObj, currentDate));
+                payoffEvents.add(PayoffEvent(loanObj, date));
               }
-
               paidSomething = true;
-              break; // Break the inner loop to re-evaluate priorities from top
             } else {
-              // Partial payment
-              netLiquidBalance -= maxPayment;
+              currentFutureLiquid -= maxPayment;
               activeLoans[loanId] = balance - maxPayment;
             }
           }
         }
-        break; // Only apply extra cash to the HIGHEST priority active loan!
+        break; 
       }
     }
-
-    balanceCurve.add(ForecastDataPoint(currentDate, netLiquidBalance));
+    
+    balanceCurve.add(ForecastDataPoint(date, currentFutureNw));
   }
 
   return LoanForecastSimulationResult(
     balanceCurve: balanceCurve,
     payoffEvents: payoffEvents,
-    initialBalanceMinor: initialBalanceMinor,
+    initialBalanceMinor: initialNetWorth,
   );
 }

@@ -1381,7 +1381,21 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
     super.initState();
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.spots.isNotEmpty) {
+        final minX = widget.spots.first.x;
+        final maxX = widget.spots.last.x;
+        if (maxX > minX) {
+          final totalWidth = widget.chartWidth * _zoomScale;
+          final ratio = (0 - minX) / (maxX - minX);
+          final targetOffset = totalWidth * ratio - 20;
+          if (targetOffset > 0) {
+            _scrollController.jumpTo(targetOffset);
+          }
+        }
+      }
+      _onScroll();
+    });
   }
 
   @override
@@ -1405,9 +1419,12 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
     final startRatio = offset / totalWidth;
     final endRatio = (offset + viewportWidth) / totalWidth;
     
+    final minXVal = widget.spots.first.x;
     final maxXVal = widget.spots.last.x;
-    final startX = startRatio * maxXVal;
-    final endX = endRatio * maxXVal;
+    final rangeX = maxXVal - minXVal;
+    
+    final startX = minXVal + startRatio * rangeX;
+    final endX = minXVal + endRatio * rangeX;
     
     double minY = double.infinity;
     double maxY = double.negativeInfinity;
@@ -1527,6 +1544,8 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                       LineChartData(
                         minY: _currentMinY,
                         maxY: _currentMaxY,
+                        minX: widget.spots.first.x,
+                        maxX: widget.spots.last.x,
                         lineBarsData: [
                           LineChartBarData(
                             spots: widget.spots,
@@ -1553,16 +1572,15 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                               reservedSize: 30,
                               interval: 30,
                               getTitlesWidget: (value, meta) {
-                                if (widget.balanceCurve.isNotEmpty) {
-                                  final date = widget.balanceCurve.first.date.add(Duration(days: value.toInt()));
-                                  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                                  final monthStr = '${months[date.month - 1]} ${date.year % 100}';
-                                  return Padding(
-                                    padding: const EdgeInsets.only(top: 8.0),
-                                    child: Text(monthStr, style: const TextStyle(fontSize: 10)),
-                                  );
-                                }
-                                return const SizedBox.shrink();
+                                final now = DateTime.now();
+                                final today = DateTime(now.year, now.month, now.day);
+                                final date = today.add(Duration(days: value.toInt()));
+                                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                final monthStr = '${months[date.month - 1]} ${date.year % 100}';
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(monthStr, style: const TextStyle(fontSize: 10)),
+                                );
                               },
                             ),
                           ),
@@ -1572,7 +1590,8 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                         ),
                         gridData: FlGridData(
                           show: true, 
-                          drawVerticalLine: false,
+                          drawVerticalLine: true,
+                          verticalInterval: 30, // Draw line every month approximately
                           horizontalInterval: yInterval,
                         ),
                         borderData: FlBorderData(show: false),
@@ -1623,7 +1642,19 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
     super.initState();
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.barGroups.isNotEmpty) {
+         final now = DateTime.now();
+         int currentIdx = widget.monthKeys.indexWhere((d) => d.year == now.year && d.month == now.month);
+         if (currentIdx == -1) currentIdx = 0;
+         final ratio = currentIdx / widget.monthKeys.length;
+         final offset = widget.chartWidth * _zoomScale * ratio - 20;
+         if (offset > 0) {
+           _scrollController.jumpTo(offset);
+         }
+      }
+      _onScroll();
+    });
   }
 
   @override
@@ -1877,11 +1908,12 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
     final currencySymbol = currencyFormat.currencySymbol;
 
     final spots = <FlSpot>[];
-    final startMillis = result.balanceCurve.isNotEmpty ? result.balanceCurve.first.date.millisecondsSinceEpoch.toDouble() : 0.0;
+    final now = DateTime.now();
+    final todayMillis = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch.toDouble();
     
     for (int i = 0; i < result.balanceCurve.length; i++) {
       final pt = result.balanceCurve[i];
-      final x = (pt.date.millisecondsSinceEpoch - startMillis) / 86400000.0;
+      final x = (pt.date.millisecondsSinceEpoch - todayMillis) / 86400000.0;
       final y = pt.netBalanceMinor / 100.0;
       spots.add(FlSpot(x, y));
     }
@@ -1930,7 +1962,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
     
     final payoffDots = <double, String>{};
     for (final event in result.payoffEvents) {
-      final eventX = (event.payoffDate.millisecondsSinceEpoch - startMillis) / 86400000.0;
+      final eventX = (event.payoffDate.millisecondsSinceEpoch - todayMillis) / 86400000.0;
       final number = loanNumberMap[event.loan.id]?.toString() ?? '';
       
       double closestX = 0;
@@ -2021,7 +2053,8 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
         const Gap(AppSpacing.lg),
         
         SectionCard(
-          title: 'Projected Net Balance',
+          title: 'Total Net Worth Curve',
+          subtitle: 'Includes past actuals and future projections.',
           child: SizedBox(
             height: 350,
             child: DynamicForecastLineChart(
