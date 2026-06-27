@@ -229,7 +229,7 @@ class _MainShellState extends ConsumerState<MainShell>
 
           Widget desktopBody = Row(
             children: [
-              _MainDrawer(
+              AppMainDrawer(
                 selectedIndex: selectedIndex,
                 isStatic: true,
                 onTabSelected: _selectTab,
@@ -244,7 +244,7 @@ class _MainShellState extends ConsumerState<MainShell>
             drawerEdgeDragWidth: 40,
             drawer: AppResponsiveLayout.isDesktop(context)
                 ? null
-                : _MainDrawer(
+                : AppMainDrawer(
                     selectedIndex: selectedIndex,
                     onTabSelected: (index) {
                       Navigator.of(context).pop();
@@ -270,8 +270,8 @@ class _MainShellState extends ConsumerState<MainShell>
   }
 }
 
-class _MainDrawer extends ConsumerWidget {
-  const _MainDrawer({
+class AppMainDrawer extends ConsumerWidget {
+  const AppMainDrawer({
     required this.selectedIndex,
     required this.onTabSelected,
     this.isStatic = false,

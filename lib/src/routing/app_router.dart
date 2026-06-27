@@ -86,7 +86,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/widgets',
-        builder: (context, state) => const WidgetsManagerScreen(),
+        builder: (context, state) => const DrawerConfig(
+          hasDrawer: true,
+          child: WidgetsManagerScreen(),
+        ),
       ),
       GoRoute(
         path: '/balance-trend',
@@ -104,11 +107,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/notifications',
-        builder: (context, state) => const NotificationsScreen(),
+        builder: (context, state) => const DrawerConfig(
+          hasDrawer: true,
+          child: NotificationsScreen(),
+        ),
       ),
       GoRoute(
         path: '/settings',
-        builder: (context, state) => const SettingsScreen(),
+        builder: (context, state) => const DrawerConfig(
+          hasDrawer: true,
+          child: SettingsScreen(),
+        ),
       ),
       GoRoute(
         path: '/recurring',
@@ -147,7 +156,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: 'forecast',
-            builder: (context, state) => const LoansScreen(mode: 'forecast'),
+            builder: (context, state) => const DrawerConfig(
+              hasDrawer: true,
+              child: LoansScreen(mode: 'forecast'),
+            ),
           ),
           GoRoute(
             path: ':id',
@@ -169,25 +181,45 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/budgets/new',
-        builder: (context, state) =>
-            const BudgetGoalEditorScreen(kind: 'budget'),
+        builder: (context, state) => const DrawerConfig(
+          hasDrawer: true,
+          child: BudgetGoalEditorScreen(kind: 'budget'),
+        ),
       ),
       GoRoute(
         path: '/goals/new',
-        builder: (context, state) => const BudgetGoalEditorScreen(kind: 'goal'),
+        builder: (context, state) => const DrawerConfig(
+          hasDrawer: true,
+          child: BudgetGoalEditorScreen(kind: 'goal'),
+        ),
       ),
       GoRoute(
         path: '/categories',
-        builder: (context, state) => const CategoriesScreen(),
+        builder: (context, state) => const DrawerConfig(
+          hasDrawer: true,
+          child: CategoriesScreen(),
+        ),
       ),
       GoRoute(
         path: '/currencies',
-        builder: (context, state) => const CurrenciesScreen(),
+        builder: (context, state) => const DrawerConfig(
+          hasDrawer: true,
+          child: CurrenciesScreen(),
+        ),
       ),
-      GoRoute(path: '/sync', builder: (context, state) => const SyncScreen()),
+      GoRoute(
+        path: '/sync',
+        builder: (context, state) => const DrawerConfig(
+          hasDrawer: true,
+          child: SyncScreen(),
+        ),
+      ),
       GoRoute(
         path: '/imports',
-        builder: (context, state) => const ImportsScreen(),
+        builder: (context, state) => const DrawerConfig(
+          hasDrawer: true,
+          child: ImportsScreen(),
+        ),
       ),
       GoRoute(
         path: '/imports/:id',
@@ -208,12 +240,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/auto-capture',
-        builder: (context, state) =>
-            const ImportSmsScreen(title: 'Auto Capture'),
+        builder: (context, state) => const DrawerConfig(
+          hasDrawer: true,
+          child: ImportSmsScreen(title: 'Auto Capture'),
+        ),
       ),
       GoRoute(
         path: '/updates',
-        builder: (context, state) => const UpdatesScreen(),
+        builder: (context, state) => const DrawerConfig(
+          hasDrawer: true,
+          child: UpdatesScreen(),
+        ),
       ),
       GoRoute(
         path: '/device-permissions',
