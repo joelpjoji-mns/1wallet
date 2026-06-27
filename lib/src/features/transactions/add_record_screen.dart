@@ -1005,6 +1005,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
         (source.originalAmount ?? source.amount).amountMinor,
         _transactionCurrency!,
       );
+      _occurredAt = source.occurredAt;
       _status = (tx == null && planned != null) ? 'cleared' : source.status;
     }
   }
