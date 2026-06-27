@@ -114,13 +114,13 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   final payoffEvents = <PayoffEvent>[];
 
   // 1. Simulate backwards for past 365 days
-  int currentPastNw = initialNetWorth;
+  int currentPastLiquid = initialNetLiquidBalance;
   final pastCurve = <ForecastDataPoint>[];
   for (int i = 0; i >= -365; i--) {
     final date = startDate.add(Duration(days: i));
-    pastCurve.add(ForecastDataPoint(date, currentPastNw));
-    final delta = nwDeltas[i] ?? 0;
-    currentPastNw -= delta;
+    pastCurve.add(ForecastDataPoint(date, currentPastLiquid));
+    final delta = liquidDeltas[i] ?? 0;
+    currentPastLiquid -= delta;
   }
   balanceCurve.addAll(pastCurve.reversed);
 
@@ -134,13 +134,11 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
 
   // 3. Simulate forwards for 5 years
   int currentFutureLiquid = initialNetLiquidBalance;
-  int currentFutureNw = initialNetWorth;
 
   for (int i = 1; i <= 1825; i++) {
     final date = startDate.add(Duration(days: i));
     
     currentFutureLiquid += (liquidDeltas[i] ?? 0);
-    currentFutureNw += (nwDeltas[i] ?? 0);
 
     bool paidSomething = true;
     while (paidSomething) {
@@ -153,31 +151,26 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
         if (cashAboveEmergency > 0) {
           final maxPayment = (cashAboveEmergency * extraPaymentAllocationPercent).floor();
           
-          if (maxPayment > 0) {
-            if (maxPayment >= balance) {
-              currentFutureLiquid -= balance;
-              activeLoans[loanId] = 0;
-              final loanObj = loans.firstWhereOrNull((l) => l.id == loanId);
-              if (loanObj != null) {
-                payoffEvents.add(PayoffEvent(loanObj, date));
-              }
-              paidSomething = true;
-            } else {
-              currentFutureLiquid -= maxPayment;
-              activeLoans[loanId] = balance - maxPayment;
+          if (maxPayment >= balance) {
+            currentFutureLiquid -= balance;
+            activeLoans[loanId] = 0;
+            final loanObj = loans.firstWhereOrNull((l) => l.id == loanId);
+            if (loanObj != null) {
+              payoffEvents.add(PayoffEvent(loanObj, date));
             }
+            paidSomething = true;
           }
         }
         break; 
       }
     }
     
-    balanceCurve.add(ForecastDataPoint(date, currentFutureNw));
+    balanceCurve.add(ForecastDataPoint(date, currentFutureLiquid));
   }
 
   return LoanForecastSimulationResult(
     balanceCurve: balanceCurve,
     payoffEvents: payoffEvents,
-    initialBalanceMinor: initialNetWorth,
+    initialBalanceMinor: initialNetLiquidBalance,
   );
 }
