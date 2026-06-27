@@ -1,5 +1,5 @@
 import 'dart:math' as math;
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -1296,12 +1296,61 @@ class _RoundTileIcon extends StatelessWidget {
   }
 }
 
+class NumberedDotPainter extends FlDotPainter {
+  final String label;
+  final Color color;
+  final Color textColor;
+  final double radius;
+
+  NumberedDotPainter(this.label, {this.color = Colors.green, this.textColor = Colors.white, this.radius = 10});
+
+  @override
+  void draw(Canvas canvas, FlSpot spot, Offset offsetInCanvas) {
+    final paint = Paint()..color = color;
+    canvas.drawCircle(offsetInCanvas, radius, paint);
+
+    final textSpan = TextSpan(
+      text: label,
+      style: TextStyle(color: textColor, fontSize: radius * 1.2, fontWeight: FontWeight.bold),
+    );
+    final textPainter = TextPainter(
+      text: textSpan,
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        offsetInCanvas.dx - textPainter.width / 2,
+        offsetInCanvas.dy - textPainter.height / 2,
+      ),
+    );
+  }
+
+  @override
+  Size getSize(FlSpot spot) {
+    return Size(radius * 2, radius * 2);
+  }
+
+  @override
+  Color get mainColor => color;
+
+  @override
+  FlDotPainter lerp(FlDotPainter a, FlDotPainter b, double t) {
+    return this; 
+  }
+  
+  @override
+  List<Object?> get props => [label, color, textColor, radius];
+}
+
 class DynamicForecastLineChart extends StatefulWidget {
   final List<FlSpot> spots;
   final double chartWidth;
   final Color lineColor;
   final List<ForecastDataPoint> balanceCurve;
   final String locale;
+  final Map<double, String> payoffDots;
 
   const DynamicForecastLineChart({
     super.key,
@@ -1310,6 +1359,7 @@ class DynamicForecastLineChart extends StatefulWidget {
     required this.lineColor,
     required this.balanceCurve,
     required this.locale,
+    required this.payoffDots,
   });
 
   @override
@@ -1481,7 +1531,17 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                             isCurved: true,
                             color: widget.lineColor,
                             barWidth: 3,
-                            dotData: const FlDotData(show: false),
+                            dotData: FlDotData(
+                              show: true,
+                              checkToShowDot: (spot, barData) => widget.payoffDots.containsKey(spot.x),
+                              getDotPainter: (spot, percent, barData, index) {
+                                final label = widget.payoffDots[spot.x];
+                                if (label != null) {
+                                  return NumberedDotPainter(label);
+                                }
+                                return FlDotCirclePainter(radius: 0, color: Colors.transparent);
+                              },
+                            ),
                           ),
                         ],
                         titlesData: FlTitlesData(
@@ -1857,6 +1917,33 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
     final monthKeys = monthlyBalances.keys.toList();
     final barChartWidth = math.max(MediaQuery.of(context).size.width - 64, monthKeys.length * 40.0);
 
+    final loanNumberMap = <String, int>{};
+    for (int i = 0; i < _priorityLoans.length; i++) {
+      loanNumberMap[_priorityLoans[i].id] = i + 1;
+    }
+    
+    final payoffDots = <double, String>{};
+    for (final event in result.payoffEvents) {
+      final eventX = (event.payoffDate.millisecondsSinceEpoch - startMillis) / 86400000.0;
+      final number = loanNumberMap[event.loan.id]?.toString() ?? '';
+      
+      double closestX = 0;
+      double minDiff = double.infinity;
+      for (final spot in spots) {
+        final diff = (spot.x - eventX).abs();
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestX = spot.x;
+        }
+      }
+      
+      if (payoffDots.containsKey(closestX)) {
+        payoffDots[closestX] = '${payoffDots[closestX]},$number';
+      } else {
+        payoffDots[closestX] = number;
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1936,6 +2023,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               lineColor: scheme.primary,
               balanceCurve: result.balanceCurve,
               locale: locale,
+              payoffDots: payoffDots,
             ),
           ),
         ),
@@ -1965,7 +2053,14 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               children: [
                 for (final event in result.payoffEvents)
                   ListTile(
-                    leading: const Icon(Icons.check_circle_outline, color: Colors.green),
+                    leading: CircleAvatar(
+                      radius: 12,
+                      backgroundColor: Colors.green,
+                      child: Text(
+                        loanNumberMap[event.loan.id]?.toString() ?? '',
+                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
                     title: Text(event.loan.name),
                     subtitle: Text(formatLedgerDate(event.payoffDate, locale)),
                   ),
@@ -1994,9 +2089,23 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               for (int index = 0; index < _priorityLoans.length; index++)
                 ListTile(
                   key: ValueKey(_priorityLoans[index].id),
-                  leading: ReorderableDragStartListener(
-                    index: index,
-                    child: const Icon(Icons.drag_handle),
+                  leading: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ReorderableDragStartListener(
+                        index: index,
+                        child: const Icon(Icons.drag_handle),
+                      ),
+                      const SizedBox(width: 8),
+                      CircleAvatar(
+                        radius: 12,
+                        backgroundColor: Colors.green,
+                        child: Text(
+                          '${index + 1}',
+                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
                   ),
                   title: Text(_priorityLoans[index].name),
                   subtitle: Text(
