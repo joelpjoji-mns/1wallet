@@ -76,7 +76,6 @@ class SettingsProfileSection extends StatelessWidget {
                         runSpacing: AppSpacing.xs,
                         children: [
                           AuthProviderChip(user: user),
-                          AuthPhotoStatusChip(user: user),
                         ],
                       ),
                     ],
@@ -93,7 +92,7 @@ class SettingsProfileSection extends StatelessWidget {
           ),
           InfoRow(
             label: 'Sync mode',
-            value: 'Firebase ${user?.providerLabel ?? 'session'}',
+            value: user?.isGoogleProvider == true ? 'Google' : 'Local',
             icon: user?.isGoogleProvider == true
                 ? Icons.cloud_done_outlined
                 : Icons.cloud_outlined,
@@ -101,25 +100,7 @@ class SettingsProfileSection extends StatelessWidget {
                 ? MetricTone.positive
                 : MetricTone.standard,
           ),
-          InfoRow(
-            label: 'Profile photo',
-            value: user?.photoUrl?.trim().isNotEmpty ?? false
-                ? (user?.isGoogleProvider == true
-                      ? 'Google profile photo active'
-                      : 'Profile photo active')
-                : 'Using avatar fallback',
-            icon: Icons.photo_camera_front_outlined,
-            tone: user?.photoUrl?.trim().isNotEmpty ?? false
-                ? MetricTone.positive
-                : MetricTone.warning,
-          ),
-          if (user?.displayName?.trim().isNotEmpty ?? false)
-            InfoRow(
-              label: 'Profile name',
-              value: user!.displayName!.trim(),
-              icon: Icons.badge_outlined,
-            ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.md),
           SizedBox(
             width: double.infinity,
             child: Wrap(
