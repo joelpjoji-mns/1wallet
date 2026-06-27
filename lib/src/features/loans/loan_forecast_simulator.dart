@@ -38,7 +38,6 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   required List<String> loanPriorityIds,
 }) {
   int initialNetLiquidBalance = 0;
-  int initialNetWorth = 0;
   
   for (final account in state.accounts) {
     if (!account.isArchived) {
@@ -47,7 +46,6 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
         accountBalance(state, account),
         state.preferences.baseCurrency,
       );
-      initialNetWorth += balance.amountMinor;
       if (!isLiabilityAccount(account)) {
         initialNetLiquidBalance += balance.amountMinor;
       }
