@@ -1374,7 +1374,6 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
   double _currentMaxY = 100;
   
   double _zoomScale = 1.0;
-  double _baseZoomScale = 1.0;
 
   @override
   void initState() {
@@ -1473,136 +1472,148 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
 
     final numberFormat = NumberFormat.compactCurrency(locale: widget.locale, symbol: widget.currencySymbol);
 
-    return Row(
+    return Column(
       children: [
-        SizedBox(
-          width: 50,
-          child: LineChart(
-            LineChartData(
-              minY: _currentMinY,
-              maxY: _currentMaxY,
-              minX: 0,
-              maxX: 1,
-              lineBarsData: [
-                LineChartBarData(
-                  spots: const [FlSpot(0, 0)],
-                  color: Colors.transparent,
-                  dotData: const FlDotData(show: false),
-                ),
-              ],
-              titlesData: FlTitlesData(
-                bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 50,
-                    interval: yInterval,
-                    getTitlesWidget: (value, meta) {
-                       return Padding(
-                         padding: const EdgeInsets.only(right: 8.0),
-                         child: Text(
-                           numberFormat.format(value), 
-                           textAlign: TextAlign.right,
-                           style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
-                         ),
-                       );
-                    },
+        Expanded(
+          child: Row(
+            children: [
+              SizedBox(
+                width: 50,
+                child: LineChart(
+                  LineChartData(
+                    minY: _currentMinY,
+                    maxY: _currentMaxY,
+                    minX: 0,
+                    maxX: 1,
+                    lineBarsData: [
+                      LineChartBarData(
+                        spots: const [FlSpot(0, 0)],
+                        color: Colors.transparent,
+                        dotData: const FlDotData(show: false),
+                      ),
+                    ],
+                    titlesData: FlTitlesData(
+                      bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 50,
+                          interval: yInterval,
+                          getTitlesWidget: (value, meta) {
+                             return Padding(
+                               padding: const EdgeInsets.only(right: 8.0),
+                               child: Text(
+                                 numberFormat.format(value), 
+                                 textAlign: TextAlign.right,
+                                 style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+                               ),
+                             );
+                          },
+                        ),
+                      ),
+                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    ),
+                    gridData: const FlGridData(show: false),
+                    borderData: FlBorderData(show: false),
                   ),
                 ),
-                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               ),
-              gridData: const FlGridData(show: false),
-              borderData: FlBorderData(show: false),
-            ),
-          ),
-        ),
-        Expanded(
-          child: GestureDetector(
-            onScaleStart: (details) {
-              _baseZoomScale = _zoomScale;
-            },
-            onScaleUpdate: (details) {
-              setState(() {
-                _zoomScale = (_baseZoomScale * details.scale).clamp(0.5, 50.0);
-              });
-              _onScroll();
-            },
-            child: NotificationListener<ScrollNotification>(
-              onNotification: (_) {
-                _onScroll();
-                return false;
-              },
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: widget.chartWidth * _zoomScale,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, right: 16.0),
-                    child: LineChart(
-                      LineChartData(
-                        minY: _currentMinY,
-                        maxY: _currentMaxY,
-                        minX: widget.spots.first.x,
-                        maxX: widget.spots.last.x,
-                        lineBarsData: [
-                          LineChartBarData(
-                            spots: widget.spots,
-                            isCurved: true,
-                            color: widget.lineColor,
-                            barWidth: 3,
-                            dotData: FlDotData(
-                              show: true,
-                              checkToShowDot: (spot, barData) => widget.payoffDots.containsKey(spot.x),
-                              getDotPainter: (spot, percent, barData, index) {
-                                final label = widget.payoffDots[spot.x];
-                                if (label != null) {
-                                  return NumberedDotPainter(label);
-                                }
-                                return FlDotCirclePainter(radius: 0, color: Colors.transparent);
-                              },
+              Expanded(
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: (_) {
+                    _onScroll();
+                    return false;
+                  },
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width: widget.chartWidth * _zoomScale,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, right: 16.0),
+                        child: LineChart(
+                          LineChartData(
+                            minY: _currentMinY,
+                            maxY: _currentMaxY,
+                            minX: widget.spots.first.x,
+                            maxX: widget.spots.last.x,
+                            lineBarsData: [
+                              LineChartBarData(
+                                spots: widget.spots,
+                                isCurved: true,
+                                color: widget.lineColor,
+                                barWidth: 3,
+                                dotData: FlDotData(
+                                  show: true,
+                                  checkToShowDot: (spot, barData) => widget.payoffDots.containsKey(spot.x),
+                                  getDotPainter: (spot, percent, barData, index) {
+                                    final label = widget.payoffDots[spot.x];
+                                    if (label != null) {
+                                      return NumberedDotPainter(label);
+                                    }
+                                    return FlDotCirclePainter(radius: 0, color: Colors.transparent);
+                                  },
+                                ),
+                              ),
+                            ],
+                            titlesData: FlTitlesData(
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 30,
+                                  interval: 30,
+                                  getTitlesWidget: (value, meta) {
+                                    final now = DateTime.now();
+                                    final today = DateTime(now.year, now.month, now.day);
+                                    final date = today.add(Duration(days: value.toInt()));
+                                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                    final monthStr = '${months[date.month - 1]} ${date.year % 100}';
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 8.0),
+                                      child: Text(monthStr, style: const TextStyle(fontSize: 10)),
+                                    );
+                                  },
+                                ),
+                              ),
+                              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                             ),
-                          ),
-                        ],
-                        titlesData: FlTitlesData(
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              reservedSize: 30,
-                              interval: 30,
-                              getTitlesWidget: (value, meta) {
-                                final now = DateTime.now();
-                                final today = DateTime(now.year, now.month, now.day);
-                                final date = today.add(Duration(days: value.toInt()));
-                                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                                final monthStr = '${months[date.month - 1]} ${date.year % 100}';
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(monthStr, style: const TextStyle(fontSize: 10)),
-                                );
-                              },
+                            gridData: FlGridData(
+                              show: true, 
+                              drawVerticalLine: true,
+                              verticalInterval: 30,
+                              horizontalInterval: yInterval,
                             ),
+                            borderData: FlBorderData(show: false),
                           ),
-                          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          duration: Duration.zero,
                         ),
-                        gridData: FlGridData(
-                          show: true, 
-                          drawVerticalLine: true,
-                          verticalInterval: 30, // Draw line every month approximately
-                          horizontalInterval: yInterval,
-                        ),
-                        borderData: FlBorderData(show: false),
                       ),
-                      duration: Duration.zero,
                     ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
+        ),
+        Row(
+          children: [
+            const Icon(Icons.zoom_out, size: 20, color: Colors.grey),
+            Expanded(
+              child: Slider(
+                value: _zoomScale,
+                min: 0.5,
+                max: 50.0,
+                onChanged: (val) {
+                  setState(() => _zoomScale = val);
+                  _onScroll();
+                },
+              ),
+            ),
+            const Icon(Icons.zoom_in, size: 20, color: Colors.grey),
+          ],
         ),
       ],
     );
@@ -1635,7 +1646,6 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
   double _currentMaxY = 100;
   
   double _zoomScale = 1.0;
-  double _baseZoomScale = 1.0;
 
   @override
   void initState() {
@@ -1731,110 +1741,122 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
 
     final numberFormat = NumberFormat.compactCurrency(locale: widget.locale, symbol: widget.currencySymbol);
 
-    return Row(
+    return Column(
       children: [
-        SizedBox(
-          width: 50,
-          child: BarChart(
-            BarChartData(
-              minY: _currentMinY,
-              maxY: _currentMaxY,
-              barGroups: [
-                BarChartGroupData(x: 0, barRods: [BarChartRodData(toY: 0, color: Colors.transparent)])
-              ],
-              titlesData: FlTitlesData(
-                bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 50,
-                    interval: yInterval,
-                    getTitlesWidget: (value, meta) {
-                       return Padding(
-                         padding: const EdgeInsets.only(right: 8.0),
-                         child: Text(
-                           numberFormat.format(value), 
-                           textAlign: TextAlign.right,
-                           style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
-                         ),
-                       );
-                    },
+        Expanded(
+          child: Row(
+            children: [
+              SizedBox(
+                width: 50,
+                child: BarChart(
+                  BarChartData(
+                    minY: _currentMinY,
+                    maxY: _currentMaxY,
+                    barGroups: [
+                      BarChartGroupData(x: 0, barRods: [BarChartRodData(toY: 0, color: Colors.transparent)])
+                    ],
+                    titlesData: FlTitlesData(
+                      bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 50,
+                          interval: yInterval,
+                          getTitlesWidget: (value, meta) {
+                             return Padding(
+                               padding: const EdgeInsets.only(right: 8.0),
+                               child: Text(
+                                 numberFormat.format(value), 
+                                 textAlign: TextAlign.right,
+                                 style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+                               ),
+                             );
+                          },
+                        ),
+                      ),
+                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    ),
+                    gridData: const FlGridData(show: false),
+                    borderData: FlBorderData(show: false),
                   ),
                 ),
-                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               ),
-              gridData: const FlGridData(show: false),
-              borderData: FlBorderData(show: false),
-            ),
-          ),
-        ),
-        Expanded(
-          child: GestureDetector(
-            onScaleStart: (details) {
-              _baseZoomScale = _zoomScale;
-            },
-            onScaleUpdate: (details) {
-              setState(() {
-                _zoomScale = (_baseZoomScale * details.scale).clamp(0.5, 50.0);
-              });
-              _onScroll();
-            },
-            child: NotificationListener<ScrollNotification>(
-              onNotification: (_) {
-                _onScroll();
-                return false;
-              },
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: widget.chartWidth * _zoomScale,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, right: 16.0),
-                    child: BarChart(
-                      BarChartData(
-                        minY: _currentMinY,
-                        maxY: _currentMaxY,
-                        barGroups: widget.barGroups,
-                        titlesData: FlTitlesData(
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              reservedSize: 36,
-                              getTitlesWidget: (value, meta) {
-                                final idx = value.toInt();
-                                if (idx >= 0 && idx < widget.monthKeys.length) {
-                                  final date = widget.monthKeys[idx];
-                                  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                                  final monthStr = '${months[date.month - 1]}\n${date.year % 100}';
-                                  return Padding(
-                                    padding: const EdgeInsets.only(top: 8.0),
-                                    child: Text(monthStr, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10)),
-                                  );
-                                }
-                                return const SizedBox.shrink();
-                              },
+              Expanded(
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: (_) {
+                    _onScroll();
+                    return false;
+                  },
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width: widget.chartWidth * _zoomScale,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, right: 16.0),
+                        child: BarChart(
+                          BarChartData(
+                            minY: _currentMinY,
+                            maxY: _currentMaxY,
+                            barGroups: widget.barGroups,
+                            titlesData: FlTitlesData(
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 36,
+                                  getTitlesWidget: (value, meta) {
+                                    final idx = value.toInt();
+                                    if (idx >= 0 && idx < widget.monthKeys.length) {
+                                      final date = widget.monthKeys[idx];
+                                      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                      final monthStr = '${months[date.month - 1]}\n${date.year % 100}';
+                                      return Padding(
+                                        padding: const EdgeInsets.only(top: 8.0),
+                                        child: Text(monthStr, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10)),
+                                      );
+                                    }
+                                    return const SizedBox.shrink();
+                                  },
+                                ),
+                              ),
+                              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                             ),
+                            gridData: FlGridData(
+                              show: true, 
+                              drawVerticalLine: false,
+                              horizontalInterval: yInterval,
+                            ),
+                            borderData: FlBorderData(show: false),
                           ),
-                          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          duration: Duration.zero,
                         ),
-                        gridData: FlGridData(
-                          show: true, 
-                          drawVerticalLine: false,
-                          horizontalInterval: yInterval,
-                        ),
-                        borderData: FlBorderData(show: false),
                       ),
-                      duration: Duration.zero,
                     ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
+        ),
+        Row(
+          children: [
+            const Icon(Icons.zoom_out, size: 20, color: Colors.grey),
+            Expanded(
+              child: Slider(
+                value: _zoomScale,
+                min: 0.5,
+                max: 50.0,
+                onChanged: (val) {
+                  setState(() => _zoomScale = val);
+                  _onScroll();
+                },
+              ),
+            ),
+            const Icon(Icons.zoom_in, size: 20, color: Colors.grey),
+          ],
         ),
       ],
     );
@@ -2053,10 +2075,10 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
         const Gap(AppSpacing.lg),
         
         SectionCard(
-          title: 'Total Net Worth Curve',
-          subtitle: 'Includes past actuals and future projections.',
+          title: 'Projected Liquid Cash',
+          subtitle: 'Includes past actuals and future projections. Watch the balance plummet when a loan pays off!',
           child: SizedBox(
-            height: 350,
+            height: 380,
             child: DynamicForecastLineChart(
               spots: spots,
               chartWidth: lineChartWidth,
@@ -2073,9 +2095,9 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
         
         SectionCard(
           title: 'Monthly Calendar View',
-          subtitle: 'End-of-month projected net balance over time.',
+          subtitle: 'End-of-month projected liquid cash over time.',
           child: SizedBox(
-            height: 350,
+            height: 380,
             child: DynamicForecastBarChart(
               barGroups: barGroups,
               chartWidth: barChartWidth,
@@ -2140,7 +2162,6 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
     );
   }
 }
-
 TransactionRecord? _existingLoanEmi(LedgerState state, String? loanId) {
   if (loanId == null) return null;
   final matches =
