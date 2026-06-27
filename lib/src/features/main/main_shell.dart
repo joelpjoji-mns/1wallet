@@ -435,6 +435,11 @@ class _MainDrawer extends ConsumerWidget {
                     surfaceTint: scheme.secondary,
                     rows: [
                       DrawerRowConfig.route(
+                        'Loan forecast',
+                        Icons.show_chart_rounded,
+                        '/loans/forecast',
+                      ),
+                      DrawerRowConfig.route(
                         'Budgets',
                         Icons.donut_large_outlined,
                         '/budgets/new',
@@ -445,24 +450,19 @@ class _MainDrawer extends ConsumerWidget {
                         '/goals/new',
                       ),
                       DrawerRowConfig.route(
-                        'Categories',
-                        Icons.category_outlined,
-                        '/categories',
-                      ),
-                      DrawerRowConfig.route(
                         'Currencies',
                         Icons.currency_exchange_outlined,
                         '/currencies',
                       ),
                       DrawerRowConfig.route(
+                        'Categories',
+                        Icons.category_outlined,
+                        '/categories',
+                      ),
+                      DrawerRowConfig.route(
                         'Widgets',
                         Icons.dashboard_customize_outlined,
                         '/widgets',
-                      ),
-                      DrawerRowConfig.route(
-                        'Loan forecast',
-                        Icons.show_chart_rounded,
-                        '/loans/forecast',
                       ),
                     ],
                     selectedIndex: selectedIndex,
