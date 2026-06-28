@@ -63,6 +63,7 @@ class _SimulatedLoan {
   final double dailyRate;
   
   double totalInterestPaid = 0;
+  DateTime? readyToPayoffDate;
   DateTime? payoffDate;
 
   _SimulatedLoan(ActiveLoan active) 
@@ -78,6 +79,7 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   required int emergencySavingMinor,
   required double extraPaymentAllocationPercent,
   required List<String> loanPriorityIds,
+  int payoffDelayDays = 0,
 }) {
   int initialNetLiquidBalance = 0;
   
@@ -263,10 +265,28 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
       for (final loan in acceleratedLoans) {
         if (extraCashAvailable <= 0) break;
         if (loan.balance > 0) {
-          final payment = math.min(loan.balance, extraCashAvailable);
-          loan.balance -= payment;
-          extraCashAvailable -= payment;
-          currentFutureLiquid -= payment;
+          // If we can pay off the remaining balance in full
+          if (loan.balance <= extraCashAvailable) {
+            loan.readyToPayoffDate ??= date;
+            final daysSinceReady = date.difference(loan.readyToPayoffDate!).inDays;
+            
+            if (daysSinceReady >= payoffDelayDays) {
+              final payment = loan.balance;
+              loan.balance -= payment;
+              extraCashAvailable -= payment;
+              currentFutureLiquid -= payment;
+            } else {
+              // We are waiting to pay it off, so we don't apply the extra payment 
+              // to this loan today. extraCashAvailable spills over to next loan.
+            }
+          } else {
+            // Partial payment
+            final payment = math.min(loan.balance, extraCashAvailable);
+            loan.balance -= payment;
+            extraCashAvailable -= payment;
+            currentFutureLiquid -= payment;
+            loan.readyToPayoffDate = null;
+          }
         }
       }
     }

@@ -172,6 +172,7 @@ class LedgerPreferences {
     this.forecastEmergencyCashMinor = 100000,
     this.forecastExtraAllocationPercent = 0.5,
     this.loanPriorityIds = const [],
+    this.loanPayoffDelayDays = 0,
   });
 
   final String baseCurrency;
@@ -203,6 +204,7 @@ class LedgerPreferences {
   final int forecastEmergencyCashMinor;
   final double forecastExtraAllocationPercent;
   final List<String> loanPriorityIds;
+  final int loanPayoffDelayDays;
 
   LedgerPreferences copyWith({
     String? baseCurrency,
@@ -234,6 +236,7 @@ class LedgerPreferences {
     int? forecastEmergencyCashMinor,
     double? forecastExtraAllocationPercent,
     List<String>? loanPriorityIds,
+    int? loanPayoffDelayDays,
   }) {
     return LedgerPreferences(
       baseCurrency: baseCurrency ?? this.baseCurrency,
@@ -276,6 +279,7 @@ class LedgerPreferences {
       forecastExtraAllocationPercent:
           forecastExtraAllocationPercent ?? this.forecastExtraAllocationPercent,
       loanPriorityIds: loanPriorityIds ?? this.loanPriorityIds,
+      loanPayoffDelayDays: loanPayoffDelayDays ?? this.loanPayoffDelayDays,
     );
   }
 }
