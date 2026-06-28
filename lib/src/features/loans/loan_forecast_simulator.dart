@@ -141,12 +141,24 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
     addDeltas(tx);
   }
 
-  // Process Future Forecasts (Base Income/Expenses)
+  // Process Future Forecasts (Base Income/Expenses from recurring templates)
   final forecasts = forecastRecurringTransactions(state, startDate.add(const Duration(days: 1)), futureEnd);
   for (final tx in forecasts) {
     // Exclude loan EMI forecasts from liquidDeltas because we simulate them manually!
     if (tx.type == 'loan_repayment') continue; 
     addDeltas(tx);
+  }
+
+  // Process Future One-Off Transactions (Scheduled, Pending, or Completed in the future)
+  for (final tx in state.transactions) {
+    if (tx.status == 'void' || tx.status == 'forecast') continue;
+    // Recurring templates are already handled by forecastRecurringTransactions above
+    if (tx.status == 'scheduled' && tx.source == 'recurring') continue; 
+
+    if (tx.occurredAt.isAfter(startDate) && (tx.occurredAt.isBefore(futureEnd) || tx.occurredAt.isAtSameMomentAs(futureEnd))) {
+      if (tx.type == 'loan_repayment') continue;
+      addDeltas(tx);
+    }
   }
 
   final balanceCurve = <ForecastDataPoint>[];
