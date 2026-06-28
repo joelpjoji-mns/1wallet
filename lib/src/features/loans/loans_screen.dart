@@ -1377,70 +1377,57 @@ class DynamicForecastLineChart extends StatefulWidget {
 }
 
 class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
-  late ScrollController _scrollController;
+  double _currentMinX = 0;
+  double _currentMaxX = 100;
   double _currentMinY = 0;
   double _currentMaxY = 100;
   
-  double _zoomScale = 3.0; // Start a bit zoomed in
+  double _zoomPercent = 0.5;
 
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController();
-    _scrollController.addListener(_onScroll);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.spots.isNotEmpty) {
-        final minX = widget.spots.first.x;
-        final maxX = widget.spots.last.x;
-        if (maxX > minX) {
-          final totalWidth = widget.chartWidth * _zoomScale;
-          final ratio = (0 - minX) / (maxX - minX);
-          final targetOffset = totalWidth * ratio - 20;
-          if (targetOffset > 0) {
-            _scrollController.jumpTo(targetOffset);
-          }
-        }
-      }
-      _onScroll();
-    });
+    _initBounds();
+  }
+
+  void _initBounds() {
+    if (widget.spots.isNotEmpty) {
+      final firstX = widget.spots.first.x;
+      final lastX = widget.spots.last.x;
+      final totalRange = lastX - firstX;
+      
+      final initialRange = (totalRange / 3.0).clamp(30.0, totalRange);
+      
+      _currentMinX = firstX;
+      _currentMaxX = firstX + initialRange;
+      if (_currentMaxX > lastX) _currentMaxX = lastX;
+      
+      _zoomPercent = totalRange > 0 ? 1.0 - (initialRange / totalRange) : 0.0;
+      if (_zoomPercent < 0) _zoomPercent = 0;
+      if (_zoomPercent > 1) _zoomPercent = 1;
+      
+      _updateYLimits();
+    }
   }
 
   @override
   void didUpdateWidget(DynamicForecastLineChart oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.spots != widget.spots || oldWidget.chartWidth != widget.chartWidth) {
-       WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
+    if (oldWidget.spots != widget.spots) {
+       WidgetsBinding.instance.addPostFrameCallback((_) {
+         setState(() => _updateYLimits());
+       });
     }
   }
 
-  double _visibleStartX = 0;
-  double _visibleEndX = double.infinity;
-
-  void _onScroll() {
-    if (!mounted || widget.spots.isEmpty) return;
-    if (!_scrollController.hasClients) return;
-    
-    final viewportWidth = _scrollController.position.viewportDimension;
-    if (viewportWidth == 0) return;
-
-    final offset = math.max(0.0, _scrollController.offset);
-    final totalWidth = widget.chartWidth * _zoomScale;
-    
-    final startRatio = offset / totalWidth;
-    final endRatio = (offset + viewportWidth) / totalWidth;
-    
-    final minXVal = widget.spots.first.x;
-    final maxXVal = widget.spots.last.x;
-    final rangeX = maxXVal - minXVal;
-    
-    final startX = minXVal + startRatio * rangeX;
-    final endX = minXVal + endRatio * rangeX;
+  void _updateYLimits() {
+    if (widget.spots.isEmpty) return;
     
     double minY = double.infinity;
     double maxY = double.negativeInfinity;
     
     for (final spot in widget.spots) {
-      if (spot.x >= startX && spot.x <= endX) {
+      if (spot.x >= _currentMinX && spot.x <= _currentMaxX) {
         if (spot.y < minY) minY = spot.y;
         if (spot.y > maxY) maxY = spot.y;
       }
@@ -1460,58 +1447,69 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
     minY -= range * 0.1;
     maxY += range * 0.1;
     
-    // Add buffer to visible X for rendering
-    final bufferX = rangeX * (viewportWidth / totalWidth);
-    final newVisibleStartX = startX - bufferX;
-    final newVisibleEndX = endX + bufferX;
-
-    if ((_currentMinY - minY).abs() > 0.01 || (_currentMaxY - maxY).abs() > 0.01 || 
-        (_visibleStartX - newVisibleStartX).abs() > (rangeX * 0.05)) {
-      setState(() {
-        _currentMinY = minY;
-        _currentMaxY = maxY;
-        _visibleStartX = newVisibleStartX;
-        _visibleEndX = newVisibleEndX;
-      });
-    }
+    _currentMinY = minY;
+    _currentMaxY = maxY;
   }
 
-  void _onSliderChange(double newZoom) {
-    if (!_scrollController.hasClients) return;
-    final oldZoom = _zoomScale;
-    final offset = _scrollController.offset;
-    final viewportWidth = _scrollController.position.viewportDimension;
-    
-    // Calculate ratio of the center of the viewport relative to the total content width
-    final totalWidthOld = widget.chartWidth * oldZoom;
-    final centerRatioOld = (offset + (viewportWidth / 2)) / totalWidthOld;
+  void _onSliderChange(double val) {
+    if (widget.spots.isEmpty) return;
+    final totalRange = widget.spots.last.x - widget.spots.first.x;
+    if (totalRange <= 0) return;
     
     setState(() {
-      _zoomScale = newZoom;
-    });
-    
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollController.hasClients) return;
-      final totalWidthNew = widget.chartWidth * newZoom;
-      final newOffset = (centerRatioOld * totalWidthNew) - (viewportWidth / 2);
+      _zoomPercent = val;
+      final minRange = 30.0;
+      final newRange = minRange + (1.0 - val) * (totalRange - minRange);
       
-      // Do not clamp to maxScrollExtent because layout might not have expanded the scroll view yet.
-      _scrollController.jumpTo(math.max(0.0, newOffset));
-      _onScroll();
+      final center = (_currentMinX + _currentMaxX) / 2;
+      _currentMinX = center - newRange / 2;
+      _currentMaxX = center + newRange / 2;
+      
+      if (_currentMinX < widget.spots.first.x) {
+        _currentMinX = widget.spots.first.x;
+        _currentMaxX = _currentMinX + newRange;
+      }
+      if (_currentMaxX > widget.spots.last.x) {
+        _currentMaxX = widget.spots.last.x;
+        _currentMinX = _currentMaxX - newRange;
+      }
+      
+      _updateYLimits();
+    });
+  }
+
+  void _onPanUpdate(DragUpdateDetails details) {
+    if (widget.spots.isEmpty) return;
+    
+    final width = context.size?.width ?? 300;
+    final range = _currentMaxX - _currentMinX;
+    final deltaX = -(details.delta.dx / width) * range;
+    
+    setState(() {
+      _currentMinX += deltaX;
+      _currentMaxX += deltaX;
+      
+      if (_currentMinX < widget.spots.first.x) {
+        final diff = widget.spots.first.x - _currentMinX;
+        _currentMinX += diff;
+        _currentMaxX += diff;
+      }
+      if (_currentMaxX > widget.spots.last.x) {
+        final diff = _currentMaxX - widget.spots.last.x;
+        _currentMinX -= diff;
+        _currentMaxX -= diff;
+      }
+      
+      _updateYLimits();
     });
   }
 
   double get _xInterval {
-    if (_zoomScale > 20) return 1; // 1 day
-    if (_zoomScale > 8) return 7; // 1 week
-    if (_zoomScale > 3) return 15; // 15 days
-    return 30; // 1 month
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
+    final range = _currentMaxX - _currentMinX;
+    if (range <= 60) return 1;
+    if (range <= 180) return 7;
+    if (range <= 365) return 15;
+    return 30;
   }
 
   @override
@@ -1526,220 +1524,180 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
     return Column(
       children: [
         Expanded(
-          child: Row(
-            children: [
-              SizedBox(
-                width: 50,
-                child: LineChart(
-                  LineChartData(
-                    minY: _currentMinY,
-                    maxY: _currentMaxY,
-                    minX: 0,
-                    maxX: 1,
-                    lineBarsData: [
-                      LineChartBarData(
-                        spots: const [FlSpot(0, 0)],
-                        color: Colors.transparent,
-                        dotData: const FlDotData(show: false),
-                      ),
-                    ],
-                    titlesData: FlTitlesData(
-                      bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 50,
-                          interval: yInterval,
-                          getTitlesWidget: (value, meta) {
-                             return Padding(
-                               padding: const EdgeInsets.only(right: 8.0),
-                               child: Text(
-                                 numberFormat.format(value), 
-                                 textAlign: TextAlign.right,
-                                 style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
-                               ),
-                             );
-                          },
-                        ),
-                      ),
-                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    ),
-                    gridData: const FlGridData(show: false),
-                    borderData: FlBorderData(show: false),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: NotificationListener<ScrollNotification>(
-                  onNotification: (_) {
-                    _onScroll();
-                    return false;
-                  },
-                  child: SingleChildScrollView(
-                    controller: _scrollController,
-                    scrollDirection: Axis.horizontal,
-                    child: SizedBox(
-                      width: widget.chartWidth * _zoomScale,
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, right: 16.0),
-                        child: LineChart(
-                          LineChartData(
-                            minY: _currentMinY,
-                            maxY: _currentMaxY,
-                            minX: widget.spots.first.x,
-                            maxX: widget.spots.last.x,
-                            lineTouchData: LineTouchData(
-                              enabled: true,
-                              touchTooltipData: LineTouchTooltipData(
-                                getTooltipColor: (spot) => Theme.of(context).colorScheme.surfaceContainerHigh,
-                                getTooltipItems: (touchedSpots) {
-                                  return touchedSpots.map((spot) {
-                                    final now = DateTime.now();
-                                    final today = DateTime(now.year, now.month, now.day);
-                                    final date = today.add(Duration(days: spot.x.toInt()));
-                                    final dateStr = DateFormat('dd MMM yyyy').format(date);
-                                    
-                                    final amt = NumberFormat.decimalPattern(widget.locale).format(spot.y);
-                                    final moneyStr = '${widget.currencySymbol}$amt';
-                                    
-                                    return LineTooltipItem(
-                                      '$moneyStr\n',
-                                      TextStyle(
-                                        color: Theme.of(context).colorScheme.primary,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      children: [
-                                        TextSpan(
-                                          text: dateStr,
-                                          style: TextStyle(
-                                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.normal,
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  }).toList();
-                                },
-                              ),
+          child: GestureDetector(
+            onHorizontalDragUpdate: _onPanUpdate,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, right: 16.0),
+              child: LineChart(
+                LineChartData(
+                  minY: _currentMinY,
+                  maxY: _currentMaxY,
+                  minX: _currentMinX,
+                  maxX: _currentMaxX,
+                  clipData: const FlClipData.all(),
+                  lineTouchData: LineTouchData(
+                    enabled: true,
+                    handleBuiltInTouches: true,
+                    touchTooltipData: LineTouchTooltipData(
+                      getTooltipColor: (spot) => Theme.of(context).colorScheme.surfaceContainerHigh,
+                      getTooltipItems: (touchedSpots) {
+                        return touchedSpots.map((spot) {
+                          final now = DateTime.now();
+                          final today = DateTime(now.year, now.month, now.day);
+                          final date = today.add(Duration(days: spot.x.toInt()));
+                          final dateStr = DateFormat('dd MMM yyyy').format(date);
+                          
+                          final amt = NumberFormat.decimalPattern(widget.locale).format(spot.y);
+                          final moneyStr = '${widget.currencySymbol}$amt';
+                          
+                          return LineTooltipItem(
+                            '$moneyStr\n',
+                            TextStyle(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.bold,
                             ),
-                            extraLinesData: ExtraLinesData(
-                              verticalLines: [
-                                VerticalLine(
-                                  x: 0,
-                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
-                                  strokeWidth: 2,
-                                  dashArray: [5, 5],
-                                  label: VerticalLineLabel(
-                                    show: true,
-                                    alignment: Alignment.bottomRight,
-                                    padding: const EdgeInsets.only(bottom: 24, left: 4),
-                                    style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold),
-                                    labelResolver: (_) => "Today",
-                                  ),
-                                ),
-                                ...widget.payoffDots.keys.map((x) {
-                                    final now = DateTime.now();
-                                    final today = DateTime(now.year, now.month, now.day);
-                                    final date = today.add(Duration(days: x.toInt()));
-                                    final dateStr = DateFormat('dd MMM yy').format(date);
-                                    
-                                    return VerticalLine(
-                                      x: x,
-                                      color: Colors.green.withValues(alpha: 0.5),
-                                      strokeWidth: 1,
-                                      dashArray: [3, 3],
-                                      label: VerticalLineLabel(
-                                        show: true,
-                                        alignment: Alignment.bottomRight,
-                                        padding: const EdgeInsets.only(bottom: 4, left: 4),
-                                        style: const TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold),
-                                        labelResolver: (_) => dateStr,
-                                      ),
-                                    );
-                                }),
-                              ],
-                            ),
-                            lineBarsData: [
-                              LineChartBarData(
-                                spots: widget.spots.where((s) => s.x >= _visibleStartX && s.x <= _visibleEndX).toList(),
-                                isCurved: true,
-                                color: widget.lineColor,
-                                barWidth: 4,
-                                shadow: BoxShadow(
-                                  color: widget.lineColor.withValues(alpha: 0.5),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                ),
-                                belowBarData: BarAreaData(
-                                  show: true,
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      widget.lineColor.withValues(alpha: 0.5),
-                                      widget.lineColor.withValues(alpha: 0.0),
-                                    ],
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                  ),
-                                ),
-                                dotData: FlDotData(
-                                  show: true,
-                                  checkToShowDot: (spot, barData) => widget.payoffDots.containsKey(spot.x),
-                                  getDotPainter: (spot, percent, barData, index) {
-                                    final label = widget.payoffDots[spot.x];
-                                    if (label != null) {
-                                      return NumberedDotPainter(label);
-                                    }
-                                    return FlDotCirclePainter(radius: 0, color: Colors.transparent);
-                                  },
+                            children: [
+                              TextSpan(
+                                text: dateStr,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.normal,
                                 ),
                               ),
                             ],
-                            titlesData: FlTitlesData(
-                              bottomTitles: AxisTitles(
-                                sideTitles: SideTitles(
-                                  showTitles: true,
-                                  reservedSize: 30,
-                                  interval: _xInterval,
-                                  getTitlesWidget: (value, meta) {
-                                    final now = DateTime.now();
-                                    final today = DateTime(now.year, now.month, now.day);
-                                    final date = today.add(Duration(days: value.toInt()));
-                                    
-                                    String dateStr;
-                                    if (_xInterval <= 7) {
-                                      dateStr = DateFormat('dd MMM').format(date);
-                                    } else {
-                                      dateStr = DateFormat('MMM yy').format(date);
-                                    }
-                                    return Padding(
-                                      padding: const EdgeInsets.only(top: 8.0),
-                                      child: Text(dateStr, style: const TextStyle(fontSize: 10)),
-                                    );
-                                  },
-                                ),
-                              ),
-                              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                            ),
-                            gridData: FlGridData(
-                              show: true, 
-                              drawVerticalLine: true,
-                              verticalInterval: _xInterval,
-                              horizontalInterval: yInterval,
-                            ),
-                            borderData: FlBorderData(show: false),
-                          ),
-                          duration: Duration.zero,
-                        ),
-                      ),
+                          );
+                        }).toList();
+                      },
                     ),
                   ),
+                  extraLinesData: ExtraLinesData(
+                    verticalLines: [
+                      VerticalLine(
+                        x: 0,
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+                        strokeWidth: 2,
+                        dashArray: [5, 5],
+                        label: VerticalLineLabel(
+                          show: true,
+                          alignment: Alignment.bottomRight,
+                          padding: const EdgeInsets.only(bottom: 24, left: 4),
+                          style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold),
+                          labelResolver: (_) => "Today",
+                        ),
+                      ),
+                      ...widget.payoffDots.keys.map((x) {
+                          final now = DateTime.now();
+                          final today = DateTime(now.year, now.month, now.day);
+                          final date = today.add(Duration(days: x.toInt()));
+                          final dateStr = DateFormat('dd MMM yy').format(date);
+                          
+                          return VerticalLine(
+                            x: x,
+                            color: Colors.green.withValues(alpha: 0.5),
+                            strokeWidth: 1,
+                            dashArray: [3, 3],
+                            label: VerticalLineLabel(
+                              show: true,
+                              alignment: Alignment.bottomRight,
+                              padding: const EdgeInsets.only(bottom: 4, left: 4),
+                              style: const TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold),
+                              labelResolver: (_) => dateStr,
+                            ),
+                          );
+                      }),
+                    ],
+                  ),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: widget.spots,
+                      isCurved: true,
+                      color: widget.lineColor,
+                      barWidth: 4,
+                      shadow: BoxShadow(
+                        color: widget.lineColor.withValues(alpha: 0.5),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        gradient: LinearGradient(
+                          colors: [
+                            widget.lineColor.withValues(alpha: 0.5),
+                            widget.lineColor.withValues(alpha: 0.0),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                      ),
+                      dotData: FlDotData(
+                        show: true,
+                        checkToShowDot: (spot, barData) => widget.payoffDots.containsKey(spot.x),
+                        getDotPainter: (spot, percent, barData, index) {
+                          final label = widget.payoffDots[spot.x];
+                          if (label != null) {
+                            return NumberedDotPainter(label);
+                          }
+                          return FlDotCirclePainter(radius: 0, color: Colors.transparent);
+                        },
+                      ),
+                    ),
+                  ],
+                  titlesData: FlTitlesData(
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 30,
+                        interval: _xInterval,
+                        getTitlesWidget: (value, meta) {
+                          final now = DateTime.now();
+                          final today = DateTime(now.year, now.month, now.day);
+                          final date = today.add(Duration(days: value.toInt()));
+                          
+                          String dateStr;
+                          if (_xInterval <= 7) {
+                            dateStr = DateFormat('dd MMM').format(date);
+                          } else {
+                            dateStr = DateFormat('MMM yy').format(date);
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(dateStr, style: const TextStyle(fontSize: 10)),
+                          );
+                        },
+                      ),
+                    ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 50,
+                        interval: yInterval,
+                        getTitlesWidget: (value, meta) {
+                           return Padding(
+                             padding: const EdgeInsets.only(right: 8.0),
+                             child: Text(
+                               numberFormat.format(value), 
+                               textAlign: TextAlign.right,
+                               style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+                             ),
+                           );
+                        },
+                      ),
+                    ),
+                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  ),
+                  gridData: FlGridData(
+                    show: true, 
+                    drawVerticalLine: true,
+                    verticalInterval: _xInterval,
+                    horizontalInterval: yInterval,
+                  ),
+                  borderData: FlBorderData(show: false),
                 ),
+                duration: Duration.zero,
               ),
-            ],
+            ),
           ),
         ),
         Row(
@@ -1747,9 +1705,9 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
             const Icon(Icons.zoom_out, size: 20, color: Colors.grey),
             Expanded(
               child: Slider(
-                value: _zoomScale,
-                min: 0.5,
-                max: 50.0,
+                value: _zoomPercent,
+                min: 0.0,
+                max: 1.0,
                 onChanged: _onSliderChange,
               ),
             ),
@@ -1781,66 +1739,61 @@ class DynamicForecastBarChart extends StatefulWidget {
 }
 
 class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
-  late ScrollController _scrollController;
+  double _currentMinX = 0;
+  double _currentMaxX = 100;
   double _currentMinY = 0;
   double _currentMaxY = 100;
   
-  double _zoomScale = 1.0;
+  double _zoomPercent = 0.5;
 
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController();
-    _scrollController.addListener(_onScroll);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.barGroups.isNotEmpty) {
-         final now = DateTime.now();
-         int currentIdx = widget.timeKeys.indexWhere((d) => d.isAfter(now) || d.isAtSameMomentAs(now));
-         if (currentIdx == -1) currentIdx = widget.timeKeys.isNotEmpty ? widget.timeKeys.length - 1 : 0;
-         final ratio = currentIdx / widget.timeKeys.length;
-         final offset = widget.chartWidth * _zoomScale * ratio - 20;
-         if (offset > 0) {
-           _scrollController.jumpTo(offset);
-         }
-      }
-      _onScroll();
-    });
+    _initBounds();
+  }
+
+  void _initBounds() {
+    if (widget.barGroups.isNotEmpty) {
+      final totalRange = widget.barGroups.length - 1.0;
+      
+      final initialRange = (totalRange / 3.0).clamp(4.0, totalRange);
+      
+      _currentMinX = 0;
+      _currentMaxX = initialRange;
+      if (_currentMaxX > totalRange) _currentMaxX = totalRange;
+      
+      _zoomPercent = totalRange > 0 ? 1.0 - (initialRange / totalRange) : 0.0;
+      if (_zoomPercent < 0) _zoomPercent = 0;
+      if (_zoomPercent > 1) _zoomPercent = 1;
+      
+      _updateYLimits();
+    }
   }
 
   @override
   void didUpdateWidget(DynamicForecastBarChart oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.barGroups != widget.barGroups || oldWidget.chartWidth != widget.chartWidth) {
-       WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
+    if (oldWidget.barGroups != widget.barGroups) {
+       WidgetsBinding.instance.addPostFrameCallback((_) {
+         setState(() => _updateYLimits());
+       });
     }
   }
 
-  void _onScroll() {
-    if (!mounted || widget.barGroups.isEmpty) return;
-    if (!_scrollController.hasClients) return;
-    
-    final viewportWidth = _scrollController.position.viewportDimension;
-    if (viewportWidth == 0) return;
-
-    final offset = math.max(0.0, _scrollController.offset);
-    final totalWidth = widget.chartWidth * _zoomScale;
-    
-    final startRatio = offset / totalWidth;
-    final endRatio = (offset + viewportWidth) / totalWidth;
-    
-    final maxXVal = widget.barGroups.length - 1.0;
-    final startX = startRatio * maxXVal;
-    final endX = endRatio * maxXVal;
+  void _updateYLimits() {
+    if (widget.barGroups.isEmpty) return;
     
     double minY = double.infinity;
     double maxY = double.negativeInfinity;
     
     for (int i = 0; i < widget.barGroups.length; i++) {
-      if (i >= startX - 1 && i <= endX + 1) {
+      if (i >= _currentMinX - 1 && i <= _currentMaxX + 1) {
         final group = widget.barGroups[i];
-        final y = group.barRods.first.toY;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
+        if (group.barRods.isNotEmpty) {
+          final y = group.barRods.first.toY;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
       }
     }
     
@@ -1848,7 +1801,6 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
       minY = 0;
       maxY = 100;
     }
-    
     if (minY == maxY) {
       minY -= 50;
       maxY += 50;
@@ -1858,41 +1810,63 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
     minY -= range * 0.1;
     maxY += range * 0.1;
     
-    if ((_currentMinY - minY).abs() > 0.01 || (_currentMaxY - maxY).abs() > 0.01) {
-      setState(() {
-        _currentMinY = minY;
-        _currentMaxY = maxY;
-      });
-    }
+    _currentMinY = minY;
+    _currentMaxY = maxY;
   }
 
-  void _onSliderChange(double newZoom) {
-    if (!_scrollController.hasClients) return;
-    final oldZoom = _zoomScale;
-    final offset = _scrollController.offset;
-    final viewportWidth = _scrollController.position.viewportDimension;
-    
-    final totalWidthOld = widget.chartWidth * oldZoom;
-    final centerRatioOld = (offset + (viewportWidth / 2)) / totalWidthOld;
+  void _onSliderChange(double val) {
+    if (widget.barGroups.isEmpty) return;
+    final totalRange = widget.barGroups.length - 1.0;
+    if (totalRange <= 0) return;
     
     setState(() {
-      _zoomScale = newZoom;
-    });
-    
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollController.hasClients) return;
-      final totalWidthNew = widget.chartWidth * newZoom;
-      final newOffset = (centerRatioOld * totalWidthNew) - (viewportWidth / 2);
+      _zoomPercent = val;
+      final minRange = 4.0;
+      final newRange = minRange + (1.0 - val) * (totalRange - minRange);
       
-      _scrollController.jumpTo(newOffset.clamp(0.0, _scrollController.position.maxScrollExtent));
-      _onScroll();
+      final center = (_currentMinX + _currentMaxX) / 2;
+      _currentMinX = center - newRange / 2;
+      _currentMaxX = center + newRange / 2;
+      
+      if (_currentMinX < 0) {
+        _currentMinX = 0;
+        _currentMaxX = _currentMinX + newRange;
+      }
+      if (_currentMaxX > totalRange) {
+        _currentMaxX = totalRange;
+        _currentMinX = _currentMaxX - newRange;
+      }
+      
+      _updateYLimits();
     });
   }
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
+  void _onPanUpdate(DragUpdateDetails details) {
+    if (widget.barGroups.isEmpty) return;
+    
+    final width = context.size?.width ?? 300;
+    final range = _currentMaxX - _currentMinX;
+    final deltaX = -(details.delta.dx / width) * range;
+    
+    setState(() {
+      _currentMinX += deltaX;
+      _currentMaxX += deltaX;
+      
+      final totalRange = widget.barGroups.length - 1.0;
+      
+      if (_currentMinX < 0) {
+        final diff = 0 - _currentMinX;
+        _currentMinX += diff;
+        _currentMaxX += diff;
+      }
+      if (_currentMaxX > totalRange) {
+        final diff = _currentMaxX - totalRange;
+        _currentMinX -= diff;
+        _currentMaxX -= diff;
+      }
+      
+      _updateYLimits();
+    });
   }
 
   @override
@@ -1904,103 +1878,69 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
 
     final numberFormat = NumberFormat.compactCurrency(locale: widget.locale, symbol: widget.currencySymbol);
 
+    final visibleGroups = widget.barGroups.where((g) => g.x >= _currentMinX.floor() && g.x <= _currentMaxX.ceil()).toList();
+
     return Column(
       children: [
         Expanded(
-          child: Row(
-            children: [
-              SizedBox(
-                width: 50,
-                child: BarChart(
-                  BarChartData(
-                    minY: _currentMinY,
-                    maxY: _currentMaxY,
-                    barGroups: [
-                      BarChartGroupData(x: 0, barRods: [BarChartRodData(toY: 0, color: Colors.transparent)])
-                    ],
-                    titlesData: FlTitlesData(
-                      bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 50,
-                          interval: yInterval,
-                          getTitlesWidget: (value, meta) {
-                             return Padding(
-                               padding: const EdgeInsets.only(right: 8.0),
-                               child: Text(
-                                 numberFormat.format(value), 
-                                 textAlign: TextAlign.right,
-                                 style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
-                               ),
-                             );
-                          },
-                        ),
-                      ),
-                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    ),
-                    gridData: const FlGridData(show: false),
-                    borderData: FlBorderData(show: false),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: NotificationListener<ScrollNotification>(
-                  onNotification: (_) {
-                    _onScroll();
-                    return false;
-                  },
-                  child: SingleChildScrollView(
-                    controller: _scrollController,
-                    scrollDirection: Axis.horizontal,
-                    child: SizedBox(
-                      width: widget.chartWidth * _zoomScale,
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, right: 16.0),
-                        child: BarChart(
-                          BarChartData(
-                            minY: _currentMinY,
-                            maxY: _currentMaxY,
-                            barGroups: widget.barGroups,
-                            titlesData: FlTitlesData(
-                              bottomTitles: AxisTitles(
-                                sideTitles: SideTitles(
-                                  showTitles: true,
-                                  reservedSize: 36,
-                                  getTitlesWidget: (value, meta) {
-                                    final idx = value.toInt();
-                                    if (idx >= 0 && idx < widget.timeKeys.length) {
-                                      final date = widget.timeKeys[idx];
-                                      final weekStr = DateFormat('dd MMM').format(date);
-                                      return Padding(
-                                        padding: const EdgeInsets.only(top: 8.0),
-                                        child: Text(weekStr, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10)),
-                                      );
-                                    }
-                                    return const SizedBox.shrink();
-                                  },
-                                ),
-                              ),
-                              leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                            ),
-                            gridData: FlGridData(
-                              show: true, 
-                              drawVerticalLine: false,
-                              horizontalInterval: yInterval,
-                            ),
-                            borderData: FlBorderData(show: false),
-                          ),
-                          duration: Duration.zero,
-                        ),
+          child: GestureDetector(
+            onHorizontalDragUpdate: _onPanUpdate,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, right: 16.0),
+              child: BarChart(
+                BarChartData(
+                  minY: _currentMinY,
+                  maxY: _currentMaxY,
+                  barGroups: visibleGroups,
+                  titlesData: FlTitlesData(
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 36,
+                        getTitlesWidget: (value, meta) {
+                          final idx = value.toInt();
+                          if (idx >= 0 && idx < widget.timeKeys.length) {
+                            final date = widget.timeKeys[idx];
+                            final weekStr = DateFormat('dd MMM').format(date);
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(weekStr, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10)),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
                       ),
                     ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 50,
+                        interval: yInterval,
+                        getTitlesWidget: (value, meta) {
+                           return Padding(
+                             padding: const EdgeInsets.only(right: 8.0),
+                             child: Text(
+                               numberFormat.format(value), 
+                               textAlign: TextAlign.right,
+                               style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+                             ),
+                           );
+                        },
+                      ),
+                    ),
+                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   ),
+                  gridData: FlGridData(
+                    show: true, 
+                    drawVerticalLine: false,
+                    horizontalInterval: yInterval,
+                  ),
+                  borderData: FlBorderData(show: false),
                 ),
+                duration: Duration.zero,
               ),
-            ],
+            ),
           ),
         ),
         Row(
@@ -2008,9 +1948,9 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
             const Icon(Icons.zoom_out, size: 20, color: Colors.grey),
             Expanded(
               child: Slider(
-                value: _zoomScale,
-                min: 0.5,
-                max: 50.0,
+                value: _zoomPercent,
+                min: 0.0,
+                max: 1.0,
                 onChanged: _onSliderChange,
               ),
             ),
@@ -2297,10 +2237,12 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                     min: 0.0,
                     max: 1.0,
                     divisions: 20,
-                    onChanged: (val) {
+                    onChangeEnd: (val) {
                       ref.read(ledgerProvider.notifier).updatePreferences(
                         widget.state.preferences.copyWith(forecastExtraAllocationPercent: val),
                       );
+                    },
+                    onChanged: (val) {
                       setState(() => _extraAllocationPercent = val);
                     },
                   ),
@@ -2366,7 +2308,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
           child: ReorderableListView(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            onReorderItem: (oldIndex, newIndex) {
+            onReorder: (oldIndex, newIndex) {
               setState(() {
                 if (oldIndex < newIndex) {
                   newIndex -= 1;
@@ -2375,9 +2317,15 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                 _priorityLoans.insert(newIndex, item);
               });
               final newOrder = _priorityLoans.map((l) => l.id).toList();
-              ref.read(ledgerProvider.notifier).updatePreferences(
-                widget.state.preferences.copyWith(loanPriorityIds: newOrder),
-              );
+              // Important: Delay updatePreferences slightly so the ReorderableListView finishes its animation
+              // before the parent triggers a rebuild with the new state.
+              Future.delayed(const Duration(milliseconds: 50), () {
+                if (mounted) {
+                  ref.read(ledgerProvider.notifier).updatePreferences(
+                    widget.state.preferences.copyWith(loanPriorityIds: newOrder),
+                  );
+                }
+              });
             },
             children: _priorityLoans.asMap().entries.map((entry) {
               final index = entry.key;

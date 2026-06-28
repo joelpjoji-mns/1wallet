@@ -195,11 +195,13 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   int acceleratedMaxMonths = 0;
 
   double currentFutureLiquid = initialNetLiquidBalance.toDouble();
+  double baseFutureLiquid = initialNetLiquidBalance.toDouble();
 
   for (int i = 1; i <= 1825; i++) {
     final date = startDate.add(Duration(days: i));
     
     currentFutureLiquid += (liquidDeltas[i] ?? 0);
+    baseFutureLiquid += (liquidDeltas[i] ?? 0);
 
     // --- BASE SCENARIO (No Extra Payments, just standard EMI) ---
     for (final loan in baseLoans) {
@@ -209,8 +211,18 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
         loan.totalInterestPaid += interest;
         baseTotalInterest += interest.round();
         
-        final payment = math.min(loan.balance, loan.dailyEmi);
+        final rawFutureMin = minFutureBalance[i];
+        final dropFromTodayToFutureMin = rawFutureBalances[i] - rawFutureMin; 
+        final safeBaseLiquid = baseFutureLiquid - dropFromTodayToFutureMin;
+        double cashAvailableForEmi = safeBaseLiquid - emergencySavingMinor;
+        if (cashAvailableForEmi < 0) cashAvailableForEmi = 0;
+        
+        final desiredPayment = math.min(loan.balance, loan.dailyEmi);
+        final payment = math.min(desiredPayment, cashAvailableForEmi);
+        
         loan.balance -= payment;
+        baseFutureLiquid -= payment;
+        
         if (loan.balance <= 0 && loan.payoffDate == null) {
           loan.payoffDate = date;
           baseMaxMonths = math.max(baseMaxMonths, (i / 30).ceil());
@@ -219,7 +231,6 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
     }
 
     // --- ACCELERATED SCENARIO (With Extra Payments) ---
-    double dailyEmiTotal = 0;
     for (final loan in acceleratedLoans) {
       if (loan.balance > 0) {
         final interest = loan.balance * loan.dailyRate;
@@ -227,13 +238,19 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
         loan.totalInterestPaid += interest;
         acceleratedTotalInterest += interest.round();
         
-        final payment = math.min(loan.balance, loan.dailyEmi);
+        final rawFutureMin = minFutureBalance[i];
+        final dropFromTodayToFutureMin = rawFutureBalances[i] - rawFutureMin; 
+        final safeCurrentLiquid = currentFutureLiquid - dropFromTodayToFutureMin;
+        double cashAvailableForEmi = safeCurrentLiquid - emergencySavingMinor;
+        if (cashAvailableForEmi < 0) cashAvailableForEmi = 0;
+        
+        final desiredPayment = math.min(loan.balance, loan.dailyEmi);
+        final payment = math.min(desiredPayment, cashAvailableForEmi);
+        
         loan.balance -= payment;
-        dailyEmiTotal += payment;
+        currentFutureLiquid -= payment;
       }
     }
-
-    currentFutureLiquid -= dailyEmiTotal;
     
     final rawFutureMin = minFutureBalance[i];
     final dropFromTodayToFutureMin = rawFutureBalances[i] - rawFutureMin; 

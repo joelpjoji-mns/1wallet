@@ -415,6 +415,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     _prefsSaveTimer?.cancel();
     _prefsSaveTimer = Timer(const Duration(milliseconds: 500), () {
       unawaited(_repository.save(state));
+      unawaited(CloudSyncController.instance.scheduleBackup(state));
     });
   }
 
