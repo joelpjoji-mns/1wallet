@@ -215,7 +215,22 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
 
   FirebaseFirestore get _firestore => FirebaseFirestore.instance;
 
+  Future<void> _clearOldUpdates() async {
+    try {
+      final dir = await getTemporaryDirectory();
+      if (await dir.exists()) {
+        final files = dir.listSync();
+        for (final file in files) {
+          if (file is File && file.path.toLowerCase().endsWith('.apk')) {
+            await file.delete();
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
   Future<void> _init() async {
+    await _clearOldUpdates();
     try {
       if (Firebase.apps.isEmpty) return;
     } catch (_) {
