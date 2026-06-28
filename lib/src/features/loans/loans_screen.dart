@@ -832,7 +832,6 @@ class LoanDetailView extends ConsumerWidget {
                   Builder(
                     builder: (context) {
                       final principal = details.principal!.amountMinor.abs();
-                      final remaining = balance.amountMinor.abs();
                       final paid = repaymentHistory
                           .where((r) => r.status != 'void')
                           .fold<int>(
@@ -1228,7 +1227,6 @@ class _LoanCompactCard extends StatelessWidget {
                 Builder(
                   builder: (context) {
                     final principal = details.principal!.amountMinor.abs();
-                    final remaining = balance.amountMinor.abs();
                     final paid = repayments
                         .where((r) => r.status != 'void')
                         .fold<int>(
@@ -1413,6 +1411,9 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
     }
   }
 
+  double _visibleStartX = 0;
+  double _visibleEndX = double.infinity;
+
   void _onScroll() {
     if (!mounted || widget.spots.isEmpty) return;
     if (!_scrollController.hasClients) return;
@@ -1457,10 +1458,18 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
     minY -= range * 0.1;
     maxY += range * 0.1;
     
-    if ((_currentMinY - minY).abs() > 0.01 || (_currentMaxY - maxY).abs() > 0.01) {
+    // Add buffer to visible X for rendering
+    final bufferX = rangeX * (viewportWidth / totalWidth);
+    final newVisibleStartX = startX - bufferX;
+    final newVisibleEndX = endX + bufferX;
+
+    if ((_currentMinY - minY).abs() > 0.01 || (_currentMaxY - maxY).abs() > 0.01 || 
+        (_visibleStartX - newVisibleStartX).abs() > (rangeX * 0.05)) {
       setState(() {
         _currentMinY = minY;
         _currentMaxY = maxY;
+        _visibleStartX = newVisibleStartX;
+        _visibleEndX = newVisibleEndX;
       });
     }
   }
@@ -1484,7 +1493,8 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
       final totalWidthNew = widget.chartWidth * newZoom;
       final newOffset = (centerRatioOld * totalWidthNew) - (viewportWidth / 2);
       
-      _scrollController.jumpTo(newOffset.clamp(0.0, _scrollController.position.maxScrollExtent));
+      // Do not clamp to maxScrollExtent because layout might not have expanded the scroll view yet.
+      _scrollController.jumpTo(math.max(0.0, newOffset));
       _onScroll();
     });
   }
@@ -1616,7 +1626,7 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                               verticalLines: [
                                 VerticalLine(
                                   x: 0,
-                                  color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
                                   strokeWidth: 2,
                                   dashArray: [5, 5],
                                   label: VerticalLineLabel(
@@ -1635,7 +1645,7 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                                     
                                     return VerticalLine(
                                       x: x,
-                                      color: Colors.green.withOpacity(0.5),
+                                      color: Colors.green.withValues(alpha: 0.5),
                                       strokeWidth: 1,
                                       dashArray: [3, 3],
                                       label: VerticalLineLabel(
@@ -1651,10 +1661,26 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                             ),
                             lineBarsData: [
                               LineChartBarData(
-                                spots: widget.spots,
+                                spots: widget.spots.where((s) => s.x >= _visibleStartX && s.x <= _visibleEndX).toList(),
                                 isCurved: true,
                                 color: widget.lineColor,
-                                barWidth: 3,
+                                barWidth: 4,
+                                shadow: BoxShadow(
+                                  color: widget.lineColor.withValues(alpha: 0.5),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                                belowBarData: BarAreaData(
+                                  show: true,
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      widget.lineColor.withValues(alpha: 0.5),
+                                      widget.lineColor.withValues(alpha: 0.0),
+                                    ],
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                  ),
+                                ),
                                 dotData: FlDotData(
                                   show: true,
                                   checkToShowDot: (spot, barData) => widget.payoffDots.containsKey(spot.x),
@@ -1735,7 +1761,7 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
 class DynamicForecastBarChart extends StatefulWidget {
   final List<BarChartGroupData> barGroups;
   final double chartWidth;
-  final List<DateTime> monthKeys;
+  final List<DateTime> timeKeys;
   final String locale;
   final String currencySymbol;
 
@@ -1743,7 +1769,7 @@ class DynamicForecastBarChart extends StatefulWidget {
     super.key,
     required this.barGroups,
     required this.chartWidth,
-    required this.monthKeys,
+    required this.timeKeys,
     required this.locale,
     required this.currencySymbol,
   });
@@ -1767,9 +1793,9 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.barGroups.isNotEmpty) {
          final now = DateTime.now();
-         int currentIdx = widget.monthKeys.indexWhere((d) => d.year == now.year && d.month == now.month);
-         if (currentIdx == -1) currentIdx = 0;
-         final ratio = currentIdx / widget.monthKeys.length;
+         int currentIdx = widget.timeKeys.indexWhere((d) => d.isAfter(now) || d.isAtSameMomentAs(now));
+         if (currentIdx == -1) currentIdx = widget.timeKeys.isNotEmpty ? widget.timeKeys.length - 1 : 0;
+         final ratio = currentIdx / widget.timeKeys.length;
          final offset = widget.chartWidth * _zoomScale * ratio - 20;
          if (offset > 0) {
            _scrollController.jumpTo(offset);
@@ -1836,6 +1862,29 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
         _currentMaxY = maxY;
       });
     }
+  }
+
+  void _onSliderChange(double newZoom) {
+    if (!_scrollController.hasClients) return;
+    final oldZoom = _zoomScale;
+    final offset = _scrollController.offset;
+    final viewportWidth = _scrollController.position.viewportDimension;
+    
+    final totalWidthOld = widget.chartWidth * oldZoom;
+    final centerRatioOld = (offset + (viewportWidth / 2)) / totalWidthOld;
+    
+    setState(() {
+      _zoomScale = newZoom;
+    });
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      final totalWidthNew = widget.chartWidth * newZoom;
+      final newOffset = (centerRatioOld * totalWidthNew) - (viewportWidth / 2);
+      
+      _scrollController.jumpTo(newOffset.clamp(0.0, _scrollController.position.maxScrollExtent));
+      _onScroll();
+    });
   }
 
   @override
@@ -1919,13 +1968,12 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
                                   reservedSize: 36,
                                   getTitlesWidget: (value, meta) {
                                     final idx = value.toInt();
-                                    if (idx >= 0 && idx < widget.monthKeys.length) {
-                                      final date = widget.monthKeys[idx];
-                                      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                                      final monthStr = '${months[date.month - 1]}\n${date.year % 100}';
+                                    if (idx >= 0 && idx < widget.timeKeys.length) {
+                                      final date = widget.timeKeys[idx];
+                                      final weekStr = DateFormat('dd MMM').format(date);
                                       return Padding(
                                         padding: const EdgeInsets.only(top: 8.0),
-                                        child: Text(monthStr, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10)),
+                                        child: Text(weekStr, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10)),
                                       );
                                     }
                                     return const SizedBox.shrink();
@@ -1961,10 +2009,7 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
                 value: _zoomScale,
                 min: 0.5,
                 max: 50.0,
-                onChanged: (val) {
-                  setState(() => _zoomScale = val);
-                  _onScroll();
-                },
+                onChanged: _onSliderChange,
               ),
             ),
             const Icon(Icons.zoom_in, size: 20, color: Colors.grey),
@@ -1986,15 +2031,24 @@ class LoanForecastView extends ConsumerStatefulWidget {
 }
 
 class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
-  final _emergencyController = TextEditingController(text: '1000');
-  double _extraAllocationPercent = 0.5;
+  late final TextEditingController _emergencyController;
+  late double _extraAllocationPercent;
   late List<Account> _priorityLoans;
 
-  @override
-  void initState() {
-    super.initState();
+  void _syncPriorityLoans() {
+    final prefs = widget.state.preferences;
     _priorityLoans = List.from(widget.loans);
+    
+    final savedOrder = prefs.loanPriorityIds;
     _priorityLoans.sort((a, b) {
+      final aIndex = savedOrder.indexOf(a.id);
+      final bIndex = savedOrder.indexOf(b.id);
+      if (aIndex != -1 && bIndex != -1) {
+        return aIndex.compareTo(bIndex);
+      }
+      if (aIndex != -1) return -1;
+      if (bIndex != -1) return 1;
+
       final aRate = a.loanDetails?.interestRatePercent ?? 0;
       final bRate = b.loanDetails?.interestRatePercent ?? 0;
       return bRate.compareTo(aRate);
@@ -2002,12 +2056,18 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    final prefs = widget.state.preferences;
+    _emergencyController = TextEditingController(text: (prefs.forecastEmergencyCashMinor / 100).toInt().toString());
+    _extraAllocationPercent = prefs.forecastExtraAllocationPercent;
+    _syncPriorityLoans();
+  }
+
+  @override
   void didUpdateWidget(LoanForecastView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final currentIds = _priorityLoans.map((l) => l.id).toSet();
-    final newLoans = widget.loans.where((l) => !currentIds.contains(l.id));
-    _priorityLoans.removeWhere((l) => !widget.loans.any((wl) => wl.id == l.id));
-    _priorityLoans.addAll(newLoans);
+    _syncPriorityLoans();
   }
 
   @override
@@ -2028,9 +2088,22 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
 
     final emergencyMinor = _amountMinorFromInput(_emergencyController.text).abs();
 
+    final activeLoans = widget.loans.map((loan) {
+      final details = _effectiveLoanDetails(widget.state, loan);
+      final emi = details.repaymentAmount?.amountMinor.abs() ?? _existingLoanEmi(widget.state, loan.id)?.amount.amountMinor.abs() ?? 0;
+      final rate = details.interestRatePercent ?? 0;
+      final remaining = accountBalance(widget.state, loan).amountMinor.abs();
+      return ActiveLoan(
+        account: loan,
+        principalMinor: remaining,
+        monthlyEmiMinor: emi,
+        annualRatePercent: rate,
+      );
+    }).toList();
+
     final result = simulateForecastPayoffGraph(
       state: widget.state,
-      loans: widget.loans,
+      activeLoans: activeLoans,
       emergencySavingMinor: emergencyMinor,
       extraPaymentAllocationPercent: _extraAllocationPercent,
       loanPriorityIds: _priorityLoans.map((l) => l.id).toList(),
@@ -2058,36 +2131,38 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
     
     final lineChartWidth = math.max(MediaQuery.of(context).size.width - 64, spots.length * 1.5);
 
-    final monthlyBalances = <DateTime, double>{};
+    final weeklyBalances = <DateTime, double>{};
     if (result.balanceCurve.isNotEmpty) {
       for (final pt in result.balanceCurve) {
-        final monthKey = DateTime(pt.date.year, pt.date.month);
-        monthlyBalances[monthKey] = pt.netBalanceMinor / 100.0;
+        final daysSinceMonday = pt.date.weekday - 1; 
+        final weekStart = pt.date.subtract(Duration(days: daysSinceMonday));
+        final weekKey = DateTime(weekStart.year, weekStart.month, weekStart.day);
+        weeklyBalances[weekKey] = pt.netBalanceMinor / 100.0;
       }
     }
     
     final barGroups = <BarChartGroupData>[];
-    int monthIndex = 0;
-    for (final entry in monthlyBalances.entries) {
+    int weekIndex = 0;
+    for (final entry in weeklyBalances.entries) {
       final y = entry.value;
       barGroups.add(
         BarChartGroupData(
-          x: monthIndex,
+          x: weekIndex,
           barRods: [
             BarChartRodData(
               toY: y,
               color: y >= 0 ? scheme.primary : scheme.error,
-              width: 16,
+              width: 12,
               borderRadius: BorderRadius.circular(4),
             ),
           ],
         ),
       );
-      monthIndex++;
+      weekIndex++;
     }
     
-    final monthKeys = monthlyBalances.keys.toList();
-    final barChartWidth = math.max(MediaQuery.of(context).size.width - 64, monthKeys.length * 40.0);
+    final weekKeys = weeklyBalances.keys.toList();
+    final barChartWidth = math.max(MediaQuery.of(context).size.width - 64, weekKeys.length * 24.0);
 
     final loanNumberMap = <String, int>{};
     for (int i = 0; i < _priorityLoans.length; i++) {
@@ -2119,6 +2194,53 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (result.impact.interestSavedMinor > 0 || result.impact.monthsSaved > 0)
+          Container(
+            margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [scheme.primary, scheme.tertiary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: scheme.primary.withValues(alpha: 0.4),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.bolt, color: Colors.white, size: 28),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Accelerated Impact',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'You could save ${formatMoney(Money(amountMinor: result.impact.interestSavedMinor, currency: widget.state.preferences.baseCurrency), locale)} in interest and finish ${result.impact.monthsSaved} months early!',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        height: 1.2,
+                      ),
+                ),
+              ],
+            ),
+          ),
         SectionCard(
           title: 'Payoff Simulation',
           subtitle: 'Adjust your emergency fund and extra cash allocation to see the payoff graph.',
@@ -2135,7 +2257,13 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                   prefixText: currencySymbol,
                   prefixIcon: const Icon(Icons.savings_outlined),
                 ),
-                onChanged: (_) => setState(() {}),
+                onChanged: (val) {
+                  final newMinor = _amountMinorFromInput(val).abs();
+                  ref.read(ledgerProvider.notifier).updatePreferences(
+                    widget.state.preferences.copyWith(forecastEmergencyCashMinor: newMinor),
+                  );
+                  setState(() {});
+                },
               ),
               const SizedBox(height: AppSpacing.lg),
               Column(
@@ -2167,7 +2295,12 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                     min: 0.0,
                     max: 1.0,
                     divisions: 20,
-                    onChanged: (val) => setState(() => _extraAllocationPercent = val),
+                    onChanged: (val) {
+                      ref.read(ledgerProvider.notifier).updatePreferences(
+                        widget.state.preferences.copyWith(forecastExtraAllocationPercent: val),
+                      );
+                      setState(() => _extraAllocationPercent = val);
+                    },
                   ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2209,14 +2342,14 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
         const Gap(AppSpacing.lg),
         
         SectionCard(
-          title: 'Monthly Calendar View',
-          subtitle: 'End-of-month projected liquid cash over time.',
+          title: 'Weekly Calendar View',
+          subtitle: 'End-of-week projected liquid cash over time.',
           child: SizedBox(
             height: 380,
             child: DynamicForecastBarChart(
               barGroups: barGroups,
               chartWidth: barChartWidth,
-              monthKeys: monthKeys,
+              timeKeys: weekKeys,
               locale: locale,
               currencySymbol: currencySymbol,
             ),
@@ -2239,6 +2372,10 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                 final item = _priorityLoans.removeAt(oldIndex);
                 _priorityLoans.insert(newIndex, item);
               });
+              final newOrder = _priorityLoans.map((l) => l.id).toList();
+              ref.read(ledgerProvider.notifier).updatePreferences(
+                widget.state.preferences.copyWith(loanPriorityIds: newOrder),
+              );
             },
             children: _priorityLoans.asMap().entries.map((entry) {
               final index = entry.key;
@@ -2325,24 +2462,9 @@ List<TransactionRecord> _loanHistoryRepayments(
   return items;
 }
 
-bool _isHistoricalLoanRepayment(TransactionRecord transaction) {
-  if (transaction.status == 'void' && transaction.notes == 'Skipped') {
-    return true;
-  }
-  if (transaction.status != 'scheduled') return true;
-  final today = _loanStartOfToday();
-  final occurredDay = DateTime(
-    transaction.occurredAt.year,
-    transaction.occurredAt.month,
-    transaction.occurredAt.day,
-  );
-  return occurredDay.isBefore(today);
-}
 
-DateTime _loanStartOfToday() {
-  final now = DateTime.now();
-  return DateTime(now.year, now.month, now.day);
-}
+
+
 
 bool _isPastLoan(LedgerState state, Account loan) {
   if (loan.isArchived) return true;
