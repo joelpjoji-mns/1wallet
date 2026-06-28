@@ -21,25 +21,23 @@ List<TransactionRecord> forecastRecurringTransactions(
     final frequency = template.recurrenceFrequency ?? 'monthly';
 
     var cursor = template.occurredAt;
-
-    // We only want future occurrences that are NOT already covered by the actual 'scheduled' template
-    // Actually, the template itself IS the next occurrence in Flutter's data model.
-    // So the template should be considered as an occurrence!
-    // But since `calendar_screen.dart` filters by `transaction.status == 'void'` inside `_summariesByDay`,
-    // it will naturally INCLUDE the 'scheduled' transaction if we don't skip it.
-    // Wait, `_filteredTransactions` might include the 'scheduled' ones?
-    // Let's look at `calendar_screen.dart`: it iterates `_filteredTransactions(state)`.
+    
+    int pastOccurrences = 0;
+    if (template.recurrenceLimit != null) {
+      pastOccurrences = state.transactions.where(
+        (tx) => tx.originalTransactionId == template.id &&
+            tx.status != 'scheduled' &&
+            tx.status != 'void',
+      ).length;
+    }
 
     int count = 0;
     while (cursor.isBefore(horizonEnd) || cursor.isAtSameMomentAs(horizonEnd)) {
+      if (template.recurrenceLimit != null && (pastOccurrences + count) >= template.recurrenceLimit!) break;
+      if (template.recurrenceEndDate != null && cursor.isAfter(template.recurrenceEndDate!)) break;
+
       if (cursor.isAfter(horizonStart) ||
           cursor.isAtSameMomentAs(horizonStart)) {
-        // To avoid duplicating the exact template record that is already in `state.transactions`,
-        // we check if this cursor matches the template's occurredAt. If so, we can let the actual
-        // template serve as the occurrence, OR we can hide the template and strictly use forecast.
-        // It's cleaner to generate a 'forecast' record for ALL occurrences, including the first one,
-        // so that we have a uniform 'forecast' status for UI coloring/logic.
-
         Money forecastAmount = template.amount;
         Money forecastBaseAmount = template.baseAmount;
 
