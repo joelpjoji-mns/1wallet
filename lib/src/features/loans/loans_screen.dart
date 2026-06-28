@@ -674,6 +674,8 @@ class _LoanFormState extends ConsumerState<LoanForm> {
         recurrenceDaysOfMonth: _daysOfMonth.isEmpty
             ? null
             : (List<int>.from(_daysOfMonth)..sort()),
+        recurrenceEndDate: existingLoan?.loanDetails?.recurrenceEndDate,
+        recurrenceLimit: existingLoan?.loanDetails?.recurrenceLimit,
         hideInterestInLedger: _hideInterestInLedger,
       );
       int transactionsSum = 0;

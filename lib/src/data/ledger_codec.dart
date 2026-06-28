@@ -668,6 +668,8 @@ Map<String, Object?> _loanDetailsToJson(AccountLoanDetails details) {
     'recurrenceInterval': details.recurrenceInterval,
     'recurrenceDaysOfWeek': details.recurrenceDaysOfWeek,
     'recurrenceDaysOfMonth': details.recurrenceDaysOfMonth,
+    'recurrenceEndDate': details.recurrenceEndDate?.toIso8601String(),
+    'recurrenceLimit': details.recurrenceLimit,
     'hideInterestInLedger': details.hideInterestInLedger,
   };
 }
@@ -738,6 +740,8 @@ AccountLoanDetails? _loanDetailsFromJson(Object? value, String currency) {
     recurrenceInterval: _int(json['recurrenceInterval'], fallback: 1),
     recurrenceDaysOfWeek: _nullableIntList(json['recurrenceDaysOfWeek']),
     recurrenceDaysOfMonth: _nullableIntList(json['recurrenceDaysOfMonth']),
+    recurrenceEndDate: json['recurrenceEndDate'] == null ? null : _date(json['recurrenceEndDate']),
+    recurrenceLimit: _nullableInt(json['recurrenceLimit']),
     hideInterestInLedger: _bool(json['hideInterestInLedger'], fallback: true),
   );
 }
@@ -795,6 +799,8 @@ Map<String, Object?> _transactionToJson(TransactionRecord transaction) {
     'recurrenceInterval': transaction.recurrenceInterval,
     'recurrenceDaysOfWeek': transaction.recurrenceDaysOfWeek,
     'recurrenceDaysOfMonth': transaction.recurrenceDaysOfMonth,
+    'recurrenceEndDate': transaction.recurrenceEndDate?.toIso8601String(),
+    'recurrenceLimit': transaction.recurrenceLimit,
     'attachments': transaction.attachments
         .map(_transactionAttachmentToJson)
         .toList(),
@@ -840,6 +846,8 @@ TransactionRecord _transactionFromJson(Map<String, dynamic> json) {
     recurrenceInterval: _int(json['recurrenceInterval'], fallback: 1),
     recurrenceDaysOfWeek: _nullableIntList(json['recurrenceDaysOfWeek']),
     recurrenceDaysOfMonth: _nullableIntList(json['recurrenceDaysOfMonth']),
+    recurrenceEndDate: json['recurrenceEndDate'] == null ? null : _date(json['recurrenceEndDate']),
+    recurrenceLimit: _nullableInt(json['recurrenceLimit']),
     attachments: _list(
       json['attachments'],
     ).map(_transactionAttachmentFromJson).toList(),
