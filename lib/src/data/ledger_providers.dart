@@ -12,7 +12,6 @@ import '../features/capture/sms_spooler.dart';
 import '../imports/wallet_csv_parser.dart';
 import '../ledger/ledger_selectors.dart';
 import '../utils/recurrence_utils.dart';
-import '../cloud_sync/cloud_sync_controller.dart';
 import 'ledger_archive.dart';
 import 'ledger_codec.dart';
 import 'ledger_defaults.dart';
@@ -414,9 +413,10 @@ class LedgerController extends StateNotifier<LedgerState> {
 
     // Debounce the heavy disk/cloud save to avoid OutOfMemory / extreme jank during slider drags
     _prefsSaveTimer?.cancel();
-    _prefsSaveTimer = Timer(const Duration(milliseconds: 500), () {
-      unawaited(_repository.save(state));
-      unawaited(CloudSyncController.instance.scheduleBackup(state));
+    _prefsSaveTimer = Timer(const Duration(milliseconds: 500), () async {
+      await _repository.save(state);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('has_unsynced_changes', true);
     });
   }
 
