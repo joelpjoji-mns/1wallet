@@ -622,11 +622,15 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
   final _nameController = TextEditingController();
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
+  final _limitController = TextEditingController();
   String? _loadedRecordId;
   var _type = 'expense';
   String? _currency;
   var _frequency = 'monthly';
   int _interval = 1;
+  String _recurrenceEnds = 'never';
+  DateTime? _recurrenceEndDate;
+  int? _recurrenceLimit;
   final Set<int> _daysOfWeek = {};
   final Set<int> _daysOfMonth = {};
   String? _accountId;
@@ -640,6 +644,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
     _nameController.dispose();
     _amountController.dispose();
     _notesController.dispose();
+    _limitController.dispose();
     super.dispose();
   }
 
@@ -796,6 +801,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                   prefixIcon: Icon(Icons.repeat_outlined),
                 ),
                 items: const [
+                  DropdownMenuItem(value: 'once', child: Text('Once (Does not repeat)')),
                   DropdownMenuItem(value: 'daily', child: Text('Daily')),
                   DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
                   DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
@@ -804,8 +810,9 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                 onChanged: (value) =>
                     setState(() => _frequency = value ?? 'monthly'),
               ),
-              const SizedBox(height: AppSpacing.sm),
-              TextFormField(
+              if (_frequency != 'once') ...[
+                const SizedBox(height: AppSpacing.sm),
+                TextFormField(
                 initialValue: _interval.toString(),
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
@@ -815,6 +822,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                 ),
                 onChanged: (value) => _interval = int.tryParse(value) ?? 1,
               ),
+              ],
               if (_frequency == 'weekly') ...[
                 const SizedBox(height: AppSpacing.md),
                 Text(
@@ -876,10 +884,58 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                   ],
                 ),
               ],
+              if (_frequency != 'once') ...[
+                const SizedBox(height: AppSpacing.md),
+                DropdownButtonFormField<String>(
+                  initialValue: _recurrenceEnds,
+                  decoration: const InputDecoration(
+                    labelText: 'Ends',
+                    prefixIcon: Icon(Icons.event_busy_outlined),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'never', child: Text('Never')),
+                    DropdownMenuItem(value: 'date', child: Text('On Date')),
+                    DropdownMenuItem(value: 'occurrences', child: Text('After Occurrences')),
+                  ],
+                  onChanged: (value) =>
+                      setState(() => _recurrenceEnds = value ?? 'never'),
+                ),
+                if (_recurrenceEnds == 'date') ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  PremiumRow(
+                    icon: Icons.event_outlined,
+                    title: 'End date',
+                    subtitle: _recurrenceEndDate == null ? 'Choose date' : formatLedgerDate(_recurrenceEndDate!, state.preferences.locale),
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: _recurrenceEndDate ?? _nextDate.add(const Duration(days: 30)),
+                        firstDate: _nextDate,
+                        lastDate: DateTime(2100),
+                      );
+                      if (picked != null) {
+                        setState(() => _recurrenceEndDate = picked);
+                      }
+                    },
+                  ),
+                ],
+                if (_recurrenceEnds == 'occurrences') ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  TextFormField(
+                    controller: _limitController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Number of occurrences',
+                      prefixIcon: Icon(Icons.numbers_outlined),
+                    ),
+                    onChanged: (value) => _recurrenceLimit = int.tryParse(value),
+                  ),
+                ],
+              ],
               const SizedBox(height: AppSpacing.sm),
               PremiumRow(
                 icon: Icons.calendar_month_outlined,
-                title: 'Next date',
+                title: _frequency == 'once' ? 'Date' : 'Next date',
                 subtitle: formatLedgerDate(_nextDate, state.preferences.locale),
                 onTap: _pickRecurringDate,
               ),
@@ -936,6 +992,20 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
     _postMode = record?.postMode;
     _frequency = record?.recurrenceFrequency ?? 'monthly';
     _interval = record?.recurrenceInterval ?? 1;
+    _recurrenceLimit = record?.recurrenceLimit;
+    _recurrenceEndDate = record?.recurrenceEndDate;
+    if (_recurrenceLimit != null) {
+      if (_recurrenceLimit == 1 && _frequency == 'once') {
+        _recurrenceEnds = 'never';
+      } else {
+        _recurrenceEnds = 'occurrences';
+        _limitController.text = _recurrenceLimit.toString();
+      }
+    } else if (_recurrenceEndDate != null) {
+      _recurrenceEnds = 'date';
+    } else {
+      _recurrenceEnds = 'never';
+    }
     _daysOfWeek.clear();
     if (record?.recurrenceDaysOfWeek != null) {
       _daysOfWeek.addAll(record!.recurrenceDaysOfWeek!);
@@ -1134,6 +1204,10 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
             recurrenceDaysOfMonth: _daysOfMonth.isEmpty
                 ? null
                 : (List<int>.from(_daysOfMonth)..sort()),
+            recurrenceEndDate: _frequency == 'once' ? null : (_recurrenceEnds == 'date' ? _recurrenceEndDate : null),
+            recurrenceLimit: _frequency == 'once' ? 1 : (_recurrenceEnds == 'occurrences' ? _recurrenceLimit : null),
+            clearRecurrenceEndDate: _frequency == 'once' || _recurrenceEnds != 'date',
+            clearRecurrenceLimit: _frequency != 'once' && _recurrenceEnds != 'occurrences',
             postMode: _postMode == 'auto' ? 'auto' : null,
           );
       if (!mounted) return;

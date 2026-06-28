@@ -294,6 +294,8 @@ class AccountLoanDetails {
     this.recurrenceInterval = 1,
     this.recurrenceDaysOfWeek,
     this.recurrenceDaysOfMonth,
+    this.recurrenceEndDate,
+    this.recurrenceLimit,
     this.hideInterestInLedger = true,
   });
 
@@ -308,6 +310,8 @@ class AccountLoanDetails {
   final int recurrenceInterval;
   final List<int>? recurrenceDaysOfWeek;
   final List<int>? recurrenceDaysOfMonth;
+  final DateTime? recurrenceEndDate;
+  final int? recurrenceLimit;
   final bool hideInterestInLedger;
 
   AccountLoanDetails copyWith({
@@ -322,6 +326,8 @@ class AccountLoanDetails {
     int? recurrenceInterval,
     List<int>? recurrenceDaysOfWeek,
     List<int>? recurrenceDaysOfMonth,
+    DateTime? recurrenceEndDate,
+    int? recurrenceLimit,
     bool? hideInterestInLedger,
   }) {
     return AccountLoanDetails(
@@ -338,6 +344,8 @@ class AccountLoanDetails {
       recurrenceDaysOfWeek: recurrenceDaysOfWeek ?? this.recurrenceDaysOfWeek,
       recurrenceDaysOfMonth:
           recurrenceDaysOfMonth ?? this.recurrenceDaysOfMonth,
+      recurrenceEndDate: recurrenceEndDate ?? this.recurrenceEndDate,
+      recurrenceLimit: recurrenceLimit ?? this.recurrenceLimit,
       hideInterestInLedger: hideInterestInLedger ?? this.hideInterestInLedger,
     );
   }
@@ -540,6 +548,8 @@ class TransactionRecord {
     this.recurrenceInterval = 1,
     this.recurrenceDaysOfWeek,
     this.recurrenceDaysOfMonth,
+    this.recurrenceEndDate,
+    this.recurrenceLimit,
     this.attachments = const [],
     this.isReimbursable = false,
     this.isTaxDeductible = false,
@@ -573,6 +583,8 @@ class TransactionRecord {
   final int recurrenceInterval;
   final List<int>? recurrenceDaysOfWeek;
   final List<int>? recurrenceDaysOfMonth;
+  final DateTime? recurrenceEndDate;
+  final int? recurrenceLimit;
   final List<TransactionAttachment> attachments;
   final bool isReimbursable;
   final bool isTaxDeductible;
@@ -606,6 +618,8 @@ class TransactionRecord {
     int? recurrenceInterval,
     List<int>? recurrenceDaysOfWeek,
     List<int>? recurrenceDaysOfMonth,
+    DateTime? recurrenceEndDate,
+    int? recurrenceLimit,
     List<TransactionAttachment>? attachments,
     bool? isReimbursable,
     bool? isTaxDeductible,
@@ -640,6 +654,8 @@ class TransactionRecord {
       recurrenceDaysOfWeek: recurrenceDaysOfWeek ?? this.recurrenceDaysOfWeek,
       recurrenceDaysOfMonth:
           recurrenceDaysOfMonth ?? this.recurrenceDaysOfMonth,
+      recurrenceEndDate: recurrenceEndDate ?? this.recurrenceEndDate,
+      recurrenceLimit: recurrenceLimit ?? this.recurrenceLimit,
       attachments: attachments ?? this.attachments,
       isReimbursable: isReimbursable ?? this.isReimbursable,
       isTaxDeductible: isTaxDeductible ?? this.isTaxDeductible,

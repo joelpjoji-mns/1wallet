@@ -103,11 +103,27 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
     updatedTransactions.add(t);
   }
 
-  // 1. Generate auto-posted transactions
+  // 1. Build initial history count for auto-posting
+  final Map<String, int> initialHistoryCount = {};
+  for (final t in updatedTransactions) {
+    if (t.originalTransactionId != null &&
+        t.status != 'scheduled' &&
+        t.status != 'void') {
+      initialHistoryCount[t.originalTransactionId!] =
+          (initialHistoryCount[t.originalTransactionId!] ?? 0) + 1;
+    }
+  }
+
+  // 2. Generate auto-posted transactions
   for (final scheduled in updatedTransactions) {
     if (scheduled.status == 'scheduled' && scheduled.postMode == 'auto') {
       DateTime nextDate = scheduled.occurredAt;
+      int currentCount = initialHistoryCount[scheduled.id] ?? 0;
+
       while (nextDate.isBefore(now)) {
+        if (scheduled.recurrenceLimit != null && currentCount >= scheduled.recurrenceLimit!) break;
+        if (scheduled.recurrenceEndDate != null && nextDate.isAfter(scheduled.recurrenceEndDate!)) break;
+
         final dateStr =
             '${nextDate.year}${nextDate.month.toString().padLeft(2, '0')}${nextDate.day.toString().padLeft(2, '0')}';
         final autoId = '${scheduled.id}-auto-$dateStr';
@@ -115,6 +131,7 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
         final alreadyExists = ledger.transactions.any((t) => t.id == autoId);
         if (!alreadyExists && !newAutoPosted.any((t) => t.id == autoId)) {
           changed = true;
+          currentCount++;
           newAutoPosted.add(
             scheduled.copyWith(
               id: autoId,
@@ -133,12 +150,15 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
   // Combine original with new
   final combinedTransactions = [...updatedTransactions, ...newAutoPosted];
 
-  // 2. Build history map
+  // 3. Build history map and final counts
   final Map<String, DateTime> latestHistory = {};
+  final Map<String, int> finalHistoryCount = {};
   for (final t in combinedTransactions) {
     if (t.originalTransactionId != null &&
         t.status != 'scheduled' &&
         t.status != 'void') {
+      finalHistoryCount[t.originalTransactionId!] =
+          (finalHistoryCount[t.originalTransactionId!] ?? 0) + 1;
       final currentLatest = latestHistory[t.originalTransactionId!];
       if (currentLatest == null || t.occurredAt.isAfter(currentLatest)) {
         latestHistory[t.originalTransactionId!] = t.occurredAt;
@@ -146,23 +166,38 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
     }
   }
 
-  // 3. Advance scheduled cursors based on history map
+  // 4. Advance scheduled cursors based on history map and check limits
   final updated = combinedTransactions.map((scheduled) {
     if (scheduled.status != 'scheduled') return scheduled;
 
-    final latestOccurredAt = latestHistory[scheduled.id];
-    if (latestOccurredAt == null) return scheduled;
+    int currentCount = finalHistoryCount[scheduled.id] ?? 0;
+    
+    // Check if limit reached
+    if (scheduled.recurrenceLimit != null && currentCount >= scheduled.recurrenceLimit!) {
+      changed = true;
+      return scheduled.copyWith(status: 'finished');
+    }
 
-    if (scheduled.occurredAt.isBefore(latestOccurredAt) ||
-        scheduled.occurredAt.isAtSameMomentAs(latestOccurredAt)) {
+    if (scheduled.recurrenceEndDate != null && scheduled.occurredAt.isAfter(scheduled.recurrenceEndDate!)) {
+      changed = true;
+      return scheduled.copyWith(status: 'finished');
+    }
+
+    final latestOccurredAt = latestHistory[scheduled.id];
+    if (latestOccurredAt != null && (scheduled.occurredAt.isBefore(latestOccurredAt) || scheduled.occurredAt.isAtSameMomentAs(latestOccurredAt))) {
       changed = true;
       DateTime nextDate = scheduled.occurredAt;
       while (nextDate.isBefore(latestOccurredAt) ||
           nextDate.isAtSameMomentAs(latestOccurredAt)) {
         nextDate = advanceTransactionRecurrence(nextDate, scheduled);
       }
+      
+      if (scheduled.recurrenceEndDate != null && nextDate.isAfter(scheduled.recurrenceEndDate!)) {
+        return scheduled.copyWith(status: 'finished');
+      }
       return scheduled.copyWith(occurredAt: nextDate);
     }
+    
     return scheduled;
   }).toList();
 
@@ -455,6 +490,10 @@ class LedgerController extends StateNotifier<LedgerState> {
     int? recurrenceInterval,
     List<int>? recurrenceDaysOfWeek,
     List<int>? recurrenceDaysOfMonth,
+    DateTime? recurrenceEndDate,
+    int? recurrenceLimit,
+    bool clearRecurrenceEndDate = false,
+    bool clearRecurrenceLimit = false,
     bool? isExcludedFromReports,
     String? originalTransactionId,
     String? postMode,
@@ -554,6 +593,12 @@ class LedgerController extends StateNotifier<LedgerState> {
           recurrenceDaysOfWeek ?? existing?.recurrenceDaysOfWeek,
       recurrenceDaysOfMonth:
           recurrenceDaysOfMonth ?? existing?.recurrenceDaysOfMonth,
+      recurrenceEndDate: clearRecurrenceEndDate
+          ? null
+          : (recurrenceEndDate ?? existing?.recurrenceEndDate),
+      recurrenceLimit: clearRecurrenceLimit
+          ? null
+          : (recurrenceLimit ?? existing?.recurrenceLimit),
       attachments: existing?.attachments ?? const [],
       isReimbursable: existing?.isReimbursable ?? false,
       isTaxDeductible: existing?.isTaxDeductible ?? false,
@@ -589,6 +634,8 @@ class LedgerController extends StateNotifier<LedgerState> {
             recurrenceInterval: transaction.recurrenceInterval,
             recurrenceDaysOfWeek: transaction.recurrenceDaysOfWeek,
             recurrenceDaysOfMonth: transaction.recurrenceDaysOfMonth,
+            recurrenceEndDate: transaction.recurrenceEndDate,
+            recurrenceLimit: transaction.recurrenceLimit,
             repaymentStartsOn: transaction.occurredAt,
           );
           accounts[loanIndex] = loan.copyWith(loanDetails: updatedDetails);
