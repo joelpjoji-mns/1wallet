@@ -169,6 +169,9 @@ class LedgerPreferences {
     this.dismissedNotificationIds = const [],
     this.privacyModeEnabled = false,
     this.biometricLockEnabled = false,
+    this.forecastEmergencyCashMinor = 100000,
+    this.forecastExtraAllocationPercent = 0.5,
+    this.loanPriorityIds = const [],
   });
 
   final String baseCurrency;
@@ -197,6 +200,9 @@ class LedgerPreferences {
   final List<String> dismissedNotificationIds;
   final bool privacyModeEnabled;
   final bool biometricLockEnabled;
+  final int forecastEmergencyCashMinor;
+  final double forecastExtraAllocationPercent;
+  final List<String> loanPriorityIds;
 
   LedgerPreferences copyWith({
     String? baseCurrency,
@@ -225,6 +231,9 @@ class LedgerPreferences {
     List<String>? dismissedNotificationIds,
     bool? privacyModeEnabled,
     bool? biometricLockEnabled,
+    int? forecastEmergencyCashMinor,
+    double? forecastExtraAllocationPercent,
+    List<String>? loanPriorityIds,
   }) {
     return LedgerPreferences(
       baseCurrency: baseCurrency ?? this.baseCurrency,
@@ -262,6 +271,11 @@ class LedgerPreferences {
           dismissedNotificationIds ?? this.dismissedNotificationIds,
       privacyModeEnabled: privacyModeEnabled ?? this.privacyModeEnabled,
       biometricLockEnabled: biometricLockEnabled ?? this.biometricLockEnabled,
+      forecastEmergencyCashMinor:
+          forecastEmergencyCashMinor ?? this.forecastEmergencyCashMinor,
+      forecastExtraAllocationPercent:
+          forecastExtraAllocationPercent ?? this.forecastExtraAllocationPercent,
+      loanPriorityIds: loanPriorityIds ?? this.loanPriorityIds,
     );
   }
 }

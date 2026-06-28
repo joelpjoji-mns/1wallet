@@ -424,6 +424,9 @@ Map<String, Object?> _preferencesToJson(LedgerPreferences preferences) {
     'dismissedNotificationIds': preferences.dismissedNotificationIds,
     'privacyModeEnabled': preferences.privacyModeEnabled,
     'biometricLockEnabled': preferences.biometricLockEnabled,
+    'forecastEmergencyCashMinor': preferences.forecastEmergencyCashMinor,
+    'forecastExtraAllocationPercent': preferences.forecastExtraAllocationPercent,
+    'loanPriorityIds': preferences.loanPriorityIds,
   };
 }
 
@@ -542,6 +545,18 @@ LedgerPreferences _preferencesFromJson(Map<String, dynamic> json) {
     biometricLockEnabled: _bool(
       json['biometricLockEnabled'],
       fallback: fallback.biometricLockEnabled,
+    ),
+    forecastEmergencyCashMinor: _int(
+      json['forecastEmergencyCashMinor'],
+      fallback: fallback.forecastEmergencyCashMinor,
+    ),
+    forecastExtraAllocationPercent: _double(
+      json['forecastExtraAllocationPercent'],
+      fallback: fallback.forecastExtraAllocationPercent,
+    ),
+    loanPriorityIds: _stringList(
+      json['loanPriorityIds'],
+      fallback: fallback.loanPriorityIds,
     ),
   );
 }
