@@ -1506,10 +1506,10 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
 
   double get _xInterval {
     final range = _currentMaxX - _currentMinX;
-    if (range <= 60) return 1;
-    if (range <= 180) return 7;
-    if (range <= 365) return 15;
-    return 30;
+    if (range <= 0) return 1;
+    final idealCount = 4.0;
+    final interval = (range / idealCount).ceilToDouble();
+    return interval < 1 ? 1 : interval;
   }
 
   @override
@@ -1654,11 +1654,14 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                           final today = DateTime(now.year, now.month, now.day);
                           final date = today.add(Duration(days: value.toInt()));
                           
+                          final range = _currentMaxX - _currentMinX;
                           String dateStr;
-                          if (_xInterval <= 7) {
+                          if (range <= 60) {
                             dateStr = DateFormat('dd MMM').format(date);
-                          } else {
+                          } else if (range <= 365) {
                             dateStr = DateFormat('MMM yy').format(date);
+                          } else {
+                            dateStr = DateFormat('yyyy').format(date);
                           }
                           return Padding(
                             padding: const EdgeInsets.only(top: 8.0),
@@ -1869,6 +1872,14 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
     });
   }
 
+  double get _xInterval {
+    final range = _currentMaxX - _currentMinX;
+    if (range <= 0) return 1;
+    final idealCount = 4.0;
+    final interval = (range / idealCount).ceilToDouble();
+    return interval < 1 ? 1 : interval;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.barGroups.isEmpty) return const SizedBox.shrink();
@@ -1879,6 +1890,22 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
     final numberFormat = NumberFormat.compactCurrency(locale: widget.locale, symbol: widget.currencySymbol);
 
     final visibleGroups = widget.barGroups.where((g) => g.x >= _currentMinX.floor() && g.x <= _currentMaxX.ceil()).toList();
+    
+    final widthAvailable = MediaQuery.of(context).size.width - 64;
+    final visibleCount = visibleGroups.length;
+    double dynamicBarWidth = visibleCount > 0 ? (widthAvailable / visibleCount) * 0.5 : 12.0;
+    if (dynamicBarWidth > 20) dynamicBarWidth = 20;
+    if (dynamicBarWidth < 2) dynamicBarWidth = 2;
+    
+    final updatedVisibleGroups = visibleGroups.map((g) {
+      final oldRod = g.barRods.first;
+      return BarChartGroupData(
+        x: g.x,
+        barRods: [
+          oldRod.copyWith(width: dynamicBarWidth),
+        ],
+      );
+    }).toList();
 
     return Column(
       children: [
@@ -1891,20 +1918,29 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
                 BarChartData(
                   minY: _currentMinY,
                   maxY: _currentMaxY,
-                  barGroups: visibleGroups,
+                  barGroups: updatedVisibleGroups,
                   titlesData: FlTitlesData(
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
                         reservedSize: 36,
+                        interval: _xInterval,
                         getTitlesWidget: (value, meta) {
                           final idx = value.toInt();
                           if (idx >= 0 && idx < widget.timeKeys.length) {
                             final date = widget.timeKeys[idx];
-                            final weekStr = DateFormat('dd MMM').format(date);
+                            final range = _currentMaxX - _currentMinX;
+                            String str;
+                            if (range <= 12) {
+                              str = DateFormat('dd MMM').format(date);
+                            } else if (range <= 52) {
+                              str = DateFormat('MMM yy').format(date);
+                            } else {
+                              str = DateFormat('yyyy').format(date);
+                            }
                             return Padding(
                               padding: const EdgeInsets.only(top: 8.0),
-                              child: Text(weekStr, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10)),
+                              child: Text(str, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10)),
                             );
                           }
                           return const SizedBox.shrink();
