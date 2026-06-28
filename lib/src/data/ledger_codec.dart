@@ -427,6 +427,7 @@ Map<String, Object?> _preferencesToJson(LedgerPreferences preferences) {
     'forecastEmergencyCashMinor': preferences.forecastEmergencyCashMinor,
     'forecastExtraAllocationPercent': preferences.forecastExtraAllocationPercent,
     'loanPriorityIds': preferences.loanPriorityIds,
+    'loanPayoffDelayDays': preferences.loanPayoffDelayDays,
   };
 }
 
@@ -557,6 +558,10 @@ LedgerPreferences _preferencesFromJson(Map<String, dynamic> json) {
     loanPriorityIds: _stringList(
       json['loanPriorityIds'],
       fallback: fallback.loanPriorityIds,
+    ),
+    loanPayoffDelayDays: _int(
+      json['loanPayoffDelayDays'],
+      fallback: fallback.loanPayoffDelayDays,
     ),
   );
 }

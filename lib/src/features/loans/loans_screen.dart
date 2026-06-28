@@ -2116,6 +2116,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
       emergencySavingMinor: emergencyMinor,
       extraPaymentAllocationPercent: _extraAllocationPercent,
       loanPriorityIds: _priorityLoans.map((l) => l.id).toList(),
+      payoffDelayDays: widget.state.preferences.loanPayoffDelayDays,
     );
 
     final locale = widget.state.preferences.locale;
@@ -2272,6 +2273,27 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                     widget.state.preferences.copyWith(forecastEmergencyCashMinor: newMinor),
                   );
                   setState(() {});
+                },
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              DropdownButtonFormField<int>(
+                value: widget.state.preferences.loanPayoffDelayDays,
+                decoration: const InputDecoration(
+                  labelText: 'Delay before closing loan',
+                  prefixIcon: Icon(Icons.timer_outlined),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 0, child: Text('Close immediately')),
+                  DropdownMenuItem(value: 7, child: Text('Wait 1 week')),
+                  DropdownMenuItem(value: 14, child: Text('Wait 2 weeks')),
+                  DropdownMenuItem(value: 30, child: Text('Wait 1 month')),
+                ],
+                onChanged: (val) {
+                  if (val != null) {
+                    ref.read(ledgerProvider.notifier).updatePreferences(
+                      widget.state.preferences.copyWith(loanPayoffDelayDays: val),
+                    );
+                  }
                 },
               ),
               const SizedBox(height: AppSpacing.lg),
