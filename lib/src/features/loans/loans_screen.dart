@@ -2009,7 +2009,38 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
   @override
   void didUpdateWidget(LoanForecastView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _syncPriorityLoans();
+    
+    final currentIds = _priorityLoans.map((l) => l.id).toSet();
+    final newIds = widget.loans.map((l) => l.id).toSet();
+    
+    bool needsSync = false;
+    
+    if (currentIds.length != newIds.length || !currentIds.containsAll(newIds)) {
+      needsSync = true;
+    }
+    
+    final savedOrder = widget.state.preferences.loanPriorityIds;
+    if (!needsSync && savedOrder.length == _priorityLoans.length) {
+      for (int i = 0; i < savedOrder.length; i++) {
+        if (savedOrder[i] != _priorityLoans[i].id) {
+          needsSync = true;
+          break;
+        }
+      }
+    } else if (savedOrder.length != _priorityLoans.length) {
+      needsSync = true;
+    }
+    
+    if (needsSync) {
+      _syncPriorityLoans();
+    } else {
+      final newLoansMap = { for (var l in widget.loans) l.id : l };
+      for (int i = 0; i < _priorityLoans.length; i++) {
+        if (newLoansMap.containsKey(_priorityLoans[i].id)) {
+          _priorityLoans[i] = newLoansMap[_priorityLoans[i].id]!;
+        }
+      }
+    }
   }
 
   @override
