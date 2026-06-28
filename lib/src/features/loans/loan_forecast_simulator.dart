@@ -259,34 +259,39 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
     final safeCurrentLiquid = currentFutureLiquid - dropFromTodayToFutureMin;
     final cashAboveEmergency = safeCurrentLiquid - emergencySavingMinor;
 
+    // Save the liquid cash BEFORE any lump-sum payoffs, so the line graph shows the peak!
+    final prePayoffLiquid = currentFutureLiquid;
+
     if (cashAboveEmergency > 0 && extraPaymentAllocationPercent > 0) {
       double extraCashAvailable = cashAboveEmergency * extraPaymentAllocationPercent;
       
       for (final loan in acceleratedLoans) {
-        if (extraCashAvailable <= 0) break;
-        if (loan.balance > 0) {
-          // If we can pay off the remaining balance in full
-          if (loan.balance <= extraCashAvailable) {
-            loan.readyToPayoffDate ??= date;
-            final daysSinceReady = date.difference(loan.readyToPayoffDate!).inDays;
-            
-            if (daysSinceReady >= payoffDelayDays) {
-              final payment = loan.balance;
-              loan.balance -= payment;
-              extraCashAvailable -= payment;
-              currentFutureLiquid -= payment;
-            } else {
-              // We are waiting to pay it off, so we don't apply the extra payment 
-              // to this loan today. extraCashAvailable spills over to next loan.
-            }
-          } else {
-            // Partial payment
-            final payment = math.min(loan.balance, extraCashAvailable);
+        if (loan.balance <= 0) continue;
+        
+        // Sinking Fund approach: We only pay off the loan when we have enough 
+        // allocated extra cash to cover the ENTIRE remaining balance.
+        if (loan.balance <= extraCashAvailable) {
+          loan.readyToPayoffDate ??= date;
+          final daysSinceReady = date.difference(loan.readyToPayoffDate!).inDays;
+          
+          if (daysSinceReady >= payoffDelayDays) {
+            final payment = loan.balance;
             loan.balance -= payment;
             extraCashAvailable -= payment;
             currentFutureLiquid -= payment;
-            loan.readyToPayoffDate = null;
+          } else {
+            // We are waiting for the delay buffer to pass.
+            // We do NOT apply the extra cash to the next loan, because this cash 
+            // is "reserved" for this loan's upcoming payoff.
+            extraCashAvailable -= loan.balance;
           }
+        } else {
+          // We don't have enough to pay off this loan fully.
+          // We do NOT make partial payments. We let the cash accumulate in the checking account.
+          loan.readyToPayoffDate = null;
+          // The cash is "reserved" for this loan (since it's highest priority), 
+          // so it shouldn't spill over to lower priority loans.
+          break; 
         }
       }
     }
@@ -299,7 +304,7 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
       }
     }
 
-    balanceCurve.add(ForecastDataPoint(date, currentFutureLiquid.round()));
+    balanceCurve.add(ForecastDataPoint(date, prePayoffLiquid.round()));
   }
 
   int interestSaved = baseTotalInterest - acceleratedTotalInterest;
