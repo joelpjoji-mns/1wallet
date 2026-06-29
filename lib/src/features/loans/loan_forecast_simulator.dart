@@ -83,20 +83,20 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
 }) {
   int initialNetLiquidBalance = 0;
   
+  final activeLoanAccountIds = activeLoans.map((l) => l.account.id).toSet();
+
   for (final account in state.accounts) {
-    if (!account.isArchived) {
-      final balance = convertMoneyForDisplay(
-        state,
-        accountBalance(state, account),
-        state.preferences.baseCurrency,
-      );
-      if (!isLiabilityAccount(account)) {
+    if (!account.isArchived && account.includeInReports) {
+      if (!activeLoanAccountIds.contains(account.id)) {
+        final balance = convertMoneyForDisplay(
+          state,
+          accountBalance(state, account),
+          state.preferences.baseCurrency,
+        );
         initialNetLiquidBalance += balance.amountMinor;
       }
     }
   }
-
-  final activeLoanAccountIds = activeLoans.map((l) => l.account.id).toSet();
 
   final today = DateTime.now();
   final startDate = DateTime(today.year, today.month, today.day);
@@ -113,23 +113,23 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
 
     final sourceAccount = accountById(state, tx.accountId);
     final isSourceTracked = sourceAccount != null && !sourceAccount.isArchived && sourceAccount.includeInReports;
-    final isSourceLiquid = isSourceTracked && !isLiabilityAccount(sourceAccount);
+    final isSourceIncluded = isSourceTracked && !activeLoanAccountIds.contains(sourceAccount.id);
 
     if (isSourceTracked) {
       final sourceMoney = Money(amountMinor: sourceDelta(tx), currency: tx.amount.currency);
       final val = convertMoneyForDisplay(state, sourceMoney, state.preferences.baseCurrency).amountMinor;
-      if (isSourceLiquid) lDelta += val;
+      if (isSourceIncluded) lDelta += val;
     }
 
     if (tx.counterAccountId != null) {
       final counterAccount = accountById(state, tx.counterAccountId);
       final isCounterTracked = counterAccount != null && !counterAccount.isArchived && counterAccount.includeInReports;
-      final isCounterLiquid = isCounterTracked && !isLiabilityAccount(counterAccount);
+      final isCounterIncluded = isCounterTracked && !activeLoanAccountIds.contains(counterAccount.id);
 
       if (isCounterTracked) {
         final counterMoney = Money(amountMinor: counterDelta(tx), currency: tx.counterAmount?.currency ?? tx.amount.currency);
         final val = convertMoneyForDisplay(state, counterMoney, state.preferences.baseCurrency).amountMinor;
-        if (isCounterLiquid) lDelta += val;
+        if (isCounterIncluded) lDelta += val;
       }
     }
 
@@ -153,11 +153,11 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   // Process Future Forecasts (Base Income/Expenses from recurring templates)
   final forecasts = forecastRecurringTransactions(state, startDate, futureEnd);
   for (final tx in forecasts) {
-    // Only exclude loan EMI forecasts if they belong to the specific loans being simulated
-    if (tx.type == 'loan_repayment') {
-      if (tx.counterAccountId != null && activeLoanAccountIds.contains(tx.counterAccountId)) continue;
-      if (activeLoanAccountIds.contains(tx.accountId)) continue;
-    }
+    // Exclude any future transaction that goes directly to our actively simulated loans,
+    // so we don't double count the simulator's own EMI payments!
+    if (tx.counterAccountId != null && activeLoanAccountIds.contains(tx.counterAccountId)) continue;
+    if (activeLoanAccountIds.contains(tx.accountId)) continue;
+    
     addDelta(tx, futureDeltas, true);
   }
 
@@ -170,10 +170,9 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
     // Include exactly at startDate in case there are unexecuted transactions scheduled for today
     if (tx.occurredAt.isAfter(startDate) || tx.occurredAt.isAtSameMomentAs(startDate)) {
       if (tx.occurredAt.isBefore(futureEnd) || tx.occurredAt.isAtSameMomentAs(futureEnd)) {
-        if (tx.type == 'loan_repayment') {
-          if (tx.counterAccountId != null && activeLoanAccountIds.contains(tx.counterAccountId)) continue;
-          if (activeLoanAccountIds.contains(tx.accountId)) continue;
-        }
+        if (tx.counterAccountId != null && activeLoanAccountIds.contains(tx.counterAccountId)) continue;
+        if (activeLoanAccountIds.contains(tx.accountId)) continue;
+        
         addDelta(tx, futureDeltas, true);
       }
     }
