@@ -101,9 +101,10 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   final pastStart = startDate.subtract(const Duration(days: 365));
   final futureEnd = startDate.add(const Duration(days: 1825)); // 5 years
 
-  final liquidDeltas = <int, int>{};
+  final pastDeltas = <int, int>{};
+  final futureDeltas = <int, int>{};
   
-  void addDeltas(TransactionRecord tx) {
+  void addDelta(TransactionRecord tx, Map<int, int> deltas, bool isFuture) {
     int lDelta = 0;
 
     final sourceAccount = accountById(state, tx.accountId);
@@ -129,8 +130,12 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
     }
 
     if (lDelta != 0) {
-      final daysSinceStart = tx.occurredAt.difference(startDate).inDays;
-      liquidDeltas[daysSinceStart] = (liquidDeltas[daysSinceStart] ?? 0) + lDelta;
+      int daysSinceStart = tx.occurredAt.difference(startDate).inDays;
+      if (isFuture) {
+        // Anything scheduled for today OR tomorrow applies starting at the end of tomorrow (day 1)
+        daysSinceStart = math.max(1, daysSinceStart);
+      }
+      deltas[daysSinceStart] = (deltas[daysSinceStart] ?? 0) + lDelta;
     }
   }
 
@@ -138,15 +143,15 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   for (final tx in state.transactions) {
     if (tx.status == 'scheduled' || tx.status == 'void' || tx.status == 'forecast') continue;
     if (tx.occurredAt.isBefore(pastStart) || tx.occurredAt.isAfter(startDate)) continue;
-    addDeltas(tx);
+    addDelta(tx, pastDeltas, false);
   }
 
   // Process Future Forecasts (Base Income/Expenses from recurring templates)
-  final forecasts = forecastRecurringTransactions(state, startDate.add(const Duration(days: 1)), futureEnd);
+  final forecasts = forecastRecurringTransactions(state, startDate, futureEnd);
   for (final tx in forecasts) {
-    // Exclude loan EMI forecasts from liquidDeltas because we simulate them manually!
+    // Exclude loan EMI forecasts from futureDeltas because we simulate them manually!
     if (tx.type == 'loan_repayment') continue; 
-    addDeltas(tx);
+    addDelta(tx, futureDeltas, true);
   }
 
   // Process Future One-Off Transactions (Scheduled, Pending, or Completed in the future)
@@ -155,9 +160,12 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
     // Recurring templates are already handled by forecastRecurringTransactions above
     if (tx.status == 'scheduled' && tx.source == 'recurring') continue; 
 
-    if (tx.occurredAt.isAfter(startDate) && (tx.occurredAt.isBefore(futureEnd) || tx.occurredAt.isAtSameMomentAs(futureEnd))) {
-      if (tx.type == 'loan_repayment') continue;
-      addDeltas(tx);
+    // Include exactly at startDate in case there are unexecuted transactions scheduled for today
+    if (tx.occurredAt.isAfter(startDate) || tx.occurredAt.isAtSameMomentAs(startDate)) {
+      if (tx.occurredAt.isBefore(futureEnd) || tx.occurredAt.isAtSameMomentAs(futureEnd)) {
+        if (tx.type == 'loan_repayment') continue;
+        addDelta(tx, futureDeltas, true);
+      }
     }
   }
 
@@ -170,7 +178,7 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   for (int i = 0; i >= -365; i--) {
     final date = startDate.add(Duration(days: i));
     pastCurve.add(ForecastDataPoint(date, currentPastLiquid));
-    final delta = liquidDeltas[i] ?? 0;
+    final delta = pastDeltas[i] ?? 0;
     currentPastLiquid -= delta;
   }
   balanceCurve.addAll(pastCurve.reversed);
@@ -193,7 +201,7 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   final rawFutureBalances = List<int>.filled(1826, 0);
   int tempBal = initialNetLiquidBalance;
   for (int i = 1; i <= 1825; i++) {
-    tempBal += (liquidDeltas[i] ?? 0);
+    tempBal += (futureDeltas[i] ?? 0);
     rawFutureBalances[i] = tempBal;
   }
 
