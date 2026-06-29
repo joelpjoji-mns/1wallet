@@ -222,8 +222,8 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   for (int i = 1; i <= 1825; i++) {
     final date = startDate.add(Duration(days: i));
     
-    currentFutureLiquid += (liquidDeltas[i] ?? 0);
-    baseFutureLiquid += (liquidDeltas[i] ?? 0);
+    currentFutureLiquid += (futureDeltas[i] ?? 0);
+    baseFutureLiquid += (futureDeltas[i] ?? 0);
 
     // --- BASE SCENARIO (No Extra Payments, just standard EMI) ---
     for (final loan in baseLoans) {
