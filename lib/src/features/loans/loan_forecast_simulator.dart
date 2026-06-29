@@ -96,6 +96,8 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
     }
   }
 
+  final activeLoanAccountIds = activeLoans.map((l) => l.account.id).toSet();
+
   final today = DateTime.now();
   final startDate = DateTime(today.year, today.month, today.day);
   final pastStart = startDate.subtract(const Duration(days: 365));
@@ -105,10 +107,12 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   final futureDeltas = <int, int>{};
   
   void addDelta(TransactionRecord tx, Map<int, int> deltas, bool isFuture) {
+    if (tx.isExcludedFromReports) return;
+
     int lDelta = 0;
 
     final sourceAccount = accountById(state, tx.accountId);
-    final isSourceTracked = sourceAccount != null && !sourceAccount.isArchived;
+    final isSourceTracked = sourceAccount != null && !sourceAccount.isArchived && sourceAccount.includeInReports;
     final isSourceLiquid = isSourceTracked && !isLiabilityAccount(sourceAccount);
 
     if (isSourceTracked) {
@@ -119,7 +123,7 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
 
     if (tx.counterAccountId != null) {
       final counterAccount = accountById(state, tx.counterAccountId);
-      final isCounterTracked = counterAccount != null && !counterAccount.isArchived;
+      final isCounterTracked = counterAccount != null && !counterAccount.isArchived && counterAccount.includeInReports;
       final isCounterLiquid = isCounterTracked && !isLiabilityAccount(counterAccount);
 
       if (isCounterTracked) {
@@ -149,8 +153,11 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   // Process Future Forecasts (Base Income/Expenses from recurring templates)
   final forecasts = forecastRecurringTransactions(state, startDate, futureEnd);
   for (final tx in forecasts) {
-    // Exclude loan EMI forecasts from futureDeltas because we simulate them manually!
-    if (tx.type == 'loan_repayment') continue; 
+    // Only exclude loan EMI forecasts if they belong to the specific loans being simulated
+    if (tx.type == 'loan_repayment') {
+      if (tx.counterAccountId != null && activeLoanAccountIds.contains(tx.counterAccountId)) continue;
+      if (activeLoanAccountIds.contains(tx.accountId)) continue;
+    }
     addDelta(tx, futureDeltas, true);
   }
 
@@ -163,7 +170,10 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
     // Include exactly at startDate in case there are unexecuted transactions scheduled for today
     if (tx.occurredAt.isAfter(startDate) || tx.occurredAt.isAtSameMomentAs(startDate)) {
       if (tx.occurredAt.isBefore(futureEnd) || tx.occurredAt.isAtSameMomentAs(futureEnd)) {
-        if (tx.type == 'loan_repayment') continue;
+        if (tx.type == 'loan_repayment') {
+          if (tx.counterAccountId != null && activeLoanAccountIds.contains(tx.counterAccountId)) continue;
+          if (activeLoanAccountIds.contains(tx.accountId)) continue;
+        }
         addDelta(tx, futureDeltas, true);
       }
     }
