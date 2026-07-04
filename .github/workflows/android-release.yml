@@ -368,10 +368,9 @@ jobs:
         run: flutter build web --release
 
       - name: Deploy to Firebase Hosting
-        env:
-          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
-        run: |
-          echo "$FIREBASE_SERVICE_ACCOUNT_JSON" > firebase-service-account.json
-          export GOOGLE_APPLICATION_CREDENTIALS=firebase-service-account.json
-          npm i -g firebase-tools
-          firebase deploy --only hosting --project "$FIREBASE_PROJECT_ID" --non-interactive
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          projectId: ${{ env.FIREBASE_PROJECT_ID }}
+          channelId: live
