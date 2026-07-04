@@ -699,6 +699,16 @@ class LedgerController extends StateNotifier<LedgerState> {
     );
   }
 
+  Future<void> deleteTransactions(Set<String> ids) async {
+    await _commit(
+      state.copyWith(
+        transactions: state.transactions
+            .where((transaction) => !ids.contains(transaction.id))
+            .toList(),
+      ),
+    );
+  }
+
   Future<void> addAttachment(
     String transactionId,
     TransactionAttachment attachment,
