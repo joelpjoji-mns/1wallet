@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 abstract final class FirebaseEnv {
-  static const envFile = '.env';
+  static const envFile = 'config.env';
 
   static const _requiredFirebaseKeys = [
     'FIREBASE_API_KEY',

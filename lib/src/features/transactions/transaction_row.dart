@@ -10,6 +10,8 @@ class TransactionRow extends StatelessWidget {
     required this.state,
     required this.transaction,
     required this.onTap,
+    this.onLongPress,
+    this.selected = false,
     this.side = 'single',
     super.key,
     this.selectedAccountId,
@@ -18,6 +20,8 @@ class TransactionRow extends StatelessWidget {
   final LedgerState state;
   final TransactionRecord transaction;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  final bool selected;
   final String side;
   final String? selectedAccountId;
 
@@ -40,14 +44,20 @@ class TransactionRow extends StatelessWidget {
       child: Card(
         elevation: 0,
         margin: EdgeInsets.zero,
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        color: selected
+            ? Theme.of(context).colorScheme.secondaryContainer
+            : Theme.of(context).colorScheme.surfaceContainerLow,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.md),
-          side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+          side: BorderSide(
+              color: selected
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.outlineVariant),
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(AppRadii.md),
           onTap: onTap,
+          onLongPress: onLongPress,
           child: Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.sm,

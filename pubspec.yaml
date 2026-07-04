@@ -86,7 +86,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - .env
+    - config.env
     - assets/brand/
     - assets/images/
 
@@ -136,6 +136,11 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
+  web:
+    generate: true
+    image_path: "assets/brand/icon.png"
+    background_color: "#FFFFFF"
+    theme_color: "#315DA8"
   image_path: assets/brand/icon.png
   adaptive_icon_foreground: assets/brand/adaptive-icon.png
   adaptive_icon_background: "#315DA8"
@@ -148,6 +153,7 @@ flutter_native_splash:
   image_dark: assets/brand/splash-native.png
   android: true
   ios: true
+  web: true
   android_12:
     color: "#FFFFFF"
     color_dark: "#0F1820"

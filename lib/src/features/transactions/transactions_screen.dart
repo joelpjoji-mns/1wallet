@@ -158,6 +158,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   var _query = '';
   final Set<String> _categoryFilters = <String>{};
   var _includeUncategorizedCategory = false;
+  final Set<String> _selectedTransactionIds = <String>{};
 
   @override
   Widget build(BuildContext context) {
@@ -180,7 +181,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final hasActiveFilters = _hasActiveFilters(accountFilter);
 
     return AppScreen(
-      title: 'Transactions',
+      title: _selectedTransactionIds.isNotEmpty
+          ? '${_selectedTransactionIds.length} selected'
+          : 'Transactions',
       maxWidth: 768,
       onMenuPressed: widget.onMenuPressed,
       floatingActionButton: IslandFloatingActionButton(
@@ -195,20 +198,32 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         AppSpacing.md,
         0,
       ),
-      actions: [
-        HeaderIconButton(
-          icon: Icons.currency_exchange_rounded,
-          onPressed: () => _showDisplayCurrencyPicker(state),
-        ),
-        HeaderIconButton(
-          icon: Icons.add_rounded,
-          onPressed: () => context.push('/add'),
-        ),
-        HeaderIconButton(
-          icon: Icons.dashboard_customize_outlined,
-          onPressed: () => context.push('/widgets'),
-        ),
-      ],
+      actions: _selectedTransactionIds.isNotEmpty
+          ? [
+              HeaderIconButton(
+                icon: Icons.delete_outline_rounded,
+                onPressed: _confirmDeleteSelected,
+              ),
+              HeaderIconButton(
+                icon: Icons.close_rounded,
+                onPressed: () =>
+                    setState(() => _selectedTransactionIds.clear()),
+              ),
+            ]
+          : [
+              HeaderIconButton(
+                icon: Icons.currency_exchange_rounded,
+                onPressed: () => _showDisplayCurrencyPicker(state),
+              ),
+              HeaderIconButton(
+                icon: Icons.add_rounded,
+                onPressed: () => context.push('/add'),
+              ),
+              HeaderIconButton(
+                icon: Icons.dashboard_customize_outlined,
+                onPressed: () => context.push('/widgets'),
+              ),
+            ],
       child: Column(
         children: [
           TransactionCommandStrip(
@@ -438,9 +453,37 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                               state: state,
                               transaction: transaction,
                               selectedAccountId: accountFilter,
-                              onTap: () => context.push(
-                                '/transaction/${transaction.id}',
-                              ),
+                              selected: _selectedTransactionIds
+                                  .contains(transaction.id),
+                              onLongPress: () {
+                                setState(() {
+                                  if (_selectedTransactionIds
+                                      .contains(transaction.id)) {
+                                    _selectedTransactionIds
+                                        .remove(transaction.id);
+                                  } else {
+                                    _selectedTransactionIds.add(transaction.id);
+                                  }
+                                });
+                              },
+                              onTap: () {
+                                if (_selectedTransactionIds.isNotEmpty) {
+                                  setState(() {
+                                    if (_selectedTransactionIds
+                                        .contains(transaction.id)) {
+                                      _selectedTransactionIds
+                                          .remove(transaction.id);
+                                    } else {
+                                      _selectedTransactionIds
+                                          .add(transaction.id);
+                                    }
+                                  });
+                                } else {
+                                  context.push(
+                                    '/transaction/${transaction.id}',
+                                  );
+                                }
+                              },
                             ),
                           );
                         },
@@ -750,6 +793,34 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     );
     if (next != null) {
       ref.read(transactionsStatusFilterProvider.notifier).state = next;
+    }
+  }
+
+  Future<void> _confirmDeleteSelected() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete transactions?'),
+        content: Text(
+            'Are you sure you want to delete ${_selectedTransactionIds.length} transactions? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      final ids = Set<String>.from(_selectedTransactionIds);
+      setState(() {
+        _selectedTransactionIds.clear();
+      });
+      await ref.read(ledgerProvider.notifier).deleteTransactions(ids);
     }
   }
 }
