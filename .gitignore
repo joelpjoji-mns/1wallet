@@ -60,3 +60,8 @@ scratch_*
 generate_dashboard.js
 dashboard.html
 *.onewallet
+
+# Firebase & Deployment Cache
+.firebase/
+config.env*
+main_dart_live.js
