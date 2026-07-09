@@ -1161,6 +1161,12 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
       _showRouteMessage(context, 'Choose the linked account.');
       return;
     }
+    if (_frequency != 'once' &&
+        _recurrenceEnds == 'occurrences' &&
+        (_recurrenceLimit == null || _recurrenceLimit! < 1)) {
+      _showRouteMessage(context, 'Enter a number of occurrences of at least 1.');
+      return;
+    }
     try {
       final originalCurrency = _currency ?? state.preferences.baseCurrency;
 
@@ -1191,7 +1197,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
             originalAmountMinor: originalCurrency != account.currency
                 ? amountMinor
                 : null,
-            status: 'scheduled',
+            status: existing?.status ?? 'scheduled',
             source: 'recurring',
             name: _nameController.text,
             notes: _notesController.text,
@@ -1533,13 +1539,15 @@ class RecurringDetailView extends ConsumerWidget {
   }
 
   Future<void> _postpone(BuildContext context, WidgetRef ref) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final picked = await showDatePicker(
       context: context,
-      initialDate: transaction.occurredAt.isBefore(DateTime.now())
-          ? DateTime.now().add(const Duration(days: 1))
+      initialDate: transaction.occurredAt.isBefore(now)
+          ? now.add(const Duration(days: 1))
           : transaction.occurredAt.add(const Duration(days: 1)),
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 3650)),
+      firstDate: today,
+      lastDate: now.add(const Duration(days: 3650)),
     );
     if (picked == null) return;
 

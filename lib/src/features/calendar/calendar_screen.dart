@@ -506,12 +506,23 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     DateTime date,
     List<TransactionRecord> records,
   ) {
-    final balanceMinor = _projectedNetThroughMonthEnd(state, through: date);
-    final balanceDisplay = formatMoney(
+    // Use end-of-day so the tapped day's own transactions are included in
+    // its running balance instead of being treated as "after" it.
+    final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
+    final balanceBaseMinor = _projectedNetThroughMonthEnd(
+      state,
+      through: endOfDay,
+    );
+    final balanceDisplayMoney = convertMoneyForDisplay(
+      state,
       Money(
-        amountMinor: balanceMinor,
+        amountMinor: balanceBaseMinor,
         currency: state.preferences.baseCurrency,
       ),
+    );
+    final balanceMinor = balanceDisplayMoney.amountMinor;
+    final balanceDisplay = formatMoney(
+      balanceDisplayMoney,
       state.preferences.locale,
     );
 

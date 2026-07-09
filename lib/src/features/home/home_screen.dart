@@ -335,5 +335,10 @@ String _homeWidgetLabel(HomeDashboardWidgetId id) {
     HomeDashboardWidgetId.budgetPressure => 'Budget Pressure',
     HomeDashboardWidgetId.goalProgress => 'Goal Progress',
     HomeDashboardWidgetId.creditUtilization => 'Credit Utilization',
+    HomeDashboardWidgetId.netWorth => 'Net Worth',
+    HomeDashboardWidgetId.cashFlow => 'Cash Flow',
+    HomeDashboardWidgetId.financialHealth => 'Financial Health',
+    HomeDashboardWidgetId.monthComparison => 'Spending vs Last Month',
+    HomeDashboardWidgetId.spendingHeatmap => 'Spending Heatmap',
   };
 }

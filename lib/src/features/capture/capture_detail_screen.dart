@@ -10,6 +10,7 @@ import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../../widgets/privacy_text.dart';
 import '../common/category_hierarchy_picker.dart';
 import '../common/full_screen_picker.dart';
 import '../../utils/number_formatter.dart';
@@ -75,7 +76,7 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
             title: '${candidate.source.toUpperCase()} candidate',
             subtitle: DateFormat.yMMMMEEEEd(
               state.preferences.locale.replaceAll('_', '-'),
-            ).add_jm().format(candidate.createdAt),
+            ).add_jm().format(candidate.createdAt.toLocal()),
             child: Column(
               children: [
                 InfoRow(
@@ -230,7 +231,7 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
             value: account.id,
             title: account.name,
             subtitle:
-                '${accountTypeLabel(account.type)} · ${formatMoney(accountBalance(state, account), state.preferences.locale)}',
+                '${accountTypeLabel(account.type)} · ${maskMoneyIfPrivate(state, formatMoney(accountBalance(state, account), state.preferences.locale))}',
             icon: accountIcon(account),
             iconColor: account.color,
           ),

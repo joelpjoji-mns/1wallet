@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/ledger_models.dart';
 import '../../ledger/ledger_selectors.dart';
+import '../../widgets/privacy_text.dart';
 import 'planner_widgets.dart'; // for DashboardCard
 
 // 6. Debt Free Target
@@ -108,11 +109,11 @@ class _DebtFreeTargetWidgetState extends ConsumerState<DebtFreeTargetWidget> {
             ),
             const SizedBox(height: 4),
             Text(
-              'In about $projectedMonths months',
+              'In about $projectedMonths month${projectedMonths == 1 ? '' : 's'}',
               style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
             ),
             const SizedBox(height: 16),
-            Text(
+            PrivacyText(
               'Extra Monthly Payment: ${_extraPayment > 0 ? formatMoney(Money(amountMinor: _extraPayment.toInt(), currency: widget.state.preferences.displayCurrency), widget.state.preferences.locale) : 'None'}',
               style: const TextStyle(fontSize: 14),
             ),
@@ -123,12 +124,15 @@ class _DebtFreeTargetWidgetState extends ConsumerState<DebtFreeTargetWidget> {
               ),
               max: totalPrincipal > 500000 ? totalPrincipal : 500000.0,
               divisions: 100,
-              label: formatMoney(
-                Money(
-                  amountMinor: _extraPayment.toInt(),
-                  currency: widget.state.preferences.displayCurrency,
+              label: maskMoneyIfPrivate(
+                widget.state,
+                formatMoney(
+                  Money(
+                    amountMinor: _extraPayment.toInt(),
+                    currency: widget.state.preferences.displayCurrency,
+                  ),
+                  widget.state.preferences.locale,
                 ),
-                widget.state.preferences.locale,
               ),
               onChanged: (val) {
                 setState(() {
@@ -266,7 +270,7 @@ class SubscriptionsWatchWidget extends ConsumerWidget {
             style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: 8),
-          Text(
+          PrivacyText(
             formatMoney(
               Money(
                 amountMinor: totalMonthlySubs,
@@ -341,7 +345,7 @@ class CashflowPredictorWidget extends ConsumerWidget {
             style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: 8),
-          Text(
+          PrivacyText(
             '${isPositive ? '+' : '-'}${formatMoney(Money(amountMinor: netCashflow.abs(), currency: state.preferences.displayCurrency), state.preferences.locale)}',
             style: TextStyle(
               fontSize: 32,
@@ -412,7 +416,7 @@ class HighInterestAlertWidget extends ConsumerWidget {
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
-          Text(
+          PrivacyText(
             'Current Balance: ${formatMoney(Money(amountMinor: maxInterest.toInt(), currency: state.preferences.displayCurrency), state.preferences.locale)}',
             style: TextStyle(
               fontSize: 14,

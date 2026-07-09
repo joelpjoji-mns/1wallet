@@ -10,6 +10,7 @@ import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../../widgets/privacy_text.dart';
 import '../transactions/transaction_row.dart';
 
 enum TimePeriod { d7, d30, w12, m6, y1 }
@@ -277,7 +278,7 @@ class _BalanceTrendWidgetState extends State<BalanceTrendWidget> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  Text(
+                  PrivacyText(
                     formatMoney(
                       Money(
                         amountMinor: totalCash,
@@ -381,7 +382,7 @@ class _BalanceTrendWidgetState extends State<BalanceTrendWidget> {
                             text = '$sign${(absVal / 1000).round()}K';
                           }
                         }
-                        return Text(
+                        return PrivacyText(
                           text,
                           style: TextStyle(
                             fontSize: 10,
@@ -520,13 +521,18 @@ class _BalanceTrendWidgetState extends State<BalanceTrendWidget> {
                       return touchedSpots
                           .map(
                             (spot) => LineTooltipItem(
-                              formatMoney(
-                                Money(
-                                  amountMinor: spot.y.toInt(),
-                                  currency:
-                                      widget.state.preferences.displayCurrency,
+                              maskMoneyIfPrivate(
+                                widget.state,
+                                formatMoney(
+                                  Money(
+                                    amountMinor: spot.y.toInt(),
+                                    currency: widget
+                                        .state
+                                        .preferences
+                                        .displayCurrency,
+                                  ),
+                                  widget.state.preferences.locale,
                                 ),
-                                widget.state.preferences.locale,
                               ),
                               TextStyle(
                                 color: scheme.surface,
@@ -681,7 +687,7 @@ class _TopCategoriesWidgetState extends State<TopCategoriesWidget> {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        Text(
+                        PrivacyText(
                           formatMoney(
                             Money(
                               amountMinor: entry.value,
@@ -808,7 +814,7 @@ class _CreditUtilizationWidgetState extends State<CreditUtilizationWidget> {
                   ),
                   const SizedBox(height: 8),
                   LinearProgressIndicator(
-                    value: limit > 0 ? util : 0.0,
+                    value: limit > 0 ? util.clamp(0.0, 1.0) : 0.0,
                     color: acc.color ?? scheme.primary,
                     backgroundColor: scheme.surfaceContainerHighest,
                     minHeight: 16,
@@ -818,14 +824,14 @@ class _CreditUtilizationWidgetState extends State<CreditUtilizationWidget> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
+                      PrivacyText(
                         'Balance ${formatMoney(Money(amountMinor: bal, currency: widget.state.preferences.displayCurrency), widget.state.preferences.locale)}',
                         style: TextStyle(
                           fontSize: 10,
                           color: scheme.onSurfaceVariant,
                         ),
                       ),
-                      Text(
+                      PrivacyText(
                         'Limit ${limit > 0 ? formatMoney(Money(amountMinor: limit, currency: widget.state.preferences.displayCurrency), widget.state.preferences.locale) : 'Not Set'}',
                         style: TextStyle(
                           fontSize: 10,

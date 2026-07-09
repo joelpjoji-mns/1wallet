@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'home_screen.dart';
+import 'home_widgets_extra.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -84,6 +85,17 @@ Widget buildHomeDashboardWidget({
     ),
     HomeDashboardWidgetId.goalProgress => GoalProgressHomeWidget(state: state),
     HomeDashboardWidgetId.creditUtilization => CreditUtilizationWidget(
+      state: state,
+    ),
+    HomeDashboardWidgetId.netWorth => NetWorthHomeWidget(state: state),
+    HomeDashboardWidgetId.cashFlow => CashFlowHomeWidget(state: state),
+    HomeDashboardWidgetId.financialHealth => FinancialHealthHomeWidget(
+      state: state,
+    ),
+    HomeDashboardWidgetId.monthComparison => MonthComparisonHomeWidget(
+      state: state,
+    ),
+    HomeDashboardWidgetId.spendingHeatmap => SpendingHeatmapHomeWidget(
       state: state,
     ),
   };
@@ -1724,15 +1736,20 @@ class BudgetPressureHomeWidget extends StatelessWidget {
           : Column(
               children: [
                 for (final budget in state.budgets.take(4)) ...[
-                  HomeProgressRow(
-                    label: budget.name,
-                    value: _formatDisplayMoney(state, budget.spent),
-                    progress: budget.amount.amountMinor == 0
-                        ? 0
-                        : budget.spent.amountMinor / budget.amount.amountMinor,
-                    color: budget.spent.amountMinor > budget.amount.amountMinor
-                        ? Theme.of(context).colorScheme.error
-                        : Theme.of(context).colorScheme.primary,
+                  Builder(
+                    builder: (context) {
+                      final spent = budgetSpent(state, budget);
+                      return HomeProgressRow(
+                        label: budget.name,
+                        value: _formatDisplayMoney(state, spent),
+                        progress: budget.amount.amountMinor == 0
+                            ? 0
+                            : spent.amountMinor / budget.amount.amountMinor,
+                        color: spent.amountMinor > budget.amount.amountMinor
+                            ? Theme.of(context).colorScheme.error
+                            : Theme.of(context).colorScheme.primary,
+                      );
+                    },
                   ),
                   if (budget != state.budgets.take(4).last)
                     const SizedBox(height: AppSpacing.sm),
@@ -1766,13 +1783,18 @@ class GoalProgressHomeWidget extends StatelessWidget {
           : Column(
               children: [
                 for (final goal in state.goals.take(4)) ...[
-                  HomeProgressRow(
-                    label: goal.name,
-                    value: _formatDisplayMoney(state, goal.saved),
-                    progress: goal.target.amountMinor == 0
-                        ? 0
-                        : goal.saved.amountMinor / goal.target.amountMinor,
-                    color: Theme.of(context).colorScheme.tertiary,
+                  Builder(
+                    builder: (context) {
+                      final saved = goalSaved(state, goal);
+                      return HomeProgressRow(
+                        label: goal.name,
+                        value: _formatDisplayMoney(state, saved),
+                        progress: goal.target.amountMinor == 0
+                            ? 0
+                            : saved.amountMinor / goal.target.amountMinor,
+                        color: Theme.of(context).colorScheme.tertiary,
+                      );
+                    },
                   ),
                   if (goal != state.goals.take(4).last)
                     const SizedBox(height: AppSpacing.sm),

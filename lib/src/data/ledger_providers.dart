@@ -485,6 +485,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     String? originalCurrency,
     String? categoryId,
     String? paymentMethod,
+    String? locationLabel,
     String? name,
     String? notes,
     DateTime? occurredAt,
@@ -582,8 +583,8 @@ class LedgerController extends StateNotifier<LedgerState> {
       categoryId: type == 'transfer' || type == 'adjustment'
           ? null
           : categoryId,
-      locationLabel: existing?.locationLabel,
-      paymentMethod: _blankToNull(paymentMethod),
+      locationLabel: _blankToNull(locationLabel) ?? existing?.locationLabel,
+      paymentMethod: _blankToNull(paymentMethod) ?? existing?.paymentMethod,
       name: _blankToNull(name),
       notes: _blankToNull(notes),
       importBatchId: existing?.importBatchId,
@@ -827,7 +828,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     final isUsed = state.transactions.any(
       (transaction) =>
           transaction.accountId == id || transaction.counterAccountId == id,
-    );
+    ) || state.goals.any((goal) => goal.accountId == id);
 
     // Pause any active scheduled transactions connected to this account
     final transactions = state.transactions.map((transaction) {
@@ -920,8 +921,13 @@ class LedgerController extends StateNotifier<LedgerState> {
       (c) => c.suggestedCategoryId == id,
     );
     final hasChildren = state.categories.any((c) => c.parentId == id);
+    final isUsedInBudgets = state.budgets.any((b) => b.categoryId == id);
     final isUsed =
-        isUsedInTx || isUsedInRules || isUsedInCaptures || hasChildren;
+        isUsedInTx ||
+        isUsedInRules ||
+        isUsedInCaptures ||
+        hasChildren ||
+        isUsedInBudgets;
 
     if (isUsed) {
       final categories = [
@@ -1292,6 +1298,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     required String name,
     required int amountMinor,
     String? currency,
+    String? categoryId,
     DateTime? targetDate,
     String frequency = 'monthly',
     int interval = 1,
@@ -1309,6 +1316,7 @@ class LedgerController extends StateNotifier<LedgerState> {
         amountMinor: 0,
         currency: currency ?? state.preferences.baseCurrency,
       ),
+      categoryId: categoryId,
       targetDate: targetDate,
       frequency: frequency,
       interval: interval,
@@ -1322,6 +1330,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     required String name,
     required int targetMinor,
     String? currency,
+    String? accountId,
     DateTime? targetDate,
     String frequency = 'once',
     int interval = 1,
@@ -1339,6 +1348,7 @@ class LedgerController extends StateNotifier<LedgerState> {
         amountMinor: 0,
         currency: currency ?? state.preferences.baseCurrency,
       ),
+      accountId: accountId,
       targetDate: targetDate,
       frequency: frequency,
       interval: interval,
@@ -1439,6 +1449,14 @@ class LedgerController extends StateNotifier<LedgerState> {
   Timer? _autoBackupTimer;
 
   Future<void> _commit(LedgerState next) async {
+    // Skip the expensive category taxonomy rebuild once the ledger is
+    // already on the current version: every path that can hand us an
+    // out-of-date/unnormalized ledger (archive decode, cloud restore
+    // parsing) always fully normalizes before we ever see it here, so by the
+    // time `next.version == currentLedgerStateVersion` the categories are
+    // already taxonomy-normalized. This keeps `_commit` (called on every
+    // user edit) cheap while still fully migrating+normalizing genuinely
+    // legacy/out-of-date states.
     final normalized = normalizeLedgerState(next);
     state = normalized;
     await _repository.save(normalized);

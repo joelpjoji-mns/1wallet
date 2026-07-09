@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/ledger_models.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../design/tokens.dart'; // For AppSpacing
+import '../../widgets/privacy_text.dart';
 import '../transactions/transaction_row.dart';
 import 'planner_widgets.dart'; // for DashboardCard
 import 'planner_providers.dart';
@@ -72,7 +73,7 @@ class DailySpendingLimitWidget extends ConsumerWidget {
             style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
-          Text(
+          PrivacyText(
             formatMoney(
               Money(
                 amountMinor: dailyLimit,
@@ -88,7 +89,7 @@ class DailySpendingLimitWidget extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           LinearProgressIndicator(
-            value: remainingBudget > 0
+            value: (remainingBudget > 0 && totalIncome > 0)
                 ? (totalExpense / totalIncome).clamp(0.0, 1.0)
                 : 1.0,
             color: remainingBudget > 0 ? scheme.primary : scheme.error,
@@ -360,7 +361,7 @@ class EmergencyFundHealthWidget extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
+              PrivacyText(
                 formatMoney(
                   Money(
                     amountMinor: totalCash,
@@ -373,7 +374,7 @@ class EmergencyFundHealthWidget extends ConsumerWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              Text(
+              PrivacyText(
                 '/ ${formatMoney(Money(amountMinor: target, currency: state.preferences.displayCurrency), state.preferences.locale)}',
                 style: TextStyle(fontSize: 16, color: scheme.onSurfaceVariant),
               ),

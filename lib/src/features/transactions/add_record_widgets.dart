@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
+import '../../widgets/privacy_text.dart';
 
 class AddRecordTypeTabs extends StatelessWidget {
   const AddRecordTypeTabs({
@@ -147,7 +148,10 @@ class AddRecordSelectorGrid extends StatelessWidget {
             title: sourceAccount?.name ?? 'Choose account',
             subtitle: sourceAccount == null
                 ? 'Required'
-                : '${sourceAccount!.currency} · ${formatMoney(accountBalance(state, sourceAccount!), state.preferences.locale)}',
+                : maskMoneyIfPrivate(
+                    state,
+                    '${sourceAccount!.currency} · ${formatMoney(accountBalance(state, sourceAccount!), state.preferences.locale)}',
+                  ),
             iconColor: sourceAccount == null
                 ? null
                 : accountDisplayColor(sourceAccount!),
@@ -163,7 +167,10 @@ class AddRecordSelectorGrid extends StatelessWidget {
                   title: counterAccount?.name ?? 'Choose',
                   subtitle: counterAccount == null
                       ? 'Required'
-                      : '${counterAccount!.currency} · ${formatMoney(accountBalance(state, counterAccount!), state.preferences.locale)}',
+                      : maskMoneyIfPrivate(
+                          state,
+                          '${counterAccount!.currency} · ${formatMoney(accountBalance(state, counterAccount!), state.preferences.locale)}',
+                        ),
                   iconColor: counterAccount == null
                       ? null
                       : accountDisplayColor(counterAccount!),

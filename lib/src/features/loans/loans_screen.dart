@@ -16,6 +16,7 @@ import '../../widgets/currency_picker.dart';
 import '../common/full_screen_picker.dart';
 import '../transactions/transaction_row.dart';
 import '../../utils/number_formatter.dart';
+import '../../widgets/privacy_text.dart';
 import 'loan_forecast_simulator.dart';
 
 class LoansScreen extends ConsumerWidget {
@@ -83,15 +84,18 @@ class LoansScreen extends ConsumerWidget {
                       label: mode == 'past' ? 'Archived' : 'Next EMI',
                       value: mode == 'past'
                           ? '${pastLoans.length}'
-                          : formatMoney(
-                              convertMoneyForDisplay(
-                                state,
-                                Money(
-                                  amountMinor: emi,
-                                  currency: state.preferences.baseCurrency,
+                          : maskMoneyIfPrivate(
+                              state,
+                              formatMoney(
+                                convertMoneyForDisplay(
+                                  state,
+                                  Money(
+                                    amountMinor: emi,
+                                    currency: state.preferences.baseCurrency,
+                                  ),
                                 ),
+                                state.preferences.locale,
                               ),
-                              state.preferences.locale,
                             ),
                       icon: mode == 'past'
                           ? Icons.archive_outlined
@@ -597,7 +601,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
             value: account.id,
             title: account.name,
             subtitle:
-                '${accountTypeLabel(account.type)} · ${formatMoney(accountBalance(state, account), state.preferences.locale)}',
+                '${accountTypeLabel(account.type)} · ${maskMoneyIfPrivate(state, formatMoney(accountBalance(state, account), state.preferences.locale))}',
             icon: accountIcon(account),
             iconColor: accountDisplayColor(account),
           ),
@@ -816,7 +820,7 @@ class LoanDetailView extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    Text(
+                    PrivacyText(
                       formatMoney(
                         balance.copyWith(
                           amountMinor: balance.amountMinor.abs(),
@@ -849,7 +853,7 @@ class LoanDetailView extends ConsumerWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
+                              PrivacyText(
                                 'Paid: ${formatMoney(Money(amountMinor: paid, currency: loan.currency), state.preferences.locale)}',
                                 style: TextStyle(
                                   fontSize: 13,
@@ -983,7 +987,7 @@ class LoanDetailView extends ConsumerWidget {
           title: 'Repayment history',
           subtitle: repaymentHistory.isEmpty
               ? 'Posted EMI and repayment entries will appear here.'
-              : '${repaymentHistory.length} posted repayments',
+              : '${repaymentHistory.length} posted repayment${repaymentHistory.length == 1 ? '' : 's'}',
           child: repaymentHistory.isEmpty
               ? const EmptyState(
                   icon: Icons.receipt_long_outlined,
@@ -1082,9 +1086,10 @@ class _LoanCompactCard extends StatelessWidget {
     final cadence = _loanCadenceLabel(details);
     final cadenceSummary = [
       cadence,
-      if (details.repaymentCount != null) 'for ${details.repaymentCount} times',
+      if (details.repaymentCount != null)
+        'for ${details.repaymentCount} time${details.repaymentCount == 1 ? '' : 's'}',
       if (mode == 'past' && repayments.isNotEmpty)
-        '${repayments.length} repayments',
+        '${repayments.length} repayment${repayments.length == 1 ? '' : 's'}',
     ].join(' · ');
     final primaryTitle = loan.institution ?? accountTypeLabel(loan.type);
     final tertiaryLine = loan.institution != null
@@ -1198,7 +1203,7 @@ class _LoanCompactCard extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(
+                      PrivacyText(
                         rightAmountText,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1244,7 +1249,7 @@ class _LoanCompactCard extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
+                            PrivacyText(
                               'Paid: ${formatMoney(Money(amountMinor: paid, currency: loan.currency), state.preferences.locale)}',
                               style: TextStyle(
                                 fontSize: 12,
@@ -2240,13 +2245,29 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  'You could save ${formatMoney(Money(amountMinor: result.impact.interestSavedMinor, currency: widget.state.preferences.baseCurrency), locale)} in interest and finish ${result.impact.monthsSaved} months early!',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        height: 1.2,
+                Builder(
+                  builder: (context) {
+                    final savedText = maskMoneyIfPrivate(
+                      widget.state,
+                      formatMoney(
+                        Money(
+                          amountMinor: result.impact.interestSavedMinor,
+                          currency: widget.state.preferences.baseCurrency,
+                        ),
+                        locale,
                       ),
+                    );
+                    final monthsSaved = result.impact.monthsSaved;
+                    return Text(
+                      'You could save $savedText in interest and finish $monthsSaved month${monthsSaved == 1 ? '' : 's'} early!',
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            height: 1.2,
+                          ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -2421,7 +2442,10 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               final loan = entry.value;
               final event = result.payoffEvents.firstWhereOrNull((e) => e.loan.id == loan.id);
               final payoffStr = event != null ? ' · Pays off ${formatLedgerDate(event.payoffDate, locale)}' : '';
-              final balStr = formatMoney(accountBalance(widget.state, loan), locale);
+              final balStr = maskMoneyIfPrivate(
+                widget.state,
+                formatMoney(accountBalance(widget.state, loan), locale),
+              );
 
               return ListTile(
                 key: ValueKey(loan.id),
@@ -2621,7 +2645,8 @@ String _nextEmiLabel(
   if (amount == null && date == null) return 'Not scheduled';
   final parts = [
     if (date != null) formatLedgerDate(date, state.preferences.locale),
-    if (amount != null) formatMoney(amount, state.preferences.locale),
+    if (amount != null)
+      maskMoneyIfPrivate(state, formatMoney(amount, state.preferences.locale)),
   ];
   return parts.join(' · ');
 }

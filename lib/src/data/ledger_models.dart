@@ -681,6 +681,7 @@ class Budget {
     required this.name,
     required this.amount,
     required this.spent,
+    this.categoryId,
     this.targetDate,
     this.frequency = 'monthly',
     this.interval = 1,
@@ -692,6 +693,7 @@ class Budget {
   final String name;
   final Money amount;
   final Money spent;
+  final String? categoryId;
   final DateTime? targetDate;
   final String frequency;
   final int interval;
@@ -703,6 +705,7 @@ class Budget {
     String? name,
     Money? amount,
     Money? spent,
+    String? categoryId,
     DateTime? targetDate,
     String? frequency,
     int? interval,
@@ -714,6 +717,7 @@ class Budget {
       name: name ?? this.name,
       amount: amount ?? this.amount,
       spent: spent ?? this.spent,
+      categoryId: categoryId ?? this.categoryId,
       targetDate: targetDate ?? this.targetDate,
       frequency: frequency ?? this.frequency,
       interval: interval ?? this.interval,
@@ -730,6 +734,7 @@ class Goal {
     required this.name,
     required this.target,
     required this.saved,
+    this.accountId,
     this.targetDate,
     this.frequency = 'once',
     this.interval = 1,
@@ -741,6 +746,7 @@ class Goal {
   final String name;
   final Money target;
   final Money saved;
+  final String? accountId;
   final DateTime? targetDate;
   final String frequency;
   final int interval;
@@ -752,6 +758,7 @@ class Goal {
     String? name,
     Money? target,
     Money? saved,
+    String? accountId,
     DateTime? targetDate,
     String? frequency,
     int? interval,
@@ -763,6 +770,7 @@ class Goal {
       name: name ?? this.name,
       target: target ?? this.target,
       saved: saved ?? this.saved,
+      accountId: accountId ?? this.accountId,
       targetDate: targetDate ?? this.targetDate,
       frequency: frequency ?? this.frequency,
       interval: interval ?? this.interval,
