@@ -1,6 +1,6 @@
 import '../data/ledger_models.dart';
 
-DateTime _addMonths(DateTime date, int months) {
+DateTime _addMonths(DateTime date, int months, {int? anchorDay}) {
   var year = date.year;
   var month = date.month + months;
   while (month > 12) {
@@ -11,7 +11,7 @@ DateTime _addMonths(DateTime date, int months) {
     year--;
     month += 12;
   }
-  var day = date.day;
+  var day = anchorDay ?? date.day;
   final daysInNextMonth = DateTime(year, month + 1, 0).day;
   if (day > daysInNextMonth) {
     day = daysInNextMonth;
@@ -25,6 +25,7 @@ DateTime advanceRecurrenceCursor({
   int interval = 1,
   List<int>? daysOfWeek,
   List<int>? daysOfMonth,
+  int? anchorDay,
 }) {
   final freq = frequency.toLowerCase();
   if (interval < 1) interval = 1;
@@ -130,15 +131,15 @@ DateTime advanceRecurrenceCursor({
         current.second,
       );
     } else {
-      return _addMonths(current, interval);
+      return _addMonths(current, interval, anchorDay: anchorDay);
     }
   }
 
   if (freq == 'yearly') {
-    return _addMonths(current, 12 * interval);
+    return _addMonths(current, 12 * interval, anchorDay: anchorDay);
   }
 
-  return _addMonths(current, interval);
+  return _addMonths(current, interval, anchorDay: anchorDay);
 }
 
 DateTime advanceTransactionRecurrence(
@@ -148,8 +149,9 @@ DateTime advanceTransactionRecurrence(
   return advanceRecurrenceCursor(
     current: current,
     frequency: record.recurrenceFrequency ?? 'monthly',
-    interval: record.recurrenceInterval ?? 1,
+    interval: record.recurrenceInterval,
     daysOfWeek: record.recurrenceDaysOfWeek,
     daysOfMonth: record.recurrenceDaysOfMonth,
+    anchorDay: record.occurredAt.day,
   );
 }

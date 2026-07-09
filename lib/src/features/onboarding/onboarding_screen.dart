@@ -1,8 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/ledger_models.dart';
+import '../../ledger/ledger_selectors.dart' show minorUnits;
 import '../../auth/auth_controller.dart';
 import '../common/full_screen_picker.dart';
 import '../launch/brand_widgets.dart';
@@ -125,13 +128,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     // Save accounts to ledger
     for (final draft in _accounts) {
       final parsedOpening =
-          int.tryParse(draft.opening.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
+          double.tryParse(draft.opening.replaceAll(RegExp(r'[^0-9.]'), '')) ??
+          0;
+      final openingBalanceMinor =
+          (parsedOpening * math.pow(10, minorUnits(draft.currency))).round();
       await ledgerNotifier.upsertAccount(
         id: const Uuid().v4(),
         name: draft.name,
         type: draft.type,
         currency: draft.currency,
-        openingBalanceMinor: parsedOpening * 100,
+        openingBalanceMinor: openingBalanceMinor,
         color: draft.color,
       );
     }
