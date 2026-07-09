@@ -61,3 +61,9 @@ final homeAccountBalanceMapProvider = Provider.autoDispose<Map<String, Money>>((
   final state = ref.watch(ledgerProvider);
   return accountBalanceMap(state);
 });
+
+final homeCurrencyBreakdownProvider = Provider.family
+    .autoDispose<List<Money>, String?>((ref, accountId) {
+      final state = ref.watch(ledgerProvider);
+      return balanceBreakdownByCurrency(state, accountId: accountId);
+    });
