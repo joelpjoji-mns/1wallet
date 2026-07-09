@@ -67,7 +67,7 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                     ..hideCurrentSnackBar()
                     ..showSnackBar(
                       const SnackBar(
-                        content: Text('Live rates updated.'),
+                        content: Text('Exchange rates updated.'),
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
@@ -78,7 +78,7 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                     ..hideCurrentSnackBar()
                     ..showSnackBar(
                       SnackBar(
-                        content: Text('Failed to update: $e'),
+                        content: Text('Failed to update exchange rates: $e'),
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
@@ -148,7 +148,7 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                         ..showSnackBar(
                           SnackBar(
                             content: Text(
-                              '$currency removed from explicitly enabled list.',
+                              '$currency removed.',
                             ),
                             behavior: SnackBarBehavior.floating,
                           ),
@@ -221,7 +221,7 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
             onAction: () async {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Fetching live exchange rates...'),
+                  content: Text('Refreshing exchange rates…'),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -232,7 +232,7 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                     ..hideCurrentSnackBar()
                     ..showSnackBar(
                       const SnackBar(
-                        content: Text('Exchange rates updated successfully!'),
+                        content: Text('Exchange rates updated.'),
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
@@ -243,7 +243,7 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                     ..hideCurrentSnackBar()
                     ..showSnackBar(
                       SnackBar(
-                        content: Text('Failed to update rates: $e'),
+                        content: Text('Failed to update exchange rates: $e'),
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
@@ -313,7 +313,9 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
     final accountCount = state.accounts
         .where((account) => account.currency.toUpperCase() == currency)
         .length;
-    if (accountCount > 0) parts.add('$accountCount account(s)');
+    if (accountCount > 0) {
+      parts.add(accountCount == 1 ? '1 account' : '$accountCount accounts');
+    }
     final movementCount = state.transactions
         .where(
           (transaction) =>
@@ -323,7 +325,11 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
               transaction.counterAmount?.currency.toUpperCase() == currency,
         )
         .length;
-    if (movementCount > 0) parts.add('$movementCount movement(s)');
+    if (movementCount > 0) {
+      parts.add(
+        movementCount == 1 ? '1 movement' : '$movementCount movements',
+      );
+    }
     return parts.isEmpty ? 'Available for display' : parts.join(' · ');
   }
 
@@ -334,7 +340,7 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
   ) async {
     final next = await showFullScreenPicker<String>(
       context: context,
-      title: 'Add Currency',
+      title: 'Add currency',
       searchHint: 'Search currencies',
       options: [
         for (final currency

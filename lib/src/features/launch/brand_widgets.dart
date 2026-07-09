@@ -496,7 +496,7 @@ class AnimatedBrandScene extends StatelessWidget {
           LaunchBrandMark(size: compact ? 96 : 122),
           SizedBox(height: compact ? AppSpacing.lg : AppSpacing.xl),
           Text(
-            '1wallet',
+            '1Wallet',
             style: TextStyle(
               color: palette.text,
               fontSize: 34,

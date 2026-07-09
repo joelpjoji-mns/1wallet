@@ -264,7 +264,7 @@ class SettingsFeatureHubSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return SectionCard(
       title: 'Feature hub',
-      subtitle: 'The overkill surfaces for the finance engine.',
+      subtitle: 'Advanced tools and detailed feature settings.',
       child: Column(
         children: [
           for (final (index, link) in links.indexed) ...[
@@ -307,7 +307,7 @@ class SettingsDataSection extends StatelessWidget {
     final theme = Theme.of(context);
     return SectionCard(
       title: 'Data',
-      subtitle: 'Useful while developing the local ledger.',
+      subtitle: 'View data counts and manage your local ledger.',
       child: Column(
         children: [
           InfoRow(

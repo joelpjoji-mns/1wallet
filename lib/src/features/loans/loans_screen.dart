@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:collection/collection.dart';
@@ -64,7 +65,7 @@ class LoansScreen extends ConsumerWidget {
           if (mode != 'detail' && mode != 'edit' && mode != 'new' && mode != 'forecast') ...[
             SectionCard(
               title: 'Loan control center',
-              subtitle: 'Outstanding, next EMI, forecast and payoff pressure.',
+              subtitle: 'Loan count and next scheduled EMI.',
               child: Row(
                 children: [
                   Expanded(
@@ -192,8 +193,10 @@ class _LoanFormState extends ConsumerState<LoanForm> {
     _tenureController.addListener(_autoCalculateEmi);
   }
 
+  String? _lastAutoEmiText;
+
   void _autoCalculateEmi() {
-    final principalMinor = _amountMinorFromInput(_principalController.text);
+    final principalMinor = _amountMinorFromInput(_principalController.text, _currency);
     final rate = _optionalDouble(_rateController.text);
     final tenure = _optionalInt(_tenureController.text);
 
@@ -210,15 +213,14 @@ class _LoanFormState extends ConsumerState<LoanForm> {
       final denominator = math.pow(1 + monthlyRate, tenure) - 1;
       final emiMinor = (numerator / denominator).round();
 
-      final newText = _formatAmountInput(emiMinor);
-      if (_emiController.text != newText && _emiController.text.isEmpty) {
-        _emiController.text = newText;
-      } else if (_emiController.text != newText &&
-          _emiController.text.isNotEmpty) {
-        // Only aggressively overwrite if it seems the user hasn't explicitly set a custom EMI recently.
-        // A simple check is to overwrite if it's currently showing an old auto-calculated EMI.
+      final newText = _formatAmountInput(emiMinor, _currency);
+      // Only auto-fill when the field is empty or still shows the last
+      // value we auto-calculated; never clobber a user-typed EMI.
+      if (_emiController.text.isEmpty ||
+          _emiController.text == _lastAutoEmiText) {
         _emiController.text = newText;
       }
+      _lastAutoEmiText = newText;
     }
   }
 
@@ -508,18 +510,19 @@ class _LoanFormState extends ConsumerState<LoanForm> {
     _principalController.text = details?.principal == null
         ? loan == null
               ? ''
-              : _formatAmountInput(loan.openingBalance.amountMinor.abs())
-        : _formatAmountInput(details!.principal!.amountMinor.abs());
+              : _formatAmountInput(loan.openingBalance.amountMinor.abs(), _currency)
+        : _formatAmountInput(details!.principal!.amountMinor.abs(), _currency);
     final balance = loan == null ? null : accountBalance(state, loan);
     _currentBalanceController.text = balance == null
         ? ''
-        : _formatAmountInput(balance.amountMinor.abs());
+        : _formatAmountInput(balance.amountMinor.abs(), _currency);
     final existingEmi = _existingLoanEmi(state, loan?.id);
     final repaymentAmount = details?.repaymentAmount;
     _emiController.text = repaymentAmount == null && existingEmi == null
         ? ''
         : _formatAmountInput(
             (existingEmi?.amount ?? repaymentAmount!).amountMinor.abs(),
+            _currency,
           );
     _rateController.text = _formatOptionalDecimal(
       details?.interestRatePercent ?? _doubleTagValue(loan?.groupName, 'rate'),
@@ -636,14 +639,16 @@ class _LoanFormState extends ConsumerState<LoanForm> {
     final name = _nameController.text.trim();
     final principalMinor = _amountMinorFromInput(
       _principalController.text,
+      _currency,
     ).abs();
     final currentBalanceInput = _amountMinorFromInput(
       _currentBalanceController.text,
+      _currency,
     ).abs();
     final effectiveCurrentBalanceMinor = _currentBalanceController.text.isEmpty
         ? principalMinor
         : currentBalanceInput;
-    final emiMinor = _amountMinorFromInput(_emiController.text).abs();
+    final emiMinor = _amountMinorFromInput(_emiController.text, _currency).abs();
     final rate = _optionalDouble(_rateController.text);
     final tenure = _optionalInt(_tenureController.text);
     if (name.isEmpty) {
@@ -808,7 +813,7 @@ class LoanDetailView extends ConsumerWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'LOAN ACCOUNT',
+                            '${accountTypeLabel(loan.type).toUpperCase()} ACCOUNT',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -2016,7 +2021,10 @@ class LoanForecastView extends ConsumerStatefulWidget {
 class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
   late final TextEditingController _emergencyController;
   late double _extraAllocationPercent;
+  late double _debouncedExtraAllocationPercent;
   late List<Account> _priorityLoans;
+  Timer? _forecastDebounce;
+  Timer? _emergencyDebounce;
 
   void _syncPriorityLoans() {
     final prefs = widget.state.preferences;
@@ -2032,8 +2040,8 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
       if (aIndex != -1) return -1;
       if (bIndex != -1) return 1;
 
-      final aRate = a.loanDetails?.interestRatePercent ?? 0;
-      final bRate = b.loanDetails?.interestRatePercent ?? 0;
+      final aRate = effectiveLoanDetails(widget.state, a).interestRatePercent ?? 0;
+      final bRate = effectiveLoanDetails(widget.state, b).interestRatePercent ?? 0;
       return bRate.compareTo(aRate);
     });
   }
@@ -2042,8 +2050,10 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
   void initState() {
     super.initState();
     final prefs = widget.state.preferences;
-    _emergencyController = TextEditingController(text: (prefs.forecastEmergencyCashMinor / 100).toInt().toString());
+    final baseMinors = math.pow(10, minorUnits(prefs.baseCurrency)).toInt();
+    _emergencyController = TextEditingController(text: (prefs.forecastEmergencyCashMinor / baseMinors).toInt().toString());
     _extraAllocationPercent = prefs.forecastExtraAllocationPercent;
+    _debouncedExtraAllocationPercent = _extraAllocationPercent;
     _syncPriorityLoans();
   }
 
@@ -2086,6 +2096,8 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
 
   @override
   void dispose() {
+    _forecastDebounce?.cancel();
+    _emergencyDebounce?.cancel();
     _emergencyController.dispose();
     super.dispose();
   }
@@ -2100,7 +2112,9 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
       );
     }
 
-    final emergencyMinor = _amountMinorFromInput(_emergencyController.text).abs();
+    final baseCurrency = widget.state.preferences.baseCurrency;
+    final baseMinorsScale = math.pow(10, minorUnits(baseCurrency)).toInt();
+    final emergencyMinor = _amountMinorFromInput(_emergencyController.text, baseCurrency).abs();
 
     final activeLoans = widget.loans.map((loan) {
       final details = _effectiveLoanDetails(widget.state, loan);
@@ -2119,7 +2133,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
       state: widget.state,
       activeLoans: activeLoans,
       emergencySavingMinor: emergencyMinor,
-      extraPaymentAllocationPercent: _extraAllocationPercent,
+      extraPaymentAllocationPercent: _debouncedExtraAllocationPercent,
       loanPriorityIds: _priorityLoans.map((l) => l.id).toList(),
       payoffDelayDays: widget.state.preferences.loanPayoffDelayDays,
     );
@@ -2136,7 +2150,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
     for (int i = 0; i < result.balanceCurve.length; i++) {
       final pt = result.balanceCurve[i];
       final x = (pt.date.millisecondsSinceEpoch - todayMillis) / 86400000.0;
-      final y = pt.netBalanceMinor / 100.0;
+      final y = pt.netBalanceMinor / baseMinorsScale;
       spots.add(FlSpot(x, y));
     }
     
@@ -2152,7 +2166,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
         final daysSinceMonday = pt.date.weekday - 1; 
         final weekStart = pt.date.subtract(Duration(days: daysSinceMonday));
         final weekKey = DateTime(weekStart.year, weekStart.month, weekStart.day);
-        weeklyBalances[weekKey] = pt.netBalanceMinor / 100.0;
+        weeklyBalances[weekKey] = pt.netBalanceMinor / baseMinorsScale;
       }
     }
     
@@ -2289,11 +2303,15 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                   prefixIcon: const Icon(Icons.savings_outlined),
                 ),
                 onChanged: (val) {
-                  final newMinor = _amountMinorFromInput(val).abs();
-                  ref.read(ledgerProvider.notifier).updatePreferences(
-                    widget.state.preferences.copyWith(forecastEmergencyCashMinor: newMinor),
-                  );
-                  setState(() {});
+                  final newMinor = _amountMinorFromInput(val, baseCurrency).abs();
+                  _emergencyDebounce?.cancel();
+                  _emergencyDebounce = Timer(const Duration(milliseconds: 120), () {
+                    if (!mounted) return;
+                    ref.read(ledgerProvider.notifier).updatePreferences(
+                      widget.state.preferences.copyWith(forecastEmergencyCashMinor: newMinor),
+                    );
+                    setState(() {});
+                  });
                 },
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -2348,12 +2366,19 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                     max: 1.0,
                     divisions: 20,
                     onChangeEnd: (val) {
+                      _forecastDebounce?.cancel();
+                      setState(() => _debouncedExtraAllocationPercent = val);
                       ref.read(ledgerProvider.notifier).updatePreferences(
                         widget.state.preferences.copyWith(forecastExtraAllocationPercent: val),
                       );
                     },
                     onChanged: (val) {
                       setState(() => _extraAllocationPercent = val);
+                      _forecastDebounce?.cancel();
+                      _forecastDebounce = Timer(const Duration(milliseconds: 120), () {
+                        if (!mounted) return;
+                        setState(() => _debouncedExtraAllocationPercent = val);
+                      });
                     },
                   ),
                   Row(
@@ -2796,29 +2821,38 @@ class _LoanProjection {
     if (months == 0) return 'Paid off';
     final years = months ~/ 12;
     final extraMonths = months % 12;
-    if (years == 0) return '$months months remaining';
-    if (extraMonths == 0) return '$years years remaining';
-    return '$years years $extraMonths months remaining';
+    final monthsLabel = months == 1 ? '1 month' : '$months months';
+    final yearsLabel = years == 1 ? '1 year' : '$years years';
+    final extraMonthsLabel = extraMonths == 1 ? '1 month' : '$extraMonths months';
+    if (years == 0) return '$monthsLabel remaining';
+    if (extraMonths == 0) return '$yearsLabel remaining';
+    return '$yearsLabel $extraMonthsLabel remaining';
   }
 }
 
-String _formatAmountInput(int amountMinor) {
+String _formatAmountInput(int amountMinor, String currency) {
   if (amountMinor == 0) return '';
-  final integer = amountMinor ~/ 100;
-  final fraction = amountMinor % 100;
+  final minors = math.pow(10, minorUnits(currency)).toInt();
+  final integer = amountMinor ~/ minors;
+  final fraction = amountMinor % minors;
   if (fraction == 0) return '$integer';
-  return '$integer.${fraction.toString().padLeft(2, '0')}';
+  return '$integer.${fraction.toString().padLeft(minorUnits(currency), '0')}';
 }
 
-int _amountMinorFromInput(String value) {
+int _amountMinorFromInput(String value, String currency) {
   final clean = value.replaceAll(RegExp(r'[^0-9.]'), '');
   if (clean.isEmpty) return 0;
   final parts = clean.split('.');
   final integer = int.tryParse(parts[0]) ?? 0;
   final fraction = parts.length > 1
-      ? (int.tryParse(parts[1].padRight(2, '0').substring(0, 2)) ?? 0)
+      ? (int.tryParse(
+              parts[1]
+                  .padRight(minorUnits(currency), '0')
+                  .substring(0, minorUnits(currency)),
+            ) ??
+            0)
       : 0;
-  return integer * 100 + fraction;
+  return integer * math.pow(10, minorUnits(currency)).toInt() + fraction;
 }
 
 void _showRouteMessage(BuildContext context, String message) {

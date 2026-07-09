@@ -99,7 +99,7 @@ class ImportsScreen extends ConsumerWidget {
                           icon: Icons.file_upload_outlined,
                           title: transactionTypeLabel(batch.source),
                           subtitle:
-                              '${DateFormat.MMMd().add_jm().format(batch.createdAt)} · ${batch.status}',
+                              '${DateFormat.MMMd().add_jm().format(batch.createdAt)} · ${transactionTypeLabel(batch.status)}',
                           meta:
                               '${batch.importedCount}/${batch.rowCount}${batch.duplicateCount > 0 ? ' · ${batch.duplicateCount} dupes' : ''}',
                           onTap: () => context.push('/imports/${batch.id}'),
@@ -152,7 +152,7 @@ class ImportBatchDetailScreen extends ConsumerWidget {
               children: [
                 InfoRow(
                   label: 'Status',
-                  value: batch.status,
+                  value: transactionTypeLabel(batch.status),
                   icon: Icons.verified_outlined,
                   tone: batch.status == 'rolled_back'
                       ? MetricTone.warning

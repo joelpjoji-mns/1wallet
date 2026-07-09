@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import '../common/route_scaffold.dart';
@@ -81,7 +83,7 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
               children: [
                 InfoRow(
                   label: 'Status',
-                  value: candidate.status,
+                  value: transactionTypeLabel(candidate.status),
                   icon: Icons.hourglass_top_outlined,
                   tone: candidate.status == 'pending'
                       ? MetricTone.warning
@@ -183,7 +185,10 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
     _loadedCandidateId = candidate.id;
     _amountController.text = candidate.parsedAmount == null
         ? ''
-        : _formatAmountInput(candidate.parsedAmount!.amountMinor);
+        : _formatAmountInput(
+            candidate.parsedAmount!.amountMinor,
+            candidate.parsedAmount!.currency,
+          );
     _merchantController.text = candidate.merchant ?? '';
     _type = candidate.transactionType == 'income' ? 'income' : 'expense';
     _accountId =
@@ -252,14 +257,17 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
   }
 
   Future<bool> _saveDraft(CaptureCandidate candidate, LedgerState state) async {
-    final amountMinor = _amountMinorFromInput(_amountController.text);
-    if (amountMinor <= 0) {
-      _showCaptureMessage('Enter an amount before saving.');
-      return false;
-    }
     final account = accountById(state, _accountId);
     if (account == null) {
       _showCaptureMessage('Choose an account before saving.');
+      return false;
+    }
+    final amountMinor = _amountMinorFromInput(
+      _amountController.text,
+      account.currency,
+    );
+    if (amountMinor <= 0) {
+      _showCaptureMessage('Enter an amount before saving.');
       return false;
     }
     await ref
@@ -289,9 +297,9 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
     final router = GoRouter.of(context);
     try {
       router.push('/add?captureCandidateId=${candidate.id}');
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
-      _showCaptureMessage(e.toString());
+      _showCaptureMessage('Could not open this capture for confirmation.');
     }
   }
 
@@ -312,21 +320,25 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
   }
 }
 
-String _formatAmountInput(int amountMinor) {
+String _formatAmountInput(int amountMinor, String currency) {
   if (amountMinor == 0) return '';
-  final integer = amountMinor ~/ 100;
-  final fraction = amountMinor % 100;
-  if (fraction == 0) return '$integer';
-  return '$integer.${fraction.toString().padLeft(2, '0')}';
+  final units = minorUnits(currency);
+  final scale = math.pow(10, units).toInt();
+  final integer = amountMinor ~/ scale;
+  final fraction = amountMinor % scale;
+  if (units == 0 || fraction == 0) return '$integer';
+  return '$integer.${fraction.toString().padLeft(units, '0')}';
 }
 
-int _amountMinorFromInput(String value) {
+int _amountMinorFromInput(String value, String currency) {
   final clean = value.replaceAll(RegExp(r'[^0-9.]'), '');
   if (clean.isEmpty) return 0;
+  final units = minorUnits(currency);
+  final scale = math.pow(10, units).toInt();
   final parts = clean.split('.');
   final integer = int.tryParse(parts[0]) ?? 0;
-  final fraction = parts.length > 1
-      ? (int.tryParse(parts[1].padRight(2, '0').substring(0, 2)) ?? 0)
+  final fraction = units > 0 && parts.length > 1
+      ? (int.tryParse(parts[1].padRight(units, '0').substring(0, units)) ?? 0)
       : 0;
-  return integer * 100 + fraction;
+  return integer * scale + fraction;
 }
