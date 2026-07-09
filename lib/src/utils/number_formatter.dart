@@ -1,6 +1,9 @@
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
+final _nonNumericPattern = RegExp(r'[^0-9.]');
+final _numberPattern = RegExp(r'\d+(\.\d+)?');
+
 class ThousandsSeparatorInputFormatter extends TextInputFormatter {
   final String? locale;
 
@@ -16,7 +19,7 @@ class ThousandsSeparatorInputFormatter extends TextInputFormatter {
     }
 
     // Keep only numbers and decimal points
-    final numericString = newValue.text.replaceAll(RegExp(r'[^0-9.]'), '');
+    final numericString = newValue.text.replaceAll(_nonNumericPattern, '');
 
     // Prevent multiple decimal points
     if (numericString.indexOf('.') != numericString.lastIndexOf('.')) {
@@ -59,7 +62,7 @@ String formatNumberExpression(String expr, String locale) {
 
   final formatter = NumberFormat.decimalPattern(locale);
   // Match numbers that might have decimals
-  return expr.replaceAllMapped(RegExp(r'\d+(\.\d+)?'), (match) {
+  return expr.replaceAllMapped(_numberPattern, (match) {
     final numericString = match.group(0)!;
     final parts = numericString.split('.');
     String formattedText = formatter.format(int.parse(parts[0]));

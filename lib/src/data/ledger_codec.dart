@@ -42,7 +42,7 @@ Map<String, Object?> _ledgerToJson(LedgerState state) {
 }
 
 LedgerState _ledgerFromJson(Map<String, dynamic> json) {
-  final version = _int(json['version'], fallback: currentLedgerStateVersion);
+  final version = _int(json['version'], fallback: 0);
   final ledger = LedgerState(
     version: version,
     userId: _string(json['userId'], fallback: 'local-user'),
@@ -321,6 +321,10 @@ LedgerState _migrateCategoryTaxonomy(LedgerState state) {
         transaction.copyWith(
           categoryId: redirectCategoryId(transaction.categoryId),
         ),
+    ],
+    budgets: [
+      for (final b in state.budgets)
+        b.copyWith(categoryId: redirectCategoryId(b.categoryId)),
     ],
     captureCandidates: [
       for (final candidate in state.captureCandidates)
@@ -1173,6 +1177,11 @@ Budget budgetFromJson(Map<String, dynamic> json) => _budgetFromJson(json);
 
 Map<String, Object?> goalToJson(Goal goal) => _goalToJson(goal);
 Goal goalFromJson(Map<String, dynamic> json) => _goalFromJson(json);
+
+Map<String, Object?> exchangeRateToJson(ExchangeRateRecord rate) =>
+    _exchangeRateToJson(rate);
+ExchangeRateRecord exchangeRateFromJson(Map<String, dynamic> json) =>
+    _exchangeRateFromJson(json);
 
 Map<String, Object?> captureCandidateToJson(CaptureCandidate candidate) =>
     _captureCandidateToJson(candidate);
