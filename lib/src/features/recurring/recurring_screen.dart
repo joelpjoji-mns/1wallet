@@ -14,6 +14,7 @@ import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/currency_picker.dart';
 import '../../utils/number_formatter.dart';
+import '../../widgets/privacy_text.dart';
 import '../common/category_hierarchy_picker.dart';
 import '../common/full_screen_picker.dart';
 import '../transactions/transaction_row.dart';
@@ -64,9 +65,7 @@ class RecurringScreen extends ConsumerWidget {
         monthlyMultiplier = 365 / 12;
       }
 
-      final interval = t.recurrenceInterval != null && t.recurrenceInterval! > 0
-          ? t.recurrenceInterval!
-          : 1;
+      final interval = t.recurrenceInterval > 0 ? t.recurrenceInterval : 1;
       monthlyMultiplier = monthlyMultiplier / interval;
 
       // Handle multiple days per period
@@ -101,9 +100,9 @@ class RecurringScreen extends ConsumerWidget {
     );
     final displayNet = Money(amountMinor: netMinor, currency: targetCurrency);
 
-    final incomeText = formatMoney(displayIncome, state.preferences.locale);
-    final expenseText = formatMoney(displayExpense, state.preferences.locale);
-    final netText = formatMoney(displayNet, state.preferences.locale);
+    final incomeText = maskMoneyIfPrivate(state, formatMoney(displayIncome, state.preferences.locale));
+    final expenseText = maskMoneyIfPrivate(state, formatMoney(displayExpense, state.preferences.locale));
+    final netText = maskMoneyIfPrivate(state, formatMoney(displayNet, state.preferences.locale));
 
     return RouteScaffold(
       title: switch (mode) {
@@ -214,7 +213,7 @@ class RecurringScreen extends ConsumerWidget {
                               ),
                             ),
                             child: Text(
-                              '${listed.length} items',
+                              '${listed.length} item${listed.length == 1 ? '' : 's'}',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
@@ -276,7 +275,7 @@ class RecurringScreen extends ConsumerWidget {
                 TransactionRow(
                   state: state,
                   transaction: transaction,
-                  onTap: () => context.push('/records/${transaction.id}'),
+                  onTap: () => context.push('/transaction/${transaction.id}'),
                 )
               else
                 _RecurringCompactCard(
@@ -1102,7 +1101,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
             value: account.id,
             title: account.name,
             subtitle:
-                '${accountTypeLabel(account.type)} · ${formatMoney(accountBalance(state, account), state.preferences.locale)}',
+                '${accountTypeLabel(account.type)} · ${maskMoneyIfPrivate(state, formatMoney(accountBalance(state, account), state.preferences.locale))}',
             icon: accountIcon(account),
             iconColor: accountDisplayColor(account),
           ),
@@ -1246,7 +1245,7 @@ class RecurringDetailView extends ConsumerWidget {
     final account = accountById(state, transaction.accountId);
     final counter = accountById(state, transaction.counterAccountId);
     final category = categoryById(state, transaction.categoryId);
-    final frequency = transaction.recurrenceFrequency ?? 'manual';
+    final frequency = transaction.recurrenceFrequency ?? 'once';
     final scheme = Theme.of(context).colorScheme;
 
     return Column(
@@ -1437,7 +1436,7 @@ class RecurringDetailView extends ConsumerWidget {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'Paid: ${formatMoney(Money(amountMinor: paid, currency: loanAccount!.currency), state.preferences.locale)}',
+                                'Paid: ${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: paid, currency: loanAccount!.currency), state.preferences.locale))}',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: scheme.onSurfaceVariant,
@@ -1445,7 +1444,7 @@ class RecurringDetailView extends ConsumerWidget {
                                 ),
                               ),
                               Text(
-                                '${formatMoney(Money(amountMinor: remaining > 0 ? remaining : 0, currency: loanAccount.currency), state.preferences.locale)} left',
+                                '${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: remaining > 0 ? remaining : 0, currency: loanAccount.currency), state.preferences.locale))} left',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: scheme.onSurfaceVariant,
@@ -1476,7 +1475,7 @@ class RecurringDetailView extends ConsumerWidget {
           FilledButton.icon(
             onPressed: () => _postNow(context, ref),
             icon: const Icon(Icons.check_circle_rounded),
-            label: const Text('Post payment now'),
+            label: const Text('Post now'),
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
@@ -1627,8 +1626,11 @@ class RecurringDetailView extends ConsumerWidget {
     final notifier = ref.read(ledgerProvider.notifier);
 
     // Advance the date until it is today or later
+    var iterations = 0;
     while (nextDate.isBefore(today)) {
       nextDate = advanceTransactionRecurrence(nextDate, transaction);
+      iterations++;
+      if (iterations > 5000) break; // Safety guard against runaway loops
     }
 
     await notifier.updateTransactionStatus(
@@ -1660,8 +1662,7 @@ class _RecurringHistoryList extends ConsumerWidget {
     final state = ref.watch(ledgerProvider);
     final history = state.transactions.where((t) {
       if (t.id == plan.id) return false;
-      if (t.status == 'scheduled' &&
-          !(t.status == 'void' && t.notes?.toLowerCase() == 'skipped')) {
+      if (t.status == 'scheduled') {
         return false;
       }
       if (t.originalTransactionId == plan.id) return true;
@@ -1876,7 +1877,10 @@ String _recurringAmountLabel(LedgerState state, TransactionRecord transaction) {
   final isNegative = !incomeTypes.contains(transaction.type);
   final sign = isNegative ? '-' : '+';
   final displayMoney = transaction.originalAmount ?? transaction.amount;
-  return '$sign${formatMoney(displayMoney.copyWith(amountMinor: displayMoney.amountMinor.abs()), state.preferences.locale)}';
+  return maskMoneyIfPrivate(
+    state,
+    '$sign${formatMoney(displayMoney.copyWith(amountMinor: displayMoney.amountMinor.abs()), state.preferences.locale)}',
+  );
 }
 
 Color _recurringAmountColor(

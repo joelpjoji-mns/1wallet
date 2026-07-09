@@ -219,13 +219,3 @@ List<AppNotification> buildNotificationInbox(LedgerState state) {
 int unreadNotificationCount(LedgerState state) {
   return buildNotificationInbox(state).where((n) => !n.read).length;
 }
-
-/// Compare dates using day-only values to avoid time-of-day skew.
-String _relativeDate(DateTime date, DateTime today) {
-  final diff = today.difference(date).inDays;
-  if (diff == 0) return 'today';
-  if (diff == 1) return 'yesterday';
-  if (diff == -1) return 'tomorrow';
-  if (diff < 0) return 'in ${diff.abs()} days';
-  return '$diff days ago';
-}

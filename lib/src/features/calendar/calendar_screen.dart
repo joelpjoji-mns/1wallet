@@ -184,7 +184,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   icon: Icons.category_outlined,
                   title: 'Category',
                   value: selectedCategory?.name ?? 'All categories',
-                  subtitle: 'Month forecast',
+                  subtitle: 'Filter by category',
                   active: _categoryFilter != null,
                   onTap: () => _showCategoryFilter(state),
                 ),
@@ -193,9 +193,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               Expanded(
                 child: _CalendarFilterCard(
                   icon: Icons.account_balance_outlined,
-                  title: 'Accounts',
+                  title: 'Account',
                   value: selectedAccount?.name ?? 'All accounts',
-                  subtitle: 'Running Net',
+                  subtitle: 'Filter by account',
                   active: _accountFilter != null,
                   onTap: () => _showAccountFilter(state),
                 ),
@@ -581,8 +581,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     transaction: transaction,
                     onTap: () {
                       if (transaction.status == 'forecast') {
-                        final templateId = transaction.id.split('-')[1];
-                        context.push('/recurring/$templateId/edit');
+                        final templateId = transaction.originalTransactionId;
+                        if (templateId != null) {
+                          context.push('/recurring/$templateId/edit');
+                        }
                       } else {
                         context.push('/transaction/${transaction.id}');
                       }

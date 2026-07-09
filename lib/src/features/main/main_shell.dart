@@ -45,7 +45,7 @@ class _MainShellState extends ConsumerState<MainShell>
       activeIcon: Icons.home_rounded,
     ),
     IslandTabItem(
-      title: 'Records',
+      title: 'History',
       icon: Icons.receipt_long_outlined,
       activeIcon: Icons.receipt_long_rounded,
       pageIndex: 1,
@@ -110,7 +110,9 @@ class _MainShellState extends ConsumerState<MainShell>
   Widget build(BuildContext context) {
     ref.listen<LedgerState>(ledgerProvider, (previous, next) {
       NotificationService.checkAndShowAlerts(next);
-      NotificationService.syncScheduledNotifications(next);
+      if (!identical(previous?.transactions, next.transactions)) {
+        NotificationService.syncScheduledNotifications(next);
+      }
     });
 
     return BackButtonListener(
