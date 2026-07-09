@@ -10,7 +10,6 @@ import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 
 import '../../widgets/app_kit.dart';
-import '../../widgets/privacy_text.dart';
 
 class ImportSmsScreen extends ConsumerStatefulWidget {
   const ImportSmsScreen({super.key, this.title = 'Import SMS'});
@@ -158,10 +157,7 @@ class _ImportSmsScreenState extends ConsumerState<ImportSmsScreen> {
                   label: 'Amount',
                   value: parsed.amount == null
                       ? 'Not detected'
-                      : maskMoneyIfPrivate(
-                          state,
-                          formatMoney(parsed.amount!, state.preferences.locale),
-                        ),
+                      : formatMoney(parsed.amount!, state.preferences.locale),
                   icon: Icons.payments_outlined,
                 ),
                 InfoRow(
@@ -271,7 +267,7 @@ class _ImportSmsScreenState extends ConsumerState<ImportSmsScreen> {
       final candidates = await notifier.importSmsMessagesBatch(validTexts);
 
       _showImportMessage(
-        'Scan complete. Found $found candidate${found == 1 ? '' : 's'}, queued ${candidates.length}.',
+        'Scan complete. Found $found candidates, queued ${candidates.length}.',
       );
     } catch (e) {
       _showImportMessage('Error scanning SMS: $e');

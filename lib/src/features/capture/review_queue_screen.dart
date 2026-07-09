@@ -7,7 +7,6 @@ import 'package:intl/intl.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
-import '../../widgets/privacy_text.dart';
 
 class ReviewQueueScreen extends ConsumerWidget {
   const ReviewQueueScreen({super.key});
@@ -192,7 +191,7 @@ class ReviewQueueScreen extends ConsumerWidget {
                                               '-',
                                             ),
                                           ).add_jm().format(
-                                            candidate.createdAt.toLocal(),
+                                            candidate.createdAt,
                                           ),
                                           style: theme.textTheme.bodySmall
                                               ?.copyWith(
@@ -203,7 +202,7 @@ class ReviewQueueScreen extends ConsumerWidget {
                                     ),
                                   ),
                                   if (candidate.parsedAmount != null)
-                                    PrivacyText(
+                                    Text(
                                       (isIncome ? '+' : '') +
                                           formatMoney(
                                             candidate.parsedAmount!,
@@ -459,8 +458,8 @@ class ReviewQueueScreen extends ConsumerWidget {
           SnackBar(
             content: Text(
               newTxs.length == ids.length
-                  ? '${newTxs.length} candidate${newTxs.length == 1 ? '' : 's'} marked approved.'
-                  : '${newTxs.length} out of ${ids.length} candidate${ids.length == 1 ? '' : 's'} approved. Check if an account is set.',
+                  ? '${newTxs.length} candidates marked approved.'
+                  : '${newTxs.length} out of ${ids.length} candidates approved. Check if an account is set.',
             ),
             behavior: SnackBarBehavior.floating,
           ),
@@ -472,9 +471,7 @@ class ReviewQueueScreen extends ConsumerWidget {
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
-            content: Text(
-              '${ids.length} candidate${ids.length == 1 ? '' : 's'} marked $status.',
-            ),
+            content: Text('${ids.length} candidates marked $status.'),
             behavior: SnackBarBehavior.floating,
           ),
         );

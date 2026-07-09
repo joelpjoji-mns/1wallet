@@ -9,7 +9,6 @@ import '../../design/tokens.dart';
 
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
-import '../../widgets/privacy_text.dart';
 import '../common/file_picker_utils.dart';
 
 class ImportWalletCsvScreen extends ConsumerStatefulWidget {
@@ -167,8 +166,7 @@ class _ImportWalletCsvScreenState extends ConsumerState<ImportWalletCsvScreen> {
           const Gap(AppSpacing.lg),
           SectionCard(
             title: 'Preview',
-            subtitle:
-                '${preview.rows.length} importable row${preview.rows.length == 1 ? '' : 's'}',
+            subtitle: '${preview.rows.length} importable rows',
             child: Column(
               children: [
                 if (preview.rows.isEmpty)
@@ -186,10 +184,7 @@ class _ImportWalletCsvScreenState extends ConsumerState<ImportWalletCsvScreen> {
                       title: row.categoryName ?? transactionTypeLabel(row.type),
                       subtitle:
                           '${row.accountName.isEmpty ? 'Missing account name' : row.accountName} · row ${row.rowNumber}',
-                      meta: maskMoneyIfPrivate(
-                        state,
-                        formatMoney(row.amount, state.preferences.locale),
-                      ),
+                      meta: formatMoney(row.amount, state.preferences.locale),
                       onTap: () =>
                           _showCsvMessage('CSV row ${row.rowNumber} is ready.'),
                     ),
@@ -256,10 +251,10 @@ class _ImportWalletCsvScreenState extends ConsumerState<ImportWalletCsvScreen> {
         final batches = ref.read(ledgerProvider).importBatches;
         final latestBatch = batches.isEmpty ? null : batches.first;
         _status = latestBatch == null
-            ? '$count CSV row${count == 1 ? '' : 's'} imported as transactions.'
-            : '${latestBatch.importedCount} imported, ${latestBatch.duplicateCount} duplicate${latestBatch.duplicateCount == 1 ? '' : 's'} skipped.';
+            ? '$count CSV rows imported as transactions.'
+            : '${latestBatch.importedCount} imported, ${latestBatch.duplicateCount} duplicates skipped.';
       });
-      _showCsvMessage('$count CSV row${count == 1 ? '' : 's'} imported.');
+      _showCsvMessage('$count CSV rows imported.');
     } catch (error) {
       if (!mounted) return;
       setState(() => _status = 'CSV import failed: $error');
