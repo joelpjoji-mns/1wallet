@@ -362,22 +362,35 @@ class EmergencyFundHealthWidget extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              PrivacyText(
-                formatMoney(
-                  Money(
-                    amountMinor: totalCash,
-                    currency: state.preferences.displayCurrency,
+              Flexible(
+                child: PrivacyText(
+                  formatMoney(
+                    Money(
+                      amountMinor: totalCash,
+                      currency: state.preferences.displayCurrency,
+                    ),
+                    state.preferences.locale,
                   ),
-                  state.preferences.locale,
-                ),
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-              PrivacyText(
-                '/ ${formatMoney(Money(amountMinor: target, currency: state.preferences.displayCurrency), state.preferences.locale)}',
-                style: TextStyle(fontSize: 16, color: scheme.onSurfaceVariant),
+              const SizedBox(width: 8),
+              Flexible(
+                child: PrivacyText(
+                  '/ ${formatMoney(Money(amountMinor: target, currency: state.preferences.displayCurrency), state.preferences.locale)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
               ),
             ],
           ),

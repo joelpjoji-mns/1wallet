@@ -56,6 +56,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
   String? _categoryId;
   String? _loadedTransactionId;
   final _notesController = TextEditingController();
+  final _notesFocusNode = FocusNode();
   final _locationController = TextEditingController();
   final _paymentMethodController = TextEditingController();
   final _localAmountController = TextEditingController();
@@ -76,6 +77,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
   @override
   void dispose() {
     _notesController.dispose();
+    _notesFocusNode.dispose();
     _locationController.dispose();
     _paymentMethodController.dispose();
     _localAmountController.dispose();
@@ -84,6 +86,23 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       charge.dispose();
     }
     super.dispose();
+  }
+
+  List<String> _recentNotes(List<TransactionRecord> transactions) {
+    final sorted = [...transactions]
+      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+    final seen = <String>{};
+    final result = <String>[];
+    for (final transaction in sorted) {
+      final note = transaction.notes?.trim() ?? '';
+      if (note.isEmpty) continue;
+      final key = note.toLowerCase();
+      if (seen.contains(key)) continue;
+      seen.add(key);
+      result.add(note);
+      if (result.length >= 8) break;
+    }
+    return result;
   }
 
   @override
@@ -491,16 +510,81 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                     ListView(
                       padding: const EdgeInsets.all(AppSpacing.md),
                       children: [
-                        TextFormField(
-                          controller: _notesController,
-                          maxLines: 3,
-                          decoration: InputDecoration(
-                            labelText: 'Notes',
-                            prefixIcon: const Icon(Icons.notes_outlined),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppRadii.md),
-                            ),
-                          ),
+                        RawAutocomplete<String>(
+                          textEditingController: _notesController,
+                          focusNode: _notesFocusNode,
+                          optionsBuilder: (textEditingValue) {
+                            final recentNotes = _recentNotes(
+                              state.transactions,
+                            );
+                            final query = textEditingValue.text.trim();
+                            if (query.isEmpty) {
+                              return recentNotes;
+                            }
+                            final lowerQuery = query.toLowerCase();
+                            return recentNotes.where((note) {
+                              final lowerNote = note.toLowerCase();
+                              return lowerNote != lowerQuery &&
+                                  lowerNote.contains(lowerQuery);
+                            });
+                          },
+                          fieldViewBuilder:
+                              (
+                                context,
+                                textEditingController,
+                                focusNode,
+                                onFieldSubmitted,
+                              ) {
+                                return TextFormField(
+                                  controller: textEditingController,
+                                  focusNode: focusNode,
+                                  maxLines: 3,
+                                  decoration: InputDecoration(
+                                    labelText: 'Notes',
+                                    prefixIcon: const Icon(
+                                      Icons.notes_outlined,
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        AppRadii.md,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                          optionsViewBuilder: (context, onSelected, options) {
+                            final optionsList = options.toList();
+                            return Align(
+                              alignment: Alignment.topLeft,
+                              child: Material(
+                                elevation: 4,
+                                borderRadius: BorderRadius.circular(
+                                  AppRadii.md,
+                                ),
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxHeight: 200,
+                                  ),
+                                  child: SizedBox(
+                                    width: MediaQuery.of(context).size.width -
+                                        (AppSpacing.md * 2),
+                                    child: ListView.builder(
+                                      padding: EdgeInsets.zero,
+                                      shrinkWrap: true,
+                                      itemCount: optionsList.length,
+                                      itemBuilder: (context, index) {
+                                        final option = optionsList[index];
+                                        return ListTile(
+                                          title: Text(option),
+                                          onTap: () => onSelected(option),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         Row(
@@ -519,7 +603,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                             Expanded(
                               child: AddRecordTappableDetailField(
                                 icon: Icons.schedule_outlined,
-                                label: DateFormat.Hm().format(_occurredAt),
+                                label: DateFormat.jm().format(_occurredAt),
                                 onTap: _selectTime,
                               ),
                             ),

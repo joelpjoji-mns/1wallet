@@ -362,12 +362,23 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
                       final items = <Object>[];
                       String? currentMonth;
+                      DateTime? currentDay;
+                      final now = DateTime.now();
+                      final today = DateTime(now.year, now.month, now.day);
+                      final yesterday = today.subtract(
+                        const Duration(days: 1),
+                      );
+                      final locale = state.preferences.locale.replaceAll(
+                        '_',
+                        '-',
+                      );
                       for (final t in transactions) {
                         final monthStr = DateFormat(
                           'MMM yyyy',
-                          state.preferences.locale.replaceAll('_', '-'),
+                          locale,
                         ).format(t.occurredAt).toUpperCase();
-                        if (currentMonth != monthStr) {
+                        final isNewMonth = currentMonth != monthStr;
+                        if (isNewMonth) {
                           currentMonth = monthStr;
                           items.add(
                             _MonthHeaderItem(
@@ -376,6 +387,27 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                               balance: monthlyBalances[monthStr] ?? 0,
                             ),
                           );
+                        }
+                        final occurredAt = t.occurredAt;
+                        final day = DateTime(
+                          occurredAt.year,
+                          occurredAt.month,
+                          occurredAt.day,
+                        );
+                        if (isNewMonth || currentDay != day) {
+                          currentDay = day;
+                          final String dayLabel;
+                          if (day == today) {
+                            dayLabel = 'Today';
+                          } else if (day == yesterday) {
+                            dayLabel = 'Yesterday';
+                          } else {
+                            dayLabel = DateFormat(
+                              'EEE, d MMM',
+                              locale,
+                            ).format(day);
+                          }
+                          items.add(_DayHeaderItem(dayLabel: dayLabel));
                         }
                         items.add(t);
                       }
@@ -454,6 +486,50 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                                             ),
                                       ),
                                     ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+
+                          if (item is _DayHeaderItem) {
+                            return Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.sm,
+                                AppSpacing.xs,
+                                AppSpacing.sm,
+                                AppSpacing.xxs,
+                              ),
+                              child: Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      item.dayLabel,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant.withValues(
+                                              alpha: 0.7,
+                                            ),
+                                          ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSpacing.xs),
+                                  Expanded(
+                                    child: Divider(
+                                      height: 1,
+                                      thickness: 1,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.outlineVariant.withValues(
+                                        alpha: 0.5,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -982,4 +1058,10 @@ class _MonthHeaderItem {
     required this.balance,
     required this.netFlow,
   });
+}
+
+class _DayHeaderItem {
+  final String dayLabel;
+
+  _DayHeaderItem({required this.dayLabel});
 }

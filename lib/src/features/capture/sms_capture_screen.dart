@@ -93,6 +93,11 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // ── Scan existing inbox (kept up top for quick access) ──
+          if (_isAndroid) ...[
+            _scanInboxCard(scheme),
+            const Gap(AppSpacing.lg),
+          ],
           // ── Master toggle ──
           SectionCard(
             title: 'Automatic capture',
@@ -290,54 +295,53 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
             ),
           ),
 
-          // ── Scan inbox (Android only) ──
-          if (_isAndroid) ...[
-            const Gap(AppSpacing.lg),
-            SectionCard(
-              title: 'Scan existing inbox',
-              subtitle: 'Find transactions already sitting in your SMS inbox.',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  DropdownButtonFormField<String>(
-                    initialValue: _scanTimeframe,
-                    decoration: const InputDecoration(
-                      labelText: 'Timeframe',
-                      prefixIcon: Icon(Icons.history_rounded),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'today', child: Text('Today')),
-                      DropdownMenuItem(value: '24h', child: Text('Last 24 hours')),
-                      DropdownMenuItem(value: '7d', child: Text('Last 7 days')),
-                      DropdownMenuItem(value: '30d', child: Text('Last 30 days')),
-                    ],
-                    onChanged: _isScanning
-                        ? null
-                        : (value) {
-                            if (value != null) {
-                              setState(() => _scanTimeframe = value);
-                            }
-                          },
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  FilledButton.icon(
-                    onPressed: _isScanning ? null : _startBatchScan,
-                    icon: _isScanning
-                        ? SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: scheme.onPrimary,
-                            ),
-                          )
-                        : const Icon(Icons.manage_search_rounded),
-                    label: Text(_isScanning ? 'Scanning…' : 'Scan inbox'),
-                  ),
-                ],
-              ),
+        ],
+      ),
+    );
+  }
+
+  Widget _scanInboxCard(ColorScheme scheme) {
+    return SectionCard(
+      title: 'Scan existing inbox',
+      subtitle: 'Find transactions already sitting in your SMS inbox.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DropdownButtonFormField<String>(
+            initialValue: _scanTimeframe,
+            decoration: const InputDecoration(
+              labelText: 'Timeframe',
+              prefixIcon: Icon(Icons.history_rounded),
             ),
-          ],
+            items: const [
+              DropdownMenuItem(value: 'today', child: Text('Today')),
+              DropdownMenuItem(value: '24h', child: Text('Last 24 hours')),
+              DropdownMenuItem(value: '7d', child: Text('Last 7 days')),
+              DropdownMenuItem(value: '30d', child: Text('Last 30 days')),
+            ],
+            onChanged: _isScanning
+                ? null
+                : (value) {
+                    if (value != null) {
+                      setState(() => _scanTimeframe = value);
+                    }
+                  },
+          ),
+          const SizedBox(height: AppSpacing.md),
+          FilledButton.icon(
+            onPressed: _isScanning ? null : _startBatchScan,
+            icon: _isScanning
+                ? SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: scheme.onPrimary,
+                    ),
+                  )
+                : const Icon(Icons.manage_search_rounded),
+            label: Text(_isScanning ? 'Scanning…' : 'Scan inbox'),
+          ),
         ],
       ),
     );
