@@ -1374,6 +1374,7 @@ class DynamicForecastLineChart extends StatefulWidget {
   final String locale;
   final Map<double, String> payoffDots;
   final String currencySymbol;
+  final bool isPrivate;
 
   const DynamicForecastLineChart({
     super.key,
@@ -1384,6 +1385,7 @@ class DynamicForecastLineChart extends StatefulWidget {
     required this.locale,
     required this.payoffDots,
     required this.currencySymbol,
+    this.isPrivate = false,
   });
 
   @override
@@ -1562,7 +1564,10 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                           final dateStr = DateFormat('dd MMM yyyy').format(date);
                           
                           final amt = NumberFormat.decimalPattern(widget.locale).format(spot.y);
-                          final moneyStr = '${widget.currencySymbol}$amt';
+                          final rawMoneyStr = '${widget.currencySymbol}$amt';
+                          final moneyStr = widget.isPrivate
+                              ? maskAmountDigits(rawMoneyStr)
+                              : rawMoneyStr;
                           
                           return LineTooltipItem(
                             '$moneyStr\n',
@@ -1690,10 +1695,11 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                         reservedSize: 50,
                         interval: yInterval,
                         getTitlesWidget: (value, meta) {
+                           final formatted = numberFormat.format(value);
                            return Padding(
                              padding: const EdgeInsets.only(right: 8.0),
                              child: Text(
-                               numberFormat.format(value), 
+                               widget.isPrivate ? maskAmountDigits(formatted) : formatted, 
                                textAlign: TextAlign.right,
                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
                              ),
@@ -1741,6 +1747,7 @@ class DynamicForecastBarChart extends StatefulWidget {
   final List<DateTime> timeKeys;
   final String locale;
   final String currencySymbol;
+  final bool isPrivate;
 
   const DynamicForecastBarChart({
     super.key,
@@ -1749,6 +1756,7 @@ class DynamicForecastBarChart extends StatefulWidget {
     required this.timeKeys,
     required this.locale,
     required this.currencySymbol,
+    this.isPrivate = false,
   });
 
   @override
@@ -1967,10 +1975,11 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
                         reservedSize: 50,
                         interval: yInterval,
                         getTitlesWidget: (value, meta) {
+                           final formatted = numberFormat.format(value);
                            return Padding(
                              padding: const EdgeInsets.only(right: 8.0),
                              child: Text(
-                               numberFormat.format(value), 
+                               widget.isPrivate ? maskAmountDigits(formatted) : formatted, 
                                textAlign: TextAlign.right,
                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
                              ),
@@ -2423,6 +2432,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               locale: locale,
               payoffDots: payoffDots,
               currencySymbol: currencySymbol,
+              isPrivate: widget.state.preferences.privacyModeEnabled,
             ),
           ),
         ),
@@ -2440,6 +2450,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               timeKeys: weekKeys,
               locale: locale,
               currencySymbol: currencySymbol,
+              isPrivate: widget.state.preferences.privacyModeEnabled,
             ),
           ),
         ),

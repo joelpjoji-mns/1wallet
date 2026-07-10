@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:one_wallet_flutter/src/data/ledger_models.dart';
@@ -49,5 +50,7 @@ void main() {
 }
 
 Widget _wrap(Widget child) {
-  return MaterialApp(home: Scaffold(body: child));
+  return ProviderScope(
+    child: MaterialApp(home: Scaffold(body: child)),
+  );
 }

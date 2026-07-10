@@ -8,6 +8,7 @@ import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../home/home_async_providers.dart';
 import '../home/home_dashboard_selectors.dart';
+import '../../widgets/privacy_text.dart';
 
 class BalanceTrendScreen extends ConsumerStatefulWidget {
   const BalanceTrendScreen({super.key});
@@ -97,7 +98,7 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
+                  PrivacyText(
                     _formatMoney(current, state.preferences.locale),
                     style: TextStyle(
                       fontSize: 40,
@@ -149,6 +150,7 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
                         trend,
                         scheme,
                         state.preferences.locale,
+                        state,
                       ),
                     ),
                   ],
@@ -188,6 +190,7 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
     List<BalanceTrendPoint> trend,
     ColorScheme scheme,
     String locale,
+    LedgerState state,
   ) {
     if (trend.isEmpty) {
       return const Center(child: Text('No data for this period'));
@@ -312,7 +315,7 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
                 return Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: Text(
-                    _formatYAxisLabel(value),
+                    maskMoneyIfPrivate(state, _formatYAxisLabel(value)),
                     textAlign: TextAlign.right,
                     style: TextStyle(
                       color: scheme.onSurfaceVariant,
@@ -368,10 +371,13 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
                   ),
                   children: [
                     TextSpan(
-                      text: NumberFormat.simpleCurrency(
-                        name: trend.first.balance.currency,
-                        locale: locale,
-                      ).format(spot.y),
+                      text: maskMoneyIfPrivate(
+                        state,
+                        NumberFormat.simpleCurrency(
+                          name: trend.first.balance.currency,
+                          locale: locale,
+                        ).format(spot.y),
+                      ),
                       style: const TextStyle(fontWeight: FontWeight.normal),
                     ),
                   ],

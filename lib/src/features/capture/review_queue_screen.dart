@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
+import '../../widgets/privacy_text.dart';
 
 class ReviewQueueScreen extends ConsumerWidget {
   const ReviewQueueScreen({super.key});
@@ -206,7 +207,7 @@ class ReviewQueueScreen extends ConsumerWidget {
                                   if (candidate.parsedAmount != null) ...[
                                     const SizedBox(width: AppSpacing.sm),
                                     Flexible(
-                                      child: Text(
+                                      child: PrivacyText(
                                         (isIncome ? '+' : '') +
                                             formatMoney(
                                               candidate.parsedAmount!,

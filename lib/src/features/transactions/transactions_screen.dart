@@ -664,7 +664,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             value: account.id,
             title: account.name,
             subtitle:
-                '${accountTypeLabel(account.type)} · ${formatMoney(accountBalanceFromMap(balances, account), state.preferences.locale)}',
+                '${accountTypeLabel(account.type)} · ${maskMoneyIfPrivate(state, formatMoney(accountBalanceFromMap(balances, account), state.preferences.locale))}',
             icon: accountIcon(account),
             iconColor: accountDisplayColor(account),
             searchText:

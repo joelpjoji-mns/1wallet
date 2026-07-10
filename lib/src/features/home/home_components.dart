@@ -4,6 +4,7 @@ import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../../widgets/privacy_text.dart';
 
 class HomeBalancePill extends StatelessWidget {
   const HomeBalancePill({
@@ -110,7 +111,7 @@ class HomeFlowPanel extends StatelessWidget {
               end: value.amountMinor.toDouble(),
             ),
             builder: (context, amountMinor, child) {
-              return Text(
+              return PrivacyText(
                 formatMoney(
                   value.copyWith(amountMinor: amountMinor.round()),
                   locale,
@@ -161,7 +162,7 @@ class HomeProgressRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
+            PrivacyText(value, style: const TextStyle(fontWeight: FontWeight.w900)),
           ],
         ),
         const SizedBox(height: AppSpacing.xs),

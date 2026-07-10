@@ -9,6 +9,7 @@ import '../../design/tokens.dart';
 
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../../widgets/privacy_text.dart';
 import '../common/file_picker_utils.dart';
 
 class ImportWalletCsvScreen extends ConsumerStatefulWidget {
@@ -184,7 +185,10 @@ class _ImportWalletCsvScreenState extends ConsumerState<ImportWalletCsvScreen> {
                       title: row.categoryName ?? transactionTypeLabel(row.type),
                       subtitle:
                           '${row.accountName.isEmpty ? 'Missing account name' : row.accountName} · row ${row.rowNumber}',
-                      meta: formatMoney(row.amount, state.preferences.locale),
+                      meta: maskMoneyIfPrivate(
+                        state,
+                        formatMoney(row.amount, state.preferences.locale),
+                      ),
                       onTap: () =>
                           _showCsvMessage('CSV row ${row.rowNumber} is ready.'),
                     ),
