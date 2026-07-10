@@ -29,18 +29,20 @@ enum HomeDashboardWidgetId {
 
 const defaultHomeWidgetOrder = [
   HomeDashboardWidgetId.balanceHero,
-  HomeDashboardWidgetId.financialHealth,
   HomeDashboardWidgetId.accountGrid,
-  HomeDashboardWidgetId.cashFlow,
   HomeDashboardWidgetId.recentRecords,
   HomeDashboardWidgetId.balanceTrend,
-  HomeDashboardWidgetId.netWorth,
   HomeDashboardWidgetId.currencyValues,
-  HomeDashboardWidgetId.upcomingScheduled,
+  HomeDashboardWidgetId.cashFlow,
+  HomeDashboardWidgetId.monthComparison,
   HomeDashboardWidgetId.topCategories,
+  HomeDashboardWidgetId.financialHealth,
+  HomeDashboardWidgetId.netWorth,
+  HomeDashboardWidgetId.upcomingScheduled,
   HomeDashboardWidgetId.budgetPressure,
   HomeDashboardWidgetId.goalProgress,
   HomeDashboardWidgetId.creditUtilization,
+  HomeDashboardWidgetId.spendingHeatmap,
 ];
 
 const homeWidgetDatePresets = [

@@ -21,11 +21,16 @@ const kRnDefaultHomeWidgetOrder = <String>[
   'recentRecords',
   'balanceTrend',
   'currencyValues',
-  'upcomingScheduled',
-  'reviewQueue',
+  'cashFlow',
+  'monthComparison',
   'topCategories',
+  'financialHealth',
+  'netWorth',
+  'upcomingScheduled',
   'budgetPressure',
   'goalProgress',
+  'creditUtilization',
+  'spendingHeatmap',
 ];
 
 @immutable
