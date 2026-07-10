@@ -605,7 +605,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           color: theme.colorScheme.primary,
                         ),
                         const SizedBox(width: AppSpacing.sm),
-                        Text(channel.$2),
+                        Expanded(
+                          child: Text(
+                            channel.$2,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
                     ),
                     subtitle: Padding(

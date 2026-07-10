@@ -58,6 +58,8 @@ class SettingsProfileSection extends StatelessWidget {
                     children: [
                       Text(
                         user?.displayName ?? '1wallet account',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w900,
                         ),
@@ -65,6 +67,8 @@ class SettingsProfileSection extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         user?.email ?? 'Not signed in',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: theme.colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.w600,

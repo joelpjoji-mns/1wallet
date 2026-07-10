@@ -825,15 +825,19 @@ class LoanDetailView extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    PrivacyText(
-                      formatMoney(
-                        balance.copyWith(
-                          amountMinor: balance.amountMinor.abs(),
+                    Flexible(
+                      child: PrivacyText(
+                        formatMoney(
+                          balance.copyWith(
+                            amountMinor: balance.amountMinor.abs(),
+                          ),
+                          state.preferences.locale,
                         ),
-                        state.preferences.locale,
-                      ),
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
                   ],
@@ -2342,14 +2346,19 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Extra Cash Allocation',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: scheme.onSurfaceVariant,
+                      Flexible(
+                        child: Text(
+                          'Extra Cash Allocation',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: scheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
+                      const SizedBox(width: AppSpacing.sm),
                       Text(
                         '${(_extraAllocationPercent * 100).toInt()}% to priority loans',
                         style: TextStyle(

@@ -366,10 +366,14 @@ class HomeDetailRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
-        Text(
-          trailing,
-          textAlign: TextAlign.end,
-          style: TextStyle(color: trailingColor, fontWeight: FontWeight.w900),
+        Flexible(
+          child: Text(
+            trailing,
+            textAlign: TextAlign.end,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: trailingColor, fontWeight: FontWeight.w900),
+          ),
         ),
       ],
     );

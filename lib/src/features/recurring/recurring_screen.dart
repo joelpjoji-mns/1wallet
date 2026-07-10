@@ -1305,10 +1305,14 @@ class RecurringDetailView extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    Text(
-                      _recurringAmountLabel(state, transaction),
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
+                    Flexible(
+                      child: Text(
+                        _recurringAmountLabel(state, transaction),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
                   ],
@@ -1355,11 +1359,17 @@ class RecurringDetailView extends ConsumerWidget {
                               color: scheme.onSurfaceVariant,
                             ),
                           ),
-                          Text(
-                            account?.name ?? 'Unknown',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
+                          const SizedBox(width: AppSpacing.sm),
+                          Flexible(
+                            child: Text(
+                              account?.name ?? 'Unknown',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.end,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ],
@@ -1376,11 +1386,17 @@ class RecurringDetailView extends ConsumerWidget {
                                 color: scheme.onSurfaceVariant,
                               ),
                             ),
-                            Text(
-                              counter.name,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
+                            const SizedBox(width: AppSpacing.sm),
+                            Flexible(
+                              child: Text(
+                                counter.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.end,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ],
@@ -1435,20 +1451,30 @@ class RecurringDetailView extends ConsumerWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                'Paid: ${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: paid, currency: loanAccount!.currency), state.preferences.locale))}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: scheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.w600,
+                              Flexible(
+                                child: Text(
+                                  'Paid: ${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: paid, currency: loanAccount!.currency), state.preferences.locale))}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: scheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
-                              Text(
-                                '${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: remaining > 0 ? remaining : 0, currency: loanAccount.currency), state.preferences.locale))} left',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: scheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.w600,
+                              const SizedBox(width: AppSpacing.sm),
+                              Flexible(
+                                child: Text(
+                                  '${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: remaining > 0 ? remaining : 0, currency: loanAccount.currency), state.preferences.locale))} left',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.end,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: scheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                             ],

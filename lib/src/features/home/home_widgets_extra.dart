@@ -144,29 +144,34 @@ class CashFlowHomeWidget extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Net',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: scheme.onSurfaceVariant,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Net',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                  PrivacyText(
-                    formatMoney(
-                      Money(amountMinor: flow.netMinor, currency: flow.currency),
-                      locale,
+                    PrivacyText(
+                      formatMoney(
+                        Money(amountMinor: flow.netMinor, currency: flow.currency),
+                        locale,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: flow.netMinor >= 0 ? positiveColor : scheme.error,
+                      ),
                     ),
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: flow.netMinor >= 0 ? positiveColor : scheme.error,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: AppSpacing.sm),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -314,15 +319,19 @@ class MonthComparisonHomeWidget extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              PrivacyText(
-                formatMoney(
-                  Money(
-                    amountMinor: cmp.thisMonthMinor,
-                    currency: cmp.currency,
+              Flexible(
+                child: PrivacyText(
+                  formatMoney(
+                    Money(
+                      amountMinor: cmp.thisMonthMinor,
+                      currency: cmp.currency,
+                    ),
+                    locale,
                   ),
-                  locale,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
                 ),
-                style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
               ),
               const SizedBox(width: 8),
               if (ratio != null)

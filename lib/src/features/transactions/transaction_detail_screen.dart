@@ -161,10 +161,14 @@ class _TransactionDetailScreenState
                       children: [
                         const Icon(Icons.place_outlined, size: 16),
                         const SizedBox(width: 4),
-                        Text(
-                          transaction.locationLabel!,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.w600),
+                        Flexible(
+                          child: Text(
+                            transaction.locationLabel!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
                         ),
                       ],
                     ),

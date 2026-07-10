@@ -1189,12 +1189,19 @@ class _FxAmountCard extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 '$amount $currency',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontWeight: FontWeight.w900,
                   fontSize: 14,
                 ),
               ),
-              Text(subtitle, style: const TextStyle(fontSize: 10)),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 10),
+              ),
             ],
           ),
         ),
