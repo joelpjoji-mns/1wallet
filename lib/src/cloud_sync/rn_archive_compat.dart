@@ -5,6 +5,9 @@ import '../data/ledger_models.dart';
 LedgerState decodeReactNativeOneWalletArchive(
   String archiveContent, {
   required String userId,
+  // `expectedChecksum` is advisory only: we do not have a matching checksum
+  // implementation for the legacy React Native archive format, so it is
+  // accepted for API compatibility but intentionally not verified here.
   String? expectedChecksum,
   int? expectedLedgerStateVersion,
 }) {
@@ -28,6 +31,9 @@ LedgerState decodeReactNativeOneWalletArchive(
   return decodeLedgerState(payloadStr).copyWith(userId: userId);
 }
 
+// Checksum is advisory/unenforced: we don't have a compatible checksum
+// implementation for the legacy archive, so this always returns empty and
+// callers must not treat a mismatch as a hard failure.
 String reactNativeLedgerChecksum(String content) => '';
 const reactNativeArchiveFormat = 'rn-archive';
 const reactNativeArchiveVersion = 1;

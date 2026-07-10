@@ -179,6 +179,8 @@ class ReviewQueueScreen extends ConsumerWidget {
                                               candidate.transactionType
                                                   ?.toUpperCase() ??
                                               'UNKNOWN',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                           style: theme.textTheme.titleMedium
                                               ?.copyWith(
                                                 fontWeight: FontWeight.w800,
@@ -201,22 +203,28 @@ class ReviewQueueScreen extends ConsumerWidget {
                                       ],
                                     ),
                                   ),
-                                  if (candidate.parsedAmount != null)
-                                    Text(
-                                      (isIncome ? '+' : '') +
-                                          formatMoney(
-                                            candidate.parsedAmount!,
-                                            state.preferences.locale,
-                                          ),
-                                      style: theme.textTheme.titleLarge
-                                          ?.copyWith(
-                                            color: isIncome
-                                                ? Colors.green.shade600
-                                                : scheme.onSurface,
-                                            fontWeight: FontWeight.w900,
-                                            letterSpacing: -0.5,
-                                          ),
+                                  if (candidate.parsedAmount != null) ...[
+                                    const SizedBox(width: AppSpacing.sm),
+                                    Flexible(
+                                      child: Text(
+                                        (isIncome ? '+' : '') +
+                                            formatMoney(
+                                              candidate.parsedAmount!,
+                                              state.preferences.locale,
+                                            ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: theme.textTheme.titleLarge
+                                            ?.copyWith(
+                                              color: isIncome
+                                                  ? Colors.green.shade600
+                                                  : scheme.onSurface,
+                                              fontWeight: FontWeight.w900,
+                                              letterSpacing: -0.5,
+                                            ),
+                                      ),
                                     ),
+                                  ],
                                 ],
                               ),
                               const SizedBox(height: AppSpacing.md),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:collection/collection.dart';
@@ -16,6 +17,7 @@ import '../../widgets/currency_picker.dart';
 import '../common/full_screen_picker.dart';
 import '../transactions/transaction_row.dart';
 import '../../utils/number_formatter.dart';
+import '../../widgets/privacy_text.dart';
 import 'loan_forecast_simulator.dart';
 
 class LoansScreen extends ConsumerWidget {
@@ -63,7 +65,7 @@ class LoansScreen extends ConsumerWidget {
           if (mode != 'detail' && mode != 'edit' && mode != 'new' && mode != 'forecast') ...[
             SectionCard(
               title: 'Loan control center',
-              subtitle: 'Outstanding, next EMI, forecast and payoff pressure.',
+              subtitle: 'Loan count and next scheduled EMI.',
               child: Row(
                 children: [
                   Expanded(
@@ -83,15 +85,18 @@ class LoansScreen extends ConsumerWidget {
                       label: mode == 'past' ? 'Archived' : 'Next EMI',
                       value: mode == 'past'
                           ? '${pastLoans.length}'
-                          : formatMoney(
-                              convertMoneyForDisplay(
-                                state,
-                                Money(
-                                  amountMinor: emi,
-                                  currency: state.preferences.baseCurrency,
+                          : maskMoneyIfPrivate(
+                              state,
+                              formatMoney(
+                                convertMoneyForDisplay(
+                                  state,
+                                  Money(
+                                    amountMinor: emi,
+                                    currency: state.preferences.baseCurrency,
+                                  ),
                                 ),
+                                state.preferences.locale,
                               ),
-                              state.preferences.locale,
                             ),
                       icon: mode == 'past'
                           ? Icons.archive_outlined
@@ -188,8 +193,10 @@ class _LoanFormState extends ConsumerState<LoanForm> {
     _tenureController.addListener(_autoCalculateEmi);
   }
 
+  String? _lastAutoEmiText;
+
   void _autoCalculateEmi() {
-    final principalMinor = _amountMinorFromInput(_principalController.text);
+    final principalMinor = _amountMinorFromInput(_principalController.text, _currency);
     final rate = _optionalDouble(_rateController.text);
     final tenure = _optionalInt(_tenureController.text);
 
@@ -206,15 +213,14 @@ class _LoanFormState extends ConsumerState<LoanForm> {
       final denominator = math.pow(1 + monthlyRate, tenure) - 1;
       final emiMinor = (numerator / denominator).round();
 
-      final newText = _formatAmountInput(emiMinor);
-      if (_emiController.text != newText && _emiController.text.isEmpty) {
-        _emiController.text = newText;
-      } else if (_emiController.text != newText &&
-          _emiController.text.isNotEmpty) {
-        // Only aggressively overwrite if it seems the user hasn't explicitly set a custom EMI recently.
-        // A simple check is to overwrite if it's currently showing an old auto-calculated EMI.
+      final newText = _formatAmountInput(emiMinor, _currency);
+      // Only auto-fill when the field is empty or still shows the last
+      // value we auto-calculated; never clobber a user-typed EMI.
+      if (_emiController.text.isEmpty ||
+          _emiController.text == _lastAutoEmiText) {
         _emiController.text = newText;
       }
+      _lastAutoEmiText = newText;
     }
   }
 
@@ -504,18 +510,19 @@ class _LoanFormState extends ConsumerState<LoanForm> {
     _principalController.text = details?.principal == null
         ? loan == null
               ? ''
-              : _formatAmountInput(loan.openingBalance.amountMinor.abs())
-        : _formatAmountInput(details!.principal!.amountMinor.abs());
+              : _formatAmountInput(loan.openingBalance.amountMinor.abs(), _currency)
+        : _formatAmountInput(details!.principal!.amountMinor.abs(), _currency);
     final balance = loan == null ? null : accountBalance(state, loan);
     _currentBalanceController.text = balance == null
         ? ''
-        : _formatAmountInput(balance.amountMinor.abs());
+        : _formatAmountInput(balance.amountMinor.abs(), _currency);
     final existingEmi = _existingLoanEmi(state, loan?.id);
     final repaymentAmount = details?.repaymentAmount;
     _emiController.text = repaymentAmount == null && existingEmi == null
         ? ''
         : _formatAmountInput(
             (existingEmi?.amount ?? repaymentAmount!).amountMinor.abs(),
+            _currency,
           );
     _rateController.text = _formatOptionalDecimal(
       details?.interestRatePercent ?? _doubleTagValue(loan?.groupName, 'rate'),
@@ -597,7 +604,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
             value: account.id,
             title: account.name,
             subtitle:
-                '${accountTypeLabel(account.type)} · ${formatMoney(accountBalance(state, account), state.preferences.locale)}',
+                '${accountTypeLabel(account.type)} · ${maskMoneyIfPrivate(state, formatMoney(accountBalance(state, account), state.preferences.locale))}',
             icon: accountIcon(account),
             iconColor: accountDisplayColor(account),
           ),
@@ -632,14 +639,16 @@ class _LoanFormState extends ConsumerState<LoanForm> {
     final name = _nameController.text.trim();
     final principalMinor = _amountMinorFromInput(
       _principalController.text,
+      _currency,
     ).abs();
     final currentBalanceInput = _amountMinorFromInput(
       _currentBalanceController.text,
+      _currency,
     ).abs();
     final effectiveCurrentBalanceMinor = _currentBalanceController.text.isEmpty
         ? principalMinor
         : currentBalanceInput;
-    final emiMinor = _amountMinorFromInput(_emiController.text).abs();
+    final emiMinor = _amountMinorFromInput(_emiController.text, _currency).abs();
     final rate = _optionalDouble(_rateController.text);
     final tenure = _optionalInt(_tenureController.text);
     if (name.isEmpty) {
@@ -804,7 +813,7 @@ class LoanDetailView extends ConsumerWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'LOAN ACCOUNT',
+                            '${accountTypeLabel(loan.type).toUpperCase()} ACCOUNT',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -816,15 +825,19 @@ class LoanDetailView extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    Text(
-                      formatMoney(
-                        balance.copyWith(
-                          amountMinor: balance.amountMinor.abs(),
+                    Flexible(
+                      child: PrivacyText(
+                        formatMoney(
+                          balance.copyWith(
+                            amountMinor: balance.amountMinor.abs(),
+                          ),
+                          state.preferences.locale,
                         ),
-                        state.preferences.locale,
-                      ),
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
                   ],
@@ -849,7 +862,7 @@ class LoanDetailView extends ConsumerWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
+                              PrivacyText(
                                 'Paid: ${formatMoney(Money(amountMinor: paid, currency: loan.currency), state.preferences.locale)}',
                                 style: TextStyle(
                                   fontSize: 13,
@@ -983,7 +996,7 @@ class LoanDetailView extends ConsumerWidget {
           title: 'Repayment history',
           subtitle: repaymentHistory.isEmpty
               ? 'Posted EMI and repayment entries will appear here.'
-              : '${repaymentHistory.length} posted repayments',
+              : '${repaymentHistory.length} posted repayment${repaymentHistory.length == 1 ? '' : 's'}',
           child: repaymentHistory.isEmpty
               ? const EmptyState(
                   icon: Icons.receipt_long_outlined,
@@ -1082,9 +1095,10 @@ class _LoanCompactCard extends StatelessWidget {
     final cadence = _loanCadenceLabel(details);
     final cadenceSummary = [
       cadence,
-      if (details.repaymentCount != null) 'for ${details.repaymentCount} times',
+      if (details.repaymentCount != null)
+        'for ${details.repaymentCount} time${details.repaymentCount == 1 ? '' : 's'}',
       if (mode == 'past' && repayments.isNotEmpty)
-        '${repayments.length} repayments',
+        '${repayments.length} repayment${repayments.length == 1 ? '' : 's'}',
     ].join(' · ');
     final primaryTitle = loan.institution ?? accountTypeLabel(loan.type);
     final tertiaryLine = loan.institution != null
@@ -1198,7 +1212,7 @@ class _LoanCompactCard extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(
+                      PrivacyText(
                         rightAmountText,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1244,7 +1258,7 @@ class _LoanCompactCard extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
+                            PrivacyText(
                               'Paid: ${formatMoney(Money(amountMinor: paid, currency: loan.currency), state.preferences.locale)}',
                               style: TextStyle(
                                 fontSize: 12,
@@ -2011,7 +2025,10 @@ class LoanForecastView extends ConsumerStatefulWidget {
 class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
   late final TextEditingController _emergencyController;
   late double _extraAllocationPercent;
+  late double _debouncedExtraAllocationPercent;
   late List<Account> _priorityLoans;
+  Timer? _forecastDebounce;
+  Timer? _emergencyDebounce;
 
   void _syncPriorityLoans() {
     final prefs = widget.state.preferences;
@@ -2027,8 +2044,8 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
       if (aIndex != -1) return -1;
       if (bIndex != -1) return 1;
 
-      final aRate = a.loanDetails?.interestRatePercent ?? 0;
-      final bRate = b.loanDetails?.interestRatePercent ?? 0;
+      final aRate = effectiveLoanDetails(widget.state, a).interestRatePercent ?? 0;
+      final bRate = effectiveLoanDetails(widget.state, b).interestRatePercent ?? 0;
       return bRate.compareTo(aRate);
     });
   }
@@ -2037,8 +2054,10 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
   void initState() {
     super.initState();
     final prefs = widget.state.preferences;
-    _emergencyController = TextEditingController(text: (prefs.forecastEmergencyCashMinor / 100).toInt().toString());
+    final baseMinors = math.pow(10, minorUnits(prefs.baseCurrency)).toInt();
+    _emergencyController = TextEditingController(text: (prefs.forecastEmergencyCashMinor / baseMinors).toInt().toString());
     _extraAllocationPercent = prefs.forecastExtraAllocationPercent;
+    _debouncedExtraAllocationPercent = _extraAllocationPercent;
     _syncPriorityLoans();
   }
 
@@ -2081,6 +2100,8 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
 
   @override
   void dispose() {
+    _forecastDebounce?.cancel();
+    _emergencyDebounce?.cancel();
     _emergencyController.dispose();
     super.dispose();
   }
@@ -2095,7 +2116,9 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
       );
     }
 
-    final emergencyMinor = _amountMinorFromInput(_emergencyController.text).abs();
+    final baseCurrency = widget.state.preferences.baseCurrency;
+    final baseMinorsScale = math.pow(10, minorUnits(baseCurrency)).toInt();
+    final emergencyMinor = _amountMinorFromInput(_emergencyController.text, baseCurrency).abs();
 
     final activeLoans = widget.loans.map((loan) {
       final details = _effectiveLoanDetails(widget.state, loan);
@@ -2114,7 +2137,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
       state: widget.state,
       activeLoans: activeLoans,
       emergencySavingMinor: emergencyMinor,
-      extraPaymentAllocationPercent: _extraAllocationPercent,
+      extraPaymentAllocationPercent: _debouncedExtraAllocationPercent,
       loanPriorityIds: _priorityLoans.map((l) => l.id).toList(),
       payoffDelayDays: widget.state.preferences.loanPayoffDelayDays,
     );
@@ -2131,7 +2154,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
     for (int i = 0; i < result.balanceCurve.length; i++) {
       final pt = result.balanceCurve[i];
       final x = (pt.date.millisecondsSinceEpoch - todayMillis) / 86400000.0;
-      final y = pt.netBalanceMinor / 100.0;
+      final y = pt.netBalanceMinor / baseMinorsScale;
       spots.add(FlSpot(x, y));
     }
     
@@ -2147,7 +2170,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
         final daysSinceMonday = pt.date.weekday - 1; 
         final weekStart = pt.date.subtract(Duration(days: daysSinceMonday));
         final weekKey = DateTime(weekStart.year, weekStart.month, weekStart.day);
-        weeklyBalances[weekKey] = pt.netBalanceMinor / 100.0;
+        weeklyBalances[weekKey] = pt.netBalanceMinor / baseMinorsScale;
       }
     }
     
@@ -2240,13 +2263,29 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  'You could save ${formatMoney(Money(amountMinor: result.impact.interestSavedMinor, currency: widget.state.preferences.baseCurrency), locale)} in interest and finish ${result.impact.monthsSaved} months early!',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        height: 1.2,
+                Builder(
+                  builder: (context) {
+                    final savedText = maskMoneyIfPrivate(
+                      widget.state,
+                      formatMoney(
+                        Money(
+                          amountMinor: result.impact.interestSavedMinor,
+                          currency: widget.state.preferences.baseCurrency,
+                        ),
+                        locale,
                       ),
+                    );
+                    final monthsSaved = result.impact.monthsSaved;
+                    return Text(
+                      'You could save $savedText in interest and finish $monthsSaved month${monthsSaved == 1 ? '' : 's'} early!',
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            height: 1.2,
+                          ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -2268,11 +2307,15 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                   prefixIcon: const Icon(Icons.savings_outlined),
                 ),
                 onChanged: (val) {
-                  final newMinor = _amountMinorFromInput(val).abs();
-                  ref.read(ledgerProvider.notifier).updatePreferences(
-                    widget.state.preferences.copyWith(forecastEmergencyCashMinor: newMinor),
-                  );
-                  setState(() {});
+                  final newMinor = _amountMinorFromInput(val, baseCurrency).abs();
+                  _emergencyDebounce?.cancel();
+                  _emergencyDebounce = Timer(const Duration(milliseconds: 120), () {
+                    if (!mounted) return;
+                    ref.read(ledgerProvider.notifier).updatePreferences(
+                      widget.state.preferences.copyWith(forecastEmergencyCashMinor: newMinor),
+                    );
+                    setState(() {});
+                  });
                 },
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -2303,14 +2346,19 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Extra Cash Allocation',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: scheme.onSurfaceVariant,
+                      Flexible(
+                        child: Text(
+                          'Extra Cash Allocation',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: scheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
+                      const SizedBox(width: AppSpacing.sm),
                       Text(
                         '${(_extraAllocationPercent * 100).toInt()}% to priority loans',
                         style: TextStyle(
@@ -2327,12 +2375,19 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                     max: 1.0,
                     divisions: 20,
                     onChangeEnd: (val) {
+                      _forecastDebounce?.cancel();
+                      setState(() => _debouncedExtraAllocationPercent = val);
                       ref.read(ledgerProvider.notifier).updatePreferences(
                         widget.state.preferences.copyWith(forecastExtraAllocationPercent: val),
                       );
                     },
                     onChanged: (val) {
                       setState(() => _extraAllocationPercent = val);
+                      _forecastDebounce?.cancel();
+                      _forecastDebounce = Timer(const Duration(milliseconds: 120), () {
+                        if (!mounted) return;
+                        setState(() => _debouncedExtraAllocationPercent = val);
+                      });
                     },
                   ),
                   Row(
@@ -2421,7 +2476,10 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               final loan = entry.value;
               final event = result.payoffEvents.firstWhereOrNull((e) => e.loan.id == loan.id);
               final payoffStr = event != null ? ' · Pays off ${formatLedgerDate(event.payoffDate, locale)}' : '';
-              final balStr = formatMoney(accountBalance(widget.state, loan), locale);
+              final balStr = maskMoneyIfPrivate(
+                widget.state,
+                formatMoney(accountBalance(widget.state, loan), locale),
+              );
 
               return ListTile(
                 key: ValueKey(loan.id),
@@ -2621,7 +2679,8 @@ String _nextEmiLabel(
   if (amount == null && date == null) return 'Not scheduled';
   final parts = [
     if (date != null) formatLedgerDate(date, state.preferences.locale),
-    if (amount != null) formatMoney(amount, state.preferences.locale),
+    if (amount != null)
+      maskMoneyIfPrivate(state, formatMoney(amount, state.preferences.locale)),
   ];
   return parts.join(' · ');
 }
@@ -2771,29 +2830,38 @@ class _LoanProjection {
     if (months == 0) return 'Paid off';
     final years = months ~/ 12;
     final extraMonths = months % 12;
-    if (years == 0) return '$months months remaining';
-    if (extraMonths == 0) return '$years years remaining';
-    return '$years years $extraMonths months remaining';
+    final monthsLabel = months == 1 ? '1 month' : '$months months';
+    final yearsLabel = years == 1 ? '1 year' : '$years years';
+    final extraMonthsLabel = extraMonths == 1 ? '1 month' : '$extraMonths months';
+    if (years == 0) return '$monthsLabel remaining';
+    if (extraMonths == 0) return '$yearsLabel remaining';
+    return '$yearsLabel $extraMonthsLabel remaining';
   }
 }
 
-String _formatAmountInput(int amountMinor) {
+String _formatAmountInput(int amountMinor, String currency) {
   if (amountMinor == 0) return '';
-  final integer = amountMinor ~/ 100;
-  final fraction = amountMinor % 100;
+  final minors = math.pow(10, minorUnits(currency)).toInt();
+  final integer = amountMinor ~/ minors;
+  final fraction = amountMinor % minors;
   if (fraction == 0) return '$integer';
-  return '$integer.${fraction.toString().padLeft(2, '0')}';
+  return '$integer.${fraction.toString().padLeft(minorUnits(currency), '0')}';
 }
 
-int _amountMinorFromInput(String value) {
+int _amountMinorFromInput(String value, String currency) {
   final clean = value.replaceAll(RegExp(r'[^0-9.]'), '');
   if (clean.isEmpty) return 0;
   final parts = clean.split('.');
   final integer = int.tryParse(parts[0]) ?? 0;
   final fraction = parts.length > 1
-      ? (int.tryParse(parts[1].padRight(2, '0').substring(0, 2)) ?? 0)
+      ? (int.tryParse(
+              parts[1]
+                  .padRight(minorUnits(currency), '0')
+                  .substring(0, minorUnits(currency)),
+            ) ??
+            0)
       : 0;
-  return integer * 100 + fraction;
+  return integer * math.pow(10, minorUnits(currency)).toInt() + fraction;
 }
 
 void _showRouteMessage(BuildContext context, String message) {

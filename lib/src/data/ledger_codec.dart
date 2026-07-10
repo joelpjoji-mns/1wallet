@@ -42,7 +42,7 @@ Map<String, Object?> _ledgerToJson(LedgerState state) {
 }
 
 LedgerState _ledgerFromJson(Map<String, dynamic> json) {
-  final version = _int(json['version'], fallback: currentLedgerStateVersion);
+  final version = _int(json['version'], fallback: 0);
   final ledger = LedgerState(
     version: version,
     userId: _string(json['userId'], fallback: 'local-user'),
@@ -321,6 +321,10 @@ LedgerState _migrateCategoryTaxonomy(LedgerState state) {
         transaction.copyWith(
           categoryId: redirectCategoryId(transaction.categoryId),
         ),
+    ],
+    budgets: [
+      for (final b in state.budgets)
+        b.copyWith(categoryId: redirectCategoryId(b.categoryId)),
     ],
     captureCandidates: [
       for (final candidate in state.captureCandidates)
@@ -639,12 +643,7 @@ Map<String, Object?> _accountToJson(Account account) {
     'loanDetails': account.loanDetails == null
         ? null
         : _loanDetailsToJson(account.loanDetails!),
-    'encryptedDetails': () {
-      print(
-        'DEBUG: Codec saving account ${account.id} - encryptedDetails is ${account.encryptedDetails == null ? 'NULL' : 'NOT NULL, length: ${account.encryptedDetails!.length}'}',
-      );
-      return account.encryptedDetails;
-    }(),
+    'encryptedDetails': account.encryptedDetails,
     'cardLast4': account.cardLast4,
     'accountLast4': account.accountLast4,
     'includeInTotals': account.includeInTotals,
@@ -696,15 +695,9 @@ Account _accountFromJson(Map<String, dynamic> json) {
     cardLast4: _nullableString(json['cardLast4']),
     accountLast4: _nullableString(json['accountLast4']),
     loanDetails: _loanDetailsFromJson(json['loanDetails'], currency),
-    encryptedDetails: () {
-      final res = json['encryptedDetails'] != null
-          ? Map<String, String>.from(json['encryptedDetails'])
-          : null;
-      print(
-        'DEBUG: Codec loading account ${json['id']} - encryptedDetails is ${res == null ? 'NULL' : 'NOT NULL, length: ${res.length}'}',
-      );
-      return res;
-    }(),
+    encryptedDetails: json['encryptedDetails'] is Map
+        ? Map<String, String>.from(json['encryptedDetails'] as Map)
+        : null,
     includeInTotals: _bool(json['includeInTotals'], fallback: true),
     includeInReports: _bool(json['includeInReports'], fallback: true),
     includeInNetWorth: _bool(json['includeInNetWorth'], fallback: true),
@@ -896,6 +889,7 @@ Map<String, Object?> _budgetToJson(Budget budget) {
     'name': budget.name,
     'amount': _moneyToJson(budget.amount),
     'spent': _moneyToJson(budget.spent),
+    'categoryId': budget.categoryId,
     'targetDate': budget.targetDate?.toIso8601String(),
     'frequency': budget.frequency,
     'interval': budget.interval,
@@ -914,6 +908,7 @@ Budget _budgetFromJson(Map<String, dynamic> json) {
       json['spent'],
       fallback: amount.copyWith(amountMinor: 0),
     ),
+    categoryId: _nullableString(json['categoryId']),
     targetDate: json['targetDate'] != null ? _date(json['targetDate']) : null,
     frequency: _string(json['frequency'], fallback: 'monthly'),
     interval: _int(json['interval'], fallback: 1),
@@ -928,6 +923,7 @@ Map<String, Object?> _goalToJson(Goal goal) {
     'name': goal.name,
     'target': _moneyToJson(goal.target),
     'saved': _moneyToJson(goal.saved),
+    'accountId': goal.accountId,
     'targetDate': goal.targetDate?.toIso8601String(),
     'frequency': goal.frequency,
     'interval': goal.interval,
@@ -946,6 +942,7 @@ Goal _goalFromJson(Map<String, dynamic> json) {
       json['saved'],
       fallback: target.copyWith(amountMinor: 0),
     ),
+    accountId: _nullableString(json['accountId']),
     targetDate: json['targetDate'] != null ? _date(json['targetDate']) : null,
     frequency: _string(json['frequency'], fallback: 'once'),
     interval: _int(json['interval'], fallback: 1),
@@ -1180,6 +1177,11 @@ Budget budgetFromJson(Map<String, dynamic> json) => _budgetFromJson(json);
 
 Map<String, Object?> goalToJson(Goal goal) => _goalToJson(goal);
 Goal goalFromJson(Map<String, dynamic> json) => _goalFromJson(json);
+
+Map<String, Object?> exchangeRateToJson(ExchangeRateRecord rate) =>
+    _exchangeRateToJson(rate);
+ExchangeRateRecord exchangeRateFromJson(Map<String, dynamic> json) =>
+    _exchangeRateFromJson(json);
 
 Map<String, Object?> captureCandidateToJson(CaptureCandidate candidate) =>
     _captureCandidateToJson(candidate);

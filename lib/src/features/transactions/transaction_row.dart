@@ -4,6 +4,7 @@ import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../../widgets/privacy_text.dart';
 
 class TransactionRow extends StatelessWidget {
   const TransactionRow({
@@ -119,7 +120,7 @@ class TransactionRow extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
+                    PrivacyText(
                       _formatSignedMoney(amount),
                       style: TextStyle(
                         color: color,
@@ -130,7 +131,7 @@ class TransactionRow extends StatelessWidget {
                       ),
                     ),
                     for (final text in secondaryTexts)
-                      Text(
+                      PrivacyText(
                         text,
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,

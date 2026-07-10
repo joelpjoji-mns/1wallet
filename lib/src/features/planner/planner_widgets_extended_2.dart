@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/ledger_models.dart';
 import '../../ledger/ledger_selectors.dart';
+import '../../widgets/privacy_text.dart';
 import 'planner_widgets.dart'; // for DashboardCard
 
 // 6. Debt Free Target
@@ -27,6 +28,11 @@ class _DebtFreeTargetWidgetState extends ConsumerState<DebtFreeTargetWidget> {
 
     double totalPrincipal = 0;
     int maxMonthsStandard = 0;
+    // Simplistic calculation: if we add extra payment, how many months does it take?
+    // We assume current total monthly EMI is totalPrincipal / maxMonthsStandard (roughly).
+    // Let's just calculate total standard monthly payment.
+    double totalStandardMonthly = 0;
+    bool hasStalledLoan = false;
     for (final loan in activeLoans) {
       final proj = loanProjection(widget.state, loan);
       final bal = convertMoneyForDisplay(
@@ -35,38 +41,32 @@ class _DebtFreeTargetWidgetState extends ConsumerState<DebtFreeTargetWidget> {
         widget.state.preferences.displayCurrency,
       ).amountMinor.abs().toDouble();
       totalPrincipal += bal;
-      if (proj.monthsRemaining != null &&
-          proj.monthsRemaining! > maxMonthsStandard) {
+      if (proj.monthsRemaining == null) {
+        // EMI too low (or unset) to ever pay off the loan at its current rate.
+        hasStalledLoan = true;
+        continue;
+      }
+      if (proj.monthsRemaining! > maxMonthsStandard) {
         maxMonthsStandard = proj.monthsRemaining!;
       }
-    }
-
-    // Simplistic calculation: if we add extra payment, how many months does it take?
-    // We assume current total monthly EMI is totalPrincipal / maxMonthsStandard (roughly).
-    // Let's just calculate total standard monthly payment.
-    double totalStandardMonthly = 0;
-    for (final loan in activeLoans) {
-      final proj = loanProjection(widget.state, loan);
-      final bal = convertMoneyForDisplay(
-        widget.state,
-        accountBalance(widget.state, loan),
-        widget.state.preferences.displayCurrency,
-      ).amountMinor.abs().toDouble();
-      if (proj.monthsRemaining != null && proj.monthsRemaining! > 0) {
+      if (proj.monthsRemaining! > 0) {
         totalStandardMonthly += bal / proj.monthsRemaining!;
       }
     }
 
-    int projectedMonths = maxMonthsStandard;
-    if (totalStandardMonthly + _extraPayment > 0 && totalPrincipal > 0) {
+    int? projectedMonths = maxMonthsStandard;
+    if (hasStalledLoan) {
+      projectedMonths = null;
+    } else if (totalStandardMonthly + _extraPayment > 0 &&
+        totalPrincipal > 0) {
       projectedMonths =
           (totalPrincipal / (totalStandardMonthly + _extraPayment)).ceil();
     }
 
     final scheme = Theme.of(context).colorScheme;
-    final debtFreeDate = DateTime.now().add(
-      Duration(days: projectedMonths * 30),
-    );
+    final debtFreeDate = projectedMonths != null
+        ? DateTime.now().add(Duration(days: projectedMonths * 30))
+        : null;
     final hasDebt = activeLoans.isNotEmpty;
 
     return DashboardCard(
@@ -98,21 +98,31 @@ class _DebtFreeTargetWidgetState extends ConsumerState<DebtFreeTargetWidget> {
               style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
             ),
             const SizedBox(height: 8),
-            Text(
-              '${debtFreeDate.month}/${debtFreeDate.year}',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.w900,
-                color: scheme.primary,
+            if (debtFreeDate != null && projectedMonths != null) ...[
+              Text(
+                '${debtFreeDate.month}/${debtFreeDate.year}',
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900,
+                  color: scheme.primary,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'In about $projectedMonths months',
-              style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
-            ),
+              const SizedBox(height: 4),
+              Text(
+                'In about $projectedMonths month${projectedMonths == 1 ? '' : 's'}',
+                style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
+              ),
+            ] else
+              Text(
+                'Increase EMI to see a payoff date — current payments are too low to ever clear this balance.',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: scheme.error,
+                ),
+              ),
             const SizedBox(height: 16),
-            Text(
+            PrivacyText(
               'Extra Monthly Payment: ${_extraPayment > 0 ? formatMoney(Money(amountMinor: _extraPayment.toInt(), currency: widget.state.preferences.displayCurrency), widget.state.preferences.locale) : 'None'}',
               style: const TextStyle(fontSize: 14),
             ),
@@ -123,12 +133,15 @@ class _DebtFreeTargetWidgetState extends ConsumerState<DebtFreeTargetWidget> {
               ),
               max: totalPrincipal > 500000 ? totalPrincipal : 500000.0,
               divisions: 100,
-              label: formatMoney(
-                Money(
-                  amountMinor: _extraPayment.toInt(),
-                  currency: widget.state.preferences.displayCurrency,
+              label: maskMoneyIfPrivate(
+                widget.state,
+                formatMoney(
+                  Money(
+                    amountMinor: _extraPayment.toInt(),
+                    currency: widget.state.preferences.displayCurrency,
+                  ),
+                  widget.state.preferences.locale,
                 ),
-                widget.state.preferences.locale,
               ),
               onChanged: (val) {
                 setState(() {
@@ -160,10 +173,10 @@ class ActiveSavingsGoalsWidget extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.flag_rounded, color: scheme.secondary),
+              Icon(Icons.savings_rounded, color: scheme.secondary),
               const SizedBox(width: 8),
               const Text(
-                'Active Savings Goals',
+                'Savings Accounts',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ],
@@ -171,7 +184,7 @@ class ActiveSavingsGoalsWidget extends ConsumerWidget {
           const SizedBox(height: 16),
           if (goals.isEmpty)
             Text(
-              'No active savings goals found.',
+              'No savings accounts found.',
               style: TextStyle(color: scheme.onSurfaceVariant),
             )
           else
@@ -181,32 +194,27 @@ class ActiveSavingsGoalsWidget extends ConsumerWidget {
                 accountBalance(state, g),
                 state.preferences.displayCurrency,
               ).amountMinor;
-              // Mocking a target of 10x current balance for visual progress
-              final target = bal > 0 ? bal * 10 : 10000;
-              final progress = target > 0
-                  ? (bal / target).clamp(0.0, 1.0)
-                  : 0.0;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          g.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        Text('${(progress * 100).toInt()}%'),
-                      ],
+                    Text(
+                      g.name,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    const SizedBox(height: 4),
-                    LinearProgressIndicator(
-                      value: progress,
-                      color: scheme.secondary,
-                      backgroundColor: scheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(4),
+                    PrivacyText(
+                      formatMoney(
+                        Money(
+                          amountMinor: bal,
+                          currency: state.preferences.displayCurrency,
+                        ),
+                        state.preferences.locale,
+                      ),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: scheme.secondary,
+                      ),
                     ),
                   ],
                 ),
@@ -266,7 +274,7 @@ class SubscriptionsWatchWidget extends ConsumerWidget {
             style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: 8),
-          Text(
+          PrivacyText(
             formatMoney(
               Money(
                 amountMinor: totalMonthlySubs,
@@ -341,7 +349,7 @@ class CashflowPredictorWidget extends ConsumerWidget {
             style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: 8),
-          Text(
+          PrivacyText(
             '${isPositive ? '+' : '-'}${formatMoney(Money(amountMinor: netCashflow.abs(), currency: state.preferences.displayCurrency), state.preferences.locale)}',
             style: TextStyle(
               fontSize: 32,
@@ -367,22 +375,42 @@ class HighInterestAlertWidget extends ConsumerWidget {
         .toList();
     if (activeLoans.isEmpty) return const SizedBox.shrink();
 
+    // Avalanche method: prioritize the loan with the highest interest rate.
+    // Only fall back to ranking by balance when no loan has a rate set.
+    final rankedByRate = activeLoans.any(
+      (loan) =>
+          (effectiveLoanDetails(state, loan).interestRatePercent ?? 0) > 0,
+    );
+
     Account? highestLoan;
-    double maxInterest = 0;
+    double highestRate = 0;
+    double highestBalance = 0;
 
     for (final loan in activeLoans) {
       final bal = convertMoneyForDisplay(
         state,
         accountBalance(state, loan),
         state.preferences.displayCurrency,
-      ).amountMinor.abs();
-      if (bal > maxInterest) {
-        maxInterest = bal.toDouble();
-        highestLoan = loan;
+      ).amountMinor.abs().toDouble();
+      if (rankedByRate) {
+        final rate =
+            effectiveLoanDetails(state, loan).interestRatePercent ?? 0;
+        if (highestLoan == null || rate > highestRate) {
+          highestRate = rate;
+          highestBalance = bal;
+          highestLoan = loan;
+        }
+      } else {
+        if (bal > highestBalance) {
+          highestBalance = bal;
+          highestLoan = loan;
+        }
       }
     }
 
-    if (highestLoan == null || maxInterest == 0) return const SizedBox.shrink();
+    if (highestLoan == null || highestBalance == 0) {
+      return const SizedBox.shrink();
+    }
 
     final scheme = Theme.of(context).colorScheme;
 
@@ -403,7 +431,9 @@ class HighInterestAlertWidget extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Consider prioritizing extra payments towards your largest loan:',
+            rankedByRate
+                ? 'Consider prioritizing extra payments towards your highest-interest loan:'
+                : 'Consider prioritizing extra payments towards your largest loan:',
             style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: 8),
@@ -412,8 +442,8 @@ class HighInterestAlertWidget extends ConsumerWidget {
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
-          Text(
-            'Current Balance: ${formatMoney(Money(amountMinor: maxInterest.toInt(), currency: state.preferences.displayCurrency), state.preferences.locale)}',
+          PrivacyText(
+            'Current Balance: ${formatMoney(Money(amountMinor: highestBalance.toInt(), currency: state.preferences.displayCurrency), state.preferences.locale)}',
             style: TextStyle(
               fontSize: 14,
               color: scheme.error,

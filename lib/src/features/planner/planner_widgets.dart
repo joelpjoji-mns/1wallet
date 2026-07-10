@@ -10,6 +10,7 @@ import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../../widgets/privacy_text.dart';
 import '../transactions/transaction_row.dart';
 
 enum TimePeriod { d7, d30, w12, m6, y1 }
@@ -154,8 +155,7 @@ class _BalanceTrendWidgetState extends State<BalanceTrendWidget> {
     int currentBal = totalCash;
     dailyBalances[daysToPlot] = currentBal.toDouble();
 
-    final sortedTxs = widget.state.transactions.toList()
-      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+    final sortedTxs = sortedTransactions(widget.state);
     int txIdx = 0;
 
     for (int i = daysToPlot - 1; i >= 0; i--) {
@@ -277,7 +277,7 @@ class _BalanceTrendWidgetState extends State<BalanceTrendWidget> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  Text(
+                  PrivacyText(
                     formatMoney(
                       Money(
                         amountMinor: totalCash,
@@ -381,7 +381,7 @@ class _BalanceTrendWidgetState extends State<BalanceTrendWidget> {
                             text = '$sign${(absVal / 1000).round()}K';
                           }
                         }
-                        return Text(
+                        return PrivacyText(
                           text,
                           style: TextStyle(
                             fontSize: 10,
@@ -520,13 +520,18 @@ class _BalanceTrendWidgetState extends State<BalanceTrendWidget> {
                       return touchedSpots
                           .map(
                             (spot) => LineTooltipItem(
-                              formatMoney(
-                                Money(
-                                  amountMinor: spot.y.toInt(),
-                                  currency:
-                                      widget.state.preferences.displayCurrency,
+                              maskMoneyIfPrivate(
+                                widget.state,
+                                formatMoney(
+                                  Money(
+                                    amountMinor: spot.y.toInt(),
+                                    currency: widget
+                                        .state
+                                        .preferences
+                                        .displayCurrency,
+                                  ),
+                                  widget.state.preferences.locale,
                                 ),
-                                widget.state.preferences.locale,
                               ),
                               TextStyle(
                                 color: scheme.surface,
@@ -681,7 +686,7 @@ class _TopCategoriesWidgetState extends State<TopCategoriesWidget> {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        Text(
+                        PrivacyText(
                           formatMoney(
                             Money(
                               amountMinor: entry.value,
@@ -713,42 +718,29 @@ class _TopCategoriesWidgetState extends State<TopCategoriesWidget> {
   }
 }
 
-class CreditUtilizationWidget extends StatefulWidget {
+class CreditUtilizationWidget extends StatelessWidget {
   const CreditUtilizationWidget({required this.state, super.key});
   final LedgerState state;
-
-  @override
-  State<CreditUtilizationWidget> createState() =>
-      _CreditUtilizationWidgetState();
-}
-
-class _CreditUtilizationWidgetState extends State<CreditUtilizationWidget> {
-  TimePeriod _period = TimePeriod.d30;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     // Exclude loans as requested
-    final creditAccounts = widget.state.accounts
-        .where((a) => a.type == 'card')
+    final creditAccounts = state.accounts
+        .where(
+          (a) =>
+              (a.type == 'credit_card' || a.type == 'card') && !a.isArchived,
+        )
         .toList();
-    final balances = accountBalanceMap(widget.state);
+    final balances = accountBalanceMap(state);
 
     return DashboardCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Flexible(
-                child: Text(
-                  'Utilization by Credit Cards',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
-              _buildTimeSelector(_period, (p) => setState(() => _period = p)),
-            ],
+          const Text(
+            'Credit Card Utilization',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           Text(
             'Which credit cards am I using the most?',
@@ -758,15 +750,15 @@ class _CreditUtilizationWidgetState extends State<CreditUtilizationWidget> {
           if (creditAccounts.isEmpty) const Text('No credit accounts.'),
           ...creditAccounts.map((acc) {
             final bal = convertMoneyForDisplay(
-              widget.state,
+              state,
               accountBalanceFromMap(balances, acc),
-              widget.state.preferences.displayCurrency,
+              state.preferences.displayCurrency,
             ).amountMinor.abs();
             final limit = acc.creditLimit != null
                 ? convertMoneyForDisplay(
-                    widget.state,
+                    state,
                     acc.creditLimit!,
-                    widget.state.preferences.displayCurrency,
+                    state.preferences.displayCurrency,
                   ).amountMinor
                 : 0;
             final util = limit > 0 ? (bal / limit) : 0.0;
@@ -808,7 +800,7 @@ class _CreditUtilizationWidgetState extends State<CreditUtilizationWidget> {
                   ),
                   const SizedBox(height: 8),
                   LinearProgressIndicator(
-                    value: limit > 0 ? util : 0.0,
+                    value: limit > 0 ? util.clamp(0.0, 1.0) : 0.0,
                     color: acc.color ?? scheme.primary,
                     backgroundColor: scheme.surfaceContainerHighest,
                     minHeight: 16,
@@ -818,15 +810,15 @@ class _CreditUtilizationWidgetState extends State<CreditUtilizationWidget> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Balance ${formatMoney(Money(amountMinor: bal, currency: widget.state.preferences.displayCurrency), widget.state.preferences.locale)}',
+                      PrivacyText(
+                        'Balance ${formatMoney(Money(amountMinor: bal, currency: state.preferences.displayCurrency), state.preferences.locale)}',
                         style: TextStyle(
                           fontSize: 10,
                           color: scheme.onSurfaceVariant,
                         ),
                       ),
-                      Text(
-                        'Limit ${limit > 0 ? formatMoney(Money(amountMinor: limit, currency: widget.state.preferences.displayCurrency), widget.state.preferences.locale) : 'Not Set'}',
+                      PrivacyText(
+                        'Limit ${limit > 0 ? formatMoney(Money(amountMinor: limit, currency: state.preferences.displayCurrency), state.preferences.locale) : 'Not Set'}',
                         style: TextStyle(
                           fontSize: 10,
                           color: scheme.onSurfaceVariant,

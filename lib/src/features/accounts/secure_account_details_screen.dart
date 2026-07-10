@@ -43,13 +43,6 @@ class _SecureAccountDetailsScreenState
         (a) => a.id == widget.accountId,
       );
 
-      print(
-        'DEBUG: initState - Account type: ${account.type}, ID: ${account.id}',
-      );
-      print(
-        'DEBUG: initState - encryptedDetails is ${account.encryptedDetails == null ? 'NULL' : 'NOT NULL, length: ${account.encryptedDetails!.length}'}',
-      );
-
       if (account.encryptedDetails != null) {
         final key = encrypt.Key.fromUtf8('my32lengthsupersecretkey12345678');
         final iv = encrypt.IV(Uint8List(16));
@@ -57,11 +50,9 @@ class _SecureAccountDetailsScreenState
 
         try {
           final details = account.encryptedDetails!;
-          print('DEBUG: details to decrypt = $details');
           details.forEach((k, v) {
             try {
               final decrypted = encrypter.decrypt64(v, iv: iv);
-              print('DEBUG: Decrypted $k = $decrypted');
               if (k == 'number' || k == 'account_number') {
                 if (account.type == 'card' || account.type == 'credit_card') {
                   _cardNumberController.text = decrypted;
@@ -85,7 +76,7 @@ class _SecureAccountDetailsScreenState
                 );
               }
             } catch (e) {
-              print('DEBUG: Decryption error on key $k with value $v: $e');
+              debugPrint('Decryption error on key $k: $e');
             }
           });
           if (mounted) {
@@ -166,9 +157,6 @@ class _SecureAccountDetailsScreenState
     String? newAccountLast4 = account.accountLast4;
 
     if (isCard) {
-      print(
-        'DEBUG: Saving card details. Card Number is ${_cardNumberController.text.isNotEmpty ? 'NOT EMPTY' : 'EMPTY'}',
-      );
       if (_cardNumberController.text.isNotEmpty)
         newEncrypted['number'] = encrypter
             .encrypt(_cardNumberController.text, iv: iv)
@@ -188,9 +176,6 @@ class _SecureAccountDetailsScreenState
         );
       }
     } else {
-      print(
-        'DEBUG: Saving bank details. Account Number is ${_accountNumberController.text.isNotEmpty ? 'NOT EMPTY' : 'EMPTY'}',
-      );
       if (_accountNumberController.text.isNotEmpty)
         newEncrypted['account_number'] = encrypter
             .encrypt(_accountNumberController.text, iv: iv)
@@ -210,10 +195,6 @@ class _SecureAccountDetailsScreenState
             .base64;
       }
     }
-
-    print(
-      'DEBUG: newEncrypted map has ${newEncrypted.length} keys: $newEncrypted',
-    );
 
     try {
       await ref

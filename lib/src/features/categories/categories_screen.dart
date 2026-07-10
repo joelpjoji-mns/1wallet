@@ -46,7 +46,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           SectionCard(
             title: 'Category tree',
             subtitle:
-                'Same grouping as the RN app: parents first, subcategories nested below.',
+                'Parent categories are listed first, with subcategories nested below.',
             child: Column(
               children: [
                 Row(
