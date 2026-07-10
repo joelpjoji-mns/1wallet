@@ -266,32 +266,37 @@ class _BalanceTrendWidgetState extends State<BalanceTrendWidget> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'TODAY',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: scheme.onSurfaceVariant,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  PrivacyText(
-                    formatMoney(
-                      Money(
-                        amountMinor: totalCash,
-                        currency: widget.state.preferences.displayCurrency,
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'TODAY',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.bold,
                       ),
-                      widget.state.preferences.locale,
                     ),
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
+                    PrivacyText(
+                      formatMoney(
+                        Money(
+                          amountMinor: totalCash,
+                          currency: widget.state.preferences.displayCurrency,
+                        ),
+                        widget.state.preferences.locale,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -679,23 +684,33 @@ class _TopCategoriesWidgetState extends State<TopCategoriesWidget> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          cat?.name ?? 'Unknown',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                        Flexible(
+                          child: Text(
+                            cat?.name ?? 'Unknown',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                        PrivacyText(
-                          formatMoney(
-                            Money(
-                              amountMinor: entry.value,
-                              currency:
-                                  widget.state.preferences.displayCurrency,
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: PrivacyText(
+                            formatMoney(
+                              Money(
+                                amountMinor: entry.value,
+                                currency:
+                                    widget.state.preferences.displayCurrency,
+                              ),
+                              widget.state.preferences.locale,
                             ),
-                            widget.state.preferences.locale,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.end,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
@@ -810,18 +825,28 @@ class CreditUtilizationWidget extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      PrivacyText(
-                        'Balance ${formatMoney(Money(amountMinor: bal, currency: state.preferences.displayCurrency), state.preferences.locale)}',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: scheme.onSurfaceVariant,
+                      Flexible(
+                        child: PrivacyText(
+                          'Balance ${formatMoney(Money(amountMinor: bal, currency: state.preferences.displayCurrency), state.preferences.locale)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: scheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
-                      PrivacyText(
-                        'Limit ${limit > 0 ? formatMoney(Money(amountMinor: limit, currency: state.preferences.displayCurrency), state.preferences.locale) : 'Not Set'}',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: scheme.onSurfaceVariant,
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: PrivacyText(
+                          'Limit ${limit > 0 ? formatMoney(Money(amountMinor: limit, currency: state.preferences.displayCurrency), state.preferences.locale) : 'Not Set'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.end,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: scheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
                     ],

@@ -86,72 +86,31 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
             ),
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.sm),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CompactSearchField(
-                    value: _query,
-                    onChanged: (value) => setState(() => _query = value),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        FilterPill(
-                          icon: Icons.balance_outlined,
-                          label: _showExcluded
-                              ? 'Include excluded'
-                              : 'Totals only',
-                          active: _showExcluded,
-                          onTap: () =>
-                              setState(() => _showExcluded = !_showExcluded),
-                        ),
-                        FilterPill(
-                          icon: Icons.archive_outlined,
-                          label: _showArchived ? 'All accounts' : 'Active only',
-                          active: _showArchived,
-                          onTap: () =>
-                              setState(() => _showArchived = !_showArchived),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+              child: CompactSearchField(
+                value: _query,
+                onChanged: (value) => setState(() => _query = value),
               ),
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          _CurrencySummaryHeader(state: state, accounts: rows),
-          const SizedBox(height: AppSpacing.xs),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Accounts\n${rows.length} in current order',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () => context.push('/account/new'),
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Add account'),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xs),
           Expanded(
             child: rows.isEmpty
-                ? const EmptyState(
-                    icon: Icons.wallet_outlined,
-                    title: 'No accounts found',
-                    body:
-                        'Add a cash, bank, card, loan, or wallet account to start tracking.',
+                ? SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        _buildListHeader(context, state, rows),
+                        const EmptyState(
+                          icon: Icons.wallet_outlined,
+                          title: 'No accounts found',
+                          body:
+                              'Add a cash, bank, card, loan, or wallet account to start tracking.',
+                        ),
+                      ],
+                    ),
                   )
                 : AppResponsiveLayout(
                     mobile: ReorderableListView.builder(
+                      header: _buildListHeader(context, state, rows),
                       padding: const EdgeInsets.only(
                         bottom: AppSizes.bottomBarClearance + AppSpacing.xl,
                       ),
@@ -191,15 +150,23 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
                     ),
                     desktop: SingleChildScrollView(
                       padding: const EdgeInsets.only(bottom: AppSpacing.xl),
-                      child: Wrap(
-                        spacing: AppSpacing.md,
-                        runSpacing: AppSpacing.md,
-                        children: rows.map((account) {
-                          return SizedBox(
-                            width: 360,
-                            child: _AccountRow(state: state, account: account),
-                          );
-                        }).toList(),
+                      child: Column(
+                        children: [
+                          _buildListHeader(context, state, rows),
+                          Wrap(
+                            spacing: AppSpacing.md,
+                            runSpacing: AppSpacing.md,
+                            children: rows.map((account) {
+                              return SizedBox(
+                                width: 360,
+                                child: _AccountRow(
+                                  state: state,
+                                  account: account,
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -224,6 +191,58 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
         account.groupName,
       ].whereType<String>().join(' ').toLowerCase().contains(query);
     }).toList();
+  }
+
+  Widget _buildListHeader(
+    BuildContext context,
+    LedgerState state,
+    List<Account> rows,
+  ) {
+    return Column(
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              FilterPill(
+                icon: Icons.balance_outlined,
+                label: 'Show excluded',
+                active: _showExcluded,
+                onTap: () => setState(() => _showExcluded = !_showExcluded),
+              ),
+              FilterPill(
+                icon: Icons.archive_outlined,
+                label: 'Show archived',
+                active: _showArchived,
+                onTap: () => setState(() => _showArchived = !_showArchived),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _CurrencySummaryHeader(state: state, accounts: rows),
+        const SizedBox(height: AppSpacing.xs),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Accounts\n${rows.length} in current order',
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+              ),
+            ),
+            FilledButton.tonalIcon(
+              onPressed: () => context.push('/account/new'),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add account'),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+      ],
+    );
   }
 }
 

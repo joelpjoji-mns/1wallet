@@ -199,21 +199,31 @@ class ActiveSavingsGoalsWidget extends ConsumerWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      g.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    PrivacyText(
-                      formatMoney(
-                        Money(
-                          amountMinor: bal,
-                          currency: state.preferences.displayCurrency,
-                        ),
-                        state.preferences.locale,
+                    Flexible(
+                      child: Text(
+                        g.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: scheme.secondary,
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: PrivacyText(
+                        formatMoney(
+                          Money(
+                            amountMinor: bal,
+                            currency: state.preferences.displayCurrency,
+                          ),
+                          state.preferences.locale,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.end,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: scheme.secondary,
+                        ),
                       ),
                     ),
                   ],
