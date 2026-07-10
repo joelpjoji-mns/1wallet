@@ -32,6 +32,7 @@ class _BudgetGoalEditorScreenState
   var _secondaryRuleEnabled = false;
   String? _selectedCurrency;
   String? _selectedCategoryId;
+  String? _selectedAccountId;
   DateTime? _targetDate;
   String _frequency = 'once';
   int _interval = 1;
@@ -105,7 +106,7 @@ class _BudgetGoalEditorScreenState
                     label: category?.name ?? 'Choose category',
                     onTap: _chooseCategory,
                   )
-                else
+                else ...[
                   _DetailField(
                     icon: Icons.today_outlined,
                     label: _targetDate == null
@@ -116,6 +117,16 @@ class _BudgetGoalEditorScreenState
                           ),
                     onTap: _chooseDate,
                   ),
+                  const SizedBox(height: AppSpacing.sm),
+                  _DetailField(
+                    icon: Icons.account_balance_wallet_outlined,
+                    label: _selectedAccountId != null
+                        ? (accountById(state, _selectedAccountId)?.name ??
+                              'Link savings account')
+                        : 'Link savings account (optional)',
+                    onTap: _chooseAccount,
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.sm),
                 _DetailField(
                   icon: Icons.currency_exchange_outlined,
@@ -278,6 +289,32 @@ class _BudgetGoalEditorScreenState
     }
   }
 
+  Future<void> _chooseAccount() async {
+    final state = ref.read(ledgerProvider);
+    final next = await showFullScreenPicker<Account>(
+      context: context,
+      title: 'Link account',
+      searchHint: 'Search accounts',
+      selectedValue: _selectedAccountId != null
+          ? accountById(state, _selectedAccountId)
+          : null,
+      options: [
+        for (final account in sortAccounts(
+          state.accounts.where((a) => !a.isArchived),
+        ))
+          PickerOption(
+            value: account,
+            title: account.name,
+            icon: accountIcon(account),
+            color: accountDisplayColor(account),
+          ),
+      ],
+    );
+    if (next != null) {
+      setState(() => _selectedAccountId = next.id);
+    }
+  }
+
   Future<void> _chooseDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -322,6 +359,7 @@ class _BudgetGoalEditorScreenState
         name: name,
         amountMinor: amountMinor,
         currency: _selectedCurrency,
+        categoryId: _selectedCategoryId,
         targetDate: _targetDate,
         frequency: _frequency,
         interval: _interval,
@@ -337,6 +375,7 @@ class _BudgetGoalEditorScreenState
         name: name,
         targetMinor: amountMinor,
         currency: _selectedCurrency,
+        accountId: _selectedAccountId,
         targetDate: _targetDate,
         frequency: _frequency,
         interval: _interval,

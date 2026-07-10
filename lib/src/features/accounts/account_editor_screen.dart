@@ -190,7 +190,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                                 ThousandsSeparatorInputFormatter(state.preferences.locale),
                               ],
                               decoration: const InputDecoration(
-                                labelText: 'Credit Limit',
+                                labelText: 'Credit limit',
                                 prefixIcon: Icon(Icons.credit_score_outlined),
                               ),
                             ),
@@ -232,7 +232,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                     Expanded(
                       child: _DetailField(
                         icon: Icons.palette_outlined,
-                        label: 'Choose Color',
+                        label: 'Choose color',
                         onTap: () async {
                           final color = await showAppColorPicker(
                             context: context,
@@ -346,7 +346,6 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
 
           try {
             final details = account.encryptedDetails!;
-            print('DEBUG: AccountEditorScreen details = $details');
             details.forEach((k, v) {
               try {
                 final decrypted = encrypter.decrypt64(v, iv: iv);
@@ -363,7 +362,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                   uCustom[k] = decrypted;
                 }
               } catch (e) {
-                print('DEBUG: Decryption error on key $k with value $v: $e');
+                debugPrint('Decryption error on key $k: $e');
               }
             });
           } catch (e) {

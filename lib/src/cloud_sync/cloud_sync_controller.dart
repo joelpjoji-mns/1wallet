@@ -535,11 +535,16 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
               'updatedAt': FieldValue.serverTimestamp(),
             });
       }
-      // Delete potentially old trailing chunks (up to chunks.length + 10 just in case)
-      for (var i = chunks.length; i < chunks.length + 10; i++) {
-        currentBatch.delete(
-          _firestore.doc('users/${user.id}/wallet_backups/chunk_$i'),
-        );
+      // Delete any old trailing chunks left over from a previous, larger backup.
+      final existingChunksSnapshot = await _firestore
+          .collection('users/${user.id}/wallet_backups')
+          .get();
+      for (final doc in existingChunksSnapshot.docs) {
+        final match = RegExp(r'^chunk_(\d+)$').firstMatch(doc.id);
+        final index = match != null ? int.tryParse(match.group(1)!) : null;
+        if (index != null && index >= chunks.length) {
+          currentBatch.delete(doc.reference);
+        }
       }
 
       await currentBatch.commit().timeout(cloudSyncReadTimeout);
@@ -811,6 +816,7 @@ LedgerState _parseCloudRestoreData(Map<String, dynamic> data) {
   final goalsData = data['goals'] as List;
   final captureData = data['captureCandidates'] as List?;
   final importsData = data['importBatches'] as List?;
+  final exchangeRatesData = data['exchangeRates'] as List?;
 
   return normalizeLedgerState(
     emptyLedgerState(userId: userId).copyWith(
@@ -842,6 +848,11 @@ LedgerState _parseCloudRestoreData(Map<String, dynamic> data) {
               ?.map((d) => importBatchFromJson(d as Map<String, dynamic>))
               .toList() ??
           [],
+      exchangeRates:
+          exchangeRatesData
+              ?.map((d) => exchangeRateFromJson(d as Map<String, dynamic>))
+              .toList() ??
+          [],
     ),
   );
 }
@@ -871,6 +882,9 @@ Map<String, dynamic> _encodeCloudSnapshotData(LedgerState ledger) {
         .toList(),
     'importBatches': ledger.importBatches
         .map((i) => importBatchToJson(i).cast<String, dynamic>())
+        .toList(),
+    'exchangeRates': ledger.exchangeRates
+        .map((r) => exchangeRateToJson(r).cast<String, dynamic>())
         .toList(),
   };
 }

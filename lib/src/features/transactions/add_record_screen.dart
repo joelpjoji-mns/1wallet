@@ -17,6 +17,7 @@ import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/currency_picker.dart';
 import '../../utils/number_formatter.dart';
+import '../../widgets/privacy_text.dart';
 import '../common/category_hierarchy_picker.dart';
 import '../common/full_screen_picker.dart';
 
@@ -706,8 +707,10 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
           PickerOption(
             value: a.id,
             title: a.name,
-            subtitle:
-                '${a.currency} · ${formatMoney(accountBalance(state, a), state.preferences.locale)}',
+            subtitle: maskMoneyIfPrivate(
+              state,
+              '${a.currency} · ${formatMoney(accountBalance(state, a), state.preferences.locale)}',
+            ),
             icon: accountIcon(a),
             iconColor: accountDisplayColor(a),
           ),
@@ -816,6 +819,11 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       Money(amountMinor: amountMinor, currency: fromCurrency),
       toCurrency,
     );
+    if (converted.currency != toCurrency) {
+      // No FX rate available; don't auto-fill with a mismatched-currency
+      // amount, leave it for the user to enter manually.
+      return '';
+    }
     return _formatAmountInput(converted.amountMinor, toCurrency);
   }
 
@@ -893,7 +901,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
           : state.transactions.firstWhereOrNull(
               (t) => t.id == widget.plannedId,
             );
-      final savedTx = await ref
+      await ref
           .read(ledgerProvider.notifier)
           .upsertTransaction(
             id: widget.transactionId,
@@ -913,6 +921,12 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
             notes: _notesController.text.trim().isEmpty
                 ? null
                 : _notesController.text.trim(),
+            locationLabel: _locationController.text.trim().isEmpty
+                ? null
+                : _locationController.text.trim(),
+            paymentMethod: _paymentMethodController.text.trim().isEmpty
+                ? null
+                : _paymentMethodController.text.trim(),
             occurredAt: _occurredAt,
             originalTransactionId:
                 widget.plannedId ?? editingTransaction?.originalTransactionId,
@@ -920,7 +934,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
 
       if (plannedTransaction != null &&
           plannedTransaction.recurrenceFrequency != null &&
-          plannedTransaction.recurrenceFrequency != 'manual') {
+          plannedTransaction.recurrenceFrequency != 'once') {
         final nextDate = advanceTransactionRecurrence(
           plannedTransaction.occurredAt,
           plannedTransaction,
@@ -949,7 +963,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       else
         context.go('/');
     } catch (e) {
-      _showMessage(e.toString());
+      _showMessage('Could not save the record. Please try again.');
     }
   }
 
@@ -983,6 +997,8 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
           state.accounts.firstWhereOrNull((a) => !a.isArchived)?.id;
       _categoryId = candidate.suggestedCategoryId;
       _notesController.text = candidate.merchant ?? candidate.rawText ?? '';
+      _locationController.text = '';
+      _paymentMethodController.text = candidate.source.toUpperCase();
       if (candidate.parsedAmount != null) {
         _transactionCurrency = candidate.parsedAmount!.currency;
         _amount = _formatAmountInput(
@@ -999,6 +1015,8 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       _counterAccountId = source.counterAccountId;
       _categoryId = source.categoryId;
       _notesController.text = source.notes ?? '';
+      _locationController.text = source.locationLabel ?? '';
+      _paymentMethodController.text = source.paymentMethod ?? '';
       _transactionCurrency =
           source.originalAmount?.currency ?? source.amount.currency;
       _amount = _formatAmountInput(
@@ -1171,12 +1189,19 @@ class _FxAmountCard extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 '$amount $currency',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontWeight: FontWeight.w900,
                   fontSize: 14,
                 ),
               ),
-              Text(subtitle, style: const TextStyle(fontSize: 10)),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 10),
+              ),
             ],
           ),
         ),

@@ -213,7 +213,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       : MetricTone.standard,
                 ),
                 const InfoRow(
-                  label: 'Auto Capture',
+                  label: 'Auto capture',
                   value: 'SMS ready',
                   icon: Icons.sms_outlined,
                   tone: MetricTone.positive,
@@ -242,7 +242,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     FilledButton.tonalIcon(
                       onPressed: () => context.push('/auto-capture'),
                       icon: const Icon(Icons.auto_awesome_outlined),
-                      label: const Text('Auto Capture'),
+                      label: const Text('Auto capture'),
                     ),
                   ],
                 ),
@@ -253,7 +253,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           // ── Liquid Glass Appearance ──
           SectionCard(
-            title: 'Liquid Glass Appearance',
+            title: 'Liquid glass appearance',
             subtitle: 'Configure the glassmorphism blur and opacity levels.',
             child: Column(
               children: [
@@ -406,7 +406,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const Gap(AppSpacing.lg),
                 _SliderRow(
-                  label: 'Specular Opacity',
+                  label: 'Specular opacity',
                   value: state.preferences.glassSpecularOpacity,
                   min: 0.0,
                   max: 1.0,
@@ -417,7 +417,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                 ),
                 _SliderRow(
-                  label: 'Specular Saturation',
+                  label: 'Specular saturation',
                   value: state.preferences.glassSpecularSaturation,
                   min: 0.0,
                   max: 2.0,
@@ -428,7 +428,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                 ),
                 _SliderRow(
-                  label: 'Refraction Level',
+                  label: 'Refraction level',
                   value: state.preferences.glassRefractionLevel,
                   min: 0.0,
                   max: 1.0,
@@ -439,7 +439,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                 ),
                 _SliderRow(
-                  label: 'Blur Level',
+                  label: 'Blur level',
                   value: state.preferences.glassBlurLevel,
                   min: 0.0,
                   max: 100.0,
@@ -450,7 +450,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                 ),
                 _SliderRow(
-                  label: 'Prog. Blur Strength',
+                  label: 'Prog. blur strength',
                   value: state.preferences.glassProgressiveBlurStrength,
                   min: 0.0,
                   max: 1.0,
@@ -463,7 +463,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                 ),
                 _SliderRow(
-                  label: 'Bg Opacity',
+                  label: 'Bg opacity',
                   value: state.preferences.glassBackgroundOpacity,
                   min: 0.0,
                   max: 1.0,
@@ -605,7 +605,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           color: theme.colorScheme.primary,
                         ),
                         const SizedBox(width: AppSpacing.sm),
-                        Text(channel.$2),
+                        Expanded(
+                          child: Text(
+                            channel.$2,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
                     ),
                     subtitle: Padding(
@@ -657,7 +663,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   },
                   title: const Text('Privacy mode'),
                   subtitle: Text(
-                    'Hide amounts in widgets and screenshots once native widgets are added.',
+                    'Hide account balances and amounts across the app.',
                     style: TextStyle(
                       color: theme.colorScheme.onSurfaceVariant,
                       fontSize: 12,

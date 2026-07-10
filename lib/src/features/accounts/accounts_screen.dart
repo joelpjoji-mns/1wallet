@@ -8,6 +8,7 @@ import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/liquid_progress_indicator.dart';
 import '../../widgets/app_kit.dart';
+import '../../widgets/privacy_text.dart';
 import '../transactions/transactions_components.dart';
 
 class AccountsScreen extends ConsumerStatefulWidget {
@@ -294,7 +295,7 @@ class _CurrencySummaryHeader extends StatelessWidget {
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    Text(
+                    PrivacyText(
                       formatMoney(
                         Money(amountMinor: entry.value, currency: entry.key),
                         state.preferences.locale,
@@ -346,9 +347,15 @@ class _AccountRow extends StatelessWidget {
         account.institution,
         account.groupName,
       ].whereType<String>().join(' · '),
-      meta: formatMoney(balance, state.preferences.locale),
+      meta: maskMoneyIfPrivate(
+        state,
+        formatMoney(balance, state.preferences.locale),
+      ),
       metaSubtitle: isDifferentCurrency
-          ? formatMoney(displayBalance, state.preferences.locale)
+          ? maskMoneyIfPrivate(
+              state,
+              formatMoney(displayBalance, state.preferences.locale),
+            )
           : null,
       iconColor: accountDisplayColor(account),
       onTap: () => context.push('/account/${account.id}'),

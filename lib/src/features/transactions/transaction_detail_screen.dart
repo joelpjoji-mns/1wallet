@@ -9,6 +9,7 @@ import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../../widgets/privacy_text.dart';
 import '../common/route_scaffold.dart';
 
 class TransactionDetailScreen extends ConsumerStatefulWidget {
@@ -53,7 +54,9 @@ class _TransactionDetailScreenState
     final account = accountById(state, transaction.accountId);
     final counterAccount = accountById(state, transaction.counterAccountId);
     final category = categoryById(state, transaction.categoryId);
-    final signedAmount = incomeTypes.contains(transaction.type)
+    final signedAmount = transaction.type == 'transfer'
+        ? transaction.amount.amountMinor.abs()
+        : incomeTypes.contains(transaction.type)
         ? transaction.amount.amountMinor
         : -transaction.amount.amountMinor.abs();
     final secondaryAmounts = _secondaryAmountLines(state, transaction);
@@ -105,20 +108,23 @@ class _TransactionDetailScreenState
                     ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  Text(
+                  PrivacyText(
                     formatMoney(
                       transaction.amount.copyWith(amountMinor: signedAmount),
                       state.preferences.locale,
                     ),
                     style: Theme.of(context).textTheme.displayMedium?.copyWith(
                       fontWeight: FontWeight.w900,
-                      color: amountColor(context, signedAmount),
+                      color: amountColor(
+                        context,
+                        transaction.type == 'transfer' ? 0 : signedAmount,
+                      ),
                     ),
                   ),
                   for (final amountLine in secondaryAmounts)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
-                      child: Text(
+                      child: PrivacyText(
                         amountLine,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -155,10 +161,14 @@ class _TransactionDetailScreenState
                       children: [
                         const Icon(Icons.place_outlined, size: 16),
                         const SizedBox(width: 4),
-                        Text(
-                          transaction.locationLabel!,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.w600),
+                        Flexible(
+                          child: Text(
+                            transaction.locationLabel!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
                         ),
                       ],
                     ),
@@ -182,9 +192,12 @@ class _TransactionDetailScreenState
                       : accountTypeLabel(account.type),
                   meta: account == null
                       ? null
-                      : formatMoney(
-                          accountBalance(state, account),
-                          state.preferences.locale,
+                      : maskMoneyIfPrivate(
+                          state,
+                          formatMoney(
+                            accountBalance(state, account),
+                            state.preferences.locale,
+                          ),
                         ),
                   iconColor: account?.color,
                   onTap: () => context.push(
@@ -197,9 +210,12 @@ class _TransactionDetailScreenState
                     icon: accountIcon(counterAccount),
                     title: counterAccount.name,
                     subtitle: 'Counter account',
-                    meta: formatMoney(
-                      accountBalance(state, counterAccount),
-                      state.preferences.locale,
+                    meta: maskMoneyIfPrivate(
+                      state,
+                      formatMoney(
+                        accountBalance(state, counterAccount),
+                        state.preferences.locale,
+                      ),
                     ),
                     iconColor: counterAccount.color,
                     onTap: () => context.push(
@@ -375,8 +391,8 @@ class _TransactionDetailScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
+          const SnackBar(
+            content: Text('Could not attach the receipt. Please try again.'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -426,7 +442,7 @@ class _TransactionDetailScreenState
       builder: (context) => AlertDialog(
         title: const Text('Delete record?'),
         content: const Text(
-          'This removes the record from your local Flutter ledger.',
+          'This will permanently delete this record. This cannot be undone.',
         ),
         actions: [
           TextButton(

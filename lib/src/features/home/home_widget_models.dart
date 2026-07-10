@@ -15,7 +15,12 @@ enum HomeDashboardWidgetId {
   currencyValues('currencyValues'),
   budgetPressure('budgetPressure'),
   goalProgress('goalProgress'),
-  creditUtilization('creditUtilization');
+  creditUtilization('creditUtilization'),
+  netWorth('netWorth'),
+  cashFlow('cashFlow'),
+  financialHealth('financialHealth'),
+  monthComparison('monthComparison'),
+  spendingHeatmap('spendingHeatmap');
 
   const HomeDashboardWidgetId(this.storageKey);
 
@@ -24,9 +29,12 @@ enum HomeDashboardWidgetId {
 
 const defaultHomeWidgetOrder = [
   HomeDashboardWidgetId.balanceHero,
+  HomeDashboardWidgetId.financialHealth,
   HomeDashboardWidgetId.accountGrid,
+  HomeDashboardWidgetId.cashFlow,
   HomeDashboardWidgetId.recentRecords,
   HomeDashboardWidgetId.balanceTrend,
+  HomeDashboardWidgetId.netWorth,
   HomeDashboardWidgetId.currencyValues,
   HomeDashboardWidgetId.upcomingScheduled,
   HomeDashboardWidgetId.topCategories,

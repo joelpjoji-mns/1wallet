@@ -141,6 +141,10 @@ Money accountBalanceFromMap(Map<String, Money> balances, Account account) {
 }
 
 Money accountBalance(LedgerState state, Account account) {
+  // Reuse the memoized per-account balance map so repeated per-account calls
+  // in list builds stay O(1) instead of O(transactions) each.
+  final cached = accountBalanceMap(state)[account.id];
+  if (cached != null) return cached;
   var amountMinor = account.openingBalance.amountMinor;
   for (final transaction in state.transactions) {
     if (transaction.status == 'scheduled' ||
@@ -381,6 +385,294 @@ Money totalBalance(
     total: Money(amountMinor: assets + liabilities, currency: currency),
     assets: Money(amountMinor: assets, currency: currency),
     liabilities: Money(amountMinor: liabilities, currency: currency),
+  );
+}
+
+Set<String> _categoryWithDescendants(LedgerState state, String categoryId) {
+  final ids = <String>{categoryId};
+  void collect(String parentId) {
+    for (final category in state.categories) {
+      if (category.parentId == parentId && ids.add(category.id)) {
+        collect(category.id);
+      }
+    }
+  }
+
+  collect(categoryId);
+  return ids;
+}
+
+({DateTime start, DateTime end}) _periodRange(String frequency, DateTime now) {
+  switch (frequency) {
+    case 'weekly':
+      final today = DateTime(now.year, now.month, now.day);
+      final start = today.subtract(Duration(days: now.weekday - 1));
+      return (start: start, end: start.add(const Duration(days: 7)));
+    case 'yearly':
+      return (start: DateTime(now.year), end: DateTime(now.year + 1));
+    case 'daily':
+      final start = DateTime(now.year, now.month, now.day);
+      return (start: start, end: start.add(const Duration(days: 1)));
+    case 'once':
+      return (start: DateTime(1970), end: DateTime(now.year + 100));
+    case 'monthly':
+    default:
+      return (
+        start: DateTime(now.year, now.month),
+        end: DateTime(now.year, now.month + 1),
+      );
+  }
+}
+
+/// Live spend for a budget: expenses in its linked category (and descendants)
+/// for the current period. Unlinked budgets act as a total-spending budget.
+Money budgetSpent(LedgerState state, Budget budget) {
+  final categoryId = budget.categoryId;
+  final currency = budget.amount.currency;
+  final ids = categoryId == null
+      ? null
+      : _categoryWithDescendants(state, categoryId);
+  final range = _periodRange(budget.frequency, DateTime.now());
+  var totalMinor = 0;
+  for (final transaction in state.transactions) {
+    if (transaction.status == 'scheduled' ||
+        transaction.status == 'paused' ||
+        transaction.status == 'void') {
+      continue;
+    }
+    if (transaction.isExcludedFromReports) continue;
+    if (!expenseTypes.contains(transaction.type)) continue;
+    if (ids != null) {
+      final txCategory = transaction.categoryId;
+      if (txCategory == null || !ids.contains(txCategory)) continue;
+    }
+    if (transaction.occurredAt.isBefore(range.start) ||
+        !transaction.occurredAt.isBefore(range.end)) {
+      continue;
+    }
+    totalMinor +=
+        convertMoneyForDisplay(state, transaction.amount, currency).amountMinor;
+  }
+  return Money(amountMinor: totalMinor, currency: currency);
+}
+
+/// Live saved amount for a goal: the balance of its linked account.
+Money goalSaved(LedgerState state, Goal goal) {
+  final accountId = goal.accountId;
+  final currency = goal.target.currency;
+  if (accountId == null) {
+    return convertMoneyForDisplay(state, goal.saved, currency);
+  }
+  final account = accountById(state, accountId);
+  if (account == null) {
+    return convertMoneyForDisplay(state, goal.saved, currency);
+  }
+  return convertMoneyForDisplay(state, accountBalance(state, account), currency);
+}
+
+// ── Dashboard analytics selectors (used by the dynamic home widgets) ──
+
+int _flowInRange(
+  LedgerState state,
+  DateTime start,
+  DateTime end, {
+  required bool income,
+}) {
+  final types = income ? incomeTypes : expenseTypes;
+  final displayCurrency = state.preferences.displayCurrency;
+  var total = 0;
+  for (final transaction in state.transactions) {
+    if (transaction.status == 'scheduled' ||
+        transaction.status == 'paused' ||
+        transaction.status == 'void') {
+      continue;
+    }
+    if (transaction.isExcludedFromReports) continue;
+    if (isHiddenInterest(state, transaction)) continue;
+    if (!types.contains(transaction.type)) continue;
+    if (transaction.occurredAt.isBefore(start) ||
+        !transaction.occurredAt.isBefore(end)) {
+      continue;
+    }
+    final converted = convertMoneyForDisplay(
+      state,
+      transaction.amount,
+      displayCurrency,
+    );
+    if (converted.currency.toUpperCase() != displayCurrency.toUpperCase()) {
+      continue;
+    }
+    total += converted.amountMinor;
+  }
+  return total;
+}
+
+/// Income, expense, net and savings rate for the current calendar month.
+({
+  int incomeMinor,
+  int expenseMinor,
+  int netMinor,
+  double savingsRate,
+  String currency,
+})
+cashFlowThisMonth(LedgerState state) {
+  final now = DateTime.now();
+  final start = DateTime(now.year, now.month);
+  final end = DateTime(now.year, now.month + 1);
+  final incomeMinor = _flowInRange(state, start, end, income: true);
+  final expenseMinor = _flowInRange(state, start, end, income: false);
+  final netMinor = incomeMinor - expenseMinor;
+  final savingsRate = incomeMinor > 0 ? netMinor / incomeMinor : 0.0;
+  return (
+    incomeMinor: incomeMinor,
+    expenseMinor: expenseMinor,
+    netMinor: netMinor,
+    savingsRate: savingsRate,
+    currency: state.preferences.displayCurrency,
+  );
+}
+
+/// This month vs the previous month's total spending.
+({int thisMonthMinor, int lastMonthMinor, double? changeRatio, String currency})
+monthlySpendingComparison(LedgerState state) {
+  final now = DateTime.now();
+  final thisStart = DateTime(now.year, now.month);
+  final thisEnd = DateTime(now.year, now.month + 1);
+  final lastStart = DateTime(now.year, now.month - 1);
+  final thisMonthMinor = _flowInRange(state, thisStart, thisEnd, income: false);
+  final lastMonthMinor = _flowInRange(state, lastStart, thisStart, income: false);
+  final changeRatio = lastMonthMinor > 0
+      ? (thisMonthMinor - lastMonthMinor) / lastMonthMinor
+      : null;
+  return (
+    thisMonthMinor: thisMonthMinor,
+    lastMonthMinor: lastMonthMinor,
+    changeRatio: changeRatio,
+    currency: state.preferences.displayCurrency,
+  );
+}
+
+/// Daily total expense (display currency) for the last [days] days, oldest
+/// first — used to render a spending heatmap.
+List<({DateTime date, int spentMinor})> dailySpendingSeries(
+  LedgerState state, {
+  int days = 91,
+}) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final start = today.subtract(Duration(days: days - 1));
+  final buckets = <DateTime, int>{
+    for (var i = 0; i < days; i++)
+      today.subtract(Duration(days: days - 1 - i)): 0,
+  };
+  final displayCurrency = state.preferences.displayCurrency;
+  for (final transaction in state.transactions) {
+    if (transaction.status == 'scheduled' ||
+        transaction.status == 'paused' ||
+        transaction.status == 'void') {
+      continue;
+    }
+    if (transaction.isExcludedFromReports) continue;
+    if (isHiddenInterest(state, transaction)) continue;
+    if (!expenseTypes.contains(transaction.type)) continue;
+    final occurred = DateTime(
+      transaction.occurredAt.year,
+      transaction.occurredAt.month,
+      transaction.occurredAt.day,
+    );
+    if (occurred.isBefore(start) || occurred.isAfter(today)) continue;
+    final converted = convertMoneyForDisplay(
+      state,
+      transaction.amount,
+      displayCurrency,
+    );
+    if (converted.currency.toUpperCase() != displayCurrency.toUpperCase()) {
+      continue;
+    }
+    buckets[occurred] = (buckets[occurred] ?? 0) + converted.amountMinor;
+  }
+  final entries = buckets.entries.toList()
+    ..sort((left, right) => left.key.compareTo(right.key));
+  return [for (final entry in entries) (date: entry.key, spentMinor: entry.value)];
+}
+
+/// A composite 0–100 financial-health score with its component signals.
+({
+  int score,
+  String grade,
+  double savingsRate,
+  double emergencyMonths,
+  double debtRatio,
+})
+financialHealthScore(LedgerState state) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final start90 = today.subtract(const Duration(days: 90));
+  final rangeEnd = today.add(const Duration(days: 1));
+  final income90 = _flowInRange(state, start90, rangeEnd, income: true);
+  final expense90 = _flowInRange(state, start90, rangeEnd, income: false);
+  final savingsRate = income90 > 0 ? (income90 - expense90) / income90 : 0.0;
+  final avgMonthlyExpense = expense90 / 3.0;
+
+  final balances = accountBalanceMap(state);
+  var emergencyMinor = 0;
+  for (final account in state.accounts) {
+    if (account.isArchived) continue;
+    if (account.type == 'emergency' ||
+        account.name.toLowerCase().contains('emergency')) {
+      emergencyMinor += convertMoneyForDisplay(
+        state,
+        accountBalanceFromMap(balances, account),
+        state.preferences.displayCurrency,
+      ).amountMinor;
+    }
+  }
+  final emergencyMonths = avgMonthlyExpense > 0
+      ? emergencyMinor / avgMonthlyExpense
+      : (emergencyMinor > 0 ? 3.0 : 0.0);
+
+  final worth = netWorth(state);
+  final assets = worth.assets.amountMinor;
+  final liabilities = worth.liabilities.amountMinor.abs();
+  final debtRatio = assets > 0
+      ? liabilities / assets
+      : (liabilities > 0 ? 1.0 : 0.0);
+
+  double budgetScore01 = 1.0;
+  if (state.budgets.isNotEmpty) {
+    var sum = 0.0;
+    for (final budget in state.budgets) {
+      final amount = budget.amount.amountMinor;
+      if (amount <= 0) {
+        sum += 1.0;
+        continue;
+      }
+      final spent = budgetSpent(state, budget).amountMinor;
+      sum += (1 - spent / amount).clamp(0.0, 1.0);
+    }
+    budgetScore01 = sum / state.budgets.length;
+  }
+
+  final savingsScore = (savingsRate.clamp(0.0, 0.2) / 0.2) * 30;
+  final emergencyScore = (emergencyMonths.clamp(0.0, 3.0) / 3.0) * 30;
+  final debtScore = (1 - debtRatio.clamp(0.0, 1.0)) * 25;
+  final budgetScore = budgetScore01 * 15;
+  final score = (savingsScore + emergencyScore + debtScore + budgetScore)
+      .round()
+      .clamp(0, 100);
+  final grade = score >= 80
+      ? 'Excellent'
+      : score >= 60
+      ? 'Good'
+      : score >= 40
+      ? 'Fair'
+      : 'Needs work';
+  return (
+    score: score,
+    grade: grade,
+    savingsRate: savingsRate,
+    emergencyMonths: emergencyMonths,
+    debtRatio: debtRatio,
   );
 }
 
@@ -787,11 +1079,25 @@ String formatCompactMoney(Money money, String locale) {
     locale: locale.replaceAll('_', '-'),
     name: money.currency,
   ).currencySymbol;
-  if (amount >= 10000000) {
-    return '$sign${(amount / 10000000).toStringAsFixed(1)}Cr';
+  // Indian (lakh/crore) grouping only for INR; Western (M/B) for everything else.
+  if (money.currency.toUpperCase() == 'INR') {
+    if (amount >= 10000000) {
+      return '$sign$symbol${(amount / 10000000).toStringAsFixed(1)}Cr';
+    }
+    if (amount >= 100000) {
+      return '$sign$symbol${(amount / 100000).toStringAsFixed(1)}L';
+    }
+  } else {
+    if (amount >= 1000000000) {
+      return '$sign$symbol${(amount / 1000000000).toStringAsFixed(1)}B';
+    }
+    if (amount >= 1000000) {
+      return '$sign$symbol${(amount / 1000000).toStringAsFixed(1)}M';
+    }
   }
-  if (amount >= 100000) return '$sign${(amount / 100000).toStringAsFixed(1)}L';
-  if (amount >= 1000) return '$sign${(amount / 1000).toStringAsFixed(1)}k';
+  if (amount >= 1000) {
+    return '$sign$symbol${(amount / 1000).toStringAsFixed(1)}k';
+  }
   return '$sign$symbol${amount.round()}';
 }
 
@@ -830,7 +1136,23 @@ String formatDueDate(DateTime date, String locale) {
 }
 
 int minorUnits(String currency) => switch (currency.toUpperCase()) {
-  'JPY' => 0,
+  'JPY' ||
+  'KRW' ||
+  'VND' ||
+  'CLP' ||
+  'ISK' ||
+  'PYG' ||
+  'UGX' ||
+  'RWF' ||
+  'XAF' ||
+  'XOF' ||
+  'XPF' ||
+  'DJF' ||
+  'GNF' ||
+  'KMF' ||
+  'BIF' ||
+  'VUV' => 0,
+  'BHD' || 'KWD' || 'OMR' || 'TND' || 'IQD' || 'JOD' || 'LYD' => 3,
   _ => 2,
 };
 

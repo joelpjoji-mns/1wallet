@@ -14,6 +14,7 @@ import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/currency_picker.dart';
 import '../../utils/number_formatter.dart';
+import '../../widgets/privacy_text.dart';
 import '../common/category_hierarchy_picker.dart';
 import '../common/full_screen_picker.dart';
 import '../transactions/transaction_row.dart';
@@ -64,9 +65,7 @@ class RecurringScreen extends ConsumerWidget {
         monthlyMultiplier = 365 / 12;
       }
 
-      final interval = t.recurrenceInterval != null && t.recurrenceInterval! > 0
-          ? t.recurrenceInterval!
-          : 1;
+      final interval = t.recurrenceInterval > 0 ? t.recurrenceInterval : 1;
       monthlyMultiplier = monthlyMultiplier / interval;
 
       // Handle multiple days per period
@@ -101,9 +100,9 @@ class RecurringScreen extends ConsumerWidget {
     );
     final displayNet = Money(amountMinor: netMinor, currency: targetCurrency);
 
-    final incomeText = formatMoney(displayIncome, state.preferences.locale);
-    final expenseText = formatMoney(displayExpense, state.preferences.locale);
-    final netText = formatMoney(displayNet, state.preferences.locale);
+    final incomeText = maskMoneyIfPrivate(state, formatMoney(displayIncome, state.preferences.locale));
+    final expenseText = maskMoneyIfPrivate(state, formatMoney(displayExpense, state.preferences.locale));
+    final netText = maskMoneyIfPrivate(state, formatMoney(displayNet, state.preferences.locale));
 
     return RouteScaffold(
       title: switch (mode) {
@@ -214,7 +213,7 @@ class RecurringScreen extends ConsumerWidget {
                               ),
                             ),
                             child: Text(
-                              '${listed.length} items',
+                              '${listed.length} item${listed.length == 1 ? '' : 's'}',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
@@ -276,7 +275,7 @@ class RecurringScreen extends ConsumerWidget {
                 TransactionRow(
                   state: state,
                   transaction: transaction,
-                  onTap: () => context.push('/records/${transaction.id}'),
+                  onTap: () => context.push('/transaction/${transaction.id}'),
                 )
               else
                 _RecurringCompactCard(
@@ -1102,7 +1101,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
             value: account.id,
             title: account.name,
             subtitle:
-                '${accountTypeLabel(account.type)} · ${formatMoney(accountBalance(state, account), state.preferences.locale)}',
+                '${accountTypeLabel(account.type)} · ${maskMoneyIfPrivate(state, formatMoney(accountBalance(state, account), state.preferences.locale))}',
             icon: accountIcon(account),
             iconColor: accountDisplayColor(account),
           ),
@@ -1161,6 +1160,12 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
       _showRouteMessage(context, 'Choose the linked account.');
       return;
     }
+    if (_frequency != 'once' &&
+        _recurrenceEnds == 'occurrences' &&
+        (_recurrenceLimit == null || _recurrenceLimit! < 1)) {
+      _showRouteMessage(context, 'Enter a number of occurrences of at least 1.');
+      return;
+    }
     try {
       final originalCurrency = _currency ?? state.preferences.baseCurrency;
 
@@ -1191,7 +1196,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
             originalAmountMinor: originalCurrency != account.currency
                 ? amountMinor
                 : null,
-            status: 'scheduled',
+            status: existing?.status ?? 'scheduled',
             source: 'recurring',
             name: _nameController.text,
             notes: _notesController.text,
@@ -1240,7 +1245,7 @@ class RecurringDetailView extends ConsumerWidget {
     final account = accountById(state, transaction.accountId);
     final counter = accountById(state, transaction.counterAccountId);
     final category = categoryById(state, transaction.categoryId);
-    final frequency = transaction.recurrenceFrequency ?? 'manual';
+    final frequency = transaction.recurrenceFrequency ?? 'once';
     final scheme = Theme.of(context).colorScheme;
 
     return Column(
@@ -1300,10 +1305,14 @@ class RecurringDetailView extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    Text(
-                      _recurringAmountLabel(state, transaction),
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
+                    Flexible(
+                      child: Text(
+                        _recurringAmountLabel(state, transaction),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
                   ],
@@ -1350,11 +1359,17 @@ class RecurringDetailView extends ConsumerWidget {
                               color: scheme.onSurfaceVariant,
                             ),
                           ),
-                          Text(
-                            account?.name ?? 'Unknown',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
+                          const SizedBox(width: AppSpacing.sm),
+                          Flexible(
+                            child: Text(
+                              account?.name ?? 'Unknown',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.end,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ],
@@ -1371,11 +1386,17 @@ class RecurringDetailView extends ConsumerWidget {
                                 color: scheme.onSurfaceVariant,
                               ),
                             ),
-                            Text(
-                              counter.name,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
+                            const SizedBox(width: AppSpacing.sm),
+                            Flexible(
+                              child: Text(
+                                counter.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.end,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ],
@@ -1430,20 +1451,30 @@ class RecurringDetailView extends ConsumerWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                'Paid: ${formatMoney(Money(amountMinor: paid, currency: loanAccount!.currency), state.preferences.locale)}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: scheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.w600,
+                              Flexible(
+                                child: Text(
+                                  'Paid: ${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: paid, currency: loanAccount!.currency), state.preferences.locale))}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: scheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
-                              Text(
-                                '${formatMoney(Money(amountMinor: remaining > 0 ? remaining : 0, currency: loanAccount.currency), state.preferences.locale)} left',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: scheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.w600,
+                              const SizedBox(width: AppSpacing.sm),
+                              Flexible(
+                                child: Text(
+                                  '${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: remaining > 0 ? remaining : 0, currency: loanAccount.currency), state.preferences.locale))} left',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.end,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: scheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                             ],
@@ -1470,7 +1501,7 @@ class RecurringDetailView extends ConsumerWidget {
           FilledButton.icon(
             onPressed: () => _postNow(context, ref),
             icon: const Icon(Icons.check_circle_rounded),
-            label: const Text('Post payment now'),
+            label: const Text('Post now'),
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
@@ -1533,13 +1564,15 @@ class RecurringDetailView extends ConsumerWidget {
   }
 
   Future<void> _postpone(BuildContext context, WidgetRef ref) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final picked = await showDatePicker(
       context: context,
-      initialDate: transaction.occurredAt.isBefore(DateTime.now())
-          ? DateTime.now().add(const Duration(days: 1))
+      initialDate: transaction.occurredAt.isBefore(now)
+          ? now.add(const Duration(days: 1))
           : transaction.occurredAt.add(const Duration(days: 1)),
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 3650)),
+      firstDate: today,
+      lastDate: now.add(const Duration(days: 3650)),
     );
     if (picked == null) return;
 
@@ -1619,8 +1652,11 @@ class RecurringDetailView extends ConsumerWidget {
     final notifier = ref.read(ledgerProvider.notifier);
 
     // Advance the date until it is today or later
+    var iterations = 0;
     while (nextDate.isBefore(today)) {
       nextDate = advanceTransactionRecurrence(nextDate, transaction);
+      iterations++;
+      if (iterations > 5000) break; // Safety guard against runaway loops
     }
 
     await notifier.updateTransactionStatus(
@@ -1652,8 +1688,7 @@ class _RecurringHistoryList extends ConsumerWidget {
     final state = ref.watch(ledgerProvider);
     final history = state.transactions.where((t) {
       if (t.id == plan.id) return false;
-      if (t.status == 'scheduled' &&
-          !(t.status == 'void' && t.notes?.toLowerCase() == 'skipped')) {
+      if (t.status == 'scheduled') {
         return false;
       }
       if (t.originalTransactionId == plan.id) return true;
@@ -1868,7 +1903,10 @@ String _recurringAmountLabel(LedgerState state, TransactionRecord transaction) {
   final isNegative = !incomeTypes.contains(transaction.type);
   final sign = isNegative ? '-' : '+';
   final displayMoney = transaction.originalAmount ?? transaction.amount;
-  return '$sign${formatMoney(displayMoney.copyWith(amountMinor: displayMoney.amountMinor.abs()), state.preferences.locale)}';
+  return maskMoneyIfPrivate(
+    state,
+    '$sign${formatMoney(displayMoney.copyWith(amountMinor: displayMoney.amountMinor.abs()), state.preferences.locale)}',
+  );
 }
 
 Color _recurringAmountColor(

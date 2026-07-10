@@ -8,6 +8,7 @@ import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../../widgets/privacy_text.dart';
 import '../common/full_screen_picker.dart';
 import '../home/home_screen.dart';
 import 'transactions_components.dart';
@@ -282,9 +283,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                           t.amount,
                           state.preferences.displayCurrency,
                         );
-                        monthlyFlows[monthStr] =
-                            (monthlyFlows[monthStr] ?? 0) +
-                            (converted.amountMinor * sign);
+                        if (converted.currency ==
+                            state.preferences.displayCurrency) {
+                          monthlyFlows[monthStr] =
+                              (monthlyFlows[monthStr] ?? 0) +
+                              (converted.amountMinor * sign);
+                        } else {
+                          monthlyFlows[monthStr] = monthlyFlows[monthStr] ?? 0;
+                        }
                       }
 
                       final includedAccounts = accountFilter != null
@@ -296,16 +302,18 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
                       var running = state.accounts
                           .where((a) => includedAccounts.contains(a.id))
-                          .fold<int>(
-                            0,
-                            (sum, a) =>
-                                sum +
-                                convertMoneyForDisplay(
-                                  state,
-                                  a.openingBalance,
-                                  state.preferences.displayCurrency,
-                                ).amountMinor,
-                          );
+                          .fold<int>(0, (sum, a) {
+                            final converted = convertMoneyForDisplay(
+                              state,
+                              a.openingBalance,
+                              state.preferences.displayCurrency,
+                            );
+                            if (converted.currency !=
+                                state.preferences.displayCurrency) {
+                              return sum;
+                            }
+                            return sum + converted.amountMinor;
+                          });
 
                       final monthlyBalances = <String, int>{};
                       final fullLedger = sortedTransactions(
@@ -320,25 +328,33 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         ).format(t.occurredAt).toUpperCase();
                         var delta = 0;
                         if (includedAccounts.contains(t.accountId)) {
-                          delta += convertMoneyForDisplay(
+                          final sourceConverted = convertMoneyForDisplay(
                             state,
                             Money(
                               amountMinor: sourceDelta(t),
                               currency: t.amount.currency,
                             ),
                             state.preferences.displayCurrency,
-                          ).amountMinor;
+                          );
+                          if (sourceConverted.currency ==
+                              state.preferences.displayCurrency) {
+                            delta += sourceConverted.amountMinor;
+                          }
                         }
                         if (t.counterAccountId != null &&
                             includedAccounts.contains(t.counterAccountId)) {
-                          delta += convertMoneyForDisplay(
+                          final counterConverted = convertMoneyForDisplay(
                             state,
                             Money(
                               amountMinor: counterDelta(t),
                               currency: (t.counterAmount ?? t.amount).currency,
                             ),
                             state.preferences.displayCurrency,
-                          ).amountMinor;
+                          );
+                          if (counterConverted.currency ==
+                              state.preferences.displayCurrency) {
+                            delta += counterConverted.amountMinor;
+                          }
                         }
                         running += delta;
                         monthlyBalances[monthStr] = running;
@@ -412,7 +428,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                                   Row(
                                     children: [
                                       Expanded(
-                                        child: Text(
+                                        child: PrivacyText(
                                           'Balance $balanceStr',
                                           style: Theme.of(context)
                                               .textTheme
@@ -425,7 +441,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                                               ),
                                         ),
                                       ),
-                                      Text(
+                                      PrivacyText(
                                         '∑ $flowStr',
                                         style: Theme.of(context)
                                             .textTheme
@@ -802,7 +818,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Delete transactions?'),
         content: Text(
-            'Are you sure you want to delete ${_selectedTransactionIds.length} transactions? This cannot be undone.'),
+            'Are you sure you want to delete ${_selectedTransactionIds.length} transaction${_selectedTransactionIds.length == 1 ? '' : 's'}? This cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),

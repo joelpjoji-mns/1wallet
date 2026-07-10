@@ -93,6 +93,7 @@ class ExchangeRateService {
           // E.g., if baseCurrency is USD, rates['inr'] = 82.90 means 1 USD = 82.90 INR.
           // For base: INR, quote: USD, the rate is 1 / 82.90.
           final apiValue = (rates[lower] as num).toDouble();
+          if (apiValue <= 0 || !apiValue.isFinite) continue;
           final rateValue = 1.0 / apiValue;
 
           final existingIndex = updatedRecords.indexWhere(
@@ -134,6 +135,7 @@ class ExchangeRateService {
         if (rates.containsKey(lower)) {
           // The API returns exactly this: 1 baseCurrency = apiValue currency
           final apiValue = (rates[lower] as num).toDouble();
+          if (apiValue <= 0 || !apiValue.isFinite) continue;
           final rateValue = apiValue;
 
           final existingIndex = updatedRecords.indexWhere(

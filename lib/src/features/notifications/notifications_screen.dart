@@ -114,7 +114,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                 ? const EmptyState(
                     icon: Icons.notifications_off_outlined,
                     title: 'Nothing waiting',
-                    body: 'Budget, goal, and schedule alerts will appear here.',
+                    body: 'Budget and goal alerts will appear here.',
                   )
                 : Column(
                     children: [

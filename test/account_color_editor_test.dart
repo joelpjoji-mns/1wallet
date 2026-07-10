@@ -45,7 +45,7 @@ void main() {
     router.go('/account/acc-bank');
     await tester.pumpAndSettle();
 
-    final chooseColorFinder = find.text('Choose Color');
+    final chooseColorFinder = find.text('Choose color');
     await tester.ensureVisible(chooseColorFinder);
     await tester.pumpAndSettle();
     await tester.tap(chooseColorFinder);

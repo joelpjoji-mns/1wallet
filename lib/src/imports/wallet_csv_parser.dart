@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../data/ledger_models.dart';
 
 class ParsedWalletCsvRow {
@@ -73,21 +75,28 @@ ParsedWalletCsvResult parseWalletCsv(
   for (var index = startIndex; index < lines.length; index++) {
     final values = _splitCsvLine(lines[index]);
     final rowNumber = index + 1;
+    final currency = _value(values, indexes['currency']).isEmpty
+        ? fallbackCurrency
+        : _value(values, indexes['currency']).toUpperCase();
     final rawAmount = _value(values, indexes['amount']);
-    final amountMinor = _parseAmountMinor(rawAmount);
+    final amountMinor = _parseAmountMinor(rawAmount, currency);
     if (amountMinor == null) {
       continue;
     }
 
     final typeValue = _value(values, indexes['type']).toLowerCase();
-    final inferredType = typeValue.contains('income') || amountMinor > 0
-        ? 'income'
-        : 'expense';
+    // Prefer an explicit type column; only fall back to the amount sign when
+    // the type column doesn't say income/expense.
+    final String inferredType;
+    if (typeValue.contains('income')) {
+      inferredType = 'income';
+    } else if (typeValue.contains('expense')) {
+      inferredType = 'expense';
+    } else {
+      inferredType = amountMinor > 0 ? 'income' : 'expense';
+    }
     final type = typeValue == 'transfer' ? 'transfer' : inferredType;
     final accountName = _value(values, indexes['account']);
-    final currency = _value(values, indexes['currency']).isEmpty
-        ? fallbackCurrency
-        : _value(values, indexes['currency']).toUpperCase();
     final date = _parseDate(_value(values, indexes['date']));
 
     rows.add(
@@ -196,15 +205,19 @@ String _value(List<String> values, int? index) {
   return values[index].trim();
 }
 
-int? _parseAmountMinor(String value) {
+int? _parseAmountMinor(String value, String currency) {
   final cleaned = value
       .replaceAll(RegExp(r'[^0-9.\-]'), '')
       .replaceAll(RegExp(r'(?<!^)-'), '');
   if (cleaned.isEmpty || cleaned == '-') return null;
   final parsed = double.tryParse(cleaned);
   if (parsed == null) return null;
-  return (parsed * 100).round();
+  return (parsed * math.pow(10, _minorDigits(currency))).round();
 }
+
+// Mirrors minorUnits() in ledger_selectors.dart; kept local so the parser
+// stays free of Flutter/UI imports.
+int _minorDigits(String currency) => currency.toUpperCase() == 'JPY' ? 0 : 2;
 
 DateTime? _parseDate(String value) {
   if (value.trim().isEmpty) return null;

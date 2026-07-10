@@ -37,13 +37,13 @@ void main() {
 
     expect(find.byTooltip('Reorder widgets'), findsNothing);
 
-    await tester.longPress(find.byTooltip('Long press Accounts to reorder widgets'));
+    await tester.longPress(find.byTooltip('Long press All accounts to reorder widgets'));
     await tester.pumpAndSettle();
 
     expect(find.byTooltip('Done reordering widgets'), findsOneWidget);
-    expect(find.byTooltip('Drag Accounts'), findsOneWidget);
+    expect(find.byTooltip('Drag All accounts'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Move up Accounts'));
+    await tester.tap(find.byTooltip('Move up All accounts'));
     await tester.pumpAndSettle();
 
     expect(container.read(ledgerProvider).preferences.homeWidgetOrder.take(2), [

@@ -8,6 +8,7 @@ import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../../widgets/privacy_text.dart';
 
 class CardsScreen extends ConsumerWidget {
   const CardsScreen({super.key});
@@ -79,9 +80,15 @@ class _AccountCollectionScreen extends ConsumerWidget {
                   account.groupName,
                   account.currency,
                 ].whereType<String>().join(' · '),
-                meta: formatMoney(
-                  convertMoneyForDisplay(state, accountBalance(state, account)),
-                  state.preferences.locale,
+                meta: maskMoneyIfPrivate(
+                  state,
+                  formatMoney(
+                    convertMoneyForDisplay(
+                      state,
+                      accountBalance(state, account),
+                    ),
+                    state.preferences.locale,
+                  ),
                 ),
                 iconColor: account.color,
                 onTap: () => context.push('/account/${account.id}'),

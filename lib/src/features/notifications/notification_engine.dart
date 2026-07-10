@@ -104,68 +104,92 @@ NotificationPreferences normalizeNotificationPreferences(
 /// - Goal progress
 List<AppNotification> buildNotificationInbox(LedgerState state) {
   final notifications = <AppNotification>[];
+  // NOTE: `now` is regenerated on every call, so `createdAt` (and therefore
+  // the "just now" / "Xm ago" relative label rendered from it) always
+  // reflects render time rather than when the underlying condition first
+  // became true. There is no stable "first triggered at" timestamp stored
+  // in LedgerState today; wiring one up would require persisting
+  // per-notification-id timestamps alongside read/dismissed ids. Left as a
+  // low-priority follow-up rather than risking a broader state-shape change.
   final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
+
+  // The master "Notification inbox" toggle disables the in-app inbox
+  // entirely (native/device alerts are gated separately in
+  // NotificationService using deviceNotificationsEnabled).
+  if (!state.preferences.notificationInboxEnabled) {
+    return const [];
+  }
+
+  // Budget/goal ids used to be permanent (e.g. `budget_$id`), so once an
+  // alert was delivered/dismissed for a period it could never re-fire in a
+  // later period. Including the current year-month in the id lets the same
+  // budget/goal raise a fresh alert every period while still deduping
+  // repeated builds within the same period.
+  final period = '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
   // Scheduled payment notifications are now handled by background timezone scheduling
 
   // Budget overspend notifications
-  for (final budget in state.budgets) {
-    final spentMinor = budget.spent.amountMinor;
-    final limitMinor = budget.amount.amountMinor;
-    if (limitMinor <= 0) continue;
-    if (spentMinor > limitMinor) {
-      final overspend = spentMinor - limitMinor;
-      notifications.add(
-        AppNotification(
-          id: 'budget_${budget.id}',
-          channel: AppNotificationChannel.budgets,
-          title: '${budget.name} over budget',
-          body:
-              'Overspent by ${formatMoney(Money(amountMinor: overspend, currency: budget.amount.currency), state.preferences.locale)}.',
-          createdAt: now,
-        ),
-      );
-    } else if (spentMinor > limitMinor * 0.8) {
-      final pct = ((spentMinor / limitMinor) * 100).round();
-      notifications.add(
-        AppNotification(
-          id: 'budget_warn_${budget.id}',
-          channel: AppNotificationChannel.budgets,
-          title: '${budget.name} nearing limit',
-          body: '$pct% of budget used.',
-          createdAt: now,
-        ),
-      );
+  if (state.preferences.channelBudgetsEnabled) {
+    for (final budget in state.budgets) {
+      final spentMinor = budget.spent.amountMinor;
+      final limitMinor = budget.amount.amountMinor;
+      if (limitMinor <= 0) continue;
+      if (spentMinor > limitMinor) {
+        final overspend = spentMinor - limitMinor;
+        notifications.add(
+          AppNotification(
+            id: 'budget_${budget.id}_$period',
+            channel: AppNotificationChannel.budgets,
+            title: '${budget.name} over budget',
+            body:
+                'Overspent by ${formatMoney(Money(amountMinor: overspend, currency: budget.amount.currency), state.preferences.locale)}.',
+            createdAt: now,
+          ),
+        );
+      } else if (spentMinor > limitMinor * 0.8) {
+        final pct = ((spentMinor / limitMinor) * 100).round();
+        notifications.add(
+          AppNotification(
+            id: 'budget_warn_${budget.id}_$period',
+            channel: AppNotificationChannel.budgets,
+            title: '${budget.name} nearing limit',
+            body: '$pct% of budget used.',
+            createdAt: now,
+          ),
+        );
+      }
     }
   }
 
   // Goal progress notifications
-  for (final goal in state.goals) {
-    final targetMinor = goal.target.amountMinor;
-    final savedMinor = goal.saved.amountMinor;
-    if (targetMinor <= 0) continue;
-    final progress = savedMinor / targetMinor;
-    if (progress >= 1.0) {
-      notifications.add(
-        AppNotification(
-          id: 'goal_done_${goal.id}',
-          channel: AppNotificationChannel.goals,
-          title: '${goal.name} complete! 🎉',
-          body: 'You reached your savings goal.',
-          createdAt: now,
-        ),
-      );
-    } else if (progress >= 0.75) {
-      notifications.add(
-        AppNotification(
-          id: 'goal_almost_${goal.id}',
-          channel: AppNotificationChannel.goals,
-          title: '${goal.name} almost there',
-          body: '${(progress * 100).round()}% of goal reached.',
-          createdAt: now,
-        ),
-      );
+  if (state.preferences.channelGoalsEnabled) {
+    for (final goal in state.goals) {
+      final targetMinor = goal.target.amountMinor;
+      final savedMinor = goal.saved.amountMinor;
+      if (targetMinor <= 0) continue;
+      final progress = savedMinor / targetMinor;
+      if (progress >= 1.0) {
+        notifications.add(
+          AppNotification(
+            id: 'goal_done_${goal.id}_$period',
+            channel: AppNotificationChannel.goals,
+            title: '${goal.name} complete! 🎉',
+            body: 'You reached your savings goal.',
+            createdAt: now,
+          ),
+        );
+      } else if (progress >= 0.75) {
+        notifications.add(
+          AppNotification(
+            id: 'goal_almost_${goal.id}_$period',
+            channel: AppNotificationChannel.goals,
+            title: '${goal.name} almost there',
+            body: '${(progress * 100).round()}% of goal reached.',
+            createdAt: now,
+          ),
+        );
+      }
     }
   }
 
@@ -194,14 +218,4 @@ List<AppNotification> buildNotificationInbox(LedgerState state) {
 /// Count of unread notifications.
 int unreadNotificationCount(LedgerState state) {
   return buildNotificationInbox(state).where((n) => !n.read).length;
-}
-
-/// Compare dates using day-only values to avoid time-of-day skew.
-String _relativeDate(DateTime date, DateTime today) {
-  final diff = today.difference(date).inDays;
-  if (diff == 0) return 'today';
-  if (diff == 1) return 'yesterday';
-  if (diff == -1) return 'tomorrow';
-  if (diff < 0) return 'in ${diff.abs()} days';
-  return '$diff days ago';
 }

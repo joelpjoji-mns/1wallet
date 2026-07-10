@@ -31,7 +31,8 @@ final budgetHealthProvider = Provider<BudgetHealthData>((ref) {
   for (final tx in state.transactions) {
     if (tx.status == 'void' ||
         tx.status == 'scheduled' ||
-        tx.status == 'paused')
+        tx.status == 'paused' ||
+        tx.isExcludedFromReports)
       continue;
     if (tx.occurredAt.year == now.year && tx.occurredAt.month == now.month) {
       if (incomeTypes.contains(tx.type)) {
@@ -98,7 +99,11 @@ final emergencyFundProvider = Provider<EmergencyFundData>((ref) {
   final start = now.subtract(const Duration(days: 90));
   int totalExp = 0;
   for (final tx in state.transactions) {
-    if (tx.status == 'void' || tx.status == 'scheduled') continue;
+    if (tx.status == 'void' ||
+        tx.status == 'scheduled' ||
+        tx.status == 'paused' ||
+        tx.isExcludedFromReports)
+      continue;
     if (expenseTypes.contains(tx.type) && tx.occurredAt.isAfter(start)) {
       totalExp += convertMoneyForDisplay(
         state,
@@ -107,8 +112,7 @@ final emergencyFundProvider = Provider<EmergencyFundData>((ref) {
       ).amountMinor;
     }
   }
-  final avgMonthlyExp = totalExp ~/ 3;
-  final target = avgMonthlyExp * 3;
+  final target = totalExp;
 
   int totalCash = 0;
   final balances = accountBalanceMap(state);

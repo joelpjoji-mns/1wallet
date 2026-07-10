@@ -1,8 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/ledger_models.dart';
+import '../../ledger/ledger_selectors.dart' show minorUnits;
 import '../../auth/auth_controller.dart';
 import '../common/full_screen_picker.dart';
 import '../launch/brand_widgets.dart';
@@ -69,7 +72,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   void _resetDraft() {
     _currentDraft = _AccountDraft(
       name: '',
-      type: 'checking',
+      type: 'bank',
       currency: _baseCurrency,
       color: Colors.blueAccent,
       opening: '',
@@ -125,13 +128,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     // Save accounts to ledger
     for (final draft in _accounts) {
       final parsedOpening =
-          int.tryParse(draft.opening.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
+          double.tryParse(draft.opening.replaceAll(RegExp(r'[^0-9.]'), '')) ??
+          0;
+      final openingBalanceMinor =
+          (parsedOpening * math.pow(10, minorUnits(draft.currency))).round();
       await ledgerNotifier.upsertAccount(
         id: const Uuid().v4(),
         name: draft.name,
         type: draft.type,
         currency: draft.currency,
-        openingBalanceMinor: parsedOpening * 100,
+        openingBalanceMinor: openingBalanceMinor,
         color: draft.color,
       );
     }
@@ -253,7 +259,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       state: ref.read(ledgerProvider),
                       selectedValue: _baseCurrency,
                     );
-                    if (curr != null) setState(() => _baseCurrency = curr);
+                    if (curr != null) {
+                      setState(() {
+                        _baseCurrency = curr;
+                        _currentDraft.currency = curr;
+                      });
+                    }
                   },
                 ),
               ],
@@ -360,7 +371,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       children: [
         const StaggeredFadeIn(
           child: Text(
-            'Add your first\nwallet.',
+            'Add your first\naccount.',
             style: TextStyle(
               fontSize: 40,
               fontWeight: FontWeight.w900,
@@ -379,13 +390,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 TextField(
                   onChanged: (v) => setState(() => _currentDraft.name = v),
                   decoration: const InputDecoration(
-                    hintText: 'Account name (e.g. Cash, Chase)',
+                    hintText: 'Account name (e.g. Cash, Savings)',
                   ),
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   value: _currentDraft.type,
-                  decoration: const InputDecoration(hintText: 'Account Type'),
+                  decoration: const InputDecoration(hintText: 'Account type'),
                   items:
                       [
                         'bank',
@@ -437,7 +448,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(56),
             ),
-            child: const Text('Save Wallet'),
+            child: const Text('Save account'),
           ),
         ),
         TextButton(onPressed: _nextPage, child: const Text('Skip for now')),
@@ -451,7 +462,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       children: [
         const StaggeredFadeIn(
           child: Text(
-            'Your wallets',
+            'Your accounts',
             style: TextStyle(
               fontSize: 40,
               fontWeight: FontWeight.w900,

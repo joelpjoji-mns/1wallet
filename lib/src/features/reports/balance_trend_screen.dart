@@ -41,7 +41,16 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
         break;
     }
 
-    final trend = ref.watch(homeBalanceTrendProvider((start: start, end: now)));
+    final nowRounded = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour,
+      now.minute,
+    );
+    final trend = ref.watch(
+      homeBalanceTrendProvider((start: start, end: nowRounded)),
+    );
     final current = ref.watch(
       homeTotalBalanceProvider((accountId: null, targetCurrency: null)),
     );
@@ -80,7 +89,7 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
               child: Column(
                 children: [
                   Text(
-                    'CURRENT LIQUID NET WORTH',
+                    'CURRENT BALANCE',
                     style: TextStyle(
                       color: scheme.onSurfaceVariant,
                       fontSize: 14,
@@ -100,7 +109,7 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '(Excluding Loans)',
+                    '(Included accounts only)',
                     style: TextStyle(
                       color: scheme.onSurfaceVariant,
                       fontSize: 14,
@@ -127,7 +136,7 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'NET BALANCE TREND',
+                      'BALANCE TREND',
                       style: TextStyle(
                         color: scheme.onSurfaceVariant,
                         fontSize: 14,

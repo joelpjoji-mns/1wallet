@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'home_screen.dart';
+import 'home_widgets_extra.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -13,11 +14,11 @@ import '../../ledger/ledger_selectors.dart';
 import '../../utils/currency_utils.dart';
 import '../../utils/number_formatter.dart';
 import '../../widgets/app_kit.dart';
+import '../../widgets/privacy_text.dart';
 import '../transactions/transaction_row.dart';
 import '../transactions/transactions_screen.dart';
 import 'home_async_providers.dart';
 import 'home_components.dart';
-import 'home_dashboard_selectors.dart';
 import 'home_widget_card.dart';
 import 'home_widget_models.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -86,6 +87,17 @@ Widget buildHomeDashboardWidget({
     HomeDashboardWidgetId.creditUtilization => CreditUtilizationWidget(
       state: state,
     ),
+    HomeDashboardWidgetId.netWorth => NetWorthHomeWidget(state: state),
+    HomeDashboardWidgetId.cashFlow => CashFlowHomeWidget(state: state),
+    HomeDashboardWidgetId.financialHealth => FinancialHealthHomeWidget(
+      state: state,
+    ),
+    HomeDashboardWidgetId.monthComparison => MonthComparisonHomeWidget(
+      state: state,
+    ),
+    HomeDashboardWidgetId.spendingHeatmap => SpendingHeatmapHomeWidget(
+      state: state,
+    ),
   };
 }
 
@@ -145,10 +157,10 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
       )),
     );
 
-    final currencyBreakdown = balanceBreakdownByCurrency(
-      widget.state,
-      accountId: selectedAccountId,
-    ).map((m) => m.amountMinor < 0 ? m.copyWith(amountMinor: 0) : m).toList();
+    final currencyBreakdown = ref
+        .watch(homeCurrencyBreakdownProvider(selectedAccountId))
+        .map((m) => m.amountMinor < 0 ? m.copyWith(amountMinor: 0) : m)
+        .toList();
 
     return Container(
       constraints: const BoxConstraints(minHeight: 178),
@@ -228,7 +240,7 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
               end: total.amountMinor.toDouble(),
             ),
             builder: (context, value, child) {
-              return Text(
+              return PrivacyText(
                 formatMoney(
                   total.copyWith(amountMinor: value.round()),
                   widget.state.preferences.locale,
@@ -273,7 +285,7 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                                 end: money.amountMinor.toDouble(),
                               ),
                               builder: (context, value, child) {
-                                return Text(
+                                return PrivacyText(
                                   '${money.currency} ${formatMoney(money.copyWith(amountMinor: value.round()), widget.state.preferences.locale)}',
                                   style: TextStyle(
                                     color: scheme.onSurfaceVariant,
@@ -504,7 +516,10 @@ class _BalanceTrendHomeWidgetState
         break;
     }
 
-    final trend = ref.watch(homeBalanceTrendProvider((start: start, end: now)));
+    final trendEnd = DateTime(now.year, now.month, now.day, now.hour, now.minute);
+    final trend = ref.watch(
+      homeBalanceTrendProvider((start: start, end: trendEnd)),
+    );
     final values = trend.map((point) => point.balance.amountMinor).toList();
     final periodLabel = trend.isEmpty
         ? _period
@@ -1224,10 +1239,9 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
 
     scheduled.sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
 
-    final dueAmount = scheduled.fold<int>(
-      0,
-      (sum, transaction) => sum + transaction.baseAmount.amountMinor,
-    );
+    final dueAmount = scheduled
+        .where((transaction) => expenseTypes.contains(transaction.type))
+        .fold<int>(0, (sum, transaction) => sum + transaction.baseAmount.amountMinor);
 
     final next = scheduled.take(4).toList();
 
@@ -1363,12 +1377,15 @@ class LoansAndEmisHomeWidget extends ConsumerWidget {
               Expanded(
                 child: HomeMetricTile(
                   label: 'Remaining',
-                  value: formatMoney(
-                    Money(
-                      amountMinor: remaining,
-                      currency: state.preferences.displayCurrency,
+                  value: maskMoneyIfPrivate(
+                    state,
+                    formatMoney(
+                      Money(
+                        amountMinor: remaining,
+                        currency: state.preferences.displayCurrency,
+                      ),
+                      state.preferences.locale,
                     ),
-                    state.preferences.locale,
                   ),
                   icon: Icons.account_balance_outlined,
                   tone: MetricTone.danger,
@@ -1378,7 +1395,10 @@ class LoansAndEmisHomeWidget extends ConsumerWidget {
               Expanded(
                 child: HomeMetricTile(
                   label: 'EMIs',
-                  value: _formatDisplayBaseMoney(state, emiTotal),
+                  value: maskMoneyIfPrivate(
+                    state,
+                    _formatDisplayBaseMoney(state, emiTotal),
+                  ),
                   icon: Icons.event_repeat_outlined,
                   tone: MetricTone.warning,
                 ),
@@ -1391,7 +1411,10 @@ class LoansAndEmisHomeWidget extends ConsumerWidget {
               icon: Icons.event_available_outlined,
               title: 'Next EMI',
               subtitle: _shortDate(next.occurredAt, state.preferences.locale),
-              trailing: _formatDisplayMoney(state, next.baseAmount),
+              trailing: maskMoneyIfPrivate(
+                state,
+                _formatDisplayMoney(state, next.baseAmount),
+              ),
               iconColor: Theme.of(context).colorScheme.error,
               tone: MetricTone.danger,
             ),
@@ -1412,7 +1435,7 @@ class PlannedPaymentsHomeWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final planned = ref
         .watch(_homeScheduledTransactionsProvider)
-        .where((tx) => tx.type == 'payment' || tx.type == 'scheduled')
+        .where((tx) => expenseTypes.contains(tx.type))
         .fold<int>(0, (sum, tx) => sum + tx.baseAmount.amountMinor);
     return HomeWidgetCard(
       title: 'Planned payments',
@@ -1477,12 +1500,15 @@ class LoansHomeWidget extends ConsumerWidget {
               Expanded(
                 child: HomeMetricTile(
                   label: 'Remaining',
-                  value: formatMoney(
-                    Money(
-                      amountMinor: remaining,
-                      currency: state.preferences.displayCurrency,
+                  value: maskMoneyIfPrivate(
+                    state,
+                    formatMoney(
+                      Money(
+                        amountMinor: remaining,
+                        currency: state.preferences.displayCurrency,
+                      ),
+                      state.preferences.locale,
                     ),
-                    state.preferences.locale,
                   ),
                   icon: Icons.account_balance_outlined,
                   tone: MetricTone.danger,
@@ -1492,7 +1518,10 @@ class LoansHomeWidget extends ConsumerWidget {
               Expanded(
                 child: HomeMetricTile(
                   label: 'EMIs',
-                  value: _formatDisplayBaseMoney(state, emiTotal),
+                  value: maskMoneyIfPrivate(
+                    state,
+                    _formatDisplayBaseMoney(state, emiTotal),
+                  ),
                   icon: Icons.event_repeat_outlined,
                   tone: MetricTone.warning,
                 ),
@@ -1505,7 +1534,10 @@ class LoansHomeWidget extends ConsumerWidget {
               icon: Icons.event_available_outlined,
               title: 'Next EMI',
               subtitle: _shortDate(next.occurredAt, state.preferences.locale),
-              trailing: _formatDisplayMoney(state, next.baseAmount),
+              trailing: maskMoneyIfPrivate(
+                state,
+                _formatDisplayMoney(state, next.baseAmount),
+              ),
               iconColor: Theme.of(context).colorScheme.error,
               tone: MetricTone.danger,
             ),
@@ -1724,15 +1756,20 @@ class BudgetPressureHomeWidget extends StatelessWidget {
           : Column(
               children: [
                 for (final budget in state.budgets.take(4)) ...[
-                  HomeProgressRow(
-                    label: budget.name,
-                    value: _formatDisplayMoney(state, budget.spent),
-                    progress: budget.amount.amountMinor == 0
-                        ? 0
-                        : budget.spent.amountMinor / budget.amount.amountMinor,
-                    color: budget.spent.amountMinor > budget.amount.amountMinor
-                        ? Theme.of(context).colorScheme.error
-                        : Theme.of(context).colorScheme.primary,
+                  Builder(
+                    builder: (context) {
+                      final spent = budgetSpent(state, budget);
+                      return HomeProgressRow(
+                        label: budget.name,
+                        value: _formatDisplayMoney(state, spent),
+                        progress: budget.amount.amountMinor == 0
+                            ? 0
+                            : spent.amountMinor / budget.amount.amountMinor,
+                        color: spent.amountMinor > budget.amount.amountMinor
+                            ? Theme.of(context).colorScheme.error
+                            : Theme.of(context).colorScheme.primary,
+                      );
+                    },
                   ),
                   if (budget != state.budgets.take(4).last)
                     const SizedBox(height: AppSpacing.sm),
@@ -1766,13 +1803,18 @@ class GoalProgressHomeWidget extends StatelessWidget {
           : Column(
               children: [
                 for (final goal in state.goals.take(4)) ...[
-                  HomeProgressRow(
-                    label: goal.name,
-                    value: _formatDisplayMoney(state, goal.saved),
-                    progress: goal.target.amountMinor == 0
-                        ? 0
-                        : goal.saved.amountMinor / goal.target.amountMinor,
-                    color: Theme.of(context).colorScheme.tertiary,
+                  Builder(
+                    builder: (context) {
+                      final saved = goalSaved(state, goal);
+                      return HomeProgressRow(
+                        label: goal.name,
+                        value: _formatDisplayMoney(state, saved),
+                        progress: goal.target.amountMinor == 0
+                            ? 0
+                            : saved.amountMinor / goal.target.amountMinor,
+                        color: Theme.of(context).colorScheme.tertiary,
+                      );
+                    },
                   ),
                   if (goal != state.goals.take(4).last)
                     const SizedBox(height: AppSpacing.sm),
@@ -1994,7 +2036,7 @@ class _AccountTile extends ConsumerWidget {
             ),
             const SizedBox(height: 3),
             // Display in base currency
-            Text(
+            PrivacyText(
               primaryLabel,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -2007,7 +2049,7 @@ class _AccountTile extends ConsumerWidget {
               ),
             ),
             if (secondaryLabel != null)
-              Text(
+              PrivacyText(
                 secondaryLabel,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
