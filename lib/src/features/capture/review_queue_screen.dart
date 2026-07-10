@@ -218,7 +218,7 @@ class ReviewQueueScreen extends ConsumerWidget {
                                         style: theme.textTheme.titleLarge
                                             ?.copyWith(
                                               color: isIncome
-                                                  ? Colors.green.shade600
+                                                  ? positiveTone(context)
                                                   : scheme.onSurface,
                                               fontWeight: FontWeight.w900,
                                               letterSpacing: -0.5,

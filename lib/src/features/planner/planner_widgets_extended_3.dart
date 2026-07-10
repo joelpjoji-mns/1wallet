@@ -251,7 +251,7 @@ class BudgetHealthOverviewWidget extends ConsumerWidget {
               final overBudget = limit > 0 && spent > limit;
               final barColor = overBudget
                   ? scheme.error
-                  : (pct >= 0.8 ? Colors.orange : scheme.secondary);
+                  : (pct >= 0.8 ? warningTone(context) : scheme.secondary);
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 16),

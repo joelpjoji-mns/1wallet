@@ -1238,6 +1238,22 @@ Color amountColor(BuildContext context, int amountMinor) {
   return theme.colorScheme.onSurfaceVariant;
 }
 
+/// Theme-aware "positive"/success green, matching [amountColor] for positive
+/// amounts. Prefer this over hardcoded greens so the color is consistent
+/// across the app and adapts to light/dark.
+Color positiveTone(BuildContext context) {
+  return Theme.of(context).brightness == Brightness.dark
+      ? AppColors.positiveDark
+      : AppColors.positiveLight;
+}
+
+/// Theme-aware warning/amber color for cautionary states.
+Color warningTone(BuildContext context) {
+  return Theme.of(context).brightness == Brightness.dark
+      ? const Color(0xFFE9C46A)
+      : AppColors.warning;
+}
+
 IconData accountIcon(Account account) {
   return switch (account.type) {
     'cash' => Icons.payments_outlined,

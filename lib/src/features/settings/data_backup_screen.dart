@@ -65,7 +65,10 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Restore', style: TextStyle(color: Colors.red)),
+            child: Text(
+              'Restore',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           ),
         ],
       ),

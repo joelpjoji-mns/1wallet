@@ -495,11 +495,13 @@ class _CategoryTreeNode extends StatelessWidget {
                           category.isArchived ? 'Restore' : 'Archive',
                         ),
                       ),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: _CategoryAction.delete,
                         child: Text(
                           'Delete',
-                          style: TextStyle(color: Colors.red),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
                         ),
                       ),
                     ],
