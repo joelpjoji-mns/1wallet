@@ -263,6 +263,7 @@ class LedgerController extends StateNotifier<LedgerState> {
 
   Future<void> processSpooledSms() async {
     try {
+      if (!state.preferences.smsCaptureEnabled) return;
       final spooled = await SmsSpooler.popSpooledMessages();
       if (spooled.isEmpty) return;
 
@@ -1115,6 +1116,8 @@ class LedgerController extends StateNotifier<LedgerState> {
     final parsed = parseTransactionMessage(
       rawText,
       fallbackCurrency: state.preferences.baseCurrency,
+      triggerWords: state.preferences.smsTriggerWords,
+      ignoreWords: state.preferences.smsIgnoreWords,
     );
     if (parsed.ignored) return null;
 
@@ -1168,6 +1171,8 @@ class LedgerController extends StateNotifier<LedgerState> {
       final parsed = parseTransactionMessage(
         message.text,
         fallbackCurrency: state.preferences.baseCurrency,
+        triggerWords: state.preferences.smsTriggerWords,
+        ignoreWords: state.preferences.smsIgnoreWords,
       );
       if (parsed.ignored) continue;
 
