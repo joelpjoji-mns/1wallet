@@ -8,6 +8,7 @@ import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../../widgets/privacy_text.dart';
 import '../common/full_screen_picker.dart';
 import '../transactions/transaction_row.dart';
 import 'calendar_forecast.dart';
@@ -459,7 +460,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             value: account.id,
             title: account.name,
             subtitle:
-                '${accountTypeLabel(account.type)} · ${formatMoney(accountBalance(state, account), state.preferences.locale)}',
+                '${accountTypeLabel(account.type)} · ${maskMoneyIfPrivate(state, formatMoney(accountBalance(state, account), state.preferences.locale))}',
             icon: accountIcon(account),
             iconColor: accountDisplayColor(account),
             searchText:
@@ -550,7 +551,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     ),
                   ),
                   const Spacer(),
-                  Text(
+                  PrivacyText(
                     balanceDisplay,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
@@ -650,7 +651,7 @@ class SummaryPill extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          Text(
+          PrivacyText(
             formatCompactMoney(money, locale),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -820,7 +821,7 @@ class _DayCell extends StatelessWidget {
             ),
             const Spacer(),
             if (income > 0)
-              Text(
+              PrivacyText(
                 '+${formatCompactMoney(convertMoneyForDisplay(state, Money(amountMinor: income, currency: state.preferences.baseCurrency)), state.preferences.locale)}',
                 maxLines: 1,
                 style: TextStyle(
@@ -833,7 +834,7 @@ class _DayCell extends StatelessWidget {
                 ),
               ),
             if (expense > 0)
-              Text(
+              PrivacyText(
                 '-${formatCompactMoney(convertMoneyForDisplay(state, Money(amountMinor: expense, currency: state.preferences.baseCurrency)), state.preferences.locale)}',
                 maxLines: 1,
                 style: TextStyle(

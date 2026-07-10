@@ -15,6 +15,7 @@ import '../../widgets/app_kit.dart';
 import '../../widgets/currency_picker.dart';
 import '../../widgets/credit_card_view.dart';
 import '../../widgets/color_picker_dialog.dart';
+import '../../widgets/privacy_text.dart';
 import '../../utils/number_formatter.dart';
 import '../common/full_screen_picker.dart';
 import '../common/route_scaffold.dart';
@@ -259,9 +260,12 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                   label: 'Current balance',
                   value: account == null
                       ? '—'
-                      : formatMoney(
-                          accountBalance(state, account),
-                          state.preferences.locale,
+                      : maskMoneyIfPrivate(
+                          state,
+                          formatMoney(
+                            accountBalance(state, account),
+                            state.preferences.locale,
+                          ),
                         ),
                   icon: Icons.account_balance_wallet_outlined,
                 ),

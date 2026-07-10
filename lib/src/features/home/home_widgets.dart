@@ -691,7 +691,7 @@ class _BalanceTrendHomeWidgetState
                             reservedSize: 40,
                             interval: niceInterval,
                             getTitlesWidget: (value, meta) {
-                              return Text(
+                              return PrivacyText(
                                 formatCompact(value),
                                 style: TextStyle(
                                   fontSize: 10,
@@ -847,15 +847,18 @@ class _BalanceTrendHomeWidgetState
                             return touchedSpots
                                 .map(
                                   (spot) => LineTooltipItem(
-                                    formatMoney(
-                                      Money(
-                                        amountMinor: spot.y.toInt(),
-                                        currency: widget
-                                            .state
-                                            .preferences
-                                            .displayCurrency,
+                                    maskMoneyIfPrivate(
+                                      widget.state,
+                                      formatMoney(
+                                        Money(
+                                          amountMinor: spot.y.toInt(),
+                                          currency: widget
+                                              .state
+                                              .preferences
+                                              .displayCurrency,
+                                        ),
+                                        widget.state.preferences.locale,
                                       ),
-                                      widget.state.preferences.locale,
                                     ),
                                     TextStyle(
                                       color: Theme.of(
@@ -1299,7 +1302,10 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
               Expanded(
                 child: HomeMetricTile(
                   label: 'Amount',
-                  value: _formatDisplayBaseMoney(state, dueAmount),
+                  value: maskMoneyIfPrivate(
+                    state,
+                    _formatDisplayBaseMoney(state, dueAmount),
+                  ),
                   icon: Icons.payments_outlined,
                   tone: MetricTone.danger,
                 ),
@@ -1612,12 +1618,15 @@ class CardsHomeWidget extends ConsumerWidget {
               Expanded(
                 child: HomeMetricTile(
                   label: 'Card debt',
-                  value: formatMoney(
-                    Money(
-                      amountMinor: debt,
-                      currency: state.preferences.displayCurrency,
+                  value: maskMoneyIfPrivate(
+                    state,
+                    formatMoney(
+                      Money(
+                        amountMinor: debt,
+                        currency: state.preferences.displayCurrency,
+                      ),
+                      state.preferences.locale,
                     ),
-                    state.preferences.locale,
                   ),
                   icon: Icons.credit_card_outlined,
                   tone: MetricTone.danger,
@@ -1627,7 +1636,10 @@ class CardsHomeWidget extends ConsumerWidget {
               Expanded(
                 child: HomeMetricTile(
                   label: 'Planned',
-                  value: _formatDisplayBaseMoney(state, planned),
+                  value: maskMoneyIfPrivate(
+                    state,
+                    _formatDisplayBaseMoney(state, planned),
+                  ),
                   icon: Icons.payments_outlined,
                   tone: MetricTone.warning,
                 ),
@@ -1640,19 +1652,22 @@ class CardsHomeWidget extends ConsumerWidget {
               icon: Icons.priority_high_rounded,
               title: 'Highest card',
               subtitle: highest.name,
-              trailing: formatMoney(
-                _displayMoney(
-                  state,
-                  accountBalanceFromMap(balances, highest),
-                ).copyWith(
-                  amountMinor: _displayAccountBalanceMinor(
+              trailing: maskMoneyIfPrivate(
+                state,
+                formatMoney(
+                  _displayMoney(
                     state,
-                    highest,
-                    absolute: true,
-                    balances: balances,
+                    accountBalanceFromMap(balances, highest),
+                  ).copyWith(
+                    amountMinor: _displayAccountBalanceMinor(
+                      state,
+                      highest,
+                      absolute: true,
+                      balances: balances,
+                    ),
                   ),
+                  state.preferences.locale,
                 ),
-                state.preferences.locale,
               ),
               iconColor: Theme.of(context).colorScheme.error,
               tone: MetricTone.danger,
@@ -1688,9 +1703,12 @@ class AccountGroupsHomeWidget extends StatelessWidget {
                   HomeDetailRow(
                     icon: Icons.folder_outlined,
                     title: '${group.label} · ${group.count}',
-                    trailing: formatMoney(
-                      group.balance,
-                      state.preferences.locale,
+                    trailing: maskMoneyIfPrivate(
+                      state,
+                      formatMoney(
+                        group.balance,
+                        state.preferences.locale,
+                      ),
                     ),
                     iconColor: group.balance.amountMinor < 0
                         ? Theme.of(context).colorScheme.error

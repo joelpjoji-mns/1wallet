@@ -395,6 +395,8 @@ class AppMainDrawer extends ConsumerWidget {
                       ],
                     ),
                     // Metrics and badges removed as requested
+                    const SizedBox(height: AppSpacing.md),
+                    const _DrawerPrivacyToggle(),
                   ],
                 ),
               ),
@@ -578,6 +580,73 @@ class AppMainDrawer extends ConsumerWidget {
       backgroundColor: Colors.transparent,
       elevation: 0,
       child: content,
+    );
+  }
+}
+
+/// Prominent, always-visible Privacy mode toggle in the drawer header so it is
+/// one tap away instead of buried in Settings.
+class _DrawerPrivacyToggle extends ConsumerWidget {
+  const _DrawerPrivacyToggle();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final enabled = ref.watch(
+      ledgerProvider.select((s) => s.preferences.privacyModeEnabled),
+    );
+    void toggle() {
+      final notifier = ref.read(ledgerProvider.notifier);
+      final prefs = ref.read(ledgerProvider).preferences;
+      notifier.updatePreferences(
+        prefs.copyWith(privacyModeEnabled: !prefs.privacyModeEnabled),
+      );
+    }
+
+    return Material(
+      color: enabled
+          ? scheme.primary.withAlpha(28)
+          : scheme.surface.withAlpha(160),
+      borderRadius: BorderRadius.circular(AppRadii.lg),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        onTap: toggle,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: 6,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                enabled
+                    ? Icons.visibility_off_rounded
+                    : Icons.visibility_outlined,
+                size: 18,
+                color: scheme.primary,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  enabled ? 'Privacy mode · On' : 'Privacy mode · Off',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: scheme.onSurface,
+                  ),
+                ),
+              ),
+              IgnorePointer(
+                child: Switch(
+                  value: enabled,
+                  onChanged: (_) {},
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

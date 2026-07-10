@@ -8,6 +8,7 @@ import '../../utils/currency_utils.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../../widgets/privacy_text.dart';
 import '../../utils/number_formatter.dart';
 import '../common/full_screen_picker.dart';
 
@@ -116,7 +117,10 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                 Expanded(
                   child: MetricTile(
                     label: 'Total',
-                    value: formatMoney(total, state.preferences.locale),
+                    value: maskMoneyIfPrivate(
+                      state,
+                      formatMoney(total, state.preferences.locale),
+                    ),
                     icon: Icons.account_balance_wallet_outlined,
                     compact: true,
                   ),

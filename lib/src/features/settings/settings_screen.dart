@@ -172,6 +172,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const Gap(AppSpacing.lg),
 
+          // ── Privacy (prominent quick access) ──
+          _PrivacyQuickCard(
+            enabled: state.preferences.privacyModeEnabled,
+            onChanged: (value) {
+              ref
+                  .read(ledgerProvider.notifier)
+                  .updatePreferences(
+                    state.preferences.copyWith(privacyModeEnabled: value),
+                  );
+              _showMessage(
+                value ? 'Privacy mode enabled' : 'Privacy mode disabled',
+              );
+            },
+          ),
+          const Gap(AppSpacing.lg),
+
           // ── Preferences ──
           SettingsPreferencesSection(
             preferences: state.preferences,
@@ -645,31 +661,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           // ── Security & Privacy ──
           SectionCard(
             title: 'Security & privacy',
-            subtitle: 'Local-first until cloud sync is configured.',
+            subtitle: 'Privacy mode is available up top and in the sidebar.',
             child: Column(
               children: [
-                LiquidGlassSwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: state.preferences.privacyModeEnabled,
-                  onChanged: (value) {
-                    ref
-                        .read(ledgerProvider.notifier)
-                        .updatePreferences(
-                          state.preferences.copyWith(privacyModeEnabled: value),
-                        );
-                    _showMessage(
-                      value ? 'Privacy mode enabled' : 'Privacy mode disabled',
-                    );
-                  },
-                  title: const Text('Privacy mode'),
-                  subtitle: Text(
-                    'Hide account balances and amounts across the app.',
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
                 LiquidGlassSwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: state.preferences.biometricLockEnabled,
@@ -882,6 +876,96 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       'en_GB' => 'English (United Kingdom)',
       _ => locale,
     };
+  }
+}
+
+class _PrivacyQuickCard extends StatelessWidget {
+  const _PrivacyQuickCard({required this.enabled, required this.onChanged});
+
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.xl),
+        onTap: () => onChanged(!enabled),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadii.xl),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: enabled
+                  ? [
+                      scheme.primaryContainer,
+                      scheme.tertiaryContainer.withAlpha(160),
+                    ]
+                  : [
+                      scheme.surfaceContainerHigh,
+                      scheme.surfaceContainerLow,
+                    ],
+            ),
+            border: Border.all(
+              color: enabled
+                  ? scheme.primary.withAlpha(120)
+                  : scheme.outlineVariant.withAlpha(160),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: scheme.primary.withAlpha(enabled ? 60 : 30),
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
+                ),
+                child: Icon(
+                  enabled
+                      ? Icons.visibility_off_rounded
+                      : Icons.visibility_outlined,
+                  color: scheme.primary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Privacy mode',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      enabled
+                          ? 'Balances and amounts are hidden across the app.'
+                          : 'Hide balances and amounts across the app.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              IgnorePointer(
+                child: Switch(value: enabled, onChanged: onChanged),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
