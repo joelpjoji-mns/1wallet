@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../common/route_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1397,8 +1398,14 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
   double _currentMaxX = 100;
   double _currentMinY = 0;
   double _currentMaxY = 100;
-  
-  double _zoomPercent = 0.5;
+
+  static const double _minRange = 14; // most zoomed-in: ~2 weeks visible
+
+  // Window captured at the start of a pinch/drag gesture, used for stable
+  // scale + pan math.
+  double _startMinX = 0;
+  double _startMaxX = 0;
+  double _startFocalPx = 0;
 
   @override
   void initState() {
@@ -1406,24 +1413,58 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
     _initBounds();
   }
 
+  double get _totalRange {
+    if (widget.spots.length < 2) return 0;
+    return widget.spots.last.x - widget.spots.first.x;
+  }
+
   void _initBounds() {
-    if (widget.spots.isNotEmpty) {
-      final firstX = widget.spots.first.x;
-      final lastX = widget.spots.last.x;
-      final totalRange = lastX - firstX;
-      
-      final initialRange = (totalRange / 3.0).clamp(30.0, totalRange);
-      
-      _currentMinX = firstX;
-      _currentMaxX = firstX + initialRange;
-      if (_currentMaxX > lastX) _currentMaxX = lastX;
-      
-      _zoomPercent = totalRange > 0 ? 1.0 - (initialRange / totalRange) : 0.0;
-      if (_zoomPercent < 0) _zoomPercent = 0;
-      if (_zoomPercent > 1) _zoomPercent = 1;
-      
-      _updateYLimits();
+    if (widget.spots.isEmpty) return;
+    final firstX = widget.spots.first.x;
+    final lastX = widget.spots.last.x;
+    // Default view: focus on the near term (~3 months back to ~15 months
+    // ahead of today at x=0), the most actionable window. Pinch/scroll to
+    // explore the full 6-year range.
+    double minX = math.max(firstX, -90);
+    double maxX = math.min(lastX, 455);
+    if (maxX - minX < _minRange) {
+      minX = firstX;
+      maxX = lastX;
     }
+    _setWindow(minX, maxX);
+  }
+
+  /// Applies a visible X window, clamping it to the data bounds and the
+  /// minimum zoom range, then refreshes the Y limits to fit what's visible.
+  void _setWindow(double minX, double maxX) {
+    if (widget.spots.isEmpty) return;
+    final first = widget.spots.first.x;
+    final last = widget.spots.last.x;
+    final total = last - first;
+    if (total <= 0) {
+      _currentMinX = first - 1;
+      _currentMaxX = last + 1;
+      _updateYLimits();
+      return;
+    }
+    double range = maxX - minX;
+    if (range < _minRange) range = _minRange;
+    if (range >= total) {
+      minX = first;
+      maxX = last;
+    } else {
+      if (minX < first) {
+        minX = first;
+        maxX = first + range;
+      }
+      if (maxX > last) {
+        maxX = last;
+        minX = last - range;
+      }
+    }
+    _currentMinX = minX;
+    _currentMaxX = maxX;
+    _updateYLimits();
   }
 
   @override
@@ -1467,57 +1508,49 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
     _currentMaxY = maxY;
   }
 
-  void _onSliderChange(double val) {
-    if (widget.spots.isEmpty) return;
-    final totalRange = widget.spots.last.x - widget.spots.first.x;
-    if (totalRange <= 0) return;
-    
-    setState(() {
-      _zoomPercent = val;
-      final minRange = 30.0;
-      final newRange = minRange + (1.0 - val) * (totalRange - minRange);
-      
-      final center = (_currentMinX + _currentMaxX) / 2;
-      _currentMinX = center - newRange / 2;
-      _currentMaxX = center + newRange / 2;
-      
-      if (_currentMinX < widget.spots.first.x) {
-        _currentMinX = widget.spots.first.x;
-        _currentMaxX = _currentMinX + newRange;
-      }
-      if (_currentMaxX > widget.spots.last.x) {
-        _currentMaxX = widget.spots.last.x;
-        _currentMinX = _currentMaxX - newRange;
-      }
-      
-      _updateYLimits();
-    });
+  /// Zoom around a fractional focal point (0 = left edge .. 1 = right edge) by
+  /// [factor] (< 1 zooms in, > 1 zooms out).
+  void _applyZoom(double factor, double focalFrac) {
+    if (_totalRange <= 0) return;
+    final range = _currentMaxX - _currentMinX;
+    final newRange = (range * factor).clamp(_minRange, _totalRange);
+    final focalDataX = _currentMinX + focalFrac * range;
+    final newMinX = focalDataX - focalFrac * newRange;
+    setState(() => _setWindow(newMinX, newMinX + newRange));
   }
 
-  void _onPanUpdate(DragUpdateDetails details) {
-    if (widget.spots.isEmpty) return;
-    
+  void _onScaleStart(ScaleStartDetails details) {
+    _startMinX = _currentMinX;
+    _startMaxX = _currentMaxX;
+    _startFocalPx = details.localFocalPoint.dx;
+  }
+
+  void _onScaleUpdate(ScaleUpdateDetails details) {
+    if (_totalRange <= 0) return;
     final width = context.size?.width ?? 300;
-    final range = _currentMaxX - _currentMinX;
-    final deltaX = -(details.delta.dx / width) * range;
-    
-    setState(() {
-      _currentMinX += deltaX;
-      _currentMaxX += deltaX;
-      
-      if (_currentMinX < widget.spots.first.x) {
-        final diff = widget.spots.first.x - _currentMinX;
-        _currentMinX += diff;
-        _currentMaxX += diff;
-      }
-      if (_currentMaxX > widget.spots.last.x) {
-        final diff = _currentMaxX - widget.spots.last.x;
-        _currentMinX -= diff;
-        _currentMaxX -= diff;
-      }
-      
-      _updateYLimits();
-    });
+    if (width <= 0) return;
+    final startRange = _startMaxX - _startMinX;
+    final focalFrac = (_startFocalPx / width).clamp(0.0, 1.0);
+    // Pinch to zoom relative to the window captured at gesture start.
+    final newRange = (startRange / details.scale).clamp(_minRange, _totalRange);
+    final focalDataX = _startMinX + focalFrac * startRange;
+    double newMinX = focalDataX - focalFrac * newRange;
+    // Drag to pan by how far the focal point moved since the gesture started.
+    final panPx = details.localFocalPoint.dx - _startFocalPx;
+    newMinX -= (panPx / width) * newRange;
+    setState(() => _setWindow(newMinX, newMinX + newRange));
+  }
+
+  // Mouse-wheel / trackpad zoom for web & desktop, centred on the pointer.
+  void _onPointerSignal(PointerSignalEvent event) {
+    if (event is PointerScrollEvent) {
+      final width = context.size?.width ?? 300;
+      final focalFrac = width <= 0
+          ? 0.5
+          : (event.localPosition.dx / width).clamp(0.0, 1.0);
+      final zoomingIn = event.scrollDelta.dy < 0;
+      _applyZoom(zoomingIn ? 0.85 : 1.0 / 0.85, focalFrac);
+    }
   }
 
   double get _xInterval {
@@ -1537,11 +1570,14 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
 
     final numberFormat = NumberFormat.compactCurrency(locale: widget.locale, symbol: widget.currencySymbol);
 
-    return Column(
+    return Stack(
+      fit: StackFit.expand,
       children: [
-        Expanded(
+        Listener(
+          onPointerSignal: _onPointerSignal,
           child: GestureDetector(
-            onHorizontalDragUpdate: _onPanUpdate,
+            onScaleStart: _onScaleStart,
+            onScaleUpdate: _onScaleUpdate,
             child: Padding(
               padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, right: 16.0),
               child: LineChart(
@@ -1723,24 +1759,66 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
             ),
           ),
         ),
-        Row(
-          children: [
-            const Icon(Icons.zoom_out, size: 20, color: Colors.grey),
-            Expanded(
-              child: Slider(
-                value: _zoomPercent,
-                min: 0.0,
-                max: 1.0,
-                onChanged: _onSliderChange,
-              ),
-            ),
-            const Icon(Icons.zoom_in, size: 20, color: Colors.grey),
-          ],
+        Positioned(
+          right: 6,
+          bottom: 6,
+          child: _ChartZoomControls(
+            onZoomIn: () => _applyZoom(0.6, 0.5),
+            onZoomOut: () => _applyZoom(1.0 / 0.6, 0.5),
+            onReset: () => setState(_initBounds),
+          ),
         ),
       ],
     );
   }
 }
+/// Google-Maps-style floating zoom controls overlaid on the forecast chart,
+/// so zoom works on web/desktop (no pinch) too.
+class _ChartZoomControls extends StatelessWidget {
+  const _ChartZoomControls({
+    required this.onZoomIn,
+    required this.onZoomOut,
+    required this.onReset,
+  });
+
+  final VoidCallback onZoomIn;
+  final VoidCallback onZoomOut;
+  final VoidCallback onReset;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    Widget button(IconData icon, VoidCallback onTap, String tooltip) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Material(
+          color: scheme.surfaceContainerHighest.withValues(alpha: 0.92),
+          shape: const CircleBorder(),
+          elevation: 2,
+          child: IconButton(
+            tooltip: tooltip,
+            iconSize: 20,
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 38, height: 38),
+            padding: EdgeInsets.zero,
+            onPressed: onTap,
+            icon: Icon(icon, color: scheme.onSurface),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        button(Icons.add_rounded, onZoomIn, 'Zoom in'),
+        button(Icons.remove_rounded, onZoomOut, 'Zoom out'),
+        button(Icons.center_focus_strong_outlined, onReset, 'Reset view'),
+      ],
+    );
+  }
+}
+
 class DynamicForecastBarChart extends StatefulWidget {
   final List<BarChartGroupData> barGroups;
   final double chartWidth;
@@ -2115,6 +2193,21 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
     super.dispose();
   }
 
+  // Snap a stored allocation fraction to the nearest preset segment.
+  double _snapAllocation(double value) {
+    if (value < 0.25) return 0.0;
+    if (value < 0.75) return 0.5;
+    return 1.0;
+  }
+
+  String _allocationHint(double value) {
+    if (value <= 0.0) return 'Only the scheduled EMI is paid — no early payoff.';
+    if (value < 1.0) {
+      return 'Half of your spare cash accelerates the priority loan.';
+    }
+    return 'All spare cash above your buffer goes to the priority loan.';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.loans.isEmpty) {
@@ -2172,39 +2265,6 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
     }
     
     final lineChartWidth = math.max(MediaQuery.of(context).size.width - 64, spots.length * 1.5);
-
-    final weeklyBalances = <DateTime, double>{};
-    if (result.balanceCurve.isNotEmpty) {
-      for (final pt in result.balanceCurve) {
-        final daysSinceMonday = pt.date.weekday - 1; 
-        final weekStart = pt.date.subtract(Duration(days: daysSinceMonday));
-        final weekKey = DateTime(weekStart.year, weekStart.month, weekStart.day);
-        weeklyBalances[weekKey] = pt.netBalanceMinor / baseMinorsScale;
-      }
-    }
-    
-    final barGroups = <BarChartGroupData>[];
-    int weekIndex = 0;
-    for (final entry in weeklyBalances.entries) {
-      final y = entry.value;
-      barGroups.add(
-        BarChartGroupData(
-          x: weekIndex,
-          barRods: [
-            BarChartRodData(
-              toY: y,
-              color: y >= 0 ? scheme.primary : scheme.error,
-              width: 12,
-              borderRadius: BorderRadius.circular(4),
-            ),
-          ],
-        ),
-      );
-      weekIndex++;
-    }
-    
-    final weekKeys = weeklyBalances.keys.toList();
-    final barChartWidth = math.max(MediaQuery.of(context).size.width - 64, weekKeys.length * 24.0);
 
     final loanNumberMap = <String, int>{};
     for (int i = 0; i < _priorityLoans.length; i++) {
@@ -2349,70 +2409,48 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                 },
               ),
               const SizedBox(height: AppSpacing.lg),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          'Extra Cash Allocation',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Text(
-                        '${(_extraAllocationPercent * 100).toInt()}% to priority loans',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w900,
-                          color: scheme.primary,
-                        ),
-                      ),
-                    ],
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Extra cash toward loans',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurfaceVariant,
                   ),
-                  Slider(
-                    value: _extraAllocationPercent,
-                    min: 0.0,
-                    max: 1.0,
-                    divisions: 20,
-                    onChangeEnd: (val) {
-                      _forecastDebounce?.cancel();
-                      setState(() => _debouncedExtraAllocationPercent = val);
-                      ref.read(ledgerProvider.notifier).updatePreferences(
-                        widget.state.preferences.copyWith(forecastExtraAllocationPercent: val),
-                      );
-                    },
-                    onChanged: (val) {
-                      setState(() => _extraAllocationPercent = val);
-                      _forecastDebounce?.cancel();
-                      _forecastDebounce = Timer(const Duration(milliseconds: 120), () {
-                        if (!mounted) return;
-                        setState(() => _debouncedExtraAllocationPercent = val);
-                      });
-                    },
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '0% (Base EMI only)',
-                        style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              SizedBox(
+                width: double.infinity,
+                child: SegmentedButton<double>(
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment(value: 0.0, label: Text('Base')),
+                    ButtonSegment(value: 0.5, label: Text('Balanced')),
+                    ButtonSegment(value: 1.0, label: Text('Max')),
+                  ],
+                  selected: {_snapAllocation(_debouncedExtraAllocationPercent)},
+                  onSelectionChanged: (selection) {
+                    final val = selection.first;
+                    setState(() {
+                      _extraAllocationPercent = val;
+                      _debouncedExtraAllocationPercent = val;
+                    });
+                    ref.read(ledgerProvider.notifier).updatePreferences(
+                      widget.state.preferences.copyWith(
+                        forecastExtraAllocationPercent: val,
                       ),
-                      Text(
-                        '100% (Aggressive)',
-                        style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
-                ],
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                _allocationHint(
+                  _snapAllocation(_debouncedExtraAllocationPercent),
+                ),
+                style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
               ),
             ],
           ),
@@ -2421,7 +2459,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
         
         SectionCard(
           title: 'Projected Liquid Cash',
-          subtitle: 'Includes past actuals and future projections. Watch the balance plummet when a loan pays off!',
+          subtitle: 'Pinch, scroll, or tap +/− to zoom · drag to pan. Numbered dots mark when each loan is paid off.',
           child: SizedBox(
             height: 380,
             child: DynamicForecastLineChart(
@@ -2431,24 +2469,6 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               balanceCurve: result.balanceCurve,
               locale: locale,
               payoffDots: payoffDots,
-              currencySymbol: currencySymbol,
-              isPrivate: widget.state.preferences.privacyModeEnabled,
-            ),
-          ),
-        ),
-        
-        const Gap(AppSpacing.lg),
-        
-        SectionCard(
-          title: 'Weekly Calendar View',
-          subtitle: 'End-of-week projected liquid cash over time.',
-          child: SizedBox(
-            height: 380,
-            child: DynamicForecastBarChart(
-              barGroups: barGroups,
-              chartWidth: barChartWidth,
-              timeKeys: weekKeys,
-              locale: locale,
               currencySymbol: currencySymbol,
               isPrivate: widget.state.preferences.privacyModeEnabled,
             ),

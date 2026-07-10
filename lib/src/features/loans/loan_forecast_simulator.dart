@@ -69,7 +69,10 @@ class _SimulatedLoan {
   _SimulatedLoan(ActiveLoan active) 
       : account = active.account,
         balance = active.principalMinor.toDouble(),
-        dailyEmi = active.monthlyEmiMinor.toDouble() / 30.0,
+        // Spread the monthly EMI evenly across the year (12 payments over 365
+        // days) so a full year of daily payments equals exactly 12 EMIs
+        // instead of the ~12.17 that monthlyEmi/30 produced.
+        dailyEmi = active.monthlyEmiMinor.toDouble() * 12.0 / 365.0,
         dailyRate = active.annualRatePercent <= 0 ? 0 : (active.annualRatePercent / 100.0 / 365.0);
 }
 
