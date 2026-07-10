@@ -43,60 +43,31 @@ class SmsSpooler {
     return messages;
   }
 
-  /// Extracts keywords from the ledger state and saves them as trigger words
-  /// so that the Android SmsReceiver can filter incoming messages.
+  /// Publishes the user's trigger + ignore word lists (and the enable flag)
+  /// to SharedPreferences so the native Android [SmsReceiver] filters incoming
+  /// messages with the EXACT same rule the Dart parser uses. Keeping the two
+  /// in lock-step is what guarantees a notification is raised if and only if a
+  /// review candidate would be created.
   static Future<void> updateTriggerWords(LedgerState state) async {
     final prefs = await SharedPreferences.getInstance();
 
-    final words = <String>{
-      // Common transaction words
-      'debited', 'credited', 'spent', 'paid', 'received', 'transaction',
-      'payment', 'a/c', 'acct', 'tx', 'txn', 'balance', 'deducted',
-      'refund', 'reversal', 'reversed', 'charge', 'withdrawal', 'purchase',
-      'fee', 'remitted', 'deposited', 'salary', 'cashback', 'added',
-      'withdrawn', 'sent', 'transfer', 'remittance', 'dr', 'cr',
-      'upi', 'vpa', 'inr', 'rs', 'usd', 'eur', 'gbp',
-    };
+    List<String> clean(List<String> words) => words
+        .map((w) => w.trim().toLowerCase())
+        .where((w) => w.isNotEmpty)
+        .toSet()
+        .toList();
 
-    for (final account in state.accounts) {
-      if (account.isArchived) continue;
-
-      // Add currency
-      words.add(account.currency.toLowerCase());
-
-      // Add parts of account name
-      final parts = account.name.split(RegExp(r'\s+'));
-      for (final part in parts) {
-        if (part.length > 2) {
-          words.add(part.toLowerCase());
-        }
-      }
-
-      // Add parts of group name if present
-      if (account.groupName != null) {
-        final groupParts = account.groupName!.split(RegExp(r'\s+'));
-        for (final part in groupParts) {
-          if (part.length > 2) {
-            words.add(part.toLowerCase());
-          }
-        }
-      }
-
-      // Add parts of institution if present
-      if (account.institution != null) {
-        final instParts = account.institution!.split(RegExp(r'\s+'));
-        for (final part in instParts) {
-          if (part.length > 2) {
-            words.add(part.toLowerCase());
-          }
-        }
-      }
-    }
-
-    final triggerWords = words.toList();
     await prefs.setString(
       'one_wallet_flutter.sms_trigger_words',
-      jsonEncode(triggerWords),
+      jsonEncode(clean(state.preferences.smsTriggerWords)),
+    );
+    await prefs.setString(
+      'one_wallet_flutter.sms_ignore_words',
+      jsonEncode(clean(state.preferences.smsIgnoreWords)),
+    );
+    await prefs.setBool(
+      'one_wallet_flutter.sms_capture_enabled',
+      state.preferences.smsCaptureEnabled,
     );
   }
 }

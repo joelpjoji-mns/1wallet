@@ -232,7 +232,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/import-sms',
-        builder: (context, state) => const ImportSmsScreen(),
+        builder: (context, state) => const SmsCaptureScreen(),
       ),
       GoRoute(
         path: '/data-backup',
@@ -242,7 +242,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/auto-capture',
         builder: (context, state) => const DrawerConfig(
           hasDrawer: true,
-          child: ImportSmsScreen(title: 'Auto Capture'),
+          child: SmsCaptureScreen(title: 'Auto capture'),
         ),
       ),
       GoRoute(

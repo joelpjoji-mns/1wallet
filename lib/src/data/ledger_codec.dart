@@ -432,6 +432,9 @@ Map<String, Object?> _preferencesToJson(LedgerPreferences preferences) {
     'forecastExtraAllocationPercent': preferences.forecastExtraAllocationPercent,
     'loanPriorityIds': preferences.loanPriorityIds,
     'loanPayoffDelayDays': preferences.loanPayoffDelayDays,
+    'smsCaptureEnabled': preferences.smsCaptureEnabled,
+    'smsTriggerWords': preferences.smsTriggerWords,
+    'smsIgnoreWords': preferences.smsIgnoreWords,
   };
 }
 
@@ -566,6 +569,18 @@ LedgerPreferences _preferencesFromJson(Map<String, dynamic> json) {
     loanPayoffDelayDays: _int(
       json['loanPayoffDelayDays'],
       fallback: fallback.loanPayoffDelayDays,
+    ),
+    smsCaptureEnabled: _bool(
+      json['smsCaptureEnabled'],
+      fallback: fallback.smsCaptureEnabled,
+    ),
+    smsTriggerWords: _stringList(
+      json['smsTriggerWords'],
+      fallback: fallback.smsTriggerWords,
+    ),
+    smsIgnoreWords: _stringList(
+      json['smsIgnoreWords'],
+      fallback: fallback.smsIgnoreWords,
     ),
   );
 }

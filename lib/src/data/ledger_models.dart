@@ -140,6 +140,31 @@ class FutureGenerationRule {
 const kDefaultCurrency = 'USD';
 const kDefaultLocale = 'en_US';
 
+/// Words that indicate an SMS is about a real, completed money movement.
+/// Shared by the Android SMS receiver (native pre-filter) and the Dart parser
+/// so both agree on what counts as a transaction.
+const List<String> kDefaultSmsTriggerWords = [
+  'debited', 'credited', 'spent', 'paid', 'received', 'withdrawn',
+  'deposited', 'purchase', 'purchased', 'txn', 'transaction', 'payment',
+  'transferred', 'sent', 'charge', 'charged', 'refunded', 'refund',
+  'deducted', 'remitted', 'emi', 'autopay', 'imps', 'neft', 'rtgs', 'upi',
+  'pos', 'atm', 'authorized', 'authorised', 'paiement', 'salary', 'cashback',
+  'reversal', 'reversed', 'withdrawal', 'fee',
+];
+
+/// Words that mean an SMS is NOT a completed transaction (OTPs, promos,
+/// reminders, requests, failures). If any appears the message is never
+/// queued or notified, even if it also contains a trigger word.
+const List<String> kDefaultSmsIgnoreWords = [
+  'otp', 'one time password', 'one-time password', 'verification code',
+  'login code', 'do not share', 'e-statement', 'statement is ready',
+  'will be debited', 'will be deducted', 'requested', 'payment request',
+  'collect request', 'reminder', 'due on', 'is due', 'overdue', 'failed',
+  'declined', 'unsuccessful', 'offer', 'sale', 'discount', 'congratulations',
+  'cashback offer', 'reward points', 'update kyc', 'promo', 'coupon',
+  'voucher', 'prize', 'loan offer', 'pre-approved', 'apply now', 'unsubscribe',
+];
+
 @immutable
 class LedgerPreferences {
   const LedgerPreferences({
@@ -173,6 +198,9 @@ class LedgerPreferences {
     this.forecastExtraAllocationPercent = 0.5,
     this.loanPriorityIds = const [],
     this.loanPayoffDelayDays = 0,
+    this.smsCaptureEnabled = true,
+    this.smsTriggerWords = kDefaultSmsTriggerWords,
+    this.smsIgnoreWords = kDefaultSmsIgnoreWords,
   });
 
   final String baseCurrency;
@@ -205,6 +233,9 @@ class LedgerPreferences {
   final double forecastExtraAllocationPercent;
   final List<String> loanPriorityIds;
   final int loanPayoffDelayDays;
+  final bool smsCaptureEnabled;
+  final List<String> smsTriggerWords;
+  final List<String> smsIgnoreWords;
 
   LedgerPreferences copyWith({
     String? baseCurrency,
@@ -237,6 +268,9 @@ class LedgerPreferences {
     double? forecastExtraAllocationPercent,
     List<String>? loanPriorityIds,
     int? loanPayoffDelayDays,
+    bool? smsCaptureEnabled,
+    List<String>? smsTriggerWords,
+    List<String>? smsIgnoreWords,
   }) {
     return LedgerPreferences(
       baseCurrency: baseCurrency ?? this.baseCurrency,
@@ -280,6 +314,9 @@ class LedgerPreferences {
           forecastExtraAllocationPercent ?? this.forecastExtraAllocationPercent,
       loanPriorityIds: loanPriorityIds ?? this.loanPriorityIds,
       loanPayoffDelayDays: loanPayoffDelayDays ?? this.loanPayoffDelayDays,
+      smsCaptureEnabled: smsCaptureEnabled ?? this.smsCaptureEnabled,
+      smsTriggerWords: smsTriggerWords ?? this.smsTriggerWords,
+      smsIgnoreWords: smsIgnoreWords ?? this.smsIgnoreWords,
     );
   }
 }
