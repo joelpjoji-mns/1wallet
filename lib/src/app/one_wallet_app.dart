@@ -95,6 +95,22 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
                   systemColorScheme: useSystemAccent ? darkDynamic : null,
                 ),
           themeMode: themeState.themeMode,
+          builder: (context, child) {
+            if (child == null) return const SizedBox.shrink();
+            // On wide screens (web PWA / tablets / desktop) keep the app at a
+            // comfortable phone-like width, centered, rather than stretching
+            // controls edge-to-edge. Phones (<=600px) are unaffected.
+            final width = MediaQuery.sizeOf(context).width;
+            if (width <= 600) return child;
+            return ColoredBox(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              child: Center(
+                child: ClipRect(
+                  child: SizedBox(width: 600, child: child),
+                ),
+              ),
+            );
+          },
         );
       },
     );
