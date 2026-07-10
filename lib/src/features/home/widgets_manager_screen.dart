@@ -18,10 +18,24 @@ class WidgetsManagerScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(ledgerProvider);
     final theme = Theme.of(context);
-    final visibleOrder = resolveHomeWidgetOrder(
+    final activeOrder = resolveHomeWidgetOrder(
       state.preferences.homeWidgetOrder,
       hidden: state.preferences.homeWidgetHidden,
-    ).map((item) => item.storageKey).toList();
+    );
+    final visibleOrder = activeOrder.map((item) => item.storageKey).toList();
+
+    // Present the gallery in a meaningful order: the widgets currently on Home
+    // (in their Home order) first, then the remaining widgets following the
+    // default order, then anything else — rather than the raw enum order.
+    final gallerySeen = <HomeDashboardWidgetId>{};
+    final galleryOrder = <HomeDashboardWidgetId>[];
+    for (final widgetId in [
+      ...activeOrder,
+      ...defaultHomeWidgetOrder,
+      ...HomeDashboardWidgetId.values,
+    ]) {
+      if (gallerySeen.add(widgetId)) galleryOrder.add(widgetId);
+    }
 
     return RouteScaffold(
       title: 'Widgets Gallery',
@@ -100,13 +114,13 @@ class WidgetsManagerScreen extends ConsumerWidget {
             style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
           ),
           const Gap(AppSpacing.md),
-          for (final widgetId in HomeDashboardWidgetId.values) ...[
+          for (final widgetId in galleryOrder) ...[
             _LiveWidgetPreview(
               widgetId: widgetId,
               isVisible: visibleOrder.contains(widgetId.storageKey),
               preferences: state.preferences,
             ),
-            if (widgetId != HomeDashboardWidgetId.values.last)
+            if (widgetId != galleryOrder.last)
               const SizedBox(height: AppSpacing.lg),
           ],
         ],
