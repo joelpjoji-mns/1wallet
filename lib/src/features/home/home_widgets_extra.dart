@@ -23,7 +23,7 @@ class NetWorthHomeWidget extends StatelessWidget {
     final denom = assets + liabilities;
     final assetFlex = denom > 0 ? (assets / denom * 100).round().clamp(0, 100) : 100;
     final liabFlex = 100 - assetFlex;
-    final positiveColor = const Color(0xff22c55e);
+    final positiveColor = positiveTone(context);
 
     return HomeWidgetCard(
       title: 'Net worth',
@@ -107,7 +107,7 @@ class CashFlowHomeWidget extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final locale = state.preferences.locale;
     final flow = cashFlowThisMonth(state);
-    final positiveColor = const Color(0xff22c55e);
+    final positiveColor = positiveTone(context);
     final maxSide = [
       flow.incomeMinor,
       flow.expenseMinor,
@@ -215,11 +215,11 @@ class FinancialHealthHomeWidget extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final health = financialHealthScore(state);
     final color = health.score >= 80
-        ? const Color(0xff22c55e)
+        ? positiveTone(context)
         : health.score >= 60
         ? scheme.primary
         : health.score >= 40
-        ? const Color(0xfff59e0b)
+        ? warningTone(context)
         : scheme.error;
 
     return HomeWidgetCard(
@@ -307,7 +307,7 @@ class MonthComparisonHomeWidget extends StatelessWidget {
         ? scheme.onSurfaceVariant
         : up
         ? scheme.error
-        : const Color(0xff22c55e);
+        : positiveTone(context);
 
     return HomeWidgetCard(
       title: 'Spending vs last month',
@@ -580,7 +580,7 @@ class _SignalChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final color = good ? const Color(0xff22c55e) : const Color(0xfff59e0b);
+    final color = good ? positiveTone(context) : warningTone(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(

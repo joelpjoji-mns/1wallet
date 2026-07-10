@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
+import '../../ledger/ledger_selectors.dart';
 import '../home/home_async_providers.dart';
 import '../home/home_dashboard_selectors.dart';
 import '../../widgets/privacy_text.dart';
@@ -103,9 +104,7 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
                     style: TextStyle(
                       fontSize: 40,
                       fontWeight: FontWeight.bold,
-                      color: current.amountMinor >= 0
-                          ? const Color(0xff22c55e)
-                          : const Color(0xffef4444),
+                      color: amountColor(context, current.amountMinor),
                     ),
                   ),
                   const SizedBox(height: 4),
