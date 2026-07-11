@@ -130,6 +130,44 @@ class HomeScreen extends ConsumerWidget {
           ],
         ),
       );
+    } else if (sync.phase == CloudSyncPhase.error) {
+      syncIndicator = Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: scheme.errorContainer,
+          border: Border(
+            bottom: BorderSide(color: scheme.error.withOpacity(0.3), width: 1),
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        child: Row(
+          children: [
+            Icon(Icons.error_outline, size: 16, color: scheme.onErrorContainer),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                sync.error ?? 'Sync failed',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: scheme.onErrorContainer,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                ref.read(cloudSyncControllerProvider.notifier).fullSync(reason: 'user_retry');
+              },
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                minimumSize: const Size(40, 24),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text('Retry', style: TextStyle(fontSize: 12, color: scheme.onErrorContainer, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
     }
 
     return AppScreen(

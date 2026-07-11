@@ -354,8 +354,15 @@ class LedgerController extends StateNotifier<LedgerState> {
     await _commit(decodeLedgerArchive(archiveSource));
   }
 
+  bool _isRestoring = false;
+
   Future<void> restoreLedgerState(LedgerState next) async {
-    await _commit(next.copyWith(version: currentLedgerStateVersion));
+    _isRestoring = true;
+    try {
+      await _commit(next.copyWith(version: currentLedgerStateVersion));
+    } finally {
+      _isRestoring = false;
+    }
   }
 
   Future<void> setHomeWidgetPreferences({
@@ -1153,7 +1160,7 @@ class LedgerController extends StateNotifier<LedgerState> {
       final txDuplicate = state.transactions.any((tx) {
         if (tx.status == 'scheduled' || tx.status == 'paused') return false;
         final timeDiff = tx.occurredAt.difference(receivedAt).abs().inMinutes;
-        if (timeDiff > 15) return false;
+        if (timeDiff > 720) return false;
 
         if (tx.amount.amountMinor != amount.amountMinor ||
             tx.amount.currency.toUpperCase() != amount.currency.toUpperCase()) {
@@ -1326,7 +1333,9 @@ class LedgerController extends StateNotifier<LedgerState> {
         parsed: parsed,
         receivedAt: message.receivedAt,
         matchedAccountId: matchedAccountId,
-      ) || newCandidates.any((c) => c.rawText == parsed.rawText);
+      ) || newCandidates.any((c) =>
+          c.rawText == parsed.rawText &&
+          c.createdAt.difference(message.receivedAt).abs().inHours < 24);
       if (isDuplicate) continue;
 
       final candidate = CaptureCandidate(
@@ -1606,18 +1615,26 @@ class LedgerController extends StateNotifier<LedgerState> {
     final normalized = normalizeLedgerState(next);
     state = normalized;
     await _repository.save(normalized);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('has_unsynced_changes', true);
-    await prefs.setString('last_local_modified_at', DateTime.now().toUtc().toIso8601String());
+
+    if (!_isRestoring) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('has_unsynced_changes', true);
+      await prefs.setString(
+        'last_local_modified_at',
+        DateTime.now().toUtc().toIso8601String(),
+      );
+    }
 
     unawaited(SmsSpooler.updateTriggerWords(normalized));
     unawaited(NotificationSpooler.updateTriggerWords(normalized));
 
-    _autoBackupTimer?.cancel();
-    if (!LedgerProvidersConfig.disableAutoBackup) {
-      _autoBackupTimer = Timer(const Duration(seconds: 3), () {
-        unawaited(_performAutoBackup(normalized));
-      });
+    if (!_isRestoring) {
+      _autoBackupTimer?.cancel();
+      if (!LedgerProvidersConfig.disableAutoBackup) {
+        _autoBackupTimer = Timer(const Duration(seconds: 3), () {
+          unawaited(_performAutoBackup(normalized));
+        });
+      }
     }
   }
 

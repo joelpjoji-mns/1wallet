@@ -10,8 +10,19 @@ class SmsSpooler {
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload();
 
-    final spooled = prefs.getStringList(_spoolKey) ?? <String>[];
+    final existingRaw = prefs.getString(_spoolKey) ?? '';
+    List<dynamic> spooled;
+    if (existingRaw.isNotEmpty) {
+      try {
+        spooled = (jsonDecode(existingRaw) as List).cast<dynamic>();
+      } catch (_) {
+        spooled = <dynamic>[];
+      }
+    } else {
+      spooled = <dynamic>[];
+    }
 
+    // Always append as a JSON string to match Kotlin's format exactly.
     final payload = jsonEncode({
       'sender': sender,
       'body': body,
@@ -19,7 +30,7 @@ class SmsSpooler {
     });
 
     spooled.add(payload);
-    await prefs.setStringList(_spoolKey, spooled);
+    await prefs.setString(_spoolKey, jsonEncode(spooled));
   }
 
   /// Retrieves all spooled messages and clears the queue.
@@ -27,15 +38,27 @@ class SmsSpooler {
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload();
 
-    final spooled = prefs.getStringList(_spoolKey);
-    if (spooled == null || spooled.isEmpty) {
+    final raw = prefs.getString(_spoolKey);
+    if (raw == null || raw.isEmpty) {
+      return [];
+    }
+
+    List<dynamic> spooled;
+    try {
+      spooled = (jsonDecode(raw) as List).cast<dynamic>();
+    } catch (_) {
+      await prefs.remove(_spoolKey);
       return [];
     }
 
     final messages = <Map<String, dynamic>>[];
     for (final payload in spooled) {
       try {
-        messages.add(jsonDecode(payload) as Map<String, dynamic>);
+        if (payload is String) {
+          messages.add(jsonDecode(payload) as Map<String, dynamic>);
+        } else if (payload is Map) {
+          messages.add(Map<String, dynamic>.from(payload));
+        }
       } catch (_) {}
     }
 
