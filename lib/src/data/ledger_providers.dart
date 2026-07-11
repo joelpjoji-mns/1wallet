@@ -443,6 +443,7 @@ class LedgerController extends StateNotifier<LedgerState> {
       await _repository.save(state);
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('has_unsynced_changes', true);
+      await prefs.setString('last_local_modified_at', DateTime.now().toUtc().toIso8601String());
     });
   }
 
@@ -1607,6 +1608,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     await _repository.save(normalized);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('has_unsynced_changes', true);
+    await prefs.setString('last_local_modified_at', DateTime.now().toUtc().toIso8601String());
 
     unawaited(SmsSpooler.updateTriggerWords(normalized));
     unawaited(NotificationSpooler.updateTriggerWords(normalized));
