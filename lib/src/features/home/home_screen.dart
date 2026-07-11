@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../cloud_sync/cloud_sync_controller.dart';
 
 import '../../auth/auth_controller.dart';
 import '../../data/ledger_models.dart';
@@ -67,6 +68,69 @@ class HomeScreen extends ConsumerWidget {
     final user = ref.watch(_homeAuthUserProvider);
     final selectedAccountId = ref.watch(homeSelectedAccountProvider);
     final reorderMode = ref.watch(_homeWidgetReorderModeProvider);
+
+    final sync = ref.watch(cloudSyncControllerProvider);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    Widget? syncIndicator;
+    if (sync.phase == CloudSyncPhase.checking ||
+        sync.phase == CloudSyncPhase.restoring ||
+        sync.phase == CloudSyncPhase.uploading) {
+      final message = sync.progressMessage ??
+          (sync.phase == CloudSyncPhase.checking
+              ? 'Checking cloud updates…'
+              : (sync.phase == CloudSyncPhase.restoring
+                  ? 'Downloading latest database…'
+                  : 'Uploading latest changes…'));
+      syncIndicator = Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: scheme.primaryContainer.withOpacity(0.35),
+          border: Border(
+            bottom: BorderSide(
+              color: scheme.primary.withOpacity(0.15),
+              width: 1,
+            ),
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.5,
+                color: scheme.primary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: scheme.onPrimaryContainer,
+                ),
+              ),
+            ),
+            if (sync.progress != null) ...[
+              const SizedBox(width: 8),
+              Text(
+                '${(sync.progress! * 100).round()}%',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: scheme.primary,
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
 
     return AppScreen(
       title: '1Wallet',
@@ -136,10 +200,17 @@ class HomeScreen extends ConsumerWidget {
       ],
       scrollable: false,
       padding: EdgeInsets.zero,
-      child: _HomeDashboardList(
-        widgetOrder: widgetOrder,
-        onTabSelected: onTabSelected,
-        reorderMode: reorderMode,
+      child: Column(
+        children: [
+          if (syncIndicator != null) syncIndicator,
+          Expanded(
+            child: _HomeDashboardList(
+              widgetOrder: widgetOrder,
+              onTabSelected: onTabSelected,
+              reorderMode: reorderMode,
+            ),
+          ),
+        ],
       ),
     );
   }

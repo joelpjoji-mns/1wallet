@@ -235,14 +235,38 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           .timeout(cloudSyncReadTimeout);
 
       final lastWriterDeviceId = userDoc.data()?['lastWriterDeviceId'];
+      final cloudUpdatedAtTemp = userDoc.data()?['updatedAt'];
+      DateTime? cloudUpdatedAt;
+      if (cloudUpdatedAtTemp is Timestamp) {
+        cloudUpdatedAt = cloudUpdatedAtTemp.toDate();
+      } else if (cloudUpdatedAtTemp is String) {
+        cloudUpdatedAt = DateTime.tryParse(cloudUpdatedAtTemp);
+      }
+
       final prefs = await SharedPreferences.getInstance();
       final hasUnsyncedChanges = prefs.getBool('has_unsynced_changes') ?? false;
+      final localModifiedAtStr = prefs.getString('last_local_modified_at');
+      final localModifiedAt = localModifiedAtStr != null ? DateTime.tryParse(localModifiedAtStr) : null;
 
-      final bool shouldPull =
-          userDoc.exists &&
-          lastWriterDeviceId != null &&
-          lastWriterDeviceId != metadata.deviceId &&
-          !hasUnsyncedChanges;
+      final bool shouldPull;
+      if (!userDoc.exists) {
+        shouldPull = false;
+      } else {
+        final isCloudNewer = cloudUpdatedAt != null &&
+            localModifiedAt != null &&
+            cloudUpdatedAt.isAfter(localModifiedAt);
+
+        if (isCloudNewer) {
+          shouldPull = true;
+        } else if (hasUnsyncedChanges) {
+          shouldPull = false;
+        } else if (lastWriterDeviceId != null &&
+            lastWriterDeviceId != metadata.deviceId) {
+          shouldPull = true;
+        } else {
+          shouldPull = false;
+        }
+      }
 
       if (shouldPull) {
         await _restoreFromCloud(user.id, metadata);
@@ -285,22 +309,37 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
             .get()
             .timeout(cloudSyncReadTimeout);
         final lastWriterDeviceId = userDoc.data()?['lastWriterDeviceId'];
+        final cloudUpdatedAtTemp = userDoc.data()?['updatedAt'];
+        DateTime? cloudUpdatedAt;
+        if (cloudUpdatedAtTemp is Timestamp) {
+          cloudUpdatedAt = cloudUpdatedAtTemp.toDate();
+        } else if (cloudUpdatedAtTemp is String) {
+          cloudUpdatedAt = DateTime.tryParse(cloudUpdatedAtTemp);
+        }
+
         final hasUserData = _walletHasUserData(_ref.read(ledgerProvider));
         final prefs = await SharedPreferences.getInstance();
         final hasUnsyncedChanges =
             prefs.getBool('has_unsynced_changes') ?? false;
+        final localModifiedAtStr = prefs.getString('last_local_modified_at');
+        final localModifiedAt = localModifiedAtStr != null ? DateTime.tryParse(localModifiedAtStr) : null;
 
         debugPrint(
-          'CloudSync _bootstrap: userDoc.exists=${userDoc.exists}, lastWriterDeviceId=$lastWriterDeviceId, metadata.deviceId=${metadata.deviceId}, hasUserData=$hasUserData, hasUnsyncedChanges=$hasUnsyncedChanges',
+          'CloudSync _bootstrap: userDoc.exists=${userDoc.exists}, lastWriterDeviceId=$lastWriterDeviceId, metadata.deviceId=${metadata.deviceId}, hasUserData=$hasUserData, hasUnsyncedChanges=$hasUnsyncedChanges, localModifiedAt=$localModifiedAt, cloudUpdatedAt=$cloudUpdatedAt',
         );
+
+        final isCloudNewer = cloudUpdatedAt != null &&
+            localModifiedAt != null &&
+            cloudUpdatedAt.isAfter(localModifiedAt);
+
         final bool shouldPull =
-            !userDoc.exists ||
+            !hasUserData ||
+            isCloudNewer ||
             (lastWriterDeviceId != null &&
                 lastWriterDeviceId != metadata.deviceId &&
-                !hasUnsyncedChanges) ||
-            !hasUserData;
+                !hasUnsyncedChanges);
 
-        if (shouldPull) {
+        if (shouldPull && userDoc.exists) {
           // We have cloud data. Restore it locally.
           await _restoreFromCloud(userId, metadata);
         }
@@ -704,6 +743,10 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       }
 
       await _ledger.restoreLedgerState(ledger);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('has_unsynced_changes', false);
+      await prefs.remove('last_local_modified_at');
 
       final newMetadata = currentMetadata.copyWith(
         userId: userId,
