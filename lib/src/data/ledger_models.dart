@@ -170,6 +170,21 @@ const List<String> kDefaultSmsIgnoreWords = [
   'voucher', 'prize', 'loan offer', 'pre-approved', 'apply now', 'unsubscribe',
 ];
 
+const List<String> kDefaultNotificationPackages = [
+  'com.chase.sig.android',
+  'com.revolut.revolut',
+  'com.google.android.apps.nbu.paisa.user',
+  'com.google.android.apps.walletnfcrel',
+  'com.venmo',
+  'com.paypal.android.p2pmobile',
+  'com.monzo.android',
+  'com.capitalone.mobile',
+  'com.amex.android.amexmobile',
+  'org.westpac.bank',
+  'com.commbank.netbank',
+  'net.bnz.boost',
+];
+
 @immutable
 class LedgerPreferences {
   const LedgerPreferences({
@@ -206,6 +221,10 @@ class LedgerPreferences {
     this.smsCaptureEnabled = true,
     this.smsTriggerWords = kDefaultSmsTriggerWords,
     this.smsIgnoreWords = kDefaultSmsIgnoreWords,
+    this.notificationCaptureEnabled = false,
+    this.notificationTriggerWords = kDefaultSmsTriggerWords,
+    this.notificationIgnoreWords = kDefaultSmsIgnoreWords,
+    this.notificationTargetPackages = kDefaultNotificationPackages,
   });
 
   final String baseCurrency;
@@ -241,6 +260,10 @@ class LedgerPreferences {
   final bool smsCaptureEnabled;
   final List<String> smsTriggerWords;
   final List<String> smsIgnoreWords;
+  final bool notificationCaptureEnabled;
+  final List<String> notificationTriggerWords;
+  final List<String> notificationIgnoreWords;
+  final List<String> notificationTargetPackages;
 
   LedgerPreferences copyWith({
     String? baseCurrency,
@@ -276,6 +299,10 @@ class LedgerPreferences {
     bool? smsCaptureEnabled,
     List<String>? smsTriggerWords,
     List<String>? smsIgnoreWords,
+    bool? notificationCaptureEnabled,
+    List<String>? notificationTriggerWords,
+    List<String>? notificationIgnoreWords,
+    List<String>? notificationTargetPackages,
   }) {
     return LedgerPreferences(
       baseCurrency: baseCurrency ?? this.baseCurrency,
@@ -322,6 +349,14 @@ class LedgerPreferences {
       smsCaptureEnabled: smsCaptureEnabled ?? this.smsCaptureEnabled,
       smsTriggerWords: smsTriggerWords ?? this.smsTriggerWords,
       smsIgnoreWords: smsIgnoreWords ?? this.smsIgnoreWords,
+      notificationCaptureEnabled:
+          notificationCaptureEnabled ?? this.notificationCaptureEnabled,
+      notificationTriggerWords:
+          notificationTriggerWords ?? this.notificationTriggerWords,
+      notificationIgnoreWords:
+          notificationIgnoreWords ?? this.notificationIgnoreWords,
+      notificationTargetPackages:
+          notificationTargetPackages ?? this.notificationTargetPackages,
     );
   }
 }

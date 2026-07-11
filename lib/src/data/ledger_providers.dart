@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../capture/message_parser.dart';
 import '../features/capture/sms_spooler.dart';
+import '../features/capture/notification_spooler.dart';
 import '../imports/wallet_csv_parser.dart';
 import '../ledger/ledger_selectors.dart';
 import '../utils/recurrence_utils.dart';
@@ -234,6 +235,7 @@ class LedgerController extends StateNotifier<LedgerState> {
         state = fixed;
         unawaited(_repository.save(fixed));
         unawaited(SmsSpooler.updateTriggerWords(fixed));
+        unawaited(NotificationSpooler.updateTriggerWords(fixed));
       } else {
         state = emptyLedgerState();
       }
@@ -241,11 +243,13 @@ class LedgerController extends StateNotifier<LedgerState> {
         LedgerLoadState.ready(hasPersistedLedger: restored != null),
       );
       unawaited(processSpooledSms());
+      unawaited(processSpooledNotifications());
 
       // Start active foreground polling for instant updates
       Timer.periodic(const Duration(seconds: 5), (_) {
         if (!mounted) return;
         unawaited(processSpooledSms());
+        unawaited(processSpooledNotifications());
       });
     } catch (error) {
       if (!mounted) return;
@@ -279,6 +283,27 @@ class LedgerController extends StateNotifier<LedgerState> {
       }
     } catch (e) {
       debugPrint('Error processing spooled SMS: $e');
+    }
+  }
+
+  Future<void> processSpooledNotifications() async {
+    try {
+      if (!state.preferences.notificationCaptureEnabled) return;
+      final spooled = await NotificationSpooler.popSpooledMessages();
+      if (spooled.isEmpty) return;
+
+      for (final payload in spooled) {
+        final body = payload['body'] as String?;
+        final timestampStr = payload['timestamp'] as String?;
+        final receivedAt = timestampStr != null
+            ? DateTime.tryParse(timestampStr)
+            : null;
+        if (body != null && body.isNotEmpty) {
+          await importNotificationMessage(body, receivedAt: receivedAt);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error processing spooled notifications: $e');
     }
   }
 
@@ -1109,6 +1134,71 @@ class LedgerController extends StateNotifier<LedgerState> {
     await _commit(state.copyWith(captureCandidates: candidates));
   }
 
+  bool _isTransactionDuplicate({
+    required LedgerState state,
+    required ParsedTransactionMessage parsed,
+    required DateTime receivedAt,
+    required String? matchedAccountId,
+  }) {
+    final textDuplicate = state.captureCandidates.any(
+      (c) =>
+          c.rawText == parsed.rawText &&
+          c.createdAt.difference(receivedAt).abs().inHours < 24,
+    );
+    if (textDuplicate) return true;
+
+    final amount = parsed.amount;
+    if (amount != null) {
+      final txDuplicate = state.transactions.any((tx) {
+        if (tx.status == 'scheduled' || tx.status == 'paused') return false;
+        final timeDiff = tx.occurredAt.difference(receivedAt).abs().inMinutes;
+        if (timeDiff > 15) return false;
+
+        if (tx.amount.amountMinor != amount.amountMinor ||
+            tx.amount.currency.toUpperCase() != amount.currency.toUpperCase()) {
+          return false;
+        }
+
+        if (matchedAccountId != null && tx.accountId == matchedAccountId) {
+          return true;
+        }
+        if (parsed.last4 != null) {
+          final acc = state.accounts.firstWhereOrNull((a) => a.id == tx.accountId);
+          if (acc != null && (acc.cardLast4 == parsed.last4 || acc.accountLast4 == parsed.last4)) {
+            return true;
+          }
+        }
+        return false;
+      });
+      if (txDuplicate) return true;
+
+      final candidateDuplicate = state.captureCandidates.any((c) {
+        if (c.status != 'pending') return false;
+        final timeDiff = c.createdAt.difference(receivedAt).abs().inMinutes;
+        if (timeDiff > 15) return false;
+
+        if (c.parsedAmount?.amountMinor != amount.amountMinor ||
+            c.parsedAmount?.currency.toUpperCase() != amount.currency.toUpperCase()) {
+          return false;
+        }
+
+        if (matchedAccountId != null && c.suggestedAccountId == matchedAccountId) {
+          return true;
+        }
+        if (parsed.last4 != null) {
+          final acc = state.accounts.firstWhereOrNull((a) => a.id == c.suggestedAccountId);
+          if (acc != null && (acc.cardLast4 == parsed.last4 || acc.accountLast4 == parsed.last4)) {
+            return true;
+          }
+        }
+        return false;
+      });
+      if (candidateDuplicate) return true;
+    }
+
+    return false;
+  }
+
   Future<CaptureCandidate?> importSmsMessage(
     String rawText, {
     DateTime? receivedAt,
@@ -1121,22 +1211,74 @@ class LedgerController extends StateNotifier<LedgerState> {
     );
     if (parsed.ignored) return null;
 
-    // Check for duplicates within the last 24 hours
-    final isDuplicate = state.captureCandidates.any(
-      (c) =>
-          c.rawText == parsed.rawText &&
-          c.createdAt.difference(receivedAt ?? DateTime.now()).abs().inHours <
-              24,
+    final actualReceivedAt = receivedAt ?? DateTime.now();
+    String? matchedAccountId = _matchAccountToSms(state, parsed);
+
+    final isDuplicate = _isTransactionDuplicate(
+      state: state,
+      parsed: parsed,
+      receivedAt: actualReceivedAt,
+      matchedAccountId: matchedAccountId,
     );
     if (isDuplicate) return null;
-
-    String? matchedAccountId = _matchAccountToSms(state, parsed);
 
     final candidate = CaptureCandidate(
       id: _newId('cap'),
       source: 'sms',
       status: 'pending',
-      createdAt: receivedAt ?? DateTime.now(),
+      createdAt: actualReceivedAt,
+      rawText: parsed.rawText,
+      parsedAmount: parsed.amount,
+      merchant: parsed.merchant,
+      transactionType: parsed.transactionType,
+      suggestedAccountId:
+          matchedAccountId ??
+          state.accounts
+              .where((account) => !account.isArchived)
+              .firstOrNull
+              ?.id,
+      suggestedCategoryId: _matchCategory(
+        state,
+        parsed.merchant,
+        parsed.transactionType ?? 'expense',
+      )?.id,
+    );
+    await _commit(
+      state.copyWith(
+        captureCandidates: [candidate, ...state.captureCandidates],
+      ),
+    );
+    return candidate;
+  }
+
+  Future<CaptureCandidate?> importNotificationMessage(
+    String rawText, {
+    DateTime? receivedAt,
+  }) async {
+    final parsed = parseTransactionMessage(
+      rawText,
+      fallbackCurrency: state.preferences.baseCurrency,
+      triggerWords: state.preferences.notificationTriggerWords,
+      ignoreWords: state.preferences.notificationIgnoreWords,
+    );
+    if (parsed.ignored) return null;
+
+    final actualReceivedAt = receivedAt ?? DateTime.now();
+    String? matchedAccountId = _matchAccountToSms(state, parsed);
+
+    final isDuplicate = _isTransactionDuplicate(
+      state: state,
+      parsed: parsed,
+      receivedAt: actualReceivedAt,
+      matchedAccountId: matchedAccountId,
+    );
+    if (isDuplicate) return null;
+
+    final candidate = CaptureCandidate(
+      id: _newId('cap'),
+      source: 'notification',
+      status: 'pending',
+      createdAt: actualReceivedAt,
       rawText: parsed.rawText,
       parsedAmount: parsed.amount,
       merchant: parsed.merchant,
@@ -1176,17 +1318,15 @@ class LedgerController extends StateNotifier<LedgerState> {
       );
       if (parsed.ignored) continue;
 
-      // Check against existing state and newly added candidates in this batch
-      final isDuplicate =
-          state.captureCandidates.any(
-            (c) =>
-                c.rawText == parsed.rawText &&
-                c.createdAt.difference(message.receivedAt).abs().inHours < 24,
-          ) ||
-          newCandidates.any((c) => c.rawText == parsed.rawText);
-      if (isDuplicate) continue;
-
       String? matchedAccountId = _matchAccountToSms(state, parsed);
+
+      final isDuplicate = _isTransactionDuplicate(
+        state: state,
+        parsed: parsed,
+        receivedAt: message.receivedAt,
+        matchedAccountId: matchedAccountId,
+      ) || newCandidates.any((c) => c.rawText == parsed.rawText);
+      if (isDuplicate) continue;
 
       final candidate = CaptureCandidate(
         id: '${_newId('cap')}-${idx++}',
@@ -1469,6 +1609,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     await prefs.setBool('has_unsynced_changes', true);
 
     unawaited(SmsSpooler.updateTriggerWords(normalized));
+    unawaited(NotificationSpooler.updateTriggerWords(normalized));
 
     _autoBackupTimer?.cancel();
     if (!LedgerProvidersConfig.disableAutoBackup) {
@@ -1853,6 +1994,13 @@ extension _FirstOrNull<T> on Iterable<T> {
   T? get firstOrNull {
     final iterator = this.iterator;
     return iterator.moveNext() ? iterator.current : null;
+  }
+
+  T? firstWhereOrNull(bool Function(T element) test) {
+    for (final element in this) {
+      if (test(element)) return element;
+    }
+    return null;
   }
 }
 

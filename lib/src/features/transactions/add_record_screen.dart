@@ -94,13 +94,15 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
     final seen = <String>{};
     final result = <String>[];
     for (final transaction in sorted) {
+      if (transaction.status == 'scheduled' || transaction.status == 'paused') {
+        continue;
+      }
       final note = transaction.notes?.trim() ?? '';
       if (note.isEmpty) continue;
       final key = note.toLowerCase();
       if (seen.contains(key)) continue;
       seen.add(key);
       result.add(note);
-      if (result.length >= 8) break;
     }
     return result;
   }
@@ -108,6 +110,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(ledgerProvider);
+    final uniqueNotes = _recentNotes(state.transactions);
     final editingTransaction = widget.transactionId == null
         ? null
         : state.transactions.firstWhereOrNull(
@@ -130,6 +133,10 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       state,
     );
     _syncCreateDraftAccount(state, editingTransaction ?? plannedTransaction);
+    _syncInitialPaymentMethod(
+      state,
+      editingTransaction ?? plannedTransaction ?? captureCandidate,
+    );
     _clearInvalidCategory(state, editingTransaction ?? plannedTransaction);
     final sourceAccount = accountById(state, _accountId);
     final counterAccount = accountById(state, _counterAccountId);
@@ -513,19 +520,17 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                         RawAutocomplete<String>(
                           textEditingController: _notesController,
                           focusNode: _notesFocusNode,
+                          optionsViewOpenDirection: OptionsViewOpenDirection.up,
                           optionsBuilder: (textEditingValue) {
-                            final recentNotes = _recentNotes(
-                              state.transactions,
-                            );
                             final query = textEditingValue.text.trim();
                             if (query.isEmpty) {
-                              return recentNotes;
+                              return const Iterable<String>.empty();
                             }
                             final lowerQuery = query.toLowerCase();
-                            return recentNotes.where((note) {
+                            return uniqueNotes.where((note) {
                               final lowerNote = note.toLowerCase();
                               return lowerNote != lowerQuery &&
-                                  lowerNote.contains(lowerQuery);
+                                  lowerNote.startsWith(lowerQuery);
                             });
                           },
                           fieldViewBuilder:
@@ -538,7 +543,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                 return TextFormField(
                                   controller: textEditingController,
                                   focusNode: focusNode,
-                                  maxLines: 3,
+                                  maxLines: 2,
                                   decoration: InputDecoration(
                                     labelText: 'Notes',
                                     prefixIcon: const Icon(
@@ -555,7 +560,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                           optionsViewBuilder: (context, onSelected, options) {
                             final optionsList = options.toList();
                             return Align(
-                              alignment: Alignment.topLeft,
+                              alignment: Alignment.bottomLeft,
                               child: Material(
                                 elevation: 4,
                                 borderRadius: BorderRadius.circular(
@@ -802,10 +807,23 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
     );
     if (nextId != null)
       setState(() {
-        if (counter)
+        if (counter) {
           _counterAccountId = nextId;
-        else
+        } else {
+          final oldAccountId = _accountId;
           _accountId = nextId;
+          final oldAcc = oldAccountId == null
+              ? null
+              : state.accounts.firstWhereOrNull((a) => a.id == oldAccountId);
+          final newAcc = state.accounts.firstWhereOrNull((a) => a.id == nextId);
+          if (newAcc != null) {
+            final oldDefaultMethod = oldAcc != null ? _paymentMethodForAccountType(oldAcc.type) : '';
+            final currentMethod = _paymentMethodController.text.trim();
+            if (currentMethod.isEmpty || currentMethod.toLowerCase() == oldDefaultMethod.toLowerCase()) {
+              _paymentMethodController.text = _paymentMethodForAccountType(newAcc.type);
+            }
+          }
+        }
       });
   }
 
@@ -1120,6 +1138,38 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
   void _clearInvalidCategory(LedgerState state, TransactionRecord? source) {
     if (source != null || _type == 'transfer') return;
     if (categoryById(state, _categoryId) == null) _categoryId = null;
+  }
+
+  String _paymentMethodForAccountType(String type) {
+    switch (type) {
+      case 'credit_card':
+        return 'Card';
+      case 'cash':
+        return 'Cash';
+      case 'bank':
+        return 'Bank Transfer';
+      case 'wallet':
+        return 'Wallet';
+      case 'loan':
+        return 'Auto debit';
+      case 'overdraft':
+        return 'Bank Transfer';
+      case 'investment':
+        return 'Bank Transfer';
+      default:
+        return '';
+    }
+  }
+
+  void _syncInitialPaymentMethod(LedgerState state, dynamic source) {
+    if (source != null) return;
+    if (_paymentMethodController.text.isNotEmpty) return;
+    if (_accountId != null) {
+      final acc = state.accounts.firstWhereOrNull((a) => a.id == _accountId);
+      if (acc != null) {
+        _paymentMethodController.text = _paymentMethodForAccountType(acc.type);
+      }
+    }
   }
 }
 
