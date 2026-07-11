@@ -9,6 +9,8 @@ class ParsedTransactionMessage {
     this.transactionType,
     this.last4,
     this.institutionName,
+    this.matchedTriggerWord,
+    this.matchedIgnoreWord,
   });
 
   final String rawText;
@@ -18,6 +20,8 @@ class ParsedTransactionMessage {
   final String? transactionType;
   final String? last4;
   final String? institutionName;
+  final String? matchedTriggerWord;
+  final String? matchedIgnoreWord;
 }
 
 ParsedTransactionMessage parseTransactionMessage(
@@ -35,17 +39,26 @@ ParsedTransactionMessage parseTransactionMessage(
 
   // 1. Reject anything matching an ignore word (OTP, promo, reminder,
   //    request, failure, ...) even if it also looks transactional.
-  if (_containsAnyWord(normalized, ignoreWords)) {
-    return ParsedTransactionMessage(rawText: text, ignored: true);
+  final matchedIgnore = _findMatchingWord(normalized, ignoreWords);
+  if (matchedIgnore != null) {
+    return ParsedTransactionMessage(
+      rawText: text,
+      ignored: true,
+      matchedIgnoreWord: matchedIgnore,
+    );
   }
 
   // 2. A real, completed transaction needs BOTH an amount and a trigger word.
   //    This is the exact rule the native SMS receiver applies, so a
   //    notification is raised if and only if a review candidate is created.
   final amountMinor = _extractAmountMinor(text);
-  final hasTrigger = _containsAnyWord(normalized, triggerWords);
-  if (amountMinor == null || !hasTrigger) {
-    return ParsedTransactionMessage(rawText: text, ignored: true);
+  final matchedTrigger = _findMatchingWord(normalized, triggerWords);
+  if (amountMinor == null || matchedTrigger == null) {
+    return ParsedTransactionMessage(
+      rawText: text,
+      ignored: true,
+      matchedTriggerWord: matchedTrigger,
+    );
   }
 
   final currency = _detectCurrency(text) ?? fallbackCurrency;
@@ -62,6 +75,7 @@ ParsedTransactionMessage parseTransactionMessage(
     transactionType: transactionType ?? 'expense',
     last4: last4,
     institutionName: institutionName,
+    matchedTriggerWord: matchedTrigger,
   );
 }
 
@@ -78,24 +92,26 @@ bool smsLooksLikeTransaction(
       ignoreWords: ignoreWords,
     ).ignored;
 
-/// Case-insensitive keyword match. Multi-word phrases use substring match;
-/// short tokens (<=3 chars, e.g. "upi", "atm") require word boundaries to
-/// avoid false positives; longer words use substring match. This mirrors the
-/// matching used by the native Kotlin SmsReceiver.
-bool _containsAnyWord(String normalizedText, List<String> words) {
+
+
+String? _findMatchingWord(String normalizedText, List<String> words) {
   for (final raw in words) {
     final word = raw.trim().toLowerCase();
     if (word.isEmpty) continue;
+    bool matched = false;
     if (word.contains(' ')) {
-      if (normalizedText.contains(word)) return true;
+      matched = normalizedText.contains(word);
     } else if (word.length <= 3) {
       final pattern = RegExp('(^|\\W)${RegExp.escape(word)}(\$|\\W)');
-      if (pattern.hasMatch(normalizedText)) return true;
+      matched = pattern.hasMatch(normalizedText);
     } else {
-      if (normalizedText.contains(word)) return true;
+      matched = normalizedText.contains(word);
+    }
+    if (matched) {
+      return raw;
     }
   }
-  return false;
+  return null;
 }
 
 String? _detectInstitution(String normalized) {
