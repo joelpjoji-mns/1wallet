@@ -33,9 +33,9 @@ class SmsReceiver : BroadcastReceiver() {
         val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
 
         val captureEnabled = try {
-            prefs.getBoolean("flutter.one_wallet_flutter.sms_capture_enabled", true)
+            prefs.getBoolean("flutter.one_wallet_flutter.sms_capture_enabled", false)
         } catch (e: Exception) {
-            true
+            false
         }
         if (!captureEnabled) return
 
@@ -85,11 +85,12 @@ class SmsReceiver : BroadcastReceiver() {
     private fun extractAmount(body: String): String? {
         val patterns = listOf(
             Regex("(?:INR|Rs\\.?|₹|USD|\\$|GBP|£|EUR|€|AED|AUD|CAD|SGD|JPY|¥|CHF|CNY)\\s?[0-9][0-9,]*(?:\\.[0-9]{1,2})?", RegexOption.IGNORE_CASE),
-            Regex("[0-9][0-9,]*(?:\\.[0-9]{1,2})?\\s?(?:INR|Rs\\.?|₹|USD|\\$|GBP|£|EUR|€|AED)", RegexOption.IGNORE_CASE)
+            Regex("[0-9][0-9,]*(?:\\.[0-9]{1,2})?\\s?(?:INR|Rs\\.?|₹|USD|\\$|GBP|£|EUR|€|AED)", RegexOption.IGNORE_CASE),
+            Regex("(?:debited|credited|spent|received|paid|withdrawn|deposited|transferred|charged|refund)\\s+(?:INR|Rs\\.?|₹|USD|\\$|GBP|£|EUR|€)?\\s?[0-9][0-9,]*(?:\\.[0-9]{1,2})?", RegexOption.IGNORE_CASE)
         )
         for (p in patterns) {
             val m = p.find(body)
-            if (m != null) return m.value.trim()
+            if (m != null) return m.value.trim().replace(",", "")
         }
         return null
     }
@@ -110,13 +111,10 @@ class SmsReceiver : BroadcastReceiver() {
         val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
         val spoolKey = "flutter.one_wallet_flutter.sms_spool"
 
-        val prefix = "VGhpcyBpcyB0aGUgcHJlZml4IGZvciBhIGxpc3Qu!"
-
         val existingRaw = try { prefs.getString(spoolKey, "") ?: "" } catch (e: Exception) { "" }
-        val jsonArray = if (existingRaw.startsWith(prefix)) {
-            val jsonStr = existingRaw.substring(prefix.length)
+        val jsonArray = if (existingRaw.isNotEmpty()) {
             try {
-                org.json.JSONArray(jsonStr)
+                org.json.JSONArray(existingRaw)
             } catch (e: Exception) {
                 org.json.JSONArray()
             }
@@ -134,11 +132,7 @@ class SmsReceiver : BroadcastReceiver() {
 
         jsonArray.put(payload.toString())
 
-        val newRaw = prefix + jsonArray.toString()
-        // If there's a legacy StringSet, remove it to avoid ClassCastException.
-        try { prefs.edit().remove(spoolKey).apply() } catch (e: Exception) {}
-
-        prefs.edit().putString(spoolKey, newRaw).apply()
+        prefs.edit().putString(spoolKey, jsonArray.toString()).apply()
     }
 
     private fun showNotification(context: Context, amount: String?, last4: String?) {
@@ -178,6 +172,6 @@ class SmsReceiver : BroadcastReceiver() {
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
 
-        notificationManager.notify(1001, builder.build())
+        notificationManager.notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), builder.build())
     }
 }

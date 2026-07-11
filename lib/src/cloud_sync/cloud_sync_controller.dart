@@ -252,11 +252,14 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       if (!userDoc.exists) {
         shouldPull = false;
       } else {
+        final hasUserData = _walletHasUserData(_ref.read(ledgerProvider));
         final isCloudNewer = cloudUpdatedAt != null &&
             localModifiedAt != null &&
             cloudUpdatedAt.isAfter(localModifiedAt);
 
-        if (isCloudNewer) {
+        if (!hasUserData) {
+          shouldPull = true;
+        } else if (isCloudNewer) {
           shouldPull = true;
         } else if (hasUnsyncedChanges) {
           shouldPull = false;
@@ -269,7 +272,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       }
 
       if (shouldPull) {
-        await _restoreFromCloud(user.id, metadata);
+        await _restoreFromCloud(user.id, metadata, cloudUpdatedAt);
       } else {
         await uploadSnapshot(reason: reason);
       }
@@ -341,7 +344,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
         if (shouldPull && userDoc.exists) {
           // We have cloud data. Restore it locally.
-          await _restoreFromCloud(userId, metadata);
+          await _restoreFromCloud(userId, metadata, cloudUpdatedAt);
         }
 
         // Migrate rules from preferences to transactions if needed
@@ -641,8 +644,9 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
   Future<void> _restoreFromCloud(
     String userId,
-    CloudSyncMetadata currentMetadata,
-  ) async {
+    CloudSyncMetadata currentMetadata, [
+    DateTime? cloudUpdatedAt,
+  ]) async {
     state = state.copyWith(phase: CloudSyncPhase.restoring);
     try {
       final backupQuery = await _firestore
@@ -746,7 +750,14 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('has_unsynced_changes', false);
-      await prefs.remove('last_local_modified_at');
+      if (cloudUpdatedAt != null) {
+        await prefs.setString(
+          'last_local_modified_at',
+          cloudUpdatedAt.toUtc().toIso8601String(),
+        );
+      } else {
+        await prefs.remove('last_local_modified_at');
+      }
 
       final newMetadata = currentMetadata.copyWith(
         userId: userId,

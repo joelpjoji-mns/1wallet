@@ -335,11 +335,11 @@ String? _detectTransactionType(String normalized) {
 String? _extractLast4(String text) {
   final patterns = [
     RegExp(
-      r'(?:card|acct|account|a\/c|ending|ending in)[^\d]*(\d{3,16})\b',
+      r'(?:card|acct|account|a\/c|ending|ending in)[^\d]*(\d{4})\b',
       caseSensitive: false,
     ),
-    RegExp(r'\b[xX*]{2,12}(\d{3,16})\b', caseSensitive: false),
-    RegExp(r'\b(\d{3,16})\s*(?:debited|credited)', caseSensitive: false),
+    RegExp(r'\b[xX*]{2,12}(\d{4})\b', caseSensitive: false),
+    RegExp(r'\b(\d{4})\s*(?:debited|credited)', caseSensitive: false),
   ];
 
   for (final pattern in patterns) {
