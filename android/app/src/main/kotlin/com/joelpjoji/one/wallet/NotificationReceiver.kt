@@ -1,0 +1,184 @@
+package com.joelpjoji.one.wallet
+
+import android.service.notification.NotificationListenerService
+import android.service.notification.StatusBarNotification
+import android.content.Context
+import android.content.SharedPreferences
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.os.Build
+
+class NotificationReceiver : NotificationListenerService() {
+
+    override fun onNotificationPosted(sbn: StatusBarNotification?) {
+        if (sbn == null) return
+
+        val context = applicationContext
+        val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+
+        // 1. Check if notification capture is enabled
+        val captureEnabled = try {
+            prefs.getBoolean("flutter.one_wallet_flutter.notification_capture_enabled", true)
+        } catch (e: Exception) {
+            true
+        }
+        if (!captureEnabled) return
+
+        // 2. Check if the package is in the target whitelist
+        val packageName = sbn.packageName ?: return
+        val targetPackages = loadList(prefs, "flutter.one_wallet_flutter.notification_target_packages")
+        if (!targetPackages.contains(packageName.lowercase())) {
+            return
+        }
+
+        // 3. Extract title and body/text
+        val extras = sbn.notification.extras ?: return
+        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
+        val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
+        val bigText = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString() ?: ""
+        
+        // Combine them to parse
+        val combinedText = "$title $text $bigText".trim()
+        if (combinedText.isEmpty()) return
+
+        val triggers = loadList(prefs, "flutter.one_wallet_flutter.notification_trigger_words")
+        val ignores = loadList(prefs, "flutter.one_wallet_flutter.notification_ignore_words")
+        val lowerText = combinedText.lowercase()
+        val amount = extractAmount(combinedText)
+
+        // 4. Accept only real transactions (same rules as SMS)
+        val accept = amount != null &&
+            containsAnyWord(lowerText, triggers) &&
+            !containsAnyWord(lowerText, ignores)
+
+        if (accept) {
+            spoolMessage(context, title.ifEmpty { "Notification" }, combinedText)
+            showNotification(context, amount, extractLast4(combinedText))
+        }
+    }
+
+    private fun loadList(prefs: SharedPreferences, key: String): List<String> {
+        val raw = try { prefs.getString(key, "") ?: "" } catch (e: Exception) { "" }
+        if (raw.isEmpty()) return emptyList()
+        return try {
+            val arr = org.json.JSONArray(raw)
+            (0 until arr.length()).map { arr.getString(it).lowercase() }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun containsAnyWord(lowerText: String, words: List<String>): Boolean {
+        for (raw in words) {
+            val word = raw.trim()
+            if (word.isEmpty()) continue
+            val matched = when {
+                word.contains(" ") -> lowerText.contains(word)
+                word.length <= 3 -> "(^|\\W)${Regex.escape(word)}($|\\W)".toRegex().containsMatchIn(lowerText)
+                else -> lowerText.contains(word)
+            }
+            if (matched) return true
+        }
+        return false
+    }
+
+    private fun extractAmount(text: String): String? {
+        val patterns = listOf(
+            Regex("(?:INR|Rs\\.?|₹|USD|\\$|GBP|£|EUR|€|AED|AUD|CAD|SGD|JPY|¥|CHF|CNY)\\s?[0-9][0-9,]*(?:\\.[0-9]{1,2})?", RegexOption.IGNORE_CASE),
+            Regex("[0-9][0-9,]*(?:\\.[0-9]{1,2})?\\s?(?:INR|Rs\\.?|₹|USD|\\$|GBP|£|EUR|€|AED)", RegexOption.IGNORE_CASE)
+        )
+        for (p in patterns) {
+            val m = p.find(text)
+            if (m != null) return m.value.trim()
+        }
+        return null
+    }
+
+    private fun extractLast4(text: String): String? {
+        val patterns = listOf(
+            Regex("(?:card|acct|account|a/c|ending)\\D{0,4}(\\d{4})", RegexOption.IGNORE_CASE),
+            Regex("[xX*]{2,}(\\d{4})")
+        )
+        for (p in patterns) {
+            val m = p.find(text)
+            if (m != null) return m.groupValues[1]
+        }
+        return null
+    }
+
+    private fun spoolMessage(context: Context, sender: String, body: String) {
+        val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        val spoolKey = "flutter.one_wallet_flutter.notification_spool"
+
+        val prefix = "VGhpcyBpcyB0aGUgcHJlZml4IGZvciBhIGxpc3Qu!"
+
+        val existingRaw = try { prefs.getString(spoolKey, "") ?: "" } catch (e: Exception) { "" }
+        val jsonArray = if (existingRaw.startsWith(prefix)) {
+            val jsonStr = existingRaw.substring(prefix.length)
+            try {
+                org.json.JSONArray(jsonStr)
+            } catch (e: Exception) {
+                org.json.JSONArray()
+            }
+        } else {
+            org.json.JSONArray()
+        }
+
+        val payload = org.json.JSONObject()
+        payload.put("sender", sender)
+        payload.put("body", body)
+
+        val df = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
+        df.timeZone = java.util.TimeZone.getTimeZone("UTC")
+        payload.put("timestamp", df.format(java.util.Date()))
+
+        jsonArray.put(payload.toString())
+
+        val newRaw = prefix + jsonArray.toString()
+        try { prefs.edit().remove(spoolKey).apply() } catch (e: Exception) {}
+
+        prefs.edit().putString(spoolKey, newRaw).apply()
+    }
+
+    private fun showNotification(context: Context, amount: String?, last4: String?) {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channelId = "one_wallet_capture"
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(channelId, "Transaction Capture", NotificationManager.IMPORTANCE_DEFAULT)
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+        launchIntent?.putExtra("flutter_route", "/review")
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            launchIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(context, channelId)
+        } else {
+            Notification.Builder(context)
+        }
+
+        val title = if (amount != null) "Transaction detected: $amount" else "Transaction detected"
+        val text = if (last4 != null) {
+            "Account \u2022\u2022$last4 \u00b7 Tap to review and save."
+        } else {
+            "Tap to review and save."
+        }
+
+        builder.setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+
+        notificationManager.notify(1002, builder.build())
+    }
+}

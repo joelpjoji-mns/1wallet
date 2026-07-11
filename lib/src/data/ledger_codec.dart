@@ -435,6 +435,10 @@ Map<String, Object?> _preferencesToJson(LedgerPreferences preferences) {
     'smsCaptureEnabled': preferences.smsCaptureEnabled,
     'smsTriggerWords': preferences.smsTriggerWords,
     'smsIgnoreWords': preferences.smsIgnoreWords,
+    'notificationCaptureEnabled': preferences.notificationCaptureEnabled,
+    'notificationTriggerWords': preferences.notificationTriggerWords,
+    'notificationIgnoreWords': preferences.notificationIgnoreWords,
+    'notificationTargetPackages': preferences.notificationTargetPackages,
   };
 }
 
@@ -581,6 +585,22 @@ LedgerPreferences _preferencesFromJson(Map<String, dynamic> json) {
     smsIgnoreWords: _stringList(
       json['smsIgnoreWords'],
       fallback: fallback.smsIgnoreWords,
+    ),
+    notificationCaptureEnabled: _bool(
+      json['notificationCaptureEnabled'],
+      fallback: fallback.notificationCaptureEnabled,
+    ),
+    notificationTriggerWords: _stringList(
+      json['notificationTriggerWords'],
+      fallback: fallback.notificationTriggerWords,
+    ),
+    notificationIgnoreWords: _stringList(
+      json['notificationIgnoreWords'],
+      fallback: fallback.notificationIgnoreWords,
+    ),
+    notificationTargetPackages: _stringList(
+      json['notificationTargetPackages'],
+      fallback: fallback.notificationTargetPackages,
     ),
   );
 }
