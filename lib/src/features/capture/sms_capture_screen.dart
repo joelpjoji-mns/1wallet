@@ -253,15 +253,97 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                InfoRow(
-                  label: 'Outcome',
-                  value: parsed.ignored ? 'Ignored' : 'Would be queued',
-                  icon: parsed.ignored
-                      ? Icons.visibility_off_outlined
-                      : Icons.fact_check_outlined,
-                  tone: parsed.ignored
-                      ? MetricTone.warning
-                      : MetricTone.positive,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    InfoRow(
+                      label: 'Outcome',
+                      value: parsed.ignored
+                          ? (parsed.matchedIgnoreWord != null
+                              ? 'Ignored (matched ignore: "${parsed.matchedIgnoreWord}")'
+                              : 'Ignored (no trigger word matched)')
+                          : 'Would be queued${parsed.matchedTriggerWord != null ? ' (matched trigger: "${parsed.matchedTriggerWord}")' : ''}',
+                      icon: parsed.ignored
+                          ? Icons.visibility_off_outlined
+                          : Icons.fact_check_outlined,
+                      tone: parsed.ignored
+                          ? MetricTone.warning
+                          : MetricTone.positive,
+                    ),
+                    if (parsed.ignored && parsed.matchedIgnoreWord != null) ...[
+                      const SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: () {
+                            final word = parsed.matchedIgnoreWord!;
+                            final nextIgnores = prefs.smsIgnoreWords
+                                .where((w) => w.toLowerCase() != word.toLowerCase())
+                                .toList();
+                            _updatePrefs(prefs.copyWith(smsIgnoreWords: nextIgnores));
+                            _showMessage('Removed "$word" from ignore words.');
+                          },
+                          icon: const Icon(Icons.delete_outline, size: 16),
+                          label: Text('Remove "${parsed.matchedIgnoreWord}" from ignore list'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: scheme.error,
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(50, 30),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (!parsed.ignored && parsed.matchedTriggerWord != null) ...[
+                      const SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: () {
+                            final word = parsed.matchedTriggerWord!;
+                            final nextTriggers = prefs.smsTriggerWords
+                                .where((w) => w.toLowerCase() != word.toLowerCase())
+                                .toList();
+                            _updatePrefs(prefs.copyWith(smsTriggerWords: nextTriggers));
+                            _showMessage('Removed "$word" from trigger words.');
+                          },
+                          icon: const Icon(Icons.delete_outline, size: 16),
+                          label: Text('Remove "${parsed.matchedTriggerWord}" from triggers'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: scheme.error,
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(50, 30),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (parsed.ignored && parsed.matchedIgnoreWord == null) ...[
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Select a word from the SMS to add to triggers:',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (final word in _extractCandidateWords(_testController.text))
+                            ActionChip(
+                              label: Text(word),
+                              padding: EdgeInsets.zero,
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () {
+                                final nextTriggers = [...prefs.smsTriggerWords, word];
+                                _updatePrefs(prefs.copyWith(smsTriggerWords: nextTriggers));
+                                _showMessage('Added "$word" to trigger words.');
+                              },
+                            ),
+                        ],
+                      ),
+                    ],
+                  ],
                 ),
                 InfoRow(
                   label: 'Amount',
@@ -405,6 +487,29 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
     } finally {
       if (mounted) setState(() => _isScanning = false);
     }
+  }
+
+  List<String> _extractCandidateWords(String text) {
+    if (text.trim().isEmpty) return [];
+    final words = text
+        .replaceAll(RegExp(r'[^\w\s\-]'), '')
+        .split(RegExp(r'\s+'));
+    final seen = <String>{};
+    final result = <String>[];
+    
+    final currentTriggers = _prefs.smsTriggerWords.map((w) => w.toLowerCase()).toSet();
+    final currentIgnores = _prefs.smsIgnoreWords.map((w) => w.toLowerCase()).toSet();
+    
+    for (final raw in words) {
+      final clean = raw.trim().toLowerCase();
+      if (clean.length < 3) continue;
+      if (double.tryParse(clean) != null) continue;
+      if (seen.contains(clean)) continue;
+      seen.add(clean);
+      if (currentTriggers.contains(clean) || currentIgnores.contains(clean)) continue;
+      result.add(raw.trim());
+    }
+    return result.take(8).toList();
   }
 
   void _showMessage(String message) {
