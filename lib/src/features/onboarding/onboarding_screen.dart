@@ -395,7 +395,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: _currentDraft.type,
+                  value: const ['bank', 'cash', 'credit_card', 'digital', 'savings', 'loan', 'investment'].contains(_currentDraft.type) ? _currentDraft.type : 'bank',
                   decoration: const InputDecoration(hintText: 'Account type'),
                   items:
                       [

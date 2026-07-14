@@ -390,7 +390,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DropdownButtonFormField<String>(
-            initialValue: _scanTimeframe,
+            initialValue: const ['today', '24h', '7d', '30d'].contains(_scanTimeframe) ? _scanTimeframe : 'today',
             decoration: const InputDecoration(
               labelText: 'Timeframe',
               prefixIcon: Icon(Icons.history_rounded),

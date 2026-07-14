@@ -796,7 +796,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
               ),
               const SizedBox(height: AppSpacing.md),
               DropdownButtonFormField<String>(
-                initialValue: _frequency,
+                initialValue: const ['once', 'daily', 'weekly', 'monthly', 'yearly'].contains(_frequency) ? _frequency : 'monthly',
                 decoration: const InputDecoration(
                   labelText: 'Frequency',
                   prefixIcon: Icon(Icons.repeat_outlined),
@@ -888,7 +888,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
               if (_frequency != 'once') ...[
                 const SizedBox(height: AppSpacing.md),
                 DropdownButtonFormField<String>(
-                  initialValue: _recurrenceEnds,
+                  initialValue: const ['never', 'date', 'occurrences'].contains(_recurrenceEnds) ? _recurrenceEnds : 'never',
                   decoration: const InputDecoration(
                     labelText: 'Ends',
                     prefixIcon: Icon(Icons.event_busy_outlined),

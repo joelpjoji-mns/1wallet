@@ -364,7 +364,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
               ),
               const SizedBox(height: AppSpacing.sm),
               DropdownButtonFormField<String>(
-                initialValue: _frequency,
+                initialValue: const ['daily', 'weekly', 'monthly', 'yearly'].contains(_frequency) ? _frequency : 'monthly',
                 decoration: const InputDecoration(
                   labelText: 'EMI Frequency',
                   prefixIcon: Icon(Icons.repeat_outlined),
@@ -2389,7 +2389,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               ),
               const SizedBox(height: AppSpacing.lg),
               DropdownButtonFormField<int>(
-                value: widget.state.preferences.loanPayoffDelayDays,
+                value: const [0, 7, 14, 30].contains(widget.state.preferences.loanPayoffDelayDays) ? widget.state.preferences.loanPayoffDelayDays : 0,
                 decoration: const InputDecoration(
                   labelText: 'Delay before closing loan',
                   prefixIcon: Icon(Icons.timer_outlined),
