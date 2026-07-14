@@ -99,28 +99,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
           themeMode: themeState.themeMode,
           builder: (context, child) {
             if (child == null) return const SizedBox.shrink();
-            // On wide screens (web PWA / tablets / desktop) keep the app at a
-            // comfortable phone-like width, centered, rather than stretching
-            // controls edge-to-edge. Phones (<=600px) are unaffected.
-            final media = MediaQuery.of(context);
-            if (media.size.width <= 600) return child;
-            // Cap the reported size too, so MediaQuery-based responsive logic
-            // (chart widths, isDesktop checks, etc.) matches the real 600px
-            // render box and never overflows the frame.
-            final capped = media.copyWith(
-              size: Size(600, media.size.height),
-            );
-            return ColoredBox(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              child: Center(
-                child: ClipRect(
-                  child: SizedBox(
-                    width: 600,
-                    child: MediaQuery(data: capped, child: child),
-                  ),
-                ),
-              ),
-            );
+            return child;
           },
         );
       },
