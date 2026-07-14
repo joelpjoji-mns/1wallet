@@ -12,6 +12,7 @@ import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../common/route_scaffold.dart';
 import '../transactions/transaction_row.dart';
 
 class SyncScreen extends ConsumerWidget {
