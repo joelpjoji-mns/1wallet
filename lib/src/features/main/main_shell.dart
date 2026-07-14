@@ -310,9 +310,9 @@ class AppMainDrawer extends ConsumerWidget {
 
     Widget content = SafeArea(
       child: Container(
-        margin: const EdgeInsets.all(AppSpacing.sm),
+        margin: isStatic ? EdgeInsets.zero : const EdgeInsets.all(AppSpacing.sm),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadii.xl),
+          borderRadius: isStatic ? BorderRadius.zero : BorderRadius.circular(AppRadii.xl),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -322,8 +322,8 @@ class AppMainDrawer extends ConsumerWidget {
               scheme.surface,
             ],
           ),
-          border: Border.all(color: scheme.outlineVariant.withAlpha(180)),
-          boxShadow: [
+          border: isStatic ? Border(right: BorderSide(color: scheme.outlineVariant.withAlpha(180))) : Border.all(color: scheme.outlineVariant.withAlpha(180)),
+          boxShadow: isStatic ? null : [
             BoxShadow(
               color: Colors.black.withAlpha(28),
               blurRadius: 22,
@@ -348,9 +348,9 @@ class AppMainDrawer extends ConsumerWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      scheme.primaryContainer.withAlpha(220),
+                      scheme.primaryContainer.withAlpha(isStatic ? 150 : 220),
                       scheme.surfaceContainerHigh,
-                      scheme.tertiaryContainer.withAlpha(180),
+                      scheme.tertiaryContainer.withAlpha(isStatic ? 120 : 180),
                     ],
                   ),
                   border: Border.all(
