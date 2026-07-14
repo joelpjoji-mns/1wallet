@@ -240,38 +240,7 @@ class _MainShellState extends ConsumerState<MainShell>
                   onTabSelected: _selectTab,
                 ),
                 Expanded(
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.sm,
-                        horizontal: AppSpacing.md,
-                      ),
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surface,
-                          borderRadius: BorderRadius.circular(AppRadii.xl),
-                          border: Border.all(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .outlineVariant
-                                .withAlpha(120),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withAlpha(15),
-                              blurRadius: 40,
-                              offset: const Offset(0, 15),
-                            )
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(AppRadii.xl),
-                          child: mainBody,
-                        ),
-                      ),
-                    ),
-                  ),
+                  child: mainBody,
                 ),
               ],
             ),
