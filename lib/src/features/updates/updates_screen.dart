@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../utils/app_reload.dart';
 import 'app_update_provider.dart';
 
 class UpdatesScreen extends ConsumerWidget {
@@ -316,15 +317,13 @@ class UpdatesScreen extends ConsumerWidget {
     AppUpdateProvider provider,
   ) {
     if (kIsWeb) {
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      return Column(
         children: [
           if (state.latestRelease != null)
-            const Expanded(
-              child: Padding(
+            const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
-                  'To apply this update, please refresh your browser tab. If you are using the installed PWA, completely close the app and reopen it.',
+                  'To apply this update, please use the button below to hard refresh the application. If that does not work, close the app entirely and reopen it.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
@@ -332,6 +331,13 @@ class UpdatesScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+            ),
+          const SizedBox(height: 16),
+          if (state.latestRelease != null)
+            FilledButton.icon(
+              onPressed: reloadWebPage,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Reload App'),
             ),
           if (state.latestRelease == null && state.status == UpdateStatus.idle)
             OutlinedButton.icon(
