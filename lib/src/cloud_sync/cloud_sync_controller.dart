@@ -461,6 +461,14 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
             await uploadSnapshot(reason: 'migration_fix_status');
           }
         }
+
+        if (!shouldPull && hasUnsyncedChanges) {
+          if (metadata.syncIntervalHours == null) {
+            await uploadSnapshot(reason: 'unsynced_startup');
+          } else {
+            state = state.copyWith(phase: CloudSyncPhase.idle, pendingUpload: true);
+          }
+        }
       } else {
         // Migration check
         final restoreRepo = _ref.read(cloudWalletRestoreRepositoryProvider);
@@ -472,15 +480,9 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           // Found legacy data! Restore it and immediately push to the new schema.
           await _ledger.restoreLedgerState(legacyWallet.ledger);
           await uploadSnapshot(reason: 'migration');
-        } else if (!userDoc.exists && _walletHasUserData(_ref.read(ledgerProvider))) {
+        } else if (_walletHasUserData(_ref.read(ledgerProvider))) {
           // No cloud data, but we have local data. Push local to cloud.
           await uploadSnapshot(reason: 'seed');
-        } else if (hasUnsyncedChanges) {
-          if (metadata.syncIntervalHours == null) {
-             await uploadSnapshot(reason: 'unsynced_startup');
-          } else {
-             state = state.copyWith(phase: CloudSyncPhase.idle, pendingUpload: true);
-          }
         } else {
           state = state.copyWith(phase: CloudSyncPhase.idle);
         }
