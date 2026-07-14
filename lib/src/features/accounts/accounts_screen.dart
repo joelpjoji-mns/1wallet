@@ -55,6 +55,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
     final rows = _filteredRows(state);
 
     return AppScreen(
+      maxWidth: 1400,
       title: 'Accounts',
       onMenuPressed: widget.onMenuPressed,
       scrollable: false,

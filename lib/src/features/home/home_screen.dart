@@ -238,6 +238,7 @@ class HomeScreen extends ConsumerWidget {
       ],
       scrollable: false,
       padding: EdgeInsets.zero,
+      maxWidth: 1400,
       child: Column(
         children: [
           if (syncIndicator != null) syncIndicator,
@@ -301,10 +302,13 @@ class _HomeDashboardList extends ConsumerWidget {
       );
     }
     final leftColIds = <HomeDashboardWidgetId>[];
+    final midColIds = <HomeDashboardWidgetId>[];
     final rightColIds = <HomeDashboardWidgetId>[];
     for (var i = 0; i < widgetOrder.length; i++) {
-      if (i % 2 == 0) {
+      if (i % 3 == 0) {
         leftColIds.add(widgetOrder[i]);
+      } else if (i % 3 == 1) {
+        midColIds.add(widgetOrder[i]);
       } else {
         rightColIds.add(widgetOrder[i]);
       }
@@ -314,13 +318,25 @@ class _HomeDashboardList extends ConsumerWidget {
       padding: padding,
       child: Center(
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 900),
+          constraints: const BoxConstraints(maxWidth: 1400),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
                   children: leftColIds.map((id) {
+                    final index = widgetOrder.indexOf(id);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                      child: _buildScopedHomeWidget(context, ref, state, index),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  children: midColIds.map((id) {
                     final index = widgetOrder.indexOf(id);
                     return Padding(
                       padding: const EdgeInsets.only(bottom: AppSpacing.md),
