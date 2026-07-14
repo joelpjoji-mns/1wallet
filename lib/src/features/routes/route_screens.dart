@@ -11,7 +11,6 @@ export '../common/route_scaffold.dart';
 export '../currencies/currencies_screen.dart';
 export '../home/widgets_manager_screen.dart';
 export '../imports/import_wallet_csv_screen.dart';
-export '../imports/imports_screen.dart';
 export '../loans/loans_screen.dart';
 export '../notifications/notifications_screen.dart';
 export '../recurring/recurring_screen.dart';
