@@ -242,35 +242,32 @@ class _MainShellState extends ConsumerState<MainShell>
                 Expanded(
                   child: Align(
                     alignment: Alignment.topCenter,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 800),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: AppSpacing.sm,
-                          horizontal: AppSpacing.md,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.sm,
+                        horizontal: AppSpacing.md,
+                      ),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(AppRadii.xl),
+                          border: Border.all(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .outlineVariant
+                                .withAlpha(120),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withAlpha(15),
+                              blurRadius: 40,
+                              offset: const Offset(0, 15),
+                            )
+                          ],
                         ),
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface,
-                            borderRadius: BorderRadius.circular(AppRadii.xl),
-                            border: Border.all(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .outlineVariant
-                                  .withAlpha(120),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withAlpha(15),
-                                blurRadius: 40,
-                                offset: const Offset(0, 15),
-                              )
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(AppRadii.xl),
-                            child: mainBody,
-                          ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(AppRadii.xl),
+                          child: mainBody,
                         ),
                       ),
                     ),

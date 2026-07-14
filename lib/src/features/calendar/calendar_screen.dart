@@ -67,6 +67,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final selectedCategory = categoryById(state, _categoryFilter);
 
     return AppScreen(
+      maxWidth: 1400,
       title: 'Calendar',
       scrollable: false,
       padding: const EdgeInsets.fromLTRB(

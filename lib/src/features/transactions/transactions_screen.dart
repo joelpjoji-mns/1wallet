@@ -185,7 +185,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       title: _selectedTransactionIds.isNotEmpty
           ? '${_selectedTransactionIds.length} selected'
           : 'Transactions',
-      maxWidth: 768,
+      maxWidth: 1400,
       onMenuPressed: widget.onMenuPressed,
       floatingActionButton: IslandFloatingActionButton(
         icon: Icons.add_rounded,

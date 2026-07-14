@@ -17,6 +17,7 @@ class PlannerScreen extends ConsumerWidget {
     final state = ref.watch(ledgerProvider);
 
     return AppScreen(
+      maxWidth: 1400,
       title: 'Planner',
       onMenuPressed: onMenuPressed,
       child: Column(
