@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app_update_provider.dart';
@@ -93,7 +94,9 @@ class UpdatesScreen extends ConsumerWidget {
           child: Icon(icon, color: color),
         ),
         title: Text(
-          title,
+          kIsWeb && state.latestRelease != null && state.status == UpdateStatus.idle
+              ? 'Web Update Available'
+              : title,
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
           ),
@@ -312,6 +315,34 @@ class UpdatesScreen extends ConsumerWidget {
     AppUpdateState state,
     AppUpdateProvider provider,
   ) {
+    if (kIsWeb) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (state.latestRelease != null)
+            const Expanded(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'To apply this update, please refresh your browser tab. If you are using the installed PWA, completely close the app and reopen it.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    height: 1.5,
+                  ),
+                ),
+              ),
+            ),
+          if (state.latestRelease == null && state.status == UpdateStatus.idle)
+            OutlinedButton.icon(
+              onPressed: () => provider.checkForUpdates(),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Check for Updates'),
+            ),
+        ],
+      );
+    }
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
