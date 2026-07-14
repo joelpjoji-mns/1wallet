@@ -638,7 +638,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                         ),
                         const SizedBox(height: AppSpacing.md),
                         DropdownButtonFormField<String>(
-                          value: _status ?? 'cleared',
+                          value: const ['cleared', 'pending', 'void'].contains(_status) ? _status : 'cleared',
                           decoration: InputDecoration(
                             labelText: 'Status',
                             prefixIcon: const Icon(Icons.info_outline),

@@ -1257,7 +1257,7 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
       onAction: () => context.push('/recurring'),
       headerTrailing: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          value: filter,
+          value: const ['1_week', '2_weeks', '1_month'].contains(filter) ? filter : '1_week',
           isDense: true,
           iconSize: 16,
           style: TextStyle(

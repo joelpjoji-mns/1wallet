@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../design/tokens.dart';
-import '../main/main_shell.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:go_router/go_router.dart';
+import '../../design/tokens.dart';
+import '../../widgets/app_kit.dart';
+import '../main/main_shell.dart';
 
 class DrawerConfig extends InheritedWidget {
   const DrawerConfig({required super.child, this.hasDrawer = false, super.key});

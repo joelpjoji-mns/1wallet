@@ -144,7 +144,7 @@ class _BudgetGoalEditorScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 DropdownButtonFormField<String>(
-                  initialValue: _frequency,
+                  initialValue: const ['once', 'daily', 'weekly', 'monthly'].contains(_frequency) ? _frequency : 'once',
                   decoration: const InputDecoration(labelText: 'Frequency'),
                   items: const [
                     DropdownMenuItem(value: 'once', child: Text('Once')),
