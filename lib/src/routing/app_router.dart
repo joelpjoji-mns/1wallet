@@ -216,10 +216,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/imports',
-        builder: (context, state) => const DrawerConfig(
-          hasDrawer: true,
-          child: ImportsScreen(),
-        ),
+        redirect: (context, state) => '/sync',
       ),
       GoRoute(
         path: '/imports/:id',

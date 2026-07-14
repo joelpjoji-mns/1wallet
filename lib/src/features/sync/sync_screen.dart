@@ -1,10 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../auth/auth_controller.dart';
 import '../../cloud_sync/cloud_sync_controller.dart';
+import '../../data/ledger_models.dart';
+import '../../data/ledger_providers.dart';
+import '../../design/tokens.dart';
+import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../transactions/transaction_row.dart';
 
 class SyncScreen extends ConsumerWidget {
   const SyncScreen({super.key});
@@ -14,6 +22,10 @@ class SyncScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final sync = ref.watch(cloudSyncControllerProvider);
     final enabled = sync.phase != CloudSyncPhase.disabled;
+    final state = ref.watch(ledgerProvider);
+    final pending = state.captureCandidates
+        .where((candidate) => candidate.status == 'pending')
+        .length;
 
     final isWorking =
         sync.phase == CloudSyncPhase.checking ||
@@ -21,15 +33,17 @@ class SyncScreen extends ConsumerWidget {
         sync.phase == CloudSyncPhase.uploading;
 
     return AppScreen(
-      title: 'Sync',
+      title: 'Data & Sync',
       child: Column(
         children: [
           if (isWorking) ...[
             const LinearProgressIndicator(),
             const SizedBox(height: 16),
           ],
+          
+          // --- CLOUD SYNC SECTION ---
           SectionCard(
-            title: 'Status',
+            title: 'Cloud Sync',
             subtitle:
                 'Google sign-in, cloud restore, and automatic wallet upload.',
             compact: true,
@@ -96,11 +110,6 @@ class SyncScreen extends ConsumerWidget {
                   ),
                 ),
                 InfoRow(
-                  icon: Icons.cloud_outlined,
-                  label: 'Mode',
-                  value: enabled ? 'Cloud' : 'Local',
-                ),
-                InfoRow(
                   icon: Icons.schedule_outlined,
                   label: 'Last upload',
                   value: _dateValue(sync.metadata?.lastPushedAt),
@@ -109,13 +118,6 @@ class SyncScreen extends ConsumerWidget {
                   icon: Icons.cloud_download_outlined,
                   label: 'Last restore',
                   value: _dateValue(sync.metadata?.lastPulledAt),
-                ),
-                InfoRow(
-                  icon: Icons.commit_outlined,
-                  label: 'Cloud revision',
-                  value: sync.metadata?.lastCloudRevision != null
-                      ? sync.metadata!.lastCloudRevision.toString()
-                      : 'None',
                 ),
                 InfoRow(
                   icon: Icons.hourglass_empty_outlined,
@@ -135,11 +137,11 @@ class SyncScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          
           if (enabled) ...[
+            const SizedBox(height: 16),
             SectionCard(
-              title: 'Settings',
-              subtitle: 'Configure how often your wallet syncs with the cloud.',
+              title: 'Auto Upload Interval',
               compact: true,
               child: Column(
                 children: [
@@ -147,7 +149,7 @@ class SyncScreen extends ConsumerWidget {
                   DropdownButtonFormField<int?>(
                     value: sync.metadata?.syncIntervalHours ?? 4,
                     decoration: InputDecoration(
-                      labelText: 'Periodic Sync Interval',
+                      labelText: 'Interval',
                       labelStyle: theme.textTheme.bodyMedium,
                       border: const OutlineInputBorder(),
                       contentPadding: const EdgeInsets.symmetric(
@@ -177,18 +179,10 @@ class SyncScreen extends ConsumerWidget {
                           .updateSyncInterval(value);
                     },
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Note: Automatic sync on change is always active when connected.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.only(bottom: 8.0),
               child: FilledButton.icon(
@@ -209,6 +203,96 @@ class SyncScreen extends ConsumerWidget {
               ),
             ),
           ],
+          
+          const Gap(AppSpacing.lg),
+          
+          // --- IMPORT / BACKUP SECTION ---
+          SectionCard(
+            title: 'Data & Imports',
+            subtitle:
+                'Queue SMS drafts, review captures, and import/export CSVs.',
+            child: Row(
+              children: [
+                Expanded(
+                  child: MetricTile(
+                    label: 'Pending review',
+                    value: '$pending',
+                    icon: Icons.fact_check_outlined,
+                    compact: true,
+                    tone: pending > 0
+                        ? MetricTone.warning
+                        : MetricTone.standard,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: MetricTile(
+                    label: 'Imports',
+                    value: '${state.importBatches.length}',
+                    icon: Icons.file_upload_outlined,
+                    compact: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Gap(AppSpacing.lg),
+          PremiumRow(
+            icon: Icons.sms_outlined,
+            title: 'Import SMS',
+            subtitle: 'Paste a bank or card message and queue a review draft',
+            onTap: () => context.push('/import-sms'),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          PremiumRow(
+            icon: Icons.backup_outlined,
+            title: 'Local File Backup',
+            subtitle: 'Export or restore a checksum-protected ledger archive',
+            onTap: () => context.push('/data-backup'),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          PremiumRow(
+            icon: Icons.fact_check_outlined,
+            title: 'Review queue',
+            subtitle: 'Confirm, edit, or dismiss imported capture candidates',
+            meta: pending == 0 ? null : '$pending',
+            onTap: () => context.push('/review'),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          PremiumRow(
+            icon: Icons.table_chart_outlined,
+            title: 'Wallet CSV',
+            subtitle: 'Paste CSV rows, preview, and import transactions',
+            onTap: () => context.push('/import-wallet-csv'),
+          ),
+          const Gap(AppSpacing.lg),
+          SectionCard(
+            title: 'Recent imports',
+            child: state.importBatches.isEmpty
+                ? const EmptyState(
+                    icon: Icons.history_toggle_off_outlined,
+                    title: 'No import history yet',
+                    body: 'SMS and CSV import batches will appear here.',
+                  )
+                : Column(
+                    children: [
+                      for (final batch in state.importBatches.take(5)) ...[
+                        PremiumRow(
+                          icon: Icons.file_upload_outlined,
+                          title: transactionTypeLabel(batch.source),
+                          subtitle:
+                              '${DateFormat.MMMd().add_jm().format(batch.createdAt)} · ${transactionTypeLabel(batch.status)}',
+                          meta:
+                              '${batch.importedCount}/${batch.rowCount}${batch.duplicateCount > 0 ? ' · ${batch.duplicateCount} dupes' : ''}',
+                          onTap: () => context.push('/imports/${batch.id}'),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                      ],
+                    ],
+                  ),
+          ),
+          
+          const Gap(AppSpacing.lg),
           OutlinedButton.icon(
             onPressed: isWorking
                 ? null
@@ -287,5 +371,144 @@ class SyncScreen extends ConsumerWidget {
         context,
       ).showSnackBar(SnackBar(content: Text('Cleanup failed: $e')));
     }
+  }
+}
+
+class ImportBatchDetailScreen extends ConsumerWidget {
+  const ImportBatchDetailScreen({required this.batchId, super.key});
+
+  final String batchId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(ledgerProvider);
+    final batch = state.importBatches.firstWhereOrNull(
+      (batch) => batch.id == batchId,
+    );
+    if (batch == null) {
+      return RouteScaffold(
+        title: 'Import detail',
+        child: EmptyState(
+          icon: Icons.file_upload_outlined,
+          title: 'Import not found',
+          body: 'This import batch is not available in the local ledger.',
+          actionLabel: 'Back to imports',
+          onAction: () => context.pop(),
+        ),
+      );
+    }
+    final transactions = state.transactions
+        .where((transaction) => transaction.importBatchId == batch.id)
+        .toList();
+    return RouteScaffold(
+      title: 'Import detail',
+      child: Column(
+        children: [
+          SectionCard(
+            title: transactionTypeLabel(batch.source),
+            subtitle: DateFormat.yMMMMEEEEd().add_jm().format(batch.createdAt),
+            child: Column(
+              children: [
+                InfoRow(
+                  label: 'Status',
+                  value: transactionTypeLabel(batch.status),
+                  icon: Icons.verified_outlined,
+                  tone: batch.status == 'rolled_back'
+                      ? MetricTone.warning
+                      : MetricTone.standard,
+                ),
+                InfoRow(
+                  label: 'Imported rows',
+                  value: '${batch.importedCount}/${batch.rowCount}',
+                  icon: Icons.playlist_add_check_outlined,
+                ),
+                InfoRow(
+                  label: 'Duplicates skipped',
+                  value: '${batch.duplicateCount}',
+                  icon: Icons.content_copy_outlined,
+                  tone: batch.duplicateCount > 0
+                      ? MetricTone.warning
+                      : MetricTone.standard,
+                ),
+              ],
+            ),
+          ),
+          const Gap(AppSpacing.lg),
+          SectionCard(
+            title: 'Imported transactions',
+            child: transactions.isEmpty
+                ? EmptyState(
+                    icon: Icons.receipt_long_outlined,
+                    title: batch.status == 'rolled_back'
+                        ? 'Import rolled back'
+                        : 'No linked transactions',
+                    body: batch.status == 'rolled_back'
+                        ? 'Transactions from this import were removed.'
+                        : 'Older imports may not have transaction links.',
+                  )
+                : Column(
+                    children: [
+                      for (final transaction in transactions.take(8)) ...[
+                        TransactionRow(
+                          state: state,
+                          transaction: transaction,
+                          onTap: () =>
+                              context.push('/transaction/${transaction.id}'),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                      ],
+                    ],
+                  ),
+          ),
+          const Gap(AppSpacing.lg),
+          FilledButton.tonalIcon(
+            onPressed: batch.status == 'rolled_back' || transactions.isEmpty
+                ? null
+                : () => _confirmRollback(context, ref, batch),
+            icon: const Icon(Icons.undo_rounded),
+            label: const Text('Rollback import'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmRollback(
+    BuildContext context,
+    WidgetRef ref,
+    ImportBatch batch,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Rollback import?'),
+        content: const Text(
+          'This removes transactions created by this import batch from the local ledger.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.tonal(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Rollback'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final removed = await ref
+        .read(ledgerProvider.notifier)
+        .rollbackImportBatch(batch.id);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('Rolled back $removed imported transactions.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
   }
 }
