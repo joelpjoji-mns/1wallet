@@ -35,11 +35,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Scaffold(
       body: LaunchBackdrop(
         child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Row(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Row(
                   children: [
                     const SizedBox(width: 48),
                     const Spacer(),
@@ -273,7 +277,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),

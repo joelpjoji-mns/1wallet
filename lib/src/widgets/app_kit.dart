@@ -209,7 +209,7 @@ class AppScreen extends StatelessWidget {
     ),
     this.scrollable = true,
     this.floatingActionButton,
-    this.maxWidth = 1200,
+    this.maxWidth = 800,
   });
 
   final String title;
@@ -226,8 +226,8 @@ class AppScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final isDesktop = AppResponsiveLayout.isDesktop(context);
 
-    // Adjust bottom clearance to account for bottom navigation bar
-    final contentPadding = scrollable
+    // Adjust bottom clearance to account for bottom navigation bar on mobile
+    final contentPadding = scrollable && !isDesktop
         ? padding.add(
             const EdgeInsets.only(bottom: AppSizes.bottomBarClearance),
           )
