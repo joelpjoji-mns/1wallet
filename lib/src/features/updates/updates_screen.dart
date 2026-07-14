@@ -321,14 +321,13 @@ class UpdatesScreen extends ConsumerWidget {
         children: [
           if (state.latestRelease != null)
             const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'To apply this update, please use the button below to hard refresh the application. If that does not work, close the app entirely and reopen it.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    height: 1.5,
-                  ),
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'To apply this update, please use the button below to hard refresh the application. If that does not work, close the app entirely and reopen it.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  height: 1.5,
                 ),
               ),
             ),
