@@ -59,14 +59,20 @@ class RouteScaffold extends StatelessWidget {
       appBar: AppBar(title: Text(title), actions: actions),
       floatingActionButton: floatingActionButton,
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg,
-            AppSpacing.md,
-            AppSpacing.lg,
-            AppSpacing.xxl,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.md,
+                AppSpacing.lg,
+                AppSpacing.xxl,
+              ),
+              children: [child],
+            ),
           ),
-          children: [child],
         ),
       ),
     );
