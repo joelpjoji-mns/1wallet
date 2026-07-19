@@ -73,22 +73,23 @@ final _filteredTransactionsProvider = Provider.autoDispose
               }
             }
             if (query.isEmpty) return true;
-            final account = accountById(state, transaction.accountId);
-            final counterAccount = accountById(
-              state,
-              transaction.counterAccountId,
-            );
-            final category = categoryById(state, transaction.categoryId);
-            final haystack = [
-              transactionTypeLabel(transaction.type),
-              transaction.source,
-              account?.name,
-              counterAccount?.name,
-              category?.name,
-              transaction.paymentMethod,
-              transaction.notes,
-            ].whereType<String>().join(' ').toLowerCase();
-            return haystack.contains(query);
+            
+            RegExp? regex;
+            try {
+              regex = RegExp(query, caseSensitive: false);
+            } catch (_) {}
+
+            if (regex != null) {
+              if (transaction.notes != null && regex.hasMatch(transaction.notes!)) {
+                return true;
+              }
+            } else {
+              // Fallback if invalid regex
+              if (transaction.notes != null && transaction.notes!.toLowerCase().contains(query.toLowerCase())) {
+                return true;
+              }
+            }
+            return false;
           })
           .toList(growable: false);
     });
@@ -250,6 +251,32 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             onCategoryTap: () => _showCategoryFilter(state),
             onStatusTap: _showStatusFilter,
           ),
+          if (transactions.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: AppSpacing.sm, right: AppSpacing.sm, bottom: AppSpacing.sm),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Filtered Total', style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                  Row(
+                    children: [
+                      if (flow.income.amountMinor > 0)
+                        Text(
+                          '+${formatMoney(flow.income, state.preferences.locale)}',
+                          style: TextStyle(color: positiveTone(context), fontWeight: FontWeight.bold),
+                        ),
+                      if (flow.income.amountMinor > 0 && flow.expense.amountMinor > 0)
+                        const SizedBox(width: AppSpacing.md),
+                      if (flow.expense.amountMinor > 0)
+                        Text(
+                          '-${formatMoney(flow.expense, state.preferences.locale)}',
+                          style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.bold),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: transactions.isEmpty
                 ? EmptyState(
