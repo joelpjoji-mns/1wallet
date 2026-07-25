@@ -4,6 +4,8 @@ class ParsedTransactionMessage {
   const ParsedTransactionMessage({
     required this.rawText,
     required this.ignored,
+    this.hasAmount = false,
+    this.hasTriggerWord = false,
     this.amount,
     this.merchant,
     this.transactionType,
@@ -15,6 +17,8 @@ class ParsedTransactionMessage {
 
   final String rawText;
   final bool ignored;
+  final bool hasAmount;
+  final bool hasTriggerWord;
   final Money? amount;
   final String? merchant;
   final String? transactionType;
@@ -36,6 +40,16 @@ ParsedTransactionMessage parseTransactionMessage(
   }
 
   final normalized = text.toLowerCase();
+  final amountMinor = _extractAmountMinor(text);
+  final matchedTrigger = _findMatchingWord(normalized, triggerWords);
+  final currency = _detectCurrency(text) ?? fallbackCurrency;
+  final parsedAmount = amountMinor == null
+      ? null
+      : Money(amountMinor: amountMinor, currency: currency);
+  final merchant = _extractMerchant(text);
+  final transactionType = _detectTransactionType(normalized);
+  final last4 = _extractLast4(text);
+  final institutionName = _detectInstitution(normalized);
 
   // 1. Reject anything matching an ignore word (OTP, promo, reminder,
   //    request, failure, ...) even if it also looks transactional.
@@ -44,6 +58,14 @@ ParsedTransactionMessage parseTransactionMessage(
     return ParsedTransactionMessage(
       rawText: text,
       ignored: true,
+      hasAmount: amountMinor != null,
+      hasTriggerWord: matchedTrigger != null,
+      amount: parsedAmount,
+      merchant: merchant,
+      transactionType: transactionType,
+      last4: last4,
+      institutionName: institutionName,
+      matchedTriggerWord: matchedTrigger,
       matchedIgnoreWord: matchedIgnore,
     );
   }
@@ -51,26 +73,27 @@ ParsedTransactionMessage parseTransactionMessage(
   // 2. A real, completed transaction needs BOTH an amount and a trigger word.
   //    This is the exact rule the native SMS receiver applies, so a
   //    notification is raised if and only if a review candidate is created.
-  final amountMinor = _extractAmountMinor(text);
-  final matchedTrigger = _findMatchingWord(normalized, triggerWords);
   if (amountMinor == null || matchedTrigger == null) {
     return ParsedTransactionMessage(
       rawText: text,
       ignored: true,
+      hasAmount: amountMinor != null,
+      hasTriggerWord: matchedTrigger != null,
+      amount: parsedAmount,
+      merchant: merchant,
+      transactionType: transactionType,
+      last4: last4,
+      institutionName: institutionName,
       matchedTriggerWord: matchedTrigger,
     );
   }
 
-  final currency = _detectCurrency(text) ?? fallbackCurrency;
-  final merchant = _extractMerchant(text);
-  final transactionType = _detectTransactionType(normalized);
-  final last4 = _extractLast4(text);
-  final institutionName = _detectInstitution(normalized);
-
   return ParsedTransactionMessage(
     rawText: text,
     ignored: false,
-    amount: Money(amountMinor: amountMinor, currency: currency),
+    hasAmount: true,
+    hasTriggerWord: true,
+    amount: parsedAmount,
     merchant: merchant,
     transactionType: transactionType ?? 'expense',
     last4: last4,
@@ -150,8 +173,9 @@ String? _detectInstitution(String normalized) {
 }
 
 String? _detectCurrency(String text) {
-  if (RegExp(r'\bINR\b|\bRs\.?|₹', caseSensitive: false).hasMatch(text))
+  if (RegExp(r'\bINR\b|\bRs\.?|₹', caseSensitive: false).hasMatch(text)) {
     return 'INR';
+  }
   if (RegExp(r'\bUSD\b|\$', caseSensitive: false).hasMatch(text)) return 'USD';
   if (RegExp(r'\bGBP\b|£', caseSensitive: false).hasMatch(text)) return 'GBP';
   if (RegExp(r'\bEUR\b|€', caseSensitive: false).hasMatch(text)) return 'EUR';
@@ -307,12 +331,14 @@ String? _extractMerchant(String text) {
 
 String? _detectTransactionType(String normalized) {
   // If specific phrases exist, prioritize them
-  if (RegExp(r'\b(refund|reversal|reversed)\b').hasMatch(normalized))
+  if (RegExp(r'\b(refund|reversal|reversed)\b').hasMatch(normalized)) {
     return 'income';
+  }
   if (RegExp(
     r'\b(charge of|direct debit|standing order|cash withdrawal|purchase|fee|deducted|remitted|dr)\b',
-  ).hasMatch(normalized))
+  ).hasMatch(normalized)) {
     return 'expense';
+  }
 
   final incomeMatch = RegExp(
     r'\b(credited|received|deposited|salary|cashback|added to|inward clearing|credit of)\b',
@@ -335,10 +361,10 @@ String? _detectTransactionType(String normalized) {
 String? _extractLast4(String text) {
   final patterns = [
     RegExp(
-      r'(?:card|acct|account|a\/c|ending|ending in)[^\d]*(\d{4})\b',
+      r'(?:card|acct|account|a\/c|ending|ending in)[^\d]*(\d{3,4})\b',
       caseSensitive: false,
     ),
-    RegExp(r'\b[xX*]{2,12}(\d{4})\b', caseSensitive: false),
+    RegExp(r'\b[xX*]{2,12}(\d{3,4})\b', caseSensitive: false),
     RegExp(r'\b(\d{4})\s*(?:debited|credited)', caseSensitive: false),
   ];
 

@@ -79,11 +79,11 @@ class NotificationSpooler {
 
     await prefs.setString(
       'one_wallet_flutter.notification_trigger_words',
-      jsonEncode(clean(state.preferences.notificationTriggerWords)),
+      jsonEncode(clean(state.preferences.smsTriggerWords)),
     );
     await prefs.setString(
       'one_wallet_flutter.notification_ignore_words',
-      jsonEncode(clean(state.preferences.notificationIgnoreWords)),
+      jsonEncode(clean(state.preferences.smsIgnoreWords)),
     );
     await prefs.setString(
       'one_wallet_flutter.notification_target_packages',

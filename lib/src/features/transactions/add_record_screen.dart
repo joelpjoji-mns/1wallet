@@ -14,8 +14,6 @@ import '../../data/ledger_providers.dart';
 import '../../utils/recurrence_utils.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
-import '../../widgets/app_kit.dart';
-import '../../widgets/currency_picker.dart';
 import '../../utils/number_formatter.dart';
 import '../../widgets/privacy_text.dart';
 import '../common/category_hierarchy_picker.dart';
@@ -1003,6 +1001,11 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
           : state.transactions.firstWhereOrNull(
               (t) => t.id == widget.plannedId,
             );
+        final captureCandidate = widget.captureCandidateId == null
+          ? null
+          : state.captureCandidates.firstWhereOrNull(
+            (c) => c.id == widget.captureCandidateId,
+          );
       await ref
           .read(ledgerProvider.notifier)
           .upsertTransaction(
@@ -1019,6 +1022,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
             source:
                 editingTransaction?.source ??
                 plannedTransaction?.source ??
+              captureCandidate?.source ??
                 'manual',
             notes: _notesController.text.trim().isEmpty
                 ? null
@@ -1051,6 +1055,13 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       }
 
       if (widget.captureCandidateId != null) {
+        await ref.read(ledgerProvider.notifier).rememberMerchantCategory(
+              merchant: captureCandidate?.merchant ??
+                  (_notesController.text.trim().isEmpty
+                      ? null
+                      : _notesController.text.trim()),
+              categoryId: selectedCategory?.id,
+            );
         await ref
             .read(ledgerProvider.notifier)
             .updateCaptureCandidateStatus(

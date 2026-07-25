@@ -15,11 +15,24 @@ import '../../widgets/app_kit.dart';
 import '../common/route_scaffold.dart';
 import '../transactions/transaction_row.dart';
 
-class SyncScreen extends ConsumerWidget {
+class SyncScreen extends ConsumerStatefulWidget {
   const SyncScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SyncScreen> createState() => _SyncScreenState();
+}
+
+class _SyncScreenState extends ConsumerState<SyncScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(cloudSyncControllerProvider.notifier).checkAndTriggerSync(fromScreen: true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final sync = ref.watch(cloudSyncControllerProvider);
     final enabled = sync.phase != CloudSyncPhase.disabled;
@@ -150,7 +163,7 @@ class SyncScreen extends ConsumerWidget {
                   DropdownButtonFormField<int?>(
                     value: const [null, 4, 6, 12, 24].contains(sync.metadata?.syncIntervalHours) 
                         ? sync.metadata?.syncIntervalHours 
-                        : 4,
+                        : null,
                     decoration: InputDecoration(
                       labelText: 'Interval',
                       labelStyle: theme.textTheme.bodyMedium,
@@ -163,11 +176,11 @@ class SyncScreen extends ConsumerWidget {
                     items: const [
                       DropdownMenuItem(
                         value: null,
-                        child: Text('Automatic (On change)'),
+                        child: Text('Automatic (On change - Default)'),
                       ),
                       DropdownMenuItem(
                         value: 4,
-                        child: Text('Every 4 hours (Default)'),
+                        child: Text('Every 4 hours'),
                       ),
                       DropdownMenuItem(value: 6, child: Text('Every 6 hours')),
                       DropdownMenuItem(

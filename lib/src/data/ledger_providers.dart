@@ -7,7 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../capture/capture_pipeline.dart';
 import '../capture/message_parser.dart';
+import '../features/capture/capture_diagnostics.dart';
 import '../features/capture/sms_spooler.dart';
 import '../features/capture/notification_spooler.dart';
 import '../imports/wallet_csv_parser.dart';
@@ -172,7 +174,7 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
     if (scheduled.status != 'scheduled') return scheduled;
 
     int currentCount = finalHistoryCount[scheduled.id] ?? 0;
-    
+
     // Check if limit reached
     if (scheduled.recurrenceLimit != null && currentCount >= scheduled.recurrenceLimit!) {
       changed = true;
@@ -192,13 +194,13 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
           nextDate.isAtSameMomentAs(latestOccurredAt)) {
         nextDate = advanceTransactionRecurrence(nextDate, scheduled);
       }
-      
+
       if (scheduled.recurrenceEndDate != null && nextDate.isAfter(scheduled.recurrenceEndDate!)) {
         return scheduled.copyWith(status: 'finished');
       }
       return scheduled.copyWith(occurredAt: nextDate);
     }
-    
+
     return scheduled;
   }).toList();
 
@@ -222,6 +224,15 @@ class LedgerController extends StateNotifier<LedgerState> {
 
   final LedgerRepository _repository;
   final void Function(LedgerLoadState) _setLoadState;
+  Timer? _spoolPollTimer;
+
+  @override
+  void dispose() {
+    _spoolPollTimer?.cancel();
+    _prefsSaveTimer?.cancel();
+    _autoBackupTimer?.cancel();
+    super.dispose();
+  }
 
   Future<void> _loadPersistedLedger() async {
     try {
@@ -246,7 +257,8 @@ class LedgerController extends StateNotifier<LedgerState> {
       unawaited(processSpooledNotifications());
 
       // Start active foreground polling for instant updates
-      Timer.periodic(const Duration(seconds: 5), (_) {
+      _spoolPollTimer?.cancel();
+      _spoolPollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
         if (!mounted) return;
         unawaited(processSpooledSms());
         unawaited(processSpooledNotifications());
@@ -267,7 +279,6 @@ class LedgerController extends StateNotifier<LedgerState> {
 
   Future<void> processSpooledSms() async {
     try {
-      if (!state.preferences.smsCaptureEnabled) return;
       final spooled = await SmsSpooler.popSpooledMessages();
       if (spooled.isEmpty) return;
 
@@ -278,7 +289,18 @@ class LedgerController extends StateNotifier<LedgerState> {
             ? DateTime.tryParse(timestampStr)
             : null;
         if (body != null && body.isNotEmpty) {
-          await importSmsMessage(body, receivedAt: receivedAt);
+          final nativeAccepted = payload['nativeAccepted'] == true ||
+              payload['notificationShown'] == true ||
+              payload['nativeNotificationShown'] == true ||
+              payload['nativeSource'] != null;
+          await importSmsMessageDetailed(
+            body,
+            receivedAt: receivedAt,
+            stage: 'spool-sms',
+            nativeAccepted: nativeAccepted || payload.isNotEmpty,
+            notificationShown: true,
+            forceQueue: true,
+          );
         }
       }
     } catch (e) {
@@ -288,7 +310,6 @@ class LedgerController extends StateNotifier<LedgerState> {
 
   Future<void> processSpooledNotifications() async {
     try {
-      if (!state.preferences.notificationCaptureEnabled) return;
       final spooled = await NotificationSpooler.popSpooledMessages();
       if (spooled.isEmpty) return;
 
@@ -299,7 +320,18 @@ class LedgerController extends StateNotifier<LedgerState> {
             ? DateTime.tryParse(timestampStr)
             : null;
         if (body != null && body.isNotEmpty) {
-          await importNotificationMessage(body, receivedAt: receivedAt);
+          final nativeAccepted = payload['nativeAccepted'] == true ||
+            payload['notificationShown'] == true ||
+            payload['nativeNotificationShown'] == true ||
+            payload['nativeSource'] != null;
+          await importNotificationMessageDetailed(
+            body,
+            receivedAt: receivedAt,
+            stage: 'spool-notification',
+            nativeAccepted: nativeAccepted || payload.isNotEmpty,
+            notificationShown: true,
+            forceQueue: true,
+          );
         }
       }
     } catch (e) {
@@ -443,6 +475,8 @@ class LedgerController extends StateNotifier<LedgerState> {
 
   Future<void> updatePreferences(LedgerPreferences preferences) async {
     state = state.copyWith(preferences: preferences);
+    unawaited(SmsSpooler.updateTriggerWords(state));
+    unawaited(NotificationSpooler.updateTriggerWords(state));
 
     // Debounce the heavy disk/cloud save to avoid OutOfMemory / extreme jank during slider drags
     _prefsSaveTimer?.cancel();
@@ -1036,8 +1070,14 @@ class LedgerController extends StateNotifier<LedgerState> {
       for (final item in state.captureCandidates)
         item.id == id ? item.copyWith(status: 'approved') : item,
     ];
+    final preferences = _preferencesRememberingCategory(
+      state,
+      candidate.merchant,
+      category?.id,
+    );
     await _commit(
       state.copyWith(
+        preferences: preferences,
         transactions: [transaction, ...state.transactions],
         captureCandidates: candidates,
       ),
@@ -1051,6 +1091,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     final idSet = ids.toSet();
     final newTransactions = <TransactionRecord>[];
 
+    var preferences = state.preferences;
     final candidates = [
       for (final candidate in state.captureCandidates)
         if (idSet.contains(candidate.id))
@@ -1094,6 +1135,12 @@ class LedgerController extends StateNotifier<LedgerState> {
               ),
             );
 
+            preferences = _preferencesRememberingCategory(
+              state.copyWith(preferences: preferences),
+              candidate.merchant,
+              category?.id,
+            );
+
             return candidate.copyWith(status: 'approved');
           }()
         else
@@ -1103,6 +1150,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     if (newTransactions.isNotEmpty) {
       await _commit(
         state.copyWith(
+          preferences: preferences,
           transactions: [...newTransactions, ...state.transactions],
           captureCandidates: candidates,
         ),
@@ -1136,24 +1184,54 @@ class LedgerController extends StateNotifier<LedgerState> {
                     : 'expense',
                 suggestedAccountId: _blankToNull(suggestedAccountId),
                 suggestedCategoryId: _blankToNull(suggestedCategoryId),
+                suggestedCategoryConfidence:
+                  _blankToNull(suggestedCategoryId) ==
+                    candidate.suggestedCategoryId
+                  ? candidate.suggestedCategoryConfidence
+                  : 1.0,
+                suggestedCategoryReason:
+                  _blankToNull(suggestedCategoryId) ==
+                    candidate.suggestedCategoryId
+                  ? candidate.suggestedCategoryReason
+                  : 'Chosen during review',
               )
             : candidate,
     ];
     await _commit(state.copyWith(captureCandidates: candidates));
   }
 
-  bool _isTransactionDuplicate({
+  Future<void> rememberMerchantCategory({
+    required String? merchant,
+    required String? categoryId,
+  }) async {
+    final preferences = _preferencesRememberingCategory(
+      state,
+      merchant,
+      categoryId,
+    );
+    if (identical(preferences, state.preferences)) return;
+    await _commit(state.copyWith(preferences: preferences));
+  }
+
+  _CaptureDuplicateKind? _captureDuplicateKind({
     required LedgerState state,
     required ParsedTransactionMessage parsed,
     required DateTime receivedAt,
     required String? matchedAccountId,
+    Iterable<CaptureCandidate> additionalCandidates = const [],
   }) {
-    final textDuplicate = state.captureCandidates.any(
-      (c) =>
-          c.rawText == parsed.rawText &&
-          c.createdAt.difference(receivedAt).abs().inHours < 24,
-    );
-    if (textDuplicate) return true;
+    bool sameRawText(CaptureCandidate c) =>
+        c.rawText == parsed.rawText &&
+        c.createdAt.difference(receivedAt).abs().inHours < 24;
+
+    if (state.captureCandidates.any(
+      (candidate) => candidate.status == 'pending' && sameRawText(candidate),
+    )) {
+      return _CaptureDuplicateKind.pendingText;
+    }
+    if (additionalCandidates.any(sameRawText)) {
+      return _CaptureDuplicateKind.batch;
+    }
 
     final amount = parsed.amount;
     if (amount != null) {
@@ -1172,13 +1250,15 @@ class LedgerController extends StateNotifier<LedgerState> {
         }
         if (parsed.last4 != null) {
           final acc = state.accounts.firstWhereOrNull((a) => a.id == tx.accountId);
-          if (acc != null && (acc.cardLast4 == parsed.last4 || acc.accountLast4 == parsed.last4)) {
+          if (acc != null &&
+              (acc.cardLast4 == parsed.last4 ||
+                  acc.accountLast4 == parsed.last4)) {
             return true;
           }
         }
         return false;
       });
-      if (txDuplicate) return true;
+      if (txDuplicate) return _CaptureDuplicateKind.postedTransaction;
 
       final candidateDuplicate = state.captureCandidates.any((c) {
         if (c.status != 'pending') return false;
@@ -1186,7 +1266,8 @@ class LedgerController extends StateNotifier<LedgerState> {
         if (timeDiff > 15) return false;
 
         if (c.parsedAmount?.amountMinor != amount.amountMinor ||
-            c.parsedAmount?.currency.toUpperCase() != amount.currency.toUpperCase()) {
+            c.parsedAmount?.currency.toUpperCase() !=
+                amount.currency.toUpperCase()) {
           return false;
         }
 
@@ -1194,183 +1275,263 @@ class LedgerController extends StateNotifier<LedgerState> {
           return true;
         }
         if (parsed.last4 != null) {
-          final acc = state.accounts.firstWhereOrNull((a) => a.id == c.suggestedAccountId);
-          if (acc != null && (acc.cardLast4 == parsed.last4 || acc.accountLast4 == parsed.last4)) {
+          final acc = state.accounts.firstWhereOrNull(
+            (a) => a.id == c.suggestedAccountId,
+          );
+          if (acc != null &&
+              (acc.cardLast4 == parsed.last4 ||
+                  acc.accountLast4 == parsed.last4)) {
             return true;
           }
         }
         return false;
       });
-      if (candidateDuplicate) return true;
+      if (candidateDuplicate) return _CaptureDuplicateKind.pendingAmount;
     }
 
-    return false;
+    return null;
+  }
+
+  CaptureImportResult previewSmsMessage(
+    String rawText, {
+    DateTime? receivedAt,
+  }) {
+    return _evaluateCaptureMessage(
+      rawText: rawText,
+      source: 'sms',
+      triggerWords: state.preferences.smsTriggerWords,
+      ignoreWords: state.preferences.smsIgnoreWords,
+      receivedAt: receivedAt,
+    );
   }
 
   Future<CaptureCandidate?> importSmsMessage(
     String rawText, {
     DateTime? receivedAt,
   }) async {
-    final parsed = parseTransactionMessage(
+    final result = await importSmsMessageDetailed(
       rawText,
-      fallbackCurrency: state.preferences.baseCurrency,
+      receivedAt: receivedAt,
+      stage: 'manual-sms',
+    );
+    return result.candidate;
+  }
+
+  Future<CaptureImportResult> importSmsMessageDetailed(
+    String rawText, {
+    DateTime? receivedAt,
+    String stage = 'manual-sms',
+    bool nativeAccepted = false,
+    bool notificationShown = false,
+    bool forceQueue = false,
+  }) {
+    return _importCaptureMessage(
+      rawText: rawText,
+      source: 'sms',
+      stage: stage,
       triggerWords: state.preferences.smsTriggerWords,
       ignoreWords: state.preferences.smsIgnoreWords,
+      receivedAt: receivedAt,
+      nativeAccepted: nativeAccepted,
+      notificationShown: notificationShown,
+      forceQueue: forceQueue,
     );
-    if (parsed.ignored) return null;
-
-    final actualReceivedAt = receivedAt ?? DateTime.now();
-    String? matchedAccountId = _matchAccountToSms(state, parsed);
-
-    final isDuplicate = _isTransactionDuplicate(
-      state: state,
-      parsed: parsed,
-      receivedAt: actualReceivedAt,
-      matchedAccountId: matchedAccountId,
-    );
-    if (isDuplicate) return null;
-
-    final candidate = CaptureCandidate(
-      id: _newId('cap'),
-      source: 'sms',
-      status: 'pending',
-      createdAt: actualReceivedAt,
-      rawText: parsed.rawText,
-      parsedAmount: parsed.amount,
-      merchant: parsed.merchant,
-      transactionType: parsed.transactionType,
-      suggestedAccountId:
-          matchedAccountId ??
-          state.accounts
-              .where((account) => !account.isArchived)
-              .firstOrNull
-              ?.id,
-      suggestedCategoryId: _matchCategory(
-        state,
-        parsed.merchant,
-        parsed.transactionType ?? 'expense',
-      )?.id,
-    );
-    await _commit(
-      state.copyWith(
-        captureCandidates: [candidate, ...state.captureCandidates],
-      ),
-    );
-    return candidate;
   }
 
   Future<CaptureCandidate?> importNotificationMessage(
     String rawText, {
     DateTime? receivedAt,
   }) async {
+    final result = await importNotificationMessageDetailed(
+      rawText,
+      receivedAt: receivedAt,
+      stage: 'manual-notification',
+    );
+    return result.candidate;
+  }
+
+  Future<CaptureImportResult> importNotificationMessageDetailed(
+    String rawText, {
+    DateTime? receivedAt,
+    String stage = 'manual-notification',
+    bool nativeAccepted = false,
+    bool notificationShown = false,
+    bool forceQueue = false,
+  }) {
+    return _importCaptureMessage(
+      rawText: rawText,
+      source: 'notification',
+      stage: stage,
+      triggerWords: state.preferences.smsTriggerWords,
+      ignoreWords: state.preferences.smsIgnoreWords,
+      receivedAt: receivedAt,
+      nativeAccepted: nativeAccepted,
+      notificationShown: notificationShown,
+      forceQueue: forceQueue,
+    );
+  }
+
+  Future<CaptureImportResult> _importCaptureMessage({
+    required String rawText,
+    required String source,
+    required String stage,
+    required List<String> triggerWords,
+    required List<String> ignoreWords,
+    DateTime? receivedAt,
+    bool nativeAccepted = false,
+    bool notificationShown = false,
+    bool forceQueue = false,
+  }) async {
+    final result = _evaluateCaptureMessage(
+      rawText: rawText,
+      source: source,
+      triggerWords: triggerWords,
+      ignoreWords: ignoreWords,
+      receivedAt: receivedAt,
+      nativeAccepted: nativeAccepted,
+      notificationShown: notificationShown,
+      forceQueue: forceQueue,
+    );
+
+    if (result.queued && result.candidate != null) {
+      await _commit(
+        state.copyWith(
+          captureCandidates: [result.candidate!, ...state.captureCandidates],
+        ),
+      );
+    }
+
+    await CaptureDiagnostics.recordResult(stage: stage, result: result);
+    return result;
+  }
+
+  CaptureImportResult _evaluateCaptureMessage({
+    required String rawText,
+    required String source,
+    required List<String> triggerWords,
+    required List<String> ignoreWords,
+    DateTime? receivedAt,
+    bool nativeAccepted = false,
+    bool notificationShown = false,
+    bool forceQueue = false,
+    Iterable<CaptureCandidate> additionalCandidates = const [],
+  }) {
+    final actualReceivedAt = receivedAt ?? DateTime.now();
     final parsed = parseTransactionMessage(
       rawText,
       fallbackCurrency: state.preferences.baseCurrency,
-      triggerWords: state.preferences.notificationTriggerWords,
-      ignoreWords: state.preferences.notificationIgnoreWords,
+      triggerWords: triggerWords,
+      ignoreWords: ignoreWords,
     );
-    if (parsed.ignored) return null;
 
-    final actualReceivedAt = receivedAt ?? DateTime.now();
-    String? matchedAccountId = _matchAccountToSms(state, parsed);
+    final blockReason = blockReasonForParsedMessage(parsed);
+    if (parsed.rawText.trim().isEmpty) {
+      return CaptureImportResult(
+        source: source,
+        status: CaptureImportStatus.ignored,
+        reason: CaptureBlockReason.empty,
+        receivedAt: actualReceivedAt,
+        parsed: parsed,
+        nativeAccepted: nativeAccepted,
+        notificationShown: notificationShown,
+      );
+    }
+    if (parsed.ignored && !forceQueue) {
+      return CaptureImportResult(
+        source: source,
+        status: CaptureImportStatus.ignored,
+        reason: blockReason,
+        receivedAt: actualReceivedAt,
+        parsed: parsed,
+        nativeAccepted: nativeAccepted,
+        notificationShown: notificationShown,
+      );
+    }
 
-    final isDuplicate = _isTransactionDuplicate(
+    final matchedAccountId = _matchAccountToSms(state, parsed);
+    final duplicateKind = _captureDuplicateKind(
       state: state,
       parsed: parsed,
       receivedAt: actualReceivedAt,
       matchedAccountId: matchedAccountId,
+      additionalCandidates: additionalCandidates,
     );
-    if (isDuplicate) return null;
+    if (duplicateKind != null &&
+        !(forceQueue && duplicateKind == _CaptureDuplicateKind.postedTransaction)) {
+      return CaptureImportResult(
+        source: source,
+        status: CaptureImportStatus.duplicate,
+        reason: _reasonForDuplicate(duplicateKind),
+        receivedAt: actualReceivedAt,
+        parsed: parsed,
+        nativeAccepted: nativeAccepted,
+        notificationShown: notificationShown,
+      );
+    }
 
+    final type = parsed.transactionType == 'income' ? 'income' : 'expense';
+    final category = _suggestCategory(
+      state,
+      parsed.merchant ?? parsed.rawText,
+      type,
+    );
     final candidate = CaptureCandidate(
       id: _newId('cap'),
-      source: 'notification',
+      source: source,
       status: 'pending',
       createdAt: actualReceivedAt,
       rawText: parsed.rawText,
       parsedAmount: parsed.amount,
       merchant: parsed.merchant,
-      transactionType: parsed.transactionType,
+      transactionType: type,
       suggestedAccountId:
           matchedAccountId ??
           state.accounts
               .where((account) => !account.isArchived)
               .firstOrNull
               ?.id,
-      suggestedCategoryId: _matchCategory(
-        state,
-        parsed.merchant,
-        parsed.transactionType ?? 'expense',
-      )?.id,
+      suggestedCategoryId: category?.category.id,
+      suggestedCategoryConfidence: category?.confidence,
+      suggestedCategoryReason: category?.reason,
     );
-    await _commit(
-      state.copyWith(
-        captureCandidates: [candidate, ...state.captureCandidates],
-      ),
+    return CaptureImportResult(
+      source: source,
+      status: CaptureImportStatus.queued,
+      receivedAt: actualReceivedAt,
+      parsed: parsed,
+      candidate: candidate,
+      nativeAccepted: nativeAccepted,
+      notificationShown: notificationShown,
+      categoryId: category?.category.id,
+      categoryReason: category?.reason,
     );
-    return candidate;
+  }
+
+  Future<List<CaptureImportResult>> importSmsMessagesBatchDetailed(
+    List<({String text, DateTime receivedAt})> messages,
+  ) async {
+    final results = <CaptureImportResult>[];
+    for (final message in messages) {
+      results.add(
+        await importSmsMessageDetailed(
+          message.text,
+          receivedAt: message.receivedAt,
+          stage: 'scan-inbox',
+        ),
+      );
+    }
+    return results;
   }
 
   Future<List<CaptureCandidate>> importSmsMessagesBatch(
     List<({String text, DateTime receivedAt})> messages,
   ) async {
-    final newCandidates = <CaptureCandidate>[];
-    int idx = 0;
-
-    for (final message in messages) {
-      final parsed = parseTransactionMessage(
-        message.text,
-        fallbackCurrency: state.preferences.baseCurrency,
-        triggerWords: state.preferences.smsTriggerWords,
-        ignoreWords: state.preferences.smsIgnoreWords,
-      );
-      if (parsed.ignored) continue;
-
-      String? matchedAccountId = _matchAccountToSms(state, parsed);
-
-      final isDuplicate = _isTransactionDuplicate(
-        state: state,
-        parsed: parsed,
-        receivedAt: message.receivedAt,
-        matchedAccountId: matchedAccountId,
-      ) || newCandidates.any((c) =>
-          c.rawText == parsed.rawText &&
-          c.createdAt.difference(message.receivedAt).abs().inHours < 24);
-      if (isDuplicate) continue;
-
-      final candidate = CaptureCandidate(
-        id: '${_newId('cap')}-${idx++}',
-        source: 'sms',
-        status: 'pending',
-        createdAt: message.receivedAt,
-        rawText: parsed.rawText,
-        parsedAmount: parsed.amount,
-        merchant: parsed.merchant,
-        transactionType: parsed.transactionType,
-        suggestedAccountId:
-            matchedAccountId ??
-            state.accounts
-                .where((account) => !account.isArchived)
-                .firstOrNull
-                ?.id,
-        suggestedCategoryId: _matchCategory(
-          state,
-          parsed.merchant,
-          parsed.transactionType ?? 'expense',
-        )?.id,
-      );
-      newCandidates.add(candidate);
-    }
-
-    if (newCandidates.isNotEmpty) {
-      await _commit(
-        state.copyWith(
-          captureCandidates: [...newCandidates, ...state.captureCandidates],
-        ),
-      );
-    }
-
-    return newCandidates;
+    final results = await importSmsMessagesBatchDetailed(messages);
+    return results
+        .where((result) => result.queued)
+        .map((result) => result.candidate)
+        .whereType<CaptureCandidate>()
+        .toList();
   }
 
   Future<int> importWalletCsvRows(List<ParsedWalletCsvRow> rows) async {
@@ -1793,6 +1954,41 @@ Map<String, String> _normalizeStringMap(Map<String, String> values) {
   return result;
 }
 
+String? _merchantRuleKey(String? merchant) {
+  final normalized = merchant
+      ?.trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9@&._\-\s]+'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  if (normalized == null || normalized.length < 3) return null;
+  return normalized.length <= 80 ? normalized : normalized.substring(0, 80);
+}
+
+LedgerPreferences _preferencesRememberingCategory(
+  LedgerState state,
+  String? merchant,
+  String? categoryId,
+) {
+  final key = _merchantRuleKey(merchant);
+  if (key == null || categoryId == null || categoryId.trim().isEmpty) {
+    return state.preferences;
+  }
+  final category = categoryById(state, categoryId);
+  if (category == null || category.isArchived) return state.preferences;
+
+  final existing = state.preferences.merchantCategoryRules;
+  if (existing[key] == category.id) return state.preferences;
+  final next = Map<String, String>.from(existing)..[key] = category.id;
+  if (next.length > 250) {
+    final overflow = next.length - 250;
+    for (final oldKey in next.keys.take(overflow).toList()) {
+      next.remove(oldKey);
+    }
+  }
+  return state.preferences.copyWith(merchantCategoryRules: next);
+}
+
 TransactionRecord? _transactionById(LedgerState state, String id) {
   for (final transaction in state.transactions) {
     if (transaction.id == id) return transaction;
@@ -1829,14 +2025,52 @@ Account? _matchAccount(LedgerState state, String name) {
   return null;
 }
 
+class _CategorySuggestion {
+  const _CategorySuggestion({
+    required this.category,
+    required this.confidence,
+    required this.reason,
+  });
+
+  final Category category;
+  final double confidence;
+  final String reason;
+}
+
 Category? _matchCategory(LedgerState state, String? name, String kind) {
+  return _suggestCategory(state, name, kind)?.category;
+}
+
+_CategorySuggestion? _suggestCategory(
+  LedgerState state,
+  String? name,
+  String kind,
+) {
   final active = state.categories
       .where((category) => !category.isArchived)
       .toList();
   final normalized = name?.trim().toLowerCase();
 
   if (normalized != null && normalized.isNotEmpty) {
-    // 1. Check previous transactions for exact or partial name match
+    // 1. User-learned merchant/category rules from reviewed captures.
+    for (final entry in state.preferences.merchantCategoryRules.entries) {
+      final ruleKey = entry.key.trim().toLowerCase();
+      if (ruleKey.isEmpty) continue;
+      final matches = normalized == ruleKey ||
+          (ruleKey.length > 4 && normalized.contains(ruleKey)) ||
+          (normalized.length > 4 && ruleKey.contains(normalized));
+      if (!matches) continue;
+      final category = categoryById(state, entry.value);
+      if (category != null && !category.isArchived) {
+        return _CategorySuggestion(
+          category: category,
+          confidence: 0.95,
+          reason: 'Learned from past $ruleKey captures',
+        );
+      }
+    }
+
+    // 2. Check previous transactions for exact or partial name match
     // to find the most recently used category for this merchant.
     for (final tx in state.transactions) {
       final txNotes = tx.notes?.trim().toLowerCase();
@@ -1845,10 +2079,12 @@ Category? _matchCategory(LedgerState state, String? name, String kind) {
       bool isStrongMatch(String? pastString) {
         if (pastString == null) return false;
         if (pastString == normalized) return true;
-        if (pastString.length > 4 && normalized.contains(pastString))
+        if (pastString.length > 4 && normalized.contains(pastString)) {
           return true;
-        if (normalized.length > 4 && pastString.contains(normalized))
+        }
+        if (normalized.length > 4 && pastString.contains(normalized)) {
           return true;
+        }
         return false;
       }
 
@@ -1856,18 +2092,107 @@ Category? _matchCategory(LedgerState state, String? name, String kind) {
         if (tx.categoryId != null) {
           final cat = categoryById(state, tx.categoryId);
           if (cat != null && !cat.isArchived) {
-            return cat;
+            return _CategorySuggestion(
+              category: cat,
+              confidence: 0.9,
+              reason: 'Matched past transaction history',
+            );
           }
         }
       }
     }
 
-    // 2. Exact match against category names
+    // 3. Exact match against category names
     for (final category in active) {
-      if (category.name.toLowerCase() == normalized) return category;
+      if (category.name.toLowerCase() == normalized) {
+        return _CategorySuggestion(
+          category: category,
+          confidence: 0.85,
+          reason: 'Matched category name',
+        );
+      }
     }
 
-    // 3. Keyword matching
+    // 4. Keyword matching against seller names and message content.
+    _CategorySuggestion? keywordSuggestion(
+      RegExp pattern,
+      List<String> preferredCategoryIds,
+      List<String> nameNeedles,
+      String reason,
+    ) {
+      if (!pattern.hasMatch(normalized)) return null;
+      for (final id in preferredCategoryIds) {
+        final category = categoryById(state, id);
+        if (category != null && !category.isArchived) {
+          return _CategorySuggestion(
+            category: category,
+            confidence: 0.72,
+            reason: reason,
+          );
+        }
+      }
+      for (final needle in nameNeedles) {
+        for (final category in active) {
+          if (category.name.toLowerCase().contains(needle)) {
+            return _CategorySuggestion(
+              category: category,
+              confidence: 0.68,
+              reason: reason,
+            );
+          }
+        }
+      }
+      return null;
+    }
+
+    final keyword = keywordSuggestion(
+          RegExp(
+            r'\b(market|supermarket|grocery|groceries|bigbasket|blinkit|instamart|jiomart|dmart|tesco|aldi|lidl|walmart|costco|whole\s*foods|trader\s*joe)\b',
+          ),
+          const ['cat-grocery', 'cat-food'],
+          const ['grocery', 'groceries', 'food'],
+          'Grocery/market keyword match',
+        ) ??
+        keywordSuggestion(
+          RegExp(
+            r'\b(zomato|swiggy|food\s*delivery|restaurant|cafe|dining|mcdonalds|starbucks|pizza|burger|kfc|dominos|eatery)\b',
+          ),
+          const ['cat-dining', 'cat-food'],
+          const ['dining', 'food'],
+          'Food/dining keyword match',
+        ) ??
+        keywordSuggestion(
+          RegExp(r'\b(uber|ola|rapido|taxi|transit|metro|train|flight)\b'),
+          const ['cat-transport', 'cat-travel'],
+          const ['transport', 'travel'],
+          'Transport keyword match',
+        ) ??
+        keywordSuggestion(
+          RegExp(r'\b(amazon|flipkart|myntra|shopping)\b'),
+          const ['cat-shopping'],
+          const ['shopping'],
+          'Shopping keyword match',
+        ) ??
+        keywordSuggestion(
+          RegExp(r'\b(netflix|spotify|prime|hotstar|subscription|movie)\b'),
+          const ['cat-entertainment'],
+          const ['entertainment'],
+          'Entertainment keyword match',
+        ) ??
+        keywordSuggestion(
+          RegExp(r'\b(hospital|pharmacy|clinic|medical|health|doctor)\b'),
+          const ['cat-health'],
+          const ['health', 'medical'],
+          'Health keyword match',
+        ) ??
+        keywordSuggestion(
+          RegExp(r'\b(jio|airtel|vi|recharge|bill|electricity|water|wifi)\b'),
+          const ['cat-bills'],
+          const ['bill', 'utility'],
+          'Bill/utility keyword match',
+        );
+    if (keyword != null) return keyword;
+
     String? guessedKind;
     if (RegExp(
       r'\b(zomato|swiggy|food|restaurant|cafe|dining|mcdonalds|starbucks)\b',
@@ -1898,7 +2223,11 @@ Category? _matchCategory(LedgerState state, String? name, String kind) {
     if (guessedKind != null) {
       for (final category in active) {
         if (category.name.toLowerCase().contains(guessedKind)) {
-          return category;
+          return _CategorySuggestion(
+            category: category,
+            confidence: 0.6,
+            reason: 'Legacy keyword match',
+          );
         }
       }
     }
@@ -2027,4 +2356,20 @@ void _ignoreLoadState(LedgerLoadState _) {}
 
 String _encodeForBackup(LedgerState state) {
   return encodeLedgerArchive(state, source: 'flutter-local');
+}
+
+enum _CaptureDuplicateKind {
+  pendingText,
+  pendingAmount,
+  postedTransaction,
+  batch,
+}
+
+CaptureBlockReason _reasonForDuplicate(_CaptureDuplicateKind kind) {
+  return switch (kind) {
+    _CaptureDuplicateKind.pendingText => CaptureBlockReason.duplicatePending,
+    _CaptureDuplicateKind.pendingAmount => CaptureBlockReason.duplicatePending,
+    _CaptureDuplicateKind.postedTransaction => CaptureBlockReason.duplicatePosted,
+    _CaptureDuplicateKind.batch => CaptureBlockReason.duplicateBatch,
+  };
 }

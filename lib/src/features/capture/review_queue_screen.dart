@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
@@ -295,16 +296,10 @@ class ReviewQueueScreen extends ConsumerWidget {
                                           ),
                                           const SizedBox(width: 4),
                                           Text(
-                                            state.categories
-                                                    .where(
-                                                      (c) =>
-                                                          c.id ==
-                                                          candidate
-                                                              .suggestedCategoryId,
-                                                    )
-                                                    .firstOrNull
-                                                    ?.name ??
-                                                'Category',
+                                            _categoryChipText(
+                                              state,
+                                              candidate,
+                                            ),
                                             style: theme.textTheme.bodySmall
                                                 ?.copyWith(
                                                   color: scheme.secondary,
@@ -486,4 +481,12 @@ class ReviewQueueScreen extends ConsumerWidget {
         );
     }
   }
+}
+
+String _categoryChipText(LedgerState state, CaptureCandidate candidate) {
+  final category = categoryById(state, candidate.suggestedCategoryId);
+  final name = category?.name ?? 'Category';
+  final reason = candidate.suggestedCategoryReason?.trim();
+  if (reason == null || reason.isEmpty) return name;
+  return '$name · $reason';
 }

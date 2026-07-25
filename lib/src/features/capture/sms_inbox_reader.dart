@@ -111,7 +111,7 @@ Future<List<AndroidSmsInboxMessage>> readAndroidSmsInbox({
           return AndroidSmsInboxMessage(
             id: idValue != null
                 ? idValue.toString()
-                : '\$receivedAt:\${body.substring(0, body.length < 32 ? body.length : 32)}',
+              : '$receivedAt:${body.substring(0, body.length < 32 ? body.length : 32)}',
             sender: item['address']?.toString(),
             body: body,
             receivedAt: receivedAt,
@@ -120,20 +120,7 @@ Future<List<AndroidSmsInboxMessage>> readAndroidSmsInbox({
         .whereType<AndroidSmsInboxMessage>()
         .toList();
   } catch (e) {
-    throw Exception('Could not read SMS inbox: \$e');
-  }
-}
-
-AndroidSmsPermissionStatus _parsePermissionStatus(String? status) {
-  switch (status) {
-    case 'granted':
-      return AndroidSmsPermissionStatus.granted;
-    case 'denied':
-      return AndroidSmsPermissionStatus.denied;
-    case 'blocked':
-      return AndroidSmsPermissionStatus.blocked;
-    default:
-      return AndroidSmsPermissionStatus.unavailable;
+    throw Exception('Could not read SMS inbox: $e');
   }
 }
 
