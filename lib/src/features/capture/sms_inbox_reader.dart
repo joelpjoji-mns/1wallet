@@ -111,7 +111,7 @@ Future<List<AndroidSmsInboxMessage>> readAndroidSmsInbox({
           return AndroidSmsInboxMessage(
             id: idValue != null
                 ? idValue.toString()
-              : '$receivedAt:${body.substring(0, body.length < 32 ? body.length : 32)}',
+                : '$receivedAt:${body.substring(0, body.length < 32 ? body.length : 32)}',
             sender: item['address']?.toString(),
             body: body,
             receivedAt: receivedAt,
