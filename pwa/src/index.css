@@ -36,7 +36,7 @@ body {
 
 .glass-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
 }
 
 /* Layouts */
@@ -183,9 +183,10 @@ body {
   .app-container {
     flex-direction: column;
   }
-  
+
   .sidebar {
-    display: none; /* Hide sidebar on mobile */
+    display: none;
+    /* Hide sidebar on mobile */
   }
 
   .main-content {
@@ -299,6 +300,7 @@ body {
   padding: 16px 0;
   border-bottom: 1px solid var(--border);
 }
+
 .transaction-row:last-child {
   border-bottom: none;
 }

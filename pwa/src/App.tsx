@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
-import { LayoutDashboard, Receipt, Calendar, LineChart, Wallet, LogIn, Bell, Search } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
-import { auth, googleProvider } from './firebase';
-import { signInWithPopup, onAuthStateChanged } from 'firebase/auth';
 import type { User } from 'firebase/auth';
+import { onAuthStateChanged, signInWithPopup } from 'firebase/auth';
+import type { LucideIcon } from 'lucide-react';
+import { Bell, Calendar, LayoutDashboard, LineChart, LogIn, Receipt, Search, Wallet } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { auth, googleProvider } from './firebase';
 
 type SectionId = 'home' | 'history' | 'calendar' | 'planner' | 'accounts';
 
@@ -93,18 +93,18 @@ function HomeBottomIsland({ activeSection, onSectionChange }: { activeSection: S
   return (
     <nav className="home-bottom-island" aria-label="Home quick navigation">
       <div className="home-bottom-island__track">
-      {navItems.map(item => (
-        <button
-          key={item.id}
-          type="button"
-          className={`home-bottom-island__item ${activeSection === item.id ? 'active' : ''}`}
-          onClick={() => onSectionChange(item.id)}
-          aria-pressed={activeSection === item.id}
-        >
-          <item.icon size={22} />
-          {item.name}
-        </button>
-      ))}
+        {navItems.map(item => (
+          <button
+            key={item.id}
+            type="button"
+            className={`home-bottom-island__item ${activeSection === item.id ? 'active' : ''}`}
+            onClick={() => onSectionChange(item.id)}
+            aria-pressed={activeSection === item.id}
+          >
+            <item.icon size={22} />
+            {item.name}
+          </button>
+        ))}
       </div>
     </nav>
   );
