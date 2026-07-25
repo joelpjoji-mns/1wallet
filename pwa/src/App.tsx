@@ -1,9 +1,26 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Receipt, Calendar, LineChart, Wallet, LogIn, Bell, Search } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { auth, googleProvider } from './firebase';
 import { signInWithPopup, onAuthStateChanged } from 'firebase/auth';
 import type { User } from 'firebase/auth';
+
+type SectionId = 'home' | 'history' | 'calendar' | 'planner' | 'accounts';
+
+type NavItem = {
+  id: SectionId;
+  name: string;
+  description: string;
+  icon: LucideIcon;
+};
+
+const navItems: NavItem[] = [
+  { id: 'home', name: 'Home', description: 'Overview and quick actions', icon: LayoutDashboard },
+  { id: 'history', name: 'History', description: 'Browse transactions and receipts', icon: Receipt },
+  { id: 'calendar', name: 'Calendar', description: 'Review cashflow by date', icon: Calendar },
+  { id: 'planner', name: 'Planner', description: 'Plan budgets, goals, and forecasts', icon: LineChart },
+  { id: 'accounts', name: 'Accounts', description: 'Manage wallets, cards, and balances', icon: Wallet },
+];
 
 function LoginScreen() {
   const handleLogin = async () => {
@@ -30,16 +47,7 @@ function LoginScreen() {
   );
 }
 
-function Sidebar() {
-  const location = useLocation();
-  const navItems = [
-    { name: 'Home', path: '/', icon: LayoutDashboard },
-    { name: 'History', path: '/history', icon: Receipt },
-    { name: 'Calendar', path: '/calendar', icon: Calendar },
-    { name: 'Planner', path: '/planner', icon: LineChart },
-    { name: 'Accounts', path: '/accounts', icon: Wallet },
-  ];
-
+function Sidebar({ activeSection, onSectionChange }: { activeSection: SectionId; onSectionChange: (section: SectionId) => void }) {
   return (
     <div className="sidebar">
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '40px', padding: '0 16px' }}>
@@ -51,14 +59,16 @@ function Sidebar() {
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {navItems.map(item => (
-          <Link 
-            key={item.path} 
-            to={item.path} 
-            className={`nav-item ${location.pathname === item.path ? 'active' : ''}`}
+          <button
+            key={item.id}
+            type="button"
+            className={`nav-item ${activeSection === item.id ? 'active' : ''}`}
+            onClick={() => onSectionChange(item.id)}
+            aria-current={activeSection === item.id ? 'page' : undefined}
           >
             <item.icon size={20} />
             {item.name}
-          </Link>
+          </button>
         ))}
       </div>
 
@@ -79,28 +89,24 @@ function Sidebar() {
   );
 }
 
-function BottomNav() {
-  const location = useLocation();
-  const navItems = [
-    { name: 'Home', path: '/', icon: LayoutDashboard },
-    { name: 'History', path: '/history', icon: Receipt },
-    { name: 'Calendar', path: '/calendar', icon: Calendar },
-    { name: 'Accounts', path: '/accounts', icon: Wallet },
-  ];
-
+function HomeBottomIsland({ activeSection, onSectionChange }: { activeSection: SectionId; onSectionChange: (section: SectionId) => void }) {
   return (
-    <div className="bottom-nav">
+    <nav className="home-bottom-island" aria-label="Home quick navigation">
+      <div className="home-bottom-island__track">
       {navItems.map(item => (
-        <Link 
-          key={item.path} 
-          to={item.path} 
-          className={`bottom-nav-item ${location.pathname === item.path ? 'active' : ''}`}
+        <button
+          key={item.id}
+          type="button"
+          className={`home-bottom-island__item ${activeSection === item.id ? 'active' : ''}`}
+          onClick={() => onSectionChange(item.id)}
+          aria-pressed={activeSection === item.id}
         >
-          <item.icon size={24} />
+          <item.icon size={22} />
           {item.name}
-        </Link>
+        </button>
       ))}
-    </div>
+      </div>
+    </nav>
   );
 }
 
@@ -179,10 +185,25 @@ function Dashboard() {
   );
 }
 
-function PlaceholderScreen({ title }: { title: string }) {
+function PlaceholderScreen({ item }: { item: NavItem }) {
   return (
-    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <h1 style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{title}</h1>
+    <div className="section-panel">
+      <header className="section-header">
+        <div>
+          <h1>{item.name}</h1>
+          <p>{item.description}</p>
+        </div>
+      </header>
+
+      <div className="glass-card placeholder-card">
+        <div className="placeholder-icon">
+          <item.icon size={28} />
+        </div>
+        <div>
+          <h2>{item.name} workspace</h2>
+          <p>The sidebar now keeps this shell in place and swaps only the middle content.</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -190,6 +211,7 @@ function PlaceholderScreen({ title }: { title: string }) {
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeSection, setActiveSection] = useState<SectionId>('home');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -207,22 +229,18 @@ function App() {
     return <LoginScreen />;
   }
 
+  const activeNavItem = navItems.find(item => item.id === activeSection) ?? navItems[0]!;
+
   return (
-    <BrowserRouter>
-      <div className="app-container">
-        <Sidebar />
-        <main className="main-content">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/history" element={<PlaceholderScreen title="History Coming Soon" />} />
-            <Route path="/calendar" element={<PlaceholderScreen title="Calendar Coming Soon" />} />
-            <Route path="/planner" element={<PlaceholderScreen title="Planner Coming Soon" />} />
-            <Route path="/accounts" element={<PlaceholderScreen title="Accounts Coming Soon" />} />
-          </Routes>
-        </main>
-        <BottomNav />
-      </div>
-    </BrowserRouter>
+    <div className="app-container">
+      <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
+      <main className={`main-content ${activeSection === 'home' ? 'with-home-island' : ''}`}>
+        {activeSection === 'home' ? <Dashboard /> : <PlaceholderScreen item={activeNavItem} />}
+      </main>
+      {activeSection === 'home' ? (
+        <HomeBottomIsland activeSection={activeSection} onSectionChange={setActiveSection} />
+      ) : null}
+    </div>
   );
 }
 
