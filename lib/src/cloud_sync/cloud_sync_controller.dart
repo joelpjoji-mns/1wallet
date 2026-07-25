@@ -156,19 +156,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         return;
       }
 
-      if (state.metadata?.syncIntervalHours == null) {
-        _scheduleUpload();
-      } else {
-        state = state.copyWith(pendingUpload: true);
-        // If they have an interval set but haven't synced in that interval, we should trigger it.
-        final lastSync = state.metadata?.lastPushedAt;
-        if (lastSync != null) {
-          final lastSyncDate = DateTime.tryParse(lastSync);
-          if (lastSyncDate != null && DateTime.now().difference(lastSyncDate).inHours >= state.metadata!.syncIntervalHours!) {
-            _scheduleUpload();
-          }
-        }
-      }
+      unawaited(checkAndTriggerSync());
     });
 
     final initialUser = _ref.read(authControllerProvider).user;
@@ -209,14 +197,9 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
   void _setupPeriodicSync() {
     _periodicSyncTimer?.cancel();
-    final interval = state.metadata?.syncIntervalHours;
-    if (interval == null || interval <= 0) return;
-
-    _periodicSyncTimer = Timer.periodic(Duration(hours: interval), (timer) {
-      final user = _ref.read(authControllerProvider).user;
-      if (user != null && state.phase == CloudSyncPhase.idle) {
-        fullSync(reason: 'periodic');
-      }
+    unawaited(checkAndTriggerSync());
+    _periodicSyncTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      unawaited(checkAndTriggerSync());
     });
   }
 
@@ -224,8 +207,54 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     var metadata = state.metadata ?? await CloudSyncMetadata.load();
     metadata = metadata.copyWith(syncIntervalHours: hours);
     await metadata.save();
-    state = state.copyWith(metadata: metadata);
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_unsynced_changes', true);
+
+    state = state.copyWith(metadata: metadata, pendingUpload: true);
     _setupPeriodicSync();
+  }
+
+  Future<void> checkAndTriggerSync({
+    bool fromResume = false,
+    bool fromScreen = false,
+  }) async {
+    final user = _ref.read(authControllerProvider).user;
+    if (user == null || state.phase == CloudSyncPhase.disabled) return;
+    if (_localClearInProgress) return;
+    if (state.phase == CloudSyncPhase.restoring ||
+        state.phase == CloudSyncPhase.checking ||
+        state.phase == CloudSyncPhase.uploading) {
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final hasUnsynced = prefs.getBool('has_unsynced_changes') ?? false;
+    final isPending = hasUnsynced || state.pendingUpload;
+
+    if (state.pendingUpload != isPending) {
+      state = state.copyWith(pendingUpload: isPending);
+    }
+
+    if (!isPending) return;
+
+    final interval = state.metadata?.syncIntervalHours;
+    if (interval == null || interval <= 0) {
+      _scheduleUpload();
+      return;
+    }
+
+    final lastSyncStr = state.metadata?.lastPushedAt;
+    if (lastSyncStr == null) {
+      _scheduleUpload();
+      return;
+    }
+
+    final lastSyncDate = DateTime.tryParse(lastSyncStr);
+    if (lastSyncDate == null ||
+        DateTime.now().difference(lastSyncDate).inMinutes >= (interval * 60)) {
+      _scheduleUpload();
+    }
   }
 
   Future<void> fullSync({required String reason}) async {
@@ -463,11 +492,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         }
 
         if (!shouldPull && hasUnsyncedChanges) {
-          if (metadata.syncIntervalHours == null) {
-            await uploadSnapshot(reason: 'unsynced_startup');
-          } else {
-            state = state.copyWith(phase: CloudSyncPhase.idle, pendingUpload: true);
-          }
+          state = state.copyWith(phase: CloudSyncPhase.idle, pendingUpload: true);
         }
       } else {
         // Migration check
@@ -495,6 +520,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         bootstrappedUserId: userId,
         bootstrapComplete: true,
       );
+      unawaited(checkAndTriggerSync());
     } on TimeoutException catch (e) {
       debugPrint('Cloud sync bootstrap timeout, fetching actual error...');
       Object actualError = e;
@@ -568,7 +594,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
       final encodedData = await compute(
         _encodeCloudSnapshotData,
-        currentLedger,
+        (currentLedger, {'syncIntervalHours': metadata.syncIntervalHours}),
       );
 
       final jsonStr = jsonEncode(encodedData);
@@ -775,10 +801,17 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         await prefs.remove('last_local_modified_at');
       }
 
+      final syncSettings = restoreData['syncSettings'] as Map<String, dynamic>?;
+      int? restoredInterval = currentMetadata.syncIntervalHours;
+      if (syncSettings != null && syncSettings.containsKey('syncIntervalHours')) {
+        restoredInterval = syncSettings['syncIntervalHours'] as int?;
+      }
+
       final newMetadata = currentMetadata.copyWith(
         userId: userId,
         lastPulledAt: DateTime.now().toIso8601String(),
         syncedDocumentHashes: {},
+        syncIntervalHours: restoredInterval,
       );
       await newMetadata.save();
 
@@ -927,8 +960,13 @@ LedgerState _parseCloudRestoreData(Map<String, dynamic> data) {
   );
 }
 
-Map<String, dynamic> _encodeCloudSnapshotData(LedgerState ledger) {
+Map<String, dynamic> _encodeCloudSnapshotData(
+  (LedgerState, Map<String, dynamic>?) input,
+) {
+  final ledger = input.$1;
+  final syncSettings = input.$2;
   return {
+    'syncSettings': syncSettings,
     'preferences': preferencesToJson(
       ledger.preferences,
     ).cast<String, dynamic>(),

@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 const _cloudSyncStorageKey = 'one_wallet_flutter.cloud_sync.v1';
+const _metadataUnset = Object();
 
 @immutable
 class CloudSyncMetadata {
@@ -68,7 +69,7 @@ class CloudSyncMetadata {
     List<String>? syncedCaptureCandidateIds,
     List<String>? syncedImportBatchIds,
     Map<String, String>? syncedDocumentHashes,
-    int? syncIntervalHours,
+    Object? syncIntervalHours = _metadataUnset,
   }) {
     return CloudSyncMetadata(
       version: version ?? this.version,
@@ -90,7 +91,9 @@ class CloudSyncMetadata {
           syncedCaptureCandidateIds ?? this.syncedCaptureCandidateIds,
       syncedImportBatchIds: syncedImportBatchIds ?? this.syncedImportBatchIds,
       syncedDocumentHashes: syncedDocumentHashes ?? this.syncedDocumentHashes,
-      syncIntervalHours: syncIntervalHours ?? this.syncIntervalHours,
+      syncIntervalHours: identical(syncIntervalHours, _metadataUnset)
+          ? this.syncIntervalHours
+          : syncIntervalHours as int?,
     );
   }
 
@@ -142,7 +145,7 @@ class CloudSyncMetadata {
           ?.cast<String>(),
       syncedDocumentHashes: (json['syncedDocumentHashes'] as Map?)
           ?.cast<String, String>(),
-      syncIntervalHours: json['syncIntervalHours'] as int? ?? 4,
+      syncIntervalHours: json.containsKey('syncIntervalHours') ? json['syncIntervalHours'] as int? : null,
     );
   }
 

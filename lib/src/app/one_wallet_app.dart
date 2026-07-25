@@ -6,6 +6,7 @@ import '../routing/app_router.dart';
 import '../theme/app_theme.dart';
 import '../theme/theme_controller.dart';
 
+import '../cloud_sync/cloud_sync_controller.dart';
 import '../data/ledger_providers.dart';
 import '../features/capture/sms_inbox_reader.dart';
 import '../startup/startup_state.dart';
@@ -29,6 +30,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       ref.read(ledgerProvider.notifier).processSpooledSms();
       ref.read(ledgerProvider.notifier).processSpooledNotifications();
+      ref.read(cloudSyncControllerProvider.notifier).checkAndTriggerSync();
       final route = await getInitialSmsRoute();
       if (route != null && mounted) {
         _pendingSmsRoute = route;
@@ -62,6 +64,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     if (state == AppLifecycleState.resumed) {
       ref.read(ledgerProvider.notifier).processSpooledSms();
       ref.read(ledgerProvider.notifier).processSpooledNotifications();
+      ref.read(cloudSyncControllerProvider.notifier).checkAndTriggerSync(fromResume: true);
     }
   }
 
