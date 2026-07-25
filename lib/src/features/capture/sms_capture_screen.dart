@@ -3,13 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../capture/message_parser.dart';
+import '../../capture/capture_pipeline.dart';
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/privacy_text.dart';
+import '../common/full_screen_picker.dart';
 import '../common/route_scaffold.dart';
 import 'sms_inbox_reader.dart';
 
@@ -28,8 +29,8 @@ class SmsCaptureScreen extends ConsumerStatefulWidget {
 
 class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
   final _testController = TextEditingController();
-  ParsedTransactionMessage? _preview;
-  String _scanTimeframe = '7d';
+  CaptureImportResult? _preview;
+  String _scanTimeframe = '24h';
   bool _isScanning = false;
   bool _permissionGranted = false;
   bool _checkedPermission = false;
@@ -74,17 +75,19 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
         .where((c) => c.status == 'pending')
         .length;
 
-    final parsed = _preview ??
-        parseTransactionMessage(
-          _testController.text,
-          fallbackCurrency: prefs.baseCurrency,
-          triggerWords: prefs.smsTriggerWords,
-          ignoreWords: prefs.smsIgnoreWords,
-        );
+    final preview = _preview ??
+        ref
+            .read(ledgerProvider.notifier)
+            .previewSmsMessage(_testController.text);
+    final parsed = preview.parsed;
 
     return RouteScaffold(
       title: widget.title,
       actions: [
+        HeaderIconButton(
+          icon: Icons.bug_report_outlined,
+          onPressed: () => context.push('/auto-capture/debug'),
+        ),
         HeaderIconButton(
           icon: Icons.fact_check_outlined,
           onPressed: () => context.push('/review'),
@@ -179,12 +182,12 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
           ],
 
           // ── How it works ──
-          SectionCard(
+          const SectionCard(
             title: 'How it works',
             subtitle:
-                'A message becomes a transaction only when all three checks pass.',
+                'The same checks power live capture, Scan Inbox, Test message, notifications, and Review.',
             child: Column(
-              children: const [
+              children: [
                 _RuleRow(
                   icon: Icons.payments_outlined,
                   text: 'It contains an amount (e.g. ₹1,250 or \$40).',
@@ -258,17 +261,15 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                   children: [
                     InfoRow(
                       label: 'Outcome',
-                      value: parsed.ignored
-                          ? (parsed.matchedIgnoreWord != null
-                              ? 'Ignored (matched ignore: "${parsed.matchedIgnoreWord}")'
-                              : 'Ignored (no trigger word matched)')
-                          : 'Would be queued${parsed.matchedTriggerWord != null ? ' (matched trigger: "${parsed.matchedTriggerWord}")' : ''}',
-                      icon: parsed.ignored
-                          ? Icons.visibility_off_outlined
-                          : Icons.fact_check_outlined,
-                      tone: parsed.ignored
-                          ? MetricTone.warning
-                          : MetricTone.positive,
+                      value: _previewOutcome(preview),
+                      icon: preview.queued
+                        ? Icons.fact_check_outlined
+                        : preview.duplicate
+                        ? Icons.library_add_check_outlined
+                        : Icons.visibility_off_outlined,
+                      tone: preview.queued
+                        ? MetricTone.positive
+                        : MetricTone.warning,
                     ),
                     if (parsed.ignored && parsed.matchedIgnoreWord != null) ...[
                       const SizedBox(height: 4),
@@ -369,7 +370,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 FilledButton.tonalIcon(
-                  onPressed: parsed.ignored ? null : _queueTestMessage,
+                  onPressed: preview.queued ? _queueTestMessage : null,
                   icon: const Icon(Icons.playlist_add_check_outlined),
                   label: const Text('Add to review queue'),
                 ),
@@ -389,25 +390,11 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DropdownButtonFormField<String>(
-            initialValue: const ['today', '24h', '7d', '30d'].contains(_scanTimeframe) ? _scanTimeframe : 'today',
-            decoration: const InputDecoration(
-              labelText: 'Timeframe',
-              prefixIcon: Icon(Icons.history_rounded),
-            ),
-            items: const [
-              DropdownMenuItem(value: 'today', child: Text('Today')),
-              DropdownMenuItem(value: '24h', child: Text('Last 24 hours')),
-              DropdownMenuItem(value: '7d', child: Text('Last 7 days')),
-              DropdownMenuItem(value: '30d', child: Text('Last 30 days')),
-            ],
-            onChanged: _isScanning
-                ? null
-                : (value) {
-                    if (value != null) {
-                      setState(() => _scanTimeframe = value);
-                    }
-                  },
+          PremiumRow(
+            icon: Icons.history_rounded,
+            title: 'Timeframe',
+            subtitle: _scanTimeframeLabel(_scanTimeframe),
+            onTap: _isScanning ? () {} : _showScanTimeframePicker,
           ),
           const SizedBox(height: AppSpacing.md),
           FilledButton.icon(
@@ -430,15 +417,11 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
   }
 
   Future<void> _queueTestMessage() async {
-    final candidate = await ref
+    final result = await ref
         .read(ledgerProvider.notifier)
-        .importSmsMessage(_testController.text);
+        .importSmsMessageDetailed(_testController.text, stage: 'test-message');
     if (!mounted) return;
-    _showMessage(
-      candidate == null
-          ? 'Message ignored — nothing added.'
-          : 'Added to the review queue.',
-    );
+    _showMessage(result.userMessage);
     setState(() => _preview = null);
   }
 
@@ -460,7 +443,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
       };
 
       final messages = await readAndroidSmsInbox(
-        maxCount: 500,
+        maxCount: 0,
         minDate: minDate.millisecondsSinceEpoch,
       );
       if (messages.isEmpty) {
@@ -475,18 +458,87 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
               ))
           .toList();
 
-      final candidates = await ref
+      final results = await ref
           .read(ledgerProvider.notifier)
-          .importSmsMessagesBatch(texts);
+          .importSmsMessagesBatchDetailed(texts);
+      final queued = results.where((result) => result.queued).length;
+      final duplicates = results.where((result) => result.duplicate).length;
+      final ignored = results.where((result) => result.ignored).length;
 
       _showMessage(
-        'Scanned ${messages.length} messages · queued ${candidates.length}.',
+        'Scanned ${messages.length} messages · queued $queued · duplicates $duplicates · ignored $ignored.',
       );
     } catch (e) {
       _showMessage('Could not scan inbox: $e');
     } finally {
       if (mounted) setState(() => _isScanning = false);
     }
+  }
+
+  String _previewOutcome(CaptureImportResult preview) {
+    final parsed = preview.parsed;
+    if (preview.queued) {
+      return 'Would be queued${parsed.matchedTriggerWord != null ? ' (matched trigger: "${parsed.matchedTriggerWord}")' : ''}';
+    }
+    if (preview.duplicate) {
+      return preview.reason == CaptureBlockReason.duplicatePosted
+          ? 'Duplicate (already posted)'
+          : 'Duplicate (already in Review)';
+    }
+    if (parsed.matchedIgnoreWord != null) {
+      return 'Ignored (matched ignore: "${parsed.matchedIgnoreWord}")';
+    }
+    if (preview.reason == CaptureBlockReason.missingAmount) {
+      return 'Ignored (no amount detected)';
+    }
+    return 'Ignored (no trigger word matched)';
+  }
+
+  String _scanTimeframeLabel(String value) {
+    return switch (value) {
+      'today' => 'Today',
+      '24h' => 'Last 1 day',
+      '7d' => 'Last 7 days',
+      '30d' => 'Last 30 days',
+      _ => 'Last 1 day',
+    };
+  }
+
+  Future<void> _showScanTimeframePicker() async {
+    final next = await showFullScreenPicker<String>(
+      context: context,
+      title: 'Scan range',
+      subtitle:
+          'Scan every SMS in the selected range with the same engine used for live capture.',
+      searchable: false,
+      selectedValue: _scanTimeframe,
+      options: const [
+        PickerOption(
+          value: '24h',
+          title: 'Last 1 day',
+          subtitle: 'Default · best for quick reliable scans',
+          icon: Icons.today_outlined,
+        ),
+        PickerOption(
+          value: 'today',
+          title: 'Today',
+          subtitle: 'From midnight today',
+          icon: Icons.calendar_today_outlined,
+        ),
+        PickerOption(
+          value: '7d',
+          title: 'Last 7 days',
+          icon: Icons.date_range_outlined,
+        ),
+        PickerOption(
+          value: '30d',
+          title: 'Last 30 days',
+          icon: Icons.calendar_month_outlined,
+        ),
+      ],
+    );
+    if (next == null || next == _scanTimeframe || !mounted) return;
+    setState(() => _scanTimeframe = next);
   }
 
   List<String> _extractCandidateWords(String text) {
@@ -496,10 +548,10 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
         .split(RegExp(r'\s+'));
     final seen = <String>{};
     final result = <String>[];
-    
+
     final currentTriggers = _prefs.smsTriggerWords.map((w) => w.toLowerCase()).toSet();
     final currentIgnores = _prefs.smsIgnoreWords.map((w) => w.toLowerCase()).toSet();
-    
+
     for (final raw in words) {
       final clean = raw.trim().toLowerCase();
       if (clean.length < 3) continue;

@@ -243,6 +243,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: '/auto-capture/debug',
+        builder: (context, state) => const CaptureDiagnosticsScreen(),
+      ),
+      GoRoute(
         path: '/updates',
         builder: (context, state) => const DrawerConfig(
           hasDrawer: true,

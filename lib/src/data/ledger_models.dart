@@ -225,6 +225,7 @@ class LedgerPreferences {
     this.notificationTriggerWords = kDefaultSmsTriggerWords,
     this.notificationIgnoreWords = kDefaultSmsIgnoreWords,
     this.notificationTargetPackages = kDefaultNotificationPackages,
+    this.merchantCategoryRules = const {},
   });
 
   final String baseCurrency;
@@ -264,6 +265,7 @@ class LedgerPreferences {
   final List<String> notificationTriggerWords;
   final List<String> notificationIgnoreWords;
   final List<String> notificationTargetPackages;
+  final Map<String, String> merchantCategoryRules;
 
   LedgerPreferences copyWith({
     String? baseCurrency,
@@ -303,6 +305,7 @@ class LedgerPreferences {
     List<String>? notificationTriggerWords,
     List<String>? notificationIgnoreWords,
     List<String>? notificationTargetPackages,
+    Map<String, String>? merchantCategoryRules,
   }) {
     return LedgerPreferences(
       baseCurrency: baseCurrency ?? this.baseCurrency,
@@ -357,6 +360,8 @@ class LedgerPreferences {
           notificationIgnoreWords ?? this.notificationIgnoreWords,
       notificationTargetPackages:
           notificationTargetPackages ?? this.notificationTargetPackages,
+      merchantCategoryRules:
+          merchantCategoryRules ?? this.merchantCategoryRules,
     );
   }
 }
@@ -911,6 +916,8 @@ class CaptureCandidate {
     this.transactionType,
     this.suggestedAccountId,
     this.suggestedCategoryId,
+    this.suggestedCategoryConfidence,
+    this.suggestedCategoryReason,
   });
 
   final String id;
@@ -923,6 +930,8 @@ class CaptureCandidate {
   final String? transactionType;
   final String? suggestedAccountId;
   final String? suggestedCategoryId;
+  final double? suggestedCategoryConfidence;
+  final String? suggestedCategoryReason;
 
   CaptureCandidate copyWith({
     String? id,
@@ -935,6 +944,8 @@ class CaptureCandidate {
     String? transactionType,
     String? suggestedAccountId,
     String? suggestedCategoryId,
+    double? suggestedCategoryConfidence,
+    String? suggestedCategoryReason,
   }) {
     return CaptureCandidate(
       id: id ?? this.id,
@@ -947,6 +958,10 @@ class CaptureCandidate {
       transactionType: transactionType ?? this.transactionType,
       suggestedAccountId: suggestedAccountId ?? this.suggestedAccountId,
       suggestedCategoryId: suggestedCategoryId ?? this.suggestedCategoryId,
+      suggestedCategoryConfidence:
+          suggestedCategoryConfidence ?? this.suggestedCategoryConfidence,
+      suggestedCategoryReason:
+          suggestedCategoryReason ?? this.suggestedCategoryReason,
     );
   }
 }

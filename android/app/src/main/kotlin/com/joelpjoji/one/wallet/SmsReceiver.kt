@@ -43,17 +43,41 @@ class SmsReceiver : BroadcastReceiver() {
         val ignores = loadWords(prefs, "flutter.one_wallet_flutter.sms_ignore_words")
         val lowerBody = body.lowercase()
         val amount = extractAmount(body)
+        val matchedTrigger = findMatchingWord(lowerBody, triggers)
+        val matchedIgnore = findMatchingWord(lowerBody, ignores)
 
         // Accept only real, completed transactions: an amount AND a trigger word
         // AND no ignore word. This mirrors the Dart parser exactly, so a
         // notification is raised if and only if a review candidate is created.
-        val accept = amount != null &&
-            containsAnyWord(lowerBody, triggers) &&
-            !containsAnyWord(lowerBody, ignores)
+        val accept = amount != null && matchedTrigger != null && matchedIgnore == null
 
         if (accept) {
-            spoolMessage(context, sender, body)
-            showNotification(context, amount, extractLast4(body))
+            val spooled = spoolMessage(context, sender, body, amount, matchedTrigger)
+            val notificationShown = if (spooled) showNotification(context, amount, extractLast4(body)) else false
+            appendDiagnostic(
+                context,
+                source = "sms",
+                stage = "native-sms",
+                decision = if (spooled) "accepted" else "error",
+                reason = if (spooled) "spooled before notification" else "spool failed",
+                rawText = body,
+                amount = amount,
+                matchedTriggerWord = matchedTrigger,
+                notificationShown = notificationShown,
+                nativeAccepted = spooled
+            )
+        } else if (amount != null || matchedTrigger != null || matchedIgnore != null) {
+            appendDiagnostic(
+                context,
+                source = "sms",
+                stage = "native-sms",
+                decision = "ignored",
+                reason = nativeIgnoreReason(amount, matchedTrigger, matchedIgnore),
+                rawText = body,
+                amount = amount,
+                matchedTriggerWord = matchedTrigger,
+                matchedIgnoreWord = matchedIgnore
+            )
         }
     }
 
@@ -69,6 +93,10 @@ class SmsReceiver : BroadcastReceiver() {
     }
 
     private fun containsAnyWord(lowerBody: String, words: List<String>): Boolean {
+        return findMatchingWord(lowerBody, words) != null
+    }
+
+    private fun findMatchingWord(lowerBody: String, words: List<String>): String? {
         for (raw in words) {
             val word = raw.trim()
             if (word.isEmpty()) continue
@@ -77,9 +105,9 @@ class SmsReceiver : BroadcastReceiver() {
                 word.length <= 3 -> "(^|\\W)${Regex.escape(word)}($|\\W)".toRegex().containsMatchIn(lowerBody)
                 else -> lowerBody.contains(word)
             }
-            if (matched) return true
+            if (matched) return raw
         }
-        return false
+        return null
     }
 
     private fun extractAmount(body: String): String? {
@@ -97,8 +125,8 @@ class SmsReceiver : BroadcastReceiver() {
 
     private fun extractLast4(body: String): String? {
         val patterns = listOf(
-            Regex("(?:card|acct|account|a/c|ending)\\D{0,4}(\\d{4})", RegexOption.IGNORE_CASE),
-            Regex("[xX*]{2,}(\\d{4})")
+            Regex("(?:card|acct|account|a/c|ending)\\D{0,4}(\\d{3,4})", RegexOption.IGNORE_CASE),
+            Regex("[xX*]{2,}(\\d{3,4})")
         )
         for (p in patterns) {
             val m = p.find(body)
@@ -107,7 +135,7 @@ class SmsReceiver : BroadcastReceiver() {
         return null
     }
 
-    private fun spoolMessage(context: Context, sender: String, body: String) {
+    private fun spoolMessage(context: Context, sender: String, body: String, amount: String?, matchedTrigger: String?): Boolean {
         val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
         val spoolKey = "flutter.one_wallet_flutter.sms_spool"
 
@@ -125,6 +153,11 @@ class SmsReceiver : BroadcastReceiver() {
         val payload = org.json.JSONObject()
         payload.put("sender", sender)
         payload.put("body", body)
+        payload.put("nativeSource", "sms")
+        payload.put("nativeAccepted", true)
+        payload.put("notificationShown", true)
+        if (amount != null) payload.put("nativeMatchedAmount", amount)
+        if (matchedTrigger != null) payload.put("nativeMatchedTriggerWord", matchedTrigger)
 
         val df = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
         df.timeZone = java.util.TimeZone.getTimeZone("UTC")
@@ -132,10 +165,15 @@ class SmsReceiver : BroadcastReceiver() {
 
         jsonArray.put(payload.toString())
 
-        prefs.edit().putString(spoolKey, jsonArray.toString()).apply()
+        return try {
+            prefs.edit().putString(spoolKey, jsonArray.toString()).commit()
+        } catch (e: Exception) {
+            false
+        }
     }
 
-    private fun showNotification(context: Context, amount: String?, last4: String?) {
+    private fun showNotification(context: Context, amount: String?, last4: String?): Boolean {
+        return try {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "one_wallet_capture"
 
@@ -173,5 +211,63 @@ class SmsReceiver : BroadcastReceiver() {
             .setAutoCancel(true)
 
         notificationManager.notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), builder.build())
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun nativeIgnoreReason(amount: String?, matchedTrigger: String?, matchedIgnore: String?): String {
+        if (matchedIgnore != null) return "matched ignore word"
+        if (amount == null) return "missing amount"
+        if (matchedTrigger == null) return "missing trigger word"
+        return "ignored"
+    }
+
+    private fun appendDiagnostic(
+        context: Context,
+        source: String,
+        stage: String,
+        decision: String,
+        reason: String? = null,
+        rawText: String? = null,
+        amount: String? = null,
+        matchedTriggerWord: String? = null,
+        matchedIgnoreWord: String? = null,
+        notificationShown: Boolean = false,
+        nativeAccepted: Boolean = false
+    ) {
+        try {
+            val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            val key = "flutter.one_wallet_flutter.capture_diagnostics"
+            val existingRaw = try { prefs.getString(key, "") ?: "" } catch (e: Exception) { "" }
+            val existing = if (existingRaw.isNotEmpty()) {
+                try { org.json.JSONArray(existingRaw) } catch (e: Exception) { org.json.JSONArray() }
+            } else {
+                org.json.JSONArray()
+            }
+            val payload = org.json.JSONObject()
+            payload.put("id", "native-${System.currentTimeMillis()}")
+            payload.put("timestamp", java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply {
+                timeZone = java.util.TimeZone.getTimeZone("UTC")
+            }.format(java.util.Date()))
+            payload.put("source", source)
+            payload.put("stage", stage)
+            payload.put("decision", decision)
+            if (reason != null) payload.put("reason", reason)
+            if (rawText != null) payload.put("rawText", rawText)
+            if (amount != null) payload.put("nativeMatchedAmount", amount)
+            if (matchedTriggerWord != null) payload.put("matchedTriggerWord", matchedTriggerWord)
+            if (matchedIgnoreWord != null) payload.put("matchedIgnoreWord", matchedIgnoreWord)
+            payload.put("notificationShown", notificationShown)
+            payload.put("nativeAccepted", nativeAccepted)
+
+            val next = org.json.JSONArray()
+            next.put(payload.toString())
+            val keep = kotlin.math.min(existing.length(), 149)
+            for (i in 0 until keep) next.put(existing.get(i))
+            prefs.edit().putString(key, next.toString()).apply()
+        } catch (_: Exception) {
+        }
     }
 }

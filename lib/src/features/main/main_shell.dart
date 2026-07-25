@@ -283,6 +283,7 @@ class AppMainDrawer extends ConsumerWidget {
     required this.selectedIndex,
     required this.onTabSelected,
     this.isStatic = false,
+    super.key,
   });
 
   final int selectedIndex;
@@ -412,11 +413,16 @@ class AppMainDrawer extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                 children: [
                   DrawerSection(
-                    title: 'Main',
+                    title: 'Quick Access',
                     titleColor: scheme.primary,
                     icon: Icons.bolt_rounded,
                     surfaceTint: scheme.primary,
                     rows: [
+                      DrawerRowConfig.route(
+                        'Auto Capture',
+                        Icons.notifications_active_outlined,
+                        '/auto-capture',
+                      ),
                       DrawerRowConfig.tab('Home', Icons.dashboard_outlined, 0),
                       DrawerRowConfig.route(
                         'Review',
@@ -488,11 +494,6 @@ class AppMainDrawer extends ConsumerWidget {
                         Icons.cloud_done_outlined,
                         '/sync',
                         badge: syncBadge,
-                      ),
-                      DrawerRowConfig.route(
-                        'Auto Capture',
-                        Icons.notifications_active_outlined,
-                        '/auto-capture',
                       ),
                       DrawerRowConfig.route(
                         'Import & backup',

@@ -58,23 +58,30 @@ class MainActivity : FlutterFragmentActivity() {
 				"readInbox" -> {
 					try {
 						val maxCount = call.argument<Int>("maxCount") ?: 200
-						val minDate = call.argument<Long>("minDate")
-						val maxDate = call.argument<Long>("maxDate")
-						
-						var selection: String? = null
-						var selectionArgs: Array<String>? = null
-						
+						val minDate = call.argument<Number>("minDate")?.toLong()
+						val maxDate = call.argument<Number>("maxDate")?.toLong()
+
+						val selectionParts = mutableListOf<String>()
+						val selectionArgsList = mutableListOf<String>()
 						if (minDate != null) {
-							selection = "date >= ?"
-							selectionArgs = arrayOf(minDate.toString())
+							selectionParts.add("date >= ?")
+							selectionArgsList.add(minDate.toString())
 						}
-						
+						if (maxDate != null) {
+							selectionParts.add("date <= ?")
+							selectionArgsList.add(maxDate.toString())
+						}
+
+						val selection = if (selectionParts.isEmpty()) null else selectionParts.joinToString(" AND ")
+						val selectionArgs = if (selectionArgsList.isEmpty()) null else selectionArgsList.toTypedArray()
+						val sortOrder = if (maxCount > 0) "date DESC LIMIT $maxCount" else "date DESC"
+
 						val cursor = contentResolver.query(
 							Uri.parse("content://sms/inbox"),
 							arrayOf("_id", "address", "body", "date"),
 							selection,
 							selectionArgs,
-							"date DESC LIMIT $maxCount"
+							sortOrder
 						)
 
 						val jsonArray = JSONArray()

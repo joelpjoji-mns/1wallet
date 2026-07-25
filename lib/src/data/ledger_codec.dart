@@ -439,6 +439,7 @@ Map<String, Object?> _preferencesToJson(LedgerPreferences preferences) {
     'notificationTriggerWords': preferences.notificationTriggerWords,
     'notificationIgnoreWords': preferences.notificationIgnoreWords,
     'notificationTargetPackages': preferences.notificationTargetPackages,
+    'merchantCategoryRules': preferences.merchantCategoryRules,
   };
 }
 
@@ -601,6 +602,10 @@ LedgerPreferences _preferencesFromJson(Map<String, dynamic> json) {
     notificationTargetPackages: _stringList(
       json['notificationTargetPackages'],
       fallback: fallback.notificationTargetPackages,
+    ),
+    merchantCategoryRules: _stringMap(
+      json['merchantCategoryRules'],
+      fallback: fallback.merchantCategoryRules,
     ),
   );
 }
@@ -1024,6 +1029,8 @@ Map<String, Object?> _captureCandidateToJson(CaptureCandidate candidate) {
     'transactionType': candidate.transactionType,
     'suggestedAccountId': candidate.suggestedAccountId,
     'suggestedCategoryId': candidate.suggestedCategoryId,
+    'suggestedCategoryConfidence': candidate.suggestedCategoryConfidence,
+    'suggestedCategoryReason': candidate.suggestedCategoryReason,
   };
 }
 
@@ -1041,6 +1048,12 @@ CaptureCandidate _captureCandidateFromJson(Map<String, dynamic> json) {
     transactionType: _nullableString(json['transactionType']),
     suggestedAccountId: _nullableString(json['suggestedAccountId']),
     suggestedCategoryId: _nullableString(json['suggestedCategoryId']),
+    suggestedCategoryConfidence: _nullableDouble(
+      json['suggestedCategoryConfidence'],
+    ),
+    suggestedCategoryReason: _nullableString(
+      json['suggestedCategoryReason'],
+    ),
   );
 }
 

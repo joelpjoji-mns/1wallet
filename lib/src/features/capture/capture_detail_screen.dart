@@ -146,6 +146,14 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
                   iconColor: categoryColor(selectedCategory, context),
                   onTap: () => _showCategoryPicker(state),
                 ),
+                if (candidate.suggestedCategoryReason != null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  InfoRow(
+                    label: 'Category reason',
+                    value: candidate.suggestedCategoryReason!,
+                    icon: Icons.auto_awesome_outlined,
+                  ),
+                ],
               ],
             ),
           ),
@@ -294,6 +302,7 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
   ) async {
     final saved = await _saveDraft(candidate, state);
     if (!saved) return;
+    if (!mounted) return;
     final router = GoRouter.of(context);
     try {
       router.push('/add?captureCandidateId=${candidate.id}');
