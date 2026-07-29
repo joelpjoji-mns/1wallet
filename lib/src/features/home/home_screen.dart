@@ -221,13 +221,8 @@ class HomeScreen extends ConsumerWidget {
           onPressed: () => onTabSelected(1),
         ),
         HeaderIconButton(
-          icon: Icons.fact_check_outlined,
-          badge: pendingCount,
-          onPressed: () => context.push('/review'),
-        ),
-        HeaderIconButton(
           icon: Icons.notifications_none_rounded,
-          badge: notificationCount,
+          badge: pendingCount + notificationCount,
           onPressed: () => context.push('/notifications'),
         ),
         AuthUserActionButton(
