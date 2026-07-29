@@ -26,13 +26,16 @@ final _filteredTransactionsProvider = Provider.autoDispose
           .where((transaction) {
             if (filter.statusFilter != 'all') {
               if (filter.statusFilter == 'cleared' &&
-                  transaction.status != 'cleared')
+                  transaction.status != 'cleared') {
                 return false;
+              }
               if (filter.statusFilter == 'pending' &&
-                  transaction.status != 'pending')
+                  transaction.status != 'pending') {
                 return false;
-              if (filter.statusFilter == 'void' && transaction.status != 'void')
+              }
+              if (filter.statusFilter == 'void' && transaction.status != 'void') {
                 return false;
+              }
             }
             if (filter.typeFilter == 'income' &&
                 !incomeTypes.contains(transaction.type)) {

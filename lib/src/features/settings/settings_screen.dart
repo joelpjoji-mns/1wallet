@@ -24,7 +24,6 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _startDayController = TextEditingController();
   var _startDayTouched = false;
-  var _resetDialogVisible = false;
 
   static const _localeOptions = [
     ('en_IN', 'English (India)', 'Dates and money formatted for India'),
@@ -78,12 +77,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       'Camera and photos access with a clear reason for each prompt.',
       Icons.security_outlined,
       '/device-permissions',
-    ),
-    (
-      'Notifications',
-      'Review work, reminders, budgets, accounts, cards, and import alerts.',
-      Icons.notifications_outlined,
-      '/notifications',
     ),
     (
       'Currencies',
@@ -693,18 +686,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ],
             ),
           ),
-          const Gap(AppSpacing.lg),
-
-          // ── Data ──
-          SettingsDataSection(
-            state: state,
-            resetDialogVisible: _resetDialogVisible,
-            onOpenImports: () => context.push('/imports'),
-            onOpenWalletCsv: () => context.push('/import-wallet-csv'),
-            onShowReset: () => setState(() => _resetDialogVisible = true),
-            onHideReset: () => setState(() => _resetDialogVisible = false),
-            onConfirmReset: () => _resetLedger(ref),
-          ),
         ],
       ),
     );
@@ -842,14 +823,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await ref.read(authControllerProvider.notifier).signOut();
     if (!mounted) return;
     context.go('/login');
-  }
-
-  Future<void> _resetLedger(WidgetRef ref) async {
-    setState(() => _resetDialogVisible = false);
-    await ref.read(ledgerProvider.notifier).resetLedger();
-    if (!mounted) return;
-    _showMessage('Local ledger reset.');
-    context.go('/');
   }
 
   void _showMessage(String message) {

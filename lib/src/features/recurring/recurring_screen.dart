@@ -1419,8 +1419,9 @@ class RecurringDetailView extends ConsumerWidget {
                           ?.principal
                           ?.amountMinor
                           .abs();
-                      if (principal == null || principal <= 0)
+                      if (principal == null || principal <= 0) {
                         return const SizedBox();
+                      }
 
                       final repaymentHistory = state.transactions
                           .where(

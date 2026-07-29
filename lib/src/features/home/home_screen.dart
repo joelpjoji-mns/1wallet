@@ -86,10 +86,10 @@ class HomeScreen extends ConsumerWidget {
       syncIndicator = Container(
         width: double.infinity,
         decoration: BoxDecoration(
-          color: scheme.primaryContainer.withOpacity(0.35),
+          color: scheme.primaryContainer.withValues(alpha: 0.35),
           border: Border(
             bottom: BorderSide(
-              color: scheme.primary.withOpacity(0.15),
+              color: scheme.primary.withValues(alpha: 0.15),
               width: 1,
             ),
           ),
@@ -136,7 +136,7 @@ class HomeScreen extends ConsumerWidget {
         decoration: BoxDecoration(
           color: scheme.errorContainer,
           border: Border(
-            bottom: BorderSide(color: scheme.error.withOpacity(0.3), width: 1),
+            bottom: BorderSide(color: scheme.error.withValues(alpha: 0.3), width: 1),
           ),
         ),
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -241,7 +241,7 @@ class HomeScreen extends ConsumerWidget {
       maxWidth: 1400,
       child: Column(
         children: [
-          if (syncIndicator != null) syncIndicator,
+          ?syncIndicator,
           Expanded(
             child: _HomeDashboardList(
               widgetOrder: widgetOrder,

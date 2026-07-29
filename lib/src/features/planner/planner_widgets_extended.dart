@@ -28,8 +28,9 @@ class DailySpendingLimitWidget extends ConsumerWidget {
       if (tx.status == 'void' ||
           tx.status == 'scheduled' ||
           tx.status == 'paused' ||
-          tx.isExcludedFromReports)
+          tx.isExcludedFromReports) {
         continue;
+      }
       if (tx.occurredAt.year == now.year && tx.occurredAt.month == now.month) {
         if (incomeTypes.contains(tx.type)) {
           totalIncome += convertMoneyForDisplay(

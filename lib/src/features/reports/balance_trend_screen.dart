@@ -287,8 +287,9 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
               showTitles: true,
               reservedSize: 30,
               getTitlesWidget: (value, meta) {
-                if (value == minX || value == maxX)
+                if (value == minX || value == maxX) {
                   return const SizedBox.shrink();
+                }
                 final date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
                 return Padding(
                   padding: const EdgeInsets.only(top: 8.0),
@@ -309,8 +310,9 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
               reservedSize: 40,
               interval: interval,
               getTitlesWidget: (value, meta) {
-                if (value == minY || value == maxY)
+                if (value == minY || value == maxY) {
                   return const SizedBox.shrink();
+                }
                 return Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: Text(

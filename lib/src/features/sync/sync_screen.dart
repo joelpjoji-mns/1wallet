@@ -1,11 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../auth/auth_controller.dart';
 import '../../cloud_sync/cloud_sync_controller.dart';
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -161,7 +159,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                 children: [
                   const SizedBox(height: 8),
                   DropdownButtonFormField<int?>(
-                    value: const [null, 4, 6, 12, 24].contains(sync.metadata?.syncIntervalHours) 
+                    initialValue: const [null, 4, 6, 12, 24].contains(sync.metadata?.syncIntervalHours) 
                         ? sync.metadata?.syncIntervalHours 
                         : null,
                     decoration: InputDecoration(
@@ -274,13 +272,6 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
             meta: pending == 0 ? null : '$pending',
             onTap: () => context.push('/review'),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          PremiumRow(
-            icon: Icons.table_chart_outlined,
-            title: 'Wallet CSV',
-            subtitle: 'Paste CSV rows, preview, and import transactions',
-            onTap: () => context.push('/import-wallet-csv'),
-          ),
           const Gap(AppSpacing.lg),
           SectionCard(
             title: 'Recent imports',
@@ -308,14 +299,6 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                   ),
           ),
           
-          const Gap(AppSpacing.lg),
-          OutlinedButton.icon(
-            onPressed: isWorking
-                ? null
-                : () => _cleanupLegacyData(context, ref),
-            icon: const Icon(Icons.delete_sweep_outlined),
-            label: const Text('Clean up legacy cloud data'),
-          ),
         ],
       ),
     );
@@ -341,52 +324,6 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
     final date = DateTime.tryParse(value);
     if (date == null) return value;
     return date.toLocal().toString().split('.')[0];
-  }
-
-  Future<void> _cleanupLegacyData(BuildContext context, WidgetRef ref) async {
-    final user = ref.read(authControllerProvider).user;
-    if (user == null) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Cleaning up legacy cloud data...')),
-    );
-
-    try {
-      final firestore = FirebaseFirestore.instance;
-      final defaultWallet = firestore.doc('users/${user.id}/wallets/default');
-      final walletDoc = await defaultWallet.get();
-
-      if (!walletDoc.exists) {
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No legacy data found to clean.')),
-        );
-        return;
-      }
-
-      final snapshotId = walletDoc.data()?['latestSnapshotId'] as String?;
-      if (snapshotId != null) {
-        final chunks = await defaultWallet
-            .collection('snapshots/$snapshotId/chunks')
-            .get();
-        final batch = firestore.batch();
-        for (final doc in chunks.docs) {
-          batch.delete(doc.reference);
-        }
-        await batch.commit();
-      }
-      await defaultWallet.delete();
-
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Legacy data successfully cleaned!')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Cleanup failed: $e')));
-    }
   }
 }
 

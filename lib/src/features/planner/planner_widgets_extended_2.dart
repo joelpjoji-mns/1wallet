@@ -316,8 +316,9 @@ class CashflowPredictorWidget extends ConsumerWidget {
     for (final tx in state.transactions) {
       if (tx.status == 'void' ||
           tx.status == 'scheduled' ||
-          tx.status == 'paused')
+          tx.status == 'paused') {
         continue;
+      }
       if (tx.occurredAt.isAfter(thirtyDaysAgo) && tx.occurredAt.isBefore(now)) {
         if (incomeTypes.contains(tx.type)) {
           pastIncome += convertMoneyForDisplay(

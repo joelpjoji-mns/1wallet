@@ -181,8 +181,9 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                           : currency == state.preferences.displayCurrency,
                       onTap: () {
                         if (isSelectionMode) {
-                          if (currency == state.preferences.baseCurrency)
+                          if (currency == state.preferences.baseCurrency) {
                             return;
+                          }
                           setState(() {
                             if (_selectedForDeletion.contains(currency)) {
                               _selectedForDeletion.remove(currency);
@@ -377,8 +378,9 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
       currency,
       state.preferences.baseCurrency,
     );
-    if (rate != null)
+    if (rate != null) {
       return '1 $currency = ${rate.rate} ${state.preferences.baseCurrency}';
+    }
     final inferred = rateBetween(
       state,
       currency,

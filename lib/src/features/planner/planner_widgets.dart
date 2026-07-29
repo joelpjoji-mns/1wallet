@@ -1,15 +1,11 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 import '../../data/ledger_models.dart';
-import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
-import '../../widgets/app_kit.dart';
 import '../../widgets/privacy_text.dart';
 import '../transactions/transaction_row.dart';
 
@@ -366,11 +362,12 @@ class _BalanceTrendWidgetState extends State<BalanceTrendWidget> {
                       reservedSize: 40,
                       interval: niceInterval,
                       getTitlesWidget: (value, meta) {
-                        if (value == 0)
+                        if (value == 0) {
                           return const Text(
                             '0',
                             style: TextStyle(fontSize: 10),
                           );
+                        }
                         final absVal = (value / 100.0).abs();
                         final sign = value < 0 ? '-' : '';
                         String text = '$sign${absVal.toInt()}';
@@ -621,8 +618,9 @@ class _TopCategoriesWidgetState extends State<TopCategoriesWidget> {
     for (final tx in widget.state.transactions) {
       if (tx.status == 'void' ||
           tx.status == 'scheduled' ||
-          tx.status == 'paused')
+          tx.status == 'paused') {
         continue;
+      }
       if (expenseTypes.contains(tx.type) && tx.occurredAt.isAfter(start)) {
         final amt = convertMoneyForDisplay(
           widget.state,
@@ -726,7 +724,7 @@ class _TopCategoriesWidgetState extends State<TopCategoriesWidget> {
                 ),
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );
@@ -854,7 +852,7 @@ class CreditUtilizationWidget extends StatelessWidget {
                 ],
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );

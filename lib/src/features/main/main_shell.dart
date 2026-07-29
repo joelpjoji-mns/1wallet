@@ -298,7 +298,9 @@ class AppMainDrawer extends ConsumerWidget {
     final sync = ref.watch(cloudSyncControllerProvider);
     final updateState = ref.watch(appUpdateProvider);
     final pendingReviewCount = _pendingReviewCount(ledger);
-    final notificationCount = buildNotificationInbox(ledger).length;
+    final unreadNotificationCount =
+        buildNotificationInbox(ledger).where((n) => !n.read).length;
+    final combinedInboxCount = pendingReviewCount + unreadNotificationCount;
     final syncBadge = _syncBadge(sync);
     final updatesBadge =
         updateState.latestRelease != null &&
@@ -418,17 +420,12 @@ class AppMainDrawer extends ConsumerWidget {
                     icon: Icons.bolt_rounded,
                     surfaceTint: scheme.primary,
                     rows: [
-                      DrawerRowConfig.route(
-                        'Auto Capture',
-                        Icons.notifications_active_outlined,
-                        '/auto-capture',
-                      ),
                       DrawerRowConfig.tab('Home', Icons.dashboard_outlined, 0),
                       DrawerRowConfig.route(
                         'Review',
                         Icons.smart_toy_outlined,
                         '/review',
-                        badge: _countBadge(pendingReviewCount),
+                        badge: _countBadge(combinedInboxCount),
                       ),
                       DrawerRowConfig.route(
                         'Planned payments',
@@ -465,11 +462,6 @@ class AppMainDrawer extends ConsumerWidget {
                         Icons.flag_outlined,
                         '/goals/new',
                       ),
-                      DrawerRowConfig.route(
-                        'Categories',
-                        Icons.category_outlined,
-                        '/categories',
-                      ),
                     ],
                     selectedIndex: selectedIndex,
                     onTabSelected: onTabSelected,
@@ -479,6 +471,16 @@ class AppMainDrawer extends ConsumerWidget {
                     icon: Icons.build_circle_outlined,
                     surfaceTint: scheme.primary,
                     rows: [
+                      DrawerRowConfig.route(
+                        'Auto Capture',
+                        Icons.notifications_active_outlined,
+                        '/auto-capture',
+                      ),
+                      DrawerRowConfig.route(
+                        'Categories',
+                        Icons.category_outlined,
+                        '/categories',
+                      ),
                       DrawerRowConfig.route(
                         'Currencies',
                         Icons.currency_exchange_outlined,
@@ -499,12 +501,6 @@ class AppMainDrawer extends ConsumerWidget {
                         'Import & backup',
                         Icons.folder_copy_outlined,
                         '/imports',
-                      ),
-                      DrawerRowConfig.route(
-                        'Notifications',
-                        Icons.notifications_none,
-                        '/notifications',
-                        badge: _countBadge(notificationCount),
                       ),
                     ],
                     selectedIndex: selectedIndex,

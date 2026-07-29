@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
-import 'dart:typed_data';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:archive/archive.dart';
 
@@ -15,7 +14,6 @@ import '../data/ledger_codec.dart';
 import '../data/ledger_models.dart';
 import '../data/ledger_providers.dart';
 import '../data/ledger_defaults.dart';
-import 'cloud_restore_controller.dart';
 import 'cloud_sync_metadata.dart';
 
 const uploadDebounceMs = 2500;
@@ -105,7 +103,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
   Timer? _uploadTimer;
   Timer? _retryTimer;
-  Timer? _periodicSyncTimer;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _userDocSubscription;
   int _uploadFailureCount = 0;
   int _uploadCircuitOpenUntil = 0;
   bool _localClearInProgress = false;
@@ -179,6 +177,8 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
   }
 
   void _disableSync() {
+    _userDocSubscription?.cancel();
+    _userDocSubscription = null;
     _cancelTimers();
     state = const CloudSyncState(
       phase: CloudSyncPhase.disabled,
@@ -191,16 +191,6 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     _uploadTimer = null;
     _retryTimer?.cancel();
     _retryTimer = null;
-    _periodicSyncTimer?.cancel();
-    _periodicSyncTimer = null;
-  }
-
-  void _setupPeriodicSync() {
-    _periodicSyncTimer?.cancel();
-    unawaited(checkAndTriggerSync());
-    _periodicSyncTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
-      unawaited(checkAndTriggerSync());
-    });
   }
 
   Future<void> updateSyncInterval(int? hours) async {
@@ -212,7 +202,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     await prefs.setBool('has_unsynced_changes', true);
 
     state = state.copyWith(metadata: metadata, pendingUpload: true);
-    _setupPeriodicSync();
+    unawaited(checkAndTriggerSync());
   }
 
   Future<void> checkAndTriggerSync({
@@ -330,24 +320,30 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         bootstrappedUserId: null,
       );
 
+      await _userDocSubscription?.cancel();
+      _userDocSubscription = null;
+
       var metadata = await CloudSyncMetadata.load();
       if (metadata.userId != userId) {
         metadata = metadata.copyWith(userId: userId);
         await metadata.save();
       }
       state = state.copyWith(metadata: metadata);
-      _setupPeriodicSync();
 
-      final prefsDoc = await _firestore
-          .doc('users/$userId/metadata/preferences')
-          .get()
-          .timeout(cloudSyncReadTimeout);
-
-      if (prefsDoc.exists) {
-        final userDoc = await _firestore
+      final docs = await Future.wait([
+        _firestore
+            .doc('users/$userId/metadata/preferences')
+            .get()
+            .timeout(cloudSyncReadTimeout),
+        _firestore
             .doc('users/$userId')
             .get()
-            .timeout(cloudSyncReadTimeout);
+            .timeout(cloudSyncReadTimeout),
+      ]);
+      final prefsDoc = docs[0];
+      final userDoc = docs[1];
+
+      if (prefsDoc.exists) {
         final lastWriterDeviceId = userDoc.data()?['lastWriterDeviceId'];
         final cloudUpdatedAtTemp = userDoc.data()?['updatedAt'];
         DateTime? cloudUpdatedAt;
@@ -397,26 +393,6 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           for (final rule in currentLedger.preferences.futureGenerationRules!) {
             if (!existingRuleIds.contains(rule.id)) {
               rulesToConvert.add(rule);
-            }
-          }
-        }
-
-        // 2. If no rules at all, try fetching from legacy
-        if (rulesToConvert.isEmpty &&
-            (currentLedger.preferences.futureGenerationRules == null ||
-                currentLedger.preferences.futureGenerationRules!.isEmpty)) {
-          final restoreRepo = _ref.read(cloudWalletRestoreRepositoryProvider);
-          final legacyWallet = await _readLegacyWalletIfUsable(
-            restoreRepo,
-            userId,
-          );
-          if (legacyWallet != null &&
-              legacyWallet.ledger.preferences.futureGenerationRules != null) {
-            for (final rule
-                in legacyWallet.ledger.preferences.futureGenerationRules!) {
-              if (!existingRuleIds.contains(rule.id)) {
-                rulesToConvert.add(rule);
-              }
             }
           }
         }
@@ -496,16 +472,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         }
       } else {
         // Migration check
-        final restoreRepo = _ref.read(cloudWalletRestoreRepositoryProvider);
-        final legacyWallet = await _readLegacyWalletIfUsable(
-          restoreRepo,
-          userId,
-        );
-        if (legacyWallet != null) {
-          // Found legacy data! Restore it and immediately push to the new schema.
-          await _ledger.restoreLedgerState(legacyWallet.ledger);
-          await uploadSnapshot(reason: 'migration');
-        } else if (_walletHasUserData(_ref.read(ledgerProvider))) {
+        if (_walletHasUserData(_ref.read(ledgerProvider))) {
           // No cloud data, but we have local data. Push local to cloud.
           await uploadSnapshot(reason: 'seed');
         } else {
@@ -520,6 +487,13 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         bootstrappedUserId: userId,
         bootstrapComplete: true,
       );
+
+      _userDocSubscription = _firestore.doc('users/$userId').snapshots().skip(1).listen((snapshot) {
+        _handleCloudUpdate(snapshot);
+      }, onError: (e) {
+        debugPrint('CloudSync userDoc subscription error: $e');
+      });
+
       unawaited(checkAndTriggerSync());
     } on TimeoutException catch (e) {
       debugPrint('Cloud sync bootstrap timeout, fetching actual error...');
@@ -599,7 +573,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
       final jsonStr = jsonEncode(encodedData);
       final bytes = utf8.encode(jsonStr);
-      final compressedBytes = GZipEncoder().encode(bytes)!;
+      final compressedBytes = GZipEncoder().encode(bytes);
 
       const chunkSize = 900 * 1024; // 900 KB limit for Firestore Blobs
       final chunks = <Uint8List>[];
@@ -881,31 +855,57 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     }
   }
 
-  Future<RestoredCloudLedger?> _readLegacyWalletIfUsable(
-    CloudWalletRestoreRepository restoreRepo,
-    String userId,
-  ) async {
-    try {
-      return await restoreRepo
-          .readLatestLedger(userId)
-          .timeout(cloudSyncReadTimeout);
-    } on FormatException catch (error) {
-      debugPrint('Ignoring unusable legacy cloud wallet: ${error.message}');
-      return null;
-    } on TimeoutException catch (error) {
-      debugPrint('Ignoring slow legacy cloud wallet restore: $error');
-      return null;
-    } on FirebaseException catch (error) {
-      if (error.code == 'permission-denied') {
-        debugPrint('Ignoring inaccessible legacy cloud wallet: $error');
-        return null;
-      }
-      rethrow;
-    }
-  }
+
 
   bool _walletHasUserData(LedgerState ledger) {
     return ledger.accounts.isNotEmpty || ledger.transactions.isNotEmpty;
+  }
+
+  Future<void> _handleCloudUpdate(DocumentSnapshot<Map<String, dynamic>> snapshot) async {
+    final user = _ref.read(authControllerProvider).user;
+    if (user == null || state.phase == CloudSyncPhase.disabled) return;
+    if (_localClearInProgress) return;
+    if (state.phase == CloudSyncPhase.restoring ||
+        state.phase == CloudSyncPhase.checking ||
+        state.phase == CloudSyncPhase.uploading) {
+      return;
+    }
+
+    final lastWriterDeviceId = snapshot.data()?['lastWriterDeviceId'];
+    final cloudUpdatedAtTemp = snapshot.data()?['updatedAt'];
+    DateTime? cloudUpdatedAt;
+    if (cloudUpdatedAtTemp is Timestamp) {
+      cloudUpdatedAt = cloudUpdatedAtTemp.toDate();
+    } else if (cloudUpdatedAtTemp is String) {
+      cloudUpdatedAt = DateTime.tryParse(cloudUpdatedAtTemp);
+    }
+
+    if (cloudUpdatedAt == null) return;
+
+    final metadata = state.metadata ?? await CloudSyncMetadata.load();
+    final prefs = await SharedPreferences.getInstance();
+    final hasUnsyncedChanges = prefs.getBool('has_unsynced_changes') ?? false;
+    final localModifiedAtStr = prefs.getString('last_local_modified_at');
+    final localModifiedAt = localModifiedAtStr != null ? DateTime.tryParse(localModifiedAtStr) : null;
+
+    final isCloudNewer = localModifiedAt == null || cloudUpdatedAt.isAfter(localModifiedAt);
+
+    final bool shouldPull = isCloudNewer ||
+        (lastWriterDeviceId != null &&
+            lastWriterDeviceId != metadata.deviceId &&
+            !hasUnsyncedChanges);
+
+    if (shouldPull && snapshot.exists) {
+      debugPrint('Real-time sync: Cloud update detected. Pulling changes...');
+      await _restoreFromCloud(user.id, metadata, cloudUpdatedAt);
+    }
+  }
+
+  @override
+  void dispose() {
+    _userDocSubscription?.cancel();
+    _cancelTimers();
+    super.dispose();
   }
 }
 

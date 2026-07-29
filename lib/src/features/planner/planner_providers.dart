@@ -32,8 +32,9 @@ final budgetHealthProvider = Provider<BudgetHealthData>((ref) {
     if (tx.status == 'void' ||
         tx.status == 'scheduled' ||
         tx.status == 'paused' ||
-        tx.isExcludedFromReports)
+        tx.isExcludedFromReports) {
       continue;
+    }
     if (tx.occurredAt.year == now.year && tx.occurredAt.month == now.month) {
       if (incomeTypes.contains(tx.type)) {
         totalIncome += convertMoneyForDisplay(
@@ -102,8 +103,9 @@ final emergencyFundProvider = Provider<EmergencyFundData>((ref) {
     if (tx.status == 'void' ||
         tx.status == 'scheduled' ||
         tx.status == 'paused' ||
-        tx.isExcludedFromReports)
+        tx.isExcludedFromReports) {
       continue;
+    }
     if (expenseTypes.contains(tx.type) && tx.occurredAt.isAfter(start)) {
       totalExp += convertMoneyForDisplay(
         state,

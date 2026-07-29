@@ -98,20 +98,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/reports', redirect: (context, state) => '/widgets'),
       GoRoute(
         path: '/review',
-        builder: (context, state) => const ReviewQueueScreen(),
+        builder: (context, state) => const DrawerConfig(
+          hasDrawer: true,
+          child: ReviewQueueScreen(),
+        ),
       ),
       GoRoute(
         path: '/capture/:id',
         builder: (context, state) =>
             CaptureDetailScreen(candidateId: state.pathParameters['id'] ?? ''),
       ),
-      GoRoute(
-        path: '/notifications',
-        builder: (context, state) => const DrawerConfig(
-          hasDrawer: true,
-          child: NotificationsScreen(),
-        ),
-      ),
+      GoRoute(path: '/notifications', redirect: (context, state) => '/review'),
       GoRoute(
         path: '/settings',
         builder: (context, state) => const DrawerConfig(
@@ -222,10 +219,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/imports/:id',
         builder: (context, state) =>
             ImportBatchDetailScreen(batchId: state.pathParameters['id'] ?? ''),
-      ),
-      GoRoute(
-        path: '/import-wallet-csv',
-        builder: (context, state) => const ImportWalletCsvScreen(),
       ),
       GoRoute(
         path: '/import-sms',

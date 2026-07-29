@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
-import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 import 'package:one_wallet_flutter/src/capture/message_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

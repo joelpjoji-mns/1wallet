@@ -76,13 +76,7 @@ List<HomeDashboardWidgetId> resolveHomeWidgetOrder(
   List<String> persisted, {
   List<String> hidden = const [],
 }) {
-  const legacyDefault = [
-    'balanceHero',
-    'accountGrid',
-    'recentRecords',
-    'upcomingScheduled',
-  ];
-  if (persisted.isEmpty || _sameOrder(persisted, legacyDefault)) {
+  if (persisted.isEmpty) {
     return defaultHomeWidgetOrder
         .where((item) => !hidden.contains(item.storageKey))
         .toList();
@@ -170,12 +164,4 @@ List<String> restoreHomeWidgetStorageKey(List<String> order, String id) {
     }
   }
   return [...current, id];
-}
-
-bool _sameOrder(List<String> left, List<String> right) {
-  if (left.length != right.length) return false;
-  for (var index = 0; index < left.length; index += 1) {
-    if (left[index] != right[index]) return false;
-  }
-  return true;
 }

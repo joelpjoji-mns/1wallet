@@ -59,8 +59,9 @@ class CreditCardView extends StatelessWidget {
     String label, {
     Color color = Colors.white70,
   }) {
-    if (!isUnlocked || text.isEmpty || text == '***' || text.contains('****'))
+    if (!isUnlocked || text.isEmpty || text == '***' || text.contains('****')) {
       return const SizedBox.shrink();
+    }
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -92,11 +93,13 @@ class CreditCardView extends StatelessWidget {
 
     final Map<String, String> dynamicFields = {};
     if (displayCcv.isNotEmpty) dynamicFields['CVV'] = displayCcv;
-    if (displayRouting.isNotEmpty)
+    if (displayRouting.isNotEmpty) {
       dynamicFields['ROUTING NO.'] = displayRouting;
+    }
     for (final entry in customFields.entries) {
-      if (entry.value.isNotEmpty)
+      if (entry.value.isNotEmpty) {
         dynamicFields[entry.key.toUpperCase()] = entry.value;
+      }
     }
 
     return Container(

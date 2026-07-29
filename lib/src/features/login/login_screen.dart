@@ -18,8 +18,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final auth = ref.watch(authControllerProvider);
     ref.listen<AuthState>(authControllerProvider, (previous, next) {
       if (next.errorMessage == null ||
-          next.errorMessage == previous?.errorMessage)
+          next.errorMessage == previous?.errorMessage) {
         return;
+      }
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(

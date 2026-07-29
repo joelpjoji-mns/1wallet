@@ -2389,7 +2389,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               ),
               const SizedBox(height: AppSpacing.lg),
               DropdownButtonFormField<int>(
-                value: const [0, 7, 14, 30].contains(widget.state.preferences.loanPayoffDelayDays) ? widget.state.preferences.loanPayoffDelayDays : 0,
+                initialValue: const [0, 7, 14, 30].contains(widget.state.preferences.loanPayoffDelayDays) ? widget.state.preferences.loanPayoffDelayDays : 0,
                 decoration: const InputDecoration(
                   labelText: 'Delay before closing loan',
                   prefixIcon: Icon(Icons.timer_outlined),

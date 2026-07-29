@@ -711,7 +711,7 @@ class _BalanceTrendHomeWidgetState
                               final intValue = value.toInt();
                               final lastIndex = values.length - 1;
                               final middleIndex = lastIndex ~/ 2;
-                              if (intValue == 0)
+                              if (intValue == 0) {
                                 return Padding(
                                   padding: const EdgeInsets.only(top: 8.0),
                                   child: Text(
@@ -724,7 +724,8 @@ class _BalanceTrendHomeWidgetState
                                     ),
                                   ),
                                 );
-                              if (intValue == lastIndex && lastIndex > 0)
+                              }
+                              if (intValue == lastIndex && lastIndex > 0) {
                                 return Padding(
                                   padding: const EdgeInsets.only(top: 8.0),
                                   child: Text(
@@ -737,9 +738,10 @@ class _BalanceTrendHomeWidgetState
                                     ),
                                   ),
                                 );
+                              }
                               if (intValue == middleIndex &&
                                   middleIndex > 0 &&
-                                  middleIndex < lastIndex)
+                                  middleIndex < lastIndex) {
                                 return Padding(
                                   padding: const EdgeInsets.only(top: 8.0),
                                   child: Text(
@@ -752,6 +754,7 @@ class _BalanceTrendHomeWidgetState
                                     ),
                                   ),
                                 );
+                              }
                               return const SizedBox.shrink();
                             },
                           ),
@@ -971,8 +974,9 @@ class _CurrencyValuesHomeWidgetState
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted)
+      if (mounted) {
         _onTextChanged(defaultCurrency, _controllers[defaultCurrency]!.text);
+      }
     });
   }
 

@@ -6,7 +6,6 @@ import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
-import '../../widgets/liquid_progress_indicator.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/privacy_text.dart';
 import '../transactions/transactions_components.dart';
@@ -25,7 +24,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
   var _showExcluded = true;
   var _showArchived = false;
   List<String>? _order;
-  double _liquidValue = 0.5;
+  final double _liquidValue = 0.5;
   final _inputController = TextEditingController(text: '0.5');
 
   @override

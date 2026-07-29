@@ -84,8 +84,9 @@ class ExchangeRateService {
       // Update explicit rates for all enabled currencies
       for (final currency in state.preferences.enabledCurrencies) {
         if (currency.toUpperCase() ==
-            state.preferences.baseCurrency.toUpperCase())
+            state.preferences.baseCurrency.toUpperCase()) {
           continue;
+        }
 
         final lower = currency.toLowerCase();
         if (rates.containsKey(lower)) {
@@ -128,8 +129,9 @@ class ExchangeRateService {
       // Add inverses automatically for completeness
       for (final currency in state.preferences.enabledCurrencies) {
         if (currency.toUpperCase() ==
-            state.preferences.baseCurrency.toUpperCase())
+            state.preferences.baseCurrency.toUpperCase()) {
           continue;
+        }
 
         final lower = currency.toLowerCase();
         if (rates.containsKey(lower)) {

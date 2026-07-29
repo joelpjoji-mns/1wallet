@@ -7,12 +7,10 @@ import 'package:go_router/go_router.dart';
 import '../../data/ledger_models.dart';
 import '../../ledger/ledger_selectors.dart' show minorUnits;
 import '../../auth/auth_controller.dart';
-import '../common/full_screen_picker.dart';
 import '../launch/brand_widgets.dart';
 import 'onboarding_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:uuid/uuid.dart';
-import '../../data/ledger_providers.dart';
 import '../../data/ledger_providers.dart';
 import '../../widgets/currency_picker.dart';
 import '../../utils/number_formatter.dart';
@@ -395,7 +393,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: const ['bank', 'cash', 'credit_card', 'digital', 'savings', 'loan', 'investment'].contains(_currentDraft.type) ? _currentDraft.type : 'bank',
+                  initialValue: const ['bank', 'cash', 'credit_card', 'digital', 'savings', 'loan', 'investment'].contains(_currentDraft.type) ? _currentDraft.type : 'bank',
                   decoration: const InputDecoration(hintText: 'Account type'),
                   items:
                       [

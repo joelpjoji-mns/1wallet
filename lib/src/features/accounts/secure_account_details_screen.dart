@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,7 +6,6 @@ import 'package:encrypt/encrypt.dart' as encrypt;
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
-import '../../ledger/ledger_selectors.dart';
 import '../../widgets/credit_card_view.dart';
 import '../common/route_scaffold.dart';
 
@@ -157,18 +155,21 @@ class _SecureAccountDetailsScreenState
     String? newAccountLast4 = account.accountLast4;
 
     if (isCard) {
-      if (_cardNumberController.text.isNotEmpty)
+      if (_cardNumberController.text.isNotEmpty) {
         newEncrypted['number'] = encrypter
             .encrypt(_cardNumberController.text, iv: iv)
             .base64;
-      if (_expiryController.text.isNotEmpty)
+      }
+      if (_expiryController.text.isNotEmpty) {
         newEncrypted['expiry'] = encrypter
             .encrypt(_expiryController.text, iv: iv)
             .base64;
-      if (_ccvController.text.isNotEmpty)
+      }
+      if (_ccvController.text.isNotEmpty) {
         newEncrypted['ccv'] = encrypter
             .encrypt(_ccvController.text, iv: iv)
             .base64;
+      }
 
       if (_cardNumberController.text.length >= 4) {
         newCardLast4 = _cardNumberController.text.substring(
@@ -176,10 +177,11 @@ class _SecureAccountDetailsScreenState
         );
       }
     } else {
-      if (_accountNumberController.text.isNotEmpty)
+      if (_accountNumberController.text.isNotEmpty) {
         newEncrypted['account_number'] = encrypter
             .encrypt(_accountNumberController.text, iv: iv)
             .base64;
+      }
 
       if (_accountNumberController.text.length >= 4) {
         newAccountLast4 = _accountNumberController.text.substring(

@@ -636,7 +636,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                         ),
                         const SizedBox(height: AppSpacing.md),
                         DropdownButtonFormField<String>(
-                          value: const ['cleared', 'pending', 'void'].contains(_status) ? _status : 'cleared',
+                          initialValue: const ['cleared', 'pending', 'void'].contains(_status) ? _status : 'cleared',
                           decoration: InputDecoration(
                             labelText: 'Status',
                             prefixIcon: const Icon(Icons.info_outline),
@@ -687,8 +687,9 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       return _CalcState(amount: next, expression: expression);
     }
     if (key == '.') {
-      if (amount.contains('.'))
+      if (amount.contains('.')) {
         return _CalcState(amount: amount, expression: expression);
+      }
       return _CalcState(
         amount: amount.isEmpty ? '0.' : '$amount.',
         expression: expression,
@@ -732,10 +733,11 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       final ops = <String>[];
       for (final t in tokens) {
         final n = double.tryParse(t);
-        if (n != null)
+        if (n != null) {
           values.add(n);
-        else
+        } else {
           ops.add(t);
+        }
       }
       var result = values.isNotEmpty ? values[0] : 0.0;
       for (var i = 0; i < ops.length; i++) {
@@ -767,11 +769,12 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       );
       if (!mounted) return;
       setState(() {
-        if (fields.amountMinor != null)
+        if (fields.amountMinor != null) {
           _amount = _formatAmountInput(
             fields.amountMinor!,
             state.preferences.baseCurrency,
           );
+        }
         if (fields.merchant != null) _notesController.text = fields.merchant!;
       });
     } catch (_) {
@@ -803,7 +806,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
           ),
       ],
     );
-    if (nextId != null)
+    if (nextId != null) {
       setState(() {
         if (counter) {
           _counterAccountId = nextId;
@@ -823,6 +826,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
           }
         }
       });
+    }
   }
 
   Future<void> _showCategoryPicker() async {
@@ -842,7 +846,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (picked != null)
+    if (picked != null) {
       setState(
         () => _occurredAt = DateTime(
           picked.year,
@@ -852,6 +856,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
           _occurredAt.minute,
         ),
       );
+    }
   }
 
   Future<void> _selectTime() async {
@@ -859,7 +864,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       context: context,
       initialTime: TimeOfDay.fromDateTime(_occurredAt),
     );
-    if (picked != null)
+    if (picked != null) {
       setState(
         () => _occurredAt = DateTime(
           _occurredAt.year,
@@ -869,6 +874,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
           picked.minute,
         ),
       );
+    }
   }
 
   String _resolvedMainAmountInput() => _expression.isNotEmpty
@@ -1071,10 +1077,11 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       }
 
       if (!mounted) return;
-      if (context.canPop())
+      if (context.canPop()) {
         context.pop();
-      else
+      } else {
         context.go('/');
+      }
     } catch (e) {
       _showMessage('Could not save the record. Please try again.');
     }
@@ -1378,10 +1385,11 @@ class _ChargeDraft {
 
 Color _toneColor(BuildContext context, String type) {
   final scheme = Theme.of(context).colorScheme;
-  if (type == 'income')
+  if (type == 'income') {
     return Theme.of(context).brightness == Brightness.dark
         ? AppColors.positiveDark
         : AppColors.positiveLight;
+  }
   return type == 'transfer' ? scheme.primary : scheme.error;
 }
 
@@ -1412,7 +1420,9 @@ String _formatExpression(String expr, String locale) =>
 
 extension _FirstWhereOrNull<T> on Iterable<T> {
   T? firstWhereOrNull(bool Function(T value) test) {
-    for (final v in this) if (test(v)) return v;
+    for (final v in this) {
+      if (test(v)) return v;
+    }
     return null;
   }
 }

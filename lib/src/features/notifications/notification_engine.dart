@@ -127,7 +127,47 @@ List<AppNotification> buildNotificationInbox(LedgerState state) {
   // repeated builds within the same period.
   final period = '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
-  // Scheduled payment notifications are now handled by background timezone scheduling
+  // Scheduled payment notifications
+  if (state.preferences.channelScheduledEnabled) {
+    final today = DateTime(now.year, now.month, now.day);
+    for (final transaction in scheduledTransactions(state).where((t) => t.status == 'scheduled')) {
+      final txDay = DateTime(transaction.occurredAt.year, transaction.occurredAt.month, transaction.occurredAt.day);
+      final daysDiff = txDay.difference(today).inDays;
+
+      if (daysDiff < 0) {
+        final when = daysDiff == -1 ? 'yesterday' : '${-daysDiff} days ago';
+        notifications.add(
+          AppNotification(
+            id: 'scheduled_overdue_${transaction.id}',
+            channel: AppNotificationChannel.scheduled,
+            title: 'Overdue: ${transaction.notes ?? transactionTypeLabel(transaction.type)}',
+            body: _dueBody(state: state, amount: transaction.amount, when: when),
+            createdAt: transaction.occurredAt,
+            actionRoute: '/recurring/${transaction.id}',
+          ),
+        );
+      } else if (daysDiff <= 14) {
+        final String when;
+        if (daysDiff == 0) {
+          when = 'today';
+        } else if (daysDiff == 1) {
+          when = 'tomorrow';
+        } else {
+          when = 'in $daysDiff days';
+        }
+        notifications.add(
+          AppNotification(
+            id: 'scheduled_soon_${transaction.id}',
+            channel: AppNotificationChannel.scheduled,
+            title: 'Upcoming: ${transaction.notes ?? transactionTypeLabel(transaction.type)}',
+            body: _dueBody(state: state, amount: transaction.amount, when: when),
+            createdAt: now,
+            actionRoute: '/recurring/${transaction.id}',
+          ),
+        );
+      }
+    }
+  }
 
   // Budget overspend notifications
   if (state.preferences.channelBudgetsEnabled) {
@@ -218,4 +258,15 @@ List<AppNotification> buildNotificationInbox(LedgerState state) {
 /// Count of unread notifications.
 int unreadNotificationCount(LedgerState state) {
   return buildNotificationInbox(state).where((n) => !n.read).length;
+}
+
+String _dueBody({
+  required LedgerState state,
+  required Money amount,
+  required String when,
+}) {
+  if (state.preferences.privacyModeEnabled) {
+    return 'A scheduled payment is due $when.';
+  }
+  return '${formatMoney(amount, state.preferences.locale)} is due $when.';
 }

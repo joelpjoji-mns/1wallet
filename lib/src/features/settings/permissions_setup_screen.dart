@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../auth/auth_controller.dart';
-import '../../features/common/route_scaffold.dart';
 import '../../features/launch/brand_widgets.dart';
 import '../../features/settings/permission_setup_controller.dart';
 
