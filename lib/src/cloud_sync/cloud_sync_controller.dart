@@ -752,12 +752,12 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       final ledger = await compute(_parseCloudRestoreData, restoreData);
 
       final currentLedger = _ref.read(ledgerProvider);
-      if (!_walletHasUserData(ledger) && _walletHasUserData(currentLedger)) {
+      if (!LedgerState.isIncomingLedgerSafer(currentLedger, ledger)) {
         state = state.copyWith(
           phase: CloudSyncPhase.idle,
           progress: 1.0,
-          error:
-              'Cloud backup is empty, so the existing local wallet was kept.',
+          error: 'Cloud backup rejected (outdated or empty). Local data kept.',
+          pendingUpload: true,
         );
         return;
       }

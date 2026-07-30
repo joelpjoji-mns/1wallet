@@ -1062,4 +1062,40 @@ class LedgerState {
       exchangeRates: exchangeRates ?? this.exchangeRates,
     );
   }
+
+  /// Determines if an incoming ledger (from a cloud sync or local backup restore)
+  /// is safe to overwrite the current local ledger.
+  /// This prevents empty or severely outdated backups from destroying local data
+  /// just because their export timestamp happens to be newer.
+  static bool isIncomingLedgerSafer(LedgerState local, LedgerState incoming) {
+    // 1. Empty Backup Protection
+    if (incoming.transactions.isEmpty && local.transactions.isNotEmpty) {
+      return false;
+    }
+
+    // 2. Transaction Count Protection
+    if (incoming.transactions.length < local.transactions.length) {
+      return false;
+    }
+
+    // 3. Latest 5 Transactions Protection
+    // Extract the 5 most recent transactions by occurredAt for both ledgers
+    final localTxs = List<TransactionRecord>.from(local.transactions)
+      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+    final incomingTxs = List<TransactionRecord>.from(incoming.transactions)
+      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+
+    final localTop = localTxs.take(5).toList();
+    final incomingTop = incomingTxs.take(5).toList();
+
+    // If local has newer transactions in its top 5, it is safer/newer.
+    for (int i = 0; i < localTop.length; i++) {
+      if (i >= incomingTop.length) break;
+      if (localTop[i].occurredAt.isAfter(incomingTop[i].occurredAt)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
 }

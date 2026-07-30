@@ -382,8 +382,16 @@ class LedgerController extends StateNotifier<LedgerState> {
     return encodeLedgerArchive(state, source: source);
   }
 
-  Future<void> importArchive(String archiveSource) async {
-    await _commit(decodeLedgerArchive(archiveSource));
+  Future<void> importArchive(String archiveSource, {bool force = false}) async {
+    final incoming = decodeLedgerArchive(archiveSource);
+    if (!force && !LedgerState.isIncomingLedgerSafer(state, incoming)) {
+      throw Exception(
+        'Restore rejected: Your current local data is newer or has more '
+        'transactions than the backup you are trying to restore. '
+        'This prevents accidental data loss.',
+      );
+    }
+    await _commit(incoming);
   }
 
   bool _isRestoring = false;
@@ -1907,9 +1915,9 @@ class LedgerController extends StateNotifier<LedgerState> {
     return newest;
   }
 
-  Future<void> restoreFromAutoBackup(File file) async {
+  Future<void> restoreFromAutoBackup(File file, {bool force = false}) async {
     final content = await file.readAsString();
-    await importArchive(content);
+    await importArchive(content, force: force);
   }
 }
 
