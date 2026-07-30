@@ -514,31 +514,40 @@ class HeaderIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        IconButton(icon: Icon(icon), onPressed: onPressed),
-        if ((badge ?? 0) > 0)
-          Positioned(
-            right: 7,
-            top: 7,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.error,
-                borderRadius: BorderRadius.circular(AppRadii.pill),
-              ),
-              child: Text(
-                badge! > 9 ? '9+' : '${badge!}',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onError,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
+    return Padding(
+      padding: const EdgeInsets.only(left: 6.0),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          IconButton(
+            icon: Icon(icon),
+            iconSize: 26,
+            padding: const EdgeInsets.all(12),
+            constraints: const BoxConstraints(minWidth: 52, minHeight: 52),
+            onPressed: onPressed,
+          ),
+          if ((badge ?? 0) > 0)
+            Positioned(
+              right: 8,
+              top: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.error,
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                ),
+                child: Text(
+                  badge! > 9 ? '9+' : '${badge!}',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onError,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }
