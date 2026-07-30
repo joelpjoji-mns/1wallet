@@ -1,16 +1,15 @@
-import 'dart:typed_data';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:encrypt/encrypt.dart' as encrypt;
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../utils/currency_utils.dart';
+import '../../utils/secure_key_store.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/currency_picker.dart';
 import '../../widgets/credit_card_view.dart';
@@ -339,20 +338,17 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
       );
       if (authenticated && mounted) {
         if (account.encryptedDetails != null) {
-          final key = encrypt.Key.fromUtf8('my32lengthsupersecretkey12345678');
-          final iv = encrypt.IV(Uint8List(16));
-          final encrypter = encrypt.Encrypter(encrypt.AES(key));
-
           String uNum = '';
           String uExp = '';
           String uCcv = '';
-          Map<String, String> uCustom = {};
+          final Map<String, String> uCustom = {};
 
           try {
             final details = account.encryptedDetails!;
-            details.forEach((k, v) {
+            for (final entry in details.entries) {
               try {
-                final decrypted = encrypter.decrypt64(v, iv: iv);
+                final decrypted = await SecureKeyStore.decrypt(entry.value);
+                final k = entry.key;
                 if (k == 'number' || k == 'account_number') {
                   uNum = decrypted;
                 } else if (k == 'expiry') {
@@ -366,20 +362,22 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                   uCustom[k] = decrypted;
                 }
               } catch (e) {
-                debugPrint('Decryption error on key $k: $e');
+                debugPrint('Decryption error on key ${entry.key}: $e');
               }
-            });
+            }
           } catch (e) {
             debugPrint('Decryption error: $e');
           }
 
-          setState(() {
-            _unlockedNumber = uNum;
-            _unlockedExpiry = uExp;
-            _unlockedCcv = uCcv;
-            _unlockedCustomFields = uCustom;
-            _isCardUnlocked = true;
-          });
+          if (mounted) {
+            setState(() {
+              _unlockedNumber = uNum;
+              _unlockedExpiry = uExp;
+              _unlockedCcv = uCcv;
+              _unlockedCustomFields = uCustom;
+              _isCardUnlocked = true;
+            });
+          }
         } else {
           // If no details exist, just unlock to show empty fields
           setState(() {

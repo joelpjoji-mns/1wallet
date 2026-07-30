@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:encrypt/encrypt.dart' as encrypt;
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
+import '../../utils/secure_key_store.dart';
 import '../../widgets/credit_card_view.dart';
 import '../common/route_scaffold.dart';
 
@@ -42,44 +42,52 @@ class _SecureAccountDetailsScreenState
       );
 
       if (account.encryptedDetails != null) {
-        final key = encrypt.Key.fromUtf8('my32lengthsupersecretkey12345678');
-        final iv = encrypt.IV(Uint8List(16));
-        final encrypter = encrypt.Encrypter(encrypt.AES(key));
-
         try {
           final details = account.encryptedDetails!;
-          details.forEach((k, v) {
+          final decryptedEntries = <String, String>{};
+          bool hasLegacy = false;
+
+          for (final entry in details.entries) {
             try {
-              final decrypted = encrypter.decrypt64(v, iv: iv);
-              if (k == 'number' || k == 'account_number') {
-                if (account.type == 'card' || account.type == 'credit_card') {
-                  _cardNumberController.text = decrypted;
-                } else {
-                  _accountNumberController.text = decrypted;
-                }
-              } else if (k == 'expiry') {
-                _expiryController.text = decrypted;
-              } else if (k == 'ccv') {
-                _ccvController.text = decrypted;
-              } else if (k == 'routing_number') {
-                _customFields.add(
-                  MapEntry(
-                    'Routing Number',
-                    TextEditingController(text: decrypted),
-                  ),
-                );
-              } else if (k != 'name' && k != 'bank_name') {
-                _customFields.add(
-                  MapEntry(k, TextEditingController(text: decrypted)),
-                );
-              }
+              final decrypted = await SecureKeyStore.decrypt(entry.value);
+              decryptedEntries[entry.key] = decrypted;
+              if (SecureKeyStore.isLegacyFormat(entry.value)) hasLegacy = true;
             } catch (e) {
-              debugPrint('Decryption error on key $k: $e');
+              debugPrint('Decryption error on key ${entry.key}: $e');
+            }
+          }
+
+          decryptedEntries.forEach((k, decrypted) {
+            if (k == 'number' || k == 'account_number') {
+              if (account.type == 'card' || account.type == 'credit_card') {
+                _cardNumberController.text = decrypted;
+              } else {
+                _accountNumberController.text = decrypted;
+              }
+            } else if (k == 'expiry') {
+              _expiryController.text = decrypted;
+            } else if (k == 'ccv') {
+              _ccvController.text = decrypted;
+            } else if (k == 'routing_number') {
+              _customFields.add(
+                MapEntry(
+                  'Routing Number',
+                  TextEditingController(text: decrypted),
+                ),
+              );
+            } else if (k != 'name' && k != 'bank_name') {
+              _customFields.add(
+                MapEntry(k, TextEditingController(text: decrypted)),
+              );
             }
           });
-          if (mounted) {
-            setState(() {});
+
+          // Silently migrate legacy-format values to the new secure format.
+          if (hasLegacy && mounted) {
+            _saveSecureDetails(account, silent: true);
           }
+
+          if (mounted) setState(() {});
         } catch (e) {
           debugPrint('Decryption error: $e');
         }
@@ -144,11 +152,7 @@ class _SecureAccountDetailsScreenState
     }
   }
 
-  Future<void> _saveSecureDetails(Account account) async {
-    final keyBytes = encrypt.Key.fromUtf8('my32lengthsupersecretkey12345678');
-    final iv = encrypt.IV(Uint8List(16));
-    final encrypter = encrypt.Encrypter(encrypt.AES(keyBytes));
-
+  Future<void> _saveSecureDetails(Account account, {bool silent = false}) async {
     final Map<String, String> newEncrypted = {};
     final isCard = account.type == 'card' || account.type == 'credit_card';
     String? newCardLast4 = account.cardLast4;
@@ -156,21 +160,17 @@ class _SecureAccountDetailsScreenState
 
     if (isCard) {
       if (_cardNumberController.text.isNotEmpty) {
-        newEncrypted['number'] = encrypter
-            .encrypt(_cardNumberController.text, iv: iv)
-            .base64;
+        newEncrypted['number'] =
+            await SecureKeyStore.encrypt(_cardNumberController.text);
       }
       if (_expiryController.text.isNotEmpty) {
-        newEncrypted['expiry'] = encrypter
-            .encrypt(_expiryController.text, iv: iv)
-            .base64;
+        newEncrypted['expiry'] =
+            await SecureKeyStore.encrypt(_expiryController.text);
       }
       if (_ccvController.text.isNotEmpty) {
-        newEncrypted['ccv'] = encrypter
-            .encrypt(_ccvController.text, iv: iv)
-            .base64;
+        newEncrypted['ccv'] =
+            await SecureKeyStore.encrypt(_ccvController.text);
       }
-
       if (_cardNumberController.text.length >= 4) {
         newCardLast4 = _cardNumberController.text.substring(
           _cardNumberController.text.length - 4,
@@ -178,11 +178,9 @@ class _SecureAccountDetailsScreenState
       }
     } else {
       if (_accountNumberController.text.isNotEmpty) {
-        newEncrypted['account_number'] = encrypter
-            .encrypt(_accountNumberController.text, iv: iv)
-            .base64;
+        newEncrypted['account_number'] =
+            await SecureKeyStore.encrypt(_accountNumberController.text);
       }
-
       if (_accountNumberController.text.length >= 4) {
         newAccountLast4 = _accountNumberController.text.substring(
           _accountNumberController.text.length - 4,
@@ -192,9 +190,8 @@ class _SecureAccountDetailsScreenState
 
     for (final field in _customFields) {
       if (field.value.text.isNotEmpty) {
-        newEncrypted[field.key] = encrypter
-            .encrypt(field.value.text, iv: iv)
-            .base64;
+        newEncrypted[field.key] =
+            await SecureKeyStore.encrypt(field.value.text);
       }
     }
 
@@ -217,7 +214,7 @@ class _SecureAccountDetailsScreenState
             isArchived: account.isArchived,
             encryptedDetails: newEncrypted.isNotEmpty ? newEncrypted : null,
           );
-      if (mounted) {
+      if (!silent && mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

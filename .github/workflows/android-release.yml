@@ -140,7 +140,11 @@ jobs:
             echo "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=${{ secrets.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}"
             echo "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}"
             echo "EXPO_PUBLIC_FIREBASE_USE_EMULATOR=false"
+            # Security: email/password auth is QA-only. Always disable in production CI builds.
+            echo "ONEWALLET_ENABLE_EMAIL_PASSWORD_AUTH=false"
           } > .env
+          # config.env is the Flutter asset path; keep in sync with .env
+          cp .env config.env
 
       - name: Restore Android release keystore
         run: |
@@ -349,7 +353,7 @@ jobs:
       - name: Flutter dependencies
         run: flutter pub get
 
-      - name: Write mobile environment
+      - name: Write web environment
         run: |
           {
             echo "EXPO_PUBLIC_FIREBASE_API_KEY=${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}"
@@ -361,7 +365,10 @@ jobs:
             echo "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=${{ secrets.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}"
             echo "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}"
             echo "EXPO_PUBLIC_FIREBASE_USE_EMULATOR=false"
+            # Security: email/password auth is QA-only. Always disable in production CI builds.
+            echo "ONEWALLET_ENABLE_EMAIL_PASSWORD_AUTH=false"
           } > .env
+          # config.env is the Flutter asset path; keep in sync with .env
           cp .env config.env
 
       - name: Build Web

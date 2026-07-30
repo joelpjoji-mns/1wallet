@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
+import 'package:crypto/crypto.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -368,12 +370,14 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
       clearDownloadedApkPath: true,
     );
 
+    final apk = state.latestRelease!.apk!;
+
     try {
       final dir = await getTemporaryDirectory();
-      final savePath = '${dir.path}/${state.latestRelease!.apk!.fileName}';
+      final savePath = '${dir.path}/${apk.fileName}';
 
       await _dio.download(
-        state.latestRelease!.apk!.downloadUrl,
+        apk.downloadUrl,
         savePath,
         onReceiveProgress: (received, total) {
           if (total != -1) {
@@ -385,6 +389,37 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
           }
         },
       );
+
+      // -----------------------------------------------------------------------
+      // SHA-256 integrity check — verify the downloaded file matches the hash
+      // stored in Firestore before allowing installation.
+      // -----------------------------------------------------------------------
+      state = state.copyWith(
+        progress: 1.0,
+        // Show a brief "verifying" message via bytesWritten > bytesExpected trick
+      );
+
+      final downloadedFile = File(savePath);
+      final fileBytes = await downloadedFile.readAsBytes();
+      final computedHash = sha256.convert(fileBytes).toString();
+
+      // Normalise: Firestore value may include a 'sha256:' prefix.
+      final expectedHash = apk.sha256.startsWith('sha256:')
+          ? apk.sha256.substring('sha256:'.length)
+          : apk.sha256;
+
+      if (computedHash != expectedHash) {
+        // Delete the corrupted / tampered file immediately.
+        await downloadedFile.delete();
+        state = state.copyWith(
+          status: UpdateStatus.error,
+          clearDownloadedApkPath: true,
+          errorMessage:
+              'Download integrity check failed. The file may be corrupted or '
+              'tampered with. Please try again.',
+        );
+        return;
+      }
 
       state = state.copyWith(
         status: UpdateStatus.downloaded,

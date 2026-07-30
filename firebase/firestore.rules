@@ -320,7 +320,18 @@ service cloud.firestore {
       }
 
       match /wallet_backups/{chunkId} {
-        allow read, create, update, delete: if isOwner(userId);
+        // Legacy compressed-backup collection. Kept for backwards compatibility
+        // with older clients while migration to /wallets/snapshots/chunks is completed.
+        // Schema enforced to prevent oversized or malformed documents.
+        function isValidBackupChunk(data) {
+          return data.keys().hasOnly(['index', 'data', 'updatedAt']) &&
+            data.index is int && data.index >= 0 && data.index <= 9999 &&
+            data.data is bytes && data.data.size() > 0 && data.data.size() <= 1048576 &&
+            data.updatedAt is timestamp;
+        }
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidBackupChunk(request.resource.data);
+        allow delete: if isOwner(userId);
       }
 
       match /wallets/{walletId} {
