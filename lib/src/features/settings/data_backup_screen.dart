@@ -84,6 +84,47 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
       _showBackupMessage('Auto-backup restored successfully.');
     } catch (e) {
       if (!mounted) return;
+      if (e.toString().contains('Restore rejected')) {
+        final confirmForce = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Warning: Older Backup'),
+            content: const Text(
+              'Your current local data is newer or has more transactions than this auto-backup. '
+              'Are you sure you want to overwrite your current data?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(
+                  'Force Restore',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+            ],
+          ),
+        );
+        if (confirmForce == true && mounted) {
+          try {
+            await ref
+                .read(ledgerProvider.notifier)
+                .restoreFromAutoBackup(_latestAutoBackup!, force: true);
+            if (!mounted) return;
+            setState(() => _status = 'Restored successfully from auto-backup.');
+            _showBackupMessage('Auto-backup restored successfully.');
+            return;
+          } catch (forceError) {
+            if (!mounted) return;
+            setState(() => _status = 'Force restore failed: $forceError');
+            _showBackupMessage('Auto-backup restore failed.');
+            return;
+          }
+        }
+      }
       setState(() => _status = 'Auto-backup restore failed: $e');
       _showBackupMessage('Auto-backup restore failed.');
     }
@@ -233,6 +274,8 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
   }
 
   Future<void> _pickAndRestoreArchive() async {
+    String? fileText;
+    String? fileName;
     try {
       final file = await pickTextFile(
         allowedExtensions: const ['json', 'txt', 'onewallet'],
@@ -241,13 +284,54 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
         _showBackupMessage('Archive file selection cancelled.');
         return;
       }
+      fileText = file.text;
+      fileName = file.name;
 
-      await ref.read(ledgerProvider.notifier).importArchive(file.text);
+      await ref.read(ledgerProvider.notifier).importArchive(fileText);
       if (!mounted) return;
-      setState(() => _status = 'Restored successfully from ${file.name}.');
+      setState(() => _status = 'Restored successfully from $fileName.');
       _showBackupMessage('Archive restored successfully.');
     } catch (error) {
       if (!mounted) return;
+      if (error.toString().contains('Restore rejected')) {
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Warning: Older Backup'),
+            content: const Text(
+              'Your current local data is newer or has more transactions than this backup. '
+              'Are you sure you want to overwrite your current data?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(
+                  'Force Restore',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+            ],
+          ),
+        );
+        if (confirm == true && mounted && fileText != null) {
+          try {
+            await ref.read(ledgerProvider.notifier).importArchive(fileText, force: true);
+            if (!mounted) return;
+            setState(() => _status = 'Restored successfully from $fileName.');
+            _showBackupMessage('Archive restored successfully.');
+            return;
+          } catch (e) {
+            if (!mounted) return;
+            setState(() => _status = 'Force restore failed: $e');
+            _showBackupMessage('Archive restore failed.');
+            return;
+          }
+        }
+      }
       setState(() => _status = 'Restore failed: $error');
       _showBackupMessage('Archive restore failed.');
     }
