@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:encrypt/encrypt.dart' as encrypt;
+import 'package:encrypt/encrypt.dart' as enc;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Manages a per-device AES-256 key stored in the OS secure enclave and provides
@@ -36,8 +36,8 @@ abstract final class SecureKeyStore {
   /// or local storage.
   static Future<String> encrypt(String plaintext) async {
     final key = await _getOrCreateKey();
-    final iv = encrypt.IV(_randomBytes(16));
-    final encrypter = encrypt.Encrypter(encrypt.AES(key));
+    final iv = enc.IV(_randomBytes(16));
+    final encrypter = enc.Encrypter(enc.AES(key));
     final cipherText = encrypter.encrypt(plaintext, iv: iv).base64;
     return '${base64Encode(iv.bytes)}:$cipherText';
   }
@@ -61,14 +61,14 @@ abstract final class SecureKeyStore {
   // Internal helpers
   // ---------------------------------------------------------------------------
 
-  static Future<encrypt.Key> _getOrCreateKey() async {
+  static Future<enc.Key> _getOrCreateKey() async {
     String? stored = await _storage.read(key: _keyAlias);
     if (stored == null) {
       final bytes = _randomBytes(32);
       stored = base64Encode(bytes);
       await _storage.write(key: _keyAlias, value: stored);
     }
-    return encrypt.Key(base64Decode(stored));
+    return enc.Key(base64Decode(stored));
   }
 
   static bool _isNewFormat(String stored) {
@@ -81,16 +81,16 @@ abstract final class SecureKeyStore {
     if (separatorIdx < 0) throw const FormatException('Invalid encrypted format');
     final ivBytes = base64Decode(stored.substring(0, separatorIdx));
     final cipherBase64 = stored.substring(separatorIdx + 1);
-    final iv = encrypt.IV(ivBytes);
+    final iv = enc.IV(ivBytes);
     final key = await _getOrCreateKey();
-    final encrypter = encrypt.Encrypter(encrypt.AES(key));
+    final encrypter = enc.Encrypter(enc.AES(key));
     return encrypter.decrypt64(cipherBase64, iv: iv);
   }
 
   static String _decryptLegacy(String stored) {
-    final key = encrypt.Key.fromUtf8(_legacyKey);
-    final iv = encrypt.IV(Uint8List(16)); // original code used an all-zero IV
-    final encrypter = encrypt.Encrypter(encrypt.AES(key));
+    final key = enc.Key.fromUtf8(_legacyKey);
+    final iv = enc.IV(Uint8List(16)); // original code used an all-zero IV
+    final encrypter = enc.Encrypter(enc.AES(key));
     return encrypter.decrypt64(stored, iv: iv);
   }
 
