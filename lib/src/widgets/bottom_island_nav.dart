@@ -63,7 +63,11 @@ class BottomIslandNavBar extends StatelessWidget {
                   builder: (context, child) {
                     double page = selectedIndex.toDouble();
                     if (pageController != null && pageController!.hasClients) {
-                      page = pageController!.page ?? selectedIndex.toDouble();
+                      try {
+                        page = pageController!.page ?? selectedIndex.toDouble();
+                      } catch (_) {
+                        // ignore layout exceptions during screen rotation
+                      }
                     }
 
                     final tabCenter = navPadding + tabWidth * (page + 0.5);
