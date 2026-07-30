@@ -35,7 +35,7 @@ class _SecureAccountDetailsScreenState
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final state = ref.read(ledgerProvider);
       final account = state.accounts.firstWhere(
         (a) => a.id == widget.accountId,
