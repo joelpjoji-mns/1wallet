@@ -216,10 +216,7 @@ class HomeScreen extends ConsumerWidget {
             onPressed: () =>
                 ref.read(_homeWidgetReorderModeProvider.notifier).state = false,
           ),
-        HeaderIconButton(
-          icon: Icons.search_rounded,
-          onPressed: () => onTabSelected(1),
-        ),
+
         HeaderIconButton(
           icon: Icons.notifications_none_rounded,
           badge: pendingCount + notificationCount,
