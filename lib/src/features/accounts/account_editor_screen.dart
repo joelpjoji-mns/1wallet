@@ -291,12 +291,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                   onChanged: (value) => setState(() => _showOnHome = value),
                   title: const Text('Show on home'),
                 ),
-                if (!isNew)
-                  LiquidGlassSwitchListTile(
-                    value: _isArchived,
-                    onChanged: (value) => setState(() => _isArchived = value),
-                    title: const Text('Archive account'),
-                  ),
+
               ],
             ),
           ),
@@ -304,22 +299,46 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
           if (account != null) ...[
             const Gap(AppSpacing.lg),
             SectionCard(
-              title: 'Delete account',
-              subtitle: _accountHasLinkedTransactions(state, account)
-                  ? 'Linked records are kept, so this account will be archived and synced.'
-                  : 'Unused accounts are removed from this wallet and synced.',
+              title: 'Danger Zone',
+              subtitle: 'Manage account closure or permanent deletion.',
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: OutlinedButton.icon(
-                  onPressed: () => _confirmDeleteAccount(state, account),
-                  icon: const Icon(Icons.delete_outline_rounded),
-                  label: const Text('Delete account'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.error,
-                    side: BorderSide(
-                      color: Theme.of(context).colorScheme.error,
+                child: Wrap(
+                  spacing: AppSpacing.md,
+                  runSpacing: AppSpacing.sm,
+                  children: [
+                    if (account.isArchived)
+                      OutlinedButton.icon(
+                        onPressed: () => _reopenAccount(state, account),
+                        icon: const Icon(Icons.unarchive_outlined),
+                        label: const Text('Reopen account'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Theme.of(context).colorScheme.primary,
+                          side: BorderSide(color: Theme.of(context).colorScheme.primary),
+                        ),
+                      )
+                    else
+                      OutlinedButton.icon(
+                        onPressed: () => _closeAccount(state, account),
+                        icon: const Icon(Icons.archive_outlined),
+                        label: const Text('Close account'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Theme.of(context).colorScheme.primary,
+                          side: BorderSide(color: Theme.of(context).colorScheme.primary),
+                        ),
+                      ),
+                    OutlinedButton.icon(
+                      onPressed: () => _confirmDeleteAccount(state, account),
+                      icon: const Icon(Icons.delete_outline_rounded),
+                      label: const Text('Delete account'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Theme.of(context).colorScheme.error,
+                        side: BorderSide(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
@@ -621,6 +640,88 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     );
     if (next != null) {
       setState(() => _selectedCurrency = next);
+    }
+  }
+
+  Future<void> _closeAccount(LedgerState state, Account account) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Close account?'),
+        content: const Text(
+          'This account will be closed and hidden from your active wallet balances, but its history will be kept.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.tonal(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Close account'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    _updateArchiveState(account, true, 'Account closed and archived.');
+  }
+
+  Future<void> _reopenAccount(LedgerState state, Account account) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reopen account?'),
+        content: const Text('This account will be visible in your active wallet again.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.tonal(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Reopen'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    _updateArchiveState(account, false, 'Account reopened.');
+  }
+
+  Future<void> _updateArchiveState(Account account, bool isArchived, String message) async {
+    try {
+      await ref.read(ledgerProvider.notifier).upsertAccount(
+            id: account.id,
+            name: account.name,
+            type: account.type,
+            currency: account.currency,
+            openingBalanceMinor: account.openingBalance.amountMinor,
+            color: account.color,
+            institution: account.institution,
+            groupName: account.groupName,
+            cardLast4: account.cardLast4,
+            accountLast4: account.accountLast4,
+            loanDetails: account.loanDetails,
+            encryptedDetails: account.encryptedDetails,
+            creditLimit: account.creditLimit,
+            includeInTotals: account.includeInTotals,
+            includeInReports: account.includeInReports,
+            includeInNetWorth: account.includeInNetWorth,
+            showOnHome: account.showOnHome,
+            isArchived: isArchived,
+            sortOrder: account.sortOrder,
+          );
+      if (!mounted) return;
+      _showAccountMessage(message);
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/');
+      }
+    } catch (error) {
+      if (!mounted) return;
+      _showAccountMessage(error.toString());
     }
   }
 }
