@@ -297,6 +297,25 @@ class AppMainDrawer extends ConsumerWidget {
     final ledger = ref.watch(ledgerProvider);
     final sync = ref.watch(cloudSyncControllerProvider);
     final updateState = ref.watch(appUpdateProvider);
+
+    ref.listen<AppUpdateState>(appUpdateProvider, (previous, next) {
+      if ((previous == null || previous.latestRelease == null) &&
+          next.latestRelease != null &&
+          next.status == UpdateStatus.idle) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Update ${next.latestRelease!.versionName} is available!'),
+            action: SnackBarAction(
+              label: 'View',
+              onPressed: () => context.push('/updates'),
+            ),
+            duration: const Duration(seconds: 10),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    });
+
     final pendingReviewCount = _pendingReviewCount(ledger);
     final unreadNotificationCount =
         buildNotificationInbox(ledger).where((n) => !n.read).length;
