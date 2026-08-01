@@ -710,7 +710,6 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
             includeInNetWorth: account.includeInNetWorth,
             showOnHome: account.showOnHome,
             isArchived: isArchived,
-            sortOrder: account.sortOrder,
           );
       if (!mounted) return;
       _showAccountMessage(message);
