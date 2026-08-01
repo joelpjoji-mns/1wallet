@@ -228,6 +228,63 @@ class _SecureAccountDetailsScreenState
     }
   }
 
+  Future<void> _archiveAccount(Account account) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Close account?'),
+        content: const Text(
+          'This account will be archived and hidden from most views, but its history will be kept.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              'Close Account',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      await ref.read(ledgerProvider.notifier).upsertAccount(
+            id: account.id,
+            name: account.name,
+            type: account.type,
+            currency: account.currency,
+            openingBalanceMinor: account.openingBalance.amountMinor,
+            color: account.color,
+            institution: account.institution,
+            groupName: account.groupName,
+            cardLast4: account.cardLast4,
+            accountLast4: account.accountLast4,
+            loanDetails: account.loanDetails,
+            encryptedDetails: account.encryptedDetails,
+            creditLimit: account.creditLimit,
+            includeInTotals: account.includeInTotals,
+            includeInReports: account.includeInReports,
+            includeInNetWorth: account.includeInNetWorth,
+            showOnHome: account.showOnHome,
+            isArchived: true,
+          );
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account closed and archived.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   Widget _buildFieldWithCopy(
     TextEditingController controller,
     String label, [
@@ -395,6 +452,22 @@ class _SecureAccountDetailsScreenState
             onPressed: _addCustomField,
             icon: const Icon(Icons.add),
             label: const Text('Add custom field'),
+          ),
+
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
+          
+          OutlinedButton.icon(
+            onPressed: () => _archiveAccount(account),
+            icon: const Icon(Icons.archive_outlined),
+            label: const Text('Close Account'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
           ),
 
           const SizedBox(height: 24),

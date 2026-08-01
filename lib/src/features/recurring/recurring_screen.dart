@@ -1423,29 +1423,15 @@ class RecurringDetailView extends ConsumerWidget {
                         return const SizedBox();
                       }
 
-                      final repaymentHistory = state.transactions
-                          .where(
-                            (t) =>
-                                (t.status == 'posted' ||
-                                    t.status == 'cleared') &&
-                                (t.accountId == loanAccount!.id ||
-                                    t.counterAccountId == loanAccount.id) &&
-                                t.type == 'loan_repayment',
-                          )
-                          .toList();
-
-                      final paid = repaymentHistory
-                          .where((r) => r.status != 'void')
-                          .fold<int>(
-                            0,
-                            (sum, r) => sum + r.amount.amountMinor.abs(),
-                          );
-
+                      final balance = accountBalance(state, loanAccount!);
+                      final remainingMinor = balance.amountMinor.abs();
+                      final paid = (principal - remainingMinor).clamp(0, principal);
+                      
                       final progress = principal > 0
                           ? (paid / principal).clamp(0.0, 1.0)
                           : 0.0;
 
-                      final remaining = principal - paid;
+                      final remaining = remainingMinor;
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,

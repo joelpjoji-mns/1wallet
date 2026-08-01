@@ -36,10 +36,10 @@ class LoansScreen extends ConsumerWidget {
         )
         .toList();
     final activeLoans = allLoans
-        .where((account) => !_isPastLoan(state, account))
+        .where((account) => !isPastLoan(state, account))
         .toList();
     final pastLoans = allLoans
-        .where((account) => _isPastLoan(state, account))
+        .where((account) => isPastLoan(state, account))
         .toList();
     final listedLoans = mode == 'past' ? pastLoans : activeLoans;
     final selectedLoan = accountById(state, accountId);
@@ -848,12 +848,8 @@ class LoanDetailView extends ConsumerWidget {
                   Builder(
                     builder: (context) {
                       final principal = details.principal!.amountMinor.abs();
-                      final paid = repaymentHistory
-                          .where((r) => r.status != 'void')
-                          .fold<int>(
-                            0,
-                            (sum, r) => sum + r.amount.amountMinor.abs(),
-                          );
+                      final remaining = balance.amountMinor.abs();
+                      final paid = (principal - remaining).clamp(0, principal);
                       final progress = principal > 0
                           ? (paid / principal).clamp(0.0, 1.0)
                           : 0.0;
@@ -1244,12 +1240,8 @@ class _LoanCompactCard extends StatelessWidget {
                 Builder(
                   builder: (context) {
                     final principal = details.principal!.amountMinor.abs();
-                    final paid = repayments
-                        .where((r) => r.status != 'void')
-                        .fold<int>(
-                          0,
-                          (sum, r) => sum + r.amount.amountMinor.abs(),
-                        );
+                    final remaining = balance.amountMinor.abs();
+                    final paid = (principal - remaining).clamp(0, principal);
                     final progress = principal > 0
                         ? (paid / principal).clamp(0.0, 1.0)
                         : 0.0;
@@ -2594,16 +2586,7 @@ List<TransactionRecord> _loanHistoryRepayments(
 
 
 
-bool _isPastLoan(LedgerState state, Account loan) {
-  if (loan.isArchived) return true;
-  final remaining = accountBalance(state, loan).amountMinor.abs();
-  if (remaining != 0) return false;
-  final principalMinor =
-      loan.loanDetails?.principal?.amountMinor.abs() ??
-      loan.openingBalance.amountMinor.abs();
-  if (principalMinor <= 0) return false;
-  return true;
-}
+
 
 String _loanCadenceLabel(AccountLoanDetails details) {
   if (details.repaymentAmount == null) return 'No EMI schedule';

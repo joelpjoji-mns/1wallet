@@ -873,12 +873,34 @@ financialHealthScore(LedgerState state) {
 List<TransactionRecord> scheduledTransactions(LedgerState state) {
   final items = sortedTransactions(state)
       .where(
-        (transaction) =>
-            transaction.status == 'scheduled' || transaction.status == 'paused',
+        (transaction) {
+          if (transaction.status != 'scheduled' && transaction.status != 'paused') {
+            return false;
+          }
+          if (transaction.type == 'loan_repayment') {
+            final counterAccount = accountById(state, transaction.counterAccountId);
+            if (counterAccount != null && isPastLoan(state, counterAccount)) {
+              return false;
+            }
+          }
+          return true;
+        },
       )
       .toList();
   items.sort((left, right) => left.occurredAt.compareTo(right.occurredAt));
   return items;
+}
+
+bool isPastLoan(LedgerState state, Account loan) {
+  if (loan.isArchived) return true;
+  final remaining = accountBalance(state, loan).amountMinor;
+  if (remaining >= 0) {
+    final principalMinor =
+        loan.loanDetails?.principal?.amountMinor.abs() ??
+        loan.openingBalance.amountMinor.abs();
+    if (principalMinor > 0) return true;
+  }
+  return false;
 }
 
 Category? categoryById(LedgerState state, String? id) {
