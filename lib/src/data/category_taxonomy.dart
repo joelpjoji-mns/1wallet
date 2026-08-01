@@ -367,6 +367,20 @@ List<Category> lifeCategoryTaxonomy() {
       parentId: 'cat-debt',
       sortOrder: 608,
     ),
+    Category(
+      id: 'cat-charges',
+      name: 'Charges',
+      kind: 'expense',
+      parentId: 'cat-debt',
+      sortOrder: 609,
+    ),
+    Category(
+      id: 'cat-fines',
+      name: 'Fines',
+      kind: 'expense',
+      parentId: 'cat-debt',
+      sortOrder: 610,
+    ),
 
     Category(
       id: 'cat-lending',

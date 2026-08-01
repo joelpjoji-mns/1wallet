@@ -2763,6 +2763,14 @@ String? _firstCategoryId(LedgerState state, {String? preferred}) {
 }
 
 _LoanProjection _loanProjection(LedgerState state, Account loan) {
+  if (isPastLoan(state, loan)) {
+    return const _LoanProjection(
+      monthlyEmi: 0,
+      monthsRemaining: 0,
+      estimatedInterestMinor: 0,
+    );
+  }
+
   final remaining = accountBalance(state, loan).amountMinor.abs();
   final details = _effectiveLoanDetails(state, loan);
   final emi =
@@ -2770,13 +2778,6 @@ _LoanProjection _loanProjection(LedgerState state, Account loan) {
       _existingLoanEmi(state, loan.id)?.amount.amountMinor.abs() ??
       0;
   final rate = details.interestRatePercent ?? 0;
-  if (remaining == 0) {
-    return const _LoanProjection(
-      monthlyEmi: 0,
-      monthsRemaining: 0,
-      estimatedInterestMinor: 0,
-    );
-  }
   if (emi <= 0) {
     return const _LoanProjection(
       monthlyEmi: 0,
