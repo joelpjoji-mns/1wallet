@@ -32,10 +32,10 @@ if (!versionMatch) {
 
 const [, pubspecVersionName, pubspecVersionCode] = versionMatch;
 
-// Use run number for versioning if provided
+// Use run number for version code to ensure it always increments on CI
 const versionCode = runNumber || pubspecVersionCode;
-// User wants "1.<run_number>" style version names
-const versionName = runNumber ? `1.${runNumber}` : pubspecVersionName;
+// Use the proper version name from pubspec.yaml
+const versionName = pubspecVersionName;
 
 const channel = 'stable';
 const values = {
