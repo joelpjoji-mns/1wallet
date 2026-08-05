@@ -50,7 +50,6 @@ jobs:
         # Note: You need to set up ExportOptions.plist in the ios directory with proper code signing details.
         
       - name: Upload to App Store Connect
-        if: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID != '' }}
         env:
           API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
           API_KEY_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}

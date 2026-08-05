@@ -47,7 +47,7 @@ jobs:
           cp .env config.env
 
       - name: Verify Formatting
-        run: flutter format --set-exit-if-changed .
+        run: dart format --set-exit-if-changed .
 
       - name: Analyze Code
         run: flutter analyze
