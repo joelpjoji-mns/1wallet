@@ -95,7 +95,7 @@ jobs:
       MANDATORY_UPDATE: ${{ inputs.mandatory }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.3
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -341,7 +341,7 @@ jobs:
       FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID || 'wallet-1a5af' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.3
+        uses: actions/checkout@v7
 
       - name: Setup Node
         uses: actions/setup-node@v6.4.0
