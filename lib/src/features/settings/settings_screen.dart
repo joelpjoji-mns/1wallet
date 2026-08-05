@@ -878,10 +878,7 @@ class _PrivacyQuickCard extends StatelessWidget {
                       scheme.primaryContainer,
                       scheme.tertiaryContainer.withAlpha(160),
                     ]
-                  : [
-                      scheme.surfaceContainerHigh,
-                      scheme.surfaceContainerLow,
-                    ],
+                  : [scheme.surfaceContainerHigh, scheme.surfaceContainerLow],
             ),
             border: Border.all(
               color: enabled

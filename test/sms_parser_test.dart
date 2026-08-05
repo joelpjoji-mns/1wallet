@@ -89,14 +89,8 @@ void main() {
     });
 
     test('smsLooksLikeTransaction mirrors the parser', () {
-      expect(
-        smsLooksLikeTransaction('Rs.500 spent at CAFE via UPI'),
-        isTrue,
-      );
-      expect(
-        smsLooksLikeTransaction('Your OTP is 4321'),
-        isFalse,
-      );
+      expect(smsLooksLikeTransaction('Rs.500 spent at CAFE via UPI'), isTrue);
+      expect(smsLooksLikeTransaction('Your OTP is 4321'), isFalse);
     });
   });
 }

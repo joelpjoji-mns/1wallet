@@ -32,10 +32,9 @@ class PlannerScreen extends ConsumerWidget {
     Widget mobileView = Column(
       children: [
         const SizedBox(height: 12),
-        ...widgets.map((w) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: w,
-        )),
+        ...widgets.map(
+          (w) => Padding(padding: const EdgeInsets.only(bottom: 12), child: w),
+        ),
         const SizedBox(height: 120),
       ],
     );
@@ -55,10 +54,7 @@ class PlannerScreen extends ConsumerWidget {
       maxWidth: 1400,
       title: 'Planner',
       onMenuPressed: onMenuPressed,
-      child: AppResponsiveLayout(
-        mobile: mobileView,
-        desktop: desktopView,
-      ),
+      child: AppResponsiveLayout(mobile: mobileView, desktop: desktopView),
     );
   }
 }

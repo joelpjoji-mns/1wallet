@@ -22,10 +22,7 @@ class ForecastImpact {
   final int interestSavedMinor;
   final int monthsSaved;
 
-  ForecastImpact({
-    required this.interestSavedMinor,
-    required this.monthsSaved,
-  });
+  ForecastImpact({required this.interestSavedMinor, required this.monthsSaved});
 }
 
 class LoanForecastSimulationResult {
@@ -61,19 +58,21 @@ class _SimulatedLoan {
   double balance;
   final double dailyEmi;
   final double dailyRate;
-  
+
   double totalInterestPaid = 0;
   DateTime? readyToPayoffDate;
   DateTime? payoffDate;
 
-  _SimulatedLoan(ActiveLoan active) 
-      : account = active.account,
-        balance = active.principalMinor.toDouble(),
-        // Spread the monthly EMI evenly across the year (12 payments over 365
-        // days) so a full year of daily payments equals exactly 12 EMIs
-        // instead of the ~12.17 that monthlyEmi/30 produced.
-        dailyEmi = active.monthlyEmiMinor.toDouble() * 12.0 / 365.0,
-        dailyRate = active.annualRatePercent <= 0 ? 0 : (active.annualRatePercent / 100.0 / 365.0);
+  _SimulatedLoan(ActiveLoan active)
+    : account = active.account,
+      balance = active.principalMinor.toDouble(),
+      // Spread the monthly EMI evenly across the year (12 payments over 365
+      // days) so a full year of daily payments equals exactly 12 EMIs
+      // instead of the ~12.17 that monthlyEmi/30 produced.
+      dailyEmi = active.monthlyEmiMinor.toDouble() * 12.0 / 365.0,
+      dailyRate = active.annualRatePercent <= 0
+          ? 0
+          : (active.annualRatePercent / 100.0 / 365.0);
 }
 
 LoanForecastSimulationResult simulateForecastPayoffGraph({
@@ -85,7 +84,7 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   int payoffDelayDays = 0,
 }) {
   int initialNetLiquidBalance = 0;
-  
+
   final activeLoanAccountIds = activeLoans.map((l) => l.account.id).toSet();
 
   for (final account in state.accounts) {
@@ -108,30 +107,52 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
 
   final pastDeltas = <int, int>{};
   final futureDeltas = <int, int>{};
-  
+
   void addDelta(TransactionRecord tx, Map<int, int> deltas, bool isFuture) {
     if (tx.isExcludedFromReports) return;
 
     int lDelta = 0;
 
     final sourceAccount = accountById(state, tx.accountId);
-    final isSourceTracked = sourceAccount != null && !sourceAccount.isArchived && sourceAccount.includeInReports;
-    final isSourceIncluded = isSourceTracked && !activeLoanAccountIds.contains(sourceAccount.id);
+    final isSourceTracked =
+        sourceAccount != null &&
+        !sourceAccount.isArchived &&
+        sourceAccount.includeInReports;
+    final isSourceIncluded =
+        isSourceTracked && !activeLoanAccountIds.contains(sourceAccount.id);
 
     if (isSourceTracked) {
-      final sourceMoney = Money(amountMinor: sourceDelta(tx), currency: tx.amount.currency);
-      final val = convertMoneyForDisplay(state, sourceMoney, state.preferences.baseCurrency).amountMinor;
+      final sourceMoney = Money(
+        amountMinor: sourceDelta(tx),
+        currency: tx.amount.currency,
+      );
+      final val = convertMoneyForDisplay(
+        state,
+        sourceMoney,
+        state.preferences.baseCurrency,
+      ).amountMinor;
       if (isSourceIncluded) lDelta += val;
     }
 
     if (tx.counterAccountId != null) {
       final counterAccount = accountById(state, tx.counterAccountId);
-      final isCounterTracked = counterAccount != null && !counterAccount.isArchived && counterAccount.includeInReports;
-      final isCounterIncluded = isCounterTracked && !activeLoanAccountIds.contains(counterAccount.id);
+      final isCounterTracked =
+          counterAccount != null &&
+          !counterAccount.isArchived &&
+          counterAccount.includeInReports;
+      final isCounterIncluded =
+          isCounterTracked && !activeLoanAccountIds.contains(counterAccount.id);
 
       if (isCounterTracked) {
-        final counterMoney = Money(amountMinor: counterDelta(tx), currency: tx.counterAmount?.currency ?? tx.amount.currency);
-        final val = convertMoneyForDisplay(state, counterMoney, state.preferences.baseCurrency).amountMinor;
+        final counterMoney = Money(
+          amountMinor: counterDelta(tx),
+          currency: tx.counterAmount?.currency ?? tx.amount.currency,
+        );
+        final val = convertMoneyForDisplay(
+          state,
+          counterMoney,
+          state.preferences.baseCurrency,
+        ).amountMinor;
         if (isCounterIncluded) lDelta += val;
       }
     }
@@ -148,8 +169,12 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
 
   // Process Past Transactions
   for (final tx in state.transactions) {
-    if (tx.status == 'scheduled' || tx.status == 'void' || tx.status == 'forecast') continue;
-    if (tx.occurredAt.isBefore(pastStart) || tx.occurredAt.isAfter(startDate)) continue;
+    if (tx.status == 'scheduled' ||
+        tx.status == 'void' ||
+        tx.status == 'forecast')
+      continue;
+    if (tx.occurredAt.isBefore(pastStart) || tx.occurredAt.isAfter(startDate))
+      continue;
     addDelta(tx, pastDeltas, false);
   }
 
@@ -158,9 +183,11 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   for (final tx in forecasts) {
     // Exclude any future transaction that goes directly to our actively simulated loans,
     // so we don't double count the simulator's own EMI payments!
-    if (tx.counterAccountId != null && activeLoanAccountIds.contains(tx.counterAccountId)) continue;
+    if (tx.counterAccountId != null &&
+        activeLoanAccountIds.contains(tx.counterAccountId))
+      continue;
     if (activeLoanAccountIds.contains(tx.accountId)) continue;
-    
+
     addDelta(tx, futureDeltas, true);
   }
 
@@ -168,14 +195,18 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   for (final tx in state.transactions) {
     if (tx.status == 'void' || tx.status == 'forecast') continue;
     // Recurring templates are already handled by forecastRecurringTransactions above
-    if (tx.status == 'scheduled' && tx.source == 'recurring') continue; 
+    if (tx.status == 'scheduled' && tx.source == 'recurring') continue;
 
     // Include exactly at startDate in case there are unexecuted transactions scheduled for today
-    if (tx.occurredAt.isAfter(startDate) || tx.occurredAt.isAtSameMomentAs(startDate)) {
-      if (tx.occurredAt.isBefore(futureEnd) || tx.occurredAt.isAtSameMomentAs(futureEnd)) {
-        if (tx.counterAccountId != null && activeLoanAccountIds.contains(tx.counterAccountId)) continue;
+    if (tx.occurredAt.isAfter(startDate) ||
+        tx.occurredAt.isAtSameMomentAs(startDate)) {
+      if (tx.occurredAt.isBefore(futureEnd) ||
+          tx.occurredAt.isAtSameMomentAs(futureEnd)) {
+        if (tx.counterAccountId != null &&
+            activeLoanAccountIds.contains(tx.counterAccountId))
+          continue;
         if (activeLoanAccountIds.contains(tx.accountId)) continue;
-        
+
         addDelta(tx, futureDeltas, true);
       }
     }
@@ -198,7 +229,7 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   // Initialize simulation states
   final baseLoans = activeLoans.map((l) => _SimulatedLoan(l)).toList();
   final acceleratedLoans = activeLoans.map((l) => _SimulatedLoan(l)).toList();
-  
+
   // Sort by priority (highest priority first)
   acceleratedLoans.sort((a, b) {
     final aIndex = loanPriorityIds.indexOf(a.account.id);
@@ -208,7 +239,7 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
     if (bIndex != -1) return 1;
     return b.dailyRate.compareTo(a.dailyRate); // Fallback to interest rate
   });
-  
+
   // 3. Simulate forwards for 5 years
   final rawFutureBalances = List<int>.filled(1826, 0);
   int tempBal = initialNetLiquidBalance;
@@ -220,7 +251,10 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   final minFutureBalance = List<int>.filled(1826, 0);
   minFutureBalance[1825] = rawFutureBalances[1825];
   for (int i = 1824; i >= 1; i--) {
-    minFutureBalance[i] = math.min(rawFutureBalances[i], minFutureBalance[i + 1]);
+    minFutureBalance[i] = math.min(
+      rawFutureBalances[i],
+      minFutureBalance[i + 1],
+    );
   }
 
   int baseTotalInterest = 0;
@@ -233,7 +267,7 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
 
   for (int i = 1; i <= 1825; i++) {
     final date = startDate.add(Duration(days: i));
-    
+
     currentFutureLiquid += (futureDeltas[i] ?? 0);
     baseFutureLiquid += (futureDeltas[i] ?? 0);
 
@@ -244,19 +278,19 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
         loan.balance += interest;
         loan.totalInterestPaid += interest;
         baseTotalInterest += interest.round();
-        
+
         final rawFutureMin = minFutureBalance[i];
-        final dropFromTodayToFutureMin = rawFutureBalances[i] - rawFutureMin; 
+        final dropFromTodayToFutureMin = rawFutureBalances[i] - rawFutureMin;
         final safeBaseLiquid = baseFutureLiquid - dropFromTodayToFutureMin;
         double cashAvailableForEmi = safeBaseLiquid - emergencySavingMinor;
         if (cashAvailableForEmi < 0) cashAvailableForEmi = 0;
-        
+
         final desiredPayment = math.min(loan.balance, loan.dailyEmi);
         final payment = math.min(desiredPayment, cashAvailableForEmi);
-        
+
         loan.balance -= payment;
         baseFutureLiquid -= payment;
-        
+
         if (loan.balance <= 0 && loan.payoffDate == null) {
           loan.payoffDate = date;
           baseMaxMonths = math.max(baseMaxMonths, (i / 30).ceil());
@@ -271,23 +305,24 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
         loan.balance += interest;
         loan.totalInterestPaid += interest;
         acceleratedTotalInterest += interest.round();
-        
+
         final rawFutureMin = minFutureBalance[i];
-        final dropFromTodayToFutureMin = rawFutureBalances[i] - rawFutureMin; 
-        final safeCurrentLiquid = currentFutureLiquid - dropFromTodayToFutureMin;
+        final dropFromTodayToFutureMin = rawFutureBalances[i] - rawFutureMin;
+        final safeCurrentLiquid =
+            currentFutureLiquid - dropFromTodayToFutureMin;
         double cashAvailableForEmi = safeCurrentLiquid - emergencySavingMinor;
         if (cashAvailableForEmi < 0) cashAvailableForEmi = 0;
-        
+
         final desiredPayment = math.min(loan.balance, loan.dailyEmi);
         final payment = math.min(desiredPayment, cashAvailableForEmi);
-        
+
         loan.balance -= payment;
         currentFutureLiquid -= payment;
       }
     }
-    
+
     final rawFutureMin = minFutureBalance[i];
-    final dropFromTodayToFutureMin = rawFutureBalances[i] - rawFutureMin; 
+    final dropFromTodayToFutureMin = rawFutureBalances[i] - rawFutureMin;
     final safeCurrentLiquid = currentFutureLiquid - dropFromTodayToFutureMin;
     final cashAboveEmergency = safeCurrentLiquid - emergencySavingMinor;
 
@@ -295,17 +330,20 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
     final prePayoffLiquid = currentFutureLiquid;
 
     if (cashAboveEmergency > 0 && extraPaymentAllocationPercent > 0) {
-      double extraCashAvailable = cashAboveEmergency * extraPaymentAllocationPercent;
-      
+      double extraCashAvailable =
+          cashAboveEmergency * extraPaymentAllocationPercent;
+
       for (final loan in acceleratedLoans) {
         if (loan.balance <= 0) continue;
-        
-        // Sinking Fund approach: We only pay off the loan when we have enough 
+
+        // Sinking Fund approach: We only pay off the loan when we have enough
         // allocated extra cash to cover the ENTIRE remaining balance.
         if (loan.balance <= extraCashAvailable) {
           loan.readyToPayoffDate ??= date;
-          final daysSinceReady = date.difference(loan.readyToPayoffDate!).inDays;
-          
+          final daysSinceReady = date
+              .difference(loan.readyToPayoffDate!)
+              .inDays;
+
           if (daysSinceReady >= payoffDelayDays) {
             final payment = loan.balance;
             loan.balance -= payment;
@@ -313,7 +351,7 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
             currentFutureLiquid -= payment;
           } else {
             // We are waiting for the delay buffer to pass.
-            // We do NOT apply the extra cash to the next loan, because this cash 
+            // We do NOT apply the extra cash to the next loan, because this cash
             // is "reserved" for this loan's upcoming payoff.
             extraCashAvailable -= loan.balance;
           }
@@ -321,13 +359,13 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
           // We don't have enough to pay off this loan fully.
           // We do NOT make partial payments. We let the cash accumulate in the checking account.
           loan.readyToPayoffDate = null;
-          // The cash is "reserved" for this loan (since it's highest priority), 
+          // The cash is "reserved" for this loan (since it's highest priority),
           // so it shouldn't spill over to lower priority loans.
-          break; 
+          break;
         }
       }
     }
-    
+
     for (final loan in acceleratedLoans) {
       if (loan.balance <= 0 && loan.payoffDate == null) {
         loan.payoffDate = date;
@@ -341,7 +379,7 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
 
   int interestSaved = baseTotalInterest - acceleratedTotalInterest;
   if (interestSaved < 0) interestSaved = 0;
-  
+
   int monthsSaved = baseMaxMonths - acceleratedMaxMonths;
   if (monthsSaved < 0) monthsSaved = 0;
 

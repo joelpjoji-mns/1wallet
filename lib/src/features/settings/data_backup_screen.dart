@@ -319,7 +319,9 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
         );
         if (confirm == true && mounted && fileText != null) {
           try {
-            await ref.read(ledgerProvider.notifier).importArchive(fileText, force: true);
+            await ref
+                .read(ledgerProvider.notifier)
+                .importArchive(fileText, force: true);
             if (!mounted) return;
             setState(() => _status = 'Restored successfully from $fileName.');
             _showBackupMessage('Archive restored successfully.');

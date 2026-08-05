@@ -42,7 +42,8 @@ class RouteScaffold extends StatelessWidget {
     final configHasDrawer = DrawerConfig.of(context)?.hasDrawer ?? false;
     final shouldShowDrawer = hasDrawer || configHasDrawer;
 
-    final effectiveDrawer = drawer ??
+    final effectiveDrawer =
+        drawer ??
         (shouldShowDrawer
             ? AppMainDrawer(
                 selectedIndex: -1,
@@ -90,7 +91,7 @@ class RouteScaffold extends StatelessWidget {
 
     Widget desktopView = Scaffold(
       appBar: AppBar(
-        title: Text(title), 
+        title: Text(title),
         actions: actions,
         // Hide the hamburger menu button on desktop since the drawer is persistent
         leading: effectiveDrawer != null ? const SizedBox.shrink() : null,
@@ -112,9 +113,6 @@ class RouteScaffold extends StatelessWidget {
       ),
     );
 
-    return AppResponsiveLayout(
-      mobile: mobileView,
-      desktop: desktopView,
-    );
+    return AppResponsiveLayout(mobile: mobileView, desktop: desktopView);
   }
 }

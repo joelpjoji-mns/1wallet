@@ -51,9 +51,10 @@ class TransactionRow extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.md),
           side: BorderSide(
-              color: selected
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.outlineVariant),
+            color: selected
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.outlineVariant,
+          ),
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(AppRadii.md),

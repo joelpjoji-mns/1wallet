@@ -31,56 +31,62 @@ void main() {
     return controller;
   }
 
-  test('valid test message queues, then duplicate reports a clear reason', () async {
-    final controller = await controllerWithAccount();
-    addTearDown(controller.dispose);
+  test(
+    'valid test message queues, then duplicate reports a clear reason',
+    () async {
+      final controller = await controllerWithAccount();
+      addTearDown(controller.dispose);
 
-    const sms =
-        'HDFC Bank: INR 890.00 debited from card XX1234 at SWIGGY on 08-Jun.';
-    final result = await controller.importSmsMessageDetailed(
-      sms,
-      stage: 'test-message',
-    );
+      const sms =
+          'HDFC Bank: INR 890.00 debited from card XX1234 at SWIGGY on 08-Jun.';
+      final result = await controller.importSmsMessageDetailed(
+        sms,
+        stage: 'test-message',
+      );
 
-    expect(result.status, CaptureImportStatus.queued);
-    expect(result.candidate?.merchant, 'SWIGGY');
-    expect(controller.state.captureCandidates, hasLength(1));
+      expect(result.status, CaptureImportStatus.queued);
+      expect(result.candidate?.merchant, 'SWIGGY');
+      expect(controller.state.captureCandidates, hasLength(1));
 
-    final duplicatePreview = controller.previewSmsMessage(sms);
-    expect(duplicatePreview.status, CaptureImportStatus.duplicate);
-    expect(duplicatePreview.reason, CaptureBlockReason.duplicatePending);
+      final duplicatePreview = controller.previewSmsMessage(sms);
+      expect(duplicatePreview.status, CaptureImportStatus.duplicate);
+      expect(duplicatePreview.reason, CaptureBlockReason.duplicatePending);
 
-    final duplicateAdd = await controller.importSmsMessageDetailed(
-      sms,
-      stage: 'test-message',
-    );
-    expect(duplicateAdd.status, CaptureImportStatus.duplicate);
-    expect(duplicateAdd.userMessage, contains('review queue'));
-    expect(controller.state.captureCandidates, hasLength(1));
-  });
+      final duplicateAdd = await controller.importSmsMessageDetailed(
+        sms,
+        stage: 'test-message',
+      );
+      expect(duplicateAdd.status, CaptureImportStatus.duplicate);
+      expect(duplicateAdd.userMessage, contains('review queue'));
+      expect(controller.state.captureCandidates, hasLength(1));
+    },
+  );
 
-  test('native accepted message is queued even after Dart rules no longer match', () async {
-    final controller = await controllerWithAccount();
-    addTearDown(controller.dispose);
+  test(
+    'native accepted message is queued even after Dart rules no longer match',
+    () async {
+      final controller = await controllerWithAccount();
+      addTearDown(controller.dispose);
 
-    const sms = 'INR 125.00 moved at Corner Store on 08-Jun.';
-    final preview = controller.previewSmsMessage(sms);
-    expect(preview.status, CaptureImportStatus.ignored);
-    expect(preview.reason, CaptureBlockReason.missingTrigger);
+      const sms = 'INR 125.00 moved at Corner Store on 08-Jun.';
+      final preview = controller.previewSmsMessage(sms);
+      expect(preview.status, CaptureImportStatus.ignored);
+      expect(preview.reason, CaptureBlockReason.missingTrigger);
 
-    final forced = await controller.importSmsMessageDetailed(
-      sms,
-      stage: 'spool-sms',
-      nativeAccepted: true,
-      notificationShown: true,
-      forceQueue: true,
-    );
+      final forced = await controller.importSmsMessageDetailed(
+        sms,
+        stage: 'spool-sms',
+        nativeAccepted: true,
+        notificationShown: true,
+        forceQueue: true,
+      );
 
-    expect(forced.status, CaptureImportStatus.queued);
-    expect(forced.notificationShown, isTrue);
-    expect(forced.nativeAccepted, isTrue);
-    expect(controller.state.captureCandidates, hasLength(1));
-  });
+      expect(forced.status, CaptureImportStatus.queued);
+      expect(forced.notificationShown, isTrue);
+      expect(forced.nativeAccepted, isTrue);
+      expect(controller.state.captureCandidates, hasLength(1));
+    },
+  );
 
   test('market and supermarket seller text suggests groceries', () async {
     final controller = await controllerWithAccount();

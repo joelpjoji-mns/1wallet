@@ -100,9 +100,18 @@ class RecurringScreen extends ConsumerWidget {
     );
     final displayNet = Money(amountMinor: netMinor, currency: targetCurrency);
 
-    final incomeText = maskMoneyIfPrivate(state, formatMoney(displayIncome, state.preferences.locale));
-    final expenseText = maskMoneyIfPrivate(state, formatMoney(displayExpense, state.preferences.locale));
-    final netText = maskMoneyIfPrivate(state, formatMoney(displayNet, state.preferences.locale));
+    final incomeText = maskMoneyIfPrivate(
+      state,
+      formatMoney(displayIncome, state.preferences.locale),
+    );
+    final expenseText = maskMoneyIfPrivate(
+      state,
+      formatMoney(displayExpense, state.preferences.locale),
+    );
+    final netText = maskMoneyIfPrivate(
+      state,
+      formatMoney(displayNet, state.preferences.locale),
+    );
 
     return RouteScaffold(
       title: switch (mode) {
@@ -712,7 +721,9 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                         decimal: true,
                       ),
                       inputFormatters: [
-                        ThousandsSeparatorInputFormatter(state.preferences.locale)
+                        ThousandsSeparatorInputFormatter(
+                          state.preferences.locale,
+                        ),
                       ],
                       decoration: const InputDecoration(
                         labelText: 'Amount',
@@ -796,13 +807,25 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
               ),
               const SizedBox(height: AppSpacing.md),
               DropdownButtonFormField<String>(
-                initialValue: const ['once', 'daily', 'weekly', 'monthly', 'yearly'].contains(_frequency) ? _frequency : 'monthly',
+                initialValue:
+                    const [
+                      'once',
+                      'daily',
+                      'weekly',
+                      'monthly',
+                      'yearly',
+                    ].contains(_frequency)
+                    ? _frequency
+                    : 'monthly',
                 decoration: const InputDecoration(
                   labelText: 'Frequency',
                   prefixIcon: Icon(Icons.repeat_outlined),
                 ),
                 items: const [
-                  DropdownMenuItem(value: 'once', child: Text('Once (Does not repeat)')),
+                  DropdownMenuItem(
+                    value: 'once',
+                    child: Text('Once (Does not repeat)'),
+                  ),
                   DropdownMenuItem(value: 'daily', child: Text('Daily')),
                   DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
                   DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
@@ -814,15 +837,15 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
               if (_frequency != 'once') ...[
                 const SizedBox(height: AppSpacing.sm),
                 TextFormField(
-                initialValue: _interval.toString(),
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText:
-                      'Every X ${_frequency == 'daily' ? 'day' : _frequency.replaceAll('ly', '')}s',
-                  prefixIcon: const Icon(Icons.timer_outlined),
+                  initialValue: _interval.toString(),
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText:
+                        'Every X ${_frequency == 'daily' ? 'day' : _frequency.replaceAll('ly', '')}s',
+                    prefixIcon: const Icon(Icons.timer_outlined),
+                  ),
+                  onChanged: (value) => _interval = int.tryParse(value) ?? 1,
                 ),
-                onChanged: (value) => _interval = int.tryParse(value) ?? 1,
-              ),
               ],
               if (_frequency == 'weekly') ...[
                 const SizedBox(height: AppSpacing.md),
@@ -888,7 +911,14 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
               if (_frequency != 'once') ...[
                 const SizedBox(height: AppSpacing.md),
                 DropdownButtonFormField<String>(
-                  initialValue: const ['never', 'date', 'occurrences'].contains(_recurrenceEnds) ? _recurrenceEnds : 'never',
+                  initialValue:
+                      const [
+                        'never',
+                        'date',
+                        'occurrences',
+                      ].contains(_recurrenceEnds)
+                      ? _recurrenceEnds
+                      : 'never',
                   decoration: const InputDecoration(
                     labelText: 'Ends',
                     prefixIcon: Icon(Icons.event_busy_outlined),
@@ -896,7 +926,10 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                   items: const [
                     DropdownMenuItem(value: 'never', child: Text('Never')),
                     DropdownMenuItem(value: 'date', child: Text('On Date')),
-                    DropdownMenuItem(value: 'occurrences', child: Text('After Occurrences')),
+                    DropdownMenuItem(
+                      value: 'occurrences',
+                      child: Text('After Occurrences'),
+                    ),
                   ],
                   onChanged: (value) =>
                       setState(() => _recurrenceEnds = value ?? 'never'),
@@ -906,11 +939,18 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                   PremiumRow(
                     icon: Icons.event_outlined,
                     title: 'End date',
-                    subtitle: _recurrenceEndDate == null ? 'Choose date' : formatLedgerDate(_recurrenceEndDate!, state.preferences.locale),
+                    subtitle: _recurrenceEndDate == null
+                        ? 'Choose date'
+                        : formatLedgerDate(
+                            _recurrenceEndDate!,
+                            state.preferences.locale,
+                          ),
                     onTap: () async {
                       final picked = await showDatePicker(
                         context: context,
-                        initialDate: _recurrenceEndDate ?? _nextDate.add(const Duration(days: 30)),
+                        initialDate:
+                            _recurrenceEndDate ??
+                            _nextDate.add(const Duration(days: 30)),
                         firstDate: _nextDate,
                         lastDate: DateTime(2100),
                       );
@@ -929,7 +969,8 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                       labelText: 'Number of occurrences',
                       prefixIcon: Icon(Icons.numbers_outlined),
                     ),
-                    onChanged: (value) => _recurrenceLimit = int.tryParse(value),
+                    onChanged: (value) =>
+                        _recurrenceLimit = int.tryParse(value),
                   ),
                 ],
               ],
@@ -1165,7 +1206,10 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
     if (_frequency != 'once' &&
         _recurrenceEnds == 'occurrences' &&
         (_recurrenceLimit == null || _recurrenceLimit! < 1)) {
-      _showRouteMessage(context, 'Enter a number of occurrences of at least 1.');
+      _showRouteMessage(
+        context,
+        'Enter a number of occurrences of at least 1.',
+      );
       return;
     }
     try {
@@ -1211,10 +1255,16 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
             recurrenceDaysOfMonth: _daysOfMonth.isEmpty
                 ? null
                 : (List<int>.from(_daysOfMonth)..sort()),
-            recurrenceEndDate: _frequency == 'once' ? null : (_recurrenceEnds == 'date' ? _recurrenceEndDate : null),
-            recurrenceLimit: _frequency == 'once' ? 1 : (_recurrenceEnds == 'occurrences' ? _recurrenceLimit : null),
-            clearRecurrenceEndDate: _frequency == 'once' || _recurrenceEnds != 'date',
-            clearRecurrenceLimit: _frequency != 'once' && _recurrenceEnds != 'occurrences',
+            recurrenceEndDate: _frequency == 'once'
+                ? null
+                : (_recurrenceEnds == 'date' ? _recurrenceEndDate : null),
+            recurrenceLimit: _frequency == 'once'
+                ? 1
+                : (_recurrenceEnds == 'occurrences' ? _recurrenceLimit : null),
+            clearRecurrenceEndDate:
+                _frequency == 'once' || _recurrenceEnds != 'date',
+            clearRecurrenceLimit:
+                _frequency != 'once' && _recurrenceEnds != 'occurrences',
             postMode: _postMode == 'auto' ? 'auto' : null,
           );
       if (!mounted) return;
@@ -1425,8 +1475,11 @@ class RecurringDetailView extends ConsumerWidget {
 
                       final balance = accountBalance(state, loanAccount!);
                       final remainingMinor = balance.amountMinor.abs();
-                      final paid = (principal - remainingMinor).clamp(0, principal);
-                      
+                      final paid = (principal - remainingMinor).clamp(
+                        0,
+                        principal,
+                      );
+
                       final progress = principal > 0
                           ? (paid / principal).clamp(0.0, 1.0)
                           : 0.0;

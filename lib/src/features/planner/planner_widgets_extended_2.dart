@@ -57,8 +57,7 @@ class _DebtFreeTargetWidgetState extends ConsumerState<DebtFreeTargetWidget> {
     int? projectedMonths = maxMonthsStandard;
     if (hasStalledLoan) {
       projectedMonths = null;
-    } else if (totalStandardMonthly + _extraPayment > 0 &&
-        totalPrincipal > 0) {
+    } else if (totalStandardMonthly + _extraPayment > 0 && totalPrincipal > 0) {
       projectedMonths =
           (totalPrincipal / (totalStandardMonthly + _extraPayment)).ceil();
     }
@@ -404,8 +403,7 @@ class HighInterestAlertWidget extends ConsumerWidget {
         state.preferences.displayCurrency,
       ).amountMinor.abs().toDouble();
       if (rankedByRate) {
-        final rate =
-            effectiveLoanDetails(state, loan).interestRatePercent ?? 0;
+        final rate = effectiveLoanDetails(state, loan).interestRatePercent ?? 0;
         if (highestLoan == null || rate > highestRate) {
           highestRate = rate;
           highestBalance = bal;

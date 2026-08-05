@@ -75,7 +75,8 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
         .where((c) => c.status == 'pending')
         .length;
 
-    final preview = _preview ??
+    final preview =
+        _preview ??
         ref
             .read(ledgerProvider.notifier)
             .previewSmsMessage(_testController.text);
@@ -97,10 +98,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // ── Scan existing inbox (kept up top for quick access) ──
-          if (_isAndroid) ...[
-            _scanInboxCard(scheme),
-            const Gap(AppSpacing.lg),
-          ],
+          if (_isAndroid) ...[_scanInboxCard(scheme), const Gap(AppSpacing.lg)],
           // ── Master toggle ──
           SectionCard(
             title: 'Automatic capture',
@@ -263,13 +261,13 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                       label: 'Outcome',
                       value: _previewOutcome(preview),
                       icon: preview.queued
-                        ? Icons.fact_check_outlined
-                        : preview.duplicate
-                        ? Icons.library_add_check_outlined
-                        : Icons.visibility_off_outlined,
+                          ? Icons.fact_check_outlined
+                          : preview.duplicate
+                          ? Icons.library_add_check_outlined
+                          : Icons.visibility_off_outlined,
                       tone: preview.queued
-                        ? MetricTone.positive
-                        : MetricTone.warning,
+                          ? MetricTone.positive
+                          : MetricTone.warning,
                     ),
                     if (parsed.ignored && parsed.matchedIgnoreWord != null) ...[
                       const SizedBox(height: 4),
@@ -279,13 +277,19 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                           onPressed: () {
                             final word = parsed.matchedIgnoreWord!;
                             final nextIgnores = prefs.smsIgnoreWords
-                                .where((w) => w.toLowerCase() != word.toLowerCase())
+                                .where(
+                                  (w) => w.toLowerCase() != word.toLowerCase(),
+                                )
                                 .toList();
-                            _updatePrefs(prefs.copyWith(smsIgnoreWords: nextIgnores));
+                            _updatePrefs(
+                              prefs.copyWith(smsIgnoreWords: nextIgnores),
+                            );
                             _showMessage('Removed "$word" from ignore words.');
                           },
                           icon: const Icon(Icons.delete_outline, size: 16),
-                          label: Text('Remove "${parsed.matchedIgnoreWord}" from ignore list'),
+                          label: Text(
+                            'Remove "${parsed.matchedIgnoreWord}" from ignore list',
+                          ),
                           style: TextButton.styleFrom(
                             foregroundColor: scheme.error,
                             padding: EdgeInsets.zero,
@@ -295,7 +299,8 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                         ),
                       ),
                     ],
-                    if (!parsed.ignored && parsed.matchedTriggerWord != null) ...[
+                    if (!parsed.ignored &&
+                        parsed.matchedTriggerWord != null) ...[
                       const SizedBox(height: 4),
                       Align(
                         alignment: Alignment.centerRight,
@@ -303,13 +308,19 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                           onPressed: () {
                             final word = parsed.matchedTriggerWord!;
                             final nextTriggers = prefs.smsTriggerWords
-                                .where((w) => w.toLowerCase() != word.toLowerCase())
+                                .where(
+                                  (w) => w.toLowerCase() != word.toLowerCase(),
+                                )
                                 .toList();
-                            _updatePrefs(prefs.copyWith(smsTriggerWords: nextTriggers));
+                            _updatePrefs(
+                              prefs.copyWith(smsTriggerWords: nextTriggers),
+                            );
                             _showMessage('Removed "$word" from trigger words.');
                           },
                           icon: const Icon(Icons.delete_outline, size: 16),
-                          label: Text('Remove "${parsed.matchedTriggerWord}" from triggers'),
+                          label: Text(
+                            'Remove "${parsed.matchedTriggerWord}" from triggers',
+                          ),
                           style: TextButton.styleFrom(
                             foregroundColor: scheme.error,
                             padding: EdgeInsets.zero,
@@ -323,21 +334,31 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                       const SizedBox(height: 8),
                       const Text(
                         'Select a word from the SMS to add to triggers:',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Wrap(
                         spacing: 6,
                         runSpacing: 6,
                         children: [
-                          for (final word in _extractCandidateWords(_testController.text))
+                          for (final word in _extractCandidateWords(
+                            _testController.text,
+                          ))
                             ActionChip(
                               label: Text(word),
                               padding: EdgeInsets.zero,
                               visualDensity: VisualDensity.compact,
                               onPressed: () {
-                                final nextTriggers = [...prefs.smsTriggerWords, word];
-                                _updatePrefs(prefs.copyWith(smsTriggerWords: nextTriggers));
+                                final nextTriggers = [
+                                  ...prefs.smsTriggerWords,
+                                  word,
+                                ];
+                                _updatePrefs(
+                                  prefs.copyWith(smsTriggerWords: nextTriggers),
+                                );
                                 _showMessage('Added "$word" to trigger words.');
                               },
                             ),
@@ -377,7 +398,6 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
               ],
             ),
           ),
-
         ],
       ),
     );
@@ -452,10 +472,12 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
       }
 
       final texts = messages
-          .map((m) => (
-                text: m.body,
-                receivedAt: DateTime.tryParse(m.receivedAt) ?? DateTime.now(),
-              ))
+          .map(
+            (m) => (
+              text: m.body,
+              receivedAt: DateTime.tryParse(m.receivedAt) ?? DateTime.now(),
+            ),
+          )
           .toList();
 
       final results = await ref
@@ -549,8 +571,12 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
     final seen = <String>{};
     final result = <String>[];
 
-    final currentTriggers = _prefs.smsTriggerWords.map((w) => w.toLowerCase()).toSet();
-    final currentIgnores = _prefs.smsIgnoreWords.map((w) => w.toLowerCase()).toSet();
+    final currentTriggers = _prefs.smsTriggerWords
+        .map((w) => w.toLowerCase())
+        .toSet();
+    final currentIgnores = _prefs.smsIgnoreWords
+        .map((w) => w.toLowerCase())
+        .toSet();
 
     for (final raw in words) {
       final clean = raw.trim().toLowerCase();
@@ -558,7 +584,8 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
       if (double.tryParse(clean) != null) continue;
       if (seen.contains(clean)) continue;
       seen.add(clean);
-      if (currentTriggers.contains(clean) || currentIgnores.contains(clean)) continue;
+      if (currentTriggers.contains(clean) || currentIgnores.contains(clean))
+        continue;
       result.add(raw.trim());
     }
     return result.take(8).toList();
@@ -591,10 +618,7 @@ class _RuleRow extends StatelessWidget {
           Icon(icon, size: 18, color: scheme.primary),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
-            child: Text(
-              text,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+            child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
           ),
         ],
       ),

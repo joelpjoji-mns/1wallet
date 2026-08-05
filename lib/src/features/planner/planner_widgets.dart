@@ -741,8 +741,7 @@ class CreditUtilizationWidget extends StatelessWidget {
     // Exclude loans as requested
     final creditAccounts = state.accounts
         .where(
-          (a) =>
-              (a.type == 'credit_card' || a.type == 'card') && !a.isArchived,
+          (a) => (a.type == 'credit_card' || a.type == 'card') && !a.isArchived,
         )
         .toList();
     final balances = accountBalanceMap(state);

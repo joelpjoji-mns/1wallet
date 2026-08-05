@@ -64,7 +64,9 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     if (state == AppLifecycleState.resumed) {
       ref.read(ledgerProvider.notifier).processSpooledSms();
       ref.read(ledgerProvider.notifier).processSpooledNotifications();
-      ref.read(cloudSyncControllerProvider.notifier).checkAndTriggerSync(fromResume: true);
+      ref
+          .read(cloudSyncControllerProvider.notifier)
+          .checkAndTriggerSync(fromResume: true);
     }
   }
 

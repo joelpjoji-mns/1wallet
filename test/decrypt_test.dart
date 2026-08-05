@@ -6,7 +6,7 @@ void main() {
   final encrypter = Encrypter(AES(key));
 
   final encrypted = 't/wzyUFdaf68rvkQi4GpcQ==';
-  
+
   try {
     final decrypted = encrypter.decrypt64(encrypted, iv: iv);
     print('Decrypted: $decrypted');

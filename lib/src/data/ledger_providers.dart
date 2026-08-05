@@ -124,8 +124,12 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
       int currentCount = initialHistoryCount[scheduled.id] ?? 0;
 
       while (nextDate.isBefore(now)) {
-        if (scheduled.recurrenceLimit != null && currentCount >= scheduled.recurrenceLimit!) break;
-        if (scheduled.recurrenceEndDate != null && nextDate.isAfter(scheduled.recurrenceEndDate!)) break;
+        if (scheduled.recurrenceLimit != null &&
+            currentCount >= scheduled.recurrenceLimit!)
+          break;
+        if (scheduled.recurrenceEndDate != null &&
+            nextDate.isAfter(scheduled.recurrenceEndDate!))
+          break;
 
         final dateStr =
             '${nextDate.year}${nextDate.month.toString().padLeft(2, '0')}${nextDate.day.toString().padLeft(2, '0')}';
@@ -176,18 +180,22 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
     int currentCount = finalHistoryCount[scheduled.id] ?? 0;
 
     // Check if limit reached
-    if (scheduled.recurrenceLimit != null && currentCount >= scheduled.recurrenceLimit!) {
+    if (scheduled.recurrenceLimit != null &&
+        currentCount >= scheduled.recurrenceLimit!) {
       changed = true;
       return scheduled.copyWith(status: 'finished');
     }
 
-    if (scheduled.recurrenceEndDate != null && scheduled.occurredAt.isAfter(scheduled.recurrenceEndDate!)) {
+    if (scheduled.recurrenceEndDate != null &&
+        scheduled.occurredAt.isAfter(scheduled.recurrenceEndDate!)) {
       changed = true;
       return scheduled.copyWith(status: 'finished');
     }
 
     final latestOccurredAt = latestHistory[scheduled.id];
-    if (latestOccurredAt != null && (scheduled.occurredAt.isBefore(latestOccurredAt) || scheduled.occurredAt.isAtSameMomentAs(latestOccurredAt))) {
+    if (latestOccurredAt != null &&
+        (scheduled.occurredAt.isBefore(latestOccurredAt) ||
+            scheduled.occurredAt.isAtSameMomentAs(latestOccurredAt))) {
       changed = true;
       DateTime nextDate = scheduled.occurredAt;
       while (nextDate.isBefore(latestOccurredAt) ||
@@ -195,7 +203,8 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
         nextDate = advanceTransactionRecurrence(nextDate, scheduled);
       }
 
-      if (scheduled.recurrenceEndDate != null && nextDate.isAfter(scheduled.recurrenceEndDate!)) {
+      if (scheduled.recurrenceEndDate != null &&
+          nextDate.isAfter(scheduled.recurrenceEndDate!)) {
         return scheduled.copyWith(status: 'finished');
       }
       return scheduled.copyWith(occurredAt: nextDate);
@@ -289,7 +298,8 @@ class LedgerController extends StateNotifier<LedgerState> {
             ? DateTime.tryParse(timestampStr)
             : null;
         if (body != null && body.isNotEmpty) {
-          final nativeAccepted = payload['nativeAccepted'] == true ||
+          final nativeAccepted =
+              payload['nativeAccepted'] == true ||
               payload['notificationShown'] == true ||
               payload['nativeNotificationShown'] == true ||
               payload['nativeSource'] != null;
@@ -320,10 +330,11 @@ class LedgerController extends StateNotifier<LedgerState> {
             ? DateTime.tryParse(timestampStr)
             : null;
         if (body != null && body.isNotEmpty) {
-          final nativeAccepted = payload['nativeAccepted'] == true ||
-            payload['notificationShown'] == true ||
-            payload['nativeNotificationShown'] == true ||
-            payload['nativeSource'] != null;
+          final nativeAccepted =
+              payload['nativeAccepted'] == true ||
+              payload['notificationShown'] == true ||
+              payload['nativeNotificationShown'] == true ||
+              payload['nativeSource'] != null;
           await importNotificationMessageDetailed(
             body,
             receivedAt: receivedAt,
@@ -492,7 +503,10 @@ class LedgerController extends StateNotifier<LedgerState> {
       await _repository.save(state);
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('has_unsynced_changes', true);
-      await prefs.setString('last_local_modified_at', DateTime.now().toUtc().toIso8601String());
+      await prefs.setString(
+        'last_local_modified_at',
+        DateTime.now().toUtc().toIso8601String(),
+      );
     });
   }
 
@@ -901,10 +915,12 @@ class LedgerController extends StateNotifier<LedgerState> {
   }
 
   Future<void> deleteAccount(String id) async {
-    final isUsed = state.transactions.any(
-      (transaction) =>
-          transaction.accountId == id || transaction.counterAccountId == id,
-    ) || state.goals.any((goal) => goal.accountId == id);
+    final isUsed =
+        state.transactions.any(
+          (transaction) =>
+              transaction.accountId == id || transaction.counterAccountId == id,
+        ) ||
+        state.goals.any((goal) => goal.accountId == id);
 
     // Pause any active scheduled transactions connected to this account
     final transactions = state.transactions.map((transaction) {
@@ -1193,15 +1209,15 @@ class LedgerController extends StateNotifier<LedgerState> {
                 suggestedAccountId: _blankToNull(suggestedAccountId),
                 suggestedCategoryId: _blankToNull(suggestedCategoryId),
                 suggestedCategoryConfidence:
-                  _blankToNull(suggestedCategoryId) ==
-                    candidate.suggestedCategoryId
-                  ? candidate.suggestedCategoryConfidence
-                  : 1.0,
+                    _blankToNull(suggestedCategoryId) ==
+                        candidate.suggestedCategoryId
+                    ? candidate.suggestedCategoryConfidence
+                    : 1.0,
                 suggestedCategoryReason:
-                  _blankToNull(suggestedCategoryId) ==
-                    candidate.suggestedCategoryId
-                  ? candidate.suggestedCategoryReason
-                  : 'Chosen during review',
+                    _blankToNull(suggestedCategoryId) ==
+                        candidate.suggestedCategoryId
+                    ? candidate.suggestedCategoryReason
+                    : 'Chosen during review',
               )
             : candidate,
     ];
@@ -1257,7 +1273,9 @@ class LedgerController extends StateNotifier<LedgerState> {
           return true;
         }
         if (parsed.last4 != null) {
-          final acc = state.accounts.firstWhereOrNull((a) => a.id == tx.accountId);
+          final acc = state.accounts.firstWhereOrNull(
+            (a) => a.id == tx.accountId,
+          );
           if (acc != null &&
               (acc.cardLast4 == parsed.last4 ||
                   acc.accountLast4 == parsed.last4)) {
@@ -1279,7 +1297,8 @@ class LedgerController extends StateNotifier<LedgerState> {
           return false;
         }
 
-        if (matchedAccountId != null && c.suggestedAccountId == matchedAccountId) {
+        if (matchedAccountId != null &&
+            c.suggestedAccountId == matchedAccountId) {
           return true;
         }
         if (parsed.last4 != null) {
@@ -1465,7 +1484,8 @@ class LedgerController extends StateNotifier<LedgerState> {
       additionalCandidates: additionalCandidates,
     );
     if (duplicateKind != null &&
-        !(forceQueue && duplicateKind == _CaptureDuplicateKind.postedTransaction)) {
+        !(forceQueue &&
+            duplicateKind == _CaptureDuplicateKind.postedTransaction)) {
       return CaptureImportResult(
         source: source,
         status: CaptureImportStatus.duplicate,
@@ -2064,7 +2084,8 @@ _CategorySuggestion? _suggestCategory(
     for (final entry in state.preferences.merchantCategoryRules.entries) {
       final ruleKey = entry.key.trim().toLowerCase();
       if (ruleKey.isEmpty) continue;
-      final matches = normalized == ruleKey ||
+      final matches =
+          normalized == ruleKey ||
           (ruleKey.length > 4 && normalized.contains(ruleKey)) ||
           (normalized.length > 4 && ruleKey.contains(normalized));
       if (!matches) continue;
@@ -2153,7 +2174,8 @@ _CategorySuggestion? _suggestCategory(
       return null;
     }
 
-    final keyword = keywordSuggestion(
+    final keyword =
+        keywordSuggestion(
           RegExp(
             r'\b(market|supermarket|grocery|groceries|bigbasket|blinkit|instamart|jiomart|dmart|tesco|aldi|lidl|walmart|costco|whole\s*foods|trader\s*joe)\b',
           ),
@@ -2377,7 +2399,8 @@ CaptureBlockReason _reasonForDuplicate(_CaptureDuplicateKind kind) {
   return switch (kind) {
     _CaptureDuplicateKind.pendingText => CaptureBlockReason.duplicatePending,
     _CaptureDuplicateKind.pendingAmount => CaptureBlockReason.duplicatePending,
-    _CaptureDuplicateKind.postedTransaction => CaptureBlockReason.duplicatePosted,
+    _CaptureDuplicateKind.postedTransaction =>
+      CaptureBlockReason.duplicatePosted,
     _CaptureDuplicateKind.batch => CaptureBlockReason.duplicateBatch,
   };
 }

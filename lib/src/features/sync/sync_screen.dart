@@ -25,7 +25,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(cloudSyncControllerProvider.notifier).checkAndTriggerSync(fromScreen: true);
+      ref
+          .read(cloudSyncControllerProvider.notifier)
+          .checkAndTriggerSync(fromScreen: true);
     });
   }
 
@@ -52,7 +54,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
             const LinearProgressIndicator(),
             const SizedBox(height: 16),
           ],
-          
+
           // --- CLOUD SYNC SECTION ---
           SectionCard(
             title: 'Cloud Sync',
@@ -149,7 +151,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
               ],
             ),
           ),
-          
+
           if (enabled) ...[
             const SizedBox(height: 16),
             SectionCard(
@@ -159,8 +161,15 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                 children: [
                   const SizedBox(height: 8),
                   DropdownButtonFormField<int?>(
-                    initialValue: const [null, 4, 6, 12, 24].contains(sync.metadata?.syncIntervalHours) 
-                        ? sync.metadata?.syncIntervalHours 
+                    initialValue:
+                        const [
+                          null,
+                          4,
+                          6,
+                          12,
+                          24,
+                        ].contains(sync.metadata?.syncIntervalHours)
+                        ? sync.metadata?.syncIntervalHours
                         : null,
                     decoration: InputDecoration(
                       labelText: 'Interval',
@@ -176,10 +185,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                         value: null,
                         child: Text('Automatic (On change - Default)'),
                       ),
-                      DropdownMenuItem(
-                        value: 4,
-                        child: Text('Every 4 hours'),
-                      ),
+                      DropdownMenuItem(value: 4, child: Text('Every 4 hours')),
                       DropdownMenuItem(value: 6, child: Text('Every 6 hours')),
                       DropdownMenuItem(
                         value: 12,
@@ -217,9 +223,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
               ),
             ),
           ],
-          
+
           const Gap(AppSpacing.lg),
-          
+
           // --- IMPORT / BACKUP SECTION ---
           SectionCard(
             title: 'Data & Imports',
@@ -298,7 +304,6 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                     ],
                   ),
           ),
-          
         ],
       ),
     );

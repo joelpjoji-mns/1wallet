@@ -37,7 +37,9 @@ void main() {
 
     expect(find.byTooltip('Reorder widgets'), findsNothing);
 
-    await tester.longPress(find.byTooltip('Long press All accounts to reorder widgets'));
+    await tester.longPress(
+      find.byTooltip('Long press All accounts to reorder widgets'),
+    );
     await tester.pumpAndSettle();
 
     expect(find.byTooltip('Done reordering widgets'), findsOneWidget);

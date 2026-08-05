@@ -251,7 +251,9 @@ class AppScreen extends StatelessWidget {
     );
 
     return ColoredBox(
-      color: isDesktop ? theme.colorScheme.surfaceContainerLowest : theme.colorScheme.surface,
+      color: isDesktop
+          ? theme.colorScheme.surfaceContainerLowest
+          : theme.colorScheme.surface,
       child: Stack(
         children: [
           SafeArea(

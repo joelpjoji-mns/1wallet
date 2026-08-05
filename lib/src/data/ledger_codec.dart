@@ -429,7 +429,8 @@ Map<String, Object?> _preferencesToJson(LedgerPreferences preferences) {
     'privacyModeEnabled': preferences.privacyModeEnabled,
     'biometricLockEnabled': preferences.biometricLockEnabled,
     'forecastEmergencyCashMinor': preferences.forecastEmergencyCashMinor,
-    'forecastExtraAllocationPercent': preferences.forecastExtraAllocationPercent,
+    'forecastExtraAllocationPercent':
+        preferences.forecastExtraAllocationPercent,
     'loanPriorityIds': preferences.loanPriorityIds,
     'loanPayoffDelayDays': preferences.loanPayoffDelayDays,
     'smsCaptureEnabled': preferences.smsCaptureEnabled,
@@ -778,7 +779,9 @@ AccountLoanDetails? _loanDetailsFromJson(Object? value, String currency) {
     recurrenceInterval: _int(json['recurrenceInterval'], fallback: 1),
     recurrenceDaysOfWeek: _nullableIntList(json['recurrenceDaysOfWeek']),
     recurrenceDaysOfMonth: _nullableIntList(json['recurrenceDaysOfMonth']),
-    recurrenceEndDate: json['recurrenceEndDate'] == null ? null : _date(json['recurrenceEndDate']),
+    recurrenceEndDate: json['recurrenceEndDate'] == null
+        ? null
+        : _date(json['recurrenceEndDate']),
     recurrenceLimit: _nullableInt(json['recurrenceLimit']),
     hideInterestInLedger: _bool(json['hideInterestInLedger'], fallback: true),
   );
@@ -884,7 +887,9 @@ TransactionRecord _transactionFromJson(Map<String, dynamic> json) {
     recurrenceInterval: _int(json['recurrenceInterval'], fallback: 1),
     recurrenceDaysOfWeek: _nullableIntList(json['recurrenceDaysOfWeek']),
     recurrenceDaysOfMonth: _nullableIntList(json['recurrenceDaysOfMonth']),
-    recurrenceEndDate: json['recurrenceEndDate'] == null ? null : _date(json['recurrenceEndDate']),
+    recurrenceEndDate: json['recurrenceEndDate'] == null
+        ? null
+        : _date(json['recurrenceEndDate']),
     recurrenceLimit: _nullableInt(json['recurrenceLimit']),
     attachments: _list(
       json['attachments'],
@@ -1051,9 +1056,7 @@ CaptureCandidate _captureCandidateFromJson(Map<String, dynamic> json) {
     suggestedCategoryConfidence: _nullableDouble(
       json['suggestedCategoryConfidence'],
     ),
-    suggestedCategoryReason: _nullableString(
-      json['suggestedCategoryReason'],
-    ),
+    suggestedCategoryReason: _nullableString(json['suggestedCategoryReason']),
   );
 }
 

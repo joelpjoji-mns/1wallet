@@ -92,7 +92,7 @@ class _BudgetGoalEditorScreenState
                     decimal: true,
                   ),
                   inputFormatters: [
-                    ThousandsSeparatorInputFormatter(state.preferences.locale)
+                    ThousandsSeparatorInputFormatter(state.preferences.locale),
                   ],
                   decoration: const InputDecoration(
                     labelText: 'Target amount',
@@ -144,7 +144,15 @@ class _BudgetGoalEditorScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 DropdownButtonFormField<String>(
-                  initialValue: const ['once', 'daily', 'weekly', 'monthly'].contains(_frequency) ? _frequency : 'once',
+                  initialValue:
+                      const [
+                        'once',
+                        'daily',
+                        'weekly',
+                        'monthly',
+                      ].contains(_frequency)
+                      ? _frequency
+                      : 'once',
                   decoration: const InputDecoration(labelText: 'Frequency'),
                   items: const [
                     DropdownMenuItem(value: 'once', child: Text('Once')),

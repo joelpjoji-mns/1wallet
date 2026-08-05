@@ -130,8 +130,14 @@ List<AppNotification> buildNotificationInbox(LedgerState state) {
   // Scheduled payment notifications
   if (state.preferences.channelScheduledEnabled) {
     final today = DateTime(now.year, now.month, now.day);
-    for (final transaction in scheduledTransactions(state).where((t) => t.status == 'scheduled')) {
-      final txDay = DateTime(transaction.occurredAt.year, transaction.occurredAt.month, transaction.occurredAt.day);
+    for (final transaction in scheduledTransactions(
+      state,
+    ).where((t) => t.status == 'scheduled')) {
+      final txDay = DateTime(
+        transaction.occurredAt.year,
+        transaction.occurredAt.month,
+        transaction.occurredAt.day,
+      );
       final daysDiff = txDay.difference(today).inDays;
 
       if (daysDiff < 0) {
@@ -140,8 +146,13 @@ List<AppNotification> buildNotificationInbox(LedgerState state) {
           AppNotification(
             id: 'scheduled_overdue_${transaction.id}',
             channel: AppNotificationChannel.scheduled,
-            title: 'Overdue: ${transaction.notes ?? transactionTypeLabel(transaction.type)}',
-            body: _dueBody(state: state, amount: transaction.amount, when: when),
+            title:
+                'Overdue: ${transaction.notes ?? transactionTypeLabel(transaction.type)}',
+            body: _dueBody(
+              state: state,
+              amount: transaction.amount,
+              when: when,
+            ),
             createdAt: transaction.occurredAt,
             actionRoute: '/recurring/${transaction.id}',
           ),
@@ -159,8 +170,13 @@ List<AppNotification> buildNotificationInbox(LedgerState state) {
           AppNotification(
             id: 'scheduled_soon_${transaction.id}',
             channel: AppNotificationChannel.scheduled,
-            title: 'Upcoming: ${transaction.notes ?? transactionTypeLabel(transaction.type)}',
-            body: _dueBody(state: state, amount: transaction.amount, when: when),
+            title:
+                'Upcoming: ${transaction.notes ?? transactionTypeLabel(transaction.type)}',
+            body: _dueBody(
+              state: state,
+              amount: transaction.amount,
+              when: when,
+            ),
             createdAt: now,
             actionRoute: '/recurring/${transaction.id}',
           ),

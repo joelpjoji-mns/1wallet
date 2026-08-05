@@ -108,14 +108,11 @@ bool smsLooksLikeTransaction(
   String rawText, {
   List<String> triggerWords = kDefaultSmsTriggerWords,
   List<String> ignoreWords = kDefaultSmsIgnoreWords,
-}) =>
-    !parseTransactionMessage(
-      rawText,
-      triggerWords: triggerWords,
-      ignoreWords: ignoreWords,
-    ).ignored;
-
-
+}) => !parseTransactionMessage(
+  rawText,
+  triggerWords: triggerWords,
+  ignoreWords: ignoreWords,
+).ignored;
 
 String? _findMatchingWord(String normalizedText, List<String> words) {
   for (final raw in words) {

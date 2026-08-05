@@ -78,7 +78,8 @@ abstract final class SecureKeyStore {
 
   static Future<String> _decryptNew(String stored) async {
     final separatorIdx = stored.indexOf(':');
-    if (separatorIdx < 0) throw const FormatException('Invalid encrypted format');
+    if (separatorIdx < 0)
+      throw const FormatException('Invalid encrypted format');
     final ivBytes = base64Decode(stored.substring(0, separatorIdx));
     final cipherBase64 = stored.substring(separatorIdx + 1);
     final iv = enc.IV(ivBytes);

@@ -70,7 +70,8 @@ class NotificationService {
 
     tz.initializeTimeZones();
     try {
-      final TimezoneInfo timeZoneInfo = await FlutterTimezone.getLocalTimezone();
+      final TimezoneInfo timeZoneInfo =
+          await FlutterTimezone.getLocalTimezone();
       tz.setLocalLocation(tz.getLocation(timeZoneInfo.identifier));
     } catch (_) {
       // Fallback
@@ -134,31 +135,58 @@ class NotificationService {
       return;
     }
 
-    final scheduled = scheduledTransactions(state).where((t) => t.status != 'paused').toList();
-    
+    final scheduled = scheduledTransactions(
+      state,
+    ).where((t) => t.status != 'paused').toList();
+
     int idCounter = 1000;
     final now = DateTime.now();
 
     for (final transaction in scheduled) {
       final targetDate = transaction.occurredAt;
       final today = DateTime(now.year, now.month, now.day);
-      final targetDay = DateTime(targetDate.year, targetDate.month, targetDate.day);
+      final targetDay = DateTime(
+        targetDate.year,
+        targetDate.month,
+        targetDate.day,
+      );
       final daysUntil = targetDay.difference(today).inDays;
       final isTodayOrTomorrow = daysUntil == 0 || daysUntil == 1;
 
       // Calculate 10 AM on the day
-      var dayOf = DateTime(targetDate.year, targetDate.month, targetDate.day, 10, 0);
+      var dayOf = DateTime(
+        targetDate.year,
+        targetDate.month,
+        targetDate.day,
+        10,
+        0,
+      );
       // Construct the day-before date fresh from its own year/month/day
       // components (instead of `dayOf.subtract(Duration(days: 1))`) so DST
       // transitions don't shift the wall-clock hour away from 10:00.
-      final dayBeforeDate = DateTime(targetDate.year, targetDate.month, targetDate.day - 1);
-      var dayBefore = DateTime(dayBeforeDate.year, dayBeforeDate.month, dayBeforeDate.day, 10, 0);
+      final dayBeforeDate = DateTime(
+        targetDate.year,
+        targetDate.month,
+        targetDate.day - 1,
+      );
+      var dayBefore = DateTime(
+        dayBeforeDate.year,
+        dayBeforeDate.month,
+        dayBeforeDate.day,
+        10,
+        0,
+      );
 
       if (dayBefore.isAfter(now)) {
         await _scheduleTimezoned(
           id: idCounter++,
-          title: 'Upcoming: ${transaction.notes ?? transactionTypeLabel(transaction.type)}',
-          body: _dueBody(state: state, amount: transaction.amount, when: 'tomorrow'),
+          title:
+              'Upcoming: ${transaction.notes ?? transactionTypeLabel(transaction.type)}',
+          body: _dueBody(
+            state: state,
+            amount: transaction.amount,
+            when: 'tomorrow',
+          ),
           scheduledDate: dayBefore,
           route: '/recurring/${transaction.id}',
         );
@@ -168,8 +196,13 @@ class NotificationService {
         // dropping the reminder.
         await _scheduleTimezoned(
           id: idCounter++,
-          title: 'Upcoming: ${transaction.notes ?? transactionTypeLabel(transaction.type)}',
-          body: _dueBody(state: state, amount: transaction.amount, when: 'tomorrow'),
+          title:
+              'Upcoming: ${transaction.notes ?? transactionTypeLabel(transaction.type)}',
+          body: _dueBody(
+            state: state,
+            amount: transaction.amount,
+            when: 'tomorrow',
+          ),
           scheduledDate: now.add(const Duration(seconds: 5)),
           route: '/recurring/${transaction.id}',
         );
@@ -178,8 +211,13 @@ class NotificationService {
       if (dayOf.isAfter(now)) {
         await _scheduleTimezoned(
           id: idCounter++,
-          title: 'Due Today: ${transaction.notes ?? transactionTypeLabel(transaction.type)}',
-          body: _dueBody(state: state, amount: transaction.amount, when: 'today'),
+          title:
+              'Due Today: ${transaction.notes ?? transactionTypeLabel(transaction.type)}',
+          body: _dueBody(
+            state: state,
+            amount: transaction.amount,
+            when: 'today',
+          ),
           scheduledDate: dayOf,
           route: '/recurring/${transaction.id}',
         );
@@ -187,8 +225,13 @@ class NotificationService {
         // Same fallback for the "due today" reminder when 10:00 has passed.
         await _scheduleTimezoned(
           id: idCounter++,
-          title: 'Due Today: ${transaction.notes ?? transactionTypeLabel(transaction.type)}',
-          body: _dueBody(state: state, amount: transaction.amount, when: 'today'),
+          title:
+              'Due Today: ${transaction.notes ?? transactionTypeLabel(transaction.type)}',
+          body: _dueBody(
+            state: state,
+            amount: transaction.amount,
+            when: 'today',
+          ),
           scheduledDate: now.add(const Duration(seconds: 5)),
           route: '/recurring/${transaction.id}',
         );

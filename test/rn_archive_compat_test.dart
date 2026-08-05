@@ -92,18 +92,22 @@ void main() {
 
   test('checksum uses stable key order', () {
     expect(
-      reactNativeLedgerChecksum(jsonEncode({
-        'b': 2,
-        'a': [
-          {'z': true, 'm': null},
-        ],
-      })),
-      reactNativeLedgerChecksum(jsonEncode({
-        'a': [
-          {'m': null, 'z': true},
-        ],
-        'b': 2,
-      })),
+      reactNativeLedgerChecksum(
+        jsonEncode({
+          'b': 2,
+          'a': [
+            {'z': true, 'm': null},
+          ],
+        }),
+      ),
+      reactNativeLedgerChecksum(
+        jsonEncode({
+          'a': [
+            {'m': null, 'z': true},
+          ],
+          'b': 2,
+        }),
+      ),
     );
   });
 }

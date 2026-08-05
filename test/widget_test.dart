@@ -8,7 +8,7 @@ import 'test_harness.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });

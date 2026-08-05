@@ -43,27 +43,27 @@ class CaptureDiagnosticEvent {
   final String? errorMessage;
 
   Map<String, Object?> toJson() => {
-        'id': id,
-        'timestamp': timestamp.toIso8601String(),
-        'source': source,
-        'stage': stage,
-        'decision': decision,
-        if (reason != null) 'reason': reason,
-        if (rawText != null) 'rawText': rawText,
-        if (merchant != null) 'merchant': merchant,
-        if (amount != null)
-          'amount': {
-            'amountMinor': amount!.amountMinor,
-            'currency': amount!.currency,
-          },
-        if (matchedTriggerWord != null) 'matchedTriggerWord': matchedTriggerWord,
-        if (matchedIgnoreWord != null) 'matchedIgnoreWord': matchedIgnoreWord,
-        if (categoryId != null) 'categoryId': categoryId,
-        if (categoryReason != null) 'categoryReason': categoryReason,
-        'notificationShown': notificationShown,
-        'nativeAccepted': nativeAccepted,
-        if (errorMessage != null) 'errorMessage': errorMessage,
-      };
+    'id': id,
+    'timestamp': timestamp.toIso8601String(),
+    'source': source,
+    'stage': stage,
+    'decision': decision,
+    if (reason != null) 'reason': reason,
+    if (rawText != null) 'rawText': rawText,
+    if (merchant != null) 'merchant': merchant,
+    if (amount != null)
+      'amount': {
+        'amountMinor': amount!.amountMinor,
+        'currency': amount!.currency,
+      },
+    if (matchedTriggerWord != null) 'matchedTriggerWord': matchedTriggerWord,
+    if (matchedIgnoreWord != null) 'matchedIgnoreWord': matchedIgnoreWord,
+    if (categoryId != null) 'categoryId': categoryId,
+    if (categoryReason != null) 'categoryReason': categoryReason,
+    'notificationShown': notificationShown,
+    'nativeAccepted': nativeAccepted,
+    if (errorMessage != null) 'errorMessage': errorMessage,
+  };
 
   static CaptureDiagnosticEvent? fromJson(Object? value) {
     if (value is String) {
@@ -86,9 +86,11 @@ class CaptureDiagnosticEvent {
       }
     }
     return CaptureDiagnosticEvent(
-      id: json['id']?.toString() ??
+      id:
+          json['id']?.toString() ??
           'diag-${DateTime.now().microsecondsSinceEpoch}',
-      timestamp: DateTime.tryParse(json['timestamp']?.toString() ?? '') ??
+      timestamp:
+          DateTime.tryParse(json['timestamp']?.toString() ?? '') ??
           DateTime.now(),
       source: json['source']?.toString() ?? 'unknown',
       stage: json['stage']?.toString() ?? 'unknown',
@@ -135,10 +137,10 @@ class CaptureDiagnostics {
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload();
     final events = await recentEvents();
-    final next = [event, ...events]
-        .take(_maxEvents)
-        .map((item) => jsonEncode(item.toJson()))
-        .toList();
+    final next = [
+      event,
+      ...events,
+    ].take(_maxEvents).map((item) => jsonEncode(item.toJson())).toList();
     await prefs.setString(_key, jsonEncode(next));
   }
 

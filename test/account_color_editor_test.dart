@@ -39,8 +39,8 @@ void main() {
     );
     await tester.pumpAndSettle();
     await container
-      .read(ledgerProvider.notifier)
-      .restoreLedgerState(sampleLedgerState());
+        .read(ledgerProvider.notifier)
+        .restoreLedgerState(sampleLedgerState());
     await tester.pumpAndSettle();
     router.go('/account/acc-bank');
     await tester.pumpAndSettle();

@@ -103,7 +103,8 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
   Timer? _uploadTimer;
   Timer? _retryTimer;
-  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _userDocSubscription;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
+  _userDocSubscription;
   int _uploadFailureCount = 0;
   int _uploadCircuitOpenUntil = 0;
   bool _localClearInProgress = false;
@@ -273,14 +274,17 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       final prefs = await SharedPreferences.getInstance();
       final hasUnsyncedChanges = prefs.getBool('has_unsynced_changes') ?? false;
       final localModifiedAtStr = prefs.getString('last_local_modified_at');
-      final localModifiedAt = localModifiedAtStr != null ? DateTime.tryParse(localModifiedAtStr) : null;
+      final localModifiedAt = localModifiedAtStr != null
+          ? DateTime.tryParse(localModifiedAtStr)
+          : null;
 
       final bool shouldPull;
       if (!userDoc.exists) {
         shouldPull = false;
       } else {
         final hasUserData = _walletHasUserData(_ref.read(ledgerProvider));
-        final isCloudNewer = cloudUpdatedAt != null &&
+        final isCloudNewer =
+            cloudUpdatedAt != null &&
             localModifiedAt != null &&
             cloudUpdatedAt.isAfter(localModifiedAt);
 
@@ -335,10 +339,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
             .doc('users/$userId/metadata/preferences')
             .get()
             .timeout(cloudSyncReadTimeout),
-        _firestore
-            .doc('users/$userId')
-            .get()
-            .timeout(cloudSyncReadTimeout),
+        _firestore.doc('users/$userId').get().timeout(cloudSyncReadTimeout),
       ]);
       final prefsDoc = docs[0];
       final userDoc = docs[1];
@@ -358,13 +359,16 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         final hasUnsyncedChanges =
             prefs.getBool('has_unsynced_changes') ?? false;
         final localModifiedAtStr = prefs.getString('last_local_modified_at');
-        final localModifiedAt = localModifiedAtStr != null ? DateTime.tryParse(localModifiedAtStr) : null;
+        final localModifiedAt = localModifiedAtStr != null
+            ? DateTime.tryParse(localModifiedAtStr)
+            : null;
 
         debugPrint(
           'CloudSync _bootstrap: userDoc.exists=${userDoc.exists}, lastWriterDeviceId=$lastWriterDeviceId, metadata.deviceId=${metadata.deviceId}, hasUserData=$hasUserData, hasUnsyncedChanges=$hasUnsyncedChanges, localModifiedAt=$localModifiedAt, cloudUpdatedAt=$cloudUpdatedAt',
         );
 
-        final isCloudNewer = cloudUpdatedAt != null &&
+        final isCloudNewer =
+            cloudUpdatedAt != null &&
             localModifiedAt != null &&
             cloudUpdatedAt.isAfter(localModifiedAt);
 
@@ -468,7 +472,10 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         }
 
         if (!shouldPull && hasUnsyncedChanges) {
-          state = state.copyWith(phase: CloudSyncPhase.idle, pendingUpload: true);
+          state = state.copyWith(
+            phase: CloudSyncPhase.idle,
+            pendingUpload: true,
+          );
         }
       } else {
         // Migration check
@@ -488,11 +495,18 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         bootstrapComplete: true,
       );
 
-      _userDocSubscription = _firestore.doc('users/$userId').snapshots().skip(1).listen((snapshot) {
-        _handleCloudUpdate(snapshot);
-      }, onError: (e) {
-        debugPrint('CloudSync userDoc subscription error: $e');
-      });
+      _userDocSubscription = _firestore
+          .doc('users/$userId')
+          .snapshots()
+          .skip(1)
+          .listen(
+            (snapshot) {
+              _handleCloudUpdate(snapshot);
+            },
+            onError: (e) {
+              debugPrint('CloudSync userDoc subscription error: $e');
+            },
+          );
 
       unawaited(checkAndTriggerSync());
     } on TimeoutException catch (e) {
@@ -566,10 +580,10 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         'lastWriterDeviceId': metadata.deviceId,
       }, SetOptions(merge: true));
 
-      final encodedData = await compute(
-        _encodeCloudSnapshotData,
-        (currentLedger, {'syncIntervalHours': metadata.syncIntervalHours}),
-      );
+      final encodedData = await compute(_encodeCloudSnapshotData, (
+        currentLedger,
+        {'syncIntervalHours': metadata.syncIntervalHours},
+      ));
 
       final jsonStr = jsonEncode(encodedData);
       final bytes = utf8.encode(jsonStr);
@@ -777,7 +791,8 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
       final syncSettings = restoreData['syncSettings'] as Map<String, dynamic>?;
       int? restoredInterval = currentMetadata.syncIntervalHours;
-      if (syncSettings != null && syncSettings.containsKey('syncIntervalHours')) {
+      if (syncSettings != null &&
+          syncSettings.containsKey('syncIntervalHours')) {
         restoredInterval = syncSettings['syncIntervalHours'] as int?;
       }
 
@@ -855,13 +870,13 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     }
   }
 
-
-
   bool _walletHasUserData(LedgerState ledger) {
     return ledger.accounts.isNotEmpty || ledger.transactions.isNotEmpty;
   }
 
-  Future<void> _handleCloudUpdate(DocumentSnapshot<Map<String, dynamic>> snapshot) async {
+  Future<void> _handleCloudUpdate(
+    DocumentSnapshot<Map<String, dynamic>> snapshot,
+  ) async {
     final user = _ref.read(authControllerProvider).user;
     if (user == null || state.phase == CloudSyncPhase.disabled) return;
     if (_localClearInProgress) return;
@@ -886,11 +901,15 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     final prefs = await SharedPreferences.getInstance();
     final hasUnsyncedChanges = prefs.getBool('has_unsynced_changes') ?? false;
     final localModifiedAtStr = prefs.getString('last_local_modified_at');
-    final localModifiedAt = localModifiedAtStr != null ? DateTime.tryParse(localModifiedAtStr) : null;
+    final localModifiedAt = localModifiedAtStr != null
+        ? DateTime.tryParse(localModifiedAtStr)
+        : null;
 
-    final isCloudNewer = localModifiedAt == null || cloudUpdatedAt.isAfter(localModifiedAt);
+    final isCloudNewer =
+        localModifiedAt == null || cloudUpdatedAt.isAfter(localModifiedAt);
 
-    final bool shouldPull = isCloudNewer ||
+    final bool shouldPull =
+        isCloudNewer ||
         (lastWriterDeviceId != null &&
             lastWriterDeviceId != metadata.deviceId &&
             !hasUnsyncedChanges);

@@ -569,7 +569,8 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                     maxHeight: 200,
                                   ),
                                   child: SizedBox(
-                                    width: MediaQuery.of(context).size.width -
+                                    width:
+                                        MediaQuery.of(context).size.width -
                                         (AppSpacing.md * 2),
                                     child: ListView.builder(
                                       padding: EdgeInsets.zero,
@@ -636,7 +637,14 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                         ),
                         const SizedBox(height: AppSpacing.md),
                         DropdownButtonFormField<String>(
-                          initialValue: const ['cleared', 'pending', 'void'].contains(_status) ? _status : 'cleared',
+                          initialValue:
+                              const [
+                                'cleared',
+                                'pending',
+                                'void',
+                              ].contains(_status)
+                              ? _status
+                              : 'cleared',
                           decoration: InputDecoration(
                             labelText: 'Status',
                             prefixIcon: const Icon(Icons.info_outline),
@@ -818,10 +826,15 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
               : state.accounts.firstWhereOrNull((a) => a.id == oldAccountId);
           final newAcc = state.accounts.firstWhereOrNull((a) => a.id == nextId);
           if (newAcc != null) {
-            final oldDefaultMethod = oldAcc != null ? _paymentMethodForAccountType(oldAcc.type) : '';
+            final oldDefaultMethod = oldAcc != null
+                ? _paymentMethodForAccountType(oldAcc.type)
+                : '';
             final currentMethod = _paymentMethodController.text.trim();
-            if (currentMethod.isEmpty || currentMethod.toLowerCase() == oldDefaultMethod.toLowerCase()) {
-              _paymentMethodController.text = _paymentMethodForAccountType(newAcc.type);
+            if (currentMethod.isEmpty ||
+                currentMethod.toLowerCase() == oldDefaultMethod.toLowerCase()) {
+              _paymentMethodController.text = _paymentMethodForAccountType(
+                newAcc.type,
+              );
             }
           }
         }
@@ -1007,11 +1020,11 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
           : state.transactions.firstWhereOrNull(
               (t) => t.id == widget.plannedId,
             );
-        final captureCandidate = widget.captureCandidateId == null
+      final captureCandidate = widget.captureCandidateId == null
           ? null
           : state.captureCandidates.firstWhereOrNull(
-            (c) => c.id == widget.captureCandidateId,
-          );
+              (c) => c.id == widget.captureCandidateId,
+            );
       await ref
           .read(ledgerProvider.notifier)
           .upsertTransaction(
@@ -1028,7 +1041,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
             source:
                 editingTransaction?.source ??
                 plannedTransaction?.source ??
-              captureCandidate?.source ??
+                captureCandidate?.source ??
                 'manual',
             notes: _notesController.text.trim().isEmpty
                 ? null
@@ -1061,8 +1074,11 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       }
 
       if (widget.captureCandidateId != null) {
-        await ref.read(ledgerProvider.notifier).rememberMerchantCategory(
-              merchant: captureCandidate?.merchant ??
+        await ref
+            .read(ledgerProvider.notifier)
+            .rememberMerchantCategory(
+              merchant:
+                  captureCandidate?.merchant ??
                   (_notesController.text.trim().isEmpty
                       ? null
                       : _notesController.text.trim()),

@@ -516,7 +516,13 @@ class _BalanceTrendHomeWidgetState
         break;
     }
 
-    final trendEnd = DateTime(now.year, now.month, now.day, now.hour, now.minute);
+    final trendEnd = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour,
+      now.minute,
+    );
     final trend = ref.watch(
       homeBalanceTrendProvider((start: start, end: trendEnd)),
     );
@@ -1248,7 +1254,10 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
 
     final dueAmount = scheduled
         .where((transaction) => expenseTypes.contains(transaction.type))
-        .fold<int>(0, (sum, transaction) => sum + transaction.baseAmount.amountMinor);
+        .fold<int>(
+          0,
+          (sum, transaction) => sum + transaction.baseAmount.amountMinor,
+        );
 
     final next = scheduled.take(4).toList();
 
@@ -1261,7 +1270,9 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
       onAction: () => context.push('/recurring'),
       headerTrailing: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          value: const ['1_week', '2_weeks', '1_month'].contains(filter) ? filter : '1_week',
+          value: const ['1_week', '2_weeks', '1_month'].contains(filter)
+              ? filter
+              : '1_week',
           isDense: true,
           iconSize: 16,
           style: TextStyle(
@@ -1709,10 +1720,7 @@ class AccountGroupsHomeWidget extends StatelessWidget {
                     title: '${group.label} · ${group.count}',
                     trailing: maskMoneyIfPrivate(
                       state,
-                      formatMoney(
-                        group.balance,
-                        state.preferences.locale,
-                      ),
+                      formatMoney(group.balance, state.preferences.locale),
                     ),
                     iconColor: group.balance.amountMinor < 0
                         ? Theme.of(context).colorScheme.error

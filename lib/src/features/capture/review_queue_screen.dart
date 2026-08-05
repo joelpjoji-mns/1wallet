@@ -28,8 +28,12 @@ class ReviewQueueScreen extends ConsumerWidget {
 
     final items = <dynamic>[...candidates, ...allNotifications];
     items.sort((a, b) {
-      final aDate = a is CaptureCandidate ? a.createdAt : (a as AppNotification).createdAt;
-      final bDate = b is CaptureCandidate ? b.createdAt : (b as AppNotification).createdAt;
+      final aDate = a is CaptureCandidate
+          ? a.createdAt
+          : (a as AppNotification).createdAt;
+      final bDate = b is CaptureCandidate
+          ? b.createdAt
+          : (b as AppNotification).createdAt;
       return bDate.compareTo(aDate);
     });
 
@@ -67,7 +71,8 @@ class ReviewQueueScreen extends ConsumerWidget {
                   AppSpacing.xxl,
                 ),
                 itemCount: items.length,
-                separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.md),
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: AppSpacing.md),
                 itemBuilder: (context, index) {
                   final item = items[index];
                   if (item is CaptureCandidate) {
@@ -82,7 +87,12 @@ class ReviewQueueScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildCandidateCard(BuildContext context, WidgetRef ref, LedgerState state, CaptureCandidate candidate) {
+  Widget _buildCandidateCard(
+    BuildContext context,
+    WidgetRef ref,
+    LedgerState state,
+    CaptureCandidate candidate,
+  ) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final isIncome = candidate.transactionType == 'income';
@@ -96,9 +106,7 @@ class ReviewQueueScreen extends ConsumerWidget {
     return Card(
       elevation: 1,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => context.push('/capture/${candidate.id}'),
@@ -191,7 +199,10 @@ class ReviewQueueScreen extends ConsumerWidget {
                           const SizedBox(width: 4),
                           Text(
                             state.accounts
-                                    .where((a) => a.id == candidate.suggestedAccountId)
+                                    .where(
+                                      (a) =>
+                                          a.id == candidate.suggestedAccountId,
+                                    )
                                     .firstOrNull
                                     ?.name ??
                                 'Account',
@@ -234,13 +245,16 @@ class ReviewQueueScreen extends ConsumerWidget {
                     ),
                 ],
               ),
-              if (candidate.rawText != null && candidate.rawText!.isNotEmpty) ...[
+              if (candidate.rawText != null &&
+                  candidate.rawText!.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.md),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    color: scheme.surfaceContainerHighest.withValues(
+                      alpha: 0.5,
+                    ),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -310,7 +324,11 @@ class ReviewQueueScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildNotificationCard(BuildContext context, WidgetRef ref, AppNotification notification) {
+  Widget _buildNotificationCard(
+    BuildContext context,
+    WidgetRef ref,
+    AppNotification notification,
+  ) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final icon = switch (notification.channel) {
@@ -341,14 +359,14 @@ class ReviewQueueScreen extends ConsumerWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(
-            color: notification.read 
-                ? scheme.outlineVariant.withValues(alpha: 0.5) 
+            color: notification.read
+                ? scheme.outlineVariant.withValues(alpha: 0.5)
                 : scheme.primary.withValues(alpha: 0.3),
             width: 1,
           ),
         ),
         clipBehavior: Clip.antiAlias,
-        color: notification.read 
+        color: notification.read
             ? scheme.surfaceContainerLow
             : scheme.primaryContainer.withValues(alpha: 0.3),
         child: InkWell(
@@ -360,7 +378,9 @@ class ReviewQueueScreen extends ConsumerWidget {
               children: [
                 IconBubble(
                   icon: icon,
-                  color: notification.read ? scheme.onSurfaceVariant : scheme.primary,
+                  color: notification.read
+                      ? scheme.onSurfaceVariant
+                      : scheme.primary,
                   compact: true,
                 ),
                 const SizedBox(width: AppSpacing.md),
@@ -373,7 +393,9 @@ class ReviewQueueScreen extends ConsumerWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: notification.read ? FontWeight.w600 : FontWeight.w800,
+                          fontWeight: notification.read
+                              ? FontWeight.w600
+                              : FontWeight.w800,
                           color: scheme.onSurface,
                         ),
                       ),
@@ -517,7 +539,10 @@ class ReviewQueueScreen extends ConsumerWidget {
         );
   }
 
-  Future<void> _markAllRead(WidgetRef ref, Iterable<AppNotification> notifications) async {
+  Future<void> _markAllRead(
+    WidgetRef ref,
+    Iterable<AppNotification> notifications,
+  ) async {
     final prefs = ref.read(ledgerProvider).preferences;
     final nextRead = Set<String>.from(prefs.readNotificationIds)
       ..addAll(notifications.map((notification) => notification.id));
@@ -528,7 +553,10 @@ class ReviewQueueScreen extends ConsumerWidget {
         );
   }
 
-  Future<void> _dismissAll(WidgetRef ref, Iterable<AppNotification> notifications) async {
+  Future<void> _dismissAll(
+    WidgetRef ref,
+    Iterable<AppNotification> notifications,
+  ) async {
     final prefs = ref.read(ledgerProvider).preferences;
     final nextDismissed = Set<String>.from(prefs.dismissedNotificationIds)
       ..addAll(notifications.map((notification) => notification.id));
@@ -544,7 +572,11 @@ class ReviewQueueScreen extends ConsumerWidget {
         );
   }
 
-  void _openNotification(BuildContext context, WidgetRef ref, AppNotification notification) {
+  void _openNotification(
+    BuildContext context,
+    WidgetRef ref,
+    AppNotification notification,
+  ) {
     _markRead(ref, notification.id);
     final actionRoute = notification.actionRoute;
     if (actionRoute == null || actionRoute.trim().isEmpty) return;

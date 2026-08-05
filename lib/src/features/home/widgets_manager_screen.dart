@@ -144,7 +144,8 @@ class _LiveWidgetPreview extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final state = ref.watch(ledgerProvider);
-    final datePreset = preferences.homeWidgetFilters[widgetId.storageKey] ??
+    final datePreset =
+        preferences.homeWidgetFilters[widgetId.storageKey] ??
         defaultDatePresetForHomeWidget(widgetId.storageKey);
 
     return Column(
@@ -153,17 +154,28 @@ class _LiveWidgetPreview extends ConsumerWidget {
       children: [
         // The overlay actions
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
           decoration: BoxDecoration(
-            color: isVisible ? theme.colorScheme.primaryContainer : theme.colorScheme.surfaceContainerHigh,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadii.lg)),
+            color: isVisible
+                ? theme.colorScheme.primaryContainer
+                : theme.colorScheme.surfaceContainerHigh,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(AppRadii.lg),
+            ),
           ),
           child: Row(
             children: [
               Icon(
-                isVisible ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                isVisible
+                    ? Icons.visibility_rounded
+                    : Icons.visibility_off_rounded,
                 size: 20,
-                color: isVisible ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurfaceVariant,
+                color: isVisible
+                    ? theme.colorScheme.onPrimaryContainer
+                    : theme.colorScheme.onSurfaceVariant,
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
@@ -171,7 +183,9 @@ class _LiveWidgetPreview extends ConsumerWidget {
                   isVisible ? 'Added to Home' : 'Hidden',
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
-                    color: isVisible ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurfaceVariant,
+                    color: isVisible
+                        ? theme.colorScheme.onPrimaryContainer
+                        : theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -201,13 +215,19 @@ class _LiveWidgetPreview extends ConsumerWidget {
           child: Container(
             decoration: BoxDecoration(
               border: Border.all(
-                color: isVisible ? theme.colorScheme.primaryContainer : theme.colorScheme.surfaceContainerHigh,
+                color: isVisible
+                    ? theme.colorScheme.primaryContainer
+                    : theme.colorScheme.surfaceContainerHigh,
                 width: 2,
               ),
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(AppRadii.lg)),
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(AppRadii.lg),
+              ),
             ),
             child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(AppRadii.lg - 2)),
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(AppRadii.lg - 2),
+              ),
               child: IgnorePointer(
                 child: buildHomeDashboardWidget(
                   context: context,
@@ -223,14 +243,20 @@ class _LiveWidgetPreview extends ConsumerWidget {
     );
   }
 
-  Future<void> _chooseDatePreset(BuildContext context, WidgetRef ref, String datePreset) async {
+  Future<void> _chooseDatePreset(
+    BuildContext context,
+    WidgetRef ref,
+    String datePreset,
+  ) async {
     final next = await showFullScreenPicker<String>(
       context: context,
       title: 'Widget period',
       searchable: false,
       selectedValue: datePreset,
       options: [
-        for (final preset in allowedDatePresetsForHomeWidget(widgetId.storageKey))
+        for (final preset in allowedDatePresetsForHomeWidget(
+          widgetId.storageKey,
+        ))
           PickerOption(
             value: preset,
             title: homeWidgetDateLabel(preset),
@@ -241,9 +267,9 @@ class _LiveWidgetPreview extends ConsumerWidget {
     if (next != null && next != datePreset) {
       final filters = Map<String, String>.from(preferences.homeWidgetFilters);
       filters[widgetId.storageKey] = next;
-      ref.read(ledgerProvider.notifier).updatePreferences(
-            preferences.copyWith(homeWidgetFilters: filters),
-          );
+      ref
+          .read(ledgerProvider.notifier)
+          .updatePreferences(preferences.copyWith(homeWidgetFilters: filters));
     }
   }
 
@@ -255,7 +281,9 @@ class _LiveWidgetPreview extends ConsumerWidget {
       preferences.homeWidgetOrder,
       widgetId.storageKey,
     );
-    ref.read(ledgerProvider.notifier).updatePreferences(
+    ref
+        .read(ledgerProvider.notifier)
+        .updatePreferences(
           preferences.copyWith(
             homeWidgetHidden: hidden,
             homeWidgetOrder: order,
@@ -268,8 +296,8 @@ class _LiveWidgetPreview extends ConsumerWidget {
     if (!hidden.contains(widgetId.storageKey)) {
       hidden.add(widgetId.storageKey);
     }
-    ref.read(ledgerProvider.notifier).updatePreferences(
-          preferences.copyWith(homeWidgetHidden: hidden),
-        );
+    ref
+        .read(ledgerProvider.notifier)
+        .updatePreferences(preferences.copyWith(homeWidgetHidden: hidden));
   }
 }

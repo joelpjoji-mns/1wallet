@@ -11,7 +11,6 @@ import 'package:one_wallet_flutter/src/theme/app_theme.dart';
 import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 
 void main() {
-
   test('custom accent overrides system dynamic scheme', () {
     final systemScheme = ColorScheme.fromSeed(
       seedColor: Colors.green,
@@ -41,9 +40,14 @@ void main() {
     final cyanTheme = AppTheme.light(accentColor: '#00BCD4');
     final purpleTheme = AppTheme.light(accentColor: '#6750A4');
 
-    expect(cyanTheme.colorScheme.surfaceContainerLow,
-        isNot(purpleTheme.colorScheme.surfaceContainerLow));
-    expect(cyanTheme.cardTheme.color, cyanTheme.colorScheme.surfaceContainerLow);
+    expect(
+      cyanTheme.colorScheme.surfaceContainerLow,
+      isNot(purpleTheme.colorScheme.surfaceContainerLow),
+    );
+    expect(
+      cyanTheme.cardTheme.color,
+      cyanTheme.colorScheme.surfaceContainerLow,
+    );
   });
 
   testWidgets('category and add-record colors follow theme color scheme', (
@@ -56,7 +60,8 @@ void main() {
       Color operatorForeground,
       Color equalsBackground,
       Color equalsForeground,
-    }) incomePadColors;
+    })
+    incomePadColors;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -75,7 +80,10 @@ void main() {
     );
 
     expect(incomeCategoryColor, theme.colorScheme.tertiary);
-    expect(incomePadColors.operatorBackground, theme.colorScheme.tertiaryContainer.withAlpha(110));
+    expect(
+      incomePadColors.operatorBackground,
+      theme.colorScheme.tertiaryContainer.withAlpha(110),
+    );
     expect(incomePadColors.operatorForeground, theme.colorScheme.tertiary);
     expect(incomePadColors.equalsBackground, theme.colorScheme.tertiary);
     expect(incomePadColors.equalsForeground, theme.colorScheme.onTertiary);
@@ -107,10 +115,7 @@ void main() {
     );
     final decoration = animatedContainer.decoration! as BoxDecoration;
 
-    expect(
-      decoration.color,
-      theme.colorScheme.primary.withAlphaFactor(0.15),
-    );
+    expect(decoration.color, theme.colorScheme.primary.withAlphaFactor(0.15));
   });
 
   testWidgets('home balance pill uses accent tint instead of error color', (

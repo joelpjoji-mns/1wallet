@@ -30,9 +30,9 @@ void main() {
       overrides: authenticatedSampleOverrides(),
     );
     addTearDown(container.dispose);
-    await container.read(ledgerProvider.notifier).restoreLedgerState(
-          sampleLedgerState(),
-        );
+    await container
+        .read(ledgerProvider.notifier)
+        .restoreLedgerState(sampleLedgerState());
 
     await tester.pumpWidget(
       UncontrolledProviderScope(

@@ -86,10 +86,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/widgets',
-        builder: (context, state) => const DrawerConfig(
-          hasDrawer: true,
-          child: WidgetsManagerScreen(),
-        ),
+        builder: (context, state) =>
+            const DrawerConfig(hasDrawer: true, child: WidgetsManagerScreen()),
       ),
       GoRoute(
         path: '/balance-trend',
@@ -98,10 +96,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/reports', redirect: (context, state) => '/widgets'),
       GoRoute(
         path: '/review',
-        builder: (context, state) => const DrawerConfig(
-          hasDrawer: true,
-          child: ReviewQueueScreen(),
-        ),
+        builder: (context, state) =>
+            const DrawerConfig(hasDrawer: true, child: ReviewQueueScreen()),
       ),
       GoRoute(
         path: '/capture/:id',
@@ -111,10 +107,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/notifications', redirect: (context, state) => '/review'),
       GoRoute(
         path: '/settings',
-        builder: (context, state) => const DrawerConfig(
-          hasDrawer: true,
-          child: SettingsScreen(),
-        ),
+        builder: (context, state) =>
+            const DrawerConfig(hasDrawer: true, child: SettingsScreen()),
       ),
       GoRoute(
         path: '/recurring',
@@ -192,29 +186,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/categories',
-        builder: (context, state) => const DrawerConfig(
-          hasDrawer: true,
-          child: CategoriesScreen(),
-        ),
+        builder: (context, state) =>
+            const DrawerConfig(hasDrawer: true, child: CategoriesScreen()),
       ),
       GoRoute(
         path: '/currencies',
-        builder: (context, state) => const DrawerConfig(
-          hasDrawer: true,
-          child: CurrenciesScreen(),
-        ),
+        builder: (context, state) =>
+            const DrawerConfig(hasDrawer: true, child: CurrenciesScreen()),
       ),
       GoRoute(
         path: '/sync',
-        builder: (context, state) => const DrawerConfig(
-          hasDrawer: true,
-          child: SyncScreen(),
-        ),
+        builder: (context, state) =>
+            const DrawerConfig(hasDrawer: true, child: SyncScreen()),
       ),
-      GoRoute(
-        path: '/imports',
-        redirect: (context, state) => '/sync',
-      ),
+      GoRoute(path: '/imports', redirect: (context, state) => '/sync'),
       GoRoute(
         path: '/imports/:id',
         builder: (context, state) =>
@@ -241,10 +226,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/updates',
-        builder: (context, state) => const DrawerConfig(
-          hasDrawer: true,
-          child: UpdatesScreen(),
-        ),
+        builder: (context, state) =>
+            const DrawerConfig(hasDrawer: true, child: UpdatesScreen()),
       ),
       GoRoute(
         path: '/device-permissions',

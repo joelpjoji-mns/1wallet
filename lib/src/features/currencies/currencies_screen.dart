@@ -151,9 +151,7 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                         ..hideCurrentSnackBar()
                         ..showSnackBar(
                           SnackBar(
-                            content: Text(
-                              '$currency removed.',
-                            ),
+                            content: Text('$currency removed.'),
                             behavior: SnackBarBehavior.floating,
                           ),
                         );
@@ -331,9 +329,7 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
         )
         .length;
     if (movementCount > 0) {
-      parts.add(
-        movementCount == 1 ? '1 movement' : '$movementCount movements',
-      );
+      parts.add(movementCount == 1 ? '1 movement' : '$movementCount movements');
     }
     return parts.isEmpty ? 'Available for display' : parts.join(' · ');
   }

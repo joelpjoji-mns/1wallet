@@ -78,9 +78,7 @@ class SettingsProfileSection extends StatelessWidget {
                       Wrap(
                         spacing: AppSpacing.xs,
                         runSpacing: AppSpacing.xs,
-                        children: [
-                          AuthProviderChip(user: user),
-                        ],
+                        children: [AuthProviderChip(user: user)],
                       ),
                     ],
                   ),
@@ -285,5 +283,3 @@ class SettingsFeatureHubSection extends StatelessWidget {
     );
   }
 }
-
-

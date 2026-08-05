@@ -187,7 +187,9 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                                     decimal: true,
                                   ),
                               inputFormatters: [
-                                ThousandsSeparatorInputFormatter(state.preferences.locale),
+                                ThousandsSeparatorInputFormatter(
+                                  state.preferences.locale,
+                                ),
                               ],
                               decoration: const InputDecoration(
                                 labelText: 'Credit limit',
@@ -291,7 +293,6 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                   onChanged: (value) => setState(() => _showOnHome = value),
                   title: const Text('Show on home'),
                 ),
-
               ],
             ),
           ),
@@ -313,8 +314,12 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                         icon: const Icon(Icons.unarchive_outlined),
                         label: const Text('Reopen account'),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Theme.of(context).colorScheme.primary,
-                          side: BorderSide(color: Theme.of(context).colorScheme.primary),
+                          foregroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
                         ),
                       )
                     else
@@ -323,8 +328,12 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                         icon: const Icon(Icons.archive_outlined),
                         label: const Text('Close account'),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Theme.of(context).colorScheme.primary,
-                          side: BorderSide(color: Theme.of(context).colorScheme.primary),
+                          foregroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
                         ),
                       ),
                     OutlinedButton.icon(
@@ -672,7 +681,9 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Reopen account?'),
-        content: const Text('This account will be visible in your active wallet again.'),
+        content: const Text(
+          'This account will be visible in your active wallet again.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -689,9 +700,15 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     _updateArchiveState(account, false, 'Account reopened.');
   }
 
-  Future<void> _updateArchiveState(Account account, bool isArchived, String message) async {
+  Future<void> _updateArchiveState(
+    Account account,
+    bool isArchived,
+    String message,
+  ) async {
     try {
-      await ref.read(ledgerProvider.notifier).upsertAccount(
+      await ref
+          .read(ledgerProvider.notifier)
+          .upsertAccount(
             id: account.id,
             name: account.name,
             type: account.type,

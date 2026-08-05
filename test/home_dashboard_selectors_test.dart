@@ -122,47 +122,50 @@ void main() {
     expect(selectedBreakdown.single.amountMinor, 0);
   });
 
-  test('balance breakdown shows every native currency net in selected scope', () {
-    final state = _ledger(
-      accounts: [
-        _account(id: 'cash', type: 'cash', currency: 'INR', openingMinor: 0),
-      ],
-      transactions: [
-        _tx(
-          id: 'cash-gbp-in',
-          type: 'income',
-          accountId: 'cash',
-          amountMinor: 500,
-          currency: 'GBP',
-          baseAmountMinor: 52500,
-          date: DateTime(2026, 6, 1),
-        ),
-        _tx(
-          id: 'cash-gbp-out',
-          type: 'expense',
-          accountId: 'cash',
-          amountMinor: 500,
-          currency: 'GBP',
-          baseAmountMinor: 52500,
-          date: DateTime(2026, 6, 2),
-        ),
-        _tx(
-          id: 'cash-usd-in',
-          type: 'income',
-          accountId: 'cash',
-          amountMinor: 1200,
-          currency: 'USD',
-          baseAmountMinor: 100000,
-          date: DateTime(2026, 6, 3),
-        ),
-      ],
-    );
+  test(
+    'balance breakdown shows every native currency net in selected scope',
+    () {
+      final state = _ledger(
+        accounts: [
+          _account(id: 'cash', type: 'cash', currency: 'INR', openingMinor: 0),
+        ],
+        transactions: [
+          _tx(
+            id: 'cash-gbp-in',
+            type: 'income',
+            accountId: 'cash',
+            amountMinor: 500,
+            currency: 'GBP',
+            baseAmountMinor: 52500,
+            date: DateTime(2026, 6, 1),
+          ),
+          _tx(
+            id: 'cash-gbp-out',
+            type: 'expense',
+            accountId: 'cash',
+            amountMinor: 500,
+            currency: 'GBP',
+            baseAmountMinor: 52500,
+            date: DateTime(2026, 6, 2),
+          ),
+          _tx(
+            id: 'cash-usd-in',
+            type: 'income',
+            accountId: 'cash',
+            amountMinor: 1200,
+            currency: 'USD',
+            baseAmountMinor: 100000,
+            date: DateTime(2026, 6, 3),
+          ),
+        ],
+      );
 
-    final breakdown = balanceBreakdownByCurrency(state, accountId: 'cash');
+      final breakdown = balanceBreakdownByCurrency(state, accountId: 'cash');
 
-    expect(breakdown.map((money) => money.currency), ['USD', 'GBP', 'INR']);
-    expect(breakdown.map((money) => money.amountMinor), [1200, 0, 0]);
-  });
+      expect(breakdown.map((money) => money.currency), ['USD', 'GBP', 'INR']);
+      expect(breakdown.map((money) => money.amountMinor), [1200, 0, 0]);
+    },
+  );
 
   test('currency snapshot prefers explicit latest exchange rate', () {
     final state = _ledger(

@@ -104,7 +104,10 @@ void main() {
     await initializeDateFormatting('en_IN');
     final prefs = await SharedPreferences.getInstance();
     final container = ProviderContainer(
-      overrides: authenticatedSampleOverrides(ledger: _emptyLedgerState(), prefs: prefs),
+      overrides: authenticatedSampleOverrides(
+        ledger: _emptyLedgerState(),
+        prefs: prefs,
+      ),
     );
     addTearDown(container.dispose);
     final router = container.read(appRouterProvider);

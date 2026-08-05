@@ -19,14 +19,17 @@ List<TransactionRecord> forecastRecurringTransactions(
 
   for (final template in templates) {
     var cursor = template.occurredAt;
-    
+
     int pastOccurrences = 0;
     if (template.recurrenceLimit != null) {
-      pastOccurrences = state.transactions.where(
-        (tx) => tx.originalTransactionId == template.id &&
-            tx.status != 'scheduled' &&
-            tx.status != 'void',
-      ).length;
+      pastOccurrences = state.transactions
+          .where(
+            (tx) =>
+                tx.originalTransactionId == template.id &&
+                tx.status != 'scheduled' &&
+                tx.status != 'void',
+          )
+          .length;
     }
 
     // `occurrenceIndex` counts every iteration of the recurrence rule (even
@@ -42,8 +45,12 @@ List<TransactionRecord> forecastRecurringTransactions(
     while (cursor.isBefore(horizonEnd) || cursor.isAtSameMomentAs(horizonEnd)) {
       iterationGuard++;
       if (iterationGuard > 5000) break; // Absolute safety break
-      if (template.recurrenceLimit != null && (pastOccurrences + occurrenceIndex) >= template.recurrenceLimit!) break;
-      if (template.recurrenceEndDate != null && cursor.isAfter(template.recurrenceEndDate!)) break;
+      if (template.recurrenceLimit != null &&
+          (pastOccurrences + occurrenceIndex) >= template.recurrenceLimit!)
+        break;
+      if (template.recurrenceEndDate != null &&
+          cursor.isAfter(template.recurrenceEndDate!))
+        break;
 
       if (cursor.isAfter(horizonStart) ||
           cursor.isAtSameMomentAs(horizonStart)) {

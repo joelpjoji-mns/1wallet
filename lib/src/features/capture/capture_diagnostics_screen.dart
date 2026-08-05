@@ -39,10 +39,7 @@ class _CaptureDiagnosticsScreenState
     return RouteScaffold(
       title: 'Capture diagnostics',
       actions: [
-        HeaderIconButton(
-          icon: Icons.refresh_rounded,
-          onPressed: _refresh,
-        ),
+        HeaderIconButton(icon: Icons.refresh_rounded, onPressed: _refresh),
         HeaderIconButton(
           icon: Icons.delete_sweep_outlined,
           onPressed: () async {
@@ -138,15 +135,15 @@ class _DiagnosticEventTile extends StatelessWidget {
                     Text(
                       '${event.source.toUpperCase()} · ${event.decision}',
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: scheme.onSurface,
-                          ),
+                        fontWeight: FontWeight.w900,
+                        color: scheme.onSurface,
+                      ),
                     ),
                     Text(
                       '${event.stage} · ${DateFormat.MMMd().add_jms().format(event.timestamp.toLocal())}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -185,9 +182,9 @@ class _DiagnosticEventTile extends StatelessWidget {
             Text(
               event.errorMessage!,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: scheme.error,
-                    fontWeight: FontWeight.w700,
-                  ),
+                color: scheme.error,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
           if (showRaw) ...[
@@ -204,10 +201,10 @@ class _DiagnosticEventTile extends StatelessWidget {
                 maxLines: 5,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      fontFamily: 'monospace',
-                      height: 1.35,
-                    ),
+                  color: scheme.onSurfaceVariant,
+                  fontFamily: 'monospace',
+                  height: 1.35,
+                ),
               ),
             ),
           ],
@@ -243,9 +240,9 @@ class _MetaChip extends StatelessWidget {
       child: Text(
         label,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-              fontWeight: FontWeight.w800,
-            ),
+          color: scheme.onSurfaceVariant,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }

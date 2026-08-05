@@ -162,7 +162,10 @@ class HomeProgressRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            PrivacyText(value, style: const TextStyle(fontWeight: FontWeight.w900)),
+            PrivacyText(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
           ],
         ),
         const SizedBox(height: AppSpacing.xs),

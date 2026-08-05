@@ -77,12 +77,13 @@ class HomeScreen extends ConsumerWidget {
     if (sync.phase == CloudSyncPhase.checking ||
         sync.phase == CloudSyncPhase.restoring ||
         sync.phase == CloudSyncPhase.uploading) {
-      final message = sync.progressMessage ??
+      final message =
+          sync.progressMessage ??
           (sync.phase == CloudSyncPhase.checking
               ? 'Checking cloud updates…'
               : (sync.phase == CloudSyncPhase.restoring
-                  ? 'Downloading latest database…'
-                  : 'Uploading latest changes…'));
+                    ? 'Downloading latest database…'
+                    : 'Uploading latest changes…'));
       syncIndicator = Container(
         width: double.infinity,
         decoration: BoxDecoration(
@@ -136,7 +137,10 @@ class HomeScreen extends ConsumerWidget {
         decoration: BoxDecoration(
           color: scheme.errorContainer,
           border: Border(
-            bottom: BorderSide(color: scheme.error.withValues(alpha: 0.3), width: 1),
+            bottom: BorderSide(
+              color: scheme.error.withValues(alpha: 0.3),
+              width: 1,
+            ),
           ),
         ),
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -156,14 +160,23 @@ class HomeScreen extends ConsumerWidget {
             ),
             TextButton(
               onPressed: () {
-                ref.read(cloudSyncControllerProvider.notifier).fullSync(reason: 'user_retry');
+                ref
+                    .read(cloudSyncControllerProvider.notifier)
+                    .fullSync(reason: 'user_retry');
               },
               style: TextButton.styleFrom(
                 padding: EdgeInsets.zero,
                 minimumSize: const Size(40, 24),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: Text('Retry', style: TextStyle(fontSize: 12, color: scheme.onErrorContainer, fontWeight: FontWeight.bold)),
+              child: Text(
+                'Retry',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: scheme.onErrorContainer,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         ),

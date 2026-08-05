@@ -239,9 +239,7 @@ class _MainShellState extends ConsumerState<MainShell>
                   isStatic: true,
                   onTabSelected: _selectTab,
                 ),
-                Expanded(
-                  child: mainBody,
-                ),
+                Expanded(child: mainBody),
               ],
             ),
           );
@@ -304,7 +302,9 @@ class AppMainDrawer extends ConsumerWidget {
           next.status == UpdateStatus.idle) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Update ${next.latestRelease!.versionName} is available!'),
+            content: Text(
+              'Update ${next.latestRelease!.versionName} is available!',
+            ),
             action: SnackBarAction(
               label: 'View',
               onPressed: () => context.push('/updates'),
@@ -317,8 +317,9 @@ class AppMainDrawer extends ConsumerWidget {
     });
 
     final pendingReviewCount = _pendingReviewCount(ledger);
-    final unreadNotificationCount =
-        buildNotificationInbox(ledger).where((n) => !n.read).length;
+    final unreadNotificationCount = buildNotificationInbox(
+      ledger,
+    ).where((n) => !n.read).length;
     final combinedInboxCount = pendingReviewCount + unreadNotificationCount;
     final syncBadge = _syncBadge(sync);
     final updatesBadge =
@@ -332,9 +333,13 @@ class AppMainDrawer extends ConsumerWidget {
 
     Widget content = SafeArea(
       child: Container(
-        margin: isStatic ? EdgeInsets.zero : const EdgeInsets.all(AppSpacing.sm),
+        margin: isStatic
+            ? EdgeInsets.zero
+            : const EdgeInsets.all(AppSpacing.sm),
         decoration: BoxDecoration(
-          borderRadius: isStatic ? BorderRadius.zero : BorderRadius.circular(AppRadii.xl),
+          borderRadius: isStatic
+              ? BorderRadius.zero
+              : BorderRadius.circular(AppRadii.xl),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -344,14 +349,22 @@ class AppMainDrawer extends ConsumerWidget {
               scheme.surface,
             ],
           ),
-          border: isStatic ? Border(right: BorderSide(color: scheme.outlineVariant.withAlpha(180))) : Border.all(color: scheme.outlineVariant.withAlpha(180)),
-          boxShadow: isStatic ? null : [
-            BoxShadow(
-              color: Colors.black.withAlpha(28),
-              blurRadius: 22,
-              offset: const Offset(0, 10),
-            ),
-          ],
+          border: isStatic
+              ? Border(
+                  right: BorderSide(
+                    color: scheme.outlineVariant.withAlpha(180),
+                  ),
+                )
+              : Border.all(color: scheme.outlineVariant.withAlpha(180)),
+          boxShadow: isStatic
+              ? null
+              : [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(28),
+                    blurRadius: 22,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
         ),
         child: Column(
           children: [
@@ -660,10 +673,7 @@ class _DrawerPrivacyToggle extends ConsumerWidget {
                 ),
               ),
               IgnorePointer(
-                child: Switch(
-                  value: enabled,
-                  onChanged: (_) {},
-                ),
+                child: Switch(value: enabled, onChanged: (_) {}),
               ),
             ],
           ),

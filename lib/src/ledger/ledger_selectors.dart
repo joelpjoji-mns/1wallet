@@ -450,8 +450,11 @@ Money budgetSpent(LedgerState state, Budget budget) {
         !transaction.occurredAt.isBefore(range.end)) {
       continue;
     }
-    totalMinor +=
-        convertMoneyForDisplay(state, transaction.amount, currency).amountMinor;
+    totalMinor += convertMoneyForDisplay(
+      state,
+      transaction.amount,
+      currency,
+    ).amountMinor;
   }
   return Money(amountMinor: totalMinor, currency: currency);
 }
@@ -467,7 +470,11 @@ Money goalSaved(LedgerState state, Goal goal) {
   if (account == null) {
     return convertMoneyForDisplay(state, goal.saved, currency);
   }
-  return convertMoneyForDisplay(state, accountBalance(state, account), currency);
+  return convertMoneyForDisplay(
+    state,
+    accountBalance(state, account),
+    currency,
+  );
 }
 
 // ── Dashboard analytics selectors (used by the dynamic home widgets) ──
@@ -540,7 +547,12 @@ monthlySpendingComparison(LedgerState state) {
   final thisEnd = DateTime(now.year, now.month + 1);
   final lastStart = DateTime(now.year, now.month - 1);
   final thisMonthMinor = _flowInRange(state, thisStart, thisEnd, income: false);
-  final lastMonthMinor = _flowInRange(state, lastStart, thisStart, income: false);
+  final lastMonthMinor = _flowInRange(
+    state,
+    lastStart,
+    thisStart,
+    income: false,
+  );
   final changeRatio = lastMonthMinor > 0
       ? (thisMonthMinor - lastMonthMinor) / lastMonthMinor
       : null;
@@ -593,7 +605,9 @@ List<({DateTime date, int spentMinor})> dailySpendingSeries(
   }
   final entries = buckets.entries.toList()
     ..sort((left, right) => left.key.compareTo(right.key));
-  return [for (final entry in entries) (date: entry.key, spentMinor: entry.value)];
+  return [
+    for (final entry in entries) (date: entry.key, spentMinor: entry.value),
+  ];
 }
 
 /// A composite 0–100 financial-health score with its component signals.
@@ -871,22 +885,18 @@ financialHealthScore(LedgerState state) {
 }
 
 List<TransactionRecord> scheduledTransactions(LedgerState state) {
-  final items = sortedTransactions(state)
-      .where(
-        (transaction) {
-          if (transaction.status != 'scheduled' && transaction.status != 'paused') {
-            return false;
-          }
-          if (transaction.type == 'loan_repayment') {
-            final counterAccount = accountById(state, transaction.counterAccountId);
-            if (counterAccount != null && isPastLoan(state, counterAccount)) {
-              return false;
-            }
-          }
-          return true;
-        },
-      )
-      .toList();
+  final items = sortedTransactions(state).where((transaction) {
+    if (transaction.status != 'scheduled' && transaction.status != 'paused') {
+      return false;
+    }
+    if (transaction.type == 'loan_repayment') {
+      final counterAccount = accountById(state, transaction.counterAccountId);
+      if (counterAccount != null && isPastLoan(state, counterAccount)) {
+        return false;
+      }
+    }
+    return true;
+  }).toList();
   items.sort((left, right) => left.occurredAt.compareTo(right.occurredAt));
   return items;
 }

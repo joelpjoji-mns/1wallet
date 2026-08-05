@@ -95,7 +95,9 @@ class UpdatesScreen extends ConsumerWidget {
           child: Icon(icon, color: color),
         ),
         title: Text(
-          kIsWeb && state.latestRelease != null && state.status == UpdateStatus.idle
+          kIsWeb &&
+                  state.latestRelease != null &&
+                  state.status == UpdateStatus.idle
               ? 'Web Update Available'
               : title,
           style: theme.textTheme.titleMedium?.copyWith(
@@ -325,10 +327,7 @@ class UpdatesScreen extends ConsumerWidget {
               child: Text(
                 'To apply this update, please use the button below to hard refresh the application. If that does not work, close the app entirely and reopen it.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  height: 1.5,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold, height: 1.5),
               ),
             ),
           const SizedBox(height: 16),

@@ -4,7 +4,8 @@ import 'package:one_wallet_flutter/src/capture/message_parser.dart';
 void main() {
   group('Comprehensive SMS Parsing Tests', () {
     test('Indian: ICICI Debit with Credit info', () {
-      const sms = 'ICICI Bank Acct XX173 debited for Rs 5059.00 on 15-Jun-26; CHEQ DIGITAL PR credited. UPI:653240699663. Call 18002662 for dispute. SMS BLOCK 173 to 9215676766.';
+      const sms =
+          'ICICI Bank Acct XX173 debited for Rs 5059.00 on 15-Jun-26; CHEQ DIGITAL PR credited. UPI:653240699663. Call 18002662 for dispute. SMS BLOCK 173 to 9215676766.';
       final result = parseTransactionMessage(sms);
       expect(result.ignored, isFalse);
       expect(result.transactionType, 'expense');
@@ -15,7 +16,8 @@ void main() {
     });
 
     test('Indian: HDFC UPI Debit', () {
-      const sms = 'Rs. 250.00 debited from a/c **4567 on 10-05-26 to VPA merchant@upi (UPI Ref no 312345678901). Not you? Call 18002586161.';
+      const sms =
+          'Rs. 250.00 debited from a/c **4567 on 10-05-26 to VPA merchant@upi (UPI Ref no 312345678901). Not you? Call 18002586161.';
       final result = parseTransactionMessage(sms);
       expect(result.ignored, isFalse);
       expect(result.transactionType, 'expense');
@@ -26,7 +28,8 @@ void main() {
     });
 
     test('Indian: SBI Credit', () {
-      const sms = 'Your A/C XXXXX8910 is credited with INR 10,000.00 on 12/06/26 by SALARY MAY 2026. Avl Bal INR 15,200.00. -SBI';
+      const sms =
+          'Your A/C XXXXX8910 is credited with INR 10,000.00 on 12/06/26 by SALARY MAY 2026. Avl Bal INR 15,200.00. -SBI';
       final result = parseTransactionMessage(sms);
       expect(result.ignored, isFalse);
       expect(result.transactionType, 'income');
@@ -37,7 +40,8 @@ void main() {
     });
 
     test('UK: Barclays Direct Debit', () {
-      const sms = 'BARCLAYS: A Direct Debit of £35.50 was paid to Vodafone UK from your account ending 5678 on 01 Jun.';
+      const sms =
+          'BARCLAYS: A Direct Debit of £35.50 was paid to Vodafone UK from your account ending 5678 on 01 Jun.';
       final result = parseTransactionMessage(sms);
       expect(result.ignored, isFalse);
       expect(result.transactionType, 'expense');
@@ -48,7 +52,8 @@ void main() {
     });
 
     test('UK: Monzo POS Purchase', () {
-      const sms = 'You spent £12.99 at Tesco Extra. Your new balance is £45.00.';
+      const sms =
+          'You spent £12.99 at Tesco Extra. Your new balance is £45.00.';
       final result = parseTransactionMessage(sms);
       expect(result.ignored, isFalse);
       expect(result.transactionType, 'expense');
@@ -59,7 +64,8 @@ void main() {
     });
 
     test('US: Chase Credit Card POS', () {
-      const sms = 'Chase: A charge of \$120.50 at AMAZON.COM was authorized on card ending 1234. Reply HELP for help.';
+      const sms =
+          'Chase: A charge of \$120.50 at AMAZON.COM was authorized on card ending 1234. Reply HELP for help.';
       final result = parseTransactionMessage(sms);
       expect(result.ignored, isFalse);
       expect(result.transactionType, 'expense');
@@ -68,9 +74,10 @@ void main() {
       expect(result.merchant, 'AMAZON.COM');
       expect(result.last4, '1234');
     });
-    
+
     test('General: AED ATM Withdrawal', () {
-      const sms = 'Cash withdrawal of AED 500.00 from ATM 12345 using Card **9999. Available Balance: AED 1500.00';
+      const sms =
+          'Cash withdrawal of AED 500.00 from ATM 12345 using Card **9999. Available Balance: AED 1500.00';
       final result = parseTransactionMessage(sms);
       expect(result.ignored, isFalse);
       expect(result.transactionType, 'expense');
@@ -81,7 +88,8 @@ void main() {
     });
 
     test('General: Refund', () {
-      const sms = 'Refund of €45.00 from ASOS has been credited to your Card 4321.';
+      const sms =
+          'Refund of €45.00 from ASOS has been credited to your Card 4321.';
       final result = parseTransactionMessage(sms);
       expect(result.ignored, isFalse);
       expect(result.transactionType, 'income');
@@ -102,7 +110,8 @@ void main() {
     });
 
     test('Edge Case: European Comma Decimal Format', () {
-      const sms = 'Paiement par carte de 45,50 € à la Boulangerie Paris effectué le 14/06.';
+      const sms =
+          'Paiement par carte de 45,50 € à la Boulangerie Paris effectué le 14/06.';
       final result = parseTransactionMessage(sms, fallbackCurrency: 'EUR');
       expect(result.ignored, isFalse);
       // Wait, "paiement" might not be in the english list, but let's test if "paid" or "spent" equivalent or we add explicit symbols. If not, it falls back to 'expense' if none found.
@@ -113,7 +122,8 @@ void main() {
     });
 
     test('Edge Case: Indian Lakhs Formatting', () {
-      const sms = 'Rs. 1,50,000.00 remitted to Ramesh on 10/10 via NEFT. Avl Bal Rs. 2,00,000.00';
+      const sms =
+          'Rs. 1,50,000.00 remitted to Ramesh on 10/10 via NEFT. Avl Bal Rs. 2,00,000.00';
       final result = parseTransactionMessage(sms);
       expect(result.ignored, isFalse);
       expect(result.transactionType, 'expense');
@@ -123,7 +133,8 @@ void main() {
     });
 
     test('Edge Case: Exotic Verbs (Reversal & Fee)', () {
-      const sms1 = 'Reversal of charge of \$ 15.00 for Netflix. Acct 1234 credited.';
+      const sms1 =
+          'Reversal of charge of \$ 15.00 for Netflix. Acct 1234 credited.';
       final result1 = parseTransactionMessage(sms1);
       expect(result1.ignored, isFalse);
       expect(result1.transactionType, 'income');

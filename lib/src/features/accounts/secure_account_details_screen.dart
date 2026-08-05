@@ -152,7 +152,10 @@ class _SecureAccountDetailsScreenState
     }
   }
 
-  Future<void> _saveSecureDetails(Account account, {bool silent = false}) async {
+  Future<void> _saveSecureDetails(
+    Account account, {
+    bool silent = false,
+  }) async {
     final Map<String, String> newEncrypted = {};
     final isCard = account.type == 'card' || account.type == 'credit_card';
     String? newCardLast4 = account.cardLast4;
@@ -160,16 +163,17 @@ class _SecureAccountDetailsScreenState
 
     if (isCard) {
       if (_cardNumberController.text.isNotEmpty) {
-        newEncrypted['number'] =
-            await SecureKeyStore.encrypt(_cardNumberController.text);
+        newEncrypted['number'] = await SecureKeyStore.encrypt(
+          _cardNumberController.text,
+        );
       }
       if (_expiryController.text.isNotEmpty) {
-        newEncrypted['expiry'] =
-            await SecureKeyStore.encrypt(_expiryController.text);
+        newEncrypted['expiry'] = await SecureKeyStore.encrypt(
+          _expiryController.text,
+        );
       }
       if (_ccvController.text.isNotEmpty) {
-        newEncrypted['ccv'] =
-            await SecureKeyStore.encrypt(_ccvController.text);
+        newEncrypted['ccv'] = await SecureKeyStore.encrypt(_ccvController.text);
       }
       if (_cardNumberController.text.length >= 4) {
         newCardLast4 = _cardNumberController.text.substring(
@@ -178,8 +182,9 @@ class _SecureAccountDetailsScreenState
       }
     } else {
       if (_accountNumberController.text.isNotEmpty) {
-        newEncrypted['account_number'] =
-            await SecureKeyStore.encrypt(_accountNumberController.text);
+        newEncrypted['account_number'] = await SecureKeyStore.encrypt(
+          _accountNumberController.text,
+        );
       }
       if (_accountNumberController.text.length >= 4) {
         newAccountLast4 = _accountNumberController.text.substring(
@@ -190,8 +195,9 @@ class _SecureAccountDetailsScreenState
 
     for (final field in _customFields) {
       if (field.value.text.isNotEmpty) {
-        newEncrypted[field.key] =
-            await SecureKeyStore.encrypt(field.value.text);
+        newEncrypted[field.key] = await SecureKeyStore.encrypt(
+          field.value.text,
+        );
       }
     }
 
@@ -253,7 +259,9 @@ class _SecureAccountDetailsScreenState
     );
 
     if (confirm == true && mounted) {
-      await ref.read(ledgerProvider.notifier).upsertAccount(
+      await ref
+          .read(ledgerProvider.notifier)
+          .upsertAccount(
             id: account.id,
             name: account.name,
             type: account.type,
@@ -457,16 +465,14 @@ class _SecureAccountDetailsScreenState
           const SizedBox(height: 24),
           const Divider(),
           const SizedBox(height: 16),
-          
+
           OutlinedButton.icon(
             onPressed: () => _archiveAccount(account),
             icon: const Icon(Icons.archive_outlined),
             label: const Text('Close Account'),
             style: OutlinedButton.styleFrom(
               foregroundColor: Theme.of(context).colorScheme.error,
-              side: BorderSide(
-                color: Theme.of(context).colorScheme.error,
-              ),
+              side: BorderSide(color: Theme.of(context).colorScheme.error),
             ),
           ),
 

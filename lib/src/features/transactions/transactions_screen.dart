@@ -33,7 +33,8 @@ final _filteredTransactionsProvider = Provider.autoDispose
                   transaction.status != 'pending') {
                 return false;
               }
-              if (filter.statusFilter == 'void' && transaction.status != 'void') {
+              if (filter.statusFilter == 'void' &&
+                  transaction.status != 'void') {
                 return false;
               }
             }
@@ -76,19 +77,23 @@ final _filteredTransactionsProvider = Provider.autoDispose
               }
             }
             if (query.isEmpty) return true;
-            
+
             RegExp? regex;
             try {
               regex = RegExp(query, caseSensitive: false);
             } catch (_) {}
 
             if (regex != null) {
-              if (transaction.notes != null && regex.hasMatch(transaction.notes!)) {
+              if (transaction.notes != null &&
+                  regex.hasMatch(transaction.notes!)) {
                 return true;
               }
             } else {
               // Fallback if invalid regex
-              if (transaction.notes != null && transaction.notes!.toLowerCase().contains(query.toLowerCase())) {
+              if (transaction.notes != null &&
+                  transaction.notes!.toLowerCase().contains(
+                    query.toLowerCase(),
+                  )) {
                 return true;
               }
             }
@@ -256,24 +261,40 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           ),
           if (transactions.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(left: AppSpacing.sm, right: AppSpacing.sm, bottom: AppSpacing.sm),
+              padding: const EdgeInsets.only(
+                left: AppSpacing.sm,
+                right: AppSpacing.sm,
+                bottom: AppSpacing.sm,
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Filtered Total', style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                  Text(
+                    'Filtered Total',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                   Row(
                     children: [
                       if (flow.income.amountMinor > 0)
                         Text(
                           '+${formatMoney(flow.income, state.preferences.locale)}',
-                          style: TextStyle(color: positiveTone(context), fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: positiveTone(context),
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      if (flow.income.amountMinor > 0 && flow.expense.amountMinor > 0)
+                      if (flow.income.amountMinor > 0 &&
+                          flow.expense.amountMinor > 0)
                         const SizedBox(width: AppSpacing.md),
                       if (flow.expense.amountMinor > 0)
                         Text(
                           '-${formatMoney(flow.expense, state.preferences.locale)}',
-                          style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                     ],
                   ),
@@ -395,9 +416,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       DateTime? currentDay;
                       final now = DateTime.now();
                       final today = DateTime(now.year, now.month, now.day);
-                      final yesterday = today.subtract(
-                        const Duration(days: 1),
-                      );
+                      final yesterday = today.subtract(const Duration(days: 1));
                       final locale = state.preferences.locale.replaceAll(
                         '_',
                         '-',
@@ -541,11 +560,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                                           .textTheme
                                           .labelSmall
                                           ?.copyWith(
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.onSurfaceVariant.withValues(
-                                              alpha: 0.7,
-                                            ),
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant
+                                                .withValues(alpha: 0.7),
                                           ),
                                     ),
                                   ),
@@ -554,11 +572,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                                     child: Divider(
                                       height: 1,
                                       thickness: 1,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.outlineVariant.withValues(
-                                        alpha: 0.5,
-                                      ),
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .outlineVariant
+                                          .withValues(alpha: 0.5),
                                     ),
                                   ),
                                 ],
@@ -575,14 +592,17 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                               state: state,
                               transaction: transaction,
                               selectedAccountId: accountFilter,
-                              selected: _selectedTransactionIds
-                                  .contains(transaction.id),
+                              selected: _selectedTransactionIds.contains(
+                                transaction.id,
+                              ),
                               onLongPress: () {
                                 setState(() {
-                                  if (_selectedTransactionIds
-                                      .contains(transaction.id)) {
-                                    _selectedTransactionIds
-                                        .remove(transaction.id);
+                                  if (_selectedTransactionIds.contains(
+                                    transaction.id,
+                                  )) {
+                                    _selectedTransactionIds.remove(
+                                      transaction.id,
+                                    );
                                   } else {
                                     _selectedTransactionIds.add(transaction.id);
                                   }
@@ -591,13 +611,16 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                               onTap: () {
                                 if (_selectedTransactionIds.isNotEmpty) {
                                   setState(() {
-                                    if (_selectedTransactionIds
-                                        .contains(transaction.id)) {
-                                      _selectedTransactionIds
-                                          .remove(transaction.id);
+                                    if (_selectedTransactionIds.contains(
+                                      transaction.id,
+                                    )) {
+                                      _selectedTransactionIds.remove(
+                                        transaction.id,
+                                      );
                                     } else {
-                                      _selectedTransactionIds
-                                          .add(transaction.id);
+                                      _selectedTransactionIds.add(
+                                        transaction.id,
+                                      );
                                     }
                                   });
                                 } else {
@@ -924,7 +947,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Delete transactions?'),
         content: Text(
-            'Are you sure you want to delete ${_selectedTransactionIds.length} transaction${_selectedTransactionIds.length == 1 ? '' : 's'}? This cannot be undone.'),
+          'Are you sure you want to delete ${_selectedTransactionIds.length} transaction${_selectedTransactionIds.length == 1 ? '' : 's'}? This cannot be undone.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),

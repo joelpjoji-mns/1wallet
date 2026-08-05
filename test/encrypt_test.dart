@@ -13,7 +13,7 @@ void main() {
 
     final decrypted = encrypter.decrypt64(encrypted, iv: iv);
     print('Decrypted: $decrypted');
-    
+
     expect(decrypted, text);
   });
 }

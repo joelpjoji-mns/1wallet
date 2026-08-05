@@ -21,7 +21,9 @@ class NetWorthHomeWidget extends StatelessWidget {
     final assets = worth.assets.amountMinor;
     final liabilities = worth.liabilities.amountMinor.abs();
     final denom = assets + liabilities;
-    final assetFlex = denom > 0 ? (assets / denom * 100).round().clamp(0, 100) : 100;
+    final assetFlex = denom > 0
+        ? (assets / denom * 100).round().clamp(0, 100)
+        : 100;
     final liabFlex = 100 - assetFlex;
     final positiveColor = positiveTone(context);
 
@@ -40,7 +42,9 @@ class NetWorthHomeWidget extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.w900,
-              color: worth.total.amountMinor >= 0 ? scheme.primary : scheme.error,
+              color: worth.total.amountMinor >= 0
+                  ? scheme.primary
+                  : scheme.error,
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -127,7 +131,10 @@ class CashFlowHomeWidget extends StatelessWidget {
         children: [
           _FlowBar(
             label: 'Income',
-            money: Money(amountMinor: flow.incomeMinor, currency: flow.currency),
+            money: Money(
+              amountMinor: flow.incomeMinor,
+              currency: flow.currency,
+            ),
             locale: locale,
             fraction: incomeFraction,
             color: positiveColor,
@@ -135,7 +142,10 @@ class CashFlowHomeWidget extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           _FlowBar(
             label: 'Expense',
-            money: Money(amountMinor: flow.expenseMinor, currency: flow.currency),
+            money: Money(
+              amountMinor: flow.expenseMinor,
+              currency: flow.currency,
+            ),
             locale: locale,
             fraction: expenseFraction,
             color: scheme.error,
@@ -157,7 +167,10 @@ class CashFlowHomeWidget extends StatelessWidget {
                     ),
                     PrivacyText(
                       formatMoney(
-                        Money(amountMinor: flow.netMinor, currency: flow.currency),
+                        Money(
+                          amountMinor: flow.netMinor,
+                          currency: flow.currency,
+                        ),
                         locale,
                       ),
                       maxLines: 1,
@@ -165,7 +178,9 @@ class CashFlowHomeWidget extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w900,
-                        color: flow.netMinor >= 0 ? positiveColor : scheme.error,
+                        color: flow.netMinor >= 0
+                            ? positiveColor
+                            : scheme.error,
                       ),
                     ),
                   ],
@@ -275,7 +290,8 @@ class FinancialHealthHomeWidget extends StatelessWidget {
                 good: health.savingsRate >= 0.2,
               ),
               _SignalChip(
-                label: 'Emergency ${health.emergencyMonths.toStringAsFixed(1)}mo',
+                label:
+                    'Emergency ${health.emergencyMonths.toStringAsFixed(1)}mo',
                 good: health.emergencyMonths >= 3,
               ),
               _SignalChip(
@@ -330,7 +346,10 @@ class MonthComparisonHomeWidget extends StatelessWidget {
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -340,7 +359,9 @@ class MonthComparisonHomeWidget extends StatelessWidget {
                   child: Row(
                     children: [
                       Icon(
-                        up ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+                        up
+                            ? Icons.arrow_upward_rounded
+                            : Icons.arrow_downward_rounded,
                         size: 16,
                         color: deltaColor,
                       ),
@@ -404,7 +425,10 @@ class SpendingHeatmapHomeWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final series = dailySpendingSeries(state, days: 91);
-    final maxSpend = series.fold<int>(0, (m, e) => e.spentMinor > m ? e.spentMinor : m);
+    final maxSpend = series.fold<int>(
+      0,
+      (m, e) => e.spentMinor > m ? e.spentMinor : m,
+    );
     // Group into weeks (columns) of 7 days (rows), oldest week first.
     final weeks = <List<({DateTime date, int spentMinor})>>[];
     for (var i = 0; i < series.length; i += 7) {

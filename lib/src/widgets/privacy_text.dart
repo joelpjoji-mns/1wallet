@@ -34,10 +34,9 @@ String maskMoneyIfPrivate(
   LedgerState state,
   String formatted, {
   String? mask,
-}) =>
-    state.preferences.privacyModeEnabled
-        ? (mask ?? maskAmountDigits(formatted))
-        : formatted;
+}) => state.preferences.privacyModeEnabled
+    ? (mask ?? maskAmountDigits(formatted))
+    : formatted;
 
 /// Displays a (usually monetary) string that is hidden when the user enables
 /// Privacy mode (`preferences.privacyModeEnabled`). When privacy is on the

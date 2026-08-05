@@ -145,7 +145,9 @@ class CloudSyncMetadata {
           ?.cast<String>(),
       syncedDocumentHashes: (json['syncedDocumentHashes'] as Map?)
           ?.cast<String, String>(),
-      syncIntervalHours: json.containsKey('syncIntervalHours') ? json['syncIntervalHours'] as int? : null,
+      syncIntervalHours: json.containsKey('syncIntervalHours')
+          ? json['syncIntervalHours'] as int?
+          : null,
     );
   }
 
