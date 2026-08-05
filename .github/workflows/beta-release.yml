@@ -1,0 +1,67 @@
+name: Beta Release
+
+on:
+  push:
+    branches:
+      - development
+
+jobs:
+  beta-android:
+    name: Build & Distribute Beta APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Flutter dependencies
+        run: flutter pub get
+
+      - name: Write mobile environment
+        run: |
+          {
+            echo "EXPO_PUBLIC_FIREBASE_API_KEY=${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}"
+            echo "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}"
+            echo "EXPO_PUBLIC_FIREBASE_PROJECT_ID=${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}"
+            echo "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}"
+            echo "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}"
+            echo "EXPO_PUBLIC_FIREBASE_APP_ID=${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}"
+            echo "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=${{ secrets.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}"
+            echo "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}"
+            echo "EXPO_PUBLIC_FIREBASE_USE_EMULATOR=false"
+            echo "ONEWALLET_ENABLE_EMAIL_PASSWORD_AUTH=true"
+          } > .env
+          cp .env config.env
+
+      - name: Restore Android keystore
+        run: |
+          printf '%s' "${{ secrets.ONEWALLET_RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > android/release.keystore
+          chmod 600 android/release.keystore
+
+      - name: Build APK
+        env:
+          ONEWALLET_RELEASE_STORE_FILE: release.keystore
+          ONEWALLET_RELEASE_STORE_PASSWORD: ${{ secrets.ONEWALLET_RELEASE_STORE_PASSWORD }}
+          ONEWALLET_RELEASE_KEY_ALIAS: ${{ secrets.ONEWALLET_RELEASE_KEY_ALIAS }}
+          ONEWALLET_RELEASE_KEY_PASSWORD: ${{ secrets.ONEWALLET_RELEASE_KEY_PASSWORD }}
+        run: flutter build apk --release
+
+      - name: Upload to Firebase App Distribution
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          groups: testers
+          file: build/app/outputs/flutter-apk/app-release.apk

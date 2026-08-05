@@ -1,0 +1,62 @@
+name: iOS App Store Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: Release notes
+        required: false
+        type: string
+
+jobs:
+  release-ios:
+    name: Build & Publish iOS
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Flutter dependencies
+        run: flutter pub get
+
+      - name: Write mobile environment
+        run: |
+          {
+            echo "EXPO_PUBLIC_FIREBASE_API_KEY=${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}"
+            echo "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}"
+            echo "EXPO_PUBLIC_FIREBASE_PROJECT_ID=${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}"
+            echo "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}"
+            echo "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}"
+            echo "EXPO_PUBLIC_FIREBASE_APP_ID=${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}"
+            echo "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=${{ secrets.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID }}"
+            echo "EXPO_PUBLIC_FIREBASE_USE_EMULATOR=false"
+            echo "ONEWALLET_ENABLE_EMAIL_PASSWORD_AUTH=false"
+          } > .env
+          cp .env config.env
+
+      - name: Build IPA
+        run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+        # Note: You need to set up ExportOptions.plist in the ios directory with proper code signing details.
+        
+      - name: Upload to App Store Connect
+        if: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID != '' }}
+        env:
+          API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
+          API_KEY_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
+          API_KEY_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_PRIVATE_KEY }}
+        run: |
+          # The API Key Private Key is expected to be multiline base64 or plaintext
+          # depending on how you stored it. 
+          echo "$API_KEY_PRIVATE_KEY" > AuthKey_${API_KEY_KEY_ID}.p8
+          xcrun altool --upload-app -f build/ios/ipa/*.ipa -t ios --apiKey "$API_KEY_KEY_ID" --apiIssuer "$API_KEY_ISSUER_ID"
