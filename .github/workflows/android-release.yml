@@ -225,7 +225,7 @@ jobs:
       - name: Publish APK to this repository release
         if: steps.notes_source.outputs.skip_release != 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="${{ steps.info.outputs.tag }}"
           title="${{ steps.info.outputs.releaseTitle }}"
@@ -243,7 +243,7 @@ jobs:
         if: steps.notes_source.outputs.skip_release != 'true'
         id: asset_release
         env:
-          GH_TOKEN: ${{ secrets.GH_RELEASE_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.GH_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           tag="${{ steps.info.outputs.tag }}"
           title="${{ steps.info.outputs.releaseTitle }}"
@@ -312,7 +312,7 @@ jobs:
       - name: Upload manifest to releases
         if: steps.notes_source.outputs.skip_release != 'true'
         env:
-          GH_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           tag="${{ steps.info.outputs.tag }}"
           manifest="importdata/mobile-update-${{ steps.info.outputs.versionName }}-${{ steps.info.outputs.channel }}.json"
