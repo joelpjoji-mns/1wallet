@@ -243,7 +243,7 @@ jobs:
         if: steps.notes_source.outputs.skip_release != 'true'
         id: asset_release
         env:
-          GH_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_RELEASE_TOKEN || github.token }}
         run: |
           tag="${{ steps.info.outputs.tag }}"
           title="${{ steps.info.outputs.releaseTitle }}"
@@ -301,6 +301,10 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
         run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_JSON" ]; then
+            echo "FIREBASE_SERVICE_ACCOUNT_JSON not set, skipping publish to Firestore."
+            exit 0
+          fi
           node scripts/publish-mobile-update-to-firebase.mjs \
             --project "$FIREBASE_PROJECT_ID" \
             --manifest "importdata/mobile-update-${{ steps.info.outputs.versionName }}-${{ steps.info.outputs.channel }}.json"
@@ -375,6 +379,7 @@ jobs:
         run: flutter build web --release
 
       - name: Deploy to Firebase Hosting
+        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON != '' }}
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
