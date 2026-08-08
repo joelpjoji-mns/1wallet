@@ -53,59 +53,67 @@ class _NotificationAppsScreenState extends ConsumerState<NotificationAppsScreen>
       }
     }
 
-    return RouteScaffold(
-      title: 'Target Apps',
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: TextField(
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search),
-                hintText: 'Search apps...',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-              ),
-              onChanged: (value) => setState(() => _searchQuery = value),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Target Apps')),
+      body: SafeArea(
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: TextField(
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search),
+                      hintText: 'Search apps...',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    ),
+                    onChanged: (value) => setState(() => _searchQuery = value),
+                  ),
+                ),
+                if (_isLoading)
+                  const Expanded(child: Center(child: CircularProgressIndicator()))
+                else if (_apps == null || _apps!.isEmpty)
+                  const Expanded(
+                    child: Center(
+                      child: Text('No apps found or unsupported platform.'),
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: filteredApps.length,
+                      itemBuilder: (context, index) {
+                        final app = filteredApps[index];
+                        final isEnabled = targetPackages.contains(app.packageName.toLowerCase());
+
+                        return SwitchListTile(
+                          secondary: AppIconWidget(packageName: app.packageName),
+                          title: Text(app.appName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: Text(app.packageName, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+                          value: isEnabled,
+                          onChanged: (val) {
+                            final next = Set<String>.from(prefs.notificationTargetPackages);
+                            if (val) {
+                              next.add(app.packageName.toLowerCase());
+                            } else {
+                              next.remove(app.packageName.toLowerCase());
+                            }
+                            ref.read(ledgerProvider.notifier).updatePreferences(
+                                  prefs.copyWith(notificationTargetPackages: next.toList()),
+                                );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+              ],
             ),
           ),
-          if (_isLoading)
-            const Expanded(child: Center(child: CircularProgressIndicator()))
-          else if (_apps == null || _apps!.isEmpty)
-            const Expanded(
-              child: Center(
-                child: Text('No apps found or unsupported platform.'),
-              ),
-            )
-          else
-            Expanded(
-              child: ListView.builder(
-                itemCount: filteredApps.length,
-                itemBuilder: (context, index) {
-                  final app = filteredApps[index];
-                  final isEnabled = targetPackages.contains(app.packageName.toLowerCase());
-
-                  return SwitchListTile(
-                    secondary: AppIconWidget(packageName: app.packageName),
-                    title: Text(app.appName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text(app.packageName, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
-                    value: isEnabled,
-                    onChanged: (val) {
-                      final next = Set<String>.from(prefs.notificationTargetPackages);
-                      if (val) {
-                        next.add(app.packageName.toLowerCase());
-                      } else {
-                        next.remove(app.packageName.toLowerCase());
-                      }
-                      ref.read(ledgerProvider.notifier).updatePreferences(
-                            prefs.copyWith(notificationTargetPackages: next.toList()),
-                          );
-                    },
-                  );
-                },
-              ),
-            ),
-        ],
+        ),
       ),
     );
   }
