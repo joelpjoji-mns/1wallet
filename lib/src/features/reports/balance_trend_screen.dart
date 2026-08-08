@@ -348,7 +348,7 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
             isCurved: true,
             curveSmoothness: 0.1,
             color: const Color(0xff3b82f6),
-            barWidth: (_period == 'This year' || _period == 'All time') ? 1.0 : 2.0,
+            barWidth: (_period == 'This year' || _period == 'All time') ? 0.8 : 1.5,
             isStrokeCapRound: true,
             dotData: const FlDotData(show: false),
             belowBarData: BarAreaData(
