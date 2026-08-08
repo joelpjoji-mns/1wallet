@@ -779,7 +779,7 @@ class _BalanceTrendHomeWidgetState
                           ],
                           isCurved: true,
                           color: Theme.of(context).colorScheme.primary,
-                          barWidth: 1.5,
+                          barWidth: 0.8,
                           isStrokeCapRound: true,
                           shadow: Shadow(
                             color: Theme.of(

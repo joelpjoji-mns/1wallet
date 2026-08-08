@@ -34,8 +34,8 @@ const [, pubspecVersionName, pubspecVersionCode] = versionMatch;
 
 // Use pubspecVersionCode as base, add run number to ensure it increments on CI
 const versionCode = runNumber ? String(parseInt(pubspecVersionCode, 10) + parseInt(runNumber, 10)) : pubspecVersionCode;
-// Use the proper version name from pubspec.yaml
-const versionName = pubspecVersionName;
+// Use the proper version name from pubspec.yaml, append run number if available
+const versionName = runNumber ? `${pubspecVersionName}.${runNumber}` : pubspecVersionName;
 
 const channel = 'stable';
 const values = {
