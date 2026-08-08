@@ -32,8 +32,8 @@ if (!versionMatch) {
 
 const [, pubspecVersionName, pubspecVersionCode] = versionMatch;
 
-// Use run number for version code to ensure it always increments on CI
-const versionCode = runNumber || pubspecVersionCode;
+// Use pubspecVersionCode as base, add run number to ensure it increments on CI
+const versionCode = runNumber ? String(parseInt(pubspecVersionCode, 10) + parseInt(runNumber, 10)) : pubspecVersionCode;
 // Use the proper version name from pubspec.yaml
 const versionName = pubspecVersionName;
 
