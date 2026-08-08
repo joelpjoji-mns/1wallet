@@ -11,6 +11,13 @@ import android.os.Bundle
 import android.content.Intent
 import org.json.JSONArray
 import org.json.JSONObject
+import androidx.core.app.NotificationManagerCompat
+import android.provider.Settings
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.Drawable
+import java.io.ByteArrayOutputStream
 
 class MainActivity : FlutterFragmentActivity() {
 	private val CHANNEL = "com.joelpjoji.one.wallet/sms"
@@ -100,8 +107,65 @@ class MainActivity : FlutterFragmentActivity() {
 						result.error("ERROR", e.message, null)
 					}
 				}
+				"checkNotificationPermission" -> {
+					val enabled = NotificationManagerCompat.getEnabledListenerPackages(this@MainActivity).contains(packageName)
+					result.success(enabled)
+				}
+				"requestNotificationPermission" -> {
+					val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+					startActivity(intent)
+					result.success(true)
+				}
+				"getInstalledApps" -> {
+					try {
+						val pm = packageManager
+						val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+						val jsonArray = JSONArray()
+						for (app in apps) {
+							if ((app.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 || (app.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0) {
+								val obj = JSONObject()
+								obj.put("packageName", app.packageName)
+								obj.put("appName", pm.getApplicationLabel(app).toString())
+								jsonArray.put(obj)
+							}
+						}
+						result.success(jsonArray.toString())
+					} catch (e: Exception) {
+						result.error("ERROR", e.message, null)
+					}
+				}
+				"getAppIcon" -> {
+					try {
+						val pkg = call.argument<String>("packageName")
+						if (pkg != null) {
+							val pm = packageManager
+							val icon = pm.getApplicationIcon(pkg)
+							val bitmap = getBitmapFromDrawable(icon)
+							val stream = ByteArrayOutputStream()
+							bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+							result.success(stream.toByteArray())
+						} else {
+							result.error("ERROR", "Package name is null", null)
+						}
+					} catch (e: Exception) {
+						result.error("ERROR", e.message, null)
+					}
+				}
 				else -> result.notImplemented()
 			}
 		}
+	}
+
+	private fun getBitmapFromDrawable(drawable: Drawable): Bitmap {
+		if (drawable is BitmapDrawable) {
+			return drawable.bitmap
+		}
+		val width = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth else 100
+		val height = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight else 100
+		val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+		val canvas = Canvas(bitmap)
+		drawable.setBounds(0, 0, canvas.width, canvas.height)
+		drawable.draw(canvas)
+		return bitmap
 	}
 }

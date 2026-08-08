@@ -265,6 +265,13 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
           ),
           const SizedBox(height: AppSpacing.sm),
           PremiumRow(
+            icon: Icons.notifications_active_outlined,
+            title: 'Notification capture',
+            subtitle: 'Turn incoming app notifications into review drafts',
+            onTap: () => context.push('/notification-capture'),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          PremiumRow(
             icon: Icons.backup_outlined,
             title: 'Local File Backup',
             subtitle: 'Export or restore a checksum-protected ledger archive',

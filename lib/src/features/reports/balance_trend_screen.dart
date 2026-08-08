@@ -291,10 +291,13 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
                   return const SizedBox.shrink();
                 }
                 final date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
+                final isZoomedOut = _period == 'This year' || _period == 'All time';
+                final format = isZoomedOut ? DateFormat('MMM yyyy') : DateFormat('dd-MMM');
+                
                 return Padding(
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
-                    DateFormat.yMMMd().format(date),
+                    format.format(date),
                     style: TextStyle(
                       color: scheme.onSurfaceVariant,
                       fontSize: 10,
@@ -345,7 +348,7 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
             isCurved: true,
             curveSmoothness: 0.1,
             color: const Color(0xff3b82f6),
-            barWidth: 2,
+            barWidth: (_period == 'This year' || _period == 'All time') ? 1.0 : 2.0,
             isStrokeCapRound: true,
             dotData: const FlDotData(show: false),
             belowBarData: BarAreaData(

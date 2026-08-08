@@ -65,3 +65,4 @@ dashboard.html
 .firebase/
 config.env*
 main_dart_live.js
+set_secrets.ps1

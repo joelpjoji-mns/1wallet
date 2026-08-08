@@ -8,6 +8,8 @@ import '../features/onboarding/onboarding_screen.dart';
 import '../features/reports/balance_trend_screen.dart';
 import '../features/routes/route_screens.dart';
 import '../features/sync/sync_screen.dart';
+import '../features/capture/notification_capture_screen.dart';
+import '../features/capture/notification_apps_screen.dart';
 import '../startup/startup_state.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -208,6 +210,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/import-sms',
         builder: (context, state) => const SmsCaptureScreen(),
+      ),
+      GoRoute(
+        path: '/notification-capture',
+        builder: (context, state) => const NotificationCaptureScreen(),
+      ),
+      GoRoute(
+        path: '/notification-capture/apps',
+        builder: (context, state) => const NotificationAppsScreen(),
       ),
       GoRoute(
         path: '/data-backup',

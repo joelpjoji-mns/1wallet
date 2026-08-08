@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -139,3 +140,61 @@ void listenForSmsRoute(void Function(String route) onRoute) {
     }
   });
 }
+
+Future<bool> getAndroidNotificationPermissionState() async {
+  try {
+    final result = await _channel.invokeMethod<bool>('checkNotificationPermission');
+    return result ?? false;
+  } catch (e) {
+    return false;
+  }
+}
+
+Future<bool> requestAndroidNotificationPermission() async {
+  try {
+    final result = await _channel.invokeMethod<bool>('requestNotificationPermission');
+    return result ?? false;
+  } catch (e) {
+    return false;
+  }
+}
+
+class AndroidInstalledApp {
+  final String packageName;
+  final String appName;
+
+  const AndroidInstalledApp({
+    required this.packageName,
+    required this.appName,
+  });
+}
+
+Future<List<AndroidInstalledApp>> getAndroidInstalledApps() async {
+  try {
+    final result = await _channel.invokeMethod<String>('getInstalledApps');
+    if (result == null) return [];
+    
+    final List<dynamic> parsed = jsonDecode(result);
+    return parsed.map((item) {
+      return AndroidInstalledApp(
+        packageName: item['packageName'].toString(),
+        appName: item['appName'].toString(),
+      );
+    }).toList()
+      ..sort((a, b) => a.appName.toLowerCase().compareTo(b.appName.toLowerCase()));
+  } catch (e) {
+    return [];
+  }
+}
+
+Future<Uint8List?> getAndroidAppIcon(String packageName) async {
+  try {
+    final result = await _channel.invokeMethod<Uint8List>('getAppIcon', {
+      'packageName': packageName,
+    });
+    return result;
+  } catch (e) {
+    return null;
+  }
+}
+
