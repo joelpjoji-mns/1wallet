@@ -8,6 +8,7 @@ import '../features/onboarding/onboarding_screen.dart';
 import '../features/reports/balance_trend_screen.dart';
 import '../features/routes/route_screens.dart';
 import '../features/sync/sync_screen.dart';
+import '../features/capture/capture_settings_screen.dart';
 import '../features/capture/notification_capture_screen.dart';
 import '../features/capture/notification_apps_screen.dart';
 import '../startup/startup_state.dart';
@@ -206,6 +207,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/imports/:id',
         builder: (context, state) =>
             ImportBatchDetailScreen(batchId: state.pathParameters['id'] ?? ''),
+      ),
+      GoRoute(
+        path: '/capture-settings',
+        builder: (context, state) => const CaptureSettingsScreen(),
       ),
       GoRoute(
         path: '/import-sms',

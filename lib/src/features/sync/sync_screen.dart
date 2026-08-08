@@ -257,20 +257,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
             ),
           ),
           const Gap(AppSpacing.lg),
-          PremiumRow(
-            icon: Icons.sms_outlined,
-            title: 'Import SMS',
-            subtitle: 'Paste a bank or card message and queue a review draft',
-            onTap: () => context.push('/import-sms'),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          PremiumRow(
-            icon: Icons.notifications_active_outlined,
-            title: 'Notification capture',
-            subtitle: 'Turn incoming app notifications into review drafts',
-            onTap: () => context.push('/notification-capture'),
-          ),
-          const SizedBox(height: AppSpacing.sm),
+
           PremiumRow(
             icon: Icons.backup_outlined,
             title: 'Local File Backup',

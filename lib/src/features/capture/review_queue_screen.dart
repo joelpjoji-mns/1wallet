@@ -42,9 +42,9 @@ class ReviewQueueScreen extends ConsumerWidget {
         title: const Text('Review & Inbox'),
         actions: [
           IconButton(
-            tooltip: 'Import SMS',
-            icon: const Icon(Icons.sms_outlined),
-            onPressed: () => context.push('/import-sms'),
+            tooltip: 'Auto-capture settings',
+            icon: const Icon(Icons.settings_suggest_outlined),
+            onPressed: () => context.push('/capture-settings'),
           ),
           if (unreadCount > 0)
             IconButton(
