@@ -416,12 +416,7 @@ class _TransactionDetailScreenState
     if (transaction.counterAmount != null &&
         !_sameMoney(transaction.counterAmount!, transaction.amount)) {
       lines.add(
-        'Counter ${formatMoney(transaction.counterAmount!, state.preferences.locale)}',
-      );
-    }
-    if (!_sameMoney(transaction.baseAmount, transaction.amount)) {
-      lines.add(
-        'Base ${formatMoney(transaction.baseAmount, state.preferences.locale)}',
+        'Received ${formatMoney(transaction.counterAmount!, state.preferences.locale)}',
       );
     }
     return lines;

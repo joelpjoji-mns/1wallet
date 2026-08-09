@@ -187,6 +187,9 @@ class TransactionRow extends StatelessWidget {
       );
       list.add('From ${_formatSignedMoney(fromAmt)}');
       displayedCurrencies.add(fromAmt.currency.toUpperCase());
+    } else if (transaction.type == 'transfer' && transaction.counterAmount != null && transaction.counterAmount!.currency.toUpperCase() != primary.currency.toUpperCase()) {
+      list.add('To ${_formatSignedMoney(transaction.counterAmount!)}');
+      displayedCurrencies.add(transaction.counterAmount!.currency.toUpperCase());
     } else if (transaction.originalAmount != null &&
         transaction.originalAmount!.currency.toUpperCase() !=
             primary.currency.toUpperCase()) {
