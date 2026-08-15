@@ -22,6 +22,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
   late final AppLifecycleListener _listener;
 
   String? _pendingSmsRoute;
+  bool _processingSpooledForRoute = false;
 
   @override
   void initState() {
@@ -49,9 +50,25 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     if (_pendingSmsRoute == null || !mounted) return;
     final startup = ref.read(startupStateProvider);
     if (!startup.isPending && startup.destination == StartupDestination.home) {
-      ref.read(appRouterProvider).push(_pendingSmsRoute!);
+      // Process any spooled notifications/SMS first so the review queue is
+      // populated *before* we navigate to it. Without this await the route
+      // arrives before the candidates are committed and the queue looks empty.
+      _processPendingSpoolThenPush(_pendingSmsRoute!);
       _pendingSmsRoute = null;
     }
+  }
+
+  Future<void> _processPendingSpoolThenPush(String route) async {
+    if (_processingSpooledForRoute) return;
+    _processingSpooledForRoute = true;
+    try {
+      await ref.read(ledgerProvider.notifier).processSpooledSms();
+      await ref.read(ledgerProvider.notifier).processSpooledNotifications();
+    } finally {
+      _processingSpooledForRoute = false;
+    }
+    if (!mounted) return;
+    ref.read(appRouterProvider).push(route);
   }
 
   @override
@@ -62,8 +79,14 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
 
   void _onStateChanged(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      ref.read(ledgerProvider.notifier).processSpooledSms();
-      ref.read(ledgerProvider.notifier).processSpooledNotifications();
+      // If there's a pending navigation route (e.g. tapping the auto-capture
+      // notification), _processPendingSpoolThenPush already handles spool
+      // processing + navigation atomically. Only fire background processing
+      // here when there is no pending route, to avoid double-processing.
+      if (_pendingSmsRoute == null) {
+        ref.read(ledgerProvider.notifier).processSpooledSms();
+        ref.read(ledgerProvider.notifier).processSpooledNotifications();
+      }
       ref
           .read(cloudSyncControllerProvider.notifier)
           .checkAndTriggerSync(fromResume: true);
