@@ -357,19 +357,97 @@ String? _detectTransactionType(String normalized) {
 
 String? _extractLast4(String text) {
   final patterns = [
+    // 1. Explicit keywords followed by digits (most reliable)
     RegExp(
-      r'(?:card|acct|account|a\/c|ending|ending in)[^\d]*(\d{3,4})\b',
+      r'(?:card|acct|account|a\/c|ac|ending|ending in|ending with)[^\d]*(\d{3,6})\b',
       caseSensitive: false,
     ),
-    RegExp(r'\b[xX*]{2,12}(\d{3,4})\b', caseSensitive: false),
-    RegExp(r'\b(\d{4})\s*(?:debited|credited)', caseSensitive: false),
+    // 2. "a/c no" / "account no" / "card no" variants
+    RegExp(
+      r'(?:a\/c\s*no|ac\s*no|account\s*no|card\s*no)[.\s]*[xX*]*(\d{3,6})\b',
+      caseSensitive: false,
+    ),
+    // 3. "card no ending" / "card number ending" patterns
+    RegExp(
+      r'(?:card|account|a\/c)\s*(?:no|number|num)?\s*(?:ending|end)\s*(?:in|with)?\s*[^\d]*(\d{3,6})\b',
+      caseSensitive: false,
+    ),
+    // 4. Masking with X/x/*/• followed by digits: XX1234, xxxx1234, **1234, ••1234
+    RegExp(r'[xX*•]{2,12}(\d{3,6})\b', caseSensitive: false),
+    // 5. Dots masking: ...1234, ..1234, …1234
+    RegExp(r'[.…]{2,6}(\d{3,6})\b', caseSensitive: false),
+    // 6. "4567 debited/credited" pattern
+    RegExp(r'\b(\d{3,4})\s*(?:debited|credited)', caseSensitive: false),
+    // 7. "from a/c 1234" / "to a/c 1234" / "in a/c 1234"
+    RegExp(
+      r'(?:from|to|in|on|for)\s+(?:a\/c|ac|acct|account)\s*[^\d]*(\d{3,6})\b',
+      caseSensitive: false,
+    ),
+    // 8. "your 1234 account" or "ur 1234 card"
+    RegExp(
+      r'(?:your|ur)\s+[^\d]*(\d{3,4})\s+(?:account|card|a\/c)',
+      caseSensitive: false,
+    ),
   ];
 
   for (final pattern in patterns) {
     final match = pattern.firstMatch(text);
     if (match != null) {
-      return match.group(1);
+      final digits = match.group(1)!;
+      // Return last 4 digits if we got more (e.g. from a 5-6 digit match)
+      if (digits.length > 4) {
+        return digits.substring(digits.length - 4);
+      }
+      return digits;
     }
   }
   return null;
+}
+
+/// Extracts all candidate digit sequences (3–6 digits) from the raw SMS,
+/// stripping masking characters (X, x, *, •, .) beforehand. This provides a
+/// fallback pool of numbers for the account matcher to try when _extractLast4
+/// only returns one result or none.
+List<String> extractAllNumberFragments(String text) {
+  final results = <String>{};
+
+  // 1. Find masked sequences and extract their trailing digits
+  //    e.g. "XX1234", "****5678", "...9012", "XXXX3456"
+  final maskedPattern = RegExp(r'[xX*•.…]{1,12}(\d{3,6})\b');
+  for (final match in maskedPattern.allMatches(text)) {
+    final digits = match.group(1)!;
+    results.add(digits);
+    if (digits.length > 4) {
+      results.add(digits.substring(digits.length - 4));
+    }
+    if (digits.length > 3) {
+      results.add(digits.substring(digits.length - 3));
+    }
+  }
+
+  // 2. Find digits preceded by account/card keywords
+  final keywordPattern = RegExp(
+    r'(?:card|acct|account|a\/c|ac|ending)\s*(?:in|with|no|number|num)?[^\d]{0,6}(\d{3,6})\b',
+    caseSensitive: false,
+  );
+  for (final match in keywordPattern.allMatches(text)) {
+    final digits = match.group(1)!;
+    results.add(digits);
+    if (digits.length > 4) {
+      results.add(digits.substring(digits.length - 4));
+    }
+    if (digits.length > 3) {
+      results.add(digits.substring(digits.length - 3));
+    }
+  }
+
+  // 3. Find all standalone 3-4 digit sequences (non-greedy, avoid matching
+  //    amounts, years, times, OTPs etc. — but include them for exhaustive
+  //    matching; the scorer will rank account matches by signal strength)
+  final barePattern = RegExp(r'(?<!\d)(\d{3,4})(?!\d)');
+  for (final match in barePattern.allMatches(text)) {
+    results.add(match.group(1)!);
+  }
+
+  return results.toList();
 }

@@ -2272,61 +2272,153 @@ String? _matchAccountToSms(LedgerState state, ParsedTransactionMessage parsed) {
 
   final rawTextLower = parsed.rawText.toLowerCase();
 
+  // Tokenize the raw SMS into lowercase words for word-level matching.
+  final smsTokens = rawTextLower
+      .replaceAll(RegExp(r'[^\w\s@]'), ' ')
+      .split(RegExp(r'\s+'))
+      .where((t) => t.isNotEmpty)
+      .toSet();
+
+  // Extract ALL digit fragments from the SMS for exhaustive number matching.
+  final allFragments = extractAllNumberFragments(parsed.rawText);
+
   Account? bestMatch;
   int highestScore = -1;
 
   for (final account in activeAccounts) {
     int score = 0;
 
-    // 1. Exact Account Number Match (Overkill)
-    // Try to match exact account number from encrypted details if we have access to it in memory
-    // or from accountLast4 / cardLast4
+    // ── 1. Primary last4 match (from _extractLast4 result) ──────────
     if (parsed.last4 != null) {
-      if (account.accountLast4 == parsed.last4 ||
-          account.cardLast4 == parsed.last4) {
-        score += 100; // Strongest indicator
+      if (_digitsSuffixMatch(account.cardLast4, parsed.last4!) ||
+          _digitsSuffixMatch(account.accountLast4, parsed.last4!)) {
+        score += 100;
       }
 
-      // If the parsed "last4" is actually longer (like a full account number)
-      // we check if it matches the encrypted details 'accountNumber'
-      if (parsed.last4!.length > 4 && account.encryptedDetails != null) {
+      // Full account number suffix match from encrypted details
+      if (account.encryptedDetails != null) {
         final accNum = account.encryptedDetails!['accountNumber'];
-        if (accNum != null &&
-            accNum.replaceAll(RegExp(r'\D'), '').endsWith(parsed.last4!)) {
-          score += 150;
+        if (accNum != null) {
+          final cleanAccNum = accNum.replaceAll(RegExp(r'\D'), '');
+          if (cleanAccNum.isNotEmpty && cleanAccNum.endsWith(parsed.last4!)) {
+            score += 150;
+          }
         }
       }
     }
 
-    // 2. Institution Match
+    // ── 2. Exhaustive fragment matching ──────────────────────────────
+    // Try every digit fragment found in the SMS against this account's
+    // cardLast4 / accountLast4 / full account number.
+    if (score < 100) {
+      // Only bother if we haven't already matched via primary last4
+      for (final fragment in allFragments) {
+        if (_digitsSuffixMatch(account.cardLast4, fragment) ||
+            _digitsSuffixMatch(account.accountLast4, fragment)) {
+          score += 80;
+          break;
+        }
+      }
+    }
+    if (account.encryptedDetails != null) {
+      final accNum = account.encryptedDetails!['accountNumber'];
+      if (accNum != null) {
+        final cleanAccNum = accNum.replaceAll(RegExp(r'\D'), '');
+        if (cleanAccNum.isNotEmpty) {
+          for (final fragment in allFragments) {
+            if (fragment.length >= 3 && cleanAccNum.endsWith(fragment)) {
+              score += 120;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // ── 3. Institution match ─────────────────────────────────────────
     if (parsed.institutionName != null && account.institution != null) {
-      if (account.institution!.toLowerCase().contains(
-        parsed.institutionName!.toLowerCase(),
-      )) {
+      final instLower = account.institution!.toLowerCase();
+      final parsedInstLower = parsed.institutionName!.toLowerCase();
+      if (instLower.contains(parsedInstLower) ||
+          parsedInstLower.contains(instLower)) {
         score += 50;
       }
     } else if (account.institution != null) {
-      // Look for the institution directly in the raw SMS
-      if (rawTextLower.contains(account.institution!.toLowerCase())) {
+      final instLower = account.institution!.toLowerCase();
+      if (rawTextLower.contains(instLower)) {
         score += 30;
+      }
+      // Also try word-level institution matching
+      final instTokens = instLower
+          .split(RegExp(r'\s+'))
+          .where((t) => t.length > 2)
+          .toSet();
+      if (instTokens.isNotEmpty &&
+          instTokens.every((t) => smsTokens.contains(t))) {
+        score += 35;
       }
     }
 
-    // 3. Name or Group Name Match
-    if (rawTextLower.contains(account.name.toLowerCase())) {
-      score += 40;
-    }
-    if (account.groupName != null &&
-        rawTextLower.contains(account.groupName!.toLowerCase())) {
-      score += 20;
+    // ── 4. Account name matching ─────────────────────────────────────
+    final nameLower = account.name.toLowerCase();
+    // Full name match
+    if (rawTextLower.contains(nameLower)) {
+      score += 50;
+    } else {
+      // Word-level name matching: each word of the account name found in
+      // the SMS contributes proportionally.
+      final nameTokens = nameLower
+          .split(RegExp(r'\s+'))
+          .where((t) => t.length > 2)
+          .toList();
+      if (nameTokens.isNotEmpty) {
+        final matched = nameTokens.where((t) => smsTokens.contains(t)).length;
+        if (matched > 0) {
+          // Scale: 1 of 1 word = 40, 2 of 3 words ≈ 27, etc.
+          score += (40 * matched / nameTokens.length).round();
+        }
+      }
     }
 
-    // 4. Currency tie-breaker
-    if (parsed.amount != null && parsed.amount!.currency == account.currency) {
+    // ── 5. Group name match ──────────────────────────────────────────
+    if (account.groupName != null) {
+      final groupLower = account.groupName!.toLowerCase();
+      if (rawTextLower.contains(groupLower)) {
+        score += 20;
+      } else {
+        final groupTokens = groupLower
+            .split(RegExp(r'\s+'))
+            .where((t) => t.length > 2)
+            .toSet();
+        if (groupTokens.isNotEmpty &&
+            groupTokens.every((t) => smsTokens.contains(t))) {
+          score += 15;
+        }
+      }
+    }
+
+    // ── 6. Account type contextual match ─────────────────────────────
+    // If the SMS explicitly mentions "card" and the account type is "card",
+    // or mentions "a/c" / "account" and the type is "bank", boost slightly.
+    if (account.type == 'card' &&
+        RegExp(r'\b(card|credit\s*card|debit\s*card)\b', caseSensitive: false)
+            .hasMatch(parsed.rawText)) {
+      score += 10;
+    } else if ((account.type == 'bank' || account.type == 'savings' || account.type == 'checking') &&
+        RegExp(r'\b(a/c|acct|account|savings|checking)\b', caseSensitive: false)
+            .hasMatch(parsed.rawText)) {
+      score += 10;
+    }
+
+    // ── 7. Currency tie-breaker ──────────────────────────────────────
+    if (parsed.amount != null &&
+        parsed.amount!.currency.toUpperCase() ==
+            account.currency.toUpperCase()) {
       score += 5;
     }
 
-    if (score > highestScore && score > 0) {
+    // ── Accumulate best ──────────────────────────────────────────────
+    if (score > highestScore && score >= 10) {
       highestScore = score;
       bestMatch = account;
     }
@@ -2334,6 +2426,18 @@ String? _matchAccountToSms(LedgerState state, ParsedTransactionMessage parsed) {
 
   return bestMatch?.id;
 }
+
+/// Checks whether [accountDigits] suffix-matches [smsDigits], handling the
+/// common case where the SMS has 3 digits and the account stores 4, or vice
+/// versa. Both values are compared as pure digit strings (case-insensitive).
+bool _digitsSuffixMatch(String? accountDigits, String smsDigits) {
+  if (accountDigits == null || accountDigits.isEmpty) return false;
+  final a = accountDigits.toLowerCase();
+  final s = smsDigits.toLowerCase();
+  // Either one is a suffix of the other
+  return a.endsWith(s) || s.endsWith(a);
+}
+
 
 String _rowSignature(
   ParsedWalletCsvRow row,
