@@ -23,7 +23,11 @@ class _DebtFreeTargetWidgetState extends ConsumerState<DebtFreeTargetWidget> {
   @override
   Widget build(BuildContext context) {
     final activeLoans = widget.state.accounts
-        .where((a) => !a.isArchived && a.type == 'loan')
+        .where(
+          (a) =>
+              (a.type == 'loan' || a.type == 'overdraft') &&
+              !isPastLoan(widget.state, a),
+        )
         .toList();
 
     double totalPrincipal = 0;
@@ -163,7 +167,9 @@ class ActiveSavingsGoalsWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
-    final goals = state.accounts.where((a) => a.type == 'savings').toList();
+    final goals = state.accounts
+        .where((a) => a.type == 'savings' && !a.isArchived)
+        .toList();
 
     return DashboardCard(
       onTap: () => context.push('/accounts'),
@@ -381,7 +387,11 @@ class HighInterestAlertWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activeLoans = state.accounts
-        .where((a) => !a.isArchived && a.type == 'loan')
+        .where(
+          (a) =>
+              (a.type == 'loan' || a.type == 'overdraft') &&
+              !isPastLoan(state, a),
+        )
         .toList();
     if (activeLoans.isEmpty) return const SizedBox.shrink();
 

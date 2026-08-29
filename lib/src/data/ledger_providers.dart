@@ -1792,7 +1792,52 @@ class LedgerController extends StateNotifier<LedgerState> {
 
   Timer? _autoBackupTimer;
 
+  /// Auto-archives loan/overdraft accounts whose current balance has reached
+  /// zero (fully paid off) and pauses their associated scheduled EMIs.
+  LedgerState _applyAutoArchiveForPaidOffLoans(LedgerState next) {
+    final accounts = [...next.accounts];
+    var transactions = next.transactions;
+    bool changed = false;
+
+    for (int i = 0; i < accounts.length; i++) {
+      final account = accounts[i];
+      if (account.isArchived) continue;
+      if (account.type != 'loan' && account.type != 'overdraft') continue;
+
+      // Only auto-archive loans that had a principal (were real loans)
+      final principalMinor =
+          account.loanDetails?.principal?.amountMinor.abs() ??
+          account.openingBalance.amountMinor.abs();
+      if (principalMinor <= 0) continue;
+
+      // Balance >= 0 means the loan has been fully paid off
+      final remaining = accountBalance(next, account).amountMinor;
+      if (remaining < 0) continue;
+
+      // Archive the account
+      accounts[i] = account.copyWith(isArchived: true);
+      changed = true;
+
+      // Pause any scheduled EMI transactions linked to this loan
+      transactions = transactions.map((tx) {
+        if ((tx.accountId == account.id ||
+                tx.counterAccountId == account.id) &&
+            tx.status == 'scheduled') {
+          return tx.copyWith(status: 'paused');
+        }
+        return tx;
+      }).toList();
+    }
+
+    if (!changed) return next;
+    return next.copyWith(accounts: accounts, transactions: transactions);
+  }
+
   Future<void> _commit(LedgerState next) async {
+    // Auto-archive any loan accounts that have been fully paid off before
+    // normalizing, so the rest of the system sees them as archived immediately.
+    final withAutoArchived = _applyAutoArchiveForPaidOffLoans(next);
+
     // Skip the expensive category taxonomy rebuild once the ledger is
     // already on the current version: every path that can hand us an
     // out-of-date/unnormalized ledger (archive decode, cloud restore
@@ -1801,7 +1846,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     // already taxonomy-normalized. This keeps `_commit` (called on every
     // user edit) cheap while still fully migrating+normalizing genuinely
     // legacy/out-of-date states.
-    final normalized = normalizeLedgerState(next);
+    final normalized = normalizeLedgerState(withAutoArchived);
     state = normalized;
     await _repository.save(normalized);
 

@@ -138,7 +138,7 @@ class LoansScreen extends ConsumerWidget {
                   : Icons.account_balance_outlined,
               title: mode == 'past' ? 'No past loans yet' : 'No loans yet',
               body: mode == 'past'
-                  ? 'Archived or closed loans will appear here once you finish one and archive it.'
+                  ? 'Paid-off loans automatically close here. You can also manually archive a loan from its detail page.'
                   : 'Create a loan account to track EMIs, balances, and payoff progress.',
               actionLabel: mode == 'past' ? 'Back to loans' : 'Create loan',
               onAction: () =>
@@ -2662,10 +2662,14 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               );
               final payoffStr = event != null
                   ? ' · Pays off ${formatLedgerDate(event.payoffDate, locale)}'
-                  : '';
+                  : ' · No payoff date (check EMI)';
+              final rawBal = accountBalance(widget.state, loan);
+              final outstandingBal = rawBal.copyWith(
+                amountMinor: rawBal.amountMinor.abs(),
+              );
               final balStr = maskMoneyIfPrivate(
                 widget.state,
-                formatMoney(accountBalance(widget.state, loan), locale),
+                'Outstanding: ${formatMoney(outstandingBal, locale)}',
               );
 
               return ListTile(

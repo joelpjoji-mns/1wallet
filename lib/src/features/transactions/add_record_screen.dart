@@ -794,7 +794,9 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
   Future<void> _showAccountPicker(bool counter) async {
     final state = ref.read(ledgerProvider);
     final accounts = sortAccounts(
-      state.accounts.where((a) => counter ? a.id != _accountId : !a.isArchived),
+      state.accounts.where(
+        (a) => !a.isArchived && (counter ? a.id != _accountId : true),
+      ),
     );
     final nextId = await showFullScreenPicker<String>(
       context: context,
