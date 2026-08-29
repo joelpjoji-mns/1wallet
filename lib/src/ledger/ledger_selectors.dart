@@ -1489,10 +1489,28 @@ TransactionRecord? existingLoanEmi(LedgerState state, String? loanId) {
 LoanProjection loanProjection(LedgerState state, Account loan) {
   final remaining = accountBalance(state, loan).amountMinor.abs();
   final details = effectiveLoanDetails(state, loan);
-  final emi =
+  final emiTx = existingLoanEmi(state, loan.id);
+  final rawEmi =
       details.repaymentAmount?.amountMinor.abs() ??
-      existingLoanEmi(state, loan.id)?.amount.amountMinor.abs() ??
+      emiTx?.amount.amountMinor.abs() ??
       0;
+  final frequency =
+      emiTx?.recurrenceFrequency ?? details.recurrenceFrequency;
+  final interval =
+      emiTx?.recurrenceInterval ?? details.recurrenceInterval;
+
+  double monthlyMultiplier = 1.0;
+  if (frequency == 'yearly') {
+    monthlyMultiplier = 1 / 12;
+  } else if (frequency == 'weekly') {
+    monthlyMultiplier = 52 / 12;
+  } else if (frequency == 'daily') {
+    monthlyMultiplier = 365 / 12;
+  }
+  final effectiveInterval = interval > 0 ? interval : 1;
+  monthlyMultiplier = monthlyMultiplier / effectiveInterval;
+
+  final emi = (rawEmi * monthlyMultiplier).round();
   final rate = details.interestRatePercent ?? 0;
   if (remaining == 0) {
     return const LoanProjection(
