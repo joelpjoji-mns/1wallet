@@ -306,7 +306,8 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
           final prefs = await SharedPreferences.getInstance();
           const notificationKey = 'lastNotifiedVersionCode.stable';
           final lastNotifiedVersionCode = prefs.getInt(notificationKey) ?? 0;
-          if (latestVersionCode > lastNotifiedVersionCode) {
+          if (latestVersionCode > lastNotifiedVersionCode ||
+              latestVersionCode > currentVersionCode) {
             await NotificationService.showUpdateNotification(
               release.versionName,
             );

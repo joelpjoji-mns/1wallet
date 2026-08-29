@@ -12,35 +12,47 @@ class UpdatesScreen extends ConsumerWidget {
     final state = ref.watch(appUpdateProvider);
     final provider = ref.read(appUpdateProvider.notifier);
 
+    final hasUpdate = state.latestRelease != null;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Updates')),
+      appBar: AppBar(
+        title: const Text('Updates'),
+        actions: [
+          IconButton(
+            tooltip: 'Check for updates',
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: state.status == UpdateStatus.checking
+                ? null
+                : () => provider.checkForUpdates(),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildStatusCard(context, state, provider),
-          const SizedBox(height: 16),
-          _buildCurrentVersionCard(context, state),
-          const SizedBox(height: 16),
-          if (state.latestRelease != null)
+          _buildHeroCard(context, state, provider),
+          if (hasUpdate) ...[
+            const SizedBox(height: 16),
             _buildReleaseInfoCard(context, state.latestRelease!),
-          if (state.latestRelease != null) const SizedBox(height: 16),
-          if (state.latestRelease != null)
+            const SizedBox(height: 16),
             _buildChangelogCard(
               context,
               state.latestRelease!.changelog,
-              title: 'Available update changelog',
+              title: 'What\'s new in ${state.latestRelease!.versionName}',
             ),
-          if (state.latestRelease != null && state.currentRelease != null)
+          ],
+          if (state.currentRelease != null && !hasUpdate) ...[
             const SizedBox(height: 16),
-          if (state.currentRelease != null)
             _buildChangelogCard(
               context,
               state.currentRelease!.changelog,
-              title: 'Installed version changelog',
+              title: 'Current build changelog',
             ),
-          const SizedBox(height: 24),
-          if (state.status == UpdateStatus.downloading)
+          ],
+          if (state.status == UpdateStatus.downloading) ...[
+            const SizedBox(height: 20),
             _buildDownloadProgress(context, state),
+          ],
           const SizedBox(height: 24),
           _buildActionButtons(context, state, provider),
         ],
@@ -48,110 +60,105 @@ class UpdatesScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatusCard(
+  Widget _buildHeroCard(
     BuildContext context,
     AppUpdateState state,
     AppUpdateProvider provider,
   ) {
     final theme = Theme.of(context);
-    String title = 'Checking for updates...';
-    String subtitle = '';
-    IconData icon = Icons.sync;
-    Color color = theme.colorScheme.primary;
+    final scheme = theme.colorScheme;
+    final hasUpdate = state.latestRelease != null;
 
-    if (state.status == UpdateStatus.idle) {
-      if (state.latestRelease != null) {
-        title = 'Update Available';
-        subtitle = 'Version ${state.latestRelease!.versionName}';
-        icon = Icons.system_update;
-        color = theme.colorScheme.secondary;
-      } else {
-        title = 'App is up to date';
-        subtitle = 'You are on the latest version';
-        icon = Icons.check_circle;
-        color = theme.colorScheme.tertiary;
-      }
-    } else if (state.status == UpdateStatus.error) {
-      title = 'Update check unavailable';
-      subtitle = state.errorMessage ?? '';
-      icon = Icons.error;
-      color = theme.colorScheme.error;
-    } else if (state.status == UpdateStatus.downloaded) {
-      title = 'Update Ready to Install';
-      subtitle = state.errorMessage ?? 'Tap install to apply the update';
-      icon = Icons.download_done;
-      color = theme.colorScheme.primary;
-    } else if (state.status == UpdateStatus.installing) {
-      title = 'Opening installer...';
-      subtitle = 'Confirm the Android install prompt to finish updating.';
-      icon = Icons.install_mobile;
-      color = theme.colorScheme.primary;
-    }
-
-    return Card(
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: color.withValues(alpha: 0.1),
-          child: Icon(icon, color: color),
-        ),
-        title: Text(
-          kIsWeb &&
-                  state.latestRelease != null &&
-                  state.status == UpdateStatus.idle
-              ? 'Web Update Available'
-              : title,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        subtitle: Text(subtitle),
-      ),
-    );
-  }
-
-  Widget _buildCurrentVersionCard(BuildContext context, AppUpdateState state) {
-    final theme = Theme.of(context);
     final versionName = state.currentVersionName.isEmpty
         ? 'Unknown'
         : state.currentVersionName;
     final versionCode = state.currentVersionCode == 0
         ? 'Unknown'
         : state.currentVersionCode.toString();
-    final release = state.currentRelease;
+
+    String statusTitle;
+    String statusSubtitle;
+    IconData icon;
+    Color color;
+
+    if (state.status == UpdateStatus.checking) {
+      statusTitle = 'Checking for updates...';
+      statusSubtitle = 'Connecting to update servers';
+      icon = Icons.sync_rounded;
+      color = scheme.primary;
+    } else if (state.status == UpdateStatus.idle) {
+      if (hasUpdate) {
+        statusTitle = 'Update Available';
+        statusSubtitle = 'Version ${state.latestRelease!.versionName}';
+        icon = Icons.system_update_rounded;
+        color = scheme.primary;
+      } else {
+        statusTitle = 'App is up to date';
+        statusSubtitle = 'Version $versionName (Build $versionCode)';
+        icon = Icons.check_circle_rounded;
+        color = scheme.primary;
+      }
+    } else if (state.status == UpdateStatus.error) {
+      statusTitle = 'Update check unavailable';
+      statusSubtitle = state.errorMessage ?? 'Could not reach update server';
+      icon = Icons.error_outline_rounded;
+      color = scheme.error;
+    } else if (state.status == UpdateStatus.downloaded) {
+      statusTitle = 'Update Ready to Install';
+      statusSubtitle = 'Version ${state.latestRelease?.versionName ?? ''} is downloaded';
+      icon = Icons.download_done_rounded;
+      color = scheme.primary;
+    } else {
+      statusTitle = 'Opening installer...';
+      statusSubtitle = 'Confirm prompt to finish updating';
+      icon = Icons.install_mobile_rounded;
+      color = scheme.primary;
+    }
 
     return Card(
+      elevation: 0,
+      color: scheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: scheme.outlineVariant),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Current app version',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.phone_android_outlined),
-              title: Text(versionName),
-              subtitle: Text('Build $versionCode'),
-              trailing: release == null
-                  ? const Tooltip(
-                      message: 'No release metadata found for this build',
-                      child: Icon(Icons.info_outline),
-                    )
-                  : null,
-            ),
-
-            if (release == null) ...[
-              const SizedBox(height: 8),
-              Text(
-                'No changelog metadata was found for this installed build yet. Once the release metadata is published, its full changelog will appear here.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+              leading: CircleAvatar(
+                radius: 24,
+                backgroundColor: color.withValues(alpha: 0.12),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              title: Text(
+                statusTitle,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
                 ),
+              ),
+              subtitle: Text(statusSubtitle),
+            ),
+            if (hasUpdate) ...[
+              const Divider(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Installed version',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                  Text(
+                    '$versionName ($versionCode)',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ],
           ],

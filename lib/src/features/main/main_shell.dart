@@ -77,6 +77,7 @@ class _MainShellState extends ConsumerState<MainShell>
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(exchangeRateServiceProvider).refreshRatesIfStale();
+      ref.read(appUpdateProvider.notifier).checkForUpdates();
     });
   }
 
@@ -84,6 +85,7 @@ class _MainShellState extends ConsumerState<MainShell>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       ref.read(exchangeRateServiceProvider).refreshRatesIfStale();
+      ref.read(appUpdateProvider.notifier).checkForUpdates();
     }
   }
 
