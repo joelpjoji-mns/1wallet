@@ -131,12 +131,6 @@ List<Money> balanceBreakdownByCurrency(LedgerState state, {String? accountId}) {
   final totals = <String, int>{};
   for (final account in accounts) {
     for (final money in _accountCurrencyNet(state, account)) {
-      totals.putIfAbsent(money.currency, () => 0);
-    }
-  }
-
-  for (final account in accounts) {
-    for (final money in _accountCurrencyNet(state, account)) {
       _addMoney(totals, money);
     }
   }
