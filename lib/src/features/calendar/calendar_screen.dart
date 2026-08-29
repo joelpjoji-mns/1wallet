@@ -50,12 +50,27 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         .where((day) => day.month == _visibleMonth.month)
         .expand((day) => summaries[_key(day)] ?? <TransactionRecord>[])
         .toList();
+    final baseCurrency = state.preferences.baseCurrency;
     final income = monthTransactions
         .where((tx) => incomeTypes.contains(tx.type))
-        .fold<int>(0, (sum, tx) => sum + tx.baseAmount.amountMinor);
+        .fold<int>(0, (sum, tx) {
+          final converted = convertMoneyForDisplay(
+            state,
+            tx.amount,
+            baseCurrency,
+          );
+          return sum + converted.amountMinor;
+        });
     final expense = monthTransactions
         .where((tx) => expenseTypes.contains(tx.type))
-        .fold<int>(0, (sum, tx) => sum + tx.baseAmount.amountMinor);
+        .fold<int>(0, (sum, tx) {
+          final converted = convertMoneyForDisplay(
+            state,
+            tx.amount,
+            baseCurrency,
+          );
+          return sum + converted.amountMinor;
+        });
 
     final net = _projectedNetThroughMonthEnd(
       state,
@@ -772,12 +787,27 @@ class _DayCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final baseCurrency = state.preferences.baseCurrency;
     final income = records
         .where((tx) => incomeTypes.contains(tx.type))
-        .fold<int>(0, (sum, tx) => sum + tx.baseAmount.amountMinor);
+        .fold<int>(0, (sum, tx) {
+          final converted = convertMoneyForDisplay(
+            state,
+            tx.amount,
+            baseCurrency,
+          );
+          return sum + converted.amountMinor;
+        });
     final expense = records
         .where((tx) => expenseTypes.contains(tx.type))
-        .fold<int>(0, (sum, tx) => sum + tx.baseAmount.amountMinor);
+        .fold<int>(0, (sum, tx) {
+          final converted = convertMoneyForDisplay(
+            state,
+            tx.amount,
+            baseCurrency,
+          );
+          return sum + converted.amountMinor;
+        });
     final today = DateTime.now();
     final isToday =
         date.year == today.year &&
