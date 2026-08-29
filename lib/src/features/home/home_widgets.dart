@@ -446,8 +446,9 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
               t.accountId == selectedAccountId ||
               t.counterAccountId == selectedAccountId,
         )
-        .take(5)
+        .take(25)
         .toList();
+
     return HomeWidgetCard(
       title: 'Recent records',
       icon: Icons.format_list_bulleted_rounded,
@@ -460,18 +461,28 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
               title: 'No records yet',
               body: 'Your latest transactions will appear here.',
             )
-          : Column(
-              children: [
-                for (final transaction in recent) ...[
-                  TransactionRow(
-                    state: state,
-                    transaction: transaction,
-                    onTap: () => context.push('/transaction/${transaction.id}'),
-                  ),
-                  if (transaction != recent.last)
-                    const SizedBox(height: AppSpacing.xxs),
-                ],
-              ],
+          : ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 275),
+              child: Scrollbar(
+                thumbVisibility: false,
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  physics: const ClampingScrollPhysics(),
+                  padding: EdgeInsets.zero,
+                  itemCount: recent.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: AppSpacing.xxs),
+                  itemBuilder: (context, index) {
+                    final transaction = recent[index];
+                    return TransactionRow(
+                      state: state,
+                      transaction: transaction,
+                      onTap: () =>
+                          context.push('/transaction/${transaction.id}'),
+                    );
+                  },
+                ),
+              ),
             ),
     );
   }
