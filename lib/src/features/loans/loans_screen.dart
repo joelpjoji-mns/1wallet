@@ -43,9 +43,17 @@ class LoansScreen extends ConsumerWidget {
         .toList();
     final listedLoans = mode == 'past' ? pastLoans : activeLoans;
     final selectedLoan = accountById(state, accountId);
+    final displayCurrency = state.preferences.displayCurrency;
     final emi = scheduledTransactions(state)
         .where((record) => record.type == 'loan_repayment')
-        .fold<int>(0, (sum, record) => sum + record.amount.amountMinor);
+        .fold<int>(0, (sum, record) {
+          final converted = convertMoneyForDisplay(
+            state,
+            record.amount,
+            displayCurrency,
+          );
+          return sum + converted.amountMinor;
+        });
     return RouteScaffold(
       title: switch (mode) {
         'forecast' => 'Loan forecast',
@@ -86,18 +94,15 @@ class LoansScreen extends ConsumerWidget {
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: MetricTile(
-                      label: mode == 'past' ? 'Archived' : 'Next EMI',
+                      label: mode == 'past' ? 'Archived' : 'Total EMI',
                       value: mode == 'past'
                           ? '${pastLoans.length}'
                           : maskMoneyIfPrivate(
                               state,
                               formatMoney(
-                                convertMoneyForDisplay(
-                                  state,
-                                  Money(
-                                    amountMinor: emi,
-                                    currency: state.preferences.baseCurrency,
-                                  ),
+                                Money(
+                                  amountMinor: emi,
+                                  currency: displayCurrency,
                                 ),
                                 state.preferences.locale,
                               ),
