@@ -1373,9 +1373,16 @@ class LoansAndEmisHomeWidget extends ConsumerWidget {
               !transaction.occurredAt.isAfter(monthEnd),
         )
         .toList();
+    final displayCurrency = state.preferences.displayCurrency;
     final emiTotal = emis.fold<int>(
       0,
-      (sum, transaction) => sum + transaction.baseAmount.amountMinor,
+      (sum, transaction) =>
+          sum +
+          convertMoneyForDisplay(
+            state,
+            transaction.amount,
+            displayCurrency,
+          ).amountMinor,
     );
     final next = emis.isEmpty ? null : emis.first;
     return HomeWidgetCard(
