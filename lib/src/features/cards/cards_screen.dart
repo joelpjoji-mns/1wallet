@@ -17,7 +17,11 @@ class CardsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(ledgerProvider);
     final cards = state.accounts
-        .where((account) => account.type == 'credit_card')
+        .where(
+          (account) =>
+              !account.isArchived &&
+              (account.type == 'credit_card' || account.type == 'card'),
+        )
         .toList();
     return _AccountCollectionScreen(
       title: 'Cards',

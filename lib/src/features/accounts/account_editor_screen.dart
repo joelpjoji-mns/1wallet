@@ -622,6 +622,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
       options: [
         for (final type in [
           'bank',
+          'savings',
           'cash',
           'credit_card',
           'wallet',
