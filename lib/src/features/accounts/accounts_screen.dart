@@ -24,14 +24,6 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
   var _showExcluded = true;
   var _showArchived = false;
   List<String>? _order;
-  final double _liquidValue = 0.5;
-  final _inputController = TextEditingController(text: '0.5');
-
-  @override
-  void dispose() {
-    _inputController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {

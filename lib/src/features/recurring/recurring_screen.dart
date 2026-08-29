@@ -1495,7 +1495,7 @@ class RecurringDetailView extends ConsumerWidget {
                             children: [
                               Flexible(
                                 child: Text(
-                                  'Paid: ${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: paid, currency: loanAccount!.currency), state.preferences.locale))}',
+                                  'Paid: ${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: paid, currency: loanAccount.currency), state.preferences.locale))}',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(

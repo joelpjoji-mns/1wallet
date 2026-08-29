@@ -49,8 +49,6 @@ class _NotificationCaptureScreenState extends ConsumerState<NotificationCaptureS
     });
   }
 
-  LedgerPreferences get _prefs => ref.read(ledgerProvider).preferences;
-
   void _updatePrefs(LedgerPreferences next) {
     ref.read(ledgerProvider.notifier).updatePreferences(next);
   }

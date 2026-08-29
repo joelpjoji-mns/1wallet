@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
-import '../common/route_scaffold.dart';
 import 'sms_inbox_reader.dart'; // we put the native methods here
 
 class NotificationAppsScreen extends ConsumerStatefulWidget {

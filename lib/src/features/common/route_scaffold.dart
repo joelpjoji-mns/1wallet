@@ -61,8 +61,6 @@ class RouteScaffold extends StatelessWidget {
               )
             : null);
 
-    final isDesktop = AppResponsiveLayout.isDesktop(context);
-
     Widget body = SafeArea(
       child: Align(
         alignment: Alignment.topCenter,

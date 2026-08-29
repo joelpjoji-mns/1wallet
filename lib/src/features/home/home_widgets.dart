@@ -36,12 +36,6 @@ final _homeSortedTransactionsProvider =
       return sortedTransactions(state, includeScheduled: false);
     });
 
-final _homeCurrentMonthFlowProvider =
-    Provider.autoDispose<({Money income, Money expense})>((ref) {
-      final state = ref.watch(ledgerProvider);
-      return flowForCurrentMonth(state);
-    });
-
 Widget buildHomeDashboardWidget({
   required BuildContext context,
   required HomeDashboardWidgetId id,
@@ -1932,10 +1926,6 @@ String _formatDisplayBaseMoney(LedgerState state, int amountMinor) {
   );
 }
 
-int _displayBaseMinor(LedgerState state, int amountMinor) {
-  return _displayBaseMoney(state, amountMinor).amountMinor;
-}
-
 int _displayAccountBalanceMinor(
   LedgerState state,
   Account account, {
@@ -2188,12 +2178,6 @@ List<_CategoryTotal> _categoryTotals(
   final items = totals.values.toList();
   items.sort((left, right) => right.amountMinor.compareTo(left.amountMinor));
   return items;
-}
-
-String _monthRangeLabel(DateTime value, String locale) {
-  final start = DateTime(value.year, value.month);
-  final end = DateTime(value.year, value.month + 1, 0);
-  return '${formatLedgerDate(start, locale)} to ${formatLedgerDate(end, locale)}';
 }
 
 String _shortDate(DateTime date, String locale) =>

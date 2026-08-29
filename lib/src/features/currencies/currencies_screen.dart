@@ -61,10 +61,11 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
             tooltip: 'Refresh rates',
             icon: const Icon(Icons.refresh_rounded),
             onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
               try {
                 await ref.read(exchangeRateServiceProvider).refreshRates();
                 if (mounted) {
-                  ScaffoldMessenger.of(context)
+                  messenger
                     ..hideCurrentSnackBar()
                     ..showSnackBar(
                       const SnackBar(
@@ -75,7 +76,7 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                 }
               } catch (e) {
                 if (mounted) {
-                  ScaffoldMessenger.of(context)
+                  messenger
                     ..hideCurrentSnackBar()
                     ..showSnackBar(
                       SnackBar(

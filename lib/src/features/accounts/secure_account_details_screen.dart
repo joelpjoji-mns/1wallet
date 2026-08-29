@@ -329,7 +329,6 @@ class _SecureAccountDetailsScreenState
     final account = state.accounts.firstWhere((a) => a.id == widget.accountId);
 
     final isCard = account.type == 'card' || account.type == 'credit_card';
-    final isCash = account.type == 'cash';
 
     return RouteScaffold(
       title: 'Secure Details',
