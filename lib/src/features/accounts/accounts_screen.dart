@@ -11,9 +11,9 @@ import '../../widgets/privacy_text.dart';
 import '../transactions/transactions_components.dart';
 
 class AccountsScreen extends ConsumerStatefulWidget {
-  const AccountsScreen({required this.onMenuPressed, super.key});
+  const AccountsScreen({this.onMenuPressed, super.key});
 
-  final VoidCallback onMenuPressed;
+  final VoidCallback? onMenuPressed;
 
   @override
   ConsumerState<AccountsScreen> createState() => _AccountsScreenState();
