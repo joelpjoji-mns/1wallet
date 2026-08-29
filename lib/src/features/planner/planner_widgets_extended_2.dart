@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -129,27 +131,37 @@ class _DebtFreeTargetWidgetState extends ConsumerState<DebtFreeTargetWidget> {
               'Extra Monthly Payment: ${_extraPayment > 0 ? formatMoney(Money(amountMinor: _extraPayment.toInt(), currency: widget.state.preferences.displayCurrency), widget.state.preferences.locale) : 'None'}',
               style: const TextStyle(fontSize: 14),
             ),
-            Slider(
-              value: _extraPayment.clamp(
-                0.0,
-                totalPrincipal > 500000 ? totalPrincipal : 500000.0,
-              ),
-              max: totalPrincipal > 500000 ? totalPrincipal : 500000.0,
-              divisions: 100,
-              label: maskMoneyIfPrivate(
-                widget.state,
-                formatMoney(
-                  Money(
-                    amountMinor: _extraPayment.toInt(),
-                    currency: widget.state.preferences.displayCurrency,
+            Builder(
+              builder: (context) {
+                final maxSlider = totalPrincipal > 0
+                    ? math.min(
+                        totalPrincipal,
+                        math.max(
+                          totalStandardMonthly * 3.0,
+                          totalPrincipal * 0.5,
+                        ),
+                      )
+                    : 100000.0;
+                return Slider(
+                  value: _extraPayment.clamp(0.0, maxSlider),
+                  max: maxSlider,
+                  divisions: 100,
+                  label: maskMoneyIfPrivate(
+                    widget.state,
+                    formatMoney(
+                      Money(
+                        amountMinor: _extraPayment.toInt(),
+                        currency: widget.state.preferences.displayCurrency,
+                      ),
+                      widget.state.preferences.locale,
+                    ),
                   ),
-                  widget.state.preferences.locale,
-                ),
-              ),
-              onChanged: (val) {
-                setState(() {
-                  _extraPayment = val;
-                });
+                  onChanged: (val) {
+                    setState(() {
+                      _extraPayment = val;
+                    });
+                  },
+                );
               },
             ),
           ],
@@ -261,11 +273,35 @@ class SubscriptionsWatchWidget extends ConsumerWidget {
     }).toList();
 
     for (final s in subs) {
-      totalMonthlySubs += convertMoneyForDisplay(
+      final amt = convertMoneyForDisplay(
         state,
         s.amount,
         state.preferences.displayCurrency,
       ).amountMinor;
+
+      double monthlyMultiplier = 1.0;
+      if (s.recurrenceFrequency == 'yearly') {
+        monthlyMultiplier = 1 / 12;
+      } else if (s.recurrenceFrequency == 'weekly') {
+        monthlyMultiplier = 52 / 12;
+      } else if (s.recurrenceFrequency == 'daily') {
+        monthlyMultiplier = 365 / 12;
+      }
+
+      final interval = s.recurrenceInterval > 0 ? s.recurrenceInterval : 1;
+      monthlyMultiplier = monthlyMultiplier / interval;
+
+      if (s.recurrenceFrequency == 'weekly' &&
+          s.recurrenceDaysOfWeek != null &&
+          s.recurrenceDaysOfWeek!.isNotEmpty) {
+        monthlyMultiplier *= s.recurrenceDaysOfWeek!.length;
+      } else if (s.recurrenceFrequency == 'monthly' &&
+          s.recurrenceDaysOfMonth != null &&
+          s.recurrenceDaysOfMonth!.isNotEmpty) {
+        monthlyMultiplier *= s.recurrenceDaysOfMonth!.length;
+      }
+
+      totalMonthlySubs += (amt * monthlyMultiplier).round();
     }
 
     return DashboardCard(

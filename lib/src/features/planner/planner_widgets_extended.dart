@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,8 +20,25 @@ class DailySpendingLimitWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final now = DateTime.now();
-    final daysInMonth = DateUtils.getDaysInMonth(now.year, now.month);
-    final daysRemaining = daysInMonth - now.day + 1;
+    final startDay = state.preferences.startDayOfMonth;
+    DateTime periodStart;
+    DateTime periodEnd;
+
+    if (startDay <= 1) {
+      periodStart = DateTime(now.year, now.month, 1);
+      periodEnd = DateTime(now.year, now.month + 1, 1);
+    } else {
+      if (now.day >= startDay) {
+        periodStart = DateTime(now.year, now.month, startDay);
+        periodEnd = DateTime(now.year, now.month + 1, startDay);
+      } else {
+        periodStart = DateTime(now.year, now.month - 1, startDay);
+        periodEnd = DateTime(now.year, now.month, startDay);
+      }
+    }
+
+    final today = DateTime(now.year, now.month, now.day);
+    final daysRemaining = math.max(1, periodEnd.difference(today).inDays);
 
     int totalIncome = 0;
     int totalExpense = 0;
@@ -31,7 +50,7 @@ class DailySpendingLimitWidget extends ConsumerWidget {
           tx.isExcludedFromReports) {
         continue;
       }
-      if (tx.occurredAt.year == now.year && tx.occurredAt.month == now.month) {
+      if (!tx.occurredAt.isBefore(periodStart) && tx.occurredAt.isBefore(periodEnd)) {
         if (incomeTypes.contains(tx.type)) {
           totalIncome += convertMoneyForDisplay(
             state,

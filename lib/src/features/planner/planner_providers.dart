@@ -119,8 +119,11 @@ final emergencyFundProvider = Provider<EmergencyFundData>((ref) {
   int totalCash = 0;
   final balances = accountBalanceMap(state);
   for (final acc in state.accounts) {
+    if (acc.isArchived) continue;
     if (acc.type == 'emergency' ||
-        acc.name.toLowerCase().contains('emergency')) {
+        acc.type == 'savings' ||
+        acc.name.toLowerCase().contains('emergency') ||
+        acc.name.toLowerCase().contains('saving')) {
       totalCash += convertMoneyForDisplay(
         state,
         accountBalanceFromMap(balances, acc),

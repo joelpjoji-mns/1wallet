@@ -633,7 +633,9 @@ financialHealthScore(LedgerState state) {
   for (final account in state.accounts) {
     if (account.isArchived) continue;
     if (account.type == 'emergency' ||
-        account.name.toLowerCase().contains('emergency')) {
+        account.type == 'savings' ||
+        account.name.toLowerCase().contains('emergency') ||
+        account.name.toLowerCase().contains('saving')) {
       emergencyMinor += convertMoneyForDisplay(
         state,
         accountBalanceFromMap(balances, account),
