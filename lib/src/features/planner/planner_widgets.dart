@@ -9,6 +9,7 @@ import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/privacy_text.dart';
 import '../home/home_async_providers.dart';
+import '../home/home_dashboard_selectors.dart';
 import '../transactions/transaction_row.dart';
 
 enum TimePeriod { d7, d30, w12, m6, y1 }
@@ -127,8 +128,16 @@ class BalanceTrendWidget extends ConsumerStatefulWidget {
 
 class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
   TimePeriod _period = TimePeriod.d30;
-  // Past data occupies 80% of the chart canvas; future the remaining 20%
-  static const double _pastFraction = 0.8;
+  // Past data occupies 70% of the chart canvas; future the remaining 30%
+  static const double _pastFraction = 0.7;
+  final ScrollController _scrollController = ScrollController();
+  bool _needsScrollToNow = true;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -140,11 +149,10 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
       now.hour,
       now.minute,
     );
-    final start = nowRounded.subtract(_period.duration);
-
-    // Future window: capped at 60 days, minimum 7
-    final futureDays = math.min(_period.duration.inDays, 60).clamp(7, 60);
-    final futureEnd = nowRounded.add(Duration(days: futureDays));
+    
+    // Fetch a wide range of data so the user can scroll indefinitely
+    final start = DateTime(now.year - 5, now.month, now.day);
+    final futureEnd = DateTime(now.year + 2, now.month, now.day);
 
     // Past trend from home provider (same data, all included accounts)
     final pastTrend = ref.watch(
@@ -175,8 +183,18 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
 
     final scheme = Theme.of(context).colorScheme;
 
-    // % change vs start of period
-    final pastStartBalance = pastValues.isNotEmpty ? pastValues.first : totalCash;
+    // % change vs start of the selected period (not the 5-year start)
+    final periodStart = nowRounded.subtract(_period.duration);
+    final periodStartPoint = pastTrend.reversed.firstWhere(
+      (p) => !p.date.isAfter(periodStart),
+      orElse: () => pastTrend.isNotEmpty
+          ? pastTrend.first
+          : BalanceTrendPoint(
+              date: periodStart,
+              balance: Money(amountMinor: totalCash, currency: ''),
+            ),
+    );
+    final pastStartBalance = periodStartPoint.balance.amountMinor;
     double percentChange = 0;
     if (pastStartBalance != 0) {
       percentChange = ((totalCash - pastStartBalance) / pastStartBalance.abs()) * 100;
@@ -236,20 +254,31 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
       return '$sign${absVal.toInt()}';
     }
 
-    // Unified X-axis: past = [0 .. pastN-1], future continues from nowX
-    final pastN = pastTrend.length;
-    final futureN = futureTrend.length;
-    final totalN = pastN + futureN - 1; // shared "now" point
-    final nowX = (pastN - 1).toDouble();
+    final earliestDate = pastTrend.isNotEmpty ? pastTrend.first.date : nowRounded;
+    final latestDate = futureTrend.isNotEmpty ? futureTrend.last.date : nowRounded;
 
-    final pastSpots = <FlSpot>[
-      for (int i = 0; i < pastN; i++)
-        FlSpot(i.toDouble(), pastValues[i].toDouble()),
-    ];
-    final futureSpots = <FlSpot>[
-      for (int i = 0; i < futureN; i++)
-        FlSpot(nowX + i.toDouble(), futureValues[i].toDouble()),
-    ];
+    double dateToX(DateTime date) {
+      return date.difference(earliestDate).inMinutes.toDouble() / (24 * 60);
+    }
+
+    final nowX = dateToX(nowRounded);
+
+    final pastSpots = <FlSpot>[];
+    double lastX = -1.0;
+    for (final p in pastTrend) {
+      double x = dateToX(p.date);
+      if (x <= lastX) x = lastX + 0.0001;
+      pastSpots.add(FlSpot(x, p.balance.amountMinor.toDouble()));
+      lastX = x;
+    }
+    
+    final futureSpots = <FlSpot>[];
+    for (final p in futureTrend) {
+      double x = dateToX(p.date);
+      if (x <= lastX) x = lastX + 0.0001;
+      futureSpots.add(FlSpot(x, p.balance.amountMinor.toDouble()));
+      lastX = x;
+    }
 
     return DashboardCard(
       child: Column(
@@ -262,7 +291,12 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
                 'Balance Trend',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              _buildTimeSelector(_period, (p) => setState(() => _period = p)),
+              _buildTimeSelector(_period, (p) {
+                setState(() {
+                  _period = p;
+                  _needsScrollToNow = true;
+                });
+              }),
             ],
           ),
           Text(
@@ -345,124 +379,118 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
               child: Center(child: Text('No data')),
             )
           else
-            SizedBox(
-              height: 200,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  // Past region = 80% of visible width; total canvas wider
-                  final availableWidth = math.max(
-                    constraints.maxWidth - 44.0,
-                    300.0,
-                  );
-                  final totalWidth = pastN > 1
-                      ? availableWidth / _pastFraction
-                      : availableWidth;
+              SizedBox(
+                height: 220,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final availableWidth = math.max(
+                      constraints.maxWidth - 44.0,
+                      300.0,
+                    );
+                    
+                    final double pixelsPerDay = (availableWidth * _pastFraction) / _period.duration.inDays.toDouble();
+                    final double totalDays = math.max(1.0, dateToX(latestDate));
+                    final double totalWidth = math.max(availableWidth, totalDays * pixelsPerDay);
 
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    child: SizedBox(
-                      width: totalWidth,
-                      child: LineChart(
-                        LineChartData(
-                          clipData: FlClipData.none(),
-                          gridData: FlGridData(
-                            show: true,
-                            drawVerticalLine: false,
-                            horizontalInterval: niceInterval,
-                            getDrawingHorizontalLine: (value) => FlLine(
-                              color: scheme.outlineVariant.withAlphaFactor(0.25),
-                              strokeWidth: 0.5,
-                              dashArray: [3, 5],
+                    if (_needsScrollToNow) {
+                      _needsScrollToNow = false;
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (_scrollController.hasClients) {
+                          final nowOffset = (nowX * pixelsPerDay) - (availableWidth * _pastFraction);
+                          _scrollController.jumpTo(nowOffset.clamp(0.0, _scrollController.position.maxScrollExtent));
+                        }
+                      });
+                    }
+
+                    return SingleChildScrollView(
+                      controller: _scrollController,
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      child: SizedBox(
+                        width: totalWidth,
+                        child: LineChart(
+                          LineChartData(
+                            clipData: FlClipData.none(),
+                            gridData: FlGridData(
+                              show: true,
+                              drawVerticalLine: false,
+                              horizontalInterval: niceInterval,
+                              getDrawingHorizontalLine: (value) => FlLine(
+                                color: scheme.outlineVariant.withAlphaFactor(0.25),
+                                strokeWidth: 0.5,
+                                dashArray: [3, 5],
+                              ),
                             ),
-                          ),
-                          titlesData: FlTitlesData(
-                            show: true,
-                            topTitles: AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
+                            titlesData: FlTitlesData(
+                              show: true,
+                              topTitles: AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              rightTitles: AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              leftTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 44,
+                                  interval: niceInterval,
+                                  getTitlesWidget: (value, meta) {
+                                    return PrivacyText(
+                                      formatCompact(value),
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: scheme.onSurfaceVariant,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 24,
+                                  interval: math.max(1.0, (_period.duration.inDays / 4).floorToDouble()),
+                                  getTitlesWidget: (value, meta) {
+                                    final date = earliestDate.add(Duration(minutes: (value * 24 * 60).round()));
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 8),
+                                      child: Text(
+                                        '${date.day}/${date.month}',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          color: scheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
                             ),
-                            rightTitles: AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            leftTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                reservedSize: 44,
-                                interval: niceInterval,
-                                getTitlesWidget: (value, meta) {
-                                  return PrivacyText(
-                                    formatCompact(value),
+                            borderData: FlBorderData(show: false),
+                            minX: 0,
+                            maxX: totalDays,
+                            minY: minY,
+                            maxY: maxY,
+                            extraLinesData: ExtraLinesData(
+                              verticalLines: [
+                                VerticalLine(
+                                  x: nowX,
+                                  color: scheme.primary.withAlphaFactor(0.4),
+                                  strokeWidth: 1.5,
+                                  dashArray: [4, 4],
+                                  label: VerticalLineLabel(
+                                    show: true,
+                                    alignment: Alignment.bottomRight,
+                                    padding: const EdgeInsets.only(bottom: 4, right: 4),
                                     style: TextStyle(
                                       fontSize: 10,
-                                      color: scheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.bold,
+                                      color: scheme.primary,
                                     ),
-                                  );
-                                },
-                              ),
-                            ),
-                            bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                reservedSize: 22,
-                                getTitlesWidget: (value, meta) {
-                                  final idx = value.round();
-                                  if (idx == 0 && pastTrend.isNotEmpty) {
-                                    return Padding(
-                                      padding: const EdgeInsets.only(top: 8),
-                                      child: Text(
-                                        '${start.day}/${start.month}',
-                                        style: TextStyle(
-                                          fontSize: 9,
-                                          color: scheme.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                  if (idx == pastN - 1) {
-                                    return Padding(
-                                      padding: const EdgeInsets.only(top: 8),
-                                      child: Text(
-                                        'Now',
-                                        style: TextStyle(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.bold,
-                                          color: scheme.primary,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                  if (futureTrend.isNotEmpty && idx == totalN - 1) {
-                                    return Padding(
-                                      padding: const EdgeInsets.only(top: 8),
-                                      child: Text(
-                                        '${futureEnd.day}/${futureEnd.month}',
-                                        style: TextStyle(
-                                          fontSize: 9,
-                                          color: scheme.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                  return const SizedBox.shrink();
-                                },
-                              ),
-                            ),
-                          ),
-                          borderData: FlBorderData(show: false),
-                          minX: 0,
-                          maxX: (totalN - 1).toDouble(),
-                          minY: minY,
-                          maxY: maxY,
-                          extraLinesData: ExtraLinesData(
-                            verticalLines: [
-                              VerticalLine(
-                                x: nowX,
-                                color: scheme.primary.withAlphaFactor(0.4),
-                                strokeWidth: 1.0,
-                                dashArray: [4, 4],
-                                label: VerticalLineLabel(show: false),
-                              ),
-                            ],
+                                    labelResolver: (line) => 'Now',
+                                  ),
+                                ),
+                              ],
                           ),
                           lineBarsData: [
                             // Past line — full colour
@@ -472,12 +500,12 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
                                 isCurved: true,
                                 curveSmoothness: 0.3,
                                 color: scheme.primary,
-                                barWidth: 1.5,
+                                barWidth: 2.5,
                                 isStrokeCapRound: true,
                                 shadow: Shadow(
-                                  color: scheme.primary.withAlphaFactor(0.25),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 3),
+                                  color: scheme.primary.withAlphaFactor(0.4),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
                                 ),
                                 dotData: FlDotData(
                                   show: true,
@@ -485,7 +513,7 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
                                       spot.x == barData.spots.last.x,
                                   getDotPainter: (spot, percent, barData, index) =>
                                       FlDotCirclePainter(
-                                        radius: 4,
+                                        radius: 5,
                                         color: scheme.primary,
                                         strokeWidth: 2,
                                         strokeColor: scheme.surface,
@@ -495,7 +523,7 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
                                   show: true,
                                   gradient: LinearGradient(
                                     colors: [
-                                      scheme.primary.withAlphaFactor(0.35),
+                                      scheme.primary.withAlphaFactor(0.45),
                                       scheme.primary.withAlphaFactor(0.0),
                                     ],
                                     begin: Alignment.topCenter,
@@ -509,8 +537,8 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
                                 spots: futureSpots,
                                 isCurved: true,
                                 curveSmoothness: 0.3,
-                                color: scheme.onSurfaceVariant.withAlphaFactor(0.45),
-                                barWidth: 1.2,
+                                color: scheme.onSurfaceVariant.withAlphaFactor(0.55),
+                                barWidth: 2.0,
                                 isStrokeCapRound: true,
                                 dashArray: [6, 4],
                                 dotData: FlDotData(
@@ -519,10 +547,10 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
                                       spot.x == barData.spots.last.x,
                                   getDotPainter: (spot, percent, barData, index) =>
                                       FlDotCirclePainter(
-                                        radius: 3,
+                                        radius: 4,
                                         color: scheme.onSurfaceVariant
-                                            .withAlphaFactor(0.5),
-                                        strokeWidth: 1,
+                                            .withAlphaFactor(0.6),
+                                        strokeWidth: 1.5,
                                         strokeColor: scheme.surface,
                                       ),
                                 ),
@@ -530,7 +558,7 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
                                   show: true,
                                   gradient: LinearGradient(
                                     colors: [
-                                      scheme.onSurfaceVariant.withAlphaFactor(0.12),
+                                      scheme.onSurfaceVariant.withAlphaFactor(0.25),
                                       scheme.onSurfaceVariant.withAlphaFactor(0.0),
                                     ],
                                     begin: Alignment.topCenter,
