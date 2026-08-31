@@ -130,14 +130,10 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
   TimePeriod _period = TimePeriod.d30;
   // Past data occupies 70% of the chart canvas; future the remaining 30%
   static const double _pastFraction = 0.7;
-  final ScrollController _scrollController = ScrollController();
-  bool _needsScrollToNow = true;
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
+  
+  double? _visibleMinX;
+  double? _visibleMaxX;
+  bool _needsSnapToNow = true;
 
   @override
   Widget build(BuildContext context) {
@@ -200,60 +196,6 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
       percentChange = ((totalCash - pastStartBalance) / pastStartBalance.abs()) * 100;
     }
 
-    // Y-axis range
-    var minY = allValues.isEmpty ? 0.0 : allValues.reduce(math.min).toDouble();
-    var maxY = allValues.isEmpty ? 0.0 : allValues.reduce(math.max).toDouble();
-    if (maxY == minY) {
-      maxY += 100000;
-      minY -= 100000;
-    } else {
-      final span = maxY - minY;
-      maxY += span * 0.2;
-      minY -= span * 0.2;
-    }
-
-    final spanChart = maxY - minY;
-    double niceInterval = 1.0;
-    if (spanChart > 0) {
-      final roughStep = spanChart / 4;
-      final magnitude = math
-          .pow(
-            10,
-            (math.log(roughStep > 0 ? roughStep : 1) / math.ln10).floor(),
-          )
-          .toDouble();
-      final normalizedStep = roughStep / magnitude;
-      double niceStep;
-      if (normalizedStep < 1.5) {
-        niceStep = 1.0;
-      } else if (normalizedStep < 3.5) {
-        niceStep = 2.0;
-      } else if (normalizedStep < 7.5) {
-        niceStep = 5.0;
-      } else {
-        niceStep = 10.0;
-      }
-      niceInterval = niceStep * magnitude;
-      if (spanChart >= 100000 && niceInterval < 100000) {
-        niceInterval = 100000.0;
-      } else if (spanChart >= 1000 && niceInterval < 1000) {
-        niceInterval = 1000.0;
-      }
-    }
-
-    String formatCompact(num amountMinor) {
-      if (amountMinor == 0) return '0';
-      final absVal = (amountMinor / 100.0).abs();
-      final sign = amountMinor < 0 ? '-' : '';
-      if (niceInterval >= 100000) {
-        if (absVal >= 100000) return '$sign${(absVal / 100000).round()}L';
-        if (absVal >= 1000) return '$sign${(absVal / 1000).round()}K';
-      } else if (niceInterval >= 1000) {
-        if (absVal >= 1000) return '$sign${(absVal / 1000).round()}K';
-      }
-      return '$sign${absVal.toInt()}';
-    }
-
     final earliestDate = pastTrend.isNotEmpty ? pastTrend.first.date : nowRounded;
     final latestDate = futureTrend.isNotEmpty ? futureTrend.last.date : nowRounded;
 
@@ -280,6 +222,20 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
       lastX = x;
     }
 
+    // Calculate formatCompact using the provided interval
+    String formatCompact(num amountMinor, double interval) {
+      if (amountMinor == 0) return '0';
+      final absVal = (amountMinor / 100.0).abs();
+      final sign = amountMinor < 0 ? '-' : '';
+      if (interval >= 100000) {
+        if (absVal >= 100000) return '$sign${(absVal / 100000).round()}L';
+        if (absVal >= 1000) return '$sign${(absVal / 1000).round()}K';
+      } else if (interval >= 1000) {
+        if (absVal >= 1000) return '$sign${(absVal / 1000).round()}K';
+      }
+      return '$sign${absVal.toInt()}';
+    }
+
     return DashboardCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -294,7 +250,7 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
               _buildTimeSelector(_period, (p) {
                 setState(() {
                   _period = p;
-                  _needsScrollToNow = true;
+                  _needsSnapToNow = true;
                 });
               }),
             ],
@@ -389,28 +345,93 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
                     );
                     
                     final double pixelsPerDay = (availableWidth * _pastFraction) / _period.duration.inDays.toDouble();
-                    final double totalDays = math.max(1.0, dateToX(latestDate));
-                    final double totalWidth = math.max(availableWidth, totalDays * pixelsPerDay);
+                    final double windowDays = availableWidth / pixelsPerDay;
+                    final double maxPossibleX = math.max(windowDays, dateToX(latestDate));
 
-                    if (_needsScrollToNow) {
-                      _needsScrollToNow = false;
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (_scrollController.hasClients) {
-                          final nowOffset = (nowX * pixelsPerDay) - (availableWidth * _pastFraction);
-                          _scrollController.jumpTo(nowOffset.clamp(0.0, _scrollController.position.maxScrollExtent));
-                        }
-                      });
+                    if (_needsSnapToNow) {
+                      _needsSnapToNow = false;
+                      _visibleMinX = nowX - (_pastFraction * windowDays);
+                      _visibleMaxX = _visibleMinX! + windowDays;
+                    }
+                    
+                    // Enforce X bounds
+                    if (_visibleMinX! < 0) {
+                      _visibleMinX = 0;
+                      _visibleMaxX = windowDays;
+                    }
+                    if (_visibleMaxX! > maxPossibleX) {
+                      _visibleMaxX = maxPossibleX;
+                      _visibleMinX = maxPossibleX - windowDays;
+                      if (_visibleMinX! < 0) _visibleMinX = 0;
                     }
 
-                    return SingleChildScrollView(
-                      controller: _scrollController,
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
+                    // Dynamically calculate local Y bounds for visible points
+                    double localMinY = double.infinity;
+                    double localMaxY = double.negativeInfinity;
+                    for (final p in pastSpots) {
+                      if (p.x >= _visibleMinX! && p.x <= _visibleMaxX!) {
+                        if (p.y < localMinY) localMinY = p.y;
+                        if (p.y > localMaxY) localMaxY = p.y;
+                      }
+                    }
+                    for (final p in futureSpots) {
+                      if (p.x >= _visibleMinX! && p.x <= _visibleMaxX!) {
+                        if (p.y < localMinY) localMinY = p.y;
+                        if (p.y > localMaxY) localMaxY = p.y;
+                      }
+                    }
+
+                    if (localMinY == double.infinity) {
+                      localMinY = 0;
+                      localMaxY = 1000;
+                    } else if (localMinY == localMaxY) {
+                      localMinY -= 10000;
+                      localMaxY += 10000;
+                    } else {
+                      final span = localMaxY - localMinY;
+                      localMinY -= span * 0.2;
+                      localMaxY += span * 0.2;
+                    }
+
+                    final spanChart = localMaxY - localMinY;
+                    double niceInterval = 1.0;
+                    if (spanChart > 0) {
+                      final roughStep = spanChart / 4;
+                      final magnitude = math
+                          .pow(10, (math.log(roughStep > 0 ? roughStep : 1) / math.ln10).floor())
+                          .toDouble();
+                      final normalizedStep = roughStep / magnitude;
+                      double niceStep;
+                      if (normalizedStep < 1.5) {
+                        niceStep = 1.0;
+                      } else if (normalizedStep < 3.5) {
+                        niceStep = 2.0;
+                      } else if (normalizedStep < 7.5) {
+                        niceStep = 5.0;
+                      } else {
+                        niceStep = 10.0;
+                      }
+                      niceInterval = niceStep * magnitude;
+                      if (spanChart >= 100000 && niceInterval < 100000) {
+                        niceInterval = 100000.0;
+                      } else if (spanChart >= 1000 && niceInterval < 1000) {
+                        niceInterval = 1000.0;
+                      }
+                    }
+
+                    return Listener(
+                      onPointerMove: (e) {
+                        setState(() {
+                          final daysDelta = -(e.delta.dx / pixelsPerDay);
+                          _visibleMinX = _visibleMinX! + daysDelta;
+                          _visibleMaxX = _visibleMaxX! + daysDelta;
+                        });
+                      },
                       child: SizedBox(
-                        width: totalWidth,
+                        width: availableWidth,
                         child: LineChart(
                           LineChartData(
-                            clipData: FlClipData.none(),
+                            clipData: FlClipData.all(),
                             gridData: FlGridData(
                               show: true,
                               drawVerticalLine: false,
@@ -436,7 +457,7 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
                                   interval: niceInterval,
                                   getTitlesWidget: (value, meta) {
                                     return PrivacyText(
-                                      formatCompact(value),
+                                      formatCompact(value, niceInterval),
                                       style: TextStyle(
                                         fontSize: 10,
                                         color: scheme.onSurfaceVariant,
@@ -467,10 +488,10 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
                               ),
                             ),
                             borderData: FlBorderData(show: false),
-                            minX: 0,
-                            maxX: totalDays,
-                            minY: minY,
-                            maxY: maxY,
+                            minX: _visibleMinX,
+                            maxX: _visibleMaxX,
+                            minY: localMinY,
+                            maxY: localMaxY,
                             extraLinesData: ExtraLinesData(
                               verticalLines: [
                                 VerticalLine(
