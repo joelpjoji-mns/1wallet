@@ -195,6 +195,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onLocaleTap: () => _showLocalePicker(state),
             onThemeTap: () => _showThemePicker(ref, themeState.preference),
             onAccentTap: _showAccentPicker,
+            onHideSkippedChanged: (value) {
+              ref
+                  .read(ledgerProvider.notifier)
+                  .updatePreferences(
+                    state.preferences.copyWith(hideSkippedInHistory: value),
+                  );
+              _showMessage(
+                value
+                    ? 'Skipped records hidden from history.'
+                    : 'Skipped records shown in history.',
+              );
+            },
             localeLabel: _localeLabel(state.preferences.locale),
           ),
           const Gap(AppSpacing.lg),

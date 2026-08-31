@@ -120,6 +120,93 @@ List<BalanceTrendPoint> balanceTrendForRange(
   return points;
 }
 
+/// Projects balance forward from [start] (usually now) to [end] using
+/// scheduled / paused calendar transactions as future events.
+List<BalanceTrendPoint> balanceFutureTrendForRange(
+  LedgerState state, {
+  required DateTime start,
+  required DateTime end,
+}) {
+  if (end.isBefore(start)) return const [];
+  final includedAccounts = {
+    for (final account in state.accounts)
+      if (!account.isArchived && account.includeInTotals) account.id,
+  };
+  final displayCurrency = state.preferences.displayCurrency;
+
+  // Seed running balance from all posted transactions (same as balanceTrendForRange)
+  var running = state.accounts
+      .where((account) => includedAccounts.contains(account.id))
+      .fold<int>(0, (sum, account) {
+        final converted = convertMoneyForDisplay(
+          state,
+          account.openingBalance,
+          displayCurrency,
+        );
+        return sum + converted.amountMinor;
+      });
+
+  final postedTxs = state.transactions
+      .where((tx) => tx.status != 'scheduled' && tx.status != 'void')
+      .toList()
+    ..sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
+
+  for (final tx in postedTxs) {
+    running += _includedTotalDelta(state, tx, includedAccounts);
+  }
+
+  // Gather scheduled/paused transactions due in [start..end]
+  final futureTxs = state.transactions
+      .where(
+        (tx) =>
+            (tx.status == 'scheduled' || tx.status == 'paused') &&
+            !tx.occurredAt.isBefore(start) &&
+            !tx.occurredAt.isAfter(end),
+      )
+      .toList()
+    ..sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
+
+  final points = <BalanceTrendPoint>[];
+  points.add(
+    BalanceTrendPoint(
+      date: start,
+      balance: Money(amountMinor: running, currency: displayCurrency),
+    ),
+  );
+
+  DateTime? lastTime;
+  for (final tx in futureTxs) {
+    final delta = _includedTotalDelta(state, tx, includedAccounts);
+    if (delta == 0) continue;
+    running += delta;
+    if (lastTime == tx.occurredAt && points.isNotEmpty) {
+      points.last = BalanceTrendPoint(
+        date: tx.occurredAt,
+        balance: Money(amountMinor: running, currency: displayCurrency),
+      );
+    } else {
+      points.add(
+        BalanceTrendPoint(
+          date: tx.occurredAt,
+          balance: Money(amountMinor: running, currency: displayCurrency),
+        ),
+      );
+      lastTime = tx.occurredAt;
+    }
+  }
+
+  if (points.last.date.isBefore(end)) {
+    points.add(
+      BalanceTrendPoint(
+        date: end,
+        balance: Money(amountMinor: running, currency: displayCurrency),
+      ),
+    );
+  }
+
+  return points;
+}
+
 List<Money> balanceBreakdownByCurrency(LedgerState state, {String? accountId}) {
   final accounts = accountId != null
       ? (accountId == 'cash_group'

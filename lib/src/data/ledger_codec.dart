@@ -441,6 +441,7 @@ Map<String, Object?> _preferencesToJson(LedgerPreferences preferences) {
     'notificationIgnoreWords': preferences.notificationIgnoreWords,
     'notificationTargetPackages': preferences.notificationTargetPackages,
     'merchantCategoryRules': preferences.merchantCategoryRules,
+    'hideSkippedInHistory': preferences.hideSkippedInHistory,
   };
 }
 
@@ -607,6 +608,10 @@ LedgerPreferences _preferencesFromJson(Map<String, dynamic> json) {
     merchantCategoryRules: _stringMap(
       json['merchantCategoryRules'],
       fallback: fallback.merchantCategoryRules,
+    ),
+    hideSkippedInHistory: _bool(
+      json['hideSkippedInHistory'],
+      fallback: fallback.hideSkippedInHistory,
     ),
   );
 }

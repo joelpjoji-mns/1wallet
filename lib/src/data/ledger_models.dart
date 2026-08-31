@@ -285,6 +285,7 @@ class LedgerPreferences {
     this.notificationIgnoreWords = kDefaultSmsIgnoreWords,
     this.notificationTargetPackages = kDefaultNotificationPackages,
     this.merchantCategoryRules = const {},
+    this.hideSkippedInHistory = false,
   });
 
   final String baseCurrency;
@@ -325,6 +326,7 @@ class LedgerPreferences {
   final List<String> notificationIgnoreWords;
   final List<String> notificationTargetPackages;
   final Map<String, String> merchantCategoryRules;
+  final bool hideSkippedInHistory;
 
   LedgerPreferences copyWith({
     String? baseCurrency,
@@ -365,6 +367,7 @@ class LedgerPreferences {
     List<String>? notificationIgnoreWords,
     List<String>? notificationTargetPackages,
     Map<String, String>? merchantCategoryRules,
+    bool? hideSkippedInHistory,
   }) {
     return LedgerPreferences(
       baseCurrency: baseCurrency ?? this.baseCurrency,
@@ -421,6 +424,7 @@ class LedgerPreferences {
           notificationTargetPackages ?? this.notificationTargetPackages,
       merchantCategoryRules:
           merchantCategoryRules ?? this.merchantCategoryRules,
+      hideSkippedInHistory: hideSkippedInHistory ?? this.hideSkippedInHistory,
     );
   }
 }

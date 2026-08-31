@@ -587,6 +587,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     int? recurrenceLimit,
     bool clearRecurrenceEndDate = false,
     bool clearRecurrenceLimit = false,
+    bool clearOriginalAmount = false,
     bool? isExcludedFromReports,
     String? originalTransactionId,
     String? postMode,
@@ -611,7 +612,9 @@ class LedgerController extends StateNotifier<LedgerState> {
     );
 
     Money? originalAmount;
-    if (originalAmountMinor != null &&
+    if (clearOriginalAmount) {
+      originalAmount = null;
+    } else if (originalAmountMinor != null &&
         originalCurrency != null &&
         originalCurrency.toUpperCase() !=
             sourceAccount.currency.toUpperCase()) {
@@ -619,6 +622,10 @@ class LedgerController extends StateNotifier<LedgerState> {
         amountMinor: originalAmountMinor,
         currency: originalCurrency.toUpperCase(),
       );
+    } else if (originalCurrency != null &&
+        originalCurrency.toUpperCase() ==
+            sourceAccount.currency.toUpperCase()) {
+      originalAmount = null;
     } else {
       originalAmount = existing?.originalAmount;
     }
@@ -642,14 +649,14 @@ class LedgerController extends StateNotifier<LedgerState> {
       }
     }
 
-    double? fxRate = existing?.fxRate;
+    double? fxRate;
     if (counterAmount != null &&
         counterAmount.currency.toUpperCase() != amount.currency.toUpperCase() &&
         amount.amountMinor != 0) {
       fxRate = counterAmount.amountMinor / amount.amountMinor;
     }
 
-    double? originalFxRate = existing?.originalFxRate;
+    double? originalFxRate;
     if (originalAmount != null &&
         originalAmount.currency.toUpperCase() !=
             amount.currency.toUpperCase() &&
@@ -1282,11 +1289,21 @@ class LedgerController extends StateNotifier<LedgerState> {
             return true;
           }
         }
+        if (parsed.merchant != null && parsed.merchant!.isNotEmpty) {
+          final pMerch = parsed.merchant!.trim().toLowerCase();
+          if (tx.name?.toLowerCase().contains(pMerch) == true ||
+              tx.notes?.toLowerCase().contains(pMerch) == true) {
+            return true;
+          }
+        }
+        if (matchedAccountId == null && timeDiff <= 15) {
+          return true;
+        }
         return false;
       });
       if (txDuplicate) return _CaptureDuplicateKind.postedTransaction;
 
-      final candidateDuplicate = state.captureCandidates.any((c) {
+      bool isDuplicateCandidate(CaptureCandidate c) {
         if (c.status != 'pending') return false;
         final timeDiff = c.createdAt.difference(receivedAt).abs().inMinutes;
         if (timeDiff > 15) return false;
@@ -1310,10 +1327,35 @@ class LedgerController extends StateNotifier<LedgerState> {
                   acc.accountLast4 == parsed.last4)) {
             return true;
           }
+          if (c.rawText != null && c.rawText!.contains(parsed.last4!)) {
+            return true;
+          }
+        }
+
+        if (c.merchant != null && parsed.merchant != null) {
+          final cMerch = c.merchant!.trim().toLowerCase();
+          final pMerch = parsed.merchant!.trim().toLowerCase();
+          if (cMerch == pMerch ||
+              (cMerch.length > 3 && pMerch.contains(cMerch)) ||
+              (pMerch.length > 3 && cMerch.contains(pMerch))) {
+            return true;
+          }
+        }
+
+        if (matchedAccountId == null ||
+            c.suggestedAccountId == null ||
+            timeDiff <= 5) {
+          return true;
         }
         return false;
-      });
-      if (candidateDuplicate) return _CaptureDuplicateKind.pendingAmount;
+      }
+
+      if (state.captureCandidates.any(isDuplicateCandidate)) {
+        return _CaptureDuplicateKind.pendingAmount;
+      }
+      if (additionalCandidates.any(isDuplicateCandidate)) {
+        return _CaptureDuplicateKind.batch;
+      }
     }
 
     return null;
@@ -1502,6 +1544,7 @@ class LedgerController extends StateNotifier<LedgerState> {
       state,
       parsed.merchant ?? parsed.rawText,
       type,
+      isMerchant: parsed.merchant != null && parsed.merchant!.isNotEmpty,
     );
     final candidate = CaptureCandidate(
       id: _newId('cap'),
@@ -2117,8 +2160,9 @@ Category? _matchCategory(LedgerState state, String? name, String kind) {
 _CategorySuggestion? _suggestCategory(
   LedgerState state,
   String? name,
-  String kind,
-) {
+  String kind, {
+  bool isMerchant = false,
+}) {
   final active = state.categories
       .where((category) => !category.isArchived)
       .toList();
@@ -2129,10 +2173,12 @@ _CategorySuggestion? _suggestCategory(
     for (final entry in state.preferences.merchantCategoryRules.entries) {
       final ruleKey = entry.key.trim().toLowerCase();
       if (ruleKey.isEmpty) continue;
-      final matches =
-          normalized == ruleKey ||
-          (ruleKey.length > 4 && normalized.contains(ruleKey)) ||
-          (normalized.length > 4 && ruleKey.contains(normalized));
+      final matches = normalized == ruleKey ||
+          (isMerchant && ruleKey.length > 3 && normalized.contains(ruleKey)) ||
+          (isMerchant && normalized.length > 3 && ruleKey.contains(normalized)) ||
+          (!isMerchant &&
+              RegExp(r'\b' + RegExp.escape(ruleKey) + r'\b', caseSensitive: false)
+                  .hasMatch(normalized));
       if (!matches) continue;
       final category = categoryById(state, entry.value);
       if (category != null && !category.isArchived) {

@@ -33,7 +33,12 @@ final _homeScheduledTransactionsProvider =
 final _homeSortedTransactionsProvider =
     Provider.autoDispose<List<TransactionRecord>>((ref) {
       final state = ref.watch(ledgerProvider);
-      return sortedTransactions(state, includeScheduled: false);
+      return sortedTransactions(state, includeScheduled: false).where((t) {
+        if (state.preferences.hideSkippedInHistory && t.status == 'void') {
+          return false;
+        }
+        return true;
+      }).toList();
     });
 
 Widget buildHomeDashboardWidget({
@@ -501,6 +506,9 @@ class BalanceTrendHomeWidget extends ConsumerStatefulWidget {
 class _BalanceTrendHomeWidgetState
     extends ConsumerState<BalanceTrendHomeWidget> {
   String _period = 'This year';
+  static const double _chartHeight = 200.0;
+  // Past data occupies 80% of the chart width, future the remaining 20%
+  static const double _pastFraction = 0.8;
 
   @override
   Widget build(BuildContext context) {
@@ -521,23 +529,49 @@ class _BalanceTrendHomeWidgetState
         break;
     }
 
-    final trendEnd = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      now.hour,
-      now.minute,
-    );
-    final trend = ref.watch(
-      homeBalanceTrendProvider((start: start, end: trendEnd)),
-    );
-    final values = trend.map((point) => point.balance.amountMinor).toList();
-    final periodLabel = trend.isEmpty
-        ? _period
-        : '${_shortDate(trend.first.date, widget.state.preferences.locale)} to ${_shortDate(trend.last.date, widget.state.preferences.locale)}';
+    final nowRounded = DateTime(now.year, now.month, now.day, now.hour, now.minute);
 
-    var minY = values.isEmpty ? 0.0 : values.reduce(math.min).toDouble();
-    var maxY = values.isEmpty ? 0.0 : values.reduce(math.max).toDouble();
+    // Future window: same span as past, capped at 60 days
+    final pastStart = start ?? nowRounded.subtract(const Duration(days: 365));
+    final pastSpan = nowRounded.difference(pastStart);
+    final futureSpan = Duration(
+      days: math.min(pastSpan.inDays, 60).clamp(7, 60),
+    );
+    final futureEnd = nowRounded.add(futureSpan);
+
+    final pastTrend = ref.watch(
+      homeBalanceTrendProvider((start: start, end: nowRounded)),
+    );
+    final futureTrend = ref.watch(
+      homeBalanceFutureTrendProvider((start: nowRounded, end: futureEnd)),
+    );
+
+    final pastValues = pastTrend.map((p) => p.balance.amountMinor).toList();
+    final futureValues = futureTrend.map((p) => p.balance.amountMinor).toList();
+
+    final allValues = [...pastValues, ...futureValues];
+
+    final periodLabel = pastTrend.isEmpty
+        ? _period
+        : '${_shortDate(pastTrend.first.date, widget.state.preferences.locale)} · now · ${_shortDate(futureEnd, widget.state.preferences.locale)}';
+
+    if (allValues.isEmpty) {
+      return HomeWidgetCard(
+        title: 'Balance trend',
+        subtitle: _period,
+        icon: Icons.bar_chart_rounded,
+        iconColor: Theme.of(context).colorScheme.tertiary,
+        actionLabel: _period,
+        onAction: () => _pickPeriod(),
+        child: const SizedBox(
+          height: _chartHeight,
+          child: Center(child: Text('No data for this period')),
+        ),
+      );
+    }
+
+    var minY = allValues.reduce(math.min).toDouble();
+    var maxY = allValues.reduce(math.max).toDouble();
 
     if (maxY == minY) {
       maxY += 100000;
@@ -548,11 +582,10 @@ class _BalanceTrendHomeWidgetState
       minY -= span * 0.2;
     }
 
-    if (values.isNotEmpty) {
-      final finalValue = values.last.toDouble();
+    if (allValues.isNotEmpty) {
+      final finalValue = allValues.last.toDouble();
       final span = maxY - minY;
       final percentile = (finalValue - minY) / span;
-
       if (percentile > 0.8) {
         maxY = (finalValue - 0.2 * minY) / 0.8;
       } else if (percentile < 0.2) {
@@ -571,7 +604,6 @@ class _BalanceTrendHomeWidgetState
           )
           .toDouble();
       final normalizedStep = roughStep / magnitude;
-
       double niceStep;
       if (normalizedStep < 1.5) {
         niceStep = 1.0;
@@ -582,7 +614,6 @@ class _BalanceTrendHomeWidgetState
       } else {
         niceStep = 10.0;
       }
-
       niceInterval = niceStep * magnitude;
       if (spanChart >= 100000 && niceInterval < 100000) {
         niceInterval = 100000.0;
@@ -595,307 +626,458 @@ class _BalanceTrendHomeWidgetState
       if (amountMinor == 0) return '0';
       final absVal = (amountMinor / 100.0).abs();
       final sign = amountMinor < 0 ? '-' : '';
-
       if (niceInterval >= 100000) {
-        if (absVal >= 100000) {
-          final l = (absVal / 100000).round();
-          return '$sign${l}L';
-        } else if (absVal >= 1000) {
-          final k = (absVal / 1000).round();
-          return '$sign${k}K';
-        }
+        if (absVal >= 100000) return '$sign${(absVal / 100000).round()}L';
+        if (absVal >= 1000) return '$sign${(absVal / 1000).round()}K';
       } else if (niceInterval >= 1000) {
-        if (absVal >= 1000) {
-          final k = (absVal / 1000).round();
-          return '$sign${k}K';
-        }
+        if (absVal >= 1000) return '$sign${(absVal / 1000).round()}K';
       }
       return '$sign${absVal.toInt()}';
     }
 
-    final xLabels = [
-      if (start != null)
-        _shortDate(start, widget.state.preferences.locale)
-      else
-        trend.isNotEmpty
-            ? _shortDate(trend.first.date, widget.state.preferences.locale)
-            : '',
-      '${trend.length} moves',
-      _shortDate(now, widget.state.preferences.locale),
+    // Build unified X-axis: past occupies [0 .. pastTrend.length-1],
+    // future continues from there.
+    // "Now" divider sits at x = pastTrend.length - 1.
+    final pastN = pastTrend.length;
+    final futureN = futureTrend.length;
+    final totalN = pastN + futureN - 1; // shared "now" point
+
+    final nowX = (pastN - 1).toDouble();
+
+    // Past spots
+    final pastSpots = <FlSpot>[
+      for (int i = 0; i < pastN; i++)
+        FlSpot(i.toDouble(), pastValues[i].toDouble()),
     ];
+
+    // Future spots: start at x = nowX (shared balance point)
+    final futureSpots = <FlSpot>[
+      for (int i = 0; i < futureN; i++)
+        FlSpot(nowX + i.toDouble(), futureValues[i].toDouble()),
+    ];
+
+    final scheme = Theme.of(context).colorScheme;
+
+    // We want "now" to appear at ~80% of visible width.
+    // Calculate chart pixel width so the past portion fills 80% and
+    // future 20% of available width.
+    final chartMinWidth = 320.0;
 
     return HomeWidgetCard(
       title: 'Balance trend',
       subtitle: periodLabel,
       icon: Icons.bar_chart_rounded,
-      iconColor: Theme.of(context).colorScheme.tertiary,
+      iconColor: scheme.tertiary,
       actionLabel: _period,
-      onAction: () async {
-        final result = await showDialog<String>(
-          context: context,
-          builder: (context) => SimpleDialog(
-            title: const Text('Select period'),
-            children: [
-              SimpleDialogOption(
-                onPressed: () => Navigator.pop(context, 'This week'),
-                child: const Text('This week'),
-              ),
-              SimpleDialogOption(
-                onPressed: () => Navigator.pop(context, 'This month'),
-                child: const Text('This month'),
-              ),
-              SimpleDialogOption(
-                onPressed: () => Navigator.pop(context, 'This year'),
-                child: const Text('This year'),
-              ),
-              SimpleDialogOption(
-                onPressed: () => Navigator.pop(context, 'All time'),
-                child: const Text('All time'),
-              ),
-            ],
-          ),
-        );
-        if (result != null) {
-          setState(() => _period = result);
-        }
-      },
+      onAction: () => _pickPeriod(),
       child: GestureDetector(
         onTap: () => context.push('/balance-trend'),
         child: Column(
           children: [
-            if (values.isEmpty)
-              const SizedBox(
-                height: 200,
-                child: Center(child: Text('No data for this period')),
-              )
-            else
-              Padding(
-                padding: const EdgeInsets.only(right: 16.0, top: 16.0),
-                child: SizedBox(
-                  height: 200,
-                  width: double.infinity,
-                  child: LineChart(
-                    LineChartData(
-                      gridData: FlGridData(
-                        show: true,
-                        drawVerticalLine: false,
-                        horizontalInterval: niceInterval,
-                        getDrawingHorizontalLine: (value) => FlLine(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.outlineVariant.withAlphaFactor(0.3),
-                          strokeWidth: 1,
-                          dashArray: [4, 4],
-                        ),
-                      ),
-                      titlesData: FlTitlesData(
-                        show: true,
-                        topTitles: AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        rightTitles: AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 40,
-                            interval: niceInterval,
-                            getTitlesWidget: (value, meta) {
-                              return PrivacyText(
-                                formatCompact(value),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
+            Padding(
+              padding: const EdgeInsets.only(right: 16.0, top: 16.0),
+              child: SizedBox(
+                height: _chartHeight,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Past region fills 80% of available width, future the rest.
+                    // If past has few points, we expand the chart.
+                    final availableWidth = math.max(
+                      constraints.maxWidth - 48.0, // left axis reserved width
+                      chartMinWidth,
+                    );
+                    // Total chart width = past fills 80%
+                    final totalWidth = pastN > 1
+                        ? availableWidth / _pastFraction
+                        : chartMinWidth;
+
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      child: SizedBox(
+                        width: totalWidth,
+                        child: LineChart(
+                          LineChartData(
+                            clipData: FlClipData.none(),
+                            gridData: FlGridData(
+                              show: true,
+                              drawVerticalLine: false,
+                              horizontalInterval: niceInterval,
+                              getDrawingHorizontalLine: (value) => FlLine(
+                                color: scheme.outlineVariant.withAlphaFactor(
+                                  0.25,
                                 ),
-                              );
-                            },
-                          ),
-                        ),
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 22,
-                            getTitlesWidget: (value, meta) {
-                              final intValue = value.toInt();
-                              final lastIndex = values.length - 1;
-                              final middleIndex = lastIndex ~/ 2;
-                              if (intValue == 0) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(
-                                    xLabels[0],
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                );
-                              }
-                              if (intValue == lastIndex && lastIndex > 0) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(
-                                    xLabels[2],
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                );
-                              }
-                              if (intValue == middleIndex &&
-                                  middleIndex > 0 &&
-                                  middleIndex < lastIndex) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(
-                                    xLabels[1],
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                );
-                              }
-                              return const SizedBox.shrink();
-                            },
-                          ),
-                        ),
-                      ),
-                      borderData: FlBorderData(show: false),
-                      minX: 0,
-                      maxX: (values.length - 1).toDouble(),
-                      minY: minY,
-                      maxY: maxY,
-                      lineBarsData: [
-                        LineChartBarData(
-                          spots: [
-                            for (int i = 0; i < values.length; i++)
-                              FlSpot(i.toDouble(), values[i].toDouble()),
-                          ],
-                          isCurved: true,
-                          color: Theme.of(context).colorScheme.primary,
-                          barWidth: 0.8,
-                          isStrokeCapRound: true,
-                          shadow: Shadow(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.primary.withAlphaFactor(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                          dotData: FlDotData(
-                            show: true,
-                            checkToShowDot: (spot, barData) =>
-                                spot.x == barData.spots.last.x,
-                            getDotPainter: (spot, percent, barData, index) =>
-                                FlDotCirclePainter(
-                                  radius: 5,
-                                  color: Theme.of(context).colorScheme.primary,
-                                  strokeWidth: 2,
-                                  strokeColor: Theme.of(
-                                    context,
-                                  ).colorScheme.surface,
-                                ),
-                          ),
-                          belowBarData: BarAreaData(
-                            show: true,
-                            gradient: LinearGradient(
-                              colors: [
-                                Theme.of(
-                                  context,
-                                ).colorScheme.primary.withAlphaFactor(0.4),
-                                Theme.of(
-                                  context,
-                                ).colorScheme.primary.withAlphaFactor(0.0),
-                              ],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
+                                strokeWidth: 0.5,
+                                dashArray: [3, 5],
+                              ),
                             ),
-                          ),
-                        ),
-                      ],
-                      lineTouchData: LineTouchData(
-                        enabled: true,
-                        getTouchedSpotIndicator:
-                            (LineChartBarData barData, List<int> spotIndexes) {
-                              return spotIndexes.map((index) {
-                                return TouchedSpotIndicatorData(
-                                  FlLine(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary.withAlphaFactor(0.5),
-                                    strokeWidth: 2,
-                                    dashArray: [4, 4],
+                            titlesData: FlTitlesData(
+                              show: true,
+                              topTitles: AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              rightTitles: AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              leftTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 44,
+                                  interval: niceInterval,
+                                  getTitlesWidget: (value, meta) {
+                                    return PrivacyText(
+                                      formatCompact(value),
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: scheme.onSurfaceVariant,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 22,
+                                  getTitlesWidget: (value, meta) {
+                                    final idx = value.round();
+                                    if (idx == 0 && pastTrend.isNotEmpty) {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(top: 8),
+                                        child: Text(
+                                          _shortDate(
+                                            pastTrend.first.date,
+                                            widget.state.preferences.locale,
+                                          ),
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            color: scheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    if (idx == pastN - 1) {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(top: 8),
+                                        child: Text(
+                                          'Now',
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
+                                            color: scheme.primary,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    if (futureTrend.isNotEmpty &&
+                                        idx == totalN - 1) {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(top: 8),
+                                        child: Text(
+                                          _shortDate(
+                                            futureTrend.last.date,
+                                            widget.state.preferences.locale,
+                                          ),
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            color: scheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    return const SizedBox.shrink();
+                                  },
+                                ),
+                              ),
+                            ),
+                            borderData: FlBorderData(show: false),
+                            minX: 0,
+                            maxX: (totalN - 1).toDouble(),
+                            minY: minY,
+                            maxY: maxY,
+                            extraLinesData: ExtraLinesData(
+                              verticalLines: [
+                                VerticalLine(
+                                  x: nowX,
+                                  color: scheme.primary.withAlphaFactor(0.4),
+                                  strokeWidth: 1.0,
+                                  dashArray: [4, 4],
+                                  label: VerticalLineLabel(show: false),
+                                ),
+                              ],
+                            ),
+                            lineBarsData: [
+                              // Past line — full colour
+                              if (pastSpots.length > 1)
+                                LineChartBarData(
+                                  spots: pastSpots,
+                                  isCurved: true,
+                                  curveSmoothness: 0.3,
+                                  color: scheme.primary,
+                                  barWidth: 1.2,
+                                  isStrokeCapRound: true,
+                                  shadow: Shadow(
+                                    color: scheme.primary.withAlphaFactor(0.25),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 3),
                                   ),
-                                  FlDotData(
+                                  dotData: FlDotData(
+                                    show: true,
+                                    checkToShowDot: (spot, barData) =>
+                                        spot.x == barData.spots.last.x,
                                     getDotPainter:
                                         (spot, percent, barData, index) =>
                                             FlDotCirclePainter(
-                                              radius: 5,
-                                              color: Theme.of(
-                                                context,
-                                              ).colorScheme.primary,
+                                              radius: 4,
+                                              color: scheme.primary,
                                               strokeWidth: 2,
-                                              strokeColor: Theme.of(
-                                                context,
-                                              ).colorScheme.surface,
+                                              strokeColor: scheme.surface,
                                             ),
                                   ),
-                                );
-                              }).toList();
-                            },
-                        touchTooltipData: LineTouchTooltipData(
-                          getTooltipColor: (touchedSpot) =>
-                              Theme.of(context).colorScheme.onSurface,
-                          getTooltipItems: (touchedSpots) {
-                            return touchedSpots
-                                .map(
-                                  (spot) => LineTooltipItem(
-                                    maskMoneyIfPrivate(
-                                      widget.state,
-                                      formatMoney(
-                                        Money(
-                                          amountMinor: spot.y.toInt(),
-                                          currency: widget
-                                              .state
-                                              .preferences
-                                              .displayCurrency,
-                                        ),
-                                        widget.state.preferences.locale,
-                                      ),
-                                    ),
-                                    TextStyle(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.surface,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
+                                  belowBarData: BarAreaData(
+                                    show: true,
+                                    cutOffY: minY,
+                                    applyCutOffY: false,
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        scheme.primary.withAlphaFactor(0.35),
+                                        scheme.primary.withAlphaFactor(0.0),
+                                      ],
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
                                     ),
                                   ),
-                                )
-                                .toList();
-                          },
+                                ),
+                              // Future line — muted/greyed out
+                              if (futureSpots.length > 1)
+                                LineChartBarData(
+                                  spots: futureSpots,
+                                  isCurved: true,
+                                  curveSmoothness: 0.3,
+                                  color: scheme.onSurfaceVariant
+                                      .withAlphaFactor(0.45),
+                                  barWidth: 1.0,
+                                  isStrokeCapRound: true,
+                                  dashArray: [6, 4],
+                                  dotData: FlDotData(
+                                    show: true,
+                                    checkToShowDot: (spot, barData) =>
+                                        spot.x == barData.spots.last.x,
+                                    getDotPainter:
+                                        (spot, percent, barData, index) =>
+                                            FlDotCirclePainter(
+                                              radius: 3,
+                                              color:
+                                                  scheme.onSurfaceVariant
+                                                      .withAlphaFactor(0.5),
+                                              strokeWidth: 1,
+                                              strokeColor: scheme.surface,
+                                            ),
+                                  ),
+                                  belowBarData: BarAreaData(
+                                    show: true,
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        scheme.onSurfaceVariant.withAlphaFactor(
+                                          0.12,
+                                        ),
+                                        scheme.onSurfaceVariant.withAlphaFactor(
+                                          0.0,
+                                        ),
+                                      ],
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                            lineTouchData: LineTouchData(
+                              enabled: true,
+                              getTouchedSpotIndicator: (
+                                LineChartBarData barData,
+                                List<int> spotIndexes,
+                              ) {
+                                return spotIndexes.map((index) {
+                                  return TouchedSpotIndicatorData(
+                                    FlLine(
+                                      color: scheme.primary.withAlphaFactor(
+                                        0.4,
+                                      ),
+                                      strokeWidth: 1.5,
+                                      dashArray: [4, 4],
+                                    ),
+                                    FlDotData(
+                                      getDotPainter:
+                                          (spot, percent, barData, index) =>
+                                              FlDotCirclePainter(
+                                                radius: 4,
+                                                color: scheme.primary,
+                                                strokeWidth: 2,
+                                                strokeColor: scheme.surface,
+                                              ),
+                                    ),
+                                  );
+                                }).toList();
+                              },
+                              touchTooltipData: LineTouchTooltipData(
+                                getTooltipColor: (touchedSpot) =>
+                                    scheme.onSurface,
+                                getTooltipItems: (touchedSpots) {
+                                  return touchedSpots
+                                      .map(
+                                        (spot) => LineTooltipItem(
+                                          maskMoneyIfPrivate(
+                                            widget.state,
+                                            formatMoney(
+                                              Money(
+                                                amountMinor: spot.y.toInt(),
+                                                currency: widget
+                                                    .state
+                                                    .preferences
+                                                    .displayCurrency,
+                                              ),
+                                              widget.state.preferences.locale,
+                                            ),
+                                          ),
+                                          TextStyle(
+                                            color: scheme.surface,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      )
+                                      .toList();
+                                },
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ),
+            ),
+            // Legend row
+            Padding(
+              padding: const EdgeInsets.only(
+                left: 8,
+                right: 16,
+                bottom: 4,
+                top: 2,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  _LegendDot(color: scheme.primary),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Actual',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  _LegendDot(
+                    color: scheme.onSurfaceVariant.withAlphaFactor(0.5),
+                    dashed: true,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Projected',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
+
+  Future<void> _pickPeriod() async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Select period'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, 'This week'),
+            child: const Text('This week'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, 'This month'),
+            child: const Text('This month'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, 'This year'),
+            child: const Text('This year'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, 'All time'),
+            child: const Text('All time'),
+          ),
+        ],
+      ),
+    );
+    if (result != null) {
+      setState(() => _period = result);
+    }
+  }
+}
+
+class _LegendDot extends StatelessWidget {
+  const _LegendDot({required this.color, this.dashed = false});
+
+  final Color color;
+  final bool dashed;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: const Size(20, 2),
+      painter: _LineLegendPainter(color: color, dashed: dashed),
+    );
+  }
+}
+
+class _LineLegendPainter extends CustomPainter {
+  const _LineLegendPainter({required this.color, required this.dashed});
+
+  final Color color;
+  final bool dashed;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    if (!dashed) {
+      canvas.drawLine(Offset(0, size.height / 2), Offset(size.width, size.height / 2), paint);
+    } else {
+      double x = 0;
+      const dashLen = 4.0;
+      const gapLen = 3.0;
+      while (x < size.width) {
+        canvas.drawLine(
+          Offset(x, size.height / 2),
+          Offset(math.min(x + dashLen, size.width), size.height / 2),
+          paint,
+        );
+        x += dashLen + gapLen;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_LineLegendPainter old) =>
+      old.color != color || old.dashed != dashed;
 }
 
 class CurrencyValuesHomeWidget extends ConsumerStatefulWidget {

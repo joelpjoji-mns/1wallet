@@ -55,6 +55,19 @@ final homeBalanceTrendProvider = Provider.family
       return balanceTrendForRange(state, start: args.start, end: args.end);
     });
 
+final homeBalanceFutureTrendProvider = Provider.family
+    .autoDispose<List<BalanceTrendPoint>, ({DateTime start, DateTime end})>((
+      ref,
+      args,
+    ) {
+      final state = ref.watch(ledgerProvider);
+      return balanceFutureTrendForRange(
+        state,
+        start: args.start,
+        end: args.end,
+      );
+    });
+
 final homeAccountBalanceMapProvider = Provider.autoDispose<Map<String, Money>>((
   ref,
 ) {

@@ -24,6 +24,11 @@ final _filteredTransactionsProvider = Provider.autoDispose
       );
       return sortedTransactions(state, includeScheduled: false)
           .where((transaction) {
+            if (state.preferences.hideSkippedInHistory &&
+                transaction.status == 'void' &&
+                filter.statusFilter != 'void') {
+              return false;
+            }
             if (filter.statusFilter != 'all') {
               if (filter.statusFilter == 'cleared' &&
                   transaction.status != 'cleared') {
