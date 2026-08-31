@@ -250,7 +250,7 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
     final archive = ref.read(ledgerProvider.notifier).exportArchive();
 
     try {
-      final outputFile = await FilePicker.platform.saveFile(
+      final outputFile = await FilePicker.saveFile(
         dialogTitle: 'Save 1Wallet Backup',
         fileName: '1wallet_backup.onewallet',
         type: FileType.custom,

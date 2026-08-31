@@ -8,24 +8,28 @@ import '../../imports/picked_text_file.dart';
 Future<PickedTextFile?> pickTextFile({
   required List<String> allowedExtensions,
 }) async {
-  final result = await FilePicker.platform.pickFiles(
+  final files = await FilePicker.pickFiles(
     type: FileType.custom,
     allowedExtensions: allowedExtensions,
-    withData: true,
   );
-  if (result == null || result.files.isEmpty) return null;
-  final file = result.files.single;
+  if (files.isEmpty) return null;
+  final file = files.single;
 
-  Uint8List? bytes = file.bytes;
-  if (bytes == null && file.path != null) {
-    try {
-      bytes = await File(file.path!).readAsBytes();
-    } catch (_) {}
+  Uint8List bytes;
+  try {
+    bytes = await file.readAsBytes();
+  } catch (_) {
+    if (file.path != null) {
+      try {
+        bytes = await File(file.path!).readAsBytes();
+      } catch (_) {
+        throw FormatException('Could not read ${file.name}.');
+      }
+    } else {
+      throw FormatException('Could not read ${file.name}.');
+    }
   }
 
-  if (bytes == null) {
-    throw FormatException('Could not read ${file.name}.');
-  }
   return decodePickedTextFile(
     name: file.name,
     bytes: bytes,
