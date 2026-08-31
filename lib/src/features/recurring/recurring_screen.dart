@@ -1236,12 +1236,10 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                 ? 'cat-emi'
                 : (_needsCounterAccount ? null : _categoryId),
             amountMinor: finalAmountMinor,
-            originalCurrency: originalCurrency != account.currency
-                ? originalCurrency
-                : null,
-            originalAmountMinor: originalCurrency != account.currency
-                ? amountMinor
-                : null,
+            originalCurrency: originalCurrency,
+            originalAmountMinor: amountMinor,
+            clearOriginalAmount:
+                originalCurrency.toUpperCase() == account.currency.toUpperCase(),
             status: existing?.status ?? 'scheduled',
             source: 'recurring',
             name: _nameController.text,

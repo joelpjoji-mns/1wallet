@@ -757,6 +757,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
               accountId: sourceAccount.id,
               counterAccountId: loan.id,
               amountMinor: emiMinor,
+              clearOriginalAmount: true,
               status: 'scheduled',
               source: 'recurring',
               categoryId: _firstCategoryId(latestState, preferred: 'emi'),

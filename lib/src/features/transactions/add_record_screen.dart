@@ -1035,8 +1035,11 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
             accountId: account.id,
             counterAccountId: _counterAccountId,
             amountMinor: finalAmountMinor,
-            originalAmountMinor: finalOriginalAmountMinor,
-            originalCurrency: finalOriginalCurrency,
+            originalAmountMinor: finalOriginalAmountMinor ?? parsedMinor,
+            originalCurrency: finalOriginalCurrency ?? txCurrency,
+            clearOriginalAmount:
+                (finalOriginalCurrency ?? txCurrency).toUpperCase() ==
+                account.currency.toUpperCase(),
             counterAmountMinor: finalCounterAmountMinor,
             categoryId: _type == 'transfer' ? null : selectedCategory!.id,
             status: _status ?? editingTransaction?.status ?? 'cleared',
