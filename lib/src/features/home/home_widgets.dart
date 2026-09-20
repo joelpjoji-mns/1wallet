@@ -576,27 +576,13 @@ class _BalanceTrendHomeWidgetState
     if (maxY == minY) {
       maxY += 100000;
       minY -= 100000;
-    } else {
-      final span = maxY - minY;
-      maxY += span * 0.2;
-      minY -= span * 0.2;
     }
 
-    if (allValues.isNotEmpty) {
-      final finalValue = allValues.last.toDouble();
-      final span = maxY - minY;
-      final percentile = (finalValue - minY) / span;
-      if (percentile > 0.8) {
-        maxY = (finalValue - 0.2 * minY) / 0.8;
-      } else if (percentile < 0.2) {
-        minY = (finalValue - 0.2 * maxY) / 0.8;
-      }
-    }
-
-    final spanChart = maxY - minY;
+    // Calculate nice interval first, then snap bounds
+    final rawSpan = maxY - minY;
     double niceInterval = 1.0;
-    if (spanChart > 0) {
-      final roughStep = spanChart / 4;
+    if (rawSpan > 0) {
+      final roughStep = rawSpan / 4;
       final magnitude = math
           .pow(
             10,
@@ -615,11 +601,19 @@ class _BalanceTrendHomeWidgetState
         niceStep = 10.0;
       }
       niceInterval = niceStep * magnitude;
-      if (spanChart >= 100000 && niceInterval < 100000) {
+      if (rawSpan >= 100000 && niceInterval < 100000) {
         niceInterval = 100000.0;
-      } else if (spanChart >= 1000 && niceInterval < 1000) {
+      } else if (rawSpan >= 1000 && niceInterval < 1000) {
         niceInterval = 1000.0;
       }
+    }
+
+    // Snap min/max to nice interval boundaries for uniform Y axis
+    minY = (minY / niceInterval).floor() * niceInterval;
+    maxY = (maxY / niceInterval).ceil() * niceInterval;
+    if (minY == maxY) {
+      minY -= niceInterval;
+      maxY += niceInterval;
     }
 
     String formatCompact(num amountMinor) {
@@ -796,6 +790,13 @@ class _BalanceTrendHomeWidgetState
                             minY: minY,
                             maxY: maxY,
                             extraLinesData: ExtraLinesData(
+                              horizontalLines: [
+                                HorizontalLine(
+                                  y: 0,
+                                  color: scheme.onSurfaceVariant.withAlphaFactor(0.3),
+                                  strokeWidth: 1,
+                                ),
+                              ],
                               verticalLines: [
                                 VerticalLine(
                                   x: nowX,
@@ -852,8 +853,7 @@ class _BalanceTrendHomeWidgetState
                               if (futureSpots.length > 1)
                                 LineChartBarData(
                                   spots: futureSpots,
-                                  isCurved: true,
-                                  curveSmoothness: 0.3,
+                                  isCurved: false,
                                   color: scheme.onSurfaceVariant
                                       .withAlphaFactor(0.45),
                                   barWidth: 1.0,

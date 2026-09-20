@@ -436,6 +436,7 @@ Map<String, Object?> _preferencesToJson(LedgerPreferences preferences) {
     'smsCaptureEnabled': preferences.smsCaptureEnabled,
     'smsTriggerWords': preferences.smsTriggerWords,
     'smsIgnoreWords': preferences.smsIgnoreWords,
+    'smsBlockPatterns': preferences.smsBlockPatterns,
     'notificationCaptureEnabled': preferences.notificationCaptureEnabled,
     'notificationTriggerWords': preferences.notificationTriggerWords,
     'notificationIgnoreWords': preferences.notificationIgnoreWords,
@@ -588,6 +589,10 @@ LedgerPreferences _preferencesFromJson(Map<String, dynamic> json) {
     smsIgnoreWords: _stringList(
       json['smsIgnoreWords'],
       fallback: fallback.smsIgnoreWords,
+    ),
+    smsBlockPatterns: _stringList(
+      json['smsBlockPatterns'],
+      fallback: fallback.smsBlockPatterns,
     ),
     notificationCaptureEnabled: _bool(
       json['notificationCaptureEnabled'],

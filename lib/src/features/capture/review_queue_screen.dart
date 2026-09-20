@@ -46,6 +46,18 @@ class ReviewQueueScreen extends ConsumerWidget {
             icon: const Icon(Icons.settings_suggest_outlined),
             onPressed: () => context.push('/capture-settings'),
           ),
+          if (candidates.isNotEmpty) ...[
+            IconButton(
+              tooltip: 'Approve All',
+              onPressed: () => _approveAll(context, ref, candidates),
+              icon: const Icon(Icons.done_all_rounded),
+            ),
+            IconButton(
+              tooltip: 'Dismiss All',
+              onPressed: () => _dismissAll(context, ref, candidates),
+              icon: const Icon(Icons.clear_all_rounded),
+            ),
+          ],
           if (unreadCount > 0)
             IconButton(
               tooltip: 'Mark all read',
@@ -274,6 +286,23 @@ class ReviewQueueScreen extends ConsumerWidget {
                 Row(
                   children: [
                     Expanded(
+                      flex: 1,
+                      child: IconButton(
+                        tooltip: 'Block Pattern',
+                        onPressed: () => _showBlockDialog(context, ref, candidate),
+                        icon: const Icon(Icons.block_rounded),
+                        style: IconButton.styleFrom(
+                          foregroundColor: scheme.error,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      flex: 2,
                       child: TextButton.icon(
                         onPressed: () => _updateCandidateStatus(
                           context,
@@ -294,6 +323,7 @@ class ReviewQueueScreen extends ConsumerWidget {
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
+                      flex: 3,
                       child: FilledButton.icon(
                         onPressed: () => _updateCandidateStatus(
                           context,
@@ -432,6 +462,206 @@ class ReviewQueueScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> _approveAll(
+    BuildContext context,
+    WidgetRef ref,
+    List<CaptureCandidate> candidates,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Approve All?'),
+        content: Text(
+          'Are you sure you want to approve all ${candidates.length} pending items?\n\n'
+          'They will be added as transactions using their suggested accounts and categories.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Approve All'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      final ledger = ref.read(ledgerProvider.notifier);
+      for (final candidate in candidates) {
+        try {
+          await ledger.approveCaptureCandidate(candidate.id);
+        } catch (e) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to approve item: $e')),
+            );
+          }
+        }
+      }
+    }
+  }
+
+  Future<void> _dismissAll(
+    BuildContext context,
+    WidgetRef ref,
+    List<CaptureCandidate> candidates,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Dismiss All?'),
+        content: Text(
+          'Are you sure you want to dismiss all ${candidates.length} pending items?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Dismiss All'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      final ledger = ref.read(ledgerProvider.notifier);
+      await ledger.updateCaptureCandidateStatuses(
+        candidates.map((c) => c.id),
+        'rejected',
+      );
+    }
+  }
+
+  Future<void> _showBlockDialog(
+    BuildContext context,
+    WidgetRef ref,
+    CaptureCandidate candidate,
+  ) async {
+    final rawText = candidate.rawText ?? '';
+    if (rawText.isEmpty) return;
+
+    final controller = TextEditingController();
+    
+    // Suggest some words by splitting the raw text
+    final words = rawText
+        .replaceAll(RegExp(r'[^\w\s]'), ' ')
+        .split(RegExp(r'\s+'))
+        .where((w) => w.length > 3)
+        .take(10)
+        .toList();
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Block Message Pattern'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Messages matching this regex pattern will be automatically ignored.',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Original Message:',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          rawText,
+                          style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (words.isNotEmpty) ...[
+                        Text(
+                          'Tap to add word:',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 4),
+                        Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: words.map((word) {
+                            return ActionChip(
+                              label: Text(word),
+                              labelStyle: const TextStyle(fontSize: 12),
+                              onPressed: () {
+                                final text = controller.text;
+                                if (text.isEmpty) {
+                                  controller.text = word;
+                                } else {
+                                  controller.text = '$text.*$word';
+                                }
+                              },
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      TextField(
+                        controller: controller,
+                        decoration: const InputDecoration(
+                          labelText: 'Regex Pattern',
+                          border: OutlineInputBorder(),
+                          hintText: 'e.g. promo.*sale',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final pattern = controller.text.trim();
+                    if (pattern.isNotEmpty) {
+                      final ledger = ref.read(ledgerProvider.notifier);
+                      final prefs = ledger.state.preferences;
+                      final patterns = List<String>.from(prefs.smsBlockPatterns);
+                      if (!patterns.contains(pattern)) {
+                        patterns.add(pattern);
+                        ledger.updatePreferences(
+                          prefs.copyWith(smsBlockPatterns: patterns),
+                        );
+                      }
+                      ledger.updateCaptureCandidateStatus(candidate.id, 'rejected');
+                    }
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Block Pattern'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 

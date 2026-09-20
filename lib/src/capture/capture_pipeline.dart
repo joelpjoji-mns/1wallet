@@ -12,6 +12,7 @@ enum CaptureBlockReason {
   duplicatePending,
   duplicatePosted,
   duplicateBatch,
+  blockedPattern,
   error,
 }
 
@@ -79,6 +80,8 @@ class CaptureImportResult {
         return 'already posted';
       case CaptureBlockReason.duplicateBatch:
         return 'duplicate in this scan';
+      case CaptureBlockReason.blockedPattern:
+        return 'matched block pattern';
       case CaptureBlockReason.error:
         return 'error';
     }
@@ -96,6 +99,9 @@ class CaptureImportResult {
         if (reason == CaptureBlockReason.ignoreWord &&
             parsed.matchedIgnoreWord != null) {
           return 'Ignored because it matched "${parsed.matchedIgnoreWord}".';
+        }
+        if (reason == CaptureBlockReason.blockedPattern) {
+          return 'Ignored because it matched a block pattern.';
         }
         if (reason == CaptureBlockReason.missingAmount) {
           return 'Could not find an amount in this message.';

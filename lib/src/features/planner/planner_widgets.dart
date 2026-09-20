@@ -387,16 +387,13 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
                     } else if (localMinY == localMaxY) {
                       localMinY -= 10000;
                       localMaxY += 10000;
-                    } else {
-                      final span = localMaxY - localMinY;
-                      localMinY -= span * 0.2;
-                      localMaxY += span * 0.2;
                     }
 
-                    final spanChart = localMaxY - localMinY;
+                    // Calculate nice interval first, then snap bounds
+                    final rawSpan = localMaxY - localMinY;
                     double niceInterval = 1.0;
-                    if (spanChart > 0) {
-                      final roughStep = spanChart / 4;
+                    if (rawSpan > 0) {
+                      final roughStep = rawSpan / 4;
                       final magnitude = math
                           .pow(10, (math.log(roughStep > 0 ? roughStep : 1) / math.ln10).floor())
                           .toDouble();
@@ -412,11 +409,20 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
                         niceStep = 10.0;
                       }
                       niceInterval = niceStep * magnitude;
-                      if (spanChart >= 100000 && niceInterval < 100000) {
+                      if (rawSpan >= 100000 && niceInterval < 100000) {
                         niceInterval = 100000.0;
-                      } else if (spanChart >= 1000 && niceInterval < 1000) {
+                      } else if (rawSpan >= 1000 && niceInterval < 1000) {
                         niceInterval = 1000.0;
                       }
+                    }
+
+                    // Snap min/max to nice interval boundaries for uniform Y axis
+                    localMinY = (localMinY / niceInterval).floor() * niceInterval;
+                    localMaxY = (localMaxY / niceInterval).ceil() * niceInterval;
+                    // Ensure at least some padding
+                    if (localMinY == localMaxY) {
+                      localMinY -= niceInterval;
+                      localMaxY += niceInterval;
                     }
 
                     return Listener(
@@ -493,6 +499,13 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
                             minY: localMinY,
                             maxY: localMaxY,
                             extraLinesData: ExtraLinesData(
+                              horizontalLines: [
+                                HorizontalLine(
+                                  y: 0,
+                                  color: scheme.onSurfaceVariant.withAlphaFactor(0.3),
+                                  strokeWidth: 1,
+                                ),
+                              ],
                               verticalLines: [
                                 VerticalLine(
                                   x: nowX,
@@ -556,8 +569,7 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
                             if (futureSpots.length > 1)
                               LineChartBarData(
                                 spots: futureSpots,
-                                isCurved: true,
-                                curveSmoothness: 0.3,
+                                isCurved: false,
                                 color: scheme.onSurfaceVariant.withAlphaFactor(0.55),
                                 barWidth: 2.0,
                                 isStrokeCapRound: true,

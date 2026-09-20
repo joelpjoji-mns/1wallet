@@ -212,36 +212,20 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
       if (y > maxY) maxY = y;
     }
 
-    if (maxY == minY) {
-      maxY += 100000;
-      minY -= 100000;
-    } else {
-      final span = maxY - minY;
-      maxY += span * 0.2;
-      minY -= span * 0.2;
-    }
-
-    if (spots.isNotEmpty) {
-      final finalValue = spots.last.y;
-      final span = maxY - minY;
-      final percentile = (finalValue - minY) / span;
-
-      if (percentile > 0.8) {
-        maxY = (finalValue - 0.2 * minY) / 0.8;
-      } else if (percentile < 0.2) {
-        minY = (finalValue - 0.2 * maxY) / 0.8;
-      }
-    }
-
     if (spots.length == 1) {
       final single = spots.first;
       spots.add(FlSpot(single.x + 86400000, single.y));
       maxX += 86400000;
     }
 
-    // Calculate rounded bounds and intervals
-    double interval = 1000;
+    if (maxY == minY) {
+      maxY += 1000;
+      minY -= 1000;
+    }
+
+    // Calculate nice interval
     final yRange = (maxY - minY).abs();
+    double interval = 1000;
     if (yRange > 1000000) {
       interval = 500000;
     } else if (yRange > 500000) {
@@ -256,6 +240,14 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
       interval = 5000;
     } else if (yRange > 0) {
       interval = 1000;
+    }
+
+    // Snap min/max to interval-aligned boundaries for uniform Y axis
+    minY = (minY / interval).floor() * interval;
+    maxY = (maxY / interval).ceil() * interval;
+    if (minY == maxY) {
+      minY -= interval;
+      maxY += interval;
     }
 
     return LineChart(

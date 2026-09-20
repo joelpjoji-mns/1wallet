@@ -280,6 +280,7 @@ class LedgerPreferences {
     this.smsCaptureEnabled = true,
     this.smsTriggerWords = kDefaultSmsTriggerWords,
     this.smsIgnoreWords = kDefaultSmsIgnoreWords,
+    this.smsBlockPatterns = const [],
     this.notificationCaptureEnabled = false,
     this.notificationTriggerWords = kDefaultSmsTriggerWords,
     this.notificationIgnoreWords = kDefaultSmsIgnoreWords,
@@ -321,6 +322,7 @@ class LedgerPreferences {
   final bool smsCaptureEnabled;
   final List<String> smsTriggerWords;
   final List<String> smsIgnoreWords;
+  final List<String> smsBlockPatterns;
   final bool notificationCaptureEnabled;
   final List<String> notificationTriggerWords;
   final List<String> notificationIgnoreWords;
@@ -362,6 +364,7 @@ class LedgerPreferences {
     bool? smsCaptureEnabled,
     List<String>? smsTriggerWords,
     List<String>? smsIgnoreWords,
+    List<String>? smsBlockPatterns,
     bool? notificationCaptureEnabled,
     List<String>? notificationTriggerWords,
     List<String>? notificationIgnoreWords,
@@ -414,6 +417,7 @@ class LedgerPreferences {
       smsCaptureEnabled: smsCaptureEnabled ?? this.smsCaptureEnabled,
       smsTriggerWords: smsTriggerWords ?? this.smsTriggerWords,
       smsIgnoreWords: smsIgnoreWords ?? this.smsIgnoreWords,
+      smsBlockPatterns: smsBlockPatterns ?? this.smsBlockPatterns,
       notificationCaptureEnabled:
           notificationCaptureEnabled ?? this.notificationCaptureEnabled,
       notificationTriggerWords:

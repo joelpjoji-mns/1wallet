@@ -1266,43 +1266,6 @@ class LedgerController extends StateNotifier<LedgerState> {
 
     final amount = parsed.amount;
     if (amount != null) {
-      final txDuplicate = state.transactions.any((tx) {
-        if (tx.status == 'scheduled' || tx.status == 'paused') return false;
-        final timeDiff = tx.occurredAt.difference(receivedAt).abs().inMinutes;
-        if (timeDiff > 720) return false;
-
-        if (tx.amount.amountMinor != amount.amountMinor ||
-            tx.amount.currency.toUpperCase() != amount.currency.toUpperCase()) {
-          return false;
-        }
-
-        if (matchedAccountId != null && tx.accountId == matchedAccountId) {
-          return true;
-        }
-        if (parsed.last4 != null) {
-          final acc = state.accounts.firstWhereOrNull(
-            (a) => a.id == tx.accountId,
-          );
-          if (acc != null &&
-              (acc.cardLast4 == parsed.last4 ||
-                  acc.accountLast4 == parsed.last4)) {
-            return true;
-          }
-        }
-        if (parsed.merchant != null && parsed.merchant!.isNotEmpty) {
-          final pMerch = parsed.merchant!.trim().toLowerCase();
-          if (tx.name?.toLowerCase().contains(pMerch) == true ||
-              tx.notes?.toLowerCase().contains(pMerch) == true) {
-            return true;
-          }
-        }
-        if (matchedAccountId == null && timeDiff <= 15) {
-          return true;
-        }
-        return false;
-      });
-      if (txDuplicate) return _CaptureDuplicateKind.postedTransaction;
-
       bool isDuplicateCandidate(CaptureCandidate c) {
         if (c.status != 'pending') return false;
         final timeDiff = c.createdAt.difference(receivedAt).abs().inMinutes;
@@ -1486,6 +1449,27 @@ class LedgerController extends StateNotifier<LedgerState> {
     Iterable<CaptureCandidate> additionalCandidates = const [],
   }) {
     final actualReceivedAt = receivedAt ?? DateTime.now();
+    
+    for (final pattern in state.preferences.smsBlockPatterns) {
+      if (pattern.trim().isEmpty) continue;
+      try {
+        final regex = RegExp(pattern, caseSensitive: false);
+        if (regex.hasMatch(rawText)) {
+          return CaptureImportResult(
+            source: source,
+            status: CaptureImportStatus.ignored,
+            reason: CaptureBlockReason.blockedPattern,
+            receivedAt: actualReceivedAt,
+            parsed: const ParsedTransactionMessage(rawText: '', ignored: true),
+            nativeAccepted: nativeAccepted,
+            notificationShown: notificationShown,
+          );
+        }
+      } catch (_) {
+        // Ignore invalid regex patterns
+      }
+    }
+
     final parsed = parseTransactionMessage(
       rawText,
       fallbackCurrency: state.preferences.baseCurrency,
@@ -2509,7 +2493,7 @@ String? _matchAccountToSms(LedgerState state, ParsedTransactionMessage parsed) {
     }
 
     // ── Accumulate best ──────────────────────────────────────────────
-    if (score > highestScore && score >= 10) {
+    if (score > highestScore && score >= 20) {
       highestScore = score;
       bestMatch = account;
     }
