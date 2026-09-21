@@ -23,7 +23,7 @@ import 'home_components.dart';
 import 'home_widget_card.dart';
 import 'home_widget_models.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../planner/planner_widgets.dart';
+
 
 final _homeScheduledTransactionsProvider =
     Provider.autoDispose<List<TransactionRecord>>((ref) {
@@ -61,7 +61,7 @@ Widget buildHomeDashboardWidget({
       state: state,
       onTabSelected: onTabSelected,
     ),
-    HomeDashboardWidgetId.balanceTrend => BalanceTrendWidget(state: state),
+    HomeDashboardWidgetId.balanceTrend => BalanceTrendHomeWidget(state: state),
     HomeDashboardWidgetId.currencyValues => CurrencyValuesHomeWidget(
       state: state,
     ),
@@ -79,7 +79,10 @@ Widget buildHomeDashboardWidget({
     HomeDashboardWidgetId.accountGroups => AccountGroupsHomeWidget(
       state: state,
     ),
-    HomeDashboardWidgetId.topCategories => TopCategoriesWidget(state: state),
+    HomeDashboardWidgetId.topCategories => TopCategoriesHomeWidget(
+      state: state,
+      onRecords: () => onTabSelected(1),
+    ),
 
     HomeDashboardWidgetId.creditUtilization => CreditUtilizationWidget(
       state: state,
@@ -535,16 +538,18 @@ class _BalanceTrendHomeWidgetState
     );
 
     if (pastTrendAsync.isLoading || futureTrendAsync.isLoading) {
-      return HomeWidgetCard(
-        title: 'Balance trend',
-        subtitle: _period,
-        icon: Icons.bar_chart_rounded,
-        iconColor: Theme.of(context).colorScheme.tertiary,
-        actionLabel: _period,
-        onAction: () => _pickPeriod(),
-        child: const SizedBox(
-          height: _chartHeight,
-          child: Center(child: CircularProgressIndicator()),
+      return RepaintBoundary(
+        child: HomeWidgetCard(
+          title: 'Balance trend',
+          subtitle: _period,
+          icon: Icons.bar_chart_rounded,
+          iconColor: Theme.of(context).colorScheme.tertiary,
+          actionLabel: _period,
+          onAction: () => _pickPeriod(),
+          child: const SizedBox(
+            height: _chartHeight,
+            child: Center(child: CircularProgressIndicator()),
+          ),
         ),
       );
     }
@@ -673,21 +678,21 @@ class _BalanceTrendHomeWidgetState
     // Calculate chart pixel width so the past portion fills 80% and
     // future 20% of available width.
     final chartMinWidth = 320.0;
-
-    return HomeWidgetCard(
-      title: 'Balance trend',
-      subtitle: periodLabel,
-      icon: Icons.bar_chart_rounded,
-      iconColor: scheme.tertiary,
-      actionLabel: _period,
-      onAction: () => _pickPeriod(),
-      child: GestureDetector(
-        onTap: () => context.push('/balance-trend'),
-        onHorizontalDragUpdate: (_) {},
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(right: 16.0, top: 16.0),
+    return RepaintBoundary(
+      child: HomeWidgetCard(
+        title: 'Balance trend',
+        subtitle: periodLabel,
+        icon: Icons.bar_chart_rounded,
+        iconColor: scheme.tertiary,
+        actionLabel: _period,
+        onAction: () => _pickPeriod(),
+        child: GestureDetector(
+          onTap: () => context.push('/balance-trend'),
+          onHorizontalDragUpdate: (_) {},
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: 16.0, top: 16.0),
               child: SizedBox(
                 height: _chartHeight,
                 child: LayoutBuilder(
@@ -1012,7 +1017,6 @@ class _BalanceTrendHomeWidgetState
                 ],
               ),
             ),
-          ],
         ),
       ),
     );
@@ -1998,8 +2002,9 @@ class _CategoryListWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final total = items.fold<int>(0, (sum, item) => sum + item.amountMinor);
-    return HomeWidgetCard(
-      title: title,
+    return RepaintBoundary(
+      child: HomeWidgetCard(
+        title: title,
       icon: icon,
       iconColor: iconColor,
       actionLabel: actionLabel,
@@ -2027,6 +2032,7 @@ class _CategoryListWidget extends StatelessWidget {
                 ],
               ],
             ),
+      ),
     );
   }
 }
@@ -2333,4 +2339,169 @@ class _CategoryTotal {
   final String label;
   final int amountMinor;
   final Color? color;
+}
+class DashboardCard extends StatelessWidget {
+  const DashboardCard({required this.child, this.onTap, super.key});
+  final Widget child;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.outlineVariant.withAlphaFactor(0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: scheme.shadow.withAlphaFactor(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+class CreditUtilizationWidget extends StatelessWidget {
+  const CreditUtilizationWidget({required this.state, super.key});
+  final LedgerState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    // Exclude loans as requested
+    final creditAccounts = state.accounts
+        .where(
+          (a) => (a.type == 'credit_card' || a.type == 'card') && !a.isArchived,
+        )
+        .toList();
+    final balances = accountBalanceMap(state);
+
+    return RepaintBoundary(
+      child: DashboardCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+          const Text(
+            'Credit Card Utilization',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          Text(
+            'Which credit cards am I using the most?',
+            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 24),
+          if (creditAccounts.isEmpty) const Text('No credit accounts.'),
+          ...creditAccounts.map((acc) {
+            final rawBal = convertMoneyForDisplay(
+              state,
+              accountBalanceFromMap(balances, acc),
+              state.preferences.displayCurrency,
+            ).amountMinor;
+            final balForDisplay = rawBal.abs();
+            final debt = rawBal < 0 ? -rawBal : 0;
+            
+            final limit = acc.creditLimit != null
+                ? convertMoneyForDisplay(
+                    state,
+                    acc.creditLimit!,
+                    state.preferences.displayCurrency,
+                  ).amountMinor
+                : 0;
+            final util = limit > 0 ? (debt / limit) : 0.0;
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          acc.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (limit > 0)
+                        Text(
+                          '${(util * 100).round()}%',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                          ),
+                        )
+                      else
+                        const Text(
+                          'N/A',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(
+                    value: limit > 0 ? util.clamp(0.0, 1.0) : 0.0,
+                    color: acc.color ?? scheme.primary,
+                    backgroundColor: scheme.surfaceContainerHighest,
+                    minHeight: 16,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        child: PrivacyText(
+                          'Balance ${formatMoney(Money(amountMinor: balForDisplay, currency: state.preferences.displayCurrency), state.preferences.locale)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: PrivacyText(
+                          'Limit ${limit > 0 ? formatMoney(Money(amountMinor: limit, currency: state.preferences.displayCurrency), state.preferences.locale) : 'Not Set'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.end,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
 }
