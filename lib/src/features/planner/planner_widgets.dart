@@ -442,9 +442,15 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
                             clipData: FlClipData.all(),
                             gridData: FlGridData(
                               show: true,
-                              drawVerticalLine: false,
+                              drawVerticalLine: true,
                               horizontalInterval: niceInterval,
+                              verticalInterval: math.max(1.0, (_period.duration.inDays / 4).floorToDouble()),
                               getDrawingHorizontalLine: (value) => FlLine(
+                                color: scheme.outlineVariant.withAlphaFactor(0.25),
+                                strokeWidth: 0.5,
+                                dashArray: [3, 5],
+                              ),
+                              getDrawingVerticalLine: (value) => FlLine(
                                 color: scheme.outlineVariant.withAlphaFactor(0.25),
                                 strokeWidth: 0.5,
                                 dashArray: [3, 5],
@@ -557,6 +563,8 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
                                 ),
                                 belowBarData: BarAreaData(
                                   show: true,
+                                  cutOffY: localMinY,
+                                  applyCutOffY: false,
                                   gradient: LinearGradient(
                                     colors: [
                                       scheme.primary.withAlphaFactor(0.45),
@@ -591,6 +599,8 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
                                 ),
                                 belowBarData: BarAreaData(
                                   show: true,
+                                  cutOffY: localMinY,
+                                  applyCutOffY: false,
                                   gradient: LinearGradient(
                                     colors: [
                                       scheme.onSurfaceVariant.withAlphaFactor(0.25),

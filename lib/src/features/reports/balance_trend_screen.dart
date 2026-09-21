@@ -345,6 +345,8 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
             dotData: const FlDotData(show: false),
             belowBarData: BarAreaData(
               show: true,
+              cutOffY: minY,
+              applyCutOffY: false,
               color: const Color(0x1a3b82f6),
             ),
           ),

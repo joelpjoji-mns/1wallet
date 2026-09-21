@@ -1738,6 +1738,8 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                       ),
                       belowBarData: BarAreaData(
                         show: true,
+                        cutOffY: _currentMinY,
+                        applyCutOffY: false,
                         gradient: LinearGradient(
                           colors: [
                             widget.lineColor.withValues(alpha: 0.5),

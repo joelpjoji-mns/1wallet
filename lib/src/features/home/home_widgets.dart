@@ -634,9 +634,9 @@ class _BalanceTrendHomeWidgetState
     // "Now" divider sits at x = pastTrend.length - 1.
     final pastN = pastTrend.length;
     final futureN = futureTrend.length;
-    final totalN = pastN + futureN - 1; // shared "now" point
+    final totalN = pastN == 0 ? futureN : (futureN == 0 ? pastN : pastN + futureN - 1); // shared "now" point
 
-    final nowX = (pastN - 1).toDouble();
+    final nowX = pastN > 0 ? (pastN - 1).toDouble() : 0.0;
 
     // Past spots
     final pastSpots = <FlSpot>[
@@ -695,9 +695,17 @@ class _BalanceTrendHomeWidgetState
                             clipData: FlClipData.none(),
                             gridData: FlGridData(
                               show: true,
-                              drawVerticalLine: false,
+                              drawVerticalLine: true,
                               horizontalInterval: niceInterval,
+                              verticalInterval: 1.0,
                               getDrawingHorizontalLine: (value) => FlLine(
+                                color: scheme.outlineVariant.withAlphaFactor(
+                                  0.25,
+                                ),
+                                strokeWidth: 0.5,
+                                dashArray: [3, 5],
+                              ),
+                              getDrawingVerticalLine: (value) => FlLine(
                                 color: scheme.outlineVariant.withAlphaFactor(
                                   0.25,
                                 ),
@@ -786,7 +794,7 @@ class _BalanceTrendHomeWidgetState
                             ),
                             borderData: FlBorderData(show: false),
                             minX: 0,
-                            maxX: (totalN - 1).toDouble(),
+                            maxX: math.max(1.0, (totalN - 1).toDouble()),
                             minY: minY,
                             maxY: maxY,
                             extraLinesData: ExtraLinesData(
@@ -876,6 +884,8 @@ class _BalanceTrendHomeWidgetState
                                   ),
                                   belowBarData: BarAreaData(
                                     show: true,
+                                    cutOffY: minY,
+                                    applyCutOffY: false,
                                     gradient: LinearGradient(
                                       colors: [
                                         scheme.onSurfaceVariant.withAlphaFactor(
