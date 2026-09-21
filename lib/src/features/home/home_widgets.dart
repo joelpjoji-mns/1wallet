@@ -693,8 +693,8 @@ class _BalanceTrendHomeWidgetState
             children: [
               Padding(
                 padding: const EdgeInsets.only(right: 16.0, top: 16.0),
-              child: SizedBox(
-                height: _chartHeight,
+                child: SizedBox(
+                  height: _chartHeight,
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     // Past region fills 80% of available width, future the rest.
@@ -1017,10 +1017,12 @@ class _BalanceTrendHomeWidgetState
                 ],
               ),
             ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Future<void> _pickPeriod() async {
     final result = await showDialog<String>(
@@ -2501,6 +2503,7 @@ class CreditUtilizationWidget extends StatelessWidget {
             );
           }),
         ],
+      ),
       ),
     );
   }
