@@ -978,11 +978,14 @@ class CreditUtilizationWidget extends StatelessWidget {
           const SizedBox(height: 24),
           if (creditAccounts.isEmpty) const Text('No credit accounts.'),
           ...creditAccounts.map((acc) {
-            final bal = convertMoneyForDisplay(
+            final rawBal = convertMoneyForDisplay(
               state,
               accountBalanceFromMap(balances, acc),
               state.preferences.displayCurrency,
-            ).amountMinor.abs();
+            ).amountMinor;
+            final balForDisplay = rawBal.abs();
+            final debt = rawBal < 0 ? -rawBal : 0;
+            
             final limit = acc.creditLimit != null
                 ? convertMoneyForDisplay(
                     state,
@@ -990,7 +993,7 @@ class CreditUtilizationWidget extends StatelessWidget {
                     state.preferences.displayCurrency,
                   ).amountMinor
                 : 0;
-            final util = limit > 0 ? (bal / limit) : 0.0;
+            final util = limit > 0 ? (debt / limit) : 0.0;
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 24),
@@ -1041,7 +1044,7 @@ class CreditUtilizationWidget extends StatelessWidget {
                     children: [
                       Flexible(
                         child: PrivacyText(
-                          'Balance ${formatMoney(Money(amountMinor: bal, currency: state.preferences.displayCurrency), state.preferences.locale)}',
+                          'Balance ${formatMoney(Money(amountMinor: balForDisplay, currency: state.preferences.displayCurrency), state.preferences.locale)}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(

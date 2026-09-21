@@ -80,24 +80,11 @@ Widget buildHomeDashboardWidget({
       state: state,
     ),
     HomeDashboardWidgetId.topCategories => TopCategoriesWidget(state: state),
-    HomeDashboardWidgetId.budgetPressure => BudgetPressureHomeWidget(
-      state: state,
-    ),
     HomeDashboardWidgetId.goalProgress => GoalProgressHomeWidget(state: state),
     HomeDashboardWidgetId.creditUtilization => CreditUtilizationWidget(
       state: state,
     ),
     HomeDashboardWidgetId.netWorth => NetWorthHomeWidget(state: state),
-    HomeDashboardWidgetId.cashFlow => CashFlowHomeWidget(state: state),
-    HomeDashboardWidgetId.financialHealth => FinancialHealthHomeWidget(
-      state: state,
-    ),
-    HomeDashboardWidgetId.monthComparison => MonthComparisonHomeWidget(
-      state: state,
-    ),
-    HomeDashboardWidgetId.spendingHeatmap => SpendingHeatmapHomeWidget(
-      state: state,
-    ),
   };
 }
 

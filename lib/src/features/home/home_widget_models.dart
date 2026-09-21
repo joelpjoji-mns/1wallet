@@ -13,14 +13,9 @@ enum HomeDashboardWidgetId {
   balanceTrend('balanceTrend'),
   topCategories('topCategories'),
   currencyValues('currencyValues'),
-  budgetPressure('budgetPressure'),
   goalProgress('goalProgress'),
   creditUtilization('creditUtilization'),
-  netWorth('netWorth'),
-  cashFlow('cashFlow'),
-  financialHealth('financialHealth'),
-  monthComparison('monthComparison'),
-  spendingHeatmap('spendingHeatmap');
+  netWorth('netWorth');
 
   const HomeDashboardWidgetId(this.storageKey);
 
@@ -33,16 +28,11 @@ const defaultHomeWidgetOrder = [
   HomeDashboardWidgetId.recentRecords,
   HomeDashboardWidgetId.balanceTrend,
   HomeDashboardWidgetId.currencyValues,
-  HomeDashboardWidgetId.cashFlow,
-  HomeDashboardWidgetId.monthComparison,
   HomeDashboardWidgetId.topCategories,
-  HomeDashboardWidgetId.financialHealth,
   HomeDashboardWidgetId.netWorth,
   HomeDashboardWidgetId.upcomingScheduled,
-  HomeDashboardWidgetId.budgetPressure,
   HomeDashboardWidgetId.goalProgress,
   HomeDashboardWidgetId.creditUtilization,
-  HomeDashboardWidgetId.spendingHeatmap,
 ];
 
 const homeWidgetDatePresets = [
