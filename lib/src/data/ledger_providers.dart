@@ -2070,23 +2070,7 @@ LedgerPreferences _preferencesRememberingCategory(
   String? merchant,
   String? categoryId,
 ) {
-  final key = _merchantRuleKey(merchant);
-  if (key == null || categoryId == null || categoryId.trim().isEmpty) {
-    return state.preferences;
-  }
-  final category = categoryById(state, categoryId);
-  if (category == null || category.isArchived) return state.preferences;
-
-  final existing = state.preferences.merchantCategoryRules;
-  if (existing[key] == category.id) return state.preferences;
-  final next = Map<String, String>.from(existing)..[key] = category.id;
-  if (next.length > 250) {
-    final overflow = next.length - 250;
-    for (final oldKey in next.keys.take(overflow).toList()) {
-      next.remove(oldKey);
-    }
-  }
-  return state.preferences.copyWith(merchantCategoryRules: next);
+  return state.preferences;
 }
 
 TransactionRecord? _transactionById(LedgerState state, String id) {
@@ -2153,27 +2137,6 @@ _CategorySuggestion? _suggestCategory(
   final normalized = name?.trim().toLowerCase();
 
   if (normalized != null && normalized.isNotEmpty) {
-    // 1. User-learned merchant/category rules from reviewed captures.
-    for (final entry in state.preferences.merchantCategoryRules.entries) {
-      final ruleKey = entry.key.trim().toLowerCase();
-      if (ruleKey.isEmpty) continue;
-      final matches = normalized == ruleKey ||
-          (isMerchant && ruleKey.length > 3 && normalized.contains(ruleKey)) ||
-          (isMerchant && normalized.length > 3 && ruleKey.contains(normalized)) ||
-          (!isMerchant &&
-              RegExp(r'\b' + RegExp.escape(ruleKey) + r'\b', caseSensitive: false)
-                  .hasMatch(normalized));
-      if (!matches) continue;
-      final category = categoryById(state, entry.value);
-      if (category != null && !category.isArchived) {
-        return _CategorySuggestion(
-          category: category,
-          confidence: 0.95,
-          reason: 'Learned from past $ruleKey captures',
-        );
-      }
-    }
-
     // 2. Check previous transactions for exact or partial name match
     // to find the most recently used category for this merchant.
     for (final tx in state.transactions) {
