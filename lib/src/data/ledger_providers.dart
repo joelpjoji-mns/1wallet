@@ -2054,17 +2054,6 @@ Map<String, String> _normalizeStringMap(Map<String, String> values) {
   return result;
 }
 
-String? _merchantRuleKey(String? merchant) {
-  final normalized = merchant
-      ?.trim()
-      .toLowerCase()
-      .replaceAll(RegExp(r'[^a-z0-9@&._\-\s]+'), ' ')
-      .replaceAll(RegExp(r'\s+'), ' ')
-      .trim();
-  if (normalized == null || normalized.length < 3) return null;
-  return normalized.length <= 80 ? normalized : normalized.substring(0, 80);
-}
-
 LedgerPreferences _preferencesRememberingCategory(
   LedgerState state,
   String? merchant,
