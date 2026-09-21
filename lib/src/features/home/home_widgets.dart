@@ -635,6 +635,11 @@ class _BalanceTrendHomeWidgetState
     final pastN = pastTrend.length;
     final futureN = futureTrend.length;
     final totalN = pastN == 0 ? futureN : (futureN == 0 ? pastN : pastN + futureN - 1); // shared "now" point
+    
+    double niceXInterval = 1.0;
+    if (totalN > 15) {
+      niceXInterval = (totalN / 10).ceilToDouble();
+    }
 
     final nowX = pastN > 0 ? (pastN - 1).toDouble() : 0.0;
 
@@ -666,6 +671,7 @@ class _BalanceTrendHomeWidgetState
       onAction: () => _pickPeriod(),
       child: GestureDetector(
         onTap: () => context.push('/balance-trend'),
+        onHorizontalDragUpdate: (_) {},
         child: Column(
           children: [
             Padding(
@@ -697,7 +703,7 @@ class _BalanceTrendHomeWidgetState
                               show: true,
                               drawVerticalLine: true,
                               horizontalInterval: niceInterval,
-                              verticalInterval: 1.0,
+                              verticalInterval: niceXInterval,
                               getDrawingHorizontalLine: (value) => FlLine(
                                 color: scheme.outlineVariant.withAlphaFactor(
                                   0.25,
