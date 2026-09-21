@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/ledger_models.dart';
@@ -46,26 +47,30 @@ final homeNetWorthProvider =
       return netWorth(state);
     });
 
-final homeBalanceTrendProvider = Provider.family
+final homeBalanceTrendProvider = FutureProvider.family
     .autoDispose<List<BalanceTrendPoint>, ({DateTime? start, DateTime? end})>((
       ref,
       args,
-    ) {
+    ) async {
       final state = ref.watch(ledgerProvider);
-      return balanceTrendForRange(state, start: args.start, end: args.end);
+      return await compute((msg) {
+        return balanceTrendForRange(msg.state, start: msg.start, end: msg.end);
+      }, (state: state, start: args.start, end: args.end));
     });
 
-final homeBalanceFutureTrendProvider = Provider.family
+final homeBalanceFutureTrendProvider = FutureProvider.family
     .autoDispose<List<BalanceTrendPoint>, ({DateTime start, DateTime end})>((
       ref,
       args,
-    ) {
+    ) async {
       final state = ref.watch(ledgerProvider);
-      return balanceFutureTrendForRange(
-        state,
-        start: args.start,
-        end: args.end,
-      );
+      return await compute((msg) {
+        return balanceFutureTrendForRange(
+          msg.state,
+          start: msg.start,
+          end: msg.end,
+        );
+      }, (state: state, start: args.start, end: args.end));
     });
 
 final homeAccountBalanceMapProvider = Provider.autoDispose<Map<String, Money>>((

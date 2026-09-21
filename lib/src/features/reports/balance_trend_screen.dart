@@ -50,12 +50,22 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
       now.hour,
       now.minute,
     );
-    final trend = ref.watch(
+    final trendAsync = ref.watch(
       homeBalanceTrendProvider((start: start, end: nowRounded)),
     );
     final current = ref.watch(
       homeTotalBalanceProvider((accountId: null, targetCurrency: null)),
     );
+
+    if (trendAsync.isLoading) {
+      return Scaffold(
+        backgroundColor: scheme.surface,
+        appBar: AppBar(title: const Text('Balance Trend'), centerTitle: true),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final trend = trendAsync.value ?? const [];
 
     return Scaffold(
       backgroundColor: scheme.surface,

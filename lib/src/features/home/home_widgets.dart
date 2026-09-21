@@ -539,12 +539,30 @@ class _BalanceTrendHomeWidgetState
     );
     final futureEnd = nowRounded.add(futureSpan);
 
-    final pastTrend = ref.watch(
+    final pastTrendAsync = ref.watch(
       homeBalanceTrendProvider((start: start, end: nowRounded)),
     );
-    final futureTrend = ref.watch(
+    final futureTrendAsync = ref.watch(
       homeBalanceFutureTrendProvider((start: nowRounded, end: futureEnd)),
     );
+
+    if (pastTrendAsync.isLoading || futureTrendAsync.isLoading) {
+      return HomeWidgetCard(
+        title: 'Balance trend',
+        subtitle: _period,
+        icon: Icons.bar_chart_rounded,
+        iconColor: Theme.of(context).colorScheme.tertiary,
+        actionLabel: _period,
+        onAction: () => _pickPeriod(),
+        child: const SizedBox(
+          height: _chartHeight,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    final pastTrend = pastTrendAsync.value ?? const [];
+    final futureTrend = futureTrendAsync.value ?? const [];
 
     final pastValues = pastTrend.map((p) => p.balance.amountMinor).toList();
     final futureValues = futureTrend.map((p) => p.balance.amountMinor).toList();

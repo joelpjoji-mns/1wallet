@@ -151,12 +151,24 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
     final futureEnd = DateTime(now.year + 2, now.month, now.day);
 
     // Past trend from home provider (same data, all included accounts)
-    final pastTrend = ref.watch(
+    final pastTrendAsync = ref.watch(
       homeBalanceTrendProvider((start: start, end: nowRounded)),
     );
-    final futureTrend = ref.watch(
+    final futureTrendAsync = ref.watch(
       homeBalanceFutureTrendProvider((start: nowRounded, end: futureEnd)),
     );
+
+    if (pastTrendAsync.isLoading || futureTrendAsync.isLoading) {
+      return const DashboardCard(
+        child: SizedBox(
+          height: 250,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    final pastTrend = pastTrendAsync.value ?? const [];
+    final futureTrend = futureTrendAsync.value ?? const [];
 
     final pastValues = pastTrend.map((p) => p.balance.amountMinor).toList();
     final futureValues = futureTrend.map((p) => p.balance.amountMinor).toList();
