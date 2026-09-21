@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:intl/intl.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -655,8 +656,8 @@ class _BalanceTrendHomeWidgetState
     final totalN = pastN == 0 ? futureN : (futureN == 0 ? pastN : pastN + futureN - 1); // shared "now" point
     
     double niceXInterval = 1.0;
-    if (totalN > 15) {
-      niceXInterval = (totalN / 10).ceilToDouble();
+    if (totalN > 6) {
+      niceXInterval = (totalN / 5).ceilToDouble();
     }
 
     final nowX = pastN > 0 ? (pastN - 1).toDouble() : 0.0;
@@ -2408,8 +2409,9 @@ List<_CategoryTotal> _categoryTotals(
   return items;
 }
 
-String _shortDate(DateTime date, String locale) =>
-    formatLedgerDate(date, locale);
+String _shortDate(DateTime date, String locale) {
+  return DateFormat('dd-MMM', locale).format(date);
+}
 
 class _AccountGroupSummary {
   const _AccountGroupSummary({

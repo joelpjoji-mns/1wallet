@@ -222,7 +222,7 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
       if (y > maxY) maxY = y;
     }
 
-    double xInterval = (maxX - minX) / 6;
+    double xInterval = (maxX - minX) / 4;
     if (xInterval <= 0) xInterval = 86400000; // fallback to 1 day
 
     if (spots.length == 1) {

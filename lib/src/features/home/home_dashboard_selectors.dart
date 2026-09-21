@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import '../../data/ledger_models.dart';
 import '../../ledger/ledger_selectors.dart';
+import '../calendar/calendar_forecast.dart';
 
 class BalanceTrendPoint {
   const BalanceTrendPoint({required this.date, required this.balance});
@@ -142,11 +143,14 @@ List<BalanceTrendPoint> balanceFutureTrendForRange(
       .where(
         (tx) =>
             (tx.status == 'scheduled' || tx.status == 'paused') &&
+            tx.source != 'recurring' &&
             !tx.occurredAt.isBefore(rangeStart) &&
             !tx.occurredAt.isAfter(rangeEnd),
       )
-      .toList()
-    ..sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
+      .toList();
+      
+  futureTxs.addAll(forecastRecurringTransactions(state, rangeStart, rangeEnd));
+  futureTxs.sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
 
   final points = <BalanceTrendPoint>[];
   DateTime current = rangeStart;

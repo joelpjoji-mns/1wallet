@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -502,7 +503,7 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
                                     return Padding(
                                       padding: const EdgeInsets.only(top: 8),
                                       child: Text(
-                                        '${date.day}/${date.month}',
+                                        DateFormat('dd-MMM').format(date),
                                         style: TextStyle(
                                           fontSize: 9,
                                           color: scheme.onSurfaceVariant,
