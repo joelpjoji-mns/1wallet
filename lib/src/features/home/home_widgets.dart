@@ -643,16 +643,22 @@ class _BalanceTrendHomeWidgetState
 
     final nowX = pastN > 0 ? (pastN - 1).toDouble() : 0.0;
 
+    final step = totalN > 300 ? (totalN / 300).ceil() : 1;
+
     // Past spots
     final pastSpots = <FlSpot>[
-      for (int i = 0; i < pastN; i++)
+      for (int i = 0; i < pastN; i += step)
         FlSpot(i.toDouble(), pastValues[i].toDouble()),
+      if (pastN > 0 && (pastN - 1) % step != 0)
+        FlSpot((pastN - 1).toDouble(), pastValues.last.toDouble()),
     ];
 
     // Future spots: start at x = nowX (shared balance point)
     final futureSpots = <FlSpot>[
-      for (int i = 0; i < futureN; i++)
+      for (int i = 0; i < futureN; i += step)
         FlSpot(nowX + i.toDouble(), futureValues[i].toDouble()),
+      if (futureN > 0 && (futureN - 1) % step != 0)
+        FlSpot(nowX + (futureN - 1).toDouble(), futureValues.last.toDouble()),
     ];
 
     final scheme = Theme.of(context).colorScheme;
