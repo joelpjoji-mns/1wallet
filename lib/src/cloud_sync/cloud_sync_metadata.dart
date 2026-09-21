@@ -22,8 +22,7 @@ class CloudSyncMetadata {
     this.syncedAccountIds,
     this.syncedCategoryIds,
     this.syncedTransactionIds,
-    this.syncedBudgetIds,
-    this.syncedGoalIds,
+
     this.syncedCaptureCandidateIds,
     this.syncedImportBatchIds,
     this.syncedDocumentHashes,
@@ -43,8 +42,7 @@ class CloudSyncMetadata {
   final List<String>? syncedAccountIds;
   final List<String>? syncedCategoryIds;
   final List<String>? syncedTransactionIds;
-  final List<String>? syncedBudgetIds;
-  final List<String>? syncedGoalIds;
+
   final List<String>? syncedCaptureCandidateIds;
   final List<String>? syncedImportBatchIds;
   final Map<String, String>? syncedDocumentHashes;
@@ -64,8 +62,7 @@ class CloudSyncMetadata {
     List<String>? syncedAccountIds,
     List<String>? syncedCategoryIds,
     List<String>? syncedTransactionIds,
-    List<String>? syncedBudgetIds,
-    List<String>? syncedGoalIds,
+
     List<String>? syncedCaptureCandidateIds,
     List<String>? syncedImportBatchIds,
     Map<String, String>? syncedDocumentHashes,
@@ -85,8 +82,7 @@ class CloudSyncMetadata {
       syncedAccountIds: syncedAccountIds ?? this.syncedAccountIds,
       syncedCategoryIds: syncedCategoryIds ?? this.syncedCategoryIds,
       syncedTransactionIds: syncedTransactionIds ?? this.syncedTransactionIds,
-      syncedBudgetIds: syncedBudgetIds ?? this.syncedBudgetIds,
-      syncedGoalIds: syncedGoalIds ?? this.syncedGoalIds,
+
       syncedCaptureCandidateIds:
           syncedCaptureCandidateIds ?? this.syncedCaptureCandidateIds,
       syncedImportBatchIds: syncedImportBatchIds ?? this.syncedImportBatchIds,
@@ -112,8 +108,7 @@ class CloudSyncMetadata {
       'syncedAccountIds': syncedAccountIds,
       'syncedCategoryIds': syncedCategoryIds,
       'syncedTransactionIds': syncedTransactionIds,
-      'syncedBudgetIds': syncedBudgetIds,
-      'syncedGoalIds': syncedGoalIds,
+
       'syncedCaptureCandidateIds': syncedCaptureCandidateIds,
       'syncedImportBatchIds': syncedImportBatchIds,
       'syncedDocumentHashes': syncedDocumentHashes,
@@ -137,8 +132,7 @@ class CloudSyncMetadata {
       syncedCategoryIds: (json['syncedCategoryIds'] as List?)?.cast<String>(),
       syncedTransactionIds: (json['syncedTransactionIds'] as List?)
           ?.cast<String>(),
-      syncedBudgetIds: (json['syncedBudgetIds'] as List?)?.cast<String>(),
-      syncedGoalIds: (json['syncedGoalIds'] as List?)?.cast<String>(),
+
       syncedCaptureCandidateIds: (json['syncedCaptureCandidateIds'] as List?)
           ?.cast<String>(),
       syncedImportBatchIds: (json['syncedImportBatchIds'] as List?)

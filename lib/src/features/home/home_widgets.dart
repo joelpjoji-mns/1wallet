@@ -80,7 +80,7 @@ Widget buildHomeDashboardWidget({
       state: state,
     ),
     HomeDashboardWidgetId.topCategories => TopCategoriesWidget(state: state),
-    HomeDashboardWidgetId.goalProgress => GoalProgressHomeWidget(state: state),
+
     HomeDashboardWidgetId.creditUtilization => CreditUtilizationWidget(
       state: state,
     ),
@@ -758,7 +758,7 @@ class _BalanceTrendHomeWidgetState
                               bottomTitles: AxisTitles(
                                 sideTitles: SideTitles(
                                   showTitles: true,
-                                  reservedSize: 22,
+                                  reservedSize: 32,
                                   interval: niceXInterval,
                                   getTitlesWidget: (value, meta) {
                                     if (value < 0 || value >= totalN) return const SizedBox.shrink();
@@ -768,8 +768,8 @@ class _BalanceTrendHomeWidgetState
                                         : (futureTrend.isNotEmpty ? futureTrend.first.date.add(Duration(days: value.toInt())) : DateTime.now());
                                         
                                     if (value.toInt() == pastN - 1 && pastN > 0) {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(top: 8),
+                                      return SideTitleWidget(
+                                        meta: meta,
                                         child: Text(
                                           'Now',
                                           style: TextStyle(
@@ -777,12 +777,13 @@ class _BalanceTrendHomeWidgetState
                                             fontWeight: FontWeight.bold,
                                             color: scheme.primary,
                                           ),
+                                          softWrap: false,
                                         ),
                                       );
                                     }
 
-                                    return Padding(
-                                      padding: const EdgeInsets.only(top: 8),
+                                    return SideTitleWidget(
+                                      meta: meta,
                                       child: Text(
                                         _shortDate(
                                           date,
@@ -792,6 +793,7 @@ class _BalanceTrendHomeWidgetState
                                           fontSize: 9,
                                           color: scheme.onSurfaceVariant,
                                         ),
+                                        softWrap: false,
                                       ),
                                     );
                                   },
@@ -1973,97 +1975,6 @@ class TopCategoriesHomeWidget extends StatelessWidget {
   }
 }
 
-class BudgetPressureHomeWidget extends StatelessWidget {
-  const BudgetPressureHomeWidget({required this.state, super.key});
-
-  final LedgerState state;
-
-  @override
-  Widget build(BuildContext context) {
-    return HomeWidgetCard(
-      title: 'Budget pressure',
-      icon: Icons.speed_outlined,
-      iconColor: Theme.of(context).colorScheme.secondary,
-      actionLabel: 'Planner',
-      onAction: () => context.push('/budgets/new'),
-      child: state.budgets.isEmpty
-          ? Text(
-              'No budgets yet.',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            )
-          : Column(
-              children: [
-                for (final budget in state.budgets.take(4)) ...[
-                  Builder(
-                    builder: (context) {
-                      final spent = budgetSpent(state, budget);
-                      return HomeProgressRow(
-                        label: budget.name,
-                        value: _formatDisplayMoney(state, spent),
-                        progress: budget.amount.amountMinor == 0
-                            ? 0
-                            : spent.amountMinor / budget.amount.amountMinor,
-                        color: spent.amountMinor > budget.amount.amountMinor
-                            ? Theme.of(context).colorScheme.error
-                            : Theme.of(context).colorScheme.primary,
-                      );
-                    },
-                  ),
-                  if (budget != state.budgets.take(4).last)
-                    const SizedBox(height: AppSpacing.sm),
-                ],
-              ],
-            ),
-    );
-  }
-}
-
-class GoalProgressHomeWidget extends StatelessWidget {
-  const GoalProgressHomeWidget({required this.state, super.key});
-
-  final LedgerState state;
-
-  @override
-  Widget build(BuildContext context) {
-    return HomeWidgetCard(
-      title: 'Goal progress',
-      icon: Icons.track_changes_outlined,
-      iconColor: Theme.of(context).colorScheme.tertiary,
-      actionLabel: 'Planner',
-      onAction: () => context.push('/goals/new'),
-      child: state.goals.isEmpty
-          ? Text(
-              'No goals yet.',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            )
-          : Column(
-              children: [
-                for (final goal in state.goals.take(4)) ...[
-                  Builder(
-                    builder: (context) {
-                      final saved = goalSaved(state, goal);
-                      return HomeProgressRow(
-                        label: goal.name,
-                        value: _formatDisplayMoney(state, saved),
-                        progress: goal.target.amountMinor == 0
-                            ? 0
-                            : saved.amountMinor / goal.target.amountMinor,
-                        color: Theme.of(context).colorScheme.tertiary,
-                      );
-                    },
-                  ),
-                  if (goal != state.goals.take(4).last)
-                    const SizedBox(height: AppSpacing.sm),
-                ],
-              ],
-            ),
-    );
-  }
-}
 
 class _CategoryListWidget extends StatelessWidget {
   const _CategoryListWidget({
@@ -2397,7 +2308,7 @@ List<_CategoryTotal> _categoryTotals(
 }
 
 String _shortDate(DateTime date, String locale) {
-  return DateFormat('dd-MMM', locale).format(date);
+  return DateFormat('d MMM', locale).format(date);
 }
 
 class _AccountGroupSummary {

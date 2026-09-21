@@ -213,16 +213,7 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
             title: 'Current summary',
             child: Column(
               children: [
-                InfoRow(
-                  label: 'Budgets',
-                  value: '${state.budgets.length}',
-                  icon: Icons.donut_large_outlined,
-                ),
-                InfoRow(
-                  label: 'Goals',
-                  value: '${state.goals.length}',
-                  icon: Icons.flag_outlined,
-                ),
+
                 InfoRow(
                   label: 'Capture candidates',
                   value: '${state.captureCandidates.length}',

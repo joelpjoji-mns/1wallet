@@ -143,7 +143,7 @@ class _PermissionsSetupScreenState
                               icon: Icons.notifications_active_rounded,
                               title: 'Notifications',
                               description:
-                                  'Get timely reminders for upcoming bills and budgets.',
+                                  'Get timely reminders for upcoming bills.',
                             ),
                             Divider(
                               height: 1,

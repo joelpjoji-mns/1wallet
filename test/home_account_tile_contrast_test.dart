@@ -113,8 +113,7 @@ LedgerState _ledger({required List<Account> accounts}) {
     accounts: accounts,
     categories: const [],
     transactions: const [],
-    budgets: const [],
-    goals: const [],
+
     captureCandidates: const [],
   );
 }

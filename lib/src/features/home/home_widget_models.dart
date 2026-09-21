@@ -13,7 +13,6 @@ enum HomeDashboardWidgetId {
   balanceTrend('balanceTrend'),
   topCategories('topCategories'),
   currencyValues('currencyValues'),
-  goalProgress('goalProgress'),
   creditUtilization('creditUtilization'),
   netWorth('netWorth');
 
@@ -31,7 +30,6 @@ const defaultHomeWidgetOrder = [
   HomeDashboardWidgetId.topCategories,
   HomeDashboardWidgetId.netWorth,
   HomeDashboardWidgetId.upcomingScheduled,
-  HomeDashboardWidgetId.goalProgress,
   HomeDashboardWidgetId.creditUtilization,
 ];
 

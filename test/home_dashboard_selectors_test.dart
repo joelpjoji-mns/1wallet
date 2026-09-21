@@ -226,8 +226,7 @@ LedgerState _ledger({
     accounts: accounts ?? [_account(id: 'bank', openingMinor: 0)],
     categories: const [],
     transactions: transactions ?? const [],
-    budgets: const [],
-    goals: const [],
+
     captureCandidates: const [],
     exchangeRates: exchangeRates ?? const [],
   );

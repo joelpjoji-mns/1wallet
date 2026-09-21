@@ -199,34 +199,7 @@ LedgerState sampleLedgerState() {
     accounts: accounts,
     categories: categories,
     transactions: transactions,
-    budgets: [
-      Budget(
-        id: 'budget-food',
-        name: 'Food & groceries',
-        amount: inr(1800000),
-        spent: inr(731500),
-      ),
-      Budget(
-        id: 'budget-bills',
-        name: 'Bills',
-        amount: inr(7000000),
-        spent: inr(328000),
-      ),
-    ],
-    goals: [
-      Goal(
-        id: 'goal-emergency',
-        name: 'Emergency fund',
-        target: inr(30000000),
-        saved: inr(8700000),
-      ),
-      Goal(
-        id: 'goal-trip',
-        name: 'Japan trip',
-        target: inr(18000000),
-        saved: inr(4200000),
-      ),
-    ],
+
     captureCandidates: [
       CaptureCandidate(
         id: 'cap-1',

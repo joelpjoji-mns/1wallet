@@ -926,8 +926,7 @@ class LedgerController extends StateNotifier<LedgerState> {
         state.transactions.any(
           (transaction) =>
               transaction.accountId == id || transaction.counterAccountId == id,
-        ) ||
-        state.goals.any((goal) => goal.accountId == id);
+        );
 
     // Pause any active scheduled transactions connected to this account
     final transactions = state.transactions.map((transaction) {
@@ -1020,13 +1019,11 @@ class LedgerController extends StateNotifier<LedgerState> {
       (c) => c.suggestedCategoryId == id,
     );
     final hasChildren = state.categories.any((c) => c.parentId == id);
-    final isUsedInBudgets = state.budgets.any((b) => b.categoryId == id);
     final isUsed =
         isUsedInTx ||
         isUsedInRules ||
         isUsedInCaptures ||
-        hasChildren ||
-        isUsedInBudgets;
+        hasChildren;
 
     if (isUsed) {
       final categories = [
@@ -1665,85 +1662,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     return removed;
   }
 
-  Future<void> addBudget({
-    required String name,
-    required int amountMinor,
-    String? currency,
-    String? categoryId,
-    DateTime? targetDate,
-    String frequency = 'monthly',
-    int interval = 1,
-    List<int>? daysOfWeek,
-    List<int>? daysOfMonth,
-  }) async {
-    final budget = Budget(
-      id: _newId('budget'),
-      name: name.trim().isEmpty ? 'New budget' : name.trim(),
-      amount: Money(
-        amountMinor: amountMinor.abs(),
-        currency: currency ?? state.preferences.baseCurrency,
-      ),
-      spent: Money(
-        amountMinor: 0,
-        currency: currency ?? state.preferences.baseCurrency,
-      ),
-      categoryId: categoryId,
-      targetDate: targetDate,
-      frequency: frequency,
-      interval: interval,
-      daysOfWeek: daysOfWeek,
-      daysOfMonth: daysOfMonth,
-    );
-    await _commit(state.copyWith(budgets: [budget, ...state.budgets]));
-  }
 
-  Future<void> addGoal({
-    required String name,
-    required int targetMinor,
-    String? currency,
-    String? accountId,
-    DateTime? targetDate,
-    String frequency = 'once',
-    int interval = 1,
-    List<int>? daysOfWeek,
-    List<int>? daysOfMonth,
-  }) async {
-    final goal = Goal(
-      id: _newId('goal'),
-      name: name.trim().isEmpty ? 'New goal' : name.trim(),
-      target: Money(
-        amountMinor: targetMinor.abs(),
-        currency: currency ?? state.preferences.baseCurrency,
-      ),
-      saved: Money(
-        amountMinor: 0,
-        currency: currency ?? state.preferences.baseCurrency,
-      ),
-      accountId: accountId,
-      targetDate: targetDate,
-      frequency: frequency,
-      interval: interval,
-      daysOfWeek: daysOfWeek,
-      daysOfMonth: daysOfMonth,
-    );
-    await _commit(state.copyWith(goals: [goal, ...state.goals]));
-  }
-
-  Future<void> postponeBudget(String id, DateTime newDate) async {
-    final budgets = [
-      for (final b in state.budgets)
-        b.id == id ? b.copyWith(targetDate: newDate) : b,
-    ];
-    await _commit(state.copyWith(budgets: budgets));
-  }
-
-  Future<void> postponeGoal(String id, DateTime newDate) async {
-    final goals = [
-      for (final g in state.goals)
-        g.id == id ? g.copyWith(targetDate: newDate) : g,
-    ];
-    await _commit(state.copyWith(goals: goals));
-  }
 
   Future<void> addEnabledCurrency(String currency) async {
     final normalized = currency.trim().toUpperCase();
@@ -2017,9 +1936,7 @@ bool _hasWalletData(LedgerState ledger) {
   return ledger.accounts.isNotEmpty ||
       ledger.transactions.isNotEmpty ||
       ledger.captureCandidates.isNotEmpty ||
-      ledger.importBatches.isNotEmpty ||
-      ledger.budgets.isNotEmpty ||
-      ledger.goals.isNotEmpty;
+      ledger.importBatches.isNotEmpty;
 }
 
 String _newId(String prefix) {

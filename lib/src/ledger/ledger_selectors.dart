@@ -424,58 +424,6 @@ Set<String> _categoryWithDescendants(LedgerState state, String categoryId) {
   }
 }
 
-/// Live spend for a budget: expenses in its linked category (and descendants)
-/// for the current period. Unlinked budgets act as a total-spending budget.
-Money budgetSpent(LedgerState state, Budget budget) {
-  final categoryId = budget.categoryId;
-  final currency = budget.amount.currency;
-  final ids = categoryId == null
-      ? null
-      : _categoryWithDescendants(state, categoryId);
-  final range = _periodRange(budget.frequency, DateTime.now());
-  var totalMinor = 0;
-  for (final transaction in state.transactions) {
-    if (transaction.status == 'scheduled' ||
-        transaction.status == 'paused' ||
-        transaction.status == 'void') {
-      continue;
-    }
-    if (transaction.isExcludedFromReports) continue;
-    if (!expenseTypes.contains(transaction.type)) continue;
-    if (ids != null) {
-      final txCategory = transaction.categoryId;
-      if (txCategory == null || !ids.contains(txCategory)) continue;
-    }
-    if (transaction.occurredAt.isBefore(range.start) ||
-        !transaction.occurredAt.isBefore(range.end)) {
-      continue;
-    }
-    totalMinor += convertMoneyForDisplay(
-      state,
-      transaction.amount,
-      currency,
-    ).amountMinor;
-  }
-  return Money(amountMinor: totalMinor, currency: currency);
-}
-
-/// Live saved amount for a goal: the balance of its linked account.
-Money goalSaved(LedgerState state, Goal goal) {
-  final accountId = goal.accountId;
-  final currency = goal.target.currency;
-  if (accountId == null) {
-    return convertMoneyForDisplay(state, goal.saved, currency);
-  }
-  final account = accountById(state, accountId);
-  if (account == null) {
-    return convertMoneyForDisplay(state, goal.saved, currency);
-  }
-  return convertMoneyForDisplay(
-    state,
-    accountBalance(state, account),
-    currency,
-  );
-}
 
 // ── Dashboard analytics selectors (used by the dynamic home widgets) ──
 
@@ -654,26 +602,10 @@ financialHealthScore(LedgerState state) {
       ? liabilities / assets
       : (liabilities > 0 ? 1.0 : 0.0);
 
-  double budgetScore01 = 1.0;
-  if (state.budgets.isNotEmpty) {
-    var sum = 0.0;
-    for (final budget in state.budgets) {
-      final amount = budget.amount.amountMinor;
-      if (amount <= 0) {
-        sum += 1.0;
-        continue;
-      }
-      final spent = budgetSpent(state, budget).amountMinor;
-      sum += (1 - spent / amount).clamp(0.0, 1.0);
-    }
-    budgetScore01 = sum / state.budgets.length;
-  }
-
-  final savingsScore = (savingsRate.clamp(0.0, 0.2) / 0.2) * 30;
-  final emergencyScore = (emergencyMonths.clamp(0.0, 3.0) / 3.0) * 30;
-  final debtScore = (1 - debtRatio.clamp(0.0, 1.0)) * 25;
-  final budgetScore = budgetScore01 * 15;
-  final score = (savingsScore + emergencyScore + debtScore + budgetScore)
+  final savingsScore = (savingsRate.clamp(0.0, 0.2) / 0.2) * 35;
+  final emergencyScore = (emergencyMonths.clamp(0.0, 3.0) / 3.0) * 35;
+  final debtScore = (1 - debtRatio.clamp(0.0, 1.0)) * 30;
+  final score = (savingsScore + emergencyScore + debtScore)
       .round()
       .clamp(0, 100);
   final grade = score >= 80

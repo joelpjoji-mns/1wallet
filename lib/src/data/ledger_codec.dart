@@ -31,8 +31,6 @@ Map<String, Object?> _ledgerToJson(LedgerState state) {
     'accounts': state.accounts.map(_accountToJson).toList(),
     'categories': state.categories.map(_categoryToJson).toList(),
     'transactions': state.transactions.map(_transactionToJson).toList(),
-    'budgets': state.budgets.map(_budgetToJson).toList(),
-    'goals': state.goals.map(_goalToJson).toList(),
     'captureCandidates': state.captureCandidates
         .map(_captureCandidateToJson)
         .toList(),
@@ -52,8 +50,6 @@ LedgerState _ledgerFromJson(Map<String, dynamic> json) {
     transactions: _list(
       json['transactions'],
     ).map(_transactionFromJson).toList(),
-    budgets: _list(json['budgets']).map(_budgetFromJson).toList(),
-    goals: _list(json['goals']).map(_goalFromJson).toList(),
     captureCandidates: _list(
       json['captureCandidates'],
     ).map(_captureCandidateFromJson).toList(),
@@ -322,10 +318,7 @@ LedgerState _migrateCategoryTaxonomy(LedgerState state) {
           categoryId: redirectCategoryId(transaction.categoryId),
         ),
     ],
-    budgets: [
-      for (final b in state.budgets)
-        b.copyWith(categoryId: redirectCategoryId(b.categoryId)),
-    ],
+
     captureCandidates: [
       for (final candidate in state.captureCandidates)
         candidate.copyWith(
@@ -422,8 +415,6 @@ Map<String, Object?> _preferencesToJson(LedgerPreferences preferences) {
     'deviceNotificationsEnabled': preferences.deviceNotificationsEnabled,
     'quietHoursEnabled': preferences.quietHoursEnabled,
     'channelScheduledEnabled': preferences.channelScheduledEnabled,
-    'channelBudgetsEnabled': preferences.channelBudgetsEnabled,
-    'channelGoalsEnabled': preferences.channelGoalsEnabled,
     'readNotificationIds': preferences.readNotificationIds,
     'dismissedNotificationIds': preferences.dismissedNotificationIds,
     'privacyModeEnabled': preferences.privacyModeEnabled,
@@ -537,14 +528,6 @@ LedgerPreferences _preferencesFromJson(Map<String, dynamic> json) {
     channelScheduledEnabled: _bool(
       json['channelScheduledEnabled'],
       fallback: fallback.channelScheduledEnabled,
-    ),
-    channelBudgetsEnabled: _bool(
-      json['channelBudgetsEnabled'],
-      fallback: fallback.channelBudgetsEnabled,
-    ),
-    channelGoalsEnabled: _bool(
-      json['channelGoalsEnabled'],
-      fallback: fallback.channelGoalsEnabled,
     ),
     readNotificationIds: _stringList(
       json['readNotificationIds'],
@@ -938,73 +921,7 @@ TransactionAttachment _transactionAttachmentFromJson(
   );
 }
 
-Map<String, Object?> _budgetToJson(Budget budget) {
-  return {
-    'id': budget.id,
-    'name': budget.name,
-    'amount': _moneyToJson(budget.amount),
-    'spent': _moneyToJson(budget.spent),
-    'categoryId': budget.categoryId,
-    'targetDate': budget.targetDate?.toIso8601String(),
-    'frequency': budget.frequency,
-    'interval': budget.interval,
-    'daysOfWeek': budget.daysOfWeek,
-    'daysOfMonth': budget.daysOfMonth,
-  };
-}
 
-Budget _budgetFromJson(Map<String, dynamic> json) {
-  final amount = _moneyFromJson(json['amount']);
-  return Budget(
-    id: _string(json['id'], fallback: _generatedId('budget')),
-    name: _string(json['name'], fallback: 'Budget'),
-    amount: amount,
-    spent: _moneyFromJson(
-      json['spent'],
-      fallback: amount.copyWith(amountMinor: 0),
-    ),
-    categoryId: _nullableString(json['categoryId']),
-    targetDate: json['targetDate'] != null ? _date(json['targetDate']) : null,
-    frequency: _string(json['frequency'], fallback: 'monthly'),
-    interval: _int(json['interval'], fallback: 1),
-    daysOfWeek: _nullableIntList(json['daysOfWeek']),
-    daysOfMonth: _nullableIntList(json['daysOfMonth']),
-  );
-}
-
-Map<String, Object?> _goalToJson(Goal goal) {
-  return {
-    'id': goal.id,
-    'name': goal.name,
-    'target': _moneyToJson(goal.target),
-    'saved': _moneyToJson(goal.saved),
-    'accountId': goal.accountId,
-    'targetDate': goal.targetDate?.toIso8601String(),
-    'frequency': goal.frequency,
-    'interval': goal.interval,
-    'daysOfWeek': goal.daysOfWeek,
-    'daysOfMonth': goal.daysOfMonth,
-  };
-}
-
-Goal _goalFromJson(Map<String, dynamic> json) {
-  final target = _moneyFromJson(json['target']);
-  return Goal(
-    id: _string(json['id'], fallback: _generatedId('goal')),
-    name: _string(json['name'], fallback: 'Goal'),
-    target: target,
-    saved: _moneyFromJson(
-      json['saved'],
-      fallback: target.copyWith(amountMinor: 0),
-    ),
-    accountId: _nullableString(json['accountId']),
-    targetDate: json['targetDate'] != null ? _date(json['targetDate']) : null,
-    frequency: _string(json['frequency'], fallback: 'once'),
-    interval: _int(json['interval'], fallback: 1),
-    daysOfWeek: _nullableIntList(json['daysOfWeek']),
-    daysOfMonth: _nullableIntList(json['daysOfMonth']),
-  );
-}
 
 Map<String, Object?> _exchangeRateToJson(ExchangeRateRecord rate) {
   return {
@@ -1233,11 +1150,7 @@ Map<String, Object?> transactionToJson(TransactionRecord transaction) =>
 TransactionRecord transactionFromJson(Map<String, dynamic> json) =>
     _transactionFromJson(json);
 
-Map<String, Object?> budgetToJson(Budget budget) => _budgetToJson(budget);
-Budget budgetFromJson(Map<String, dynamic> json) => _budgetFromJson(json);
 
-Map<String, Object?> goalToJson(Goal goal) => _goalToJson(goal);
-Goal goalFromJson(Map<String, dynamic> json) => _goalFromJson(json);
 
 Map<String, Object?> exchangeRateToJson(ExchangeRateRecord rate) =>
     _exchangeRateToJson(rate);

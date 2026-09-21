@@ -177,24 +177,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/accounts',
         builder: (context, state) => const AccountsScreen(),
       ),
-      GoRoute(
-        path: '/budgets',
-        builder: (context, state) => const BudgetsScreen(),
-      ),
-      GoRoute(
-        path: '/budgets/new',
-        builder: (context, state) => const DrawerConfig(
-          hasDrawer: true,
-          child: BudgetGoalEditorScreen(kind: 'budget'),
-        ),
-      ),
-      GoRoute(
-        path: '/goals/new',
-        builder: (context, state) => const DrawerConfig(
-          hasDrawer: true,
-          child: BudgetGoalEditorScreen(kind: 'goal'),
-        ),
-      ),
+
       GoRoute(
         path: '/categories',
         builder: (context, state) =>

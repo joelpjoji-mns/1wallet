@@ -164,8 +164,7 @@ LedgerState _emptyLedgerState() {
     accounts: [],
     categories: [],
     transactions: [],
-    budgets: [],
-    goals: [],
+
     captureCandidates: [],
   );
 }

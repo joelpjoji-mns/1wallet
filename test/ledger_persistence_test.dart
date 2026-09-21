@@ -546,21 +546,6 @@ void main() {
     },
   );
 
-  test('ledger controller persists budgets and goals', () async {
-    const repository = LedgerRepository();
-    final controller = LedgerController(repository);
-    addTearDown(controller.dispose);
-
-    await controller.addBudget(name: 'QA budget', amountMinor: 250000);
-    await controller.addGoal(name: 'QA goal', targetMinor: 750000);
-
-    final restored = await repository.load();
-    expect(restored, isNotNull);
-    expect(restored!.budgets.first.name, 'QA budget');
-    expect(restored.budgets.first.amount.amountMinor, 250000);
-    expect(restored.goals.first.name, 'QA goal');
-    expect(restored.goals.first.target.amountMinor, 750000);
-  });
 
   test('ledger controller persists category create and archive', () async {
     const repository = LedgerRepository();

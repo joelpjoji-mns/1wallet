@@ -45,7 +45,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   int _currentPage = 0;
 
   final _displayNameController = TextEditingController();
-  final _selectedUseCases = <String>{'daily_spending', 'budgeting'};
+  final _selectedUseCases = <String>{'daily_spending'};
 
   String _baseCurrency = kDefaultCurrency;
   final _accounts = <_AccountDraft>[];
@@ -291,11 +291,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         'title': 'Daily spending',
         'icon': Icons.coffee_rounded,
       },
-      {
-        'id': 'budgeting',
-        'title': 'Budgeting',
-        'icon': Icons.pie_chart_rounded,
-      },
+
       {
         'id': 'net_worth',
         'title': 'Net worth tracking',

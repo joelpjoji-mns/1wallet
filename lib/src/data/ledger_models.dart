@@ -267,8 +267,6 @@ class LedgerPreferences {
     this.deviceNotificationsEnabled = false,
     this.quietHoursEnabled = false,
     this.channelScheduledEnabled = true,
-    this.channelBudgetsEnabled = true,
-    this.channelGoalsEnabled = true,
     this.readNotificationIds = const [],
     this.dismissedNotificationIds = const [],
     this.privacyModeEnabled = false,
@@ -309,8 +307,6 @@ class LedgerPreferences {
   final bool deviceNotificationsEnabled;
   final bool quietHoursEnabled;
   final bool channelScheduledEnabled;
-  final bool channelBudgetsEnabled;
-  final bool channelGoalsEnabled;
   final List<String> readNotificationIds;
   final List<String> dismissedNotificationIds;
   final bool privacyModeEnabled;
@@ -351,8 +347,6 @@ class LedgerPreferences {
     bool? deviceNotificationsEnabled,
     bool? quietHoursEnabled,
     bool? channelScheduledEnabled,
-    bool? channelBudgetsEnabled,
-    bool? channelGoalsEnabled,
     List<String>? readNotificationIds,
     List<String>? dismissedNotificationIds,
     bool? privacyModeEnabled,
@@ -400,9 +394,6 @@ class LedgerPreferences {
       quietHoursEnabled: quietHoursEnabled ?? this.quietHoursEnabled,
       channelScheduledEnabled:
           channelScheduledEnabled ?? this.channelScheduledEnabled,
-      channelBudgetsEnabled:
-          channelBudgetsEnabled ?? this.channelBudgetsEnabled,
-      channelGoalsEnabled: channelGoalsEnabled ?? this.channelGoalsEnabled,
       readNotificationIds: readNotificationIds ?? this.readNotificationIds,
       dismissedNotificationIds:
           dismissedNotificationIds ?? this.dismissedNotificationIds,
@@ -823,111 +814,6 @@ class TransactionRecord {
   }
 }
 
-@immutable
-class Budget {
-  const Budget({
-    required this.id,
-    required this.name,
-    required this.amount,
-    required this.spent,
-    this.categoryId,
-    this.targetDate,
-    this.frequency = 'monthly',
-    this.interval = 1,
-    this.daysOfWeek,
-    this.daysOfMonth,
-  });
-
-  final String id;
-  final String name;
-  final Money amount;
-  final Money spent;
-  final String? categoryId;
-  final DateTime? targetDate;
-  final String frequency;
-  final int interval;
-  final List<int>? daysOfWeek;
-  final List<int>? daysOfMonth;
-
-  Budget copyWith({
-    String? id,
-    String? name,
-    Money? amount,
-    Money? spent,
-    String? categoryId,
-    DateTime? targetDate,
-    String? frequency,
-    int? interval,
-    List<int>? daysOfWeek,
-    List<int>? daysOfMonth,
-  }) {
-    return Budget(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      amount: amount ?? this.amount,
-      spent: spent ?? this.spent,
-      categoryId: categoryId ?? this.categoryId,
-      targetDate: targetDate ?? this.targetDate,
-      frequency: frequency ?? this.frequency,
-      interval: interval ?? this.interval,
-      daysOfWeek: daysOfWeek ?? this.daysOfWeek,
-      daysOfMonth: daysOfMonth ?? this.daysOfMonth,
-    );
-  }
-}
-
-@immutable
-class Goal {
-  const Goal({
-    required this.id,
-    required this.name,
-    required this.target,
-    required this.saved,
-    this.accountId,
-    this.targetDate,
-    this.frequency = 'once',
-    this.interval = 1,
-    this.daysOfWeek,
-    this.daysOfMonth,
-  });
-
-  final String id;
-  final String name;
-  final Money target;
-  final Money saved;
-  final String? accountId;
-  final DateTime? targetDate;
-  final String frequency;
-  final int interval;
-  final List<int>? daysOfWeek;
-  final List<int>? daysOfMonth;
-
-  Goal copyWith({
-    String? id,
-    String? name,
-    Money? target,
-    Money? saved,
-    String? accountId,
-    DateTime? targetDate,
-    String? frequency,
-    int? interval,
-    List<int>? daysOfWeek,
-    List<int>? daysOfMonth,
-  }) {
-    return Goal(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      target: target ?? this.target,
-      saved: saved ?? this.saved,
-      accountId: accountId ?? this.accountId,
-      targetDate: targetDate ?? this.targetDate,
-      frequency: frequency ?? this.frequency,
-      interval: interval ?? this.interval,
-      daysOfWeek: daysOfWeek ?? this.daysOfWeek,
-      daysOfMonth: daysOfMonth ?? this.daysOfMonth,
-    );
-  }
-}
 
 @immutable
 class ExchangeRateRecord {
@@ -1083,8 +969,6 @@ class LedgerState {
     required this.accounts,
     required this.categories,
     required this.transactions,
-    required this.budgets,
-    required this.goals,
     required this.captureCandidates,
     this.importBatches = const [],
     this.exchangeRates = const [],
@@ -1096,8 +980,6 @@ class LedgerState {
   final List<Account> accounts;
   final List<Category> categories;
   final List<TransactionRecord> transactions;
-  final List<Budget> budgets;
-  final List<Goal> goals;
   final List<CaptureCandidate> captureCandidates;
   final List<ImportBatch> importBatches;
   final List<ExchangeRateRecord> exchangeRates;
@@ -1109,8 +991,6 @@ class LedgerState {
     List<Account>? accounts,
     List<Category>? categories,
     List<TransactionRecord>? transactions,
-    List<Budget>? budgets,
-    List<Goal>? goals,
     List<CaptureCandidate>? captureCandidates,
     List<ImportBatch>? importBatches,
     List<ExchangeRateRecord>? exchangeRates,
@@ -1122,8 +1002,6 @@ class LedgerState {
       accounts: accounts ?? this.accounts,
       categories: categories ?? this.categories,
       transactions: transactions ?? this.transactions,
-      budgets: budgets ?? this.budgets,
-      goals: goals ?? this.goals,
       captureCandidates: captureCandidates ?? this.captureCandidates,
       importBatches: importBatches ?? this.importBatches,
       exchangeRates: exchangeRates ?? this.exchangeRates,

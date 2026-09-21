@@ -121,47 +121,6 @@ void main() {
     expect(transaction.amount.amountMinor, 18500900);
   });
 
-  testWidgets('budget and goal forms create persisted entries', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1080, 2400));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final container = ProviderContainer(
-      overrides: authenticatedSampleOverrides(),
-    );
-    addTearDown(container.dispose);
-    final router = container.read(appRouterProvider);
-
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: MaterialApp.router(
-          debugShowCheckedModeBanner: false,
-          routerConfig: router,
-          theme: AppTheme.light(),
-          darkTheme: AppTheme.dark(),
-        ),
-      ),
-    );
-
-    router.go('/budgets/new');
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextFormField).at(0), 'QA groceries');
-    await tester.enterText(find.byType(TextFormField).at(1), '1234');
-    await tester.tap(find.byIcon(Icons.check_rounded).first);
-    await tester.pumpAndSettle();
-
-    router.go('/goals/new');
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextFormField).at(0), 'QA trip');
-    await tester.enterText(find.byType(TextFormField).at(1), '4321');
-    await tester.tap(find.byIcon(Icons.check_rounded).first);
-    await tester.pumpAndSettle();
-
-    final state = container.read(ledgerProvider);
-    expect(state.budgets.first.name, 'QA groceries');
-    expect(state.budgets.first.amount.amountMinor, 123400);
-    expect(state.goals.first.name, 'QA trip');
-    expect(state.goals.first.target.amountMinor, 432100);
-  });
 
   testWidgets('Transaction Detail delete removes a transaction', (
     tester,

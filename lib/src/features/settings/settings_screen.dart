@@ -51,18 +51,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       'Upcoming and overdue payments, transfers, bills, and income.',
       Icons.event_repeat_outlined,
     ),
-    (
-      'budgets',
-      'Budgets',
-      'Threshold and over-budget alerts.',
-      Icons.donut_large_outlined,
-    ),
-    (
-      'goals',
-      'Goals',
-      'Goal deadline and progress warnings.',
-      Icons.flag_outlined,
-    ),
   ];
 
   static const _managementLinks = [
@@ -92,7 +80,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ),
     (
       'Widgets',
-      'Add, restore, and review Home tiles for cashflow, trends, budgets, goals, and accounts.',
+      'Add, restore, and review Home tiles for cashflow, trends, and accounts.',
       Icons.widgets_outlined,
       '/widgets',
     ),
@@ -407,11 +395,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               icon: Icons.receipt_long_outlined,
                               activeIcon: Icons.receipt_long_rounded,
                             ),
-                            IslandTabItem(
-                              title: 'Budgets',
-                              icon: Icons.donut_small_outlined,
-                              activeIcon: Icons.donut_small_rounded,
-                            ),
+
                             IslandTabItem(
                               title: 'Accounts',
                               icon: Icons.account_balance_wallet_outlined,
@@ -525,7 +509,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   },
                   title: const Text('Notification inbox'),
                   subtitle: Text(
-                    'Active reminder, budget, or goal alerts.',
+                    'Active reminder alerts.',
                     style: TextStyle(
                       color: theme.colorScheme.onSurfaceVariant,
                       fontSize: 12,
@@ -586,11 +570,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 for (final channel in _notificationChannels) ...[
                   LiquidGlassSwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    value: channel.$1 == 'scheduled'
-                        ? state.preferences.channelScheduledEnabled
-                        : channel.$1 == 'budgets'
-                        ? state.preferences.channelBudgetsEnabled
-                        : state.preferences.channelGoalsEnabled,
+                    value: state.preferences.channelScheduledEnabled,
                     onChanged: (value) {
                       final prefs = state.preferences;
                       if (channel.$1 == 'scheduled') {
@@ -598,18 +578,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             .read(ledgerProvider.notifier)
                             .updatePreferences(
                               prefs.copyWith(channelScheduledEnabled: value),
-                            );
-                      } else if (channel.$1 == 'budgets') {
-                        ref
-                            .read(ledgerProvider.notifier)
-                            .updatePreferences(
-                              prefs.copyWith(channelBudgetsEnabled: value),
-                            );
-                      } else {
-                        ref
-                            .read(ledgerProvider.notifier)
-                            .updatePreferences(
-                              prefs.copyWith(channelGoalsEnabled: value),
                             );
                       }
                       _showMessage(

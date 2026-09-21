@@ -462,7 +462,6 @@ String _homeWidgetLabel(HomeDashboardWidgetId id) {
     HomeDashboardWidgetId.balanceTrend => 'Balance Trend',
     HomeDashboardWidgetId.topCategories => 'Top Categories',
     HomeDashboardWidgetId.currencyValues => 'Currency calculator',
-    HomeDashboardWidgetId.goalProgress => 'Goal Progress',
     HomeDashboardWidgetId.creditUtilization => 'Credit Utilization',
     HomeDashboardWidgetId.netWorth => 'Net Worth',
   };

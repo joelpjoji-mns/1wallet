@@ -13,8 +13,6 @@ LedgerState emptyLedgerState({
     accounts: const [],
     categories: defaultCategories(),
     transactions: const [],
-    budgets: const [],
-    goals: const [],
     captureCandidates: const [],
   );
 }

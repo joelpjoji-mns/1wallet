@@ -23,8 +23,6 @@ String encodeLedgerArchive(
       'accounts': state.accounts.length,
       'categories': state.categories.length,
       'transactions': state.transactions.length,
-      'budgets': state.budgets.length,
-      'goals': state.goals.length,
       'captureCandidates': state.captureCandidates.length,
       'importBatches': state.importBatches.length,
     },

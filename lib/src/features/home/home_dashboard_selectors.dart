@@ -52,7 +52,7 @@ List<BalanceTrendPoint> balanceTrendForRange(
 
   final includedAccounts = {
     for (final account in state.accounts)
-      if (!account.isArchived && account.includeInTotals) account.id,
+      if (!account.isArchived && account.includeInReports) account.id,
   };
   final displayCurrency = state.preferences.displayCurrency;
   var running = state.accounts
@@ -113,7 +113,7 @@ List<BalanceTrendPoint> balanceFutureTrendForRange(
 
   final includedAccounts = {
     for (final account in state.accounts)
-      if (!account.isArchived && account.includeInTotals) account.id,
+      if (!account.isArchived && account.includeInReports) account.id,
   };
   final displayCurrency = state.preferences.displayCurrency;
 

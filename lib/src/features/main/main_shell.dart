@@ -18,7 +18,6 @@ import '../calendar/calendar_screen.dart';
 import '../home/home_screen.dart';
 import '../notifications/notification_engine.dart';
 import '../../services/notification_service.dart';
-import '../planner/planner_screen.dart';
 import '../transactions/transactions_screen.dart';
 import '../updates/app_update_provider.dart';
 import '../../widgets/app_kit.dart';
@@ -57,16 +56,10 @@ class _MainShellState extends ConsumerState<MainShell>
       pageIndex: 2,
     ),
     IslandTabItem(
-      title: 'Planner',
-      icon: Icons.stacked_line_chart_rounded,
-      activeIcon: Icons.stacked_line_chart_rounded,
-      pageIndex: 3,
-    ),
-    IslandTabItem(
       title: 'Accounts',
       icon: Icons.wallet_outlined,
       activeIcon: Icons.wallet_rounded,
-      pageIndex: 4,
+      pageIndex: 3,
     ),
   ];
 
@@ -271,8 +264,7 @@ class _MainShellState extends ConsumerState<MainShell>
       0 => HomeScreen(onMenuPressed: _openDrawer, onTabSelected: _selectTab),
       1 => TransactionsScreen(onMenuPressed: _openDrawer),
       2 => CalendarScreen(onMenuPressed: _openDrawer),
-      3 => PlannerScreen(onMenuPressed: _openDrawer),
-      4 => AccountsScreen(onMenuPressed: _openDrawer),
+      3 => AccountsScreen(onMenuPressed: _openDrawer),
       _ => const SizedBox.shrink(),
     };
   }
@@ -485,16 +477,6 @@ class AppMainDrawer extends ConsumerWidget {
                         'Loan forecast',
                         Icons.show_chart_rounded,
                         '/loans/forecast',
-                      ),
-                      DrawerRowConfig.route(
-                        'Budgets',
-                        Icons.donut_large_outlined,
-                        '/budgets/new',
-                      ),
-                      DrawerRowConfig.route(
-                        'Goals',
-                        Icons.flag_outlined,
-                        '/goals/new',
                       ),
                     ],
                     selectedIndex: selectedIndex,

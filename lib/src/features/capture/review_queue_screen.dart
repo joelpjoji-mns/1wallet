@@ -363,8 +363,6 @@ class ReviewQueueScreen extends ConsumerWidget {
     final scheme = theme.colorScheme;
     final icon = switch (notification.channel) {
       AppNotificationChannel.scheduled => Icons.event_repeat_rounded,
-      AppNotificationChannel.budgets => Icons.donut_large_rounded,
-      AppNotificationChannel.goals => Icons.flag_rounded,
     };
 
     return Dismissible(

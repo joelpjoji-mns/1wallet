@@ -729,8 +729,6 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           _firestore.collection('users/$userId/accounts').get(),
           _firestore.collection('users/$userId/categories').get(),
           _firestore.collection('users/$userId/transactions').get(),
-          _firestore.collection('users/$userId/budgets').get(),
-          _firestore.collection('users/$userId/goals').get(),
           _firestore.collection('users/$userId/captureCandidates').get(),
           _firestore.collection('users/$userId/importBatches').get(),
           _firestore.doc('users/$userId/metadata/preferences').get(),
@@ -740,11 +738,9 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         final categoriesQuery =
             results[1] as QuerySnapshot<Map<String, dynamic>>;
         final txnsQuery = results[2] as QuerySnapshot<Map<String, dynamic>>;
-        final budgetsQuery = results[3] as QuerySnapshot<Map<String, dynamic>>;
-        final goalsQuery = results[4] as QuerySnapshot<Map<String, dynamic>>;
-        final captureQuery = results[5] as QuerySnapshot<Map<String, dynamic>>;
-        final importsQuery = results[6] as QuerySnapshot<Map<String, dynamic>>;
-        final prefsDoc = results[7] as DocumentSnapshot<Map<String, dynamic>>;
+        final captureQuery = results[3] as QuerySnapshot<Map<String, dynamic>>;
+        final importsQuery = results[4] as QuerySnapshot<Map<String, dynamic>>;
+        final prefsDoc = results[5] as DocumentSnapshot<Map<String, dynamic>>;
 
         restoreData = {
           'userId': userId,
@@ -752,8 +748,6 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           'accounts': accountsQuery.docs.map((d) => d.data()).toList(),
           'categories': categoriesQuery.docs.map((d) => d.data()).toList(),
           'transactions': txnsQuery.docs.map((d) => d.data()).toList(),
-          'budgets': budgetsQuery.docs.map((d) => d.data()).toList(),
-          'goals': goalsQuery.docs.map((d) => d.data()).toList(),
           'captureCandidates': captureQuery.docs.map((d) => d.data()).toList(),
           'importBatches': importsQuery.docs.map((d) => d.data()).toList(),
         };
@@ -934,8 +928,6 @@ LedgerState _parseCloudRestoreData(Map<String, dynamic> data) {
   final accountsData = data['accounts'] as List;
   final categoriesData = data['categories'] as List;
   final transactionsData = data['transactions'] as List;
-  final budgetsData = data['budgets'] as List;
-  final goalsData = data['goals'] as List;
   final captureData = data['captureCandidates'] as List?;
   final importsData = data['importBatches'] as List?;
   final exchangeRatesData = data['exchangeRates'] as List?;
@@ -954,12 +946,7 @@ LedgerState _parseCloudRestoreData(Map<String, dynamic> data) {
       transactions: transactionsData
           .map((d) => transactionFromJson(d as Map<String, dynamic>))
           .toList(),
-      budgets: budgetsData
-          .map((d) => budgetFromJson(d as Map<String, dynamic>))
-          .toList(),
-      goals: goalsData
-          .map((d) => goalFromJson(d as Map<String, dynamic>))
-          .toList(),
+
       captureCandidates:
           captureData
               ?.map((d) => captureCandidateFromJson(d as Map<String, dynamic>))
@@ -998,12 +985,7 @@ Map<String, dynamic> _encodeCloudSnapshotData(
     'transactions': ledger.transactions
         .map((t) => transactionToJson(t).cast<String, dynamic>())
         .toList(),
-    'budgets': ledger.budgets
-        .map((b) => budgetToJson(b).cast<String, dynamic>())
-        .toList(),
-    'goals': ledger.goals
-        .map((g) => goalToJson(g).cast<String, dynamic>())
-        .toList(),
+
     'captureCandidates': ledger.captureCandidates
         .map((c) => captureCandidateToJson(c).cast<String, dynamic>())
         .toList(),

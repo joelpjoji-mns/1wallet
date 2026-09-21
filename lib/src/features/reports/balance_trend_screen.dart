@@ -291,7 +291,7 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 30,
+              reservedSize: 32,
               interval: xInterval,
               getTitlesWidget: (value, meta) {
                 if (value == minX || value == maxX) {
@@ -299,16 +299,17 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
                 }
                 final date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
                 final isZoomedOut = _period == 'This year' || _period == 'All time';
-                final format = isZoomedOut ? DateFormat('MMM yyyy') : DateFormat('dd-MMM');
+                final format = isZoomedOut ? DateFormat('MMM yyyy') : DateFormat('d MMM');
                 
-                return Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
+                return SideTitleWidget(
+                  meta: meta,
                   child: Text(
                     format.format(date),
                     style: TextStyle(
                       color: scheme.onSurfaceVariant,
                       fontSize: 10,
                     ),
+                    softWrap: false,
                   ),
                 );
               },
