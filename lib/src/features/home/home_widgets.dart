@@ -716,7 +716,7 @@ class _BalanceTrendHomeWidgetState
                               leftTitles: AxisTitles(
                                 sideTitles: SideTitles(
                                   showTitles: true,
-                                  reservedSize: 44,
+                                  reservedSize: 52,
                                   interval: niceInterval,
                                   getTitlesWidget: (value, meta) {
                                     return PrivacyText(

@@ -302,7 +302,7 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 40,
+              reservedSize: 52,
               interval: interval,
               getTitlesWidget: (value, meta) {
                 if (value == minY || value == maxY) {

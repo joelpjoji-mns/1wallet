@@ -425,10 +425,10 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
                       localMaxY += niceInterval;
                     }
 
-                    return Listener(
-                      onPointerMove: (e) {
+                    return GestureDetector(
+                      onHorizontalDragUpdate: (details) {
                         setState(() {
-                          final daysDelta = -(e.delta.dx / pixelsPerDay);
+                          final daysDelta = -(details.primaryDelta! / pixelsPerDay);
                           _visibleMinX = _visibleMinX! + daysDelta;
                           _visibleMaxX = _visibleMaxX! + daysDelta;
                         });
@@ -459,7 +459,7 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
                               leftTitles: AxisTitles(
                                 sideTitles: SideTitles(
                                   showTitles: true,
-                                  reservedSize: 44,
+                                  reservedSize: 52,
                                   interval: niceInterval,
                                   getTitlesWidget: (value, meta) {
                                     return PrivacyText(
