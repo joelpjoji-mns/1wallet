@@ -162,18 +162,19 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
     final futureValues = futureTrend.map((p) => p.balance.amountMinor).toList();
     final allValues = [...pastValues, ...futureValues];
 
-    // Also keep cash/bank totals for the summary header
     int totalCash = 0;
     final balances = accountBalanceMap(widget.state);
     final bankAccountIds = <String>{};
     for (final acc in widget.state.accounts) {
-      if (acc.type == 'cash' || acc.type == 'bank') {
+      if (!acc.isArchived && acc.includeInTotals) {
         totalCash += convertMoneyForDisplay(
           widget.state,
           accountBalanceFromMap(balances, acc),
           widget.state.preferences.displayCurrency,
         ).amountMinor;
-        bankAccountIds.add(acc.id);
+        if (acc.type == 'cash' || acc.type == 'bank') {
+          bankAccountIds.add(acc.id);
+        }
       }
     }
 
@@ -426,6 +427,7 @@ class _BalanceTrendWidgetState extends ConsumerState<BalanceTrendWidget> {
                     }
 
                     return GestureDetector(
+                      behavior: HitTestBehavior.opaque,
                       onHorizontalDragUpdate: (details) {
                         setState(() {
                           final daysDelta = -(details.primaryDelta! / pixelsPerDay);
