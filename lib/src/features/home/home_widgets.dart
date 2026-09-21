@@ -753,24 +753,15 @@ class _BalanceTrendHomeWidgetState
                                 sideTitles: SideTitles(
                                   showTitles: true,
                                   reservedSize: 22,
+                                  interval: niceXInterval,
                                   getTitlesWidget: (value, meta) {
-                                    final idx = value.round();
-                                    if (idx == 0 && pastTrend.isNotEmpty) {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(top: 8),
-                                        child: Text(
-                                          _shortDate(
-                                            pastTrend.first.date,
-                                            widget.state.preferences.locale,
-                                          ),
-                                          style: TextStyle(
-                                            fontSize: 9,
-                                            color: scheme.onSurfaceVariant,
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                    if (idx == pastN - 1) {
+                                    if (value < 0 || value >= totalN) return const SizedBox.shrink();
+                                    
+                                    final date = pastTrend.isNotEmpty
+                                        ? pastTrend.first.date.add(Duration(days: value.toInt()))
+                                        : (futureTrend.isNotEmpty ? futureTrend.first.date.add(Duration(days: value.toInt())) : DateTime.now());
+                                        
+                                    if (value.toInt() == pastN - 1 && pastN > 0) {
                                       return Padding(
                                         padding: const EdgeInsets.only(top: 8),
                                         child: Text(
@@ -783,23 +774,20 @@ class _BalanceTrendHomeWidgetState
                                         ),
                                       );
                                     }
-                                    if (futureTrend.isNotEmpty &&
-                                        idx == totalN - 1) {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(top: 8),
-                                        child: Text(
-                                          _shortDate(
-                                            futureTrend.last.date,
-                                            widget.state.preferences.locale,
-                                          ),
-                                          style: TextStyle(
-                                            fontSize: 9,
-                                            color: scheme.onSurfaceVariant,
-                                          ),
+
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 8),
+                                      child: Text(
+                                        _shortDate(
+                                          date,
+                                          widget.state.preferences.locale,
                                         ),
-                                      );
-                                    }
-                                    return const SizedBox.shrink();
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          color: scheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    );
                                   },
                                 ),
                               ),

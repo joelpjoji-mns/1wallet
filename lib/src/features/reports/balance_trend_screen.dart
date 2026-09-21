@@ -212,6 +212,9 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
       if (y > maxY) maxY = y;
     }
 
+    double xInterval = (maxX - minX) / 6;
+    if (xInterval <= 0) xInterval = 86400000; // fallback to 1 day
+
     if (spots.length == 1) {
       final single = spots.first;
       spots.add(FlSpot(single.x + 86400000, single.y));
@@ -257,6 +260,7 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
           drawVerticalLine: true,
           drawHorizontalLine: true,
           horizontalInterval: interval,
+          verticalInterval: xInterval,
           getDrawingHorizontalLine: (value) {
             if (value == 0) {
               return FlLine(color: scheme.onSurfaceVariant, strokeWidth: 2);
@@ -278,6 +282,7 @@ class _BalanceTrendScreenState extends ConsumerState<BalanceTrendScreen> {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 30,
+              interval: xInterval,
               getTitlesWidget: (value, meta) {
                 if (value == minX || value == maxX) {
                   return const SizedBox.shrink();
