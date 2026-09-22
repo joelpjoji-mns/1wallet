@@ -504,26 +504,30 @@ class _BalanceTrendHomeWidgetState
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
+    final nowRounded = DateTime(now.year, now.month, now.day, now.hour, now.minute);
     DateTime? start;
     switch (_period) {
       case 'This week':
-        start = now.subtract(const Duration(days: 7));
+        start = nowRounded.subtract(const Duration(days: 7));
         break;
       case 'This month':
-        start = now.subtract(const Duration(days: 30));
+        start = nowRounded.subtract(const Duration(days: 30));
         break;
       case 'This year':
-        start = DateTime(now.year);
+        start = DateTime(nowRounded.year);
         break;
       case 'All time':
         start = null;
         break;
     }
 
-    final nowRounded = DateTime(now.year, now.month, now.day, now.hour, now.minute);
+    DateTime earliest = nowRounded;
+    for (final tx in widget.state.transactions) {
+      if (tx.occurredAt.isBefore(earliest)) earliest = tx.occurredAt;
+    }
 
     // Future window: same span as past
-    final pastStart = start ?? nowRounded.subtract(const Duration(days: 365));
+    final pastStart = start ?? earliest;
     final pastSpan = nowRounded.difference(pastStart);
     final futureSpan = pastSpan;
     final futureEnd = nowRounded.add(futureSpan);
