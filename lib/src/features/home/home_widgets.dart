@@ -498,46 +498,42 @@ class _BalanceTrendHomeWidgetState
     extends ConsumerState<BalanceTrendHomeWidget> {
   String _period = 'This year';
   static const double _chartHeight = 200.0;
-  // Past data occupies 50% of the chart width, future the remaining 50%
-  static const double _pastFraction = 0.5;
+
+  /// Scroll offset in days relative to "now".
+  /// 0 means "now" sits at the right edge of the viewport.
+  /// Positive => scrolled into the future (chart shows later dates).
+  /// Negative => scrolled further into the past.
+  double _scrollOffset = 0.0;
+
+  int get _zoomDays {
+    switch (_period) {
+      case 'This week':
+        return 7;
+      case 'This month':
+        return 30;
+      case 'This year':
+        return 365;
+      default:
+        return 0; // sentinel for "All time" — computed later
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final nowRounded = DateTime(now.year, now.month, now.day, now.hour, now.minute);
-    DateTime? start;
-    switch (_period) {
-      case 'This week':
-        start = nowRounded.subtract(const Duration(days: 7));
-        break;
-      case 'This month':
-        start = nowRounded.subtract(const Duration(days: 30));
-        break;
-      case 'This year':
-        start = DateTime(nowRounded.year);
-        break;
-      case 'All time':
-        start = null;
-        break;
-    }
+    final nowRounded = DateTime(now.year, now.month, now.day);
 
-    DateTime earliest = nowRounded;
-    for (final tx in widget.state.transactions) {
-      if (tx.occurredAt.isBefore(earliest)) earliest = tx.occurredAt;
-    }
-
-    // Future window: same span as past
-    final pastStart = start ?? earliest;
-    final pastSpan = nowRounded.difference(pastStart);
-    final futureSpan = pastSpan;
-    final futureEnd = nowRounded.add(futureSpan);
+    // Always load ALL past data and 2 years of future projections.
+    final futureEnd = nowRounded.add(const Duration(days: 365 * 2));
 
     final pastTrendAsync = ref.watch(
-      homeBalanceTrendProvider((start: start, end: nowRounded)),
+      homeBalanceTrendProvider((start: null, end: nowRounded)),
     );
     final futureTrendAsync = ref.watch(
       homeBalanceFutureTrendProvider((start: nowRounded, end: futureEnd)),
     );
+
+    final scheme = Theme.of(context).colorScheme;
 
     if (pastTrendAsync.isLoading || futureTrendAsync.isLoading) {
       return RepaintBoundary(
@@ -545,9 +541,8 @@ class _BalanceTrendHomeWidgetState
           title: 'Balance trend',
           subtitle: _period,
           icon: Icons.bar_chart_rounded,
-          iconColor: Theme.of(context).colorScheme.tertiary,
-          actionLabel: _period,
-          onAction: () => _pickPeriod(),
+          iconColor: scheme.tertiary,
+          headerTrailing: _buildDropdown(),
           child: const SizedBox(
             height: _chartHeight,
             child: Center(child: CircularProgressIndicator()),
@@ -559,23 +554,13 @@ class _BalanceTrendHomeWidgetState
     final pastTrend = pastTrendAsync.value ?? const [];
     final futureTrend = futureTrendAsync.value ?? const [];
 
-    final pastValues = pastTrend.map((p) => p.balance.amountMinor).toList();
-    final futureValues = futureTrend.map((p) => p.balance.amountMinor).toList();
-
-    final allValues = [...pastValues, ...futureValues];
-
-    final periodLabel = pastTrend.isEmpty
-        ? _period
-        : '${_shortDate(pastTrend.first.date, widget.state.preferences.locale)} · now · ${_shortDate(futureEnd, widget.state.preferences.locale)}';
-
-    if (allValues.isEmpty) {
+    if (pastTrend.isEmpty && futureTrend.isEmpty) {
       return HomeWidgetCard(
         title: 'Balance trend',
         subtitle: _period,
         icon: Icons.bar_chart_rounded,
-        iconColor: Theme.of(context).colorScheme.tertiary,
-        actionLabel: _period,
-        onAction: () => _pickPeriod(),
+        iconColor: scheme.tertiary,
+        headerTrailing: _buildDropdown(),
         child: const SizedBox(
           height: _chartHeight,
           child: Center(child: Text('No data for this period')),
@@ -583,15 +568,74 @@ class _BalanceTrendHomeWidgetState
       );
     }
 
-    var minY = allValues.reduce(math.min).toDouble();
-    var maxY = allValues.reduce(math.max).toDouble();
+    // Merge past + future into one indexed value list.
+    // Index 0 = earliest past day, index pastN-1 = "now",
+    // index pastN = first future day, etc.
+    final pastValues =
+        pastTrend.map((p) => p.balance.amountMinor).toList();
+    final futureValues =
+        futureTrend.map((p) => p.balance.amountMinor).toList();
 
+    final pastN = pastValues.length;
+    final futureN = futureValues.length;
+    // Combined timeline (future index 0 == past last point, so skip it)
+    final allValues = [
+      ...pastValues,
+      if (futureN > 1) ...futureValues.sublist(1),
+    ];
+    final totalN = allValues.length;
+
+    // "now" sits at index pastN - 1 in allValues
+    final nowIndex = pastN > 0 ? pastN - 1 : 0;
+
+    // Determine zoom window size
+    int zoomDays = _zoomDays;
+    if (zoomDays == 0) {
+      // "All time"
+      zoomDays = math.max(1, totalN);
+    }
+
+    // Clamp scroll offset so the viewport can't go beyond data bounds.
+    // viewRight = nowIndex + _scrollOffset  (right edge of viewport in index space)
+    // viewLeft  = viewRight - zoomDays
+    final maxScrollOffset = (totalN - 1 - nowIndex).toDouble(); // right edge at last point
+    final minScrollOffset = -(nowIndex - zoomDays).toDouble(); // left edge at first point
+    _scrollOffset = _scrollOffset.clamp(
+      math.min(minScrollOffset, maxScrollOffset),
+      maxScrollOffset,
+    );
+
+    final viewRight = (nowIndex + _scrollOffset).clamp(0.0, (totalN - 1).toDouble());
+    final viewLeft = (viewRight - zoomDays).clamp(0.0, (totalN - 1).toDouble());
+
+    // Extract the visible window (with a small buffer for smooth edges)
+    final iStart = math.max(0, viewLeft.floor() - 2);
+    final iEnd = math.min(totalN - 1, viewRight.ceil() + 2);
+
+    // Visible values for Y-axis scaling
+    final visibleValues = allValues.sublist(iStart, iEnd + 1);
+    if (visibleValues.isEmpty) {
+      return HomeWidgetCard(
+        title: 'Balance trend',
+        subtitle: _period,
+        icon: Icons.bar_chart_rounded,
+        iconColor: scheme.tertiary,
+        headerTrailing: _buildDropdown(),
+        child: const SizedBox(
+          height: _chartHeight,
+          child: Center(child: Text('No data for this period')),
+        ),
+      );
+    }
+
+    var minY = visibleValues.reduce(math.min).toDouble();
+    var maxY = visibleValues.reduce(math.max).toDouble();
     if (maxY == minY) {
       maxY += 100000;
       minY -= 100000;
     }
 
-    // Calculate nice interval first, then snap bounds
+    // Nice Y interval
     final rawSpan = maxY - minY;
     double niceInterval = 1.0;
     if (rawSpan > 0) {
@@ -621,7 +665,6 @@ class _BalanceTrendHomeWidgetState
       }
     }
 
-    // Snap min/max to nice interval boundaries for uniform Y axis
     minY = (minY / niceInterval).floor() * niceInterval;
     maxY = (maxY / niceInterval).ceil() * niceInterval;
     if (minY == maxY) {
@@ -642,417 +685,415 @@ class _BalanceTrendHomeWidgetState
       return '$sign${absVal.toInt()}';
     }
 
-    // Build unified X-axis: past occupies [0 .. pastTrend.length-1],
-    // future continues from there.
-    // "Now" divider sits at x = pastTrend.length - 1.
-    final pastN = pastTrend.length;
-    final futureN = futureTrend.length;
-    final totalN = pastN == 0 ? futureN : (futureN == 0 ? pastN : pastN + futureN - 1); // shared "now" point
-    
-    double niceXInterval = 1.0;
-    if (totalN > 6) {
-      niceXInterval = (totalN / 5).ceilToDouble();
+    // Build spots for past and future portions within visible range.
+    // Use the global index as the X coordinate.
+    final step = (iEnd - iStart) > 300 ? ((iEnd - iStart) / 300).ceil() : 1;
+
+    final pastSpots = <FlSpot>[];
+    final futureSpots = <FlSpot>[];
+
+    for (int i = iStart; i <= iEnd; i += step) {
+      final spot = FlSpot(i.toDouble(), allValues[i].toDouble());
+      if (i < nowIndex) {
+        pastSpots.add(spot);
+      } else if (i == nowIndex) {
+        // Shared "now" point belongs to both lines
+        pastSpots.add(spot);
+        futureSpots.add(spot);
+      } else {
+        futureSpots.add(spot);
+      }
+    }
+    // Ensure the boundary points are included
+    if (pastSpots.isNotEmpty && pastSpots.last.x < nowIndex && nowIndex >= iStart && nowIndex <= iEnd) {
+      pastSpots.add(FlSpot(nowIndex.toDouble(), allValues[nowIndex].toDouble()));
+    }
+    if (futureSpots.isEmpty && nowIndex >= iStart && nowIndex <= iEnd) {
+      futureSpots.add(FlSpot(nowIndex.toDouble(), allValues[nowIndex].toDouble()));
+    }
+    // Ensure last visible point is included
+    if (iEnd > nowIndex && (iEnd % step != 0 || iEnd != iStart)) {
+      final lastFutureSpot = FlSpot(iEnd.toDouble(), allValues[iEnd].toDouble());
+      if (futureSpots.isEmpty || futureSpots.last.x < iEnd) {
+        futureSpots.add(lastFutureSpot);
+      }
+    }
+    if (iEnd < nowIndex && (iEnd % step != 0 || iEnd != iStart)) {
+      final lastPastSpot = FlSpot(iEnd.toDouble(), allValues[iEnd].toDouble());
+      if (pastSpots.isEmpty || pastSpots.last.x < iEnd) {
+        pastSpots.add(lastPastSpot);
+      }
     }
 
-    final nowX = pastN > 0 ? (pastN - 1).toDouble() : 0.0;
+    final double nowX = nowIndex.toDouble();
 
-    final step = totalN > 300 ? (totalN / 300).ceil() : 1;
+    double niceXInterval = 1.0;
+    if (zoomDays > 6) {
+      niceXInterval = (zoomDays / 5).ceilToDouble();
+    }
 
-    // Past spots
-    final pastSpots = <FlSpot>[
-      for (int i = 0; i < pastN; i += step)
-        FlSpot(i.toDouble(), pastValues[i].toDouble()),
-      if (pastN > 0 && (pastN - 1) % step != 0)
-        FlSpot((pastN - 1).toDouble(), pastValues.last.toDouble()),
-    ];
+    // Date label for the subtitle
+    final leftDate = pastTrend.isNotEmpty
+        ? pastTrend.first.date.add(Duration(days: viewLeft.round()))
+        : nowRounded;
+    final rightDate = pastTrend.isNotEmpty
+        ? pastTrend.first.date.add(Duration(days: viewRight.round()))
+        : nowRounded;
+    final periodLabel =
+        '${_shortDate(leftDate, widget.state.preferences.locale)} · ${_shortDate(rightDate, widget.state.preferences.locale)}';
 
-    // Future spots: start at x = nowX (shared balance point)
-    final futureSpots = <FlSpot>[
-      for (int i = 0; i < futureN; i += step)
-        FlSpot(nowX + i.toDouble(), futureValues[i].toDouble()),
-      if (futureN > 0 && (futureN - 1) % step != 0)
-        FlSpot(nowX + (futureN - 1).toDouble(), futureValues.last.toDouble()),
-    ];
-
-    final scheme = Theme.of(context).colorScheme;
-
-    // We want "now" to appear at ~80% of visible width.
-    // Calculate chart pixel width so the past portion fills 80% and
-    // future 20% of available width.
-    final chartMinWidth = 320.0;
     return RepaintBoundary(
       child: HomeWidgetCard(
         title: 'Balance trend',
         subtitle: periodLabel,
         icon: Icons.bar_chart_rounded,
         iconColor: scheme.tertiary,
-        actionLabel: _period,
-        onAction: () => _pickPeriod(),
+        headerTrailing: _buildDropdown(),
         child: GestureDetector(
-          onHorizontalDragUpdate: (_) {},
+          onHorizontalDragUpdate: (details) {
+            setState(() {
+              // Convert pixel drag to index-space movement.
+              // Dragging right => scroll into the past (decrease offset).
+              final pixelsPerDay = (MediaQuery.of(context).size.width - 64) /
+                  zoomDays;
+              _scrollOffset -= details.delta.dx / pixelsPerDay;
+            });
+          },
           child: Column(
             children: [
               Padding(
                 padding: const EdgeInsets.only(right: 16.0, top: 16.0),
                 child: SizedBox(
                   height: _chartHeight,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    // Past region fills 80% of available width, future the rest.
-                    // If past has few points, we expand the chart.
-                    final availableWidth = math.max(
-                      constraints.maxWidth - 48.0, // left axis reserved width
-                      chartMinWidth,
-                    );
-                    // Total chart width = past fills 80%
-                    final totalWidth = pastN > 1
-                        ? availableWidth / _pastFraction
-                        : chartMinWidth;
+                  child: LineChart(
+                    LineChartData(
+                      clipData: FlClipData.all(),
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: true,
+                        horizontalInterval: niceInterval,
+                        verticalInterval: niceXInterval,
+                        getDrawingHorizontalLine: (value) => FlLine(
+                          color: scheme.outlineVariant.withAlphaFactor(0.25),
+                          strokeWidth: 0.5,
+                          dashArray: [3, 5],
+                        ),
+                        getDrawingVerticalLine: (value) => FlLine(
+                          color: scheme.outlineVariant.withAlphaFactor(0.25),
+                          strokeWidth: 0.5,
+                          dashArray: [3, 5],
+                        ),
+                      ),
+                      titlesData: FlTitlesData(
+                        show: true,
+                        topTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        rightTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 52,
+                            interval: niceInterval,
+                            getTitlesWidget: (value, meta) {
+                              return PrivacyText(
+                                formatCompact(value),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 32,
+                            interval: niceXInterval,
+                            getTitlesWidget: (value, meta) {
+                              final idx = value.toInt();
+                              if (idx < 0 || idx >= totalN) {
+                                return const SizedBox.shrink();
+                              }
 
-                    return SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      child: SizedBox(
-                        width: totalWidth,
-                        child: LineChart(
-                          LineChartData(
-                            clipData: FlClipData.none(),
-                            gridData: FlGridData(
-                              show: true,
-                              drawVerticalLine: true,
-                              horizontalInterval: niceInterval,
-                              verticalInterval: niceXInterval,
-                              getDrawingHorizontalLine: (value) => FlLine(
-                                color: scheme.outlineVariant.withAlphaFactor(
-                                  0.25,
-                                ),
-                                strokeWidth: 0.5,
-                                dashArray: [3, 5],
-                              ),
-                              getDrawingVerticalLine: (value) => FlLine(
-                                color: scheme.outlineVariant.withAlphaFactor(
-                                  0.25,
-                                ),
-                                strokeWidth: 0.5,
-                                dashArray: [3, 5],
-                              ),
-                            ),
-                            titlesData: FlTitlesData(
-                              show: true,
-                              topTitles: AxisTitles(
-                                sideTitles: SideTitles(showTitles: false),
-                              ),
-                              rightTitles: AxisTitles(
-                                sideTitles: SideTitles(showTitles: false),
-                              ),
-                              leftTitles: AxisTitles(
-                                sideTitles: SideTitles(
-                                  showTitles: true,
-                                  reservedSize: 52,
-                                  interval: niceInterval,
-                                  getTitlesWidget: (value, meta) {
-                                    return PrivacyText(
-                                      formatCompact(value),
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: scheme.onSurfaceVariant,
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                              bottomTitles: AxisTitles(
-                                sideTitles: SideTitles(
-                                  showTitles: true,
-                                  reservedSize: 32,
-                                  interval: niceXInterval,
-                                  getTitlesWidget: (value, meta) {
-                                    if (value < 0 || value >= totalN) return const SizedBox.shrink();
-                                    
-                                    final date = pastTrend.isNotEmpty
-                                        ? pastTrend.first.date.add(Duration(days: value.toInt()))
-                                        : (futureTrend.isNotEmpty ? futureTrend.first.date.add(Duration(days: value.toInt())) : DateTime.now());
-                                        
-                                    if (value.toInt() == pastN - 1 && pastN > 0) {
-                                      return SideTitleWidget(
-                                        meta: meta,
-                                        child: Text(
-                                          'Now',
-                                          style: TextStyle(
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.bold,
-                                            color: scheme.primary,
-                                          ),
-                                          softWrap: false,
-                                        ),
-                                      );
-                                    }
+                              if (idx == nowIndex) {
+                                return SideTitleWidget(
+                                  meta: meta,
+                                  child: Text(
+                                    'Now',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: scheme.primary,
+                                    ),
+                                    softWrap: false,
+                                  ),
+                                );
+                              }
 
-                                    return SideTitleWidget(
-                                      meta: meta,
-                                      child: Text(
-                                        _shortDate(
-                                          date,
-                                          widget.state.preferences.locale,
-                                        ),
-                                        style: TextStyle(
-                                          fontSize: 9,
-                                          color: scheme.onSurfaceVariant,
-                                        ),
-                                        softWrap: false,
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                            borderData: FlBorderData(show: false),
-                            minX: 0,
-                            maxX: math.max(1.0, (totalN - 1).toDouble()),
-                            minY: minY,
-                            maxY: maxY,
-                            extraLinesData: ExtraLinesData(
-                              horizontalLines: [
-                                HorizontalLine(
-                                  y: 0,
-                                  color: scheme.onSurfaceVariant.withAlphaFactor(0.3),
-                                  strokeWidth: 1,
-                                ),
-                              ],
-                              verticalLines: [
-                                VerticalLine(
-                                  x: nowX,
-                                  color: scheme.primary.withAlphaFactor(0.4),
-                                  strokeWidth: 1.0,
-                                  dashArray: [4, 4],
-                                  label: VerticalLineLabel(show: false),
-                                ),
-                              ],
-                            ),
-                            lineBarsData: [
-                              // Past line — full colour
-                              if (pastSpots.length > 1)
-                                LineChartBarData(
-                                  spots: pastSpots,
-                                  isCurved: true,
-                                  curveSmoothness: 0.3,
-                                  color: scheme.primary,
-                                  barWidth: 1.2,
-                                  isStrokeCapRound: true,
-                                  shadow: Shadow(
-                                    color: scheme.primary.withAlphaFactor(0.25),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 3),
+                              final date = pastTrend.isNotEmpty
+                                  ? pastTrend.first.date
+                                      .add(Duration(days: idx))
+                                  : nowRounded.add(
+                                      Duration(days: idx - nowIndex));
+
+                              return SideTitleWidget(
+                                meta: meta,
+                                child: Text(
+                                  _shortDate(
+                                    date,
+                                    widget.state.preferences.locale,
                                   ),
-                                  dotData: FlDotData(
-                                    show: true,
-                                    checkToShowDot: (spot, barData) =>
-                                        spot.x == barData.spots.last.x,
-                                    getDotPainter:
-                                        (spot, percent, barData, index) =>
-                                            FlDotCirclePainter(
-                                              radius: 4,
-                                              color: scheme.primary,
-                                              strokeWidth: 2,
-                                              strokeColor: scheme.surface,
-                                            ),
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    color: scheme.onSurfaceVariant,
                                   ),
-                                  belowBarData: BarAreaData(
-                                    show: true,
-                                    cutOffY: minY,
-                                    applyCutOffY: false,
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        scheme.primary.withAlphaFactor(0.35),
-                                        scheme.primary.withAlphaFactor(0.0),
-                                      ],
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                    ),
-                                  ),
+                                  softWrap: false,
                                 ),
-                              // Future line — muted/greyed out
-                              if (futureSpots.length > 1)
-                                LineChartBarData(
-                                  spots: futureSpots,
-                                  isCurved: false,
-                                  color: scheme.onSurfaceVariant
-                                      .withAlphaFactor(0.45),
-                                  barWidth: 1.0,
-                                  isStrokeCapRound: true,
-                                  dashArray: [6, 4],
-                                  dotData: FlDotData(
-                                    show: true,
-                                    checkToShowDot: (spot, barData) =>
-                                        spot.x == barData.spots.last.x,
-                                    getDotPainter:
-                                        (spot, percent, barData, index) =>
-                                            FlDotCirclePainter(
-                                              radius: 3,
-                                              color:
-                                                  scheme.onSurfaceVariant
-                                                      .withAlphaFactor(0.5),
-                                              strokeWidth: 1,
-                                              strokeColor: scheme.surface,
-                                            ),
-                                  ),
-                                  belowBarData: BarAreaData(
-                                    show: true,
-                                    cutOffY: minY,
-                                    applyCutOffY: false,
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        scheme.onSurfaceVariant.withAlphaFactor(
-                                          0.12,
-                                        ),
-                                        scheme.onSurfaceVariant.withAlphaFactor(
-                                          0.0,
-                                        ),
-                                      ],
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                            lineTouchData: LineTouchData(
-                              enabled: true,
-                              getTouchedSpotIndicator: (
-                                LineChartBarData barData,
-                                List<int> spotIndexes,
-                              ) {
-                                return spotIndexes.map((index) {
-                                  return TouchedSpotIndicatorData(
-                                    FlLine(
-                                      color: scheme.primary.withAlphaFactor(
-                                        0.4,
-                                      ),
-                                      strokeWidth: 1.5,
-                                      dashArray: [4, 4],
-                                    ),
-                                    FlDotData(
-                                      getDotPainter:
-                                          (spot, percent, barData, index) =>
-                                              FlDotCirclePainter(
-                                                radius: 4,
-                                                color: scheme.primary,
-                                                strokeWidth: 2,
-                                                strokeColor: scheme.surface,
-                                              ),
-                                    ),
-                                  );
-                                }).toList();
-                              },
-                              touchTooltipData: LineTouchTooltipData(
-                                getTooltipColor: (touchedSpot) =>
-                                    scheme.onSurface,
-                                getTooltipItems: (touchedSpots) {
-                                  return touchedSpots
-                                      .map(
-                                        (spot) => LineTooltipItem(
-                                          maskMoneyIfPrivate(
-                                            widget.state,
-                                            formatMoney(
-                                              Money(
-                                                amountMinor: spot.y.toInt(),
-                                                currency: widget
-                                                    .state
-                                                    .preferences
-                                                    .displayCurrency,
-                                              ),
-                                              widget.state.preferences.locale,
-                                            ),
-                                          ),
-                                          TextStyle(
-                                            color: scheme.surface,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      )
-                                      .toList();
-                                },
-                              ),
-                            ),
+                              );
+                            },
                           ),
                         ),
                       ),
-                    );
-                  },
+                      borderData: FlBorderData(show: false),
+                      minX: viewLeft,
+                      maxX: viewRight,
+                      minY: minY,
+                      maxY: maxY,
+                      extraLinesData: ExtraLinesData(
+                        horizontalLines: [
+                          HorizontalLine(
+                            y: 0,
+                            color: scheme.onSurfaceVariant
+                                .withAlphaFactor(0.3),
+                            strokeWidth: 1,
+                          ),
+                        ],
+                        verticalLines: [
+                          if (nowX >= viewLeft && nowX <= viewRight)
+                            VerticalLine(
+                              x: nowX,
+                              color: scheme.primary.withAlphaFactor(0.4),
+                              strokeWidth: 1.0,
+                              dashArray: [4, 4],
+                              label: VerticalLineLabel(show: false),
+                            ),
+                        ],
+                      ),
+                      lineBarsData: [
+                        // Past line — full colour
+                        if (pastSpots.length > 1)
+                          LineChartBarData(
+                            spots: pastSpots,
+                            isCurved: true,
+                            curveSmoothness: 0.3,
+                            color: scheme.primary,
+                            barWidth: 1.2,
+                            isStrokeCapRound: true,
+                            shadow: Shadow(
+                              color: scheme.primary.withAlphaFactor(0.25),
+                              blurRadius: 6,
+                              offset: const Offset(0, 3),
+                            ),
+                            dotData: FlDotData(
+                              show: true,
+                              checkToShowDot: (spot, barData) =>
+                                  spot.x == barData.spots.last.x,
+                              getDotPainter:
+                                  (spot, percent, barData, index) =>
+                                      FlDotCirclePainter(
+                                        radius: 4,
+                                        color: scheme.primary,
+                                        strokeWidth: 2,
+                                        strokeColor: scheme.surface,
+                                      ),
+                            ),
+                            belowBarData: BarAreaData(
+                              show: true,
+                              cutOffY: minY,
+                              applyCutOffY: false,
+                              gradient: LinearGradient(
+                                colors: [
+                                  scheme.primary.withAlphaFactor(0.35),
+                                  scheme.primary.withAlphaFactor(0.0),
+                                ],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                            ),
+                          ),
+                        // Future line — muted/greyed out
+                        if (futureSpots.length > 1)
+                          LineChartBarData(
+                            spots: futureSpots,
+                            isCurved: false,
+                            color: scheme.onSurfaceVariant
+                                .withAlphaFactor(0.45),
+                            barWidth: 1.0,
+                            isStrokeCapRound: true,
+                            dashArray: [6, 4],
+                            dotData: FlDotData(
+                              show: true,
+                              checkToShowDot: (spot, barData) =>
+                                  spot.x == barData.spots.last.x,
+                              getDotPainter:
+                                  (spot, percent, barData, index) =>
+                                      FlDotCirclePainter(
+                                        radius: 3,
+                                        color:
+                                            scheme.onSurfaceVariant
+                                                .withAlphaFactor(0.5),
+                                        strokeWidth: 1,
+                                        strokeColor: scheme.surface,
+                                      ),
+                            ),
+                            belowBarData: BarAreaData(
+                              show: true,
+                              cutOffY: minY,
+                              applyCutOffY: false,
+                              gradient: LinearGradient(
+                                colors: [
+                                  scheme.onSurfaceVariant.withAlphaFactor(
+                                    0.12,
+                                  ),
+                                  scheme.onSurfaceVariant.withAlphaFactor(
+                                    0.0,
+                                  ),
+                                ],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                            ),
+                          ),
+                      ],
+                      lineTouchData: LineTouchData(
+                        enabled: true,
+                        getTouchedSpotIndicator: (
+                          LineChartBarData barData,
+                          List<int> spotIndexes,
+                        ) {
+                          return spotIndexes.map((index) {
+                            return TouchedSpotIndicatorData(
+                              FlLine(
+                                color: scheme.primary.withAlphaFactor(
+                                  0.4,
+                                ),
+                                strokeWidth: 1.5,
+                                dashArray: [4, 4],
+                              ),
+                              FlDotData(
+                                getDotPainter:
+                                    (spot, percent, barData, index) =>
+                                        FlDotCirclePainter(
+                                          radius: 4,
+                                          color: scheme.primary,
+                                          strokeWidth: 2,
+                                          strokeColor: scheme.surface,
+                                        ),
+                              ),
+                            );
+                          }).toList();
+                        },
+                        touchTooltipData: LineTouchTooltipData(
+                          getTooltipColor: (touchedSpot) =>
+                              scheme.onSurface,
+                          getTooltipItems: (touchedSpots) {
+                            return touchedSpots
+                                .map(
+                                  (spot) => LineTooltipItem(
+                                    maskMoneyIfPrivate(
+                                      widget.state,
+                                      formatMoney(
+                                        Money(
+                                          amountMinor: spot.y.toInt(),
+                                          currency: widget
+                                              .state
+                                              .preferences
+                                              .displayCurrency,
+                                        ),
+                                        widget.state.preferences.locale,
+                                      ),
+                                    ),
+                                    TextStyle(
+                                      color: scheme.surface,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                )
+                                .toList();
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
-            // Legend row
-            Padding(
-              padding: const EdgeInsets.only(
-                left: 8,
-                right: 16,
-                bottom: 4,
-                top: 2,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  _LegendDot(color: scheme.primary),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Actual',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: scheme.onSurfaceVariant,
+              // Legend row
+              Padding(
+                padding: const EdgeInsets.only(
+                  left: 8,
+                  right: 16,
+                  bottom: 4,
+                  top: 2,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    _LegendDot(color: scheme.primary),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Actual',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  _LegendDot(
-                    color: scheme.onSurfaceVariant.withAlphaFactor(0.5),
-                    dashed: true,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Projected',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: scheme.onSurfaceVariant,
+                    const SizedBox(width: 12),
+                    _LegendDot(
+                      color: scheme.onSurfaceVariant.withAlphaFactor(0.5),
+                      dashed: true,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 4),
+                    Text(
+                      'Projected',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
-  Future<void> _pickPeriod() async {
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) => SimpleDialog(
-        title: const Text('Select period'),
-        children: [
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, 'This week'),
-            child: const Text('This week'),
-          ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, 'This month'),
-            child: const Text('This month'),
-          ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, 'This year'),
-            child: const Text('This year'),
-          ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, 'All time'),
-            child: const Text('All time'),
-          ),
-        ],
+  Widget _buildDropdown() {
+    return PopupMenuButton<String>(
+      initialValue: _period,
+      onSelected: (value) => setState(() {
+        _period = value;
+        _scrollOffset = 0.0; // Reset view to "now" on zoom change
+      }),
+      itemBuilder: (context) => const [
+        PopupMenuItem(value: 'This week', child: Text('This week')),
+        PopupMenuItem(value: 'This month', child: Text('This month')),
+        PopupMenuItem(value: 'This year', child: Text('This year')),
+        PopupMenuItem(value: 'All time', child: Text('All time')),
+      ],
+      child: HomeBalancePill(
+        label: _period,
+        icon: Icons.calendar_month,
+        showChevron: true,
       ),
     );
-    if (result != null) {
-      setState(() => _period = result);
-    }
   }
 }
 
