@@ -6,7 +6,6 @@ import 'package:one_wallet_flutter/src/capture/capture_pipeline.dart';
 import 'package:one_wallet_flutter/src/data/ledger_defaults.dart';
 import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
-import 'package:one_wallet_flutter/src/features/capture/capture_diagnostics.dart';
 
 import 'test_harness.dart';
 

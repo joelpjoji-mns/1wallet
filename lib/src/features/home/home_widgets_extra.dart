@@ -1,7 +1,4 @@
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-
-import '../../data/ledger_models.dart';
+import 'package:flutter/material.dart';import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/privacy_text.dart';
@@ -30,8 +27,6 @@ class NetWorthHomeWidget extends StatelessWidget {
       title: 'Net worth',
       subtitle: 'What you own minus what you owe',
       icon: Icons.account_balance_outlined,
-      actionLabel: 'Trend',
-      onAction: () => context.push('/balance-trend'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

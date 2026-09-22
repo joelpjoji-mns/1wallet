@@ -6,32 +6,7 @@ import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 // Helpers — lightweight account & state builders
 // ──────────────────────────────────────────────────────────────────────────────
 
-Account _account({
-  String id = 'acc-1',
-  String name = 'My Account',
-  String type = 'bank',
-  String currency = 'INR',
-  String? institution,
-  String? groupName,
-  String? cardLast4,
-  String? accountLast4,
-  bool isArchived = false,
-  Map<String, String>? encryptedDetails,
-}) {
-  return Account(
-    id: id,
-    name: name,
-    type: type,
-    currency: currency,
-    openingBalance: const Money(amountMinor: 0, currency: 'INR'),
-    institution: institution,
-    groupName: groupName,
-    cardLast4: cardLast4,
-    accountLast4: accountLast4,
-    isArchived: isArchived,
-    encryptedDetails: encryptedDetails,
-  );
-}
+
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Tests for extractAllNumberFragments

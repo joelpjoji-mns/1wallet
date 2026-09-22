@@ -388,41 +388,7 @@ Money totalBalance(
   );
 }
 
-Set<String> _categoryWithDescendants(LedgerState state, String categoryId) {
-  final ids = <String>{categoryId};
-  void collect(String parentId) {
-    for (final category in state.categories) {
-      if (category.parentId == parentId && ids.add(category.id)) {
-        collect(category.id);
-      }
-    }
-  }
 
-  collect(categoryId);
-  return ids;
-}
-
-({DateTime start, DateTime end}) _periodRange(String frequency, DateTime now) {
-  switch (frequency) {
-    case 'weekly':
-      final today = DateTime(now.year, now.month, now.day);
-      final start = today.subtract(Duration(days: now.weekday - 1));
-      return (start: start, end: start.add(const Duration(days: 7)));
-    case 'yearly':
-      return (start: DateTime(now.year), end: DateTime(now.year + 1));
-    case 'daily':
-      final start = DateTime(now.year, now.month, now.day);
-      return (start: start, end: start.add(const Duration(days: 1)));
-    case 'once':
-      return (start: DateTime(1970), end: DateTime(now.year + 100));
-    case 'monthly':
-    default:
-      return (
-        start: DateTime(now.year, now.month),
-        end: DateTime(now.year, now.month + 1),
-      );
-  }
-}
 
 
 // ── Dashboard analytics selectors (used by the dynamic home widgets) ──

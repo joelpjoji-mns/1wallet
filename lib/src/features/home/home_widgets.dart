@@ -498,8 +498,8 @@ class _BalanceTrendHomeWidgetState
     extends ConsumerState<BalanceTrendHomeWidget> {
   String _period = 'This year';
   static const double _chartHeight = 200.0;
-  // Past data occupies 80% of the chart width, future the remaining 20%
-  static const double _pastFraction = 0.8;
+  // Past data occupies 50% of the chart width, future the remaining 50%
+  static const double _pastFraction = 0.5;
 
   @override
   Widget build(BuildContext context) {
@@ -522,12 +522,10 @@ class _BalanceTrendHomeWidgetState
 
     final nowRounded = DateTime(now.year, now.month, now.day, now.hour, now.minute);
 
-    // Future window: same span as past, capped at 60 days
+    // Future window: same span as past
     final pastStart = start ?? nowRounded.subtract(const Duration(days: 365));
     final pastSpan = nowRounded.difference(pastStart);
-    final futureSpan = Duration(
-      days: math.min(pastSpan.inDays, 60).clamp(7, 60),
-    );
+    final futureSpan = pastSpan;
     final futureEnd = nowRounded.add(futureSpan);
 
     final pastTrendAsync = ref.watch(
@@ -687,7 +685,6 @@ class _BalanceTrendHomeWidgetState
         actionLabel: _period,
         onAction: () => _pickPeriod(),
         child: GestureDetector(
-          onTap: () => context.push('/balance-trend'),
           onHorizontalDragUpdate: (_) {},
           child: Column(
             children: [

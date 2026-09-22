@@ -112,9 +112,7 @@ List<AppNotification> buildNotificationInbox(LedgerState state) {
     return const [];
   }
 
-  // Budget/goal ids used to be permanent, now we just use a month prefix
-  // for things that might want to repeat periodically.
-  final period = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+
 
   // Scheduled payment notifications
   if (state.preferences.channelScheduledEnabled) {
