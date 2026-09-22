@@ -497,47 +497,46 @@ class BalanceTrendHomeWidget extends ConsumerStatefulWidget {
 class _BalanceTrendHomeWidgetState
     extends ConsumerState<BalanceTrendHomeWidget> {
   String _period = 'This year';
+  String _lastPeriod = '';
   static const double _chartHeight = 200.0;
-  // Past data occupies 50% of the chart width, future the remaining 50%
-  static const double _pastFraction = 0.5;
+  late final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final nowRounded = DateTime(now.year, now.month, now.day, now.hour, now.minute);
-    DateTime? start;
-    switch (_period) {
-      case 'This week':
-        start = nowRounded.subtract(const Duration(days: 7));
-        break;
-      case 'This month':
-        start = nowRounded.subtract(const Duration(days: 30));
-        break;
-      case 'This year':
-        start = DateTime(nowRounded.year);
-        break;
-      case 'All time':
-        start = null;
-        break;
-    }
-
-    DateTime earliest = nowRounded;
-    for (final tx in widget.state.transactions) {
-      if (tx.occurredAt.isBefore(earliest)) earliest = tx.occurredAt;
-    }
-
-    // Future window: same span as past
-    final pastStart = start ?? earliest;
-    final pastSpan = nowRounded.difference(pastStart);
-    final futureSpan = pastSpan;
-    final futureEnd = nowRounded.add(futureSpan);
-
+    
+    // Always fetch all data: earliest to 5 years in the future
     final pastTrendAsync = ref.watch(
-      homeBalanceTrendProvider((start: start, end: nowRounded)),
+      homeBalanceTrendProvider((start: null, end: nowRounded)),
     );
+    final futureEnd = nowRounded.add(const Duration(days: 365 * 5));
     final futureTrendAsync = ref.watch(
       homeBalanceFutureTrendProvider((start: nowRounded, end: futureEnd)),
     );
+
+    int zoomDays;
+    switch (_period) {
+      case 'This week':
+        zoomDays = 7;
+        break;
+      case 'This month':
+        zoomDays = 30;
+        break;
+      case 'This year':
+        zoomDays = 365;
+        break;
+      case 'All time':
+      default:
+        zoomDays = 365 * 5; // default wide zoom if all time
+        break;
+    }
 
     if (pastTrendAsync.isLoading || futureTrendAsync.isLoading) {
       return RepaintBoundary(
@@ -546,8 +545,7 @@ class _BalanceTrendHomeWidgetState
           subtitle: _period,
           icon: Icons.bar_chart_rounded,
           iconColor: Theme.of(context).colorScheme.tertiary,
-          actionLabel: _period,
-          onAction: () => _pickPeriod(),
+          headerTrailing: _buildDropdown(),
           child: const SizedBox(
             height: _chartHeight,
             child: Center(child: CircularProgressIndicator()),
@@ -563,25 +561,28 @@ class _BalanceTrendHomeWidgetState
     final futureValues = futureTrend.map((p) => p.balance.amountMinor).toList();
 
     final allValues = [...pastValues, ...futureValues];
-
-    final periodLabel = pastTrend.isEmpty
-        ? _period
-        : '${_shortDate(pastTrend.first.date, widget.state.preferences.locale)} · now · ${_shortDate(futureEnd, widget.state.preferences.locale)}';
-
+    
     if (allValues.isEmpty) {
       return HomeWidgetCard(
         title: 'Balance trend',
         subtitle: _period,
         icon: Icons.bar_chart_rounded,
         iconColor: Theme.of(context).colorScheme.tertiary,
-        actionLabel: _period,
-        onAction: () => _pickPeriod(),
+        headerTrailing: _buildDropdown(),
         child: const SizedBox(
           height: _chartHeight,
           child: Center(child: Text('No data for this period')),
         ),
       );
     }
+
+    if (_period == 'All time') {
+      zoomDays = math.max(1, pastTrend.length + futureTrend.length);
+    }
+    
+    final periodLabel = pastTrend.isEmpty
+        ? _period
+        : '${_shortDate(pastTrend.first.date, widget.state.preferences.locale)} · now · ${_shortDate(futureEnd, widget.state.preferences.locale)}';
 
     var minY = allValues.reduce(math.min).toDouble();
     var maxY = allValues.reduce(math.max).toDouble();
@@ -686,8 +687,7 @@ class _BalanceTrendHomeWidgetState
         subtitle: periodLabel,
         icon: Icons.bar_chart_rounded,
         iconColor: scheme.tertiary,
-        actionLabel: _period,
-        onAction: () => _pickPeriod(),
+        headerTrailing: _buildDropdown(),
         child: GestureDetector(
           onHorizontalDragUpdate: (_) {},
           child: Column(
@@ -698,18 +698,27 @@ class _BalanceTrendHomeWidgetState
                   height: _chartHeight,
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    // Past region fills 80% of available width, future the rest.
-                    // If past has few points, we expand the chart.
                     final availableWidth = math.max(
-                      constraints.maxWidth - 48.0, // left axis reserved width
+                      constraints.maxWidth - 48.0,
                       chartMinWidth,
                     );
-                    // Total chart width = past fills 80%
-                    final totalWidth = pastN > 1
-                        ? availableWidth / _pastFraction
-                        : chartMinWidth;
+                    
+                    final totalWidth = totalN > 1
+                        ? (totalN / zoomDays) * availableWidth
+                        : availableWidth;
+                        
+                    if (_period != _lastPeriod) {
+                      _lastPeriod = _period;
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (!mounted || !_scrollController.hasClients) return;
+                        final nowRatio = totalN > 0 ? nowX / totalN : 0.0;
+                        final targetScroll = (totalWidth * nowRatio) - (availableWidth * 0.8);
+                        _scrollController.jumpTo(math.max(0.0, math.min(targetScroll, _scrollController.position.maxScrollExtent)));
+                      });
+                    }
 
                     return SingleChildScrollView(
+                      controller: _scrollController,
                       scrollDirection: Axis.horizontal,
                       physics: const BouncingScrollPhysics(),
                       child: SizedBox(
@@ -1025,34 +1034,22 @@ class _BalanceTrendHomeWidgetState
   );
 }
 
-  Future<void> _pickPeriod() async {
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) => SimpleDialog(
-        title: const Text('Select period'),
-        children: [
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, 'This week'),
-            child: const Text('This week'),
-          ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, 'This month'),
-            child: const Text('This month'),
-          ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, 'This year'),
-            child: const Text('This year'),
-          ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, 'All time'),
-            child: const Text('All time'),
-          ),
-        ],
+  Widget _buildDropdown() {
+    return PopupMenuButton<String>(
+      initialValue: _period,
+      onSelected: (value) => setState(() => _period = value),
+      itemBuilder: (context) => const [
+        PopupMenuItem(value: 'This week', child: Text('This week')),
+        PopupMenuItem(value: 'This month', child: Text('This month')),
+        PopupMenuItem(value: 'This year', child: Text('This year')),
+        PopupMenuItem(value: 'All time', child: Text('All time')),
+      ],
+      child: HomeBalancePill(
+        label: _period,
+        icon: Icons.calendar_month,
+        showChevron: true,
       ),
     );
-    if (result != null) {
-      setState(() => _period = result);
-    }
   }
 }
 
