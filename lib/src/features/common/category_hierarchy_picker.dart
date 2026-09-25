@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import '../../widgets/app_glass_page.dart';
 
 Future<String?> showCategoryHierarchyPicker({
   required BuildContext context,
@@ -69,99 +71,102 @@ class _CategoryHierarchyPickerState extends State<_CategoryHierarchyPicker> {
         if (didPop) return;
         _showCategoryList();
       },
-      child: Scaffold(
-        backgroundColor: scheme.surface,
-        appBar: AppBar(
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          backgroundColor: scheme.surface,
-          leading: IconButton(
-            icon: Icon(Icons.arrow_back_rounded, color: scheme.onSurface),
-            tooltip: showingSubcategories ? 'Categories' : 'Back',
-            onPressed: _handleBack,
-          ),
-          title: Text(
-            showingSubcategories ? 'Choose subcategory' : widget.title,
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              color: scheme.onSurface,
-              fontSize: 20,
+      child: AppGlassPage(
+        child: Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            leading: Tooltip(
+              message: showingSubcategories ? 'Categories' : 'Back',
+              child: GlassIconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                semanticLabel: showingSubcategories ? 'Categories' : 'Back',
+                useOwnLayer: true,
+                onPressed: _handleBack,
+              ),
+            ),
+            title: Text(
+              showingSubcategories ? 'Choose subcategory' : widget.title,
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                color: scheme.onSurface,
+                fontSize: 20,
+              ),
             ),
           ),
-        ),
-        body: SafeArea(
-          top: false,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              0,
-              AppSpacing.md,
-              AppSpacing.xxl,
-            ),
-            children: [
-              Text(
-                showingSubcategories
-                    ? 'Pick a subcategory under ${root.name}. Back returns to categories.'
-                    : 'Pick the closest category. The most-used categories are shown first.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
+          body: SafeArea(
+            top: false,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                0,
+                AppSpacing.md,
+                AppSpacing.xxl,
               ),
-              const SizedBox(height: AppSpacing.md),
-              PremiumSearchInput(
-                hintText: showingSubcategories
-                    ? 'Search subcategories'
-                    : 'Search categories',
-                value: _query,
-                onChanged: (value) => setState(() => _query = value),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              if (showingSubcategories) ...[
-                PremiumRow(
-                  icon: Icons.arrow_upward_rounded,
-                  title: root.parentId == null
-                      ? 'All categories'
-                      : 'Back to parent',
-                  subtitle: 'Go up one level',
-                  iconColor: scheme.primary,
-                  onTap: _handleBack,
+              children: [
+                Text(
+                  showingSubcategories
+                      ? 'Pick a subcategory under ${root.name}. Back returns to categories.'
+                      : 'Pick the closest category. The most-used categories are shown first.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                PremiumRow(
-                  icon: categoryIcon(root),
-                  title: 'Use ${root.name}',
-                  subtitle: 'Save without a subcategory',
-                  iconColor: categoryColor(root, context),
-                  selected: widget.selectedCategoryId == root.id,
-                  onTap: () => Navigator.of(context).pop(root.id),
+                const SizedBox(height: AppSpacing.md),
+                PremiumSearchInput(
+                  hintText: showingSubcategories
+                      ? 'Search subcategories'
+                      : 'Search categories',
+                  value: _query,
+                  onChanged: (value) => setState(() => _query = value),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-              ],
-              if (visibleOptions.isEmpty)
-                EmptyState(
-                  icon: Icons.search_off_rounded,
-                  title: 'No matches',
-                  body: 'Try a different search term.',
-                  actionLabel: 'Clear search',
-                  onAction: () => setState(() => _query = ''),
-                )
-              else
-                for (final category in visibleOptions) ...[
+                const SizedBox(height: AppSpacing.md),
+                if (showingSubcategories) ...[
                   PremiumRow(
-                    icon: categoryIcon(category),
-                    title: category.name,
-                    subtitle: showingSubcategories
-                        ? categoryPath(widget.state, category)
-                        : _rootSubtitle(widget.state, category),
-                    iconColor: categoryColor(category, context),
-                    selected: showingSubcategories
-                        ? selectedChildId == category.id
-                        : selectedRoot?.id == category.id,
-                    onTap: () => _select(category),
+                    icon: Icons.arrow_upward_rounded,
+                    title: root.parentId == null
+                        ? 'All categories'
+                        : 'Back to parent',
+                    subtitle: 'Go up one level',
+                    iconColor: scheme.primary,
+                    onTap: _handleBack,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  PremiumRow(
+                    icon: categoryIcon(root),
+                    title: 'Use ${root.name}',
+                    subtitle: 'Save without a subcategory',
+                    iconColor: categoryColor(root, context),
+                    selected: widget.selectedCategoryId == root.id,
+                    onTap: () => Navigator.of(context).pop(root.id),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                 ],
-            ],
+                if (visibleOptions.isEmpty)
+                  EmptyState(
+                    icon: Icons.search_off_rounded,
+                    title: 'No matches',
+                    body: 'Try a different search term.',
+                    actionLabel: 'Clear search',
+                    onAction: () => setState(() => _query = ''),
+                  )
+                else
+                  for (final category in visibleOptions) ...[
+                    PremiumRow(
+                      icon: categoryIcon(category),
+                      title: category.name,
+                      subtitle: showingSubcategories
+                          ? categoryPath(widget.state, category)
+                          : _rootSubtitle(widget.state, category),
+                      iconColor: categoryColor(category, context),
+                      selected: showingSubcategories
+                          ? selectedChildId == category.id
+                          : selectedRoot?.id == category.id,
+                      onTap: () => _select(category),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                  ],
+              ],
+            ),
           ),
         ),
       ),

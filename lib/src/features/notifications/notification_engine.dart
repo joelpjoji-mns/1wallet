@@ -112,8 +112,6 @@ List<AppNotification> buildNotificationInbox(LedgerState state) {
     return const [];
   }
 
-
-
   // Scheduled payment notifications
   if (state.preferences.channelScheduledEnabled) {
     final today = DateTime(now.year, now.month, now.day);
@@ -171,8 +169,6 @@ List<AppNotification> buildNotificationInbox(LedgerState state) {
       }
     }
   }
-
-
 
   final readIds = state.preferences.readNotificationIds.toSet();
   final dismissedIds = state.preferences.dismissedNotificationIds.toSet();

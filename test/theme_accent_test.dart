@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 import 'package:one_wallet_flutter/src/features/home/home_components.dart';
@@ -34,6 +35,21 @@ void main() {
     final theme = AppTheme.dark(systemColorScheme: systemScheme);
 
     expect(theme.colorScheme.primary, systemScheme.primary);
+  });
+
+  test('Dark and AMOLED have distinct surfaces with black AMOLED canvas', () {
+    final dark = AppTheme.dark();
+    final amoled = AppTheme.amoled();
+
+    expect(dark.scaffoldBackgroundColor, AppColors.darkBackground);
+    expect(dark.colorScheme.surface, isNot(AppColors.amoledBackground));
+    expect(amoled.scaffoldBackgroundColor, AppColors.amoledBackground);
+    expect(amoled.colorScheme.surface, AppColors.amoledBackground);
+    expect(
+      amoled.colorScheme.surfaceContainerLowest,
+      AppColors.amoledBackground,
+    );
+    expect(amoled.cardTheme.color, const Color(0xFF080808));
   });
 
   test('card surfaces are tinted by the selected accent', () {
@@ -89,7 +105,7 @@ void main() {
     expect(incomePadColors.equalsForeground, theme.colorScheme.onTertiary);
   });
 
-  testWidgets('add-record FAB inner fill uses lighter accent tint', (
+  testWidgets('add-record FAB glass icon uses the selected accent', (
     WidgetTester tester,
   ) async {
     final theme = AppTheme.light(accentColor: '#00BCD4');
@@ -110,12 +126,10 @@ void main() {
       ),
     );
 
-    final animatedContainer = tester.widget<AnimatedContainer>(
-      find.byType(AnimatedContainer),
-    );
-    final decoration = animatedContainer.decoration! as BoxDecoration;
+    final glassButton = tester.widget<GlassButton>(find.byType(GlassButton));
 
-    expect(decoration.color, theme.colorScheme.primary.withAlphaFactor(0.15));
+    expect(glassButton.iconColor, theme.colorScheme.primary);
+    expect(glassButton.width, 64);
   });
 
   testWidgets('home balance pill uses accent tint instead of error color', (
@@ -147,5 +161,55 @@ void main() {
     final decoration = container.decoration! as BoxDecoration;
 
     expect(decoration.color, theme.colorScheme.primary.withAlphaFactor(0.16));
+  });
+
+  testWidgets('search input keeps its controller and cursor across rebuilds', (
+    WidgetTester tester,
+  ) async {
+    var query = '';
+    late StateSetter rebuild;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: StatefulBuilder(
+          builder: (context, setState) {
+            rebuild = setState;
+            return Scaffold(
+              body: PremiumSearchInput(
+                hintText: 'Search',
+                value: query,
+                onChanged: (value) => setState(() => query = value),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    final searchBar = tester.widget<GlassSearchBar>(
+      find.byType(GlassSearchBar),
+    );
+    final controller = searchBar.controller!;
+    controller.value = const TextEditingValue(
+      text: 'merchant',
+      selection: TextSelection.collapsed(offset: 2),
+    );
+    searchBar.onChanged?.call('merchant');
+    await tester.pump();
+
+    final rebuiltSearchBar = tester.widget<GlassSearchBar>(
+      find.byType(GlassSearchBar),
+    );
+    expect(identical(rebuiltSearchBar.controller, controller), isTrue);
+    controller.selection = const TextSelection.collapsed(offset: 2);
+    rebuild(() {});
+    await tester.pump();
+
+    final rebuiltController = tester
+        .widget<GlassSearchBar>(find.byType(GlassSearchBar))
+        .controller!;
+    expect(identical(rebuiltController, controller), isTrue);
+    expect(rebuiltController.selection.extentOffset, 2);
   });
 }

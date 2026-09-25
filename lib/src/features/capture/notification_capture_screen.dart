@@ -17,16 +17,19 @@ class NotificationCaptureScreen extends ConsumerStatefulWidget {
   const NotificationCaptureScreen({super.key});
 
   @override
-  ConsumerState<NotificationCaptureScreen> createState() => _NotificationCaptureScreenState();
+  ConsumerState<NotificationCaptureScreen> createState() =>
+      _NotificationCaptureScreenState();
 }
 
-class _NotificationCaptureScreenState extends ConsumerState<NotificationCaptureScreen> {
+class _NotificationCaptureScreenState
+    extends ConsumerState<NotificationCaptureScreen> {
   final _testController = TextEditingController();
   CaptureImportResult? _preview;
   bool _permissionGranted = false;
   bool _checkedPermission = false;
 
-  bool get _isAndroid => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+  bool get _isAndroid =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   @override
   void initState() {
@@ -59,10 +62,15 @@ class _NotificationCaptureScreenState extends ConsumerState<NotificationCaptureS
     final prefs = state.preferences;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final pending = state.captureCandidates.where((c) => c.status == 'pending').length;
+    final pending = state.captureCandidates
+        .where((c) => c.status == 'pending')
+        .length;
 
-    final preview = _preview ??
-        ref.read(ledgerProvider.notifier).previewSmsMessage(_testController.text);
+    final preview =
+        _preview ??
+        ref
+            .read(ledgerProvider.notifier)
+            .previewSmsMessage(_testController.text);
     final parsed = preview.parsed;
 
     return RouteScaffold(
@@ -78,21 +86,27 @@ class _NotificationCaptureScreenState extends ConsumerState<NotificationCaptureS
         children: [
           SectionCard(
             title: 'Automatic capture',
-            subtitle: 'Turn incoming notifications into review-queue candidates automatically.',
+            subtitle:
+                'Turn incoming notifications into review-queue candidates automatically.',
             child: Column(
               children: [
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: prefs.notificationCaptureEnabled,
                   onChanged: (value) {
-                    _updatePrefs(prefs.copyWith(notificationCaptureEnabled: value));
+                    _updatePrefs(
+                      prefs.copyWith(notificationCaptureEnabled: value),
+                    );
                   },
                   title: const Text('Enable notification capture'),
                   subtitle: Text(
                     prefs.notificationCaptureEnabled
                         ? 'A review candidate is created when a real transaction is detected.'
                         : 'Notifications are ignored.',
-                    style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
                 if (pending > 0) ...[
@@ -114,14 +128,21 @@ class _NotificationCaptureScreenState extends ConsumerState<NotificationCaptureS
           if (_isAndroid) ...[
             SectionCard(
               title: 'Permission',
-              subtitle: 'Reading notifications requires Notification Access permission.',
+              subtitle:
+                  'Reading notifications requires Notification Access permission.',
               child: Column(
                 children: [
                   InfoRow(
                     label: 'Notification Access',
-                    value: !_checkedPermission ? 'Checking…' : (_permissionGranted ? 'Granted' : 'Not granted'),
-                    icon: _permissionGranted ? Icons.verified_user_outlined : Icons.gpp_maybe_outlined,
-                    tone: _permissionGranted ? MetricTone.positive : MetricTone.warning,
+                    value: !_checkedPermission
+                        ? 'Checking…'
+                        : (_permissionGranted ? 'Granted' : 'Not granted'),
+                    icon: _permissionGranted
+                        ? Icons.verified_user_outlined
+                        : Icons.gpp_maybe_outlined,
+                    tone: _permissionGranted
+                        ? MetricTone.positive
+                        : MetricTone.warning,
                   ),
                   if (!_permissionGranted) ...[
                     const SizedBox(height: AppSpacing.sm),
@@ -132,7 +153,10 @@ class _NotificationCaptureScreenState extends ConsumerState<NotificationCaptureS
                           await requestAndroidNotificationPermission();
                           // Permission settings requires navigating away, so we just check on resume,
                           // but for now we'll do a delayed check.
-                          Future.delayed(const Duration(seconds: 3), _refreshPermission);
+                          Future.delayed(
+                            const Duration(seconds: 3),
+                            _refreshPermission,
+                          );
                         },
                         icon: const Icon(Icons.settings_suggest_outlined),
                         label: const Text('Open Settings to Grant'),
@@ -143,11 +167,12 @@ class _NotificationCaptureScreenState extends ConsumerState<NotificationCaptureS
               ),
             ),
             const Gap(AppSpacing.lg),
-            
+
             PremiumRow(
               icon: Icons.apps_outlined,
               title: 'Target Apps',
-              subtitle: '${prefs.notificationTargetPackages.length} apps selected for monitoring',
+              subtitle:
+                  '${prefs.notificationTargetPackages.length} apps selected for monitoring',
               onTap: () => context.push('/notification-capture/apps'),
             ),
             const Gap(AppSpacing.lg),
@@ -155,27 +180,36 @@ class _NotificationCaptureScreenState extends ConsumerState<NotificationCaptureS
 
           _WordEditor(
             title: 'Trigger words',
-            subtitle: 'Any of these signals a real transaction. Add words your bank uses.',
+            subtitle:
+                'Any of these signals a real transaction. Add words your bank uses.',
             words: prefs.notificationTriggerWords,
             accent: scheme.primary,
-            onChanged: (words) => _updatePrefs(prefs.copyWith(notificationTriggerWords: words)),
-            onReset: () => _updatePrefs(prefs.copyWith(notificationTriggerWords: kDefaultSmsTriggerWords)),
+            onChanged: (words) =>
+                _updatePrefs(prefs.copyWith(notificationTriggerWords: words)),
+            onReset: () => _updatePrefs(
+              prefs.copyWith(notificationTriggerWords: kDefaultSmsTriggerWords),
+            ),
           ),
           const Gap(AppSpacing.lg),
 
           _WordEditor(
             title: 'Ignore words',
-            subtitle: 'If any of these appear the notification is never queued.',
+            subtitle:
+                'If any of these appear the notification is never queued.',
             words: prefs.notificationIgnoreWords,
             accent: scheme.error,
-            onChanged: (words) => _updatePrefs(prefs.copyWith(notificationIgnoreWords: words)),
-            onReset: () => _updatePrefs(prefs.copyWith(notificationIgnoreWords: kDefaultSmsIgnoreWords)),
+            onChanged: (words) =>
+                _updatePrefs(prefs.copyWith(notificationIgnoreWords: words)),
+            onReset: () => _updatePrefs(
+              prefs.copyWith(notificationIgnoreWords: kDefaultSmsIgnoreWords),
+            ),
           ),
           const Gap(AppSpacing.lg),
 
           SectionCard(
             title: 'Test a notification text',
-            subtitle: 'Paste any notification text to see exactly how it would be handled.',
+            subtitle:
+                'Paste any notification text to see exactly how it would be handled.',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -197,19 +231,32 @@ class _NotificationCaptureScreenState extends ConsumerState<NotificationCaptureS
                     InfoRow(
                       label: 'Outcome',
                       value: _previewOutcome(preview),
-                      icon: preview.queued ? Icons.fact_check_outlined : (preview.duplicate ? Icons.library_add_check_outlined : Icons.visibility_off_outlined),
-                      tone: preview.queued ? MetricTone.positive : MetricTone.warning,
+                      icon: preview.queued
+                          ? Icons.fact_check_outlined
+                          : (preview.duplicate
+                                ? Icons.library_add_check_outlined
+                                : Icons.visibility_off_outlined),
+                      tone: preview.queued
+                          ? MetricTone.positive
+                          : MetricTone.warning,
                     ),
                   ],
                 ),
                 InfoRow(
                   label: 'Amount',
-                  value: parsed.amount == null ? 'Not detected' : maskMoneyIfPrivate(state, formatMoney(parsed.amount!, prefs.locale)),
+                  value: parsed.amount == null
+                      ? 'Not detected'
+                      : maskMoneyIfPrivate(
+                          state,
+                          formatMoney(parsed.amount!, prefs.locale),
+                        ),
                   icon: Icons.payments_outlined,
                 ),
                 InfoRow(
                   label: 'Direction',
-                  value: parsed.transactionType == null ? 'Needs review' : transactionTypeLabel(parsed.transactionType!),
+                  value: parsed.transactionType == null
+                      ? 'Needs review'
+                      : transactionTypeLabel(parsed.transactionType!),
                   icon: Icons.swap_vert_rounded,
                 ),
                 const SizedBox(height: AppSpacing.sm),
@@ -227,9 +274,16 @@ class _NotificationCaptureScreenState extends ConsumerState<NotificationCaptureS
   }
 
   Future<void> _queueTestMessage() async {
-    final result = await ref.read(ledgerProvider.notifier).importSmsMessageDetailed(_testController.text, stage: 'test-notification');
+    final result = await ref
+        .read(ledgerProvider.notifier)
+        .importSmsMessageDetailed(
+          _testController.text,
+          stage: 'test-notification',
+        );
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.userMessage)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(result.userMessage)));
     setState(() => _preview = null);
   }
 
@@ -237,8 +291,10 @@ class _NotificationCaptureScreenState extends ConsumerState<NotificationCaptureS
     final parsed = preview.parsed;
     if (preview.queued) return 'Would be queued';
     if (preview.duplicate) return 'Duplicate (already in ledger)';
-    if (parsed.matchedIgnoreWord != null) return 'Ignored (matched ignore: "${parsed.matchedIgnoreWord}")';
-    if (preview.reason == CaptureBlockReason.missingAmount) return 'Ignored (no amount detected)';
+    if (parsed.matchedIgnoreWord != null)
+      return 'Ignored (matched ignore: "${parsed.matchedIgnoreWord}")';
+    if (preview.reason == CaptureBlockReason.missingAmount)
+      return 'Ignored (no amount detected)';
     return 'Ignored (no trigger word matched)';
   }
 }
@@ -301,7 +357,10 @@ class _WordEditorState extends State<_WordEditor> {
           if (sorted.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-              child: Text('No words yet.', style: TextStyle(color: scheme.onSurfaceVariant)),
+              child: Text(
+                'No words yet.',
+                style: TextStyle(color: scheme.onSurfaceVariant),
+              ),
             )
           else
             Wrap(

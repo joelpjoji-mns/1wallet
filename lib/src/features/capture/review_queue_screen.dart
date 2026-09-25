@@ -3,6 +3,7 @@ import '../../ledger/ledger_selectors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -115,239 +116,247 @@ class ReviewQueueScreen extends ConsumerWidget {
           )
         : scheme;
 
-    return Card(
-      elevation: 1,
+    return GlassCard(
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      padding: EdgeInsets.zero,
+      shape: LiquidRoundedSuperellipse(borderRadius: 20),
+      quality: GlassQuality.minimal,
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => context.push('/capture/${candidate.id}'),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  IconBubble(
-                    icon: candidate.source == 'sms'
-                        ? Icons.sms_rounded
-                        : Icons.receipt_long_rounded,
-                    color: colorScheme.primary,
-                    compact: true,
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          candidate.merchant ??
-                              candidate.transactionType?.toUpperCase() ??
-                              'UNKNOWN',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        Text(
-                          DateFormat.MMMd(
-                            state.preferences.locale.replaceAll('_', '-'),
-                          ).add_jm().format(candidate.createdAt),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (candidate.parsedAmount != null) ...[
-                    const SizedBox(width: AppSpacing.sm),
-                    Flexible(
-                      child: PrivacyText(
-                        (isIncome ? '+' : '') +
-                            formatMoney(
-                              candidate.parsedAmount!,
-                              state.preferences.locale,
-                            ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          color: isIncome
-                              ? positiveTone(context)
-                              : scheme.onSurface,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Wrap(
-                spacing: AppSpacing.sm,
-                runSpacing: AppSpacing.sm,
-                children: [
-                  if (candidate.suggestedAccountId != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: scheme.primaryContainer.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.account_balance_wallet_rounded,
-                            size: 14,
-                            color: scheme.primary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            state.accounts
-                                    .where(
-                                      (a) =>
-                                          a.id == candidate.suggestedAccountId,
-                                    )
-                                    .firstOrNull
-                                    ?.name ??
-                                'Account',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: scheme.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  if (candidate.suggestedCategoryId != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: scheme.secondaryContainer.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.category_rounded,
-                            size: 14,
-                            color: scheme.secondary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            _categoryChipText(state, candidate),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: scheme.secondary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-              if (candidate.rawText != null &&
-                  candidate.rawText!.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.md),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHighest.withValues(
-                      alpha: 0.5,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    candidate.rawText!,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      fontFamily: 'monospace',
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-              ],
-              if (candidate.status == 'pending') ...[
-                const SizedBox(height: AppSpacing.lg),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => context.push('/capture/${candidate.id}'),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Row(
                   children: [
+                    IconBubble(
+                      icon: candidate.source == 'sms'
+                          ? Icons.sms_rounded
+                          : Icons.receipt_long_rounded,
+                      color: colorScheme.primary,
+                      compact: true,
+                    ),
+                    const SizedBox(width: AppSpacing.md),
                     Expanded(
-                      flex: 1,
-                      child: IconButton(
-                        tooltip: 'Block Pattern',
-                        onPressed: () => _showBlockDialog(context, ref, candidate),
-                        icon: const Icon(Icons.block_rounded),
-                        style: IconButton.styleFrom(
-                          foregroundColor: scheme.error,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            candidate.merchant ??
+                                candidate.transactionType?.toUpperCase() ??
+                                'UNKNOWN',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text(
+                            DateFormat.MMMd(
+                              state.preferences.locale.replaceAll('_', '-'),
+                            ).add_jm().format(candidate.createdAt),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (candidate.parsedAmount != null) ...[
+                      const SizedBox(width: AppSpacing.sm),
+                      Flexible(
+                        child: PrivacyText(
+                          (isIncome ? '+' : '') +
+                              formatMoney(
+                                candidate.parsedAmount!,
+                                state.preferences.locale,
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: isIncome
+                                ? positiveTone(context)
+                                : scheme.onSurface,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      flex: 2,
-                      child: TextButton.icon(
-                        onPressed: () => _updateCandidateStatus(
-                          context,
-                          ref,
-                          candidate.id,
-                          'rejected',
-                        ),
-                        icon: const Icon(Icons.close_rounded),
-                        label: const Text('Dismiss'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: scheme.error,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      flex: 3,
-                      child: FilledButton.icon(
-                        onPressed: () => _updateCandidateStatus(
-                          context,
-                          ref,
-                          candidate.id,
-                          'approved',
-                        ),
-                        icon: const Icon(Icons.check_rounded),
-                        label: const Text('Confirm'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: colorScheme.primaryContainer,
-                          foregroundColor: colorScheme.onPrimaryContainer,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                      ),
-                    ),
+                    ],
                   ],
                 ),
+                const SizedBox(height: AppSpacing.md),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  children: [
+                    if (candidate.suggestedAccountId != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: scheme.primaryContainer.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.account_balance_wallet_rounded,
+                              size: 14,
+                              color: scheme.primary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              state.accounts
+                                      .where(
+                                        (a) =>
+                                            a.id ==
+                                            candidate.suggestedAccountId,
+                                      )
+                                      .firstOrNull
+                                      ?.name ??
+                                  'Account',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: scheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (candidate.suggestedCategoryId != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: scheme.secondaryContainer.withValues(
+                            alpha: 0.5,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.category_rounded,
+                              size: 14,
+                              color: scheme.secondary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _categoryChipText(state, candidate),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: scheme.secondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+                if (candidate.rawText != null &&
+                    candidate.rawText!.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHighest.withValues(
+                        alpha: 0.5,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      candidate.rawText!,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontFamily: 'monospace',
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+                if (candidate.status == 'pending') ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 1,
+                        child: IconButton(
+                          tooltip: 'Block Pattern',
+                          onPressed: () =>
+                              _showBlockDialog(context, ref, candidate),
+                          icon: const Icon(Icons.block_rounded),
+                          style: IconButton.styleFrom(
+                            foregroundColor: scheme.error,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        flex: 2,
+                        child: TextButton.icon(
+                          onPressed: () => _updateCandidateStatus(
+                            context,
+                            ref,
+                            candidate.id,
+                            'rejected',
+                          ),
+                          icon: const Icon(Icons.close_rounded),
+                          label: const Text('Dismiss'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: scheme.error,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        flex: 3,
+                        child: FilledButton.icon(
+                          onPressed: () => _updateCandidateStatus(
+                            context,
+                            ref,
+                            candidate.id,
+                            'approved',
+                          ),
+                          icon: const Icon(Icons.check_rounded),
+                          label: const Text('Confirm'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: colorScheme.primaryContainer,
+                            foregroundColor: colorScheme.onPrimaryContainer,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -381,81 +390,88 @@ class ReviewQueueScreen extends ConsumerWidget {
           color: theme.colorScheme.onErrorContainer,
         ),
       ),
-      child: Card(
-        elevation: 0,
+      child: GlassCard(
         margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(
-            color: notification.read
-                ? scheme.outlineVariant.withValues(alpha: 0.5)
-                : scheme.primary.withValues(alpha: 0.3),
-            width: 1,
-          ),
-        ),
+        padding: EdgeInsets.zero,
+        shape: LiquidRoundedSuperellipse(borderRadius: 20),
+        quality: GlassQuality.minimal,
         clipBehavior: Clip.antiAlias,
-        color: notification.read
-            ? scheme.surfaceContainerLow
-            : scheme.primaryContainer.withValues(alpha: 0.3),
-        child: InkWell(
-          onTap: () => _openNotification(context, ref, notification),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                IconBubble(
-                  icon: icon,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _openNotification(context, ref, notification),
+            child: Container(
+              decoration: BoxDecoration(
+                color: notification.read
+                    ? Colors.transparent
+                    : scheme.primaryContainer.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
                   color: notification.read
-                      ? scheme.onSurfaceVariant
-                      : scheme.primary,
-                  compact: true,
+                      ? scheme.outlineVariant.withValues(alpha: 0.5)
+                      : scheme.primary.withValues(alpha: 0.3),
+                  width: 1,
                 ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        notification.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: notification.read
-                              ? FontWeight.w600
-                              : FontWeight.w800,
-                          color: scheme.onSurface,
-                        ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    IconBubble(
+                      icon: icon,
+                      color: notification.read
+                          ? scheme.onSurfaceVariant
+                          : scheme.primary,
+                      compact: true,
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            notification.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: notification.read
+                                  ? FontWeight.w600
+                                  : FontWeight.w800,
+                              color: scheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            notification.body,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
+                            _relativeDate(notification.createdAt),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        notification.body,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        _relativeDate(notification.createdAt),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
+                    ),
+                    if (!notification.read) ...[
+                      const SizedBox(width: AppSpacing.sm),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Icon(
+                          Icons.fiber_manual_record,
+                          size: 12,
+                          color: scheme.primary,
                         ),
                       ),
                     ],
-                  ),
+                  ],
                 ),
-                if (!notification.read) ...[
-                  const SizedBox(width: AppSpacing.sm),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Icon(
-                      Icons.fiber_manual_record,
-                      size: 12,
-                      color: scheme.primary,
-                    ),
-                  ),
-                ],
-              ],
+              ),
             ),
           ),
         ),
@@ -548,7 +564,7 @@ class ReviewQueueScreen extends ConsumerWidget {
     if (rawText.isEmpty) return;
 
     final controller = TextEditingController();
-    
+
     // Suggest some words by splitting the raw text
     final words = rawText
         .replaceAll(RegExp(r'[^\w\s]'), ' ')
@@ -557,110 +573,115 @@ class ReviewQueueScreen extends ConsumerWidget {
         .take(10)
         .toList();
 
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Block Message Pattern'),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Messages matching this regex pattern will be automatically ignored.',
-                        style: TextStyle(fontSize: 14),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Original Message:',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          rawText,
-                          style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      if (words.isNotEmpty) ...[
-                        Text(
-                          'Tap to add word:',
-                          style: Theme.of(context).textTheme.titleSmall,
-                        ),
-                        const SizedBox(height: 4),
-                        Wrap(
-                          spacing: 4,
-                          runSpacing: 4,
-                          children: words.map((word) {
-                            return ActionChip(
-                              label: Text(word),
-                              labelStyle: const TextStyle(fontSize: 12),
-                              onPressed: () {
-                                final text = controller.text;
-                                if (text.isEmpty) {
-                                  controller.text = word;
-                                } else {
-                                  controller.text = '$text.*$word';
-                                }
-                              },
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                      TextField(
-                        controller: controller,
-                        decoration: const InputDecoration(
-                          labelText: 'Regex Pattern',
-                          border: OutlineInputBorder(),
-                          hintText: 'e.g. promo.*sale',
-                        ),
-                      ),
-                    ],
+    try {
+      await GlassDialog.show<void>(
+        context: context,
+        title: 'Block Message Pattern',
+        content: Material(
+          color: Colors.transparent,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Messages matching this regex pattern will be automatically ignored.',
+                  style: TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Original Message:',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    rawText,
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                    ),
                   ),
                 ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final pattern = controller.text.trim();
-                    if (pattern.isNotEmpty) {
-                      final ledger = ref.read(ledgerProvider.notifier);
-                      final prefs = ledger.state.preferences;
-                      final patterns = List<String>.from(prefs.smsBlockPatterns);
-                      if (!patterns.contains(pattern)) {
-                        patterns.add(pattern);
-                        ledger.updatePreferences(
-                          prefs.copyWith(smsBlockPatterns: patterns),
-                        );
-                      }
-                      ledger.updateCaptureCandidateStatus(candidate.id, 'rejected');
-                    }
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Block Pattern'),
+                const SizedBox(height: 16),
+                if (words.isNotEmpty) ...[
+                  Text(
+                    'Tap to add word:',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: words.map((word) {
+                      return ActionChip(
+                        label: Text(word),
+                        labelStyle: const TextStyle(fontSize: 12),
+                        onPressed: () {
+                          final text = controller.text;
+                          controller.text = text.isEmpty
+                              ? word
+                              : '$text.*$word';
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                TextField(
+                  controller: controller,
+                  decoration: const InputDecoration(
+                    labelText: 'Regex Pattern',
+                    border: OutlineInputBorder(),
+                    hintText: 'e.g. promo.*sale',
+                  ),
                 ),
               ],
-            );
-          },
-        );
-      },
-    );
+            ),
+          ),
+        ),
+        barrierDismissible: true,
+        maxWidth: 420,
+        actions: [
+          GlassDialogAction(
+            label: 'Cancel',
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          GlassDialogAction(
+            label: 'Block Pattern',
+            isPrimary: true,
+            onPressed: () async {
+              final pattern = controller.text.trim();
+              if (pattern.isNotEmpty) {
+                final ledger = ref.read(ledgerProvider.notifier);
+                final prefs = ref.read(ledgerProvider).preferences;
+                final patterns = List<String>.from(prefs.smsBlockPatterns);
+                if (!patterns.contains(pattern)) {
+                  patterns.add(pattern);
+                  await ledger.updatePreferences(
+                    prefs.copyWith(smsBlockPatterns: patterns),
+                  );
+                }
+                await ledger.updateCaptureCandidateStatus(
+                  candidate.id,
+                  'rejected',
+                );
+              }
+              if (context.mounted) Navigator.of(context).pop();
+            },
+          ),
+        ],
+      );
+    } finally {
+      controller.dispose();
+    }
   }
 
   Future<void> _updateCandidateStatus(

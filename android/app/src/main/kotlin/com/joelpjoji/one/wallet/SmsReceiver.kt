@@ -13,6 +13,14 @@ import android.app.PendingIntent
 import android.os.Build
 
 class SmsReceiver : BroadcastReceiver() {
+    companion object {
+        // Caps the queued-capture spool so a long period without the app being
+        // opened (which pops/clears the spool) cannot grow SharedPreferences
+        // without bound. Oldest entries are dropped first (FIFO) and the drop
+        // is recorded as a diagnostic "overflow" event rather than silently lost.
+        private const val MAX_SPOOL_ENTRIES = 500
+    }
+
     override fun onReceive(context: Context?, intent: Intent?) {
         if (context == null || intent == null || intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
             return
@@ -165,11 +173,33 @@ class SmsReceiver : BroadcastReceiver() {
 
         jsonArray.put(payload.toString())
 
-        return try {
+        // Bound unbounded growth: if the queue overflows, drop the oldest
+        // entries (FIFO) rather than growing SharedPreferences without limit,
+        // and surface the drop via a diagnostic entry instead of silently
+        // discarding captures.
+        var droppedCount = 0
+        while (jsonArray.length() > MAX_SPOOL_ENTRIES) {
+            jsonArray.remove(0)
+            droppedCount++
+        }
+
+        val saved = try {
             prefs.edit().putString(spoolKey, jsonArray.toString()).commit()
         } catch (e: Exception) {
             false
         }
+
+        if (saved && droppedCount > 0) {
+            appendDiagnostic(
+                context,
+                source = "sms",
+                stage = "native-sms",
+                decision = "overflow",
+                reason = "dropped $droppedCount oldest queued SMS capture(s) to bound spool size at $MAX_SPOOL_ENTRIES"
+            )
+        }
+
+        return saved
     }
 
     private fun showNotification(context: Context, amount: String?, last4: String?): Boolean {

@@ -11,6 +11,13 @@ import android.app.PendingIntent
 import android.os.Build
 
 class NotificationReceiver : NotificationListenerService() {
+    companion object {
+        // See SmsReceiver.MAX_SPOOL_ENTRIES for rationale: bounds unbounded
+        // spool growth while surfacing drops as diagnostics instead of
+        // silently discarding queued captures.
+        private const val MAX_SPOOL_ENTRIES = 500
+    }
+
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         if (sbn == null) return
@@ -167,11 +174,32 @@ class NotificationReceiver : NotificationListenerService() {
 
         jsonArray.put(payload.toString())
 
-        return try {
+        // Bound unbounded growth: drop oldest entries (FIFO) rather than
+        // growing SharedPreferences without limit, and surface the drop via
+        // a diagnostic entry instead of silently discarding captures.
+        var droppedCount = 0
+        while (jsonArray.length() > MAX_SPOOL_ENTRIES) {
+            jsonArray.remove(0)
+            droppedCount++
+        }
+
+        val saved = try {
             prefs.edit().putString(spoolKey, jsonArray.toString()).commit()
         } catch (e: Exception) {
             false
         }
+
+        if (saved && droppedCount > 0) {
+            appendDiagnostic(
+                context,
+                source = "notification",
+                stage = "native-notification",
+                decision = "overflow",
+                reason = "dropped $droppedCount oldest queued notification capture(s) to bound spool size at $MAX_SPOOL_ENTRIES"
+            )
+        }
+
+        return saved
     }
 
     private fun showNotification(context: Context, amount: String?, last4: String?): Boolean {

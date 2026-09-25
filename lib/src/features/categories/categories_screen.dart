@@ -223,7 +223,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 if (category != null)
-                  LiquidGlassSwitchListTile(
+                  AppSwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     value: archived,
                     onChanged: (value) =>

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -268,18 +269,11 @@ class _CurrencySummaryHeader extends StatelessWidget {
         return b.value.abs().compareTo(a.value.abs());
       });
 
-    return Card(
-      elevation: 0,
+    return GlassCard(
       margin: EdgeInsets.zero,
-      color: Theme.of(
-        context,
-      ).colorScheme.surfaceContainerHighest.withAlpha(100),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        side: BorderSide(
-          color: Theme.of(context).colorScheme.outlineVariant.withAlpha(100),
-        ),
-      ),
+      padding: EdgeInsets.zero,
+      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+      quality: GlassQuality.minimal,
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,

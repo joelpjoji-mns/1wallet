@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';import '../../data/ledger_models.dart';
+import 'package:flutter/material.dart';
+import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/privacy_text.dart';
@@ -113,14 +114,13 @@ class _LabeledAmount extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Column(
-      crossAxisAlignment: alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: alignEnd
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: TextStyle(
-            fontSize: 10,
-            color: scheme.onSurfaceVariant,
-          ),
+          style: TextStyle(fontSize: 10, color: scheme.onSurfaceVariant),
         ),
         PrivacyText(
           formatMoney(money, locale),

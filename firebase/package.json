@@ -1,0 +1,14 @@
+{
+  "name": "firestore-rules-tests",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Firestore security rules tests for firebase/firestore.rules, run against the Firebase Local Emulator Suite.",
+  "scripts": {
+    "test": "node --test rules.test.mjs"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.16.0"
+  }
+}

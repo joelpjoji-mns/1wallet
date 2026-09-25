@@ -121,7 +121,6 @@ void main() {
     expect(transaction.amount.amountMinor, 18500900);
   });
 
-
   testWidgets('Transaction Detail delete removes a transaction', (
     tester,
   ) async {

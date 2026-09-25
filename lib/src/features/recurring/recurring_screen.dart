@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../common/route_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -186,63 +187,62 @@ class RecurringScreen extends ConsumerWidget {
           if (recordId == null) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-              child: Card(
-                elevation: 0,
-                color: Theme.of(context).colorScheme.surfaceContainerLow,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                  side: BorderSide(
-                    color: Theme.of(context).colorScheme.outlineVariant,
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            mode == 'past'
-                                ? 'Historical summary'
-                                : 'Planned summary',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w800),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
+              child: GlassCard(
+                margin: EdgeInsets.zero,
+                padding: EdgeInsets.zero,
+                shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+                quality: GlassQuality.standard,
+                child: Material(
+                  color: Colors.transparent,
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              mode == 'past'
+                                  ? 'Historical summary'
+                                  : 'Planned summary',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w800),
                             ),
-                            decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.primaryContainer,
-                              borderRadius: BorderRadius.circular(
-                                AppRadii.pill,
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
                               ),
-                            ),
-                            child: Text(
-                              '${listed.length} item${listed.length == 1 ? '' : 's'}',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
+                              decoration: BoxDecoration(
                                 color: Theme.of(
                                   context,
-                                ).colorScheme.onPrimaryContainer,
+                                ).colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(
+                                  AppRadii.pill,
+                                ),
+                              ),
+                              child: Text(
+                                '${listed.length} item${listed.length == 1 ? '' : 's'}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimaryContainer,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      MiniFlowRail(
-                        income: incomeText,
-                        expense: expenseText,
-                        net: netText,
-                      ),
-                    ],
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        MiniFlowRail(
+                          income: incomeText,
+                          expense: expenseText,
+                          net: netText,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -413,184 +413,189 @@ class _RecurringCompactCard extends StatelessWidget {
     );
     final amountText = _recurringAmountLabel(state, transaction);
 
-    return Card(
-      elevation: 0,
+    return GlassCard(
       margin: EdgeInsets.zero,
-      color: scheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        side: BorderSide(color: scheme.outlineVariant),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: 12,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _RoundRecurringIcon(
-                    icon: category != null
-                        ? categoryIcon(category)
-                        : transactionIcon(transaction),
-                    color: categoryColor(category, context),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+      padding: EdgeInsets.zero,
+      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+      quality: GlassQuality.minimal,
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: 12,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _RoundRecurringIcon(
+                      icon: category != null
+                          ? categoryIcon(category)
+                          : transactionIcon(transaction),
+                      color: categoryColor(category, context),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            primaryTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                          if (categorySubtitle != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              categorySubtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: scheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 2),
+                          Text(
+                            recurrence,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: scheme.onSurfaceVariant,
+                              fontSize: 13,
+                            ),
+                          ),
+                          if (extraLine != null) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              extraLine,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: scheme.onSurfaceVariant,
+                                fontStyle: FontStyle.italic,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          primaryTitle,
+                          amountText,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                        if (categorySubtitle != null) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            categorySubtitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: scheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 2),
-                        Text(
-                          recurrence,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: scheme.onSurfaceVariant,
-                            fontSize: 13,
-                          ),
-                        ),
-                        if (extraLine != null) ...[
-                          const SizedBox(height: 6),
-                          Text(
-                            extraLine,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: scheme.onSurfaceVariant,
-                              fontStyle: FontStyle.italic,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        amountText,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color:
-                                  (transaction.status == 'void' ||
-                                      transaction.status == 'paused')
-                                  ? scheme.outline
-                                  : _recurringAmountColor(context, transaction),
-                              decoration: transaction.status == 'void'
-                                  ? TextDecoration.lineThrough
-                                  : null,
-                            ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Icon(status.icon, color: status.color, size: 14),
-                          const SizedBox(width: 4),
-                          Text(
-                            status.label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: status.color,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              if (!historyMode &&
-                  (account?.loanDetails != null ||
-                      counter?.loanDetails != null))
-                Builder(
-                  builder: (context) {
-                    final loanAccount = account?.loanDetails != null
-                        ? account
-                        : counter;
-                    final total = loanAccount?.loanDetails?.repaymentCount;
-                    if (total == null || total <= 0) return const SizedBox();
-                    final postedCount = state.transactions
-                        .where(
-                          (t) =>
-                              (t.status == 'posted' || t.status == 'cleared') &&
-                              (t.accountId == loanAccount!.id ||
-                                  t.counterAccountId == loanAccount.id) &&
-                              t.type == 'loan_repayment',
-                        )
-                        .length;
-                    final progress = (postedCount / total).clamp(0.0, 1.0);
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SizedBox(height: AppSpacing.md),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Payment $postedCount of $total',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: scheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w600,
+                              ?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                color:
+                                    (transaction.status == 'void' ||
+                                        transaction.status == 'paused')
+                                    ? scheme.outline
+                                    : _recurringAmountColor(
+                                        context,
+                                        transaction,
+                                      ),
+                                decoration: transaction.status == 'void'
+                                    ? TextDecoration.lineThrough
+                                    : null,
                               ),
-                            ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Icon(status.icon, color: status.color, size: 14),
+                            const SizedBox(width: 4),
                             Text(
-                              '${total - postedCount} left',
+                              status.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 12,
-                                color: scheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w600,
+                                color: status.color,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
-                        LinearProgressIndicator(
-                          value: progress,
-                          backgroundColor: scheme.surfaceContainerHighest,
-                          color: scheme.primary,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
                       ],
-                    );
-                  },
+                    ),
+                  ],
                 ),
-            ],
+                if (!historyMode &&
+                    (account?.loanDetails != null ||
+                        counter?.loanDetails != null))
+                  Builder(
+                    builder: (context) {
+                      final loanAccount = account?.loanDetails != null
+                          ? account
+                          : counter;
+                      final total = loanAccount?.loanDetails?.repaymentCount;
+                      if (total == null || total <= 0) return const SizedBox();
+                      final postedCount = state.transactions
+                          .where(
+                            (t) =>
+                                (t.status == 'posted' ||
+                                    t.status == 'cleared') &&
+                                (t.accountId == loanAccount!.id ||
+                                    t.counterAccountId == loanAccount.id) &&
+                                t.type == 'loan_repayment',
+                          )
+                          .length;
+                      final progress = (postedCount / total).clamp(0.0, 1.0);
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const SizedBox(height: AppSpacing.md),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Payment $postedCount of $total',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: scheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                '${total - postedCount} left',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: scheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          LinearProgressIndicator(
+                            value: progress,
+                            backgroundColor: scheme.surfaceContainerHighest,
+                            color: scheme.primary,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1239,7 +1244,8 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
             originalCurrency: originalCurrency,
             originalAmountMinor: amountMinor,
             clearOriginalAmount:
-                originalCurrency.toUpperCase() == account.currency.toUpperCase(),
+                originalCurrency.toUpperCase() ==
+                account.currency.toUpperCase(),
             status: existing?.status ?? 'scheduled',
             source: 'recurring',
             name: _nameController.text,
@@ -1301,136 +1307,107 @@ class RecurringDetailView extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Card(
-          elevation: 0,
+        GlassCard(
           margin: EdgeInsets.zero,
-          color: scheme.surfaceContainerLow,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            side: BorderSide(color: scheme.outlineVariant),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    CircleAvatar(
-                      radius: 20,
-                      backgroundColor: scheme.primaryContainer,
-                      foregroundColor: scheme.onPrimaryContainer,
-                      child: Icon(
-                        category == null
-                            ? Icons.event_repeat_rounded
-                            : Icons.category_rounded,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            transaction.name?.trim().isNotEmpty == true
-                                ? transaction.name!.trim()
-                                : (category?.name ??
-                                      transactionTypeLabel(transaction.type)),
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w800),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${transaction.status.toUpperCase()} · ${transactionTypeLabel(frequency).toUpperCase()}${transaction.postMode == 'auto' ? ' (AUTO)' : ''}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Flexible(
-                      child: Text(
-                        _recurringAmountLabel(state, transaction),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w900,
+          padding: EdgeInsets.zero,
+          shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+          quality: GlassQuality.standard,
+          child: Material(
+            color: Colors.transparent,
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundColor: scheme.primaryContainer,
+                        foregroundColor: scheme.onPrimaryContainer,
+                        child: Icon(
+                          category == null
+                              ? Icons.event_repeat_rounded
+                              : Icons.category_rounded,
+                          size: 20,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainer,
-                    borderRadius: BorderRadius.circular(AppRadii.sm),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Next payment',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                          Text(
-                            formatLedgerDate(
-                              transaction.occurredAt,
-                              state.preferences.locale,
-                            ),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            counter != null ? 'From account' : 'Account',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          Flexible(
-                            child: Text(
-                              account?.name ?? 'Unknown',
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              transaction.name?.trim().isNotEmpty == true
+                                  ? transaction.name!.trim()
+                                  : (category?.name ??
+                                        transactionTypeLabel(transaction.type)),
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w800),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.end,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${transaction.status.toUpperCase()} · ${transactionTypeLabel(frequency).toUpperCase()}${transaction.postMode == 'auto' ? ' (AUTO)' : ''}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Flexible(
+                        child: Text(
+                          _recurringAmountLabel(state, transaction),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.sm),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainer,
+                      borderRadius: BorderRadius.circular(AppRadii.sm),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Next payment',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                            Text(
+                              formatLedgerDate(
+                                transaction.occurredAt,
+                                state.preferences.locale,
+                              ),
                               style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      if (counter != null) ...[
+                          ],
+                        ),
                         const SizedBox(height: 4),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'To account',
+                              counter != null ? 'From account' : 'Account',
                               style: TextStyle(
                                 fontSize: 13,
                                 color: scheme.onSurfaceVariant,
@@ -1439,7 +1416,7 @@ class RecurringDetailView extends ConsumerWidget {
                             const SizedBox(width: AppSpacing.sm),
                             Flexible(
                               child: Text(
-                                counter.name,
+                                account?.name ?? 'Unknown',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 textAlign: TextAlign.end,
@@ -1451,86 +1428,114 @@ class RecurringDetailView extends ConsumerWidget {
                             ),
                           ],
                         ),
-                      ],
-                    ],
-                  ),
-                ),
-                if (account?.loanDetails != null ||
-                    counter?.loanDetails != null)
-                  Builder(
-                    builder: (context) {
-                      final loanAccount = account?.loanDetails != null
-                          ? account
-                          : counter;
-                      final principal = loanAccount
-                          ?.loanDetails
-                          ?.principal
-                          ?.amountMinor
-                          .abs();
-                      if (principal == null || principal <= 0) {
-                        return const SizedBox();
-                      }
-
-                      final balance = accountBalance(state, loanAccount!);
-                      final remainingMinor = balance.amountMinor.abs();
-                      final paid = (principal - remainingMinor).clamp(
-                        0,
-                        principal,
-                      );
-
-                      final progress = principal > 0
-                          ? (paid / principal).clamp(0.0, 1.0)
-                          : 0.0;
-
-                      final remaining = remainingMinor;
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const SizedBox(height: AppSpacing.md),
+                        if (counter != null) ...[
+                          const SizedBox(height: 4),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Flexible(
-                                child: Text(
-                                  'Paid: ${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: paid, currency: loanAccount.currency), state.preferences.locale))}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: scheme.onSurfaceVariant,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                              Text(
+                                'To account',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: scheme.onSurfaceVariant,
                                 ),
                               ),
                               const SizedBox(width: AppSpacing.sm),
                               Flexible(
                                 child: Text(
-                                  '${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: remaining > 0 ? remaining : 0, currency: loanAccount.currency), state.preferences.locale))} left',
+                                  counter.name,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.end,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: scheme.onSurfaceVariant,
-                                    fontWeight: FontWeight.w600,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 6),
-                          LinearProgressIndicator(
-                            value: progress,
-                            backgroundColor: scheme.surfaceContainerHighest,
-                            color: scheme.primary,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
                         ],
-                      );
-                    },
+                      ],
+                    ),
                   ),
-              ],
+                  if (account?.loanDetails != null ||
+                      counter?.loanDetails != null)
+                    Builder(
+                      builder: (context) {
+                        final loanAccount = account?.loanDetails != null
+                            ? account
+                            : counter;
+                        final principal = loanAccount
+                            ?.loanDetails
+                            ?.principal
+                            ?.amountMinor
+                            .abs();
+                        if (principal == null || principal <= 0) {
+                          return const SizedBox();
+                        }
+
+                        final balance = accountBalance(state, loanAccount!);
+                        final remainingMinor = balance.amountMinor.abs();
+                        final paid = (principal - remainingMinor).clamp(
+                          0,
+                          principal,
+                        );
+
+                        final progress = principal > 0
+                            ? (paid / principal).clamp(0.0, 1.0)
+                            : 0.0;
+
+                        final remaining = remainingMinor;
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const SizedBox(height: AppSpacing.md),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    'Paid: ${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: paid, currency: loanAccount.currency), state.preferences.locale))}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: scheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Flexible(
+                                  child: Text(
+                                    '${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: remaining > 0 ? remaining : 0, currency: loanAccount.currency), state.preferences.locale))} left',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.end,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: scheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            LinearProgressIndicator(
+                              value: progress,
+                              backgroundColor: scheme.surfaceContainerHighest,
+                              color: scheme.primary,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                ],
+              ),
             ),
           ),
         ),

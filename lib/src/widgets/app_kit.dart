@@ -1,169 +1,7 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
-import '../data/ledger_providers.dart';
 import '../design/tokens.dart';
-
-class LiquidGlassContainer extends ConsumerWidget {
-  const LiquidGlassContainer({
-    required this.child,
-    super.key,
-    this.borderRadius,
-    this.shape = BoxShape.rectangle,
-    this.padding,
-    this.margin,
-    this.width,
-    this.height,
-  });
-
-  final Widget child;
-  final BorderRadius? borderRadius;
-  final BoxShape shape;
-  final EdgeInsetsGeometry? padding;
-  final EdgeInsetsGeometry? margin;
-  final double? width;
-  final double? height;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final prefs = ref.watch(ledgerProvider).preferences;
-
-    final bgOpacity = prefs.glassBackgroundOpacity;
-    final specOpacity = prefs.glassSpecularOpacity;
-    final specSat = prefs.glassSpecularSaturation;
-    final refraction = prefs.glassRefractionLevel;
-    final blur = prefs.glassBlurLevel;
-    final progBlur = prefs.glassProgressiveBlurStrength;
-
-    // Adjust specular saturation by tinting the surface highlight with primary color.
-    final specularColorBase = scheme.onSurface;
-    final specularColor =
-        Color.lerp(
-          specularColorBase,
-          scheme.primary,
-          (specSat - 1.0).clamp(0.0, 1.0),
-        ) ??
-        specularColorBase;
-
-    // Refraction increases the darkness/contrast of the lower shadow.
-    final refractionShadowColor = scheme.shadow.withAlphaFactor(
-      isDark ? 0.4 + (refraction * 0.4) : 0.1 + (refraction * 0.2),
-    );
-
-    final glassFill = isDark
-        ? [
-            scheme.surface.withAlphaFactor(bgOpacity * 0.8),
-            scheme.surface.withAlphaFactor(bgOpacity * 0.4),
-          ]
-        : [
-            scheme.surface.withAlphaFactor(bgOpacity * 0.8),
-            scheme.surface.withAlphaFactor(bgOpacity * 0.2),
-          ];
-
-    final highlightOpacity = isDark ? specOpacity * 0.4 : specOpacity * 0.8;
-    final highlightSaturation = specSat.clamp(0.0, 1.0);
-    final innerHighlight = LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: [
-        specularColor.withAlphaFactor(highlightOpacity * highlightSaturation),
-        specularColor.withAlphaFactor(
-          highlightOpacity * 0.2 * highlightSaturation,
-        ),
-        Colors.transparent,
-        refractionShadowColor,
-      ],
-      stops: const [0.0, 0.05, 0.8, 1.0],
-    );
-
-    Widget inner = Container(
-      width: width,
-      height: height,
-      padding: padding,
-      decoration: BoxDecoration(
-        borderRadius: shape == BoxShape.rectangle ? borderRadius : null,
-        shape: shape,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: glassFill,
-        ),
-      ),
-      child: Stack(
-        fit: StackFit.passthrough,
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: shape == BoxShape.rectangle ? borderRadius : null,
-              shape: shape,
-              gradient: innerHighlight,
-            ),
-          ),
-          child,
-        ],
-      ),
-    );
-
-    if (blur > 0.01) {
-      inner = BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: inner,
-      );
-    }
-
-    // Apply progressive blur using a shader mask if strength > 0
-    if (progBlur > 0.01) {
-      inner = ShaderMask(
-        shaderCallback: (bounds) {
-          return LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.white,
-              Colors.white.withAlphaFactor(1.0 - progBlur),
-            ],
-          ).createShader(bounds);
-        },
-        blendMode: BlendMode.dstIn,
-        child: inner,
-      );
-    }
-
-    if (shape == BoxShape.circle) {
-      inner = ClipOval(child: inner);
-    } else {
-      inner = ClipRRect(
-        borderRadius: borderRadius ?? BorderRadius.zero,
-        child: inner,
-      );
-    }
-
-    return Container(
-      margin: margin,
-      decoration: BoxDecoration(
-        borderRadius: shape == BoxShape.rectangle ? borderRadius : null,
-        shape: shape,
-        border: Border.all(
-          color: scheme.outlineVariant.withAlphaFactor(isDark ? 0.45 : 0.65),
-          width: 0.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.shadow.withAlphaFactor(isDark ? 0.3 : 0.08),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-            spreadRadius: -4,
-          ),
-        ],
-      ),
-      child: inner,
-    );
-  }
-}
 
 class AppResponsiveLayout extends StatelessWidget {
   const AppResponsiveLayout({
@@ -223,7 +61,6 @@ class AppScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final isDesktop = AppResponsiveLayout.isDesktop(context);
 
     // Adjust bottom clearance to account for bottom navigation bar on mobile
@@ -251,9 +88,7 @@ class AppScreen extends StatelessWidget {
     );
 
     return ColoredBox(
-      color: isDesktop
-          ? theme.colorScheme.surfaceContainerLowest
-          : theme.colorScheme.surface,
+      color: Colors.transparent,
       child: Stack(
         children: [
           SafeArea(
@@ -288,7 +123,7 @@ class AppScreen extends StatelessWidget {
   }
 }
 
-class IslandFloatingActionButton extends StatefulWidget {
+class IslandFloatingActionButton extends StatelessWidget {
   const IslandFloatingActionButton({
     required this.icon,
     required this.onPressed,
@@ -301,65 +136,22 @@ class IslandFloatingActionButton extends StatefulWidget {
   final String? tooltip;
 
   @override
-  State<IslandFloatingActionButton> createState() =>
-      _IslandFloatingActionButtonState();
-}
-
-class _IslandFloatingActionButtonState
-    extends State<IslandFloatingActionButton> {
-  var _pressed = false;
-
-  @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accentFill = scheme.primary.withAlphaFactor(isDark ? 0.25 : 0.15);
-
-    Widget button = Semantics(
-      button: true,
-      label: widget.tooltip,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onPressed,
-        onTapDown: (_) => setState(() => _pressed = true),
-        onTapCancel: () => setState(() => _pressed = false),
-        onTapUp: (_) => setState(() => _pressed = false),
-        child: AnimatedScale(
-          duration: const Duration(milliseconds: 110),
-          scale: _pressed ? 0.94 : 1,
-          child: LiquidGlassContainer(
-            shape: BoxShape.circle,
-            width: 64,
-            height: 64,
-            child: Center(
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                width: _pressed ? 46 : 50,
-                height: _pressed ? 46 : 50,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: accentFill,
-                  boxShadow: [
-                    BoxShadow(
-                      color: scheme.primary.withAlphaFactor(
-                        isDark ? 0.22 : 0.18,
-                      ),
-                      blurRadius: _pressed ? 8 : 18,
-                      offset: Offset(0, _pressed ? 4 : 8),
-                    ),
-                  ],
-                ),
-                child: Icon(widget.icon, color: scheme.primary, size: 30),
-              ),
-            ),
-          ),
-        ),
-      ),
+    Widget button = GlassButton(
+      icon: Icon(icon),
+      label: tooltip ?? 'Action',
+      onTap: onPressed,
+      width: 64,
+      height: 64,
+      iconSize: 30,
+      iconColor: Theme.of(context).colorScheme.primary,
+      useOwnLayer: true,
+      quality: GlassQuality.standard,
     );
 
-    final tooltip = widget.tooltip;
-    if (tooltip != null && tooltip.isNotEmpty) {
-      button = Tooltip(message: tooltip, child: button);
+    final tooltipMessage = tooltip;
+    if (tooltipMessage != null && tooltipMessage.isNotEmpty) {
+      button = Tooltip(message: tooltipMessage, child: button);
     }
     return button;
   }
@@ -380,40 +172,32 @@ class AppHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final canPop = Navigator.of(context).canPop();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.xs,
-        AppSpacing.xs,
-        AppSpacing.sm,
-        AppSpacing.xs,
-      ),
-      child: Row(
-        children: [
-          if (onMenuPressed != null)
-            AppMenuAction(onPressed: onMenuPressed!)
-          else if (canPop)
-            const AppBackAction(),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-              ),
-            ),
-          ),
-          ...actions,
-        ],
+    return GlassIsolationScope(
+      isolated: true,
+      defaultQuality: GlassQuality.premium,
+      child: GlassAppBar(
+        title: Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        leading: onMenuPressed != null
+            ? AppMenuAction(onPressed: onMenuPressed!)
+            : canPop
+            ? const AppBackAction()
+            : null,
+        actions: actions,
+        centerTitle: false,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       ),
     );
   }
 }
 
-class GlassHeaderButton extends StatefulWidget {
+class GlassHeaderButton extends StatelessWidget {
   const GlassHeaderButton({
     required this.icon,
     required this.onPressed,
@@ -426,37 +210,18 @@ class GlassHeaderButton extends StatefulWidget {
   final int? badge;
 
   @override
-  State<GlassHeaderButton> createState() => _GlassHeaderButtonState();
-}
-
-class _GlassHeaderButtonState extends State<GlassHeaderButton> {
-  var _pressed = false;
-
-  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    Widget button = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: widget.onPressed,
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapCancel: () => setState(() => _pressed = false),
-      onTapUp: (_) => setState(() => _pressed = false),
-      child: AnimatedScale(
-        duration: const Duration(milliseconds: 110),
-        scale: _pressed ? 0.94 : 1,
-        child: LiquidGlassContainer(
-          shape: BoxShape.circle,
-          width: 48,
-          height: 48,
-          child: Center(
-            child: Icon(widget.icon, color: scheme.primary, size: 24),
-          ),
-        ),
-      ),
+    Widget button = GlassIconButton(
+      icon: Icon(icon),
+      onPressed: onPressed,
+      size: 48,
+      iconSize: 24,
+      quality: GlassQuality.standard,
     );
 
-    if ((widget.badge ?? 0) > 0) {
+    if ((badge ?? 0) > 0) {
       button = Stack(
         clipBehavior: Clip.none,
         children: [
@@ -471,7 +236,7 @@ class _GlassHeaderButtonState extends State<GlassHeaderButton> {
                 borderRadius: BorderRadius.circular(AppRadii.pill),
               ),
               child: Text(
-                widget.badge! > 9 ? '9+' : '${widget.badge!}',
+                badge! > 9 ? '9+' : '$badge',
                 style: TextStyle(
                   color: scheme.onError,
                   fontSize: 10,
@@ -521,11 +286,11 @@ class HeaderIconButton extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          IconButton(
+          GlassIconButton(
             icon: Icon(icon),
             iconSize: 26,
-            padding: const EdgeInsets.all(12),
-            constraints: const BoxConstraints(minWidth: 52, minHeight: 52),
+            size: 52,
+            quality: GlassQuality.standard,
             onPressed: onPressed,
           ),
           if ((badge ?? 0) > 0)
@@ -575,59 +340,59 @@ class SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Card(
-      elevation: 0,
+    return GlassCard(
       margin: EdgeInsets.zero,
-      color: scheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        side: BorderSide(color: scheme.outlineVariant),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(compact ? AppSpacing.sm : AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w900),
-                      ),
-                      if (subtitle != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(
-                            subtitle!,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: scheme.onSurfaceVariant),
-                          ),
+      padding: EdgeInsets.zero,
+      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+      quality: GlassQuality.standard,
+      child: Material(
+        color: Colors.transparent,
+        child: Padding(
+          padding: EdgeInsets.all(compact ? AppSpacing.sm : AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w900),
                         ),
-                    ],
-                  ),
-                ),
-                if (actionLabel != null && onAction != null)
-                  TextButton(
-                    style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.xs,
-                      ),
+                        if (subtitle != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              subtitle!,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: scheme.onSurfaceVariant),
+                            ),
+                          ),
+                      ],
                     ),
-                    onPressed: onAction,
-                    child: Text(actionLabel!),
                   ),
-              ],
-            ),
-            SizedBox(height: compact ? AppSpacing.sm : AppSpacing.md),
-            child,
-          ],
+                  if (actionLabel != null && onAction != null)
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.xs,
+                        ),
+                      ),
+                      onPressed: onAction,
+                      child: Text(actionLabel!),
+                    ),
+                ],
+              ),
+              SizedBox(height: compact ? AppSpacing.sm : AppSpacing.md),
+              child,
+            ],
+          ),
         ),
       ),
     );
@@ -664,49 +429,47 @@ class MetricTile extends StatelessWidget {
       MetricTone.warning => scheme.secondary,
       MetricTone.standard => scheme.primary,
     };
-    final tile = Card(
-      elevation: 0,
+    return GlassCard(
       margin: EdgeInsets.zero,
-      color: scheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        side: BorderSide(color: scheme.outlineVariant),
-      ),
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: compact ? AppSpacing.sm : AppSpacing.md,
-          vertical: compact ? AppSpacing.xs : AppSpacing.sm,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconBubble(icon: icon, color: color, compact: true),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              label,
-              style: Theme.of(
-                context,
-              ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+      padding: EdgeInsets.zero,
+      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+      quality: GlassQuality.standard,
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? AppSpacing.sm : AppSpacing.md,
+              vertical: compact ? AppSpacing.xs : AppSpacing.sm,
             ),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconBubble(icon: icon, color: color, compact: true),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
-    );
-
-    if (onTap == null) return tile;
-    return InkWell(
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      onTap: onTap,
-      child: tile,
     );
   }
 }
@@ -746,42 +509,62 @@ class IconBubble extends StatelessWidget {
   }
 }
 
-class PremiumSearchInput extends StatelessWidget {
+class PremiumSearchInput extends StatefulWidget {
   const PremiumSearchInput({
     required this.hintText,
     required this.onChanged,
     super.key,
     this.value = '',
+    this.height = 48,
   });
 
   final String hintText;
   final String value;
   final ValueChanged<String> onChanged;
+  final double height;
+
+  @override
+  State<PremiumSearchInput> createState() => _PremiumSearchInputState();
+}
+
+class _PremiumSearchInputState extends State<PremiumSearchInput> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value);
+  }
+
+  @override
+  void didUpdateWidget(PremiumSearchInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value != oldWidget.value && _controller.text != widget.value) {
+      _controller.value = TextEditingValue(
+        text: widget.value,
+        selection: TextSelection.collapsed(offset: widget.value.length),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final controller = TextEditingController(text: value)
-      ..selection = TextSelection.collapsed(offset: value.length);
     final scheme = Theme.of(context).colorScheme;
-    return LiquidGlassContainer(
-      borderRadius: BorderRadius.circular(AppRadii.pill),
-      child: TextField(
-        controller: controller,
-        onChanged: onChanged,
-        style: TextStyle(color: scheme.onSurface, fontSize: 16),
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: TextStyle(color: scheme.onSurfaceVariant),
-          prefixIcon: Icon(Icons.search_rounded, color: scheme.primary),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: 14,
-          ),
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-        ),
-      ),
+    return GlassSearchBar(
+      controller: _controller,
+      placeholder: widget.hintText,
+      onChanged: widget.onChanged,
+      height: widget.height,
+      textStyle: TextStyle(color: scheme.onSurface, fontSize: 16),
+      searchIconColor: scheme.primary,
+      quality: GlassQuality.standard,
+      useOwnLayer: true,
     );
   }
 }
@@ -816,108 +599,104 @@ class PremiumRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return Card(
-      elevation: 0,
+    return GlassCard(
       margin: EdgeInsets.zero,
-      color: scheme.surfaceContainerHigh,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        side: BorderSide(
-          color: selected
-              ? scheme.primary
-              : scheme.outlineVariant.withAlphaFactor(0.4),
-        ),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        onTap: onTap,
-        onLongPress: onLongPress,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.md,
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: iconColor ?? scheme.surfaceContainerHighest,
-                  shape: BoxShape.circle,
+      padding: EdgeInsets.zero,
+      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+      quality: GlassQuality.standard,
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          onTap: onTap,
+          onLongPress: onLongPress,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.md,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: iconColor ?? scheme.surfaceContainerHighest,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: scheme.onSurface, size: 20),
                 ),
-                child: Icon(icon, color: scheme.onSurface, size: 20),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: scheme.onSurface,
-                        fontSize: 15,
-                      ),
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 2),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        subtitle!,
+                        title,
                         style: TextStyle(
-                          color: scheme.onSurfaceVariant,
-                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: scheme.onSurface,
+                          fontSize: 15,
                         ),
                       ),
-                    ],
-                    if (meta != null || metaSubtitle != null) ...[
-                      const SizedBox(height: AppSpacing.xs),
-                      Wrap(
-                        spacing: AppSpacing.xs,
-                        runSpacing: 2,
-                        children: [
-                          if (meta != null)
-                            Text(
-                              meta!,
-                              style: TextStyle(
-                                color: selected
-                                    ? scheme.primary
-                                    : scheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                              ),
-                            ),
-                          if (metaSubtitle != null)
-                            Text(
-                              metaSubtitle!,
-                              style: TextStyle(
-                                color: scheme.onSurfaceVariant.withAlphaFactor(
-                                  0.8,
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle!,
+                          style: TextStyle(
+                            color: scheme.onSurfaceVariant,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                      if (meta != null || metaSubtitle != null) ...[
+                        const SizedBox(height: AppSpacing.xs),
+                        Wrap(
+                          spacing: AppSpacing.xs,
+                          runSpacing: 2,
+                          children: [
+                            if (meta != null)
+                              Text(
+                                meta!,
+                                style: TextStyle(
+                                  color: selected
+                                      ? scheme.primary
+                                      : scheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
                                 ),
-                                fontSize: 12,
                               ),
-                            ),
-                        ],
-                      ),
+                            if (metaSubtitle != null)
+                              Text(
+                                metaSubtitle!,
+                                style: TextStyle(
+                                  color: scheme.onSurfaceVariant
+                                      .withAlphaFactor(0.8),
+                                  fontSize: 12,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                      if (trailing != null) ...[
+                        const SizedBox(width: AppSpacing.sm),
+                        trailing!,
+                      ],
                     ],
-                    if (trailing != null) ...[
-                      const SizedBox(width: AppSpacing.sm),
-                      trailing!,
-                    ],
-                  ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              if (selected)
-                Icon(Icons.check_circle_rounded, color: scheme.primary)
-              else
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: scheme.onSurfaceVariant,
-                ),
-            ],
+                const SizedBox(width: AppSpacing.xs),
+                if (selected)
+                  Icon(Icons.check_circle_rounded, color: scheme.primary)
+                else
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: scheme.onSurfaceVariant,
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -986,58 +765,8 @@ class InfoRow extends StatelessWidget {
   }
 }
 
-class LiquidGlassSwitch extends StatelessWidget {
-  const LiquidGlassSwitch({
-    required this.value,
-    required this.onChanged,
-    super.key,
-  });
-
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return GestureDetector(
-      onTap: () => onChanged(!value),
-      child: LiquidGlassContainer(
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-        width: 52,
-        height: 30,
-        child: AnimatedAlign(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-          child: Padding(
-            padding: const EdgeInsets.all(2.0),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 26,
-              height: 26,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: value ? scheme.primary : scheme.onSurfaceVariant,
-                boxShadow: [
-                  BoxShadow(
-                    color: (value ? scheme.primary : scheme.onSurfaceVariant)
-                        .withAlphaFactor(0.4),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class LiquidGlassSwitchListTile extends StatelessWidget {
-  const LiquidGlassSwitchListTile({
+class AppSwitchListTile extends StatelessWidget {
+  const AppSwitchListTile({
     required this.title,
     required this.value,
     required this.onChanged,
@@ -1056,50 +785,69 @@ class LiquidGlassSwitchListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onChanged == null ? null : () => onChanged!(!value),
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      child: Padding(
-        padding:
-            contentPadding ??
-            const EdgeInsets.symmetric(
-              vertical: AppSpacing.sm,
-              horizontal: AppSpacing.xs,
-            ),
-        child: Row(
-          children: [
-            if (icon != null) ...[
-              IconBubble(icon: icon!, compact: true),
-              const SizedBox(width: AppSpacing.md),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  DefaultTextStyle(
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                    child: title,
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
+    // MergeSemantics combines the title/subtitle text and the Switch's
+    // "toggled" state into a single semantics node, matching the platform's
+    // own SwitchListTile behavior. Without it, screen readers (TalkBack /
+    // VoiceOver) expose the title, subtitle, and switch as separate,
+    // disconnected stops instead of one coherent on/off control.
+    return MergeSemantics(
+      child: InkWell(
+        onTap: onChanged == null ? null : () => onChanged!(!value),
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        child: Padding(
+          padding:
+              contentPadding ??
+              const EdgeInsets.symmetric(
+                vertical: AppSpacing.sm,
+                horizontal: AppSpacing.xs,
+              ),
+          child: Row(
+            children: [
+              if (icon != null) ...[
+                IconBubble(icon: icon!, compact: true),
+                const SizedBox(width: AppSpacing.md),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     DefaultTextStyle(
                       style: TextStyle(
-                        fontSize: 13,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
-                      child: subtitle!,
+                      child: title,
                     ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      DefaultTextStyle(
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        child: subtitle!,
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            LiquidGlassSwitch(value: value, onChanged: onChanged ?? (_) {}),
-          ],
+              const SizedBox(width: AppSpacing.md),
+              // ExcludeFocus keeps the Switch from claiming its own
+              // independent keyboard-focus stop. Without it, the Switch's
+              // own focusability blocks MergeSemantics from absorbing its
+              // toggled/enabled flags into the single merged node below,
+              // leaving screen readers without the on/off state — matching
+              // the workaround Flutter's own SwitchListTile applies.
+              ExcludeFocus(
+                child: Switch.adaptive(
+                  value: value,
+                  onChanged: onChanged,
+                  activeTrackColor: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

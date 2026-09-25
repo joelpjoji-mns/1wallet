@@ -47,8 +47,16 @@ List<BalanceTrendPoint> balanceTrendForRange(
   final rangeStartRaw = start ?? earliest;
   if (rangeEndRaw.isBefore(rangeStartRaw)) return const [];
 
-  final rangeStart = DateTime(rangeStartRaw.year, rangeStartRaw.month, rangeStartRaw.day);
-  final rangeEnd = DateTime(rangeEndRaw.year, rangeEndRaw.month, rangeEndRaw.day);
+  final rangeStart = DateTime(
+    rangeStartRaw.year,
+    rangeStartRaw.month,
+    rangeStartRaw.day,
+  );
+  final rangeEnd = DateTime(
+    rangeEndRaw.year,
+    rangeEndRaw.month,
+    rangeEndRaw.day,
+  );
 
   final includedAccounts = {
     for (final account in state.accounts)
@@ -129,10 +137,11 @@ List<BalanceTrendPoint> balanceFutureTrendForRange(
         return sum + converted.amountMinor;
       });
 
-  final postedTxs = state.transactions
-      .where((tx) => tx.status != 'scheduled' && tx.status != 'void')
-      .toList()
-    ..sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
+  final postedTxs =
+      state.transactions
+          .where((tx) => tx.status != 'scheduled' && tx.status != 'void')
+          .toList()
+        ..sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
 
   for (final tx in postedTxs) {
     running += _includedTotalDelta(state, tx, includedAccounts);
@@ -148,7 +157,7 @@ List<BalanceTrendPoint> balanceFutureTrendForRange(
             !tx.occurredAt.isAfter(rangeEnd),
       )
       .toList();
-      
+
   futureTxs.addAll(forecastRecurringTransactions(state, rangeStart, rangeEnd));
   futureTxs.sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
 
@@ -158,8 +167,13 @@ List<BalanceTrendPoint> balanceFutureTrendForRange(
 
   while (!current.isAfter(rangeEnd)) {
     final nextDay = DateTime(current.year, current.month, current.day + 1);
-    while (txIndex < futureTxs.length && futureTxs[txIndex].occurredAt.isBefore(nextDay)) {
-      running += _includedTotalDelta(state, futureTxs[txIndex], includedAccounts);
+    while (txIndex < futureTxs.length &&
+        futureTxs[txIndex].occurredAt.isBefore(nextDay)) {
+      running += _includedTotalDelta(
+        state,
+        futureTxs[txIndex],
+        includedAccounts,
+      );
       txIndex++;
     }
     points.add(

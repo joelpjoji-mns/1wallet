@@ -921,8 +921,6 @@ TransactionAttachment _transactionAttachmentFromJson(
   );
 }
 
-
-
 Map<String, Object?> _exchangeRateToJson(ExchangeRateRecord rate) {
   return {
     'base': rate.base,
@@ -1149,8 +1147,6 @@ Map<String, Object?> transactionToJson(TransactionRecord transaction) =>
     _transactionToJson(transaction);
 TransactionRecord transactionFromJson(Map<String, dynamic> json) =>
     _transactionFromJson(json);
-
-
 
 Map<String, Object?> exchangeRateToJson(ExchangeRateRecord rate) =>
     _exchangeRateToJson(rate);

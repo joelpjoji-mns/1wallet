@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
@@ -49,7 +50,6 @@ class TransactionCommandStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -63,28 +63,25 @@ class TransactionCommandStrip extends StatelessWidget {
             ),
             if (hasActiveFilters) ...[
               const SizedBox(width: AppSpacing.sm),
-              LiquidGlassContainer(
-                borderRadius: BorderRadius.circular(AppRadii.pill),
-                child: Tooltip(
-                  message: 'Clear filters',
-                  child: IconButton(
-                    onPressed: onClear,
-                    icon: const Icon(Icons.filter_alt_off_rounded),
-                  ),
+              Tooltip(
+                message: 'Clear filters',
+                child: GlassIconButton(
+                  onPressed: onClear,
+                  icon: const Icon(Icons.filter_alt_off_rounded),
+                  semanticLabel: 'Clear filters',
+                  quality: GlassQuality.standard,
                 ),
               ),
             ],
           ],
         ),
         const SizedBox(height: AppSpacing.md),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            border: Border.all(color: scheme.outlineVariant),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.sm),
+        GlassCard(
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+          quality: GlassQuality.standard,
+          child: Material(
+            color: Colors.transparent,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -152,32 +149,13 @@ class CompactSearchField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = TextEditingController(text: value)
-      ..selection = TextSelection.collapsed(offset: value.length);
-    final scheme = Theme.of(context).colorScheme;
     return SizedBox(
       height: 42,
-      child: LiquidGlassContainer(
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-        child: TextField(
-          controller: controller,
-          onChanged: onChanged,
-          textInputAction: TextInputAction.search,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-          decoration: InputDecoration(
-            hintText: 'Search records',
-            filled: false,
-            prefixIcon: Icon(Icons.search_rounded, color: scheme.primary),
-            prefixIconConstraints: const BoxConstraints(minWidth: 48),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: 0,
-            ),
-            border: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            focusedBorder: InputBorder.none,
-          ),
-        ),
+      child: PremiumSearchInput(
+        hintText: 'Search records',
+        value: value,
+        onChanged: onChanged,
+        height: 42,
       ),
     );
   }

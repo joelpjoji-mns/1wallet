@@ -88,6 +88,10 @@ void main() {
       try {
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull, reason: route);
+        if (route == '/settings') {
+          expect(find.text('Liquid glass appearance'), findsNothing);
+          expect(find.text('Blur level'), findsNothing);
+        }
       } catch (e) {
         if (e.toString().contains('semantics.parentDataDirty')) {
           // Ignore known Flutter framework bug during test navigation teardown

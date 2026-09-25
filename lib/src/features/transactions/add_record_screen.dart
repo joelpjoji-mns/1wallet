@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -1326,56 +1327,63 @@ class _FxAmountCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final color = selected ? scheme.primary : scheme.onSurfaceVariant;
-    return Material(
-      color: selected
-          ? scheme.primaryContainer.withAlpha(110)
-          : scheme.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            border: Border.all(
-              color: selected ? scheme.primary : scheme.outlineVariant,
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      padding: EdgeInsets.zero,
+      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+      quality: GlassQuality.minimal,
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: selected
+                  ? scheme.primaryContainer.withAlpha(110)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              border: Border.all(
+                color: selected ? scheme.primary : scheme.outlineVariant,
+              ),
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(icon, size: 14, color: color),
-                  const SizedBox(width: 4),
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(icon, size: 14, color: color),
+                    const SizedBox(width: 4),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '$amount $currency',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 14,
+                  ],
                 ),
-              ),
-              Text(
-                subtitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 10),
-              ),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  '$amount $currency',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 10),
+                ),
+              ],
+            ),
           ),
         ),
       ),

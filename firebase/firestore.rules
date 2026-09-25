@@ -22,6 +22,11 @@ service cloud.firestore {
       return !(key in data) || data[key] is timestamp;
     }
 
+    function isOptionalBoundedInt(data, key, minValue, maxValue) {
+      return !(key in data) ||
+        (data[key] is int && data[key] >= minValue && data[key] <= maxValue);
+    }
+
     function isTimestampOrIsoString(value) {
       return value is timestamp || value is string;
     }
@@ -73,7 +78,13 @@ service cloud.firestore {
         (!('authProvider' in data) || data.authProvider == 'google') &&
         isOptionalTimestamp(data, 'createdAt') &&
         isOptionalTimestamp(data, 'updatedAt') &&
-        isOptionalStringOrNull(data, 'lastWriterDeviceId');
+        isOptionalStringOrNull(data, 'lastWriterDeviceId') &&
+        // Forward-compatible optimistic-concurrency fields: not written by
+        // the current Flutter or web clients yet, but validated now so that
+        // if/when a client starts sending them, malformed values (wrong
+        // type or out-of-range) are rejected rather than silently accepted.
+        isOptionalBoundedInt(data, 'cloudRevision', 0, 2147483647) &&
+        isOptionalBoundedInt(data, 'ledgerVersion', 1, 1000);
     }
 
     function isValidWalletDocument(data, walletId) {

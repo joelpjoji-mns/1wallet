@@ -60,35 +60,38 @@ abstract final class AppTheme {
     scheme = scheme.copyWith(
       error: dark ? AppColors.dangerDark : AppColors.dangerLight,
       surface: amoled
-          ? const Color(0xFF050505)
+          ? AppColors.amoledBackground
           : _accentTintedSurface(
               scheme.surface,
               scheme.primary,
               dark ? 0.03 : 0.018,
             ),
+      surfaceContainerLowest: amoled
+          ? AppColors.amoledBackground
+          : scheme.surfaceContainerLowest,
       surfaceContainerLow: amoled
-          ? const Color(0xFF050505)
+          ? const Color(0xFF080808)
           : _accentTintedSurface(
               scheme.surfaceContainerLow,
               scheme.primary,
               dark ? 0.08 : 0.045,
             ),
       surfaceContainer: amoled
-          ? const Color(0xFF090909)
+          ? const Color(0xFF0E0E0E)
           : _accentTintedSurface(
               scheme.surfaceContainer,
               scheme.primary,
               dark ? 0.10 : 0.06,
             ),
       surfaceContainerHigh: amoled
-          ? const Color(0xFF101010)
+          ? const Color(0xFF151515)
           : _accentTintedSurface(
               scheme.surfaceContainerHigh,
               scheme.primary,
               dark ? 0.12 : 0.075,
             ),
       surfaceContainerHighest: amoled
-          ? const Color(0xFF171717)
+          ? const Color(0xFF1C1C1C)
           : _accentTintedSurface(
               scheme.surfaceContainerHighest,
               scheme.primary,
@@ -123,7 +126,8 @@ abstract final class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        backgroundColor: scheme.surface,
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         foregroundColor: scheme.onSurface,
         titleTextStyle: TextStyle(
           color: scheme.onSurface,

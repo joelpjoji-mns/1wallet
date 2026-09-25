@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import 'home_screen.dart';
@@ -23,7 +24,6 @@ import 'home_components.dart';
 import 'home_widget_card.dart';
 import 'home_widget_models.dart';
 import 'package:fl_chart/fl_chart.dart';
-
 
 final _homeScheduledTransactionsProvider =
     Provider.autoDispose<List<TransactionRecord>>((ref) {
@@ -545,7 +545,7 @@ class _BalanceTrendHomeWidgetState
           headerTrailing: _buildDropdown(),
           child: const SizedBox(
             height: _chartHeight,
-            child: Center(child: CircularProgressIndicator()),
+            child: Center(child: Text('Preparing balance trend...')),
           ),
         ),
       );
@@ -571,10 +571,8 @@ class _BalanceTrendHomeWidgetState
     // Merge past + future into one indexed value list.
     // Index 0 = earliest past day, index pastN-1 = "now",
     // index pastN = first future day, etc.
-    final pastValues =
-        pastTrend.map((p) => p.balance.amountMinor).toList();
-    final futureValues =
-        futureTrend.map((p) => p.balance.amountMinor).toList();
+    final pastValues = pastTrend.map((p) => p.balance.amountMinor).toList();
+    final futureValues = futureTrend.map((p) => p.balance.amountMinor).toList();
 
     final pastN = pastValues.length;
     final futureN = futureValues.length;
@@ -598,14 +596,19 @@ class _BalanceTrendHomeWidgetState
     // Clamp scroll offset so the viewport can't go beyond data bounds.
     // viewRight = nowIndex + _scrollOffset  (right edge of viewport in index space)
     // viewLeft  = viewRight - zoomDays
-    final maxScrollOffset = (totalN - 1 - nowIndex).toDouble(); // right edge at last point
-    final minScrollOffset = -(nowIndex - zoomDays).toDouble(); // left edge at first point
+    final maxScrollOffset = (totalN - 1 - nowIndex)
+        .toDouble(); // right edge at last point
+    final minScrollOffset = -(nowIndex - zoomDays)
+        .toDouble(); // left edge at first point
     _scrollOffset = _scrollOffset.clamp(
       math.min(minScrollOffset, maxScrollOffset),
       maxScrollOffset,
     );
 
-    final viewRight = (nowIndex + _scrollOffset).clamp(0.0, (totalN - 1).toDouble());
+    final viewRight = (nowIndex + _scrollOffset).clamp(
+      0.0,
+      (totalN - 1).toDouble(),
+    );
     final viewLeft = (viewRight - zoomDays).clamp(0.0, (totalN - 1).toDouble());
 
     // Extract the visible window (with a small buffer for smooth edges)
@@ -705,15 +708,25 @@ class _BalanceTrendHomeWidgetState
       }
     }
     // Ensure the boundary points are included
-    if (pastSpots.isNotEmpty && pastSpots.last.x < nowIndex && nowIndex >= iStart && nowIndex <= iEnd) {
-      pastSpots.add(FlSpot(nowIndex.toDouble(), allValues[nowIndex].toDouble()));
+    if (pastSpots.isNotEmpty &&
+        pastSpots.last.x < nowIndex &&
+        nowIndex >= iStart &&
+        nowIndex <= iEnd) {
+      pastSpots.add(
+        FlSpot(nowIndex.toDouble(), allValues[nowIndex].toDouble()),
+      );
     }
     if (futureSpots.isEmpty && nowIndex >= iStart && nowIndex <= iEnd) {
-      futureSpots.add(FlSpot(nowIndex.toDouble(), allValues[nowIndex].toDouble()));
+      futureSpots.add(
+        FlSpot(nowIndex.toDouble(), allValues[nowIndex].toDouble()),
+      );
     }
     // Ensure last visible point is included
     if (iEnd > nowIndex && (iEnd % step != 0 || iEnd != iStart)) {
-      final lastFutureSpot = FlSpot(iEnd.toDouble(), allValues[iEnd].toDouble());
+      final lastFutureSpot = FlSpot(
+        iEnd.toDouble(),
+        allValues[iEnd].toDouble(),
+      );
       if (futureSpots.isEmpty || futureSpots.last.x < iEnd) {
         futureSpots.add(lastFutureSpot);
       }
@@ -754,8 +767,8 @@ class _BalanceTrendHomeWidgetState
             setState(() {
               // Convert pixel drag to index-space movement.
               // Dragging right => scroll into the past (decrease offset).
-              final pixelsPerDay = (MediaQuery.of(context).size.width - 64) /
-                  zoomDays;
+              final pixelsPerDay =
+                  (MediaQuery.of(context).size.width - 64) / zoomDays;
               _scrollOffset -= details.delta.dx / pixelsPerDay;
             });
           },
@@ -835,10 +848,12 @@ class _BalanceTrendHomeWidgetState
                               }
 
                               final date = pastTrend.isNotEmpty
-                                  ? pastTrend.first.date
-                                      .add(Duration(days: idx))
+                                  ? pastTrend.first.date.add(
+                                      Duration(days: idx),
+                                    )
                                   : nowRounded.add(
-                                      Duration(days: idx - nowIndex));
+                                      Duration(days: idx - nowIndex),
+                                    );
 
                               return SideTitleWidget(
                                 meta: meta,
@@ -867,8 +882,7 @@ class _BalanceTrendHomeWidgetState
                         horizontalLines: [
                           HorizontalLine(
                             y: 0,
-                            color: scheme.onSurfaceVariant
-                                .withAlphaFactor(0.3),
+                            color: scheme.onSurfaceVariant.withAlphaFactor(0.3),
                             strokeWidth: 1,
                           ),
                         ],
@@ -902,14 +916,13 @@ class _BalanceTrendHomeWidgetState
                               show: true,
                               checkToShowDot: (spot, barData) =>
                                   spot.x == barData.spots.last.x,
-                              getDotPainter:
-                                  (spot, percent, barData, index) =>
-                                      FlDotCirclePainter(
-                                        radius: 4,
-                                        color: scheme.primary,
-                                        strokeWidth: 2,
-                                        strokeColor: scheme.surface,
-                                      ),
+                              getDotPainter: (spot, percent, barData, index) =>
+                                  FlDotCirclePainter(
+                                    radius: 4,
+                                    color: scheme.primary,
+                                    strokeWidth: 2,
+                                    strokeColor: scheme.surface,
+                                  ),
                             ),
                             belowBarData: BarAreaData(
                               show: true,
@@ -930,8 +943,9 @@ class _BalanceTrendHomeWidgetState
                           LineChartBarData(
                             spots: futureSpots,
                             isCurved: false,
-                            color: scheme.onSurfaceVariant
-                                .withAlphaFactor(0.45),
+                            color: scheme.onSurfaceVariant.withAlphaFactor(
+                              0.45,
+                            ),
                             barWidth: 1.0,
                             isStrokeCapRound: true,
                             dashArray: [6, 4],
@@ -939,16 +953,14 @@ class _BalanceTrendHomeWidgetState
                               show: true,
                               checkToShowDot: (spot, barData) =>
                                   spot.x == barData.spots.last.x,
-                              getDotPainter:
-                                  (spot, percent, barData, index) =>
-                                      FlDotCirclePainter(
-                                        radius: 3,
-                                        color:
-                                            scheme.onSurfaceVariant
-                                                .withAlphaFactor(0.5),
-                                        strokeWidth: 1,
-                                        strokeColor: scheme.surface,
-                                      ),
+                              getDotPainter: (spot, percent, barData, index) =>
+                                  FlDotCirclePainter(
+                                    radius: 3,
+                                    color: scheme.onSurfaceVariant
+                                        .withAlphaFactor(0.5),
+                                    strokeWidth: 1,
+                                    strokeColor: scheme.surface,
+                                  ),
                             ),
                             belowBarData: BarAreaData(
                               show: true,
@@ -956,12 +968,8 @@ class _BalanceTrendHomeWidgetState
                               applyCutOffY: false,
                               gradient: LinearGradient(
                                 colors: [
-                                  scheme.onSurfaceVariant.withAlphaFactor(
-                                    0.12,
-                                  ),
-                                  scheme.onSurfaceVariant.withAlphaFactor(
-                                    0.0,
-                                  ),
+                                  scheme.onSurfaceVariant.withAlphaFactor(0.12),
+                                  scheme.onSurfaceVariant.withAlphaFactor(0.0),
                                 ],
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
@@ -971,35 +979,30 @@ class _BalanceTrendHomeWidgetState
                       ],
                       lineTouchData: LineTouchData(
                         enabled: true,
-                        getTouchedSpotIndicator: (
-                          LineChartBarData barData,
-                          List<int> spotIndexes,
-                        ) {
-                          return spotIndexes.map((index) {
-                            return TouchedSpotIndicatorData(
-                              FlLine(
-                                color: scheme.primary.withAlphaFactor(
-                                  0.4,
-                                ),
-                                strokeWidth: 1.5,
-                                dashArray: [4, 4],
-                              ),
-                              FlDotData(
-                                getDotPainter:
-                                    (spot, percent, barData, index) =>
-                                        FlDotCirclePainter(
-                                          radius: 4,
-                                          color: scheme.primary,
-                                          strokeWidth: 2,
-                                          strokeColor: scheme.surface,
-                                        ),
-                              ),
-                            );
-                          }).toList();
-                        },
+                        getTouchedSpotIndicator:
+                            (LineChartBarData barData, List<int> spotIndexes) {
+                              return spotIndexes.map((index) {
+                                return TouchedSpotIndicatorData(
+                                  FlLine(
+                                    color: scheme.primary.withAlphaFactor(0.4),
+                                    strokeWidth: 1.5,
+                                    dashArray: [4, 4],
+                                  ),
+                                  FlDotData(
+                                    getDotPainter:
+                                        (spot, percent, barData, index) =>
+                                            FlDotCirclePainter(
+                                              radius: 4,
+                                              color: scheme.primary,
+                                              strokeWidth: 2,
+                                              strokeColor: scheme.surface,
+                                            ),
+                                  ),
+                                );
+                              }).toList();
+                            },
                         touchTooltipData: LineTouchTooltipData(
-                          getTooltipColor: (touchedSpot) =>
-                              scheme.onSurface,
+                          getTooltipColor: (touchedSpot) => scheme.onSurface,
                           getTooltipItems: (touchedSpots) {
                             return touchedSpots
                                 .map(
@@ -1125,7 +1128,11 @@ class _LineLegendPainter extends CustomPainter {
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
     if (!dashed) {
-      canvas.drawLine(Offset(0, size.height / 2), Offset(size.width, size.height / 2), paint);
+      canvas.drawLine(
+        Offset(0, size.height / 2),
+        Offset(size.width, size.height / 2),
+        paint,
+      );
     } else {
       double x = 0;
       const dashLen = 4.0;
@@ -2023,7 +2030,6 @@ class TopCategoriesHomeWidget extends StatelessWidget {
   }
 }
 
-
 class _CategoryListWidget extends StatelessWidget {
   const _CategoryListWidget({
     required this.state,
@@ -2049,33 +2055,34 @@ class _CategoryListWidget extends StatelessWidget {
     return RepaintBoundary(
       child: HomeWidgetCard(
         title: title,
-      icon: icon,
-      iconColor: iconColor,
-      actionLabel: actionLabel,
-      onAction: onRecords,
-      child: items.isEmpty
-          ? Text(
-              'No matching records this month.',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            )
-          : Column(
-              children: [
-                for (final item in items) ...[
-                  HomeProgressRow(
-                    label: item.label,
-                    value: formatMoney(
-                      _displayBaseMoney(state, item.amountMinor),
-                      state.preferences.locale,
+        icon: icon,
+        iconColor: iconColor,
+        actionLabel: actionLabel,
+        onAction: onRecords,
+        child: items.isEmpty
+            ? Text(
+                'No matching records this month.',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              )
+            : Column(
+                children: [
+                  for (final item in items) ...[
+                    HomeProgressRow(
+                      label: item.label,
+                      value: formatMoney(
+                        _displayBaseMoney(state, item.amountMinor),
+                        state.preferences.locale,
+                      ),
+                      progress: total == 0 ? 0 : item.amountMinor / total,
+                      color: item.color ?? iconColor,
                     ),
-                    progress: total == 0 ? 0 : item.amountMinor / total,
-                    color: item.color ?? iconColor,
-                  ),
-                  if (item != items.last) const SizedBox(height: AppSpacing.sm),
+                    if (item != items.last)
+                      const SizedBox(height: AppSpacing.sm),
+                  ],
                 ],
-              ],
-            ),
+              ),
       ),
     );
   }
@@ -2384,6 +2391,7 @@ class _CategoryTotal {
   final int amountMinor;
   final Color? color;
 }
+
 class DashboardCard extends StatelessWidget {
   const DashboardCard({required this.child, this.onTap, super.key});
   final Widget child;
@@ -2391,34 +2399,24 @@ class DashboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.outlineVariant.withAlphaFactor(0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.shadow.withAlphaFactor(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      shape: const LiquidRoundedSuperellipse(borderRadius: 16),
+      quality: GlassQuality.standard,
+      clipBehavior: Clip.antiAlias,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: child,
-          ),
+          child: child,
         ),
       ),
     );
   }
 }
+
 class CreditUtilizationWidget extends StatelessWidget {
   const CreditUtilizationWidget({required this.state, super.key});
   final LedgerState state;
@@ -2439,113 +2437,113 @@ class CreditUtilizationWidget extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-          const Text(
-            'Credit Card Utilization',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          Text(
-            'Which credit cards am I using the most?',
-            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: 24),
-          if (creditAccounts.isEmpty) const Text('No credit accounts.'),
-          ...creditAccounts.map((acc) {
-            final rawBal = convertMoneyForDisplay(
-              state,
-              accountBalanceFromMap(balances, acc),
-              state.preferences.displayCurrency,
-            ).amountMinor;
-            final balForDisplay = rawBal.abs();
-            final debt = rawBal < 0 ? -rawBal : 0;
-            
-            final limit = acc.creditLimit != null
-                ? convertMoneyForDisplay(
-                    state,
-                    acc.creditLimit!,
-                    state.preferences.displayCurrency,
-                  ).amountMinor
-                : 0;
-            final util = limit > 0 ? (debt / limit) : 0.0;
+            const Text(
+              'Credit Card Utilization',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              'Which credit cards am I using the most?',
+              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 24),
+            if (creditAccounts.isEmpty) const Text('No credit accounts.'),
+            ...creditAccounts.map((acc) {
+              final rawBal = convertMoneyForDisplay(
+                state,
+                accountBalanceFromMap(balances, acc),
+                state.preferences.displayCurrency,
+              ).amountMinor;
+              final balForDisplay = rawBal.abs();
+              final debt = rawBal < 0 ? -rawBal : 0;
 
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          acc.name,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
+              final limit = acc.creditLimit != null
+                  ? convertMoneyForDisplay(
+                      state,
+                      acc.creditLimit!,
+                      state.preferences.displayCurrency,
+                    ).amountMinor
+                  : 0;
+              final util = limit > 0 ? (debt / limit) : 0.0;
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            acc.name,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                      ),
-                      if (limit > 0)
-                        Text(
-                          '${(util * 100).round()}%',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 18,
+                        if (limit > 0)
+                          Text(
+                            '${(util * 100).round()}%',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 18,
+                            ),
+                          )
+                        else
+                          const Text(
+                            'N/A',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 18,
+                            ),
                           ),
-                        )
-                      else
-                        const Text(
-                          'N/A',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 18,
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  LinearProgressIndicator(
-                    value: limit > 0 ? util.clamp(0.0, 1.0) : 0.0,
-                    color: acc.color ?? scheme.primary,
-                    backgroundColor: scheme.surfaceContainerHighest,
-                    minHeight: 16,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Flexible(
-                        child: PrivacyText(
-                          'Balance ${formatMoney(Money(amountMinor: balForDisplay, currency: state.preferences.displayCurrency), state.preferences.locale)}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: PrivacyText(
-                          'Limit ${limit > 0 ? formatMoney(Money(amountMinor: limit, currency: state.preferences.displayCurrency), state.preferences.locale) : 'Not Set'}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.end,
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: scheme.onSurfaceVariant,
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    LinearProgressIndicator(
+                      value: limit > 0 ? util.clamp(0.0, 1.0) : 0.0,
+                      color: acc.color ?? scheme.primary,
+                      backgroundColor: scheme.surfaceContainerHighest,
+                      minHeight: 16,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: PrivacyText(
+                            'Balance ${formatMoney(Money(amountMinor: balForDisplay, currency: state.preferences.displayCurrency), state.preferences.locale)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: scheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
-      ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: PrivacyText(
+                            'Limit ${limit > 0 ? formatMoney(Money(amountMinor: limit, currency: state.preferences.displayCurrency), state.preferences.locale) : 'Not Set'}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.end,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
       ),
     );
   }

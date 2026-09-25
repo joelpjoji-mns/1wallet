@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
+import '../../widgets/app_glass_page.dart';
 
 class PickerOption<T> {
   const PickerOption({
@@ -107,91 +109,96 @@ class _FullScreenPickerState<T> extends State<_FullScreenPicker<T>> {
 
     final scheme = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      backgroundColor: scheme.surface,
-      appBar: AppBar(
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        backgroundColor: scheme.surface,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, color: scheme.onSurface),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          widget.title,
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-            color: scheme.onSurface,
-            fontSize: 20,
+    return AppGlassPage(
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          leading: GlassIconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            semanticLabel: 'Back',
+            useOwnLayer: true,
+            onPressed: () => Navigator.of(context).pop(),
           ),
-        ),
-        actions: [
-          if (widget.actionIcon != null && widget.onAction != null)
-            IconButton(
-              tooltip: widget.actionTooltip,
-              icon: Icon(widget.actionIcon, color: scheme.primary),
-              onPressed: widget.onAction,
+          title: Text(
+            widget.title,
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              color: scheme.onSurface,
+              fontSize: 20,
             ),
-        ],
-      ),
-      body: SafeArea(
-        top: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            0,
-            AppSpacing.md,
-            AppSpacing.xxl,
           ),
-          children: [
-            if (widget.subtitle != null) ...[
-              Text(
-                widget.subtitle!,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
+          actions: [
+            if (widget.actionIcon != null && widget.onAction != null)
+              Tooltip(
+                message: widget.actionTooltip ?? '',
+                child: GlassIconButton(
+                  icon: Icon(widget.actionIcon),
+                  semanticLabel: widget.actionTooltip,
+                  useOwnLayer: true,
+                  onPressed: widget.onAction,
                 ),
               ),
-              const SizedBox(height: AppSpacing.md),
-            ],
-            if (widget.searchable) ...[
-              PremiumSearchInput(
-                hintText: widget.searchHint,
-                value: _query,
-                onChanged: (value) => setState(() => _query = value),
-              ),
-              const SizedBox(height: AppSpacing.md),
-            ],
-            if (widget.allowClear) ...[
-              PremiumRow(
-                icon: Icons.clear_rounded,
-                title: widget.clearLabel,
-                subtitle: 'Show every option',
-                selected: widget.selectedValue == null,
-                onTap: () => Navigator.of(context).pop(null),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-            ],
-            if (visibleOptions.isEmpty)
-              EmptyState(
-                icon: Icons.search_off_rounded,
-                title: 'No matches',
-                body: 'Try a different search term.',
-                actionLabel: 'Clear search',
-                onAction: () => setState(() => _query = ''),
-              )
-            else
-              for (final option in visibleOptions) ...[
+          ],
+        ),
+        body: SafeArea(
+          top: false,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              0,
+              AppSpacing.md,
+              AppSpacing.xxl,
+            ),
+            children: [
+              if (widget.subtitle != null) ...[
+                Text(
+                  widget.subtitle!,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+              ],
+              if (widget.searchable) ...[
+                PremiumSearchInput(
+                  hintText: widget.searchHint,
+                  value: _query,
+                  onChanged: (value) => setState(() => _query = value),
+                ),
+                const SizedBox(height: AppSpacing.md),
+              ],
+              if (widget.allowClear) ...[
                 PremiumRow(
-                  icon: option.icon ?? Icons.circle_outlined,
-                  title: option.title,
-                  subtitle: option.subtitle,
-                  iconColor: option.iconColor,
-                  selected: option.value == widget.selectedValue,
-                  onTap: () => Navigator.of(context).pop(option.value),
+                  icon: Icons.clear_rounded,
+                  title: widget.clearLabel,
+                  subtitle: 'Show every option',
+                  selected: widget.selectedValue == null,
+                  onTap: () => Navigator.of(context).pop(null),
                 ),
                 const SizedBox(height: AppSpacing.sm),
               ],
-          ],
+              if (visibleOptions.isEmpty)
+                EmptyState(
+                  icon: Icons.search_off_rounded,
+                  title: 'No matches',
+                  body: 'Try a different search term.',
+                  actionLabel: 'Clear search',
+                  onAction: () => setState(() => _query = ''),
+                )
+              else
+                for (final option in visibleOptions) ...[
+                  PremiumRow(
+                    icon: option.icon ?? Icons.circle_outlined,
+                    title: option.title,
+                    subtitle: option.subtitle,
+                    iconColor: option.iconColor,
+                    selected: option.value == widget.selectedValue,
+                    onTap: () => Navigator.of(context).pop(option.value),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                ],
+            ],
+          ),
         ),
       ),
     );

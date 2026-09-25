@@ -239,8 +239,23 @@ mindmap
 │       ├── routing/    # GoRouter configuration & guards
 │       ├── theme/      # Dynamic Material 3 Theme engines
 │       └── utils/      # Helpers, formatting, and extensions
+├── pwa/                # Active web client (React + Vite PWA) — see below
+├── firebase/           # Firestore security rules + emulator rules tests
+├── firebase.json       # Firebase Hosting/emulator config (serves pwa/dist)
 └── pubspec.yaml        # Dependencies & Asset declarations
 ```
+
+### 🌐 Web client: the PWA at `pwa/`
+
+The **active web client** deployed to the Firebase Hosting root
+(`https://wallet-1a5af.web.app` / your configured custom domain) is the React
++ TypeScript + Vite Progressive Web App in [`pwa/`](pwa/README.md) — not the
+legacy `flutter build web` output. It's a real, installable PWA that reads and
+writes the exact same Firestore-backed wallet data as the mobile/desktop app
+(same GZip JSON snapshot format at `users/{uid}/wallet_backups/chunk_N`), with
+an app-shell-only service worker (auth/wallet traffic is never cached). See
+[`pwa/README.md`](pwa/README.md) for architecture details and
+[`firebase/README.md`](firebase/README.md) for the Firestore rules test suite.
 
 <img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/aqua.png" width="100%" alt="aqua divider">
 

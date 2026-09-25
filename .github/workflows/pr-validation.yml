@@ -54,3 +54,43 @@ jobs:
 
       - name: Run Tests
         run: flutter test
+
+  validate-pwa:
+    name: PWA Lint, Typecheck, and Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: pwa/package-lock.json
+
+      - name: Install PWA dependencies
+        working-directory: pwa
+        run: npm ci
+
+      - name: Write dummy environment
+        working-directory: pwa
+        run: |
+          {
+            echo "VITE_FIREBASE_API_KEY=dummy"
+            echo "VITE_FIREBASE_AUTH_DOMAIN=dummy"
+            echo "VITE_FIREBASE_PROJECT_ID=dummy"
+            echo "VITE_FIREBASE_STORAGE_BUCKET=dummy"
+            echo "VITE_FIREBASE_MESSAGING_SENDER_ID=dummy"
+            echo "VITE_FIREBASE_APP_ID=dummy"
+            echo "VITE_GOOGLE_WEB_CLIENT_ID=dummy"
+          } > .env
+
+      - name: Lint
+        working-directory: pwa
+        run: npm run lint
+
+      - name: Build (typecheck + bundle)
+        working-directory: pwa
+        run: npm run build
+

@@ -27,6 +27,21 @@ jobs:
         with:
           xcode-version: latest-stable
 
+      - name: Validate release signing secrets
+        run: |
+          missing=()
+          [ -z "${{ secrets.APPLE_TEAM_ID }}" ] && missing+=("APPLE_TEAM_ID")
+          [ -z "${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_P12_BASE64 }}" ] && missing+=("IOS_DISTRIBUTION_CERTIFICATE_P12_BASE64")
+          [ -z "${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}" ] && missing+=("IOS_DISTRIBUTION_CERTIFICATE_PASSWORD")
+          [ -z "${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}" ] && missing+=("APP_STORE_CONNECT_API_KEY_ISSUER_ID")
+          [ -z "${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}" ] && missing+=("APP_STORE_CONNECT_API_KEY_KEY_ID")
+          [ -z "${{ secrets.APP_STORE_CONNECT_API_KEY_PRIVATE_KEY }}" ] && missing+=("APP_STORE_CONNECT_API_KEY_PRIVATE_KEY")
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo "::error::Missing required repository secret(s): ${missing[*]}. Configure them in repo Settings > Secrets before running this workflow."
+            exit 1
+          fi
+          echo "All required release signing secrets are present."
+
       - name: Flutter dependencies
         run: flutter pub get
 
@@ -45,17 +60,90 @@ jobs:
           } > .env
           cp .env config.env
 
-      - name: Build IPA
-        run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
-        # Note: You need to set up ExportOptions.plist in the ios directory with proper code signing details.
-        
+      - name: Import signing certificate
+        # Headless CI has no signed-in Apple ID session, so Xcode's automatic
+        # "-allowProvisioningUpdates" provisioning management cannot silently
+        # authenticate. Manual signing with an imported distribution
+        # certificate + a downloaded provisioning profile is the reliable,
+        # Apple-supported unattended path (this action is maintained by
+        # Apple-Actions, the org Apple references for CI/CD sample workflows).
+        uses: apple-actions/import-codesign-certs@v7
+        with:
+          p12-file-base64: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_P12_BASE64 }}
+          p12-password: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+
+      - name: Download provisioning profile
+        id: profile
+        uses: apple-actions/download-provisioning-profiles@v6
+        with:
+          bundle-id: com.joelpjoji.one.wallet
+          profile-type: IOS_APP_STORE
+          issuer-id: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
+          api-key-id: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
+          api-private-key: ${{ secrets.APP_STORE_CONNECT_API_KEY_PRIVATE_KEY }}
+
+      - name: Prepare ExportOptions.plist
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          PROFILE_NAME: ${{ fromJson(steps.profile.outputs.profiles)[0].name }}
+        run: |
+          set -euo pipefail
+          cp ios/ExportOptions.plist ios/ExportOptions.generated.plist
+          plutil -replace teamID -string "$APPLE_TEAM_ID" ios/ExportOptions.generated.plist
+          # plutil keypaths are KVC-style and split on every ".", so a bundle
+          # ID key (which itself contains dots, e.g. com.joelpjoji.one.wallet)
+          # cannot be addressed as a nested keypath component
+          # (provisioningProfiles.com.joelpjoji.one.wallet would be parsed as
+          # 4 nested dictionary levels, not one literal key). Replacing the
+          # whole provisioningProfiles value with a JSON fragment sidesteps
+          # keypath parsing entirely and is unambiguous.
+          profile_json=$(jq -n --arg name "$PROFILE_NAME" '{"com.joelpjoji.one.wallet": $name}')
+          plutil -replace provisioningProfiles -json "$profile_json" ios/ExportOptions.generated.plist
+
+      - name: Build & export IPA
+        env:
+          # Consumed by ios/Flutter/Release.xcconfig so the archive step
+          # (which flutter build ipa runs with -allowProvisioningUpdates) has
+          # a resolved DEVELOPMENT_TEAM/manual signing identity available and
+          # does not need to reach out to Apple's provisioning service.
+          DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
+          PROVISIONING_PROFILE_SPECIFIER: ${{ fromJson(steps.profile.outputs.profiles)[0].name }}
+          IOS_CODE_SIGN_STYLE: Manual
+          IOS_CODE_SIGN_IDENTITY: Apple Distribution
+        run: flutter build ipa --release --export-options-plist=ios/ExportOptions.generated.plist
+        # Produces build/ios/archive/Runner.xcarchive and build/ios/ipa/*.ipa.
+
       - name: Upload to App Store Connect
         env:
           API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
           API_KEY_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
           API_KEY_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_PRIVATE_KEY }}
         run: |
-          # The API Key Private Key is expected to be multiline base64 or plaintext
-          # depending on how you stored it. 
-          echo "$API_KEY_PRIVATE_KEY" > AuthKey_${API_KEY_KEY_ID}.p8
-          xcrun altool --upload-app -f build/ios/ipa/*.ipa -t ios --apiKey "$API_KEY_KEY_ID" --apiIssuer "$API_KEY_ISSUER_ID"
+          set -euo pipefail
+          # `xcrun altool --upload-app` is deprecated/removed by Apple. The
+          # current Apple-supported unattended upload path is `xcodebuild
+          # -exportArchive` against the already-built .xcarchive with
+          # `destination = upload` and App Store Connect API key
+          # authentication (-authenticationKeyPath/-authenticationKeyID/
+          # -authenticationKeyIssuerID), which xcodebuild has supported
+          # natively since Xcode 13.
+          key_dir="$RUNNER_TEMP/private_keys"
+          mkdir -p "$key_dir"
+          key_path="$key_dir/AuthKey_${API_KEY_KEY_ID}.p8"
+          printf '%s' "$API_KEY_PRIVATE_KEY" > "$key_path"
+          chmod 600 "$key_path"
+
+          upload_plist="$RUNNER_TEMP/ExportOptionsUpload.plist"
+          cp ios/ExportOptions.generated.plist "$upload_plist"
+          plutil -replace destination -string upload "$upload_plist"
+
+          xcodebuild -exportArchive \
+            -archivePath build/ios/archive/Runner.xcarchive \
+            -exportOptionsPlist "$upload_plist" \
+            -exportPath "$RUNNER_TEMP/upload" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$key_path" \
+            -authenticationKeyID "$API_KEY_KEY_ID" \
+            -authenticationKeyIssuerID "$API_KEY_ISSUER_ID"
+
+          rm -f "$key_path"

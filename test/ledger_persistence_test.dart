@@ -546,7 +546,6 @@ void main() {
     },
   );
 
-
   test('ledger controller persists category create and archive', () async {
     const repository = LedgerRepository();
     final controller = LedgerController(repository);

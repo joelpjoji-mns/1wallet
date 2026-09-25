@@ -1,1 +1,13 @@
 #include "Generated.xcconfig"
+
+// These self-referencing overrides let CI supply code-signing identity via
+// environment variables (see .github/workflows/ios-release.yml) without
+// hardcoding any Apple Developer Team ID or profile name in source control.
+// Xcode resolves `$(VAR)` here against the process environment when no other
+// build setting defines VAR, so local `flutter build`/Xcode builds are
+// unaffected when these variables are unset — Xcode falls back to whatever
+// signing is configured in the Signing & Capabilities editor.
+DEVELOPMENT_TEAM = $(DEVELOPMENT_TEAM)
+CODE_SIGN_STYLE = $(IOS_CODE_SIGN_STYLE)
+PROVISIONING_PROFILE_SPECIFIER = $(PROVISIONING_PROFILE_SPECIFIER)
+CODE_SIGN_IDENTITY = $(IOS_CODE_SIGN_IDENTITY)

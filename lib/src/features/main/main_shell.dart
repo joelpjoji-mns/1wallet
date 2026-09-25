@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../auth/auth_controller.dart';
 import '../../auth/auth_user.dart';
@@ -86,6 +87,7 @@ class _MainShellState extends ConsumerState<MainShell>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _pageController.dispose();
+    _selectedIndex.dispose();
     super.dispose();
   }
 
@@ -123,31 +125,22 @@ class _MainShellState extends ConsumerState<MainShell>
       child: ValueListenableBuilder<int>(
         valueListenable: _selectedIndex,
         builder: (context, selectedIndex, child) {
-          Widget mainBody = NotificationListener<ScrollNotification>(
-            onNotification: (notification) {
-              if (notification is ScrollEndNotification) {
-                final page = _pageController.page?.round() ?? 0;
-                if (_selectedIndex.value != page) {
-                  _selectedIndex.value = page;
-                }
+          Widget mainBody = PageView.builder(
+            controller: _pageController,
+            physics: const PageScrollPhysics(parent: BouncingScrollPhysics()),
+            dragStartBehavior: DragStartBehavior.down,
+            itemCount: _tabs.length,
+            onPageChanged: (index) {
+              if (_selectedIndex.value != index) {
+                _selectedIndex.value = index;
               }
-              return false;
             },
-            child: PageView.builder(
-              controller: _pageController,
-              physics: const PageScrollPhysics(parent: BouncingScrollPhysics()),
-              dragStartBehavior: DragStartBehavior.down,
-              itemCount: _tabs.length,
-              onPageChanged: (index) {
-                // Index update deferred to ScrollEndNotification to prevent mid-swipe jank.
-              },
-              itemBuilder: (context, index) {
-                return _KeepAliveWrapper(
-                  key: PageStorageKey<String>('main-shell-tab-$index'),
-                  child: _buildScreen(index),
-                );
-              },
-            ),
+            itemBuilder: (context, index) {
+              return _KeepAliveWrapper(
+                key: PageStorageKey<String>('main-shell-tab-$index'),
+                child: _buildScreen(index),
+              );
+            },
           );
 
           Widget mobileBody = Listener(
@@ -217,15 +210,14 @@ class _MainShellState extends ConsumerState<MainShell>
                     items: _tabs,
                     selectedIndex: selectedIndex,
                     onSelected: _selectTab,
-                    pageController: _pageController,
                   ),
                 ),
               ],
             ),
           );
 
-          Widget desktopBody = Container(
-            color: Theme.of(context).colorScheme.surfaceContainerLowest,
+          Widget desktopBody = ColoredBox(
+            color: Colors.transparent,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -657,7 +649,14 @@ class _DrawerPrivacyToggle extends ConsumerWidget {
                 ),
               ),
               IgnorePointer(
-                child: Switch(value: enabled, onChanged: (_) {}),
+                child: GlassSwitch(
+                  value: enabled,
+                  onChanged: (_) {},
+                  activeColor: scheme.primary,
+                  quality: GlassQuality.standard,
+                  enableHaptics: false,
+                  semanticLabel: 'Privacy mode',
+                ),
               ),
             ],
           ),

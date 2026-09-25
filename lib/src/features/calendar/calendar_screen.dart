@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
@@ -543,73 +544,84 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       state.preferences.locale,
     );
 
-    showModalBottomSheet<void>(
+    GlassModalSheet.show<void>(
       context: context,
-      showDragHandle: true,
-      constraints: const BoxConstraints(maxWidth: 640),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
+      quality: GlassQuality.standard,
+      builder: (context) => Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    DateFormat.yMMMMd(
-                      state.preferences.locale.replaceAll('_', '-'),
-                    ).format(date),
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        DateFormat.yMMMMd(
+                          state.preferences.locale.replaceAll('_', '-'),
+                        ).format(date),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const Spacer(),
+                      PrivacyText(
+                        balanceDisplay,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: balanceMinor < 0
+                                  ? Theme.of(context).colorScheme.error
+                                  : Theme.of(context).colorScheme.primary,
+                            ),
+                      ),
+                    ],
                   ),
-                  const Spacer(),
-                  PrivacyText(
-                    balanceDisplay,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: balanceMinor < 0
-                          ? Theme.of(context).colorScheme.error
-                          : Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  if (records.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.xxl,
+                      ),
+                      child: Center(
+                        child: Text(
+                          'No records on this day',
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    for (final transaction in records) ...[
+                      TransactionRow(
+                        state: state,
+                        transaction: transaction,
+                        onTap: () {
+                          if (transaction.status == 'forecast') {
+                            final templateId =
+                                transaction.originalTransactionId;
+                            if (templateId != null) {
+                              context.push('/recurring/$templateId/edit');
+                            }
+                          } else {
+                            context.push('/transaction/${transaction.id}');
+                          }
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                    ],
                 ],
               ),
-              const SizedBox(height: AppSpacing.md),
-              if (records.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
-                  child: Center(
-                    child: Text(
-                      'No records on this day',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                )
-              else
-                for (final transaction in records) ...[
-                  TransactionRow(
-                    state: state,
-                    transaction: transaction,
-                    onTap: () {
-                      if (transaction.status == 'forecast') {
-                        final templateId = transaction.originalTransactionId;
-                        if (templateId != null) {
-                          context.push('/recurring/$templateId/edit');
-                        }
-                      } else {
-                        context.push('/transaction/${transaction.id}');
-                      }
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                ],
-            ],
+            ),
           ),
         ),
       ),
@@ -702,67 +714,78 @@ class _CalendarFilterCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: active ? scheme.primaryContainer : scheme.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        onTap: onTap,
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 76),
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm,
-            vertical: AppSpacing.xs,
-          ),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            border: Border.all(
-              color: active ? scheme.primary : scheme.outlineVariant,
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      padding: EdgeInsets.zero,
+      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+      quality: GlassQuality.minimal,
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          onTap: onTap,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 76),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: AppSpacing.xs,
             ),
-          ),
-          child: Row(
-            children: [
-              IconBubble(
-                icon: icon,
-                compact: true,
-                color: active ? scheme.primary : scheme.onSurfaceVariant,
+            decoration: BoxDecoration(
+              color: active
+                  ? scheme.primaryContainer.withAlpha(100)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              border: Border.all(
+                color: active ? scheme.primary : scheme.outlineVariant,
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                    Text(
-                      value,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+            ),
+            child: Row(
+              children: [
+                IconBubble(
+                  icon: icon,
+                  compact: true,
+                  color: active ? scheme.primary : scheme.onSurfaceVariant,
                 ),
-              ),
-              Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
-            ],
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                      Text(
+                        value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ],
+            ),
           ),
         ),
       ),

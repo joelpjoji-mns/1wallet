@@ -17,7 +17,8 @@ class CaptureSettingsScreen extends StatelessWidget {
         children: [
           const SectionCard(
             title: 'Automated Capture',
-            subtitle: 'Configure automated draft creation from incoming messages and notifications.',
+            subtitle:
+                'Configure automated draft creation from incoming messages and notifications.',
             compact: true,
             child: SizedBox(),
           ),

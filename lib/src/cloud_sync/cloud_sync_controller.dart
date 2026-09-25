@@ -15,6 +15,7 @@ import '../data/ledger_models.dart';
 import '../data/ledger_providers.dart';
 import '../data/ledger_defaults.dart';
 import 'cloud_sync_metadata.dart';
+import 'cloud_sync_write_guard.dart';
 
 const uploadDebounceMs = 2500;
 const uploadCircuitBreakerMs = 30000;
@@ -262,14 +263,10 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           .get()
           .timeout(cloudSyncReadTimeout);
 
-      final lastWriterDeviceId = userDoc.data()?['lastWriterDeviceId'];
-      final cloudUpdatedAtTemp = userDoc.data()?['updatedAt'];
-      DateTime? cloudUpdatedAt;
-      if (cloudUpdatedAtTemp is Timestamp) {
-        cloudUpdatedAt = cloudUpdatedAtTemp.toDate();
-      } else if (cloudUpdatedAtTemp is String) {
-        cloudUpdatedAt = DateTime.tryParse(cloudUpdatedAtTemp);
-      }
+      final cloudState = _cloudWriteStateFromDocData(userDoc.data());
+      final lastWriterDeviceId = cloudState.lastWriterDeviceId;
+      final cloudUpdatedAt = cloudState.updatedAt;
+      final cloudRevision = cloudState.cloudRevision;
 
       final prefs = await SharedPreferences.getInstance();
       final hasUnsyncedChanges = prefs.getBool('has_unsynced_changes') ?? false;
@@ -287,10 +284,20 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
             cloudUpdatedAt != null &&
             localModifiedAt != null &&
             cloudUpdatedAt.isAfter(localModifiedAt);
+        // Stronger, revision-aware signal: if both sides know the monotonic
+        // counter and the cloud has moved past what we last observed, the
+        // cloud has data we haven't seen yet, even if timestamps/device-id
+        // heuristics are inconclusive (e.g. clock skew). Falls back to the
+        // legacy heuristics below when either side lacks `cloudRevision`
+        // (old client on either end), preserving compatibility.
+        final isCloudRevisionAhead =
+            cloudRevision != null &&
+            metadata.lastCloudRevision != null &&
+            cloudRevision > metadata.lastCloudRevision!;
 
         if (!hasUserData) {
           shouldPull = true;
-        } else if (isCloudNewer) {
+        } else if (isCloudNewer || isCloudRevisionAhead) {
           shouldPull = true;
         } else if (hasUnsyncedChanges) {
           shouldPull = false;
@@ -303,7 +310,12 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       }
 
       if (shouldPull) {
-        await _restoreFromCloud(user.id, metadata, cloudUpdatedAt);
+        await _restoreFromCloud(
+          user.id,
+          metadata,
+          cloudUpdatedAt,
+          cloudRevision,
+        );
       } else {
         await uploadSnapshot(reason: reason);
       }
@@ -345,14 +357,10 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       final userDoc = docs[1];
 
       if (prefsDoc.exists) {
-        final lastWriterDeviceId = userDoc.data()?['lastWriterDeviceId'];
-        final cloudUpdatedAtTemp = userDoc.data()?['updatedAt'];
-        DateTime? cloudUpdatedAt;
-        if (cloudUpdatedAtTemp is Timestamp) {
-          cloudUpdatedAt = cloudUpdatedAtTemp.toDate();
-        } else if (cloudUpdatedAtTemp is String) {
-          cloudUpdatedAt = DateTime.tryParse(cloudUpdatedAtTemp);
-        }
+        final cloudState = _cloudWriteStateFromDocData(userDoc.data());
+        final lastWriterDeviceId = cloudState.lastWriterDeviceId;
+        final cloudUpdatedAt = cloudState.updatedAt;
+        final cloudRevision = cloudState.cloudRevision;
 
         final hasUserData = _walletHasUserData(_ref.read(ledgerProvider));
         final prefs = await SharedPreferences.getInstance();
@@ -371,17 +379,22 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
             cloudUpdatedAt != null &&
             localModifiedAt != null &&
             cloudUpdatedAt.isAfter(localModifiedAt);
+        final isCloudRevisionAhead =
+            cloudRevision != null &&
+            metadata.lastCloudRevision != null &&
+            cloudRevision > metadata.lastCloudRevision!;
 
         final bool shouldPull =
             !hasUserData ||
             isCloudNewer ||
+            isCloudRevisionAhead ||
             (lastWriterDeviceId != null &&
                 lastWriterDeviceId != metadata.deviceId &&
                 !hasUnsyncedChanges);
 
         if (shouldPull && userDoc.exists) {
           // We have cloud data. Restore it locally.
-          await _restoreFromCloud(userId, metadata, cloudUpdatedAt);
+          await _restoreFromCloud(userId, metadata, cloudUpdatedAt, cloudRevision);
         }
 
         // Migrate rules from preferences to transactions if needed
@@ -569,16 +582,16 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         error: null,
       );
 
-      WriteBatch currentBatch = _firestore.batch();
+      final userRef = _firestore.doc('users/${user.id}');
 
-      // Update user document
-      currentBatch.set(_firestore.doc('users/${user.id}'), {
-        'email': user.email,
-        'displayName': user.displayName,
-        'authProvider': 'google',
-        'updatedAt': FieldValue.serverTimestamp(),
-        'lastWriterDeviceId': metadata.deviceId,
-      }, SetOptions(merge: true));
+      // Baseline read, taken as close to the start of this write attempt as
+      // possible: what we last observed on the cloud before building our own
+      // snapshot. The transaction below re-reads the *live* doc at commit
+      // time and aborts (writing nothing) if it no longer matches this
+      // baseline, closing the race where another writer (Flutter on another
+      // device, or the PWA) commits in between our read and our write.
+      final expectedSnap = await userRef.get().timeout(cloudSyncReadTimeout);
+      final expectedState = _cloudWriteStateFromDocData(expectedSnap.data());
 
       final encodedData = await compute(_encodeCloudSnapshotData, (
         currentLedger,
@@ -598,28 +611,74 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         chunks.add(Uint8List.fromList(compressedBytes.sublist(i, end)));
       }
 
-      // Overwrite chunks 0 to N
-      for (var i = 0; i < chunks.length; i++) {
-        currentBatch
-            .set(_firestore.doc('users/${user.id}/wallet_backups/chunk_$i'), {
-              'index': i,
-              'data': Blob(chunks[i]),
-              'updatedAt': FieldValue.serverTimestamp(),
-            });
-      }
-      // Delete any old trailing chunks left over from a previous, larger backup.
+      // Discover existing trailing chunks to prune *before* the transaction
+      // (Firestore transactions can't run collection queries, only get()
+      // individual doc refs) so we can enforce the write-count ceiling up
+      // front and pass exact doc refs into the transaction to delete.
       final existingChunksSnapshot = await _firestore
           .collection('users/${user.id}/wallet_backups')
           .get();
+      final existingChunkIndices = <int>[];
       for (final doc in existingChunksSnapshot.docs) {
         final match = RegExp(r'^chunk_(\d+)$').firstMatch(doc.id);
         final index = match != null ? int.tryParse(match.group(1)!) : null;
-        if (index != null && index >= chunks.length) {
-          currentBatch.delete(doc.reference);
-        }
+        if (index != null) existingChunkIndices.add(index);
       }
+      final staleChunkIndices = staleCloudSyncChunkIndices(
+        existingChunkIndices: existingChunkIndices,
+        newChunkCount: chunks.length,
+      );
 
-      await currentBatch.commit().timeout(cloudSyncReadTimeout);
+      ensureWithinCloudSyncWriteBudget(
+        newChunkCount: chunks.length,
+        staleChunkCount: staleChunkIndices.length,
+      );
+
+      final nextRevision = await _firestore
+          .runTransaction<int>((transaction) async {
+            final liveSnap = await transaction.get(userRef);
+            final liveState = _cloudWriteStateFromDocData(liveSnap.data());
+
+            if (hasCloudSyncConflict(
+              expected: expectedState,
+              live: liveState,
+              localDeviceId: metadata.deviceId,
+            )) {
+              throw const CloudSyncConflictException();
+            }
+
+            final revision = nextCloudRevision(liveState.cloudRevision);
+
+            transaction.set(userRef, {
+              'email': user.email,
+              'displayName': user.displayName,
+              'authProvider': 'google',
+              'updatedAt': FieldValue.serverTimestamp(),
+              'lastWriterDeviceId': metadata.deviceId,
+              'cloudRevision': revision,
+            }, SetOptions(merge: true));
+
+            for (var i = 0; i < chunks.length; i++) {
+              transaction.set(
+                _firestore.doc('users/${user.id}/wallet_backups/chunk_$i'),
+                {
+                  'index': i,
+                  'data': Blob(chunks[i]),
+                  'updatedAt': FieldValue.serverTimestamp(),
+                },
+              );
+            }
+            for (final index in staleChunkIndices) {
+              transaction.delete(
+                _firestore.doc(
+                  'users/${user.id}/wallet_backups/chunk_$index',
+                ),
+              );
+            }
+
+            return revision;
+          })
+          .timeout(cloudSyncReadTimeout);
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('has_unsynced_changes', false);
@@ -628,6 +687,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       metadata = metadata.copyWith(
         userId: user.id,
         lastPushedAt: now,
+        lastCloudRevision: nextRevision,
         // We no longer track individual synced IDs since the whole blob is synced
         syncedDocumentHashes: {},
       );
@@ -636,7 +696,27 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       _uploadFailureCount = 0;
       _uploadCircuitOpenUntil = 0;
       state = state.copyWith(phase: CloudSyncPhase.idle, metadata: metadata);
-      debugPrint('uploadSnapshot: completed successfully!');
+      debugPrint('uploadSnapshot: completed successfully! revision=$nextRevision');
+    } on CloudSyncConflictException catch (e) {
+      debugPrint('uploadSnapshot: conflict detected ($e), re-checking cloud state');
+      // Do not treat this as a transient failure (no circuit-breaker bump,
+      // no blind retry of the same now-stale snapshot): re-run the full
+      // pull-vs-push decision against the current cloud state instead.
+      state = state.copyWith(
+        pendingUpload: false,
+        phase: CloudSyncPhase.error,
+        error: '$e',
+      );
+      unawaited(fullSync(reason: 'conflict-recheck'));
+    } on CloudSyncOversizeException catch (e) {
+      debugPrint('uploadSnapshot: oversize snapshot ($e)');
+      // Retrying automatically cannot fix this; surface it distinctly and
+      // don't schedule another attempt until the underlying data shrinks.
+      state = state.copyWith(
+        pendingUpload: false,
+        phase: CloudSyncPhase.error,
+        error: '$e',
+      );
     } on TimeoutException catch (e) {
       debugPrint('uploadSnapshot: timeout exception, fetching actual error...');
       _uploadFailureCount++;
@@ -676,6 +756,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     String userId,
     CloudSyncMetadata currentMetadata, [
     DateTime? cloudUpdatedAt,
+    int? cloudRevision,
   ]) async {
     state = state.copyWith(phase: CloudSyncPhase.restoring);
     try {
@@ -793,6 +874,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       final newMetadata = currentMetadata.copyWith(
         userId: userId,
         lastPulledAt: DateTime.now().toIso8601String(),
+        lastCloudRevision: cloudRevision ?? currentMetadata.lastCloudRevision,
         syncedDocumentHashes: {},
         syncIntervalHours: restoredInterval,
       );
@@ -882,6 +964,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
     final lastWriterDeviceId = snapshot.data()?['lastWriterDeviceId'];
     final cloudUpdatedAtTemp = snapshot.data()?['updatedAt'];
+    final cloudRevision = snapshot.data()?['cloudRevision'] as int?;
     DateTime? cloudUpdatedAt;
     if (cloudUpdatedAtTemp is Timestamp) {
       cloudUpdatedAt = cloudUpdatedAtTemp.toDate();
@@ -910,7 +993,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
     if (shouldPull && snapshot.exists) {
       debugPrint('Real-time sync: Cloud update detected. Pulling changes...');
-      await _restoreFromCloud(user.id, metadata, cloudUpdatedAt);
+      await _restoreFromCloud(user.id, metadata, cloudUpdatedAt, cloudRevision);
     }
   }
 
@@ -920,6 +1003,27 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     _cancelTimers();
     super.dispose();
   }
+}
+
+/// Builds a [CloudWriteState] from a `users/{uid}` document's raw data,
+/// tolerating both the legacy string-encoded `updatedAt` and the current
+/// server [Timestamp], and a missing/absent `cloudRevision` (old clients).
+CloudWriteState _cloudWriteStateFromDocData(Map<String, dynamic>? data) {
+  if (data == null) return CloudWriteState.unknown;
+
+  DateTime? updatedAt;
+  final updatedAtRaw = data['updatedAt'];
+  if (updatedAtRaw is Timestamp) {
+    updatedAt = updatedAtRaw.toDate();
+  } else if (updatedAtRaw is String) {
+    updatedAt = DateTime.tryParse(updatedAtRaw);
+  }
+
+  return CloudWriteState(
+    cloudRevision: data['cloudRevision'] as int?,
+    updatedAt: updatedAt,
+    lastWriterDeviceId: data['lastWriterDeviceId'] as String?,
+  );
 }
 
 LedgerState _parseCloudRestoreData(Map<String, dynamic> data) {

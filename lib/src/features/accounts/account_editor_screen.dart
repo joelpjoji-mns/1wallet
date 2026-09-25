@@ -270,25 +270,25 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                         ),
                   icon: Icons.account_balance_wallet_outlined,
                 ),
-                LiquidGlassSwitchListTile(
+                AppSwitchListTile(
                   value: _includeInTotals,
                   onChanged: (value) =>
                       setState(() => _includeInTotals = value),
                   title: const Text('Include in totals'),
                 ),
-                LiquidGlassSwitchListTile(
+                AppSwitchListTile(
                   value: _includeInReports,
                   onChanged: (value) =>
                       setState(() => _includeInReports = value),
                   title: const Text('Include in reports'),
                 ),
-                LiquidGlassSwitchListTile(
+                AppSwitchListTile(
                   value: _includeInNetWorth,
                   onChanged: (value) =>
                       setState(() => _includeInNetWorth = value),
                   title: const Text('Include in net worth'),
                 ),
-                LiquidGlassSwitchListTile(
+                AppSwitchListTile(
                   value: _showOnHome,
                   onChanged: (value) => setState(() => _showOnHome = value),
                   title: const Text('Show on home'),

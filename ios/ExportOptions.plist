@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Template used by "flutter build ipa" with the export-options-plist flag
+  and by .github/workflows/ios-release.yml.
+
+  Manual signing is used because CI runs on a fresh, headless macOS runner with
+  no signed-in Apple ID session, so Xcode's automatic provisioning-update flow
+  cannot silently authenticate. Instead, the workflow imports a distribution
+  certificate and downloads a matching provisioning profile via the App Store
+  Connect API (apple-actions/import-codesign-certs, apple-actions/download-
+  provisioning-profiles) before building, then substitutes the real values
+  below into a generated copy at build time. This committed template (with
+  REPLACE_* placeholders) is never edited by CI and contains no secrets.
+-->
+<plist version="1.0">
+<dict>
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>teamID</key>
+	<string>REPLACE_WITH_APPLE_TEAM_ID</string>
+	<key>signingStyle</key>
+	<string>manual</string>
+	<key>signingCertificate</key>
+	<string>Apple Distribution</string>
+	<key>provisioningProfiles</key>
+	<dict>
+		<key>com.joelpjoji.one.wallet</key>
+		<string>REPLACE_WITH_PROVISIONING_PROFILE_NAME</string>
+	</dict>
+	<key>uploadSymbols</key>
+	<true/>
+</dict>
+</plist>

@@ -213,7 +213,6 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
             title: 'Current summary',
             child: Column(
               children: [
-
                 InfoRow(
                   label: 'Capture candidates',
                   value: '${state.captureCandidates.length}',

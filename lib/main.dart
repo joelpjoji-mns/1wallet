@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/app/one_wallet_app.dart';
@@ -15,6 +16,7 @@ import 'src/theme/theme_controller.dart';
 Future<void> main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: binding);
+  final glassWarmup = LiquidGlassWidgets.initialize();
   final sharedPreferencesWarmup = SharedPreferences.getInstance();
   final dateFormattingWarmup = initializeDateFormatting();
   final notificationWarmup = NotificationService.initialize();
@@ -38,6 +40,7 @@ Future<void> main() async {
     sharedPreferencesWarmup,
     dateFormattingWarmup,
     notificationWarmup,
+    glassWarmup,
   ]);
   final prefs = await SharedPreferences.getInstance();
   runApp(

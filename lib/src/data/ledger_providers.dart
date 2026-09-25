@@ -922,11 +922,10 @@ class LedgerController extends StateNotifier<LedgerState> {
   }
 
   Future<void> deleteAccount(String id) async {
-    final isUsed =
-        state.transactions.any(
-          (transaction) =>
-              transaction.accountId == id || transaction.counterAccountId == id,
-        );
+    final isUsed = state.transactions.any(
+      (transaction) =>
+          transaction.accountId == id || transaction.counterAccountId == id,
+    );
 
     // Pause any active scheduled transactions connected to this account
     final transactions = state.transactions.map((transaction) {
@@ -1020,10 +1019,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     );
     final hasChildren = state.categories.any((c) => c.parentId == id);
     final isUsed =
-        isUsedInTx ||
-        isUsedInRules ||
-        isUsedInCaptures ||
-        hasChildren;
+        isUsedInTx || isUsedInRules || isUsedInCaptures || hasChildren;
 
     if (isUsed) {
       final categories = [
@@ -1446,7 +1442,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     Iterable<CaptureCandidate> additionalCandidates = const [],
   }) {
     final actualReceivedAt = receivedAt ?? DateTime.now();
-    
+
     for (final pattern in state.preferences.smsBlockPatterns) {
       if (pattern.trim().isEmpty) continue;
       try {
@@ -1662,8 +1658,6 @@ class LedgerController extends StateNotifier<LedgerState> {
     return removed;
   }
 
-
-
   Future<void> addEnabledCurrency(String currency) async {
     final normalized = currency.trim().toUpperCase();
     if (normalized.isEmpty) return;
@@ -1766,8 +1760,7 @@ class LedgerController extends StateNotifier<LedgerState> {
 
       // Pause any scheduled EMI transactions linked to this loan
       transactions = transactions.map((tx) {
-        if ((tx.accountId == account.id ||
-                tx.counterAccountId == account.id) &&
+        if ((tx.accountId == account.id || tx.counterAccountId == account.id) &&
             tx.status == 'scheduled') {
           return tx.copyWith(status: 'paused');
         }
@@ -1976,7 +1969,24 @@ LedgerPreferences _preferencesRememberingCategory(
   String? merchant,
   String? categoryId,
 ) {
-  return state.preferences;
+  final merchantKey = _merchantCategoryRuleKey(merchant);
+  final category = categoryById(state, categoryId);
+  if (merchantKey == null || category == null || category.isArchived) {
+    return state.preferences;
+  }
+
+  final rules = {
+    for (final entry in state.preferences.merchantCategoryRules.entries)
+      if (_merchantCategoryRuleKey(entry.key) != merchantKey)
+        entry.key: entry.value,
+    merchantKey: category.id,
+  };
+  return state.preferences.copyWith(merchantCategoryRules: rules);
+}
+
+String? _merchantCategoryRuleKey(String? merchant) {
+  final key = merchant?.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+  return key == null || key.isEmpty ? null : key;
 }
 
 TransactionRecord? _transactionById(LedgerState state, String id) {
@@ -2043,6 +2053,25 @@ _CategorySuggestion? _suggestCategory(
   final normalized = name?.trim().toLowerCase();
 
   if (normalized != null && normalized.isNotEmpty) {
+    final merchantKey = isMerchant
+        ? _merchantCategoryRuleKey(normalized)
+        : null;
+    if (merchantKey != null) {
+      for (final entry in state.preferences.merchantCategoryRules.entries) {
+        if (_merchantCategoryRuleKey(entry.key) != merchantKey) continue;
+        final learnedCategory = categoryById(state, entry.value);
+        if (learnedCategory != null &&
+            !learnedCategory.isArchived &&
+            learnedCategory.kind == kind) {
+          return _CategorySuggestion(
+            category: learnedCategory,
+            confidence: 0.95,
+            reason: 'Learned merchant category',
+          );
+        }
+      }
+    }
+
     // 2. Check previous transactions for exact or partial name match
     // to find the most recently used category for this merchant.
     for (final tx in state.transactions) {
@@ -2345,12 +2374,18 @@ String? _matchAccountToSms(LedgerState state, ParsedTransactionMessage parsed) {
     // If the SMS explicitly mentions "card" and the account type is "card",
     // or mentions "a/c" / "account" and the type is "bank", boost slightly.
     if (account.type == 'card' &&
-        RegExp(r'\b(card|credit\s*card|debit\s*card)\b', caseSensitive: false)
-            .hasMatch(parsed.rawText)) {
+        RegExp(
+          r'\b(card|credit\s*card|debit\s*card)\b',
+          caseSensitive: false,
+        ).hasMatch(parsed.rawText)) {
       score += 10;
-    } else if ((account.type == 'bank' || account.type == 'savings' || account.type == 'checking') &&
-        RegExp(r'\b(a/c|acct|account|savings|checking)\b', caseSensitive: false)
-            .hasMatch(parsed.rawText)) {
+    } else if ((account.type == 'bank' ||
+            account.type == 'savings' ||
+            account.type == 'checking') &&
+        RegExp(
+          r'\b(a/c|acct|account|savings|checking)\b',
+          caseSensitive: false,
+        ).hasMatch(parsed.rawText)) {
       score += 10;
     }
 
@@ -2381,7 +2416,6 @@ bool _digitsSuffixMatch(String? accountDigits, String smsDigits) {
   // Either one is a suffix of the other
   return a.endsWith(s) || s.endsWith(a);
 }
-
 
 String _rowSignature(
   ParsedWalletCsvRow row,

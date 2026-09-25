@@ -5,6 +5,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugins.firebase.firestore.FlutterFirebaseFirestorePlugin
 import io.flutter.plugin.common.MethodChannel
 import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
 import android.provider.Telephony
 import android.net.Uri
 import android.os.Bundle
@@ -21,8 +22,10 @@ import java.io.ByteArrayOutputStream
 
 class MainActivity : FlutterFragmentActivity() {
 	private val CHANNEL = "com.joelpjoji.one.wallet/sms"
+	private val SMS_PERMISSION_REQUEST_CODE = 100
     private var initialRoute: String? = null
     private var methodChannel: MethodChannel? = null
+    private var pendingPermissionResult: MethodChannel.Result? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,8 +62,22 @@ class MainActivity : FlutterFragmentActivity() {
 					result.success(mapOf("read" to read, "receive" to receive))
 				}
 				"requestPermissions" -> {
-					requestPermissions(arrayOf(android.Manifest.permission.READ_SMS, android.Manifest.permission.RECEIVE_SMS), 100)
-					result.success("granted") // Simplified for now
+					val readGranted = checkSelfPermission(android.Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
+					val receiveGranted = checkSelfPermission(android.Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
+					if (readGranted && receiveGranted) {
+						// Already granted: no system prompt needed, report truthfully now.
+						result.success("granted")
+					} else if (pendingPermissionResult != null) {
+						// Avoid dropping a caller's result if a request is already in flight.
+						result.error("PENDING", "A permission request is already in progress", null)
+					} else {
+						pendingPermissionResult = result
+						ActivityCompat.requestPermissions(
+							this,
+							arrayOf(android.Manifest.permission.READ_SMS, android.Manifest.permission.RECEIVE_SMS),
+							SMS_PERMISSION_REQUEST_CODE
+						)
+					}
 				}
 				"readInbox" -> {
 					try {
@@ -153,6 +170,19 @@ class MainActivity : FlutterFragmentActivity() {
 				}
 				else -> result.notImplemented()
 			}
+		}
+	}
+
+	override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+		super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+		if (requestCode == SMS_PERMISSION_REQUEST_CODE) {
+			val pending = pendingPermissionResult
+			pendingPermissionResult = null
+			// Re-check via checkSelfPermission rather than trusting grantResults ordering,
+			// so the reported state always reflects the actual permission state.
+			val readGranted = checkSelfPermission(android.Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
+			val receiveGranted = checkSelfPermission(android.Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
+			pending?.success(if (readGranted && receiveGranted) "granted" else "denied")
 		}
 	}
 

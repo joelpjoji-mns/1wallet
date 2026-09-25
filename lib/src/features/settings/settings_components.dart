@@ -250,7 +250,7 @@ class SettingsPreferencesSection extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           const Divider(height: 1),
-          LiquidGlassSwitchListTile(
+          AppSwitchListTile(
             contentPadding: EdgeInsets.zero,
             value: preferences.hideSkippedInHistory,
             onChanged: onHideSkippedChanged,

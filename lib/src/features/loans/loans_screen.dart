@@ -8,6 +8,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../common/route_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -490,7 +491,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                 onTap: () => _showSourceAccountPicker(state),
               ),
               const SizedBox(height: AppSpacing.sm),
-              LiquidGlassSwitchListTile(
+              AppSwitchListTile(
                 title: const Text('Hide interest in main ledger'),
                 value: _hideInterestInLedger,
                 onChanged: (value) =>
@@ -815,97 +816,86 @@ class LoanDetailView extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Card(
-          elevation: 0,
-          color: Theme.of(context).colorScheme.surfaceContainerLow,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            side: BorderSide(
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    IconBubble(
-                      icon: Icons.account_balance_rounded,
-                      color: Theme.of(context).colorScheme.primary,
-                      compact: true,
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            loan.name,
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w800),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${accountTypeLabel(loan.type).toUpperCase()} ACCOUNT',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
+        GlassCard(
+          margin: EdgeInsets.zero,
+          padding: EdgeInsets.zero,
+          shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+          quality: GlassQuality.standard,
+          child: Material(
+            color: Colors.transparent,
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      IconBubble(
+                        icon: Icons.account_balance_rounded,
+                        color: Theme.of(context).colorScheme.primary,
+                        compact: true,
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              loan.name,
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w800),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Flexible(
-                      child: PrivacyText(
-                        formatMoney(
-                          balance.copyWith(
-                            amountMinor: balance.amountMinor.abs(),
-                          ),
-                          state.preferences.locale,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                if (details.principal != null) ...[
-                  const SizedBox(height: AppSpacing.lg),
-                  Builder(
-                    builder: (context) {
-                      final principal = details.principal!.amountMinor.abs();
-                      final remaining = balance.amountMinor.abs();
-                      final paid = (principal - remaining).clamp(0, principal);
-                      final progress = principal > 0
-                          ? (paid / principal).clamp(0.0, 1.0)
-                          : 0.0;
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              PrivacyText(
-                                'Paid: ${formatMoney(Money(amountMinor: paid, currency: loan.currency), state.preferences.locale)}',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${accountTypeLabel(loan.type).toUpperCase()} ACCOUNT',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                               ),
-                              if (projection.monthsRemaining != null)
-                                Text(
-                                  '${projection.monthsRemaining} mos left',
+                            ),
+                          ],
+                        ),
+                      ),
+                      Flexible(
+                        child: PrivacyText(
+                          formatMoney(
+                            balance.copyWith(
+                              amountMinor: balance.amountMinor.abs(),
+                            ),
+                            state.preferences.locale,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (details.principal != null) ...[
+                    const SizedBox(height: AppSpacing.lg),
+                    Builder(
+                      builder: (context) {
+                        final principal = details.principal!.amountMinor.abs();
+                        final remaining = balance.amountMinor.abs();
+                        final paid = (principal - remaining).clamp(
+                          0,
+                          principal,
+                        );
+                        final progress = principal > 0
+                            ? (paid / principal).clamp(0.0, 1.0)
+                            : 0.0;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                PrivacyText(
+                                  'Paid: ${formatMoney(Money(amountMinor: paid, currency: loan.currency), state.preferences.locale)}',
                                   style: TextStyle(
                                     fontSize: 13,
                                     color: Theme.of(
@@ -914,24 +904,36 @@ class LoanDetailView extends ConsumerWidget {
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          LinearProgressIndicator(
-                            value: progress,
-                            minHeight: 8,
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.surfaceContainerHighest,
-                            color: Theme.of(context).colorScheme.primary,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
+                                if (projection.monthsRemaining != null)
+                                  Text(
+                                    '${projection.monthsRemaining} mos left',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            LinearProgressIndicator(
+                              value: progress,
+                              minHeight: 8,
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
+                              color: Theme.of(context).colorScheme.primary,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -1144,179 +1146,179 @@ class _LoanCompactCard extends StatelessWidget {
       locale: state.preferences.locale,
     );
 
-    return Card(
-      elevation: 0,
+    return GlassCard(
       margin: EdgeInsets.zero,
-      color: scheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        side: BorderSide(color: scheme.outlineVariant),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: 12,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      loan.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
+      padding: EdgeInsets.zero,
+      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+      quality: GlassQuality.minimal,
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: 12,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        loan.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w900),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Icon(status.icon, color: status.color, size: 26),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _RoundTileIcon(
-                    icon: accountIcon(loan),
-                    color: loan.color ?? scheme.primary,
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          primaryTitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          cadenceSummary,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: scheme.onSurfaceVariant,
-                            fontSize: 13,
-                          ),
-                        ),
-                        if (tertiaryLine != null) ...[
-                          const SizedBox(height: 6),
+                    const SizedBox(width: AppSpacing.sm),
+                    Icon(status.icon, color: status.color, size: 26),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _RoundTileIcon(
+                      icon: accountIcon(loan),
+                      color: loan.color ?? scheme.primary,
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            tertiaryLine,
+                            primaryTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            cadenceSummary,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: scheme.onSurfaceVariant,
-                              fontStyle: FontStyle.italic,
                               fontSize: 13,
                             ),
                           ),
-                        ],
-                        if (mode == 'past') ...[
-                          const SizedBox(height: 6),
-                          Text(
-                            projection.payoffLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: scheme.primary,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      PrivacyText(
-                        rightAmountText,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: mode == 'past'
-                                  ? scheme.onSurface
-                                  : scheme.error,
-                            ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        status.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: status.color,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              if (details.principal != null) ...[
-                const SizedBox(height: AppSpacing.md),
-                Builder(
-                  builder: (context) {
-                    final principal = details.principal!.amountMinor.abs();
-                    final remaining = balance.amountMinor.abs();
-                    final paid = (principal - remaining).clamp(0, principal);
-                    final progress = principal > 0
-                        ? (paid / principal).clamp(0.0, 1.0)
-                        : 0.0;
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            PrivacyText(
-                              'Paid: ${formatMoney(Money(amountMinor: paid, currency: loan.currency), state.preferences.locale)}',
+                          if (tertiaryLine != null) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              tertiaryLine,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 12,
                                 color: scheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w600,
+                                fontStyle: FontStyle.italic,
+                                fontSize: 13,
                               ),
                             ),
-                            if (projection.monthsRemaining != null)
-                              Text(
-                                '${projection.monthsRemaining} mos left',
+                          ],
+                          if (mode == 'past') ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              projection.payoffLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: scheme.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        PrivacyText(
+                          rightAmountText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                color: mode == 'past'
+                                    ? scheme.onSurface
+                                    : scheme.error,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          status.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: status.color,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                if (details.principal != null) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  Builder(
+                    builder: (context) {
+                      final principal = details.principal!.amountMinor.abs();
+                      final remaining = balance.amountMinor.abs();
+                      final paid = (principal - remaining).clamp(0, principal);
+                      final progress = principal > 0
+                          ? (paid / principal).clamp(0.0, 1.0)
+                          : 0.0;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              PrivacyText(
+                                'Paid: ${formatMoney(Money(amountMinor: paid, currency: loan.currency), state.preferences.locale)}',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: scheme.onSurfaceVariant,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        LinearProgressIndicator(
-                          value: progress,
-                          backgroundColor: scheme.surfaceContainerHighest,
-                          color: scheme.primary,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ],
-                    );
-                  },
-                ),
+                              if (projection.monthsRemaining != null)
+                                Text(
+                                  '${projection.monthsRemaining} mos left',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: scheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          LinearProgressIndicator(
+                            value: progress,
+                            backgroundColor: scheme.surfaceContainerHighest,
+                            color: scheme.primary,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -2343,8 +2345,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
           0;
       final frequency =
           emiTx?.recurrenceFrequency ?? details.recurrenceFrequency;
-      final interval =
-          emiTx?.recurrenceInterval ?? details.recurrenceInterval;
+      final interval = emiTx?.recurrenceInterval ?? details.recurrenceInterval;
 
       double monthlyMultiplier = 1.0;
       if (frequency == 'yearly') {
@@ -2657,11 +2658,8 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
           child: ReorderableListView(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            onReorder: (oldIndex, newIndex) {
+            onReorderItem: (oldIndex, newIndex) {
               setState(() {
-                if (oldIndex < newIndex) {
-                  newIndex -= 1;
-                }
                 final item = _priorityLoans.removeAt(oldIndex);
                 _priorityLoans.insert(newIndex, item);
               });
@@ -2971,10 +2969,8 @@ _LoanProjection _loanProjection(LedgerState state, Account loan) {
       details.repaymentAmount?.amountMinor.abs() ??
       emiTx?.amount.amountMinor.abs() ??
       0;
-  final frequency =
-      emiTx?.recurrenceFrequency ?? details.recurrenceFrequency;
-  final interval =
-      emiTx?.recurrenceInterval ?? details.recurrenceInterval;
+  final frequency = emiTx?.recurrenceFrequency ?? details.recurrenceFrequency;
+  final interval = emiTx?.recurrenceInterval ?? details.recurrenceInterval;
 
   double monthlyMultiplier = 1.0;
   if (frequency == 'yearly') {

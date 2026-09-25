@@ -1,9 +1,15 @@
-import type { User } from 'firebase/auth';
-import { onAuthStateChanged, signInWithPopup } from 'firebase/auth';
 import type { LucideIcon } from 'lucide-react';
-import { Bell, Calendar, LayoutDashboard, LineChart, LogIn, Receipt, Search, Wallet } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { auth, googleProvider } from './firebase';
+import { Calendar, LayoutDashboard, LineChart, LogIn, LogOut, Receipt, Wallet } from 'lucide-react';
+import { useState } from 'react';
+import { signInWithPopup } from 'firebase/auth';
+import { auth, googleProvider } from './lib/firebase';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { WalletDataProvider, useWalletData } from './context/WalletDataContext';
+import { AccountsPage } from './pages/AccountsPage';
+import { CalendarPage } from './pages/CalendarPage';
+import { HistoryPage } from './pages/HistoryPage';
+import { HomePage } from './pages/HomePage';
+import { PlannerPage } from './pages/PlannerPage';
 
 type SectionId = 'home' | 'history' | 'calendar' | 'planner' | 'accounts';
 
@@ -23,11 +29,19 @@ const navItems: NavItem[] = [
 ];
 
 function LoginScreen() {
+  const [signingIn, setSigningIn] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const handleLogin = async () => {
+    setSigningIn(true);
+    setError(null);
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (e) {
       console.error(e);
+      setError('Sign-in was cancelled or failed. Please try again.');
+    } finally {
+      setSigningIn(false);
     }
   };
 
@@ -39,22 +53,46 @@ function LoginScreen() {
         </div>
         <h1 style={{ fontSize: '28px', marginBottom: '8px' }}>1Wallet Web</h1>
         <p style={{ color: 'var(--text-muted)', marginBottom: '32px' }}>Sign in to access your dashboard</p>
-        <button className="btn-primary" onClick={handleLogin} style={{ width: '100%' }}>
-          <LogIn size={20} /> Continue with Google
+        <button className="btn-primary" onClick={handleLogin} disabled={signingIn} style={{ width: '100%' }}>
+          <LogIn size={20} /> {signingIn ? 'Signing in…' : 'Continue with Google'}
         </button>
+        {error && <p style={{ color: '#f87171', marginTop: 16, fontSize: 14 }}>{error}</p>}
       </div>
     </div>
   );
 }
 
-function Sidebar({ activeSection, onSectionChange }: { activeSection: SectionId; onSectionChange: (section: SectionId) => void }) {
+function SyncBadge() {
+  const { phase, error } = useWalletData();
+  if (phase === 'error' || phase === 'conflict') {
+    return <span className="sync-badge sync-badge--error">{error ?? 'Sync issue'}</span>;
+  }
+  if (phase === 'loading' || phase === 'saving') {
+    return <span className="sync-badge">{phase === 'loading' ? 'Loading…' : 'Syncing…'}</span>;
+  }
+  return <span className="sync-badge sync-badge--ok">Synced</span>;
+}
+
+function Sidebar({
+  activeSection,
+  onSectionChange,
+}: {
+  activeSection: SectionId;
+  onSectionChange: (section: SectionId) => void;
+}) {
+  const { user, signOutUser } = useAuth();
+
   return (
     <div className="sidebar">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '40px', padding: '0 16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', padding: '0 16px' }}>
         <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Wallet size={24} color="white" />
         </div>
         <h2 style={{ fontSize: '20px', fontWeight: 800 }}>1Wallet</h2>
+      </div>
+
+      <div style={{ padding: '0 16px', marginBottom: '20px' }}>
+        <SyncBadge />
       </div>
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -75,14 +113,17 @@ function Sidebar({ activeSection, onSectionChange }: { activeSection: SectionId;
       <div style={{ marginTop: 'auto', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--glass)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontWeight: 'bold' }}>{auth.currentUser?.displayName?.[0] || 'U'}</span>
+            <span style={{ fontWeight: 'bold' }}>{user?.displayName?.[0] || 'U'}</span>
           </div>
           <div style={{ flex: 1, overflow: 'hidden' }}>
             <div style={{ fontWeight: 600, fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {auth.currentUser?.displayName || 'User'}
+              {user?.displayName || 'User'}
             </div>
             <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>My Wallet</div>
           </div>
+          <button className="icon-btn" onClick={() => void signOutUser()} aria-label="Sign out" title="Sign out">
+            <LogOut size={18} />
+          </button>
         </div>
       </div>
     </div>
@@ -110,116 +151,41 @@ function HomeBottomIsland({ activeSection, onSectionChange }: { activeSection: S
   );
 }
 
-function Dashboard() {
-  return (
-    <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-        <div>
-          <h1 style={{ fontSize: '28px', fontWeight: 800 }}>Overview</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Welcome back! Here's your financial summary.</p>
-        </div>
-        <div style={{ display: 'flex', gap: '16px' }}>
-          <button style={{ background: 'var(--glass)', border: '1px solid var(--border)', color: 'white', width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-            <Search size={20} />
-          </button>
-          <button style={{ background: 'var(--glass)', border: '1px solid var(--border)', color: 'white', width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-            <Bell size={20} />
-          </button>
-        </div>
-      </header>
-
-      <div className="dashboard-grid">
-        <div className="glass-card" style={{ gridColumn: '1 / -1', background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(30, 41, 59, 0.8))' }}>
-          <h3 style={{ color: 'var(--text-muted)', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Total Balance</h3>
-          <div className="stat-value">$12,450.00</div>
-          <p style={{ color: '#4ade80', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            ↑ $450.00 (3.2%) this month
-          </p>
-        </div>
-
-        <div className="glass-card">
-          <h3 style={{ color: 'var(--text-muted)', fontSize: '14px', fontWeight: 600, marginBottom: '16px' }}>Recent Transactions</h3>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {[1, 2, 3].map(i => (
-              <div key={i} className="transaction-row">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--glass)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Receipt size={20} color="var(--primary)" />
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 600 }}>Groceries</div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Credit Card • Today</div>
-                  </div>
-                </div>
-                <div style={{ fontWeight: 600 }}>-$84.20</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="glass-card">
-          <h3 style={{ color: 'var(--text-muted)', fontSize: '14px', fontWeight: 600, marginBottom: '16px' }}>Top Categories</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
-                <span>Housing</span>
-                <span style={{ fontWeight: 600 }}>$1,200.00</span>
-              </div>
-              <div style={{ height: 6, background: 'var(--glass)', borderRadius: 3, overflow: 'hidden' }}>
-                <div style={{ width: '45%', height: '100%', background: 'var(--primary)', borderRadius: 3 }} />
-              </div>
-            </div>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
-                <span>Food & Dining</span>
-                <span style={{ fontWeight: 600 }}>$450.00</span>
-              </div>
-              <div style={{ height: 6, background: 'var(--glass)', borderRadius: 3, overflow: 'hidden' }}>
-                <div style={{ width: '25%', height: '100%', background: '#f59e0b', borderRadius: 3 }} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PlaceholderScreen({ item }: { item: NavItem }) {
-  return (
-    <div className="section-panel">
-      <header className="section-header">
-        <div>
-          <h1>{item.name}</h1>
-          <p>{item.description}</p>
-        </div>
-      </header>
-
-      <div className="glass-card placeholder-card">
-        <div className="placeholder-icon">
-          <item.icon size={28} />
-        </div>
-        <div>
-          <h2>{item.name} workspace</h2>
-          <p>The sidebar now keeps this shell in place and swaps only the middle content.</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function App() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+function Workspace() {
   const [activeSection, setActiveSection] = useState<SectionId>('home');
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+  const content = (() => {
+    switch (activeSection) {
+      case 'home':
+        return <HomePage />;
+      case 'history':
+        return <HistoryPage />;
+      case 'calendar':
+        return <CalendarPage />;
+      case 'planner':
+        return <PlannerPage />;
+      case 'accounts':
+        return <AccountsPage />;
+      default:
+        return null;
+    }
+  })();
+
+  return (
+    <WalletDataProvider>
+      <div className="app-container">
+        <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
+        <main className={`main-content ${activeSection === 'home' ? 'with-home-island' : ''}`}>{content}</main>
+        {activeSection === 'home' ? (
+          <HomeBottomIsland activeSection={activeSection} onSectionChange={setActiveSection} />
+        ) : null}
+      </div>
+    </WalletDataProvider>
+  );
+}
+
+function AppShell() {
+  const { user, loading } = useAuth();
 
   if (loading) {
     return <div className="login-container">Loading...</div>;
@@ -229,18 +195,14 @@ function App() {
     return <LoginScreen />;
   }
 
-  const activeNavItem = navItems.find(item => item.id === activeSection) ?? navItems[0]!;
+  return <Workspace />;
+}
 
+function App() {
   return (
-    <div className="app-container">
-      <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
-      <main className={`main-content ${activeSection === 'home' ? 'with-home-island' : ''}`}>
-        {activeSection === 'home' ? <Dashboard /> : <PlaceholderScreen item={activeNavItem} />}
-      </main>
-      {activeSection === 'home' ? (
-        <HomeBottomIsland activeSection={activeSection} onSectionChange={setActiveSection} />
-      ) : null}
-    </div>
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
   );
 }
 

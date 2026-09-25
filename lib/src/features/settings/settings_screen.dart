@@ -11,7 +11,6 @@ import '../../theme/theme_controller.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/color_picker_dialog.dart';
 import '../common/full_screen_picker.dart';
-import '../../widgets/bottom_island_nav.dart';
 import 'settings_components.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -260,229 +259,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const Gap(AppSpacing.lg),
 
-          // ── Liquid Glass Appearance ──
-          SectionCard(
-            title: 'Liquid glass appearance',
-            subtitle: 'Configure the glassmorphism blur and opacity levels.',
-            child: Column(
-              children: [
-                const Gap(AppSpacing.md),
-                // Liquid Glass Preview
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadii.lg),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                        height: 140,
-                        width: double.infinity,
-                        color: theme.colorScheme.surface,
-                        child: ListView(
-                          physics: const NeverScrollableScrollPhysics(),
-                          padding: const EdgeInsets.all(AppSpacing.md),
-                          children: [
-                            Container(
-                              height: 60,
-                              margin: const EdgeInsets.only(
-                                bottom: AppSpacing.sm,
-                              ),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.surfaceContainer,
-                                borderRadius: BorderRadius.circular(
-                                  AppRadii.md,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  const SizedBox(width: 16),
-                                  CircleAvatar(
-                                    backgroundColor: theme.colorScheme.primary
-                                        .withAlphaFactor(0.2),
-                                    radius: 16,
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Container(
-                                        height: 10,
-                                        width: 100,
-                                        color: theme.colorScheme.onSurface
-                                            .withAlphaFactor(0.2),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Container(
-                                        height: 8,
-                                        width: 60,
-                                        color: theme.colorScheme.onSurface
-                                            .withAlphaFactor(0.1),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              height: 60,
-                              margin: const EdgeInsets.only(
-                                bottom: AppSpacing.sm,
-                              ),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.surfaceContainer,
-                                borderRadius: BorderRadius.circular(
-                                  AppRadii.md,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  const SizedBox(width: 16),
-                                  CircleAvatar(
-                                    backgroundColor: theme.colorScheme.error
-                                        .withAlphaFactor(0.2),
-                                    radius: 16,
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Container(
-                                        height: 10,
-                                        width: 120,
-                                        color: theme.colorScheme.onSurface
-                                            .withAlphaFactor(0.2),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Container(
-                                        height: 8,
-                                        width: 50,
-                                        color: theme.colorScheme.onSurface
-                                            .withAlphaFactor(0.1),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              height: 60,
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.surfaceContainer,
-                                borderRadius: BorderRadius.circular(
-                                  AppRadii.md,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        child: BottomIslandNavBar(
-                          items: const [
-                            IslandTabItem(
-                              title: 'Home',
-                              icon: Icons.grid_view,
-                              activeIcon: Icons.grid_view_rounded,
-                            ),
-                            IslandTabItem(
-                              title: 'Records',
-                              icon: Icons.receipt_long_outlined,
-                              activeIcon: Icons.receipt_long_rounded,
-                            ),
-
-                            IslandTabItem(
-                              title: 'Accounts',
-                              icon: Icons.account_balance_wallet_outlined,
-                              activeIcon: Icons.account_balance_wallet,
-                            ),
-                          ],
-                          selectedIndex: 0,
-                          onSelected: (i) {},
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Gap(AppSpacing.lg),
-                _SliderRow(
-                  label: 'Specular opacity',
-                  value: state.preferences.glassSpecularOpacity,
-                  min: 0.0,
-                  max: 1.0,
-                  onChanged: (v) => ref
-                      .read(ledgerProvider.notifier)
-                      .updatePreferences(
-                        state.preferences.copyWith(glassSpecularOpacity: v),
-                      ),
-                ),
-                _SliderRow(
-                  label: 'Specular saturation',
-                  value: state.preferences.glassSpecularSaturation,
-                  min: 0.0,
-                  max: 2.0,
-                  onChanged: (v) => ref
-                      .read(ledgerProvider.notifier)
-                      .updatePreferences(
-                        state.preferences.copyWith(glassSpecularSaturation: v),
-                      ),
-                ),
-                _SliderRow(
-                  label: 'Refraction level',
-                  value: state.preferences.glassRefractionLevel,
-                  min: 0.0,
-                  max: 1.0,
-                  onChanged: (v) => ref
-                      .read(ledgerProvider.notifier)
-                      .updatePreferences(
-                        state.preferences.copyWith(glassRefractionLevel: v),
-                      ),
-                ),
-                _SliderRow(
-                  label: 'Blur level',
-                  value: state.preferences.glassBlurLevel,
-                  min: 0.0,
-                  max: 100.0,
-                  onChanged: (v) => ref
-                      .read(ledgerProvider.notifier)
-                      .updatePreferences(
-                        state.preferences.copyWith(glassBlurLevel: v),
-                      ),
-                ),
-                _SliderRow(
-                  label: 'Prog. blur strength',
-                  value: state.preferences.glassProgressiveBlurStrength,
-                  min: 0.0,
-                  max: 1.0,
-                  onChanged: (v) => ref
-                      .read(ledgerProvider.notifier)
-                      .updatePreferences(
-                        state.preferences.copyWith(
-                          glassProgressiveBlurStrength: v,
-                        ),
-                      ),
-                ),
-                _SliderRow(
-                  label: 'Bg opacity',
-                  value: state.preferences.glassBackgroundOpacity,
-                  min: 0.0,
-                  max: 1.0,
-                  onChanged: (v) => ref
-                      .read(ledgerProvider.notifier)
-                      .updatePreferences(
-                        state.preferences.copyWith(glassBackgroundOpacity: v),
-                      ),
-                ),
-              ],
-            ),
-          ),
-          const Gap(AppSpacing.lg),
-
           // ── Notifications ──
           SectionCard(
             title: 'Notifications',
@@ -490,7 +266,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 'Actionable native alerts for updates and time-sensitive wallet items.',
             child: Column(
               children: [
-                LiquidGlassSwitchListTile(
+                AppSwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: state.preferences.notificationInboxEnabled,
                   onChanged: (value) {
@@ -517,7 +293,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
                 const Divider(height: 1),
-                LiquidGlassSwitchListTile(
+                AppSwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: state.preferences.deviceNotificationsEnabled,
                   onChanged: (value) {
@@ -544,7 +320,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
                 const Divider(height: 1),
-                LiquidGlassSwitchListTile(
+                AppSwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: state.preferences.quietHoursEnabled,
                   onChanged: (value) {
@@ -568,7 +344,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const Divider(height: 1),
                 for (final channel in _notificationChannels) ...[
-                  LiquidGlassSwitchListTile(
+                  AppSwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     value: state.preferences.channelScheduledEnabled,
                     onChanged: (value) {
@@ -637,7 +413,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             subtitle: 'Privacy mode is available up top and in the sidebar.',
             child: Column(
               children: [
-                LiquidGlassSwitchListTile(
+                AppSwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: state.preferences.biometricLockEnabled,
                   onChanged: (value) {
@@ -914,53 +690,6 @@ class _PrivacyQuickCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _SliderRow extends StatelessWidget {
-  const _SliderRow({
-    required this.label,
-    required this.value,
-    required this.min,
-    required this.max,
-    required this.onChanged,
-  });
-
-  final String label;
-  final double value;
-  final double min;
-  final double max;
-  final ValueChanged<double> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 80,
-            child: Text(label, style: const TextStyle(fontSize: 12)),
-          ),
-          Expanded(
-            child: Slider(
-              value: value,
-              min: min,
-              max: max,
-              onChanged: onChanged,
-            ),
-          ),
-          SizedBox(
-            width: 40,
-            child: Text(
-              max == 1.0 ? '${(value * 100).round()}%' : '${value.round()}',
-              textAlign: TextAlign.end,
-              style: const TextStyle(fontSize: 11),
-            ),
-          ),
-        ],
       ),
     );
   }

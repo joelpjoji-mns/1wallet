@@ -815,7 +815,6 @@ class TransactionRecord {
   }
 }
 
-
 @immutable
 class ExchangeRateRecord {
   const ExchangeRateRecord({

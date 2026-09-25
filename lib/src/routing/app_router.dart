@@ -11,6 +11,7 @@ import '../features/capture/capture_settings_screen.dart';
 import '../features/capture/notification_capture_screen.dart';
 import '../features/capture/notification_apps_screen.dart';
 import '../startup/startup_state.dart';
+import '../widgets/app_glass_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final startup = ref.watch(startupStateProvider);
@@ -40,128 +41,169 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/launch',
-        builder: (context, state) => const LaunchScreen(),
+        builder: (context, state) => const AppGlassPage(child: LaunchScreen()),
       ),
-      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const AppGlassPage(child: LoginScreen()),
+      ),
       GoRoute(path: '/signup', redirect: (context, state) => '/login'),
       GoRoute(
         path: '/onboarding',
-        builder: (context, state) => const OnboardingScreen(),
+        builder: (context, state) =>
+            const AppGlassPage(child: OnboardingScreen()),
       ),
-      GoRoute(path: '/', builder: (context, state) => const MainShell()),
+      GoRoute(
+        path: '/',
+        builder: (context, state) => const AppGlassPage(child: MainShell()),
+      ),
       GoRoute(
         path: '/add',
         builder: (context, state) {
           final tabStr = state.uri.queryParameters['tab'];
           final initialTab = int.tryParse(tabStr ?? '0') ?? 0;
-          return AddRecordScreen(
-            transactionId: state.uri.queryParameters['transactionId'],
-            initialAccountId: state.uri.queryParameters['accountId'],
-            plannedId: state.uri.queryParameters['plannedId'],
-            captureCandidateId: state.uri.queryParameters['captureCandidateId'],
-            initialTab: initialTab,
+          return AppGlassPage(
+            child: AddRecordScreen(
+              transactionId: state.uri.queryParameters['transactionId'],
+              initialAccountId: state.uri.queryParameters['accountId'],
+              plannedId: state.uri.queryParameters['plannedId'],
+              captureCandidateId:
+                  state.uri.queryParameters['captureCandidateId'],
+              initialTab: initialTab,
+            ),
           );
         },
       ),
       GoRoute(
         path: '/transaction/:id',
-        builder: (context, state) => TransactionDetailScreen(
-          transactionId: state.pathParameters['id'] ?? '',
+        builder: (context, state) => AppGlassPage(
+          child: TransactionDetailScreen(
+            transactionId: state.pathParameters['id'] ?? '',
+          ),
         ),
       ),
       GoRoute(
         path: '/account/new',
-        builder: (context, state) => const AccountEditorScreen(),
+        builder: (context, state) =>
+            const AppGlassPage(child: AccountEditorScreen()),
       ),
       GoRoute(
         path: '/account/:id',
-        builder: (context, state) =>
-            AccountEditorScreen(accountId: state.pathParameters['id']),
+        builder: (context, state) => AppGlassPage(
+          child: AccountEditorScreen(accountId: state.pathParameters['id']),
+        ),
         routes: [
           GoRoute(
             path: 'secure',
-            builder: (context, state) => SecureAccountDetailsScreen(
-              accountId: state.pathParameters['id']!,
+            builder: (context, state) => AppGlassPage(
+              child: SecureAccountDetailsScreen(
+                accountId: state.pathParameters['id']!,
+              ),
             ),
           ),
         ],
       ),
       GoRoute(
         path: '/widgets',
-        builder: (context, state) =>
-            const DrawerConfig(hasDrawer: true, child: WidgetsManagerScreen()),
+        builder: (context, state) => const AppGlassPage(
+          child: DrawerConfig(hasDrawer: true, child: WidgetsManagerScreen()),
+        ),
       ),
       GoRoute(path: '/reports', redirect: (context, state) => '/widgets'),
       GoRoute(
         path: '/review',
-        builder: (context, state) =>
-            const DrawerConfig(hasDrawer: true, child: ReviewQueueScreen()),
+        builder: (context, state) => const AppGlassPage(
+          child: DrawerConfig(hasDrawer: true, child: ReviewQueueScreen()),
+        ),
       ),
       GoRoute(
         path: '/capture/:id',
-        builder: (context, state) =>
-            CaptureDetailScreen(candidateId: state.pathParameters['id'] ?? ''),
+        builder: (context, state) => AppGlassPage(
+          child: CaptureDetailScreen(
+            candidateId: state.pathParameters['id'] ?? '',
+          ),
+        ),
       ),
       GoRoute(path: '/notifications', redirect: (context, state) => '/review'),
       GoRoute(
         path: '/settings',
-        builder: (context, state) =>
-            const DrawerConfig(hasDrawer: true, child: SettingsScreen()),
+        builder: (context, state) => const AppGlassPage(
+          child: DrawerConfig(hasDrawer: true, child: SettingsScreen()),
+        ),
       ),
       GoRoute(
         path: '/recurring',
-        builder: (context, state) => const RecurringScreen(),
+        builder: (context, state) =>
+            const AppGlassPage(child: RecurringScreen()),
       ),
       GoRoute(
         path: '/recurring/new',
-        builder: (context, state) => const RecurringScreen(mode: 'new'),
+        builder: (context, state) =>
+            const AppGlassPage(child: RecurringScreen(mode: 'new')),
       ),
       GoRoute(
         path: '/recurring/past',
-        builder: (context, state) => const RecurringScreen(mode: 'past'),
+        builder: (context, state) =>
+            const AppGlassPage(child: RecurringScreen(mode: 'past')),
       ),
       GoRoute(
         path: '/recurring/:id/edit',
-        builder: (context, state) =>
-            RecurringScreen(mode: 'edit', recordId: state.pathParameters['id']),
+        builder: (context, state) => AppGlassPage(
+          child: RecurringScreen(
+            mode: 'edit',
+            recordId: state.pathParameters['id'],
+          ),
+        ),
       ),
       GoRoute(
         path: '/recurring/:id',
-        builder: (context, state) =>
-            RecurringScreen(recordId: state.pathParameters['id']),
+        builder: (context, state) => AppGlassPage(
+          child: RecurringScreen(recordId: state.pathParameters['id']),
+        ),
       ),
-      GoRoute(path: '/cards', builder: (context, state) => const CardsScreen()),
+      GoRoute(
+        path: '/cards',
+        builder: (context, state) => const AppGlassPage(child: CardsScreen()),
+      ),
       GoRoute(
         path: '/loans',
-        builder: (context, state) => const LoansScreen(),
+        builder: (context, state) => const AppGlassPage(child: LoansScreen()),
         routes: [
           GoRoute(
             path: 'new',
-            builder: (context, state) => const LoansScreen(mode: 'new'),
+            builder: (context, state) =>
+                const AppGlassPage(child: LoansScreen(mode: 'new')),
           ),
           GoRoute(
             path: 'past',
-            builder: (context, state) => const LoansScreen(mode: 'past'),
+            builder: (context, state) =>
+                const AppGlassPage(child: LoansScreen(mode: 'past')),
           ),
           GoRoute(
             path: 'forecast',
-            builder: (context, state) => const DrawerConfig(
-              hasDrawer: true,
-              child: LoansScreen(mode: 'forecast'),
+            builder: (context, state) => const AppGlassPage(
+              child: DrawerConfig(
+                hasDrawer: true,
+                child: LoansScreen(mode: 'forecast'),
+              ),
             ),
           ),
           GoRoute(
             path: ':id',
-            builder: (context, state) => LoansScreen(
-              mode: 'detail',
-              accountId: state.pathParameters['id'],
+            builder: (context, state) => AppGlassPage(
+              child: LoansScreen(
+                mode: 'detail',
+                accountId: state.pathParameters['id'],
+              ),
             ),
             routes: [
               GoRoute(
                 path: 'edit',
-                builder: (context, state) => LoansScreen(
-                  mode: 'edit',
-                  accountId: state.pathParameters['id'],
+                builder: (context, state) => AppGlassPage(
+                  child: LoansScreen(
+                    mode: 'edit',
+                    accountId: state.pathParameters['id'],
+                  ),
                 ),
               ),
             ],
@@ -170,73 +212,91 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/accounts',
-        builder: (context, state) => const AccountsScreen(),
+        builder: (context, state) =>
+            const AppGlassPage(child: AccountsScreen()),
       ),
 
       GoRoute(
         path: '/categories',
-        builder: (context, state) =>
-            const DrawerConfig(hasDrawer: true, child: CategoriesScreen()),
+        builder: (context, state) => const AppGlassPage(
+          child: DrawerConfig(hasDrawer: true, child: CategoriesScreen()),
+        ),
       ),
       GoRoute(
         path: '/currencies',
-        builder: (context, state) =>
-            const DrawerConfig(hasDrawer: true, child: CurrenciesScreen()),
+        builder: (context, state) => const AppGlassPage(
+          child: DrawerConfig(hasDrawer: true, child: CurrenciesScreen()),
+        ),
       ),
       GoRoute(
         path: '/sync',
-        builder: (context, state) =>
-            const DrawerConfig(hasDrawer: true, child: SyncScreen()),
+        builder: (context, state) => const AppGlassPage(
+          child: DrawerConfig(hasDrawer: true, child: SyncScreen()),
+        ),
       ),
       GoRoute(path: '/imports', redirect: (context, state) => '/sync'),
       GoRoute(
         path: '/imports/:id',
-        builder: (context, state) =>
-            ImportBatchDetailScreen(batchId: state.pathParameters['id'] ?? ''),
+        builder: (context, state) => AppGlassPage(
+          child: ImportBatchDetailScreen(
+            batchId: state.pathParameters['id'] ?? '',
+          ),
+        ),
       ),
       GoRoute(
         path: '/capture-settings',
-        builder: (context, state) => const CaptureSettingsScreen(),
+        builder: (context, state) =>
+            const AppGlassPage(child: CaptureSettingsScreen()),
       ),
       GoRoute(
         path: '/import-sms',
-        builder: (context, state) => const SmsCaptureScreen(),
+        builder: (context, state) =>
+            const AppGlassPage(child: SmsCaptureScreen()),
       ),
       GoRoute(
         path: '/notification-capture',
-        builder: (context, state) => const NotificationCaptureScreen(),
+        builder: (context, state) =>
+            const AppGlassPage(child: NotificationCaptureScreen()),
       ),
       GoRoute(
         path: '/notification-capture/apps',
-        builder: (context, state) => const NotificationAppsScreen(),
+        builder: (context, state) =>
+            const AppGlassPage(child: NotificationAppsScreen()),
       ),
       GoRoute(
         path: '/data-backup',
-        builder: (context, state) => const DataBackupScreen(),
+        builder: (context, state) =>
+            const AppGlassPage(child: DataBackupScreen()),
       ),
       GoRoute(
         path: '/auto-capture',
-        builder: (context, state) => const DrawerConfig(
-          hasDrawer: true,
-          child: SmsCaptureScreen(title: 'Auto capture'),
+        builder: (context, state) => const AppGlassPage(
+          child: DrawerConfig(
+            hasDrawer: true,
+            child: SmsCaptureScreen(title: 'Auto capture'),
+          ),
         ),
       ),
       GoRoute(
         path: '/auto-capture/debug',
-        builder: (context, state) => const CaptureDiagnosticsScreen(),
+        builder: (context, state) =>
+            const AppGlassPage(child: CaptureDiagnosticsScreen()),
       ),
       GoRoute(
         path: '/updates',
-        builder: (context, state) =>
-            const DrawerConfig(hasDrawer: true, child: UpdatesScreen()),
+        builder: (context, state) => const AppGlassPage(
+          child: DrawerConfig(hasDrawer: true, child: UpdatesScreen()),
+        ),
       ),
       GoRoute(
         path: '/device-permissions',
-        builder: (context, state) => const DevicePermissionsScreen(),
+        builder: (context, state) =>
+            const AppGlassPage(child: DevicePermissionsScreen()),
       ),
       GoRoute(
         path: '/permissions-setup',
-        builder: (context, state) => const PermissionsSetupScreen(),
+        builder: (context, state) =>
+            const AppGlassPage(child: PermissionsSetupScreen()),
       ),
     ],
   );

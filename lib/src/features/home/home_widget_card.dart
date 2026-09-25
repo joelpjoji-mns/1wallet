@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
@@ -32,87 +33,88 @@ class HomeWidgetCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final resolvedIconColor = iconColor ?? scheme.primary;
     final reorderScope = HomeWidgetCardReorderScope.maybeOf(context);
-    return Container(
+    return GlassCard(
+      margin: EdgeInsets.zero,
       padding: const EdgeInsets.all(AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: scheme.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              HomeWidgetReorderableIcon(
-                icon: icon,
-                iconColor: resolvedIconColor,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    if (subtitle != null)
+      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+      quality: GlassQuality.standard,
+      child: Material(
+        color: Colors.transparent,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                HomeWidgetReorderableIcon(
+                  icon: icon,
+                  iconColor: resolvedIconColor,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        subtitle!,
+                        title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w900),
                       ),
-                  ],
-                ),
-              ),
-              if (reorderScope?.reorderMode ?? false) ...[
-                const SizedBox(width: AppSpacing.xs),
-                IconButton(
-                  tooltip: 'Move up ${reorderScope!.label}',
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.keyboard_arrow_up_rounded),
-                  onPressed: reorderScope.canMoveUp
-                      ? reorderScope.onMoveUp
-                      : null,
-                ),
-                IconButton(
-                  tooltip: 'Move down ${reorderScope.label}',
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                  onPressed: reorderScope.canMoveDown
-                      ? reorderScope.onMoveDown
-                      : null,
-                ),
-              ],
-              if (actionLabel != null && onAction != null) ...[
-                const SizedBox(width: AppSpacing.xs),
-                TextButton(
-                  style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                      if (subtitle != null)
+                        Text(
+                          subtitle!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                    ],
                   ),
-                  onPressed: onAction,
-                  child: Text(actionLabel!),
                 ),
+                if (reorderScope?.reorderMode ?? false) ...[
+                  const SizedBox(width: AppSpacing.xs),
+                  IconButton(
+                    tooltip: 'Move up ${reorderScope!.label}',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.keyboard_arrow_up_rounded),
+                    onPressed: reorderScope.canMoveUp
+                        ? reorderScope.onMoveUp
+                        : null,
+                  ),
+                  IconButton(
+                    tooltip: 'Move down ${reorderScope.label}',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                    onPressed: reorderScope.canMoveDown
+                        ? reorderScope.onMoveDown
+                        : null,
+                  ),
+                ],
+                if (actionLabel != null && onAction != null) ...[
+                  const SizedBox(width: AppSpacing.xs),
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                    ),
+                    onPressed: onAction,
+                    child: Text(actionLabel!),
+                  ),
+                ],
+                if (headerTrailing != null) ...[
+                  const SizedBox(width: AppSpacing.xs),
+                  headerTrailing!,
+                ],
               ],
-              if (headerTrailing != null) ...[
-                const SizedBox(width: AppSpacing.xs),
-                headerTrailing!,
-              ],
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          child,
-        ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            child,
+          ],
+        ),
       ),
     );
   }

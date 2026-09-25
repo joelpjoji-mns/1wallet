@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import '../../utils/app_reload.dart';
 import 'app_update_provider.dart';
 
@@ -105,7 +106,8 @@ class UpdatesScreen extends ConsumerWidget {
       color = scheme.error;
     } else if (state.status == UpdateStatus.downloaded) {
       statusTitle = 'Update Ready to Install';
-      statusSubtitle = 'Version ${state.latestRelease?.versionName ?? ''} is downloaded';
+      statusSubtitle =
+          'Version ${state.latestRelease?.versionName ?? ''} is downloaded';
       icon = Icons.download_done_rounded;
       color = scheme.primary;
     } else {
@@ -115,94 +117,101 @@ class UpdatesScreen extends ConsumerWidget {
       color = scheme.primary;
     }
 
-    return Card(
-      elevation: 0,
-      color: scheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: scheme.outlineVariant),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: CircleAvatar(
-                radius: 24,
-                backgroundColor: color.withValues(alpha: 0.12),
-                child: Icon(icon, color: color, size: 24),
-              ),
-              title: Text(
-                statusTitle,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      padding: EdgeInsets.zero,
+      shape: const LiquidRoundedSuperellipse(borderRadius: 16),
+      quality: GlassQuality.standard,
+      child: Material(
+        color: Colors.transparent,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  radius: 24,
+                  backgroundColor: color.withValues(alpha: 0.12),
+                  child: Icon(icon, color: color, size: 24),
                 ),
-              ),
-              subtitle: Text(statusSubtitle),
-            ),
-            if (hasUpdate) ...[
-              const Divider(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Installed version',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
+                title: Text(
+                  statusTitle,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
-                  Text(
-                    '$versionName ($versionCode)',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
+                ),
+                subtitle: Text(statusSubtitle),
               ),
+              if (hasUpdate) ...[
+                const Divider(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Installed version',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      '$versionName ($versionCode)',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildReleaseInfoCard(BuildContext context, AppUpdateRelease release) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Release Details',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.info_outline),
-              title: const Text('Version Code'),
-              trailing: Text('${release.versionCode}'),
-            ),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.calendar_today),
-              title: const Text('Published At'),
-              trailing: Text(release.publishedAt.split('T').first),
-            ),
-            if (release.apk != null)
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      padding: EdgeInsets.zero,
+      quality: GlassQuality.standard,
+      child: Material(
+        color: Colors.transparent,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Release Details',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.sd_storage),
-                title: const Text('Size'),
-                trailing: Text(
-                  '${(release.apk!.sizeBytes / 1024 / 1024).toStringAsFixed(1)} MB',
-                ),
+                leading: const Icon(Icons.info_outline),
+                title: const Text('Version Code'),
+                trailing: Text('${release.versionCode}'),
               ),
-          ],
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.calendar_today),
+                title: const Text('Published At'),
+                trailing: Text(release.publishedAt.split('T').first),
+              ),
+              if (release.apk != null)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.sd_storage),
+                  title: const Text('Size'),
+                  trailing: Text(
+                    '${(release.apk!.sizeBytes / 1024 / 1024).toStringAsFixed(1)} MB',
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -217,82 +226,88 @@ class UpdatesScreen extends ConsumerWidget {
       return const SizedBox();
     }
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            if (changelog.newFeatures.isNotEmpty) ...[
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      padding: EdgeInsets.zero,
+      quality: GlassQuality.standard,
+      child: Material(
+        color: Colors.transparent,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Text(
-                'New Features',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              ...changelog.newFeatures.map(
-                (f) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('• '),
-                      Expanded(child: Text(f)),
-                    ],
-                  ),
-                ),
+                title,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
-            ],
-            if (changelog.bugFixes.isNotEmpty) ...[
-              Text(
-                'Bug Fixes',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.error,
-                ),
-              ),
-              ...changelog.bugFixes.map(
-                (f) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('• '),
-                      Expanded(child: Text(f)),
-                    ],
+              if (changelog.newFeatures.isNotEmpty) ...[
+                Text(
+                  'New Features',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-            ],
-            if (changelog.notes.isNotEmpty) ...[
-              Text(
-                'Notes',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.secondary,
-                ),
-              ),
-              ...changelog.notes.map(
-                (f) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('• '),
-                      Expanded(child: Text(f)),
-                    ],
+                ...changelog.newFeatures.map(
+                  (f) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('• '),
+                        Expanded(child: Text(f)),
+                      ],
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(height: 12),
+              ],
+              if (changelog.bugFixes.isNotEmpty) ...[
+                Text(
+                  'Bug Fixes',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+                ...changelog.bugFixes.map(
+                  (f) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('• '),
+                        Expanded(child: Text(f)),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (changelog.notes.isNotEmpty) ...[
+                Text(
+                  'Notes',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.secondary,
+                  ),
+                ),
+                ...changelog.notes.map(
+                  (f) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('• '),
+                        Expanded(child: Text(f)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

@@ -388,9 +388,6 @@ Money totalBalance(
   );
 }
 
-
-
-
 // ── Dashboard analytics selectors (used by the dynamic home widgets) ──
 
 int _flowInRange(
@@ -571,9 +568,10 @@ financialHealthScore(LedgerState state) {
   final savingsScore = (savingsRate.clamp(0.0, 0.2) / 0.2) * 35;
   final emergencyScore = (emergencyMonths.clamp(0.0, 3.0) / 3.0) * 35;
   final debtScore = (1 - debtRatio.clamp(0.0, 1.0)) * 30;
-  final score = (savingsScore + emergencyScore + debtScore)
-      .round()
-      .clamp(0, 100);
+  final score = (savingsScore + emergencyScore + debtScore).round().clamp(
+    0,
+    100,
+  );
   final grade = score >= 80
       ? 'Excellent'
       : score >= 60
@@ -1392,10 +1390,8 @@ LoanProjection loanProjection(LedgerState state, Account loan) {
       details.repaymentAmount?.amountMinor.abs() ??
       emiTx?.amount.amountMinor.abs() ??
       0;
-  final frequency =
-      emiTx?.recurrenceFrequency ?? details.recurrenceFrequency;
-  final interval =
-      emiTx?.recurrenceInterval ?? details.recurrenceInterval;
+  final frequency = emiTx?.recurrenceFrequency ?? details.recurrenceFrequency;
+  final interval = emiTx?.recurrenceInterval ?? details.recurrenceInterval;
 
   double monthlyMultiplier = 1.0;
   if (frequency == 'yearly') {

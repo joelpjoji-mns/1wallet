@@ -9,10 +9,12 @@ class NotificationAppsScreen extends ConsumerStatefulWidget {
   const NotificationAppsScreen({super.key});
 
   @override
-  ConsumerState<NotificationAppsScreen> createState() => _NotificationAppsScreenState();
+  ConsumerState<NotificationAppsScreen> createState() =>
+      _NotificationAppsScreenState();
 }
 
-class _NotificationAppsScreenState extends ConsumerState<NotificationAppsScreen> {
+class _NotificationAppsScreenState
+    extends ConsumerState<NotificationAppsScreen> {
   List<AndroidInstalledApp>? _apps;
   bool _isLoading = true;
   String _searchQuery = '';
@@ -39,16 +41,26 @@ class _NotificationAppsScreenState extends ConsumerState<NotificationAppsScreen>
     final prefs = state.preferences;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final targetPackages = prefs.notificationTargetPackages.map((e) => e.toLowerCase()).toSet();
+    final targetPackages = prefs.notificationTargetPackages
+        .map((e) => e.toLowerCase())
+        .toSet();
 
     List<AndroidInstalledApp> filteredApps = [];
     if (_apps != null) {
       if (_searchQuery.isEmpty) {
         filteredApps = _apps!;
       } else {
-        filteredApps = _apps!.where((app) =>
-            app.appName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            app.packageName.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+        filteredApps = _apps!
+            .where(
+              (app) =>
+                  app.appName.toLowerCase().contains(
+                    _searchQuery.toLowerCase(),
+                  ) ||
+                  app.packageName.toLowerCase().contains(
+                    _searchQuery.toLowerCase(),
+                  ),
+            )
+            .toList();
       }
     }
 
@@ -67,14 +79,21 @@ class _NotificationAppsScreenState extends ConsumerState<NotificationAppsScreen>
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.search),
                       hintText: 'Search apps...',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 0,
+                      ),
                     ),
                     onChanged: (value) => setState(() => _searchQuery = value),
                   ),
                 ),
                 if (_isLoading)
-                  const Expanded(child: Center(child: CircularProgressIndicator()))
+                  const Expanded(
+                    child: Center(child: CircularProgressIndicator()),
+                  )
                 else if (_apps == null || _apps!.isEmpty)
                   const Expanded(
                     child: Center(
@@ -87,22 +106,41 @@ class _NotificationAppsScreenState extends ConsumerState<NotificationAppsScreen>
                       itemCount: filteredApps.length,
                       itemBuilder: (context, index) {
                         final app = filteredApps[index];
-                        final isEnabled = targetPackages.contains(app.packageName.toLowerCase());
+                        final isEnabled = targetPackages.contains(
+                          app.packageName.toLowerCase(),
+                        );
 
                         return SwitchListTile(
-                          secondary: AppIconWidget(packageName: app.packageName),
-                          title: Text(app.appName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                          subtitle: Text(app.packageName, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+                          secondary: AppIconWidget(
+                            packageName: app.packageName,
+                          ),
+                          title: Text(
+                            app.appName,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          subtitle: Text(
+                            app.packageName,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
                           value: isEnabled,
                           onChanged: (val) {
-                            final next = Set<String>.from(prefs.notificationTargetPackages);
+                            final next = Set<String>.from(
+                              prefs.notificationTargetPackages,
+                            );
                             if (val) {
                               next.add(app.packageName.toLowerCase());
                             } else {
                               next.remove(app.packageName.toLowerCase());
                             }
-                            ref.read(ledgerProvider.notifier).updatePreferences(
-                                  prefs.copyWith(notificationTargetPackages: next.toList()),
+                            ref
+                                .read(ledgerProvider.notifier)
+                                .updatePreferences(
+                                  prefs.copyWith(
+                                    notificationTargetPackages: next.toList(),
+                                  ),
                                 );
                           },
                         );
@@ -128,7 +166,7 @@ class AppIconWidget extends StatefulWidget {
 
 class _AppIconWidgetState extends State<AppIconWidget> {
   static final Map<String, dynamic> _iconCache = {};
-  
+
   @override
   void initState() {
     super.initState();
@@ -136,7 +174,7 @@ class _AppIconWidgetState extends State<AppIconWidget> {
       _loadIcon();
     }
   }
-  
+
   Future<void> _loadIcon() async {
     final iconData = await getAndroidAppIcon(widget.packageName);
     if (mounted) {
@@ -160,7 +198,7 @@ class _AppIconWidgetState extends State<AppIconWidget> {
         ),
       );
     }
-    
+
     final iconData = _iconCache[widget.packageName];
     if (iconData == null) {
       return const SizedBox(
@@ -169,12 +207,7 @@ class _AppIconWidgetState extends State<AppIconWidget> {
         child: Icon(Icons.android, size: 32),
       );
     }
-    
-    return Image.memory(
-      iconData,
-      width: 40,
-      height: 40,
-      fit: BoxFit.contain,
-    );
+
+    return Image.memory(iconData, width: 40, height: 40, fit: BoxFit.contain);
   }
 }

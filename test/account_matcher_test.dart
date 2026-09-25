@@ -1,12 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:one_wallet_flutter/src/capture/message_parser.dart';
-import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Helpers — lightweight account & state builders
 // ──────────────────────────────────────────────────────────────────────────────
-
-
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Tests for extractAllNumberFragments
@@ -30,14 +27,12 @@ void main() {
     });
 
     test('extracts keyword-prefixed digits', () {
-      final fragments =
-          extractAllNumberFragments('account ending in 9012');
+      final fragments = extractAllNumberFragments('account ending in 9012');
       expect(fragments, contains('9012'));
     });
 
     test('extracts bare standalone 3-4 digit sequences', () {
-      final fragments =
-          extractAllNumberFragments('From a/c 173 to merchant');
+      final fragments = extractAllNumberFragments('From a/c 173 to merchant');
       expect(fragments, contains('173'));
     });
 
@@ -70,16 +65,12 @@ void main() {
     });
 
     test('****5678 pattern', () {
-      final p = parseTransactionMessage(
-        'Rs 500 debited from card ****5678.',
-      );
+      final p = parseTransactionMessage('Rs 500 debited from card ****5678.');
       expect(p.last4, '5678');
     });
 
     test('dots masking ...9012', () {
-      final p = parseTransactionMessage(
-        'Rs 500 debited from acct...9012.',
-      );
+      final p = parseTransactionMessage('Rs 500 debited from acct...9012.');
       expect(p.last4, '9012');
     });
 
@@ -91,16 +82,12 @@ void main() {
     });
 
     test('a/c no XX8910', () {
-      final p = parseTransactionMessage(
-        'Rs 500 debited from A/C No.XX8910.',
-      );
+      final p = parseTransactionMessage('Rs 500 debited from A/C No.XX8910.');
       expect(p.last4, '8910');
     });
 
     test('account no 5678', () {
-      final p = parseTransactionMessage(
-        'Rs 500 debited from Account No 5678.',
-      );
+      final p = parseTransactionMessage('Rs 500 debited from Account No 5678.');
       expect(p.last4, '5678');
     });
 
@@ -119,9 +106,7 @@ void main() {
     });
 
     test('xxxx lowercase masking', () {
-      final p = parseTransactionMessage(
-        'Rs 500 debited from card xxxx4567.',
-      );
+      final p = parseTransactionMessage('Rs 500 debited from card xxxx4567.');
       expect(p.last4, '4567');
     });
 
@@ -321,9 +306,7 @@ void main() {
     });
 
     test('Case insensitivity in extraction', () {
-      final p = parseTransactionMessage(
-        'rs 500 DEBITED FROM CARD xx1234.',
-      );
+      final p = parseTransactionMessage('rs 500 DEBITED FROM CARD xx1234.');
       expect(p.last4, '1234');
     });
   });

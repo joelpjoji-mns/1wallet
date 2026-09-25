@@ -95,6 +95,21 @@ class _SecureAccountDetailsScreenState
     });
   }
 
+  @override
+  void dispose() {
+    // These controllers hold decrypted plaintext (card number, expiry, CVV,
+    // and any custom secure fields) — dispose them promptly on teardown so
+    // the sensitive text doesn't linger in undisposed ChangeNotifier state.
+    _cardNumberController.dispose();
+    _expiryController.dispose();
+    _ccvController.dispose();
+    _accountNumberController.dispose();
+    for (final field in _customFields) {
+      field.value.dispose();
+    }
+    super.dispose();
+  }
+
   void _copyToClipboard(String text) {
     if (text.isEmpty) return;
     Clipboard.setData(ClipboardData(text: text.replaceAll(RegExp(r'\s+'), '')));

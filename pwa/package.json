@@ -7,17 +7,20 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test src/lib/*.test.ts"
   },
   "dependencies": {
     "firebase": "^12.16.0",
     "lucide-react": "^1.24.0",
+    "pako": "^3.0.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.1"
   },
   "devDependencies": {
     "@types/node": "^24.13.2",
+    "@types/pako": "^2.0.4",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
