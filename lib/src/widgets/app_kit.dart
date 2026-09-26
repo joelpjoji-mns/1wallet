@@ -1134,8 +1134,7 @@ class AppSwitchListTile extends StatelessWidget {
               // leaving screen readers without the on/off state — matching
               // the workaround Flutter's own SwitchListTile applies.
               //
-              // Prefer the CupertinoNative platform switch on Apple devices
-              // and Liquid Glass's switch on Android and other platforms.
+              // Use the shared Liquid Glass switch on every platform.
               ExcludeFocus(
                 child: IgnorePointer(
                   ignoring: !enabled,
