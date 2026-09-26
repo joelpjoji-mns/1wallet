@@ -17,9 +17,7 @@ class UpdatesScreen extends ConsumerWidget {
 
     final hasUpdate = state.latestRelease != null;
 
-    return GlassIsolationScope(
-      isolated: true,
-      child: GlassScaffold(
+    return GlassScaffold(
         appBar: GlassAppBar(
           title: Text(
             'Updates',
@@ -47,7 +45,7 @@ class UpdatesScreen extends ConsumerWidget {
             ),
           ],
         ),
-        body: ListView(
+        body: GlassIsolationScope(isolated: true, defaultQuality: GlassQuality.standard, child: ListView(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
             vertical: AppSpacing.md,
@@ -493,3 +491,5 @@ class _ChangelogSectionLabel extends StatelessWidget {
     );
   }
 }
+
+
