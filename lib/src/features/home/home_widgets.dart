@@ -2432,19 +2432,38 @@ class DashboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isAmoled = theme.scaffoldBackgroundColor == AppColors.amoledBackground;
+    final inner = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: child,
+      ),
+    );
+
+    if (isAmoled) {
+      return Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: AppColors.amoledBackground,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.white.withAlpha(24),
+            width: 0.8,
+          ),
+        ),
+        child: inner,
+      );
+    }
+
     return GlassCard(
       margin: EdgeInsets.zero,
       padding: const EdgeInsets.all(AppSpacing.lg),
       shape: LiquidRoundedSuperellipse(borderRadius: 16),
       quality: GlassQuality.standard,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: child,
-        ),
-      ),
+      child: inner,
     );
   }
 }

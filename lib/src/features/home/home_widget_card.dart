@@ -36,28 +36,11 @@ class HomeWidgetCard extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final resolvedIconColor = iconColor ?? scheme.primary;
     final reorderScope = HomeWidgetCardReorderScope.maybeOf(context);
-    return RepaintBoundary(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          border: Border.all(
-            color: isAmoled
-                ? Colors.white.withAlpha(24) // subtle crisp boundary in pure black
-                : (isDark
-                    ? scheme.outlineVariant.withAlpha(50)
-                    : Colors.transparent),
-            width: 0.8,
-          ),
-        ),
-        child: GlassCard(
-        margin: EdgeInsets.zero,
-        padding: const EdgeInsets.all(AppSpacing.sm),
-        shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-        quality: GlassQuality.minimal,
-        child: Material(
-          color: Colors.transparent,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+
+    final cardContent = Material(
+      color: Colors.transparent,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
             Row(
               children: [
@@ -128,9 +111,44 @@ class HomeWidgetCard extends StatelessWidget {
             child,
           ],
         ),
+      );
+
+    if (isAmoled) {
+      return RepaintBoundary(
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: AppColors.amoledBackground,
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            border: Border.all(
+              color: Colors.white.withAlpha(24),
+              width: 0.8,
+            ),
+          ),
+          child: cardContent,
+        ),
+      );
+    }
+
+    return RepaintBoundary(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          border: Border.all(
+            color: isDark
+                ? scheme.outlineVariant.withAlpha(50)
+                : Colors.transparent,
+            width: 0.8,
+          ),
+        ),
+        child: GlassCard(
+          margin: EdgeInsets.zero,
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+          quality: GlassQuality.minimal,
+          child: cardContent,
+        ),
       ),
-    ),
-    ),
     );
   }
 }

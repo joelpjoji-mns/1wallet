@@ -151,7 +151,13 @@ class TransactionRow extends StatelessWidget {
       ),
     );
 
+    final isAmoled =
+        Theme.of(context).scaffoldBackgroundColor == AppColors.amoledBackground;
+
     if (glass) {
+      if (isAmoled) {
+        return content;
+      }
       return GlassCard(
         margin: EdgeInsets.zero,
         padding: EdgeInsets.zero,

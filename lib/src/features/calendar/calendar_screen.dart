@@ -665,6 +665,8 @@ class SummaryPill extends StatelessWidget {
       MetricTone.warning => scheme.secondary,
       MetricTone.standard => scheme.onSurface,
     };
+    final isAmoled =
+        Theme.of(context).scaffoldBackgroundColor == AppColors.amoledBackground;
     return Container(
       constraints: const BoxConstraints(minHeight: 58),
       padding: const EdgeInsets.symmetric(
@@ -672,9 +674,13 @@ class SummaryPill extends StatelessWidget {
         vertical: AppSpacing.xs,
       ),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
+        color:
+            isAmoled ? AppColors.amoledBackground : scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: scheme.outlineVariant),
+        border: Border.all(
+          color: isAmoled ? Colors.white.withAlpha(24) : scheme.outlineVariant,
+          width: 0.8,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -723,82 +729,96 @@ class _CalendarFilterCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isAmoled =
+        theme.scaffoldBackgroundColor == AppColors.amoledBackground;
+    final inner = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 76),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.xs,
+          ),
+          decoration: BoxDecoration(
+            color: active
+                ? scheme.primaryContainer.withAlpha(100)
+                : (isAmoled ? AppColors.amoledBackground : Colors.transparent),
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            border: Border.all(
+              color: active
+                  ? scheme.primary
+                  : (isAmoled
+                      ? Colors.white.withAlpha(24)
+                      : scheme.outlineVariant),
+              width: 0.8,
+            ),
+          ),
+          child: Row(
+            children: [
+              IconBubble(
+                icon: icon,
+                compact: true,
+                color: active ? scheme.primary : scheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w900),
+                    ),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: scheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (isAmoled) {
+      return inner;
+    }
+
     return GlassCard(
       margin: EdgeInsets.zero,
       padding: EdgeInsets.zero,
       shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
       quality: GlassQuality.minimal,
       clipBehavior: Clip.antiAlias,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          onTap: onTap,
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 76),
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.sm,
-              vertical: AppSpacing.xs,
-            ),
-            decoration: BoxDecoration(
-              color: active
-                  ? scheme.primaryContainer.withAlpha(100)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(AppRadii.md),
-              border: Border.all(
-                color: active ? scheme.primary : scheme.outlineVariant,
-              ),
-            ),
-            child: Row(
-              children: [
-                IconBubble(
-                  icon: icon,
-                  compact: true,
-                  color: active ? scheme.primary : scheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                      Text(
-                        value,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w900),
-                      ),
-                      Text(
-                        subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      child: inner,
     );
   }
 }
@@ -846,17 +866,29 @@ class _DayCell extends StatelessWidget {
         date.year == today.year &&
         date.month == today.month &&
         date.day == today.day;
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isAmoled =
+        theme.scaffoldBackgroundColor == AppColors.amoledBackground;
     return InkWell(
       borderRadius: BorderRadius.circular(AppRadii.md),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(5),
         decoration: BoxDecoration(
-          color: isToday ? scheme.primaryContainer : scheme.surfaceContainer,
+          color: isToday
+              ? scheme.primaryContainer
+              : (isAmoled
+                  ? AppColors.amoledBackground
+                  : scheme.surfaceContainer),
           borderRadius: BorderRadius.circular(AppRadii.md),
           border: Border.all(
-            color: isToday ? scheme.primary : scheme.outlineVariant,
+            color: isToday
+                ? scheme.primary
+                : (isAmoled
+                    ? Colors.white.withAlpha(24)
+                    : scheme.outlineVariant),
+            width: 0.8,
           ),
         ),
         child: Column(
