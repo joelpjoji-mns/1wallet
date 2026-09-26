@@ -550,62 +550,61 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     GlassModalSheet.show<void>(
       context: context,
       quality: GlassQuality.standard,
-      builder: (context) => Align(
-        alignment: Alignment.topCenter,
+      builder: (context) => SafeArea(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.lg),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        DateFormat.yMMMMd(
-                          state.preferences.locale.replaceAll('_', '-'),
-                        ).format(date),
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      DateFormat.yMMMMd(
+                        state.preferences.locale.replaceAll('_', '-'),
+                      ).format(date),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
                       ),
-                      const Spacer(),
-                      PrivacyText(
-                        balanceDisplay,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: balanceMinor < 0
-                                  ? Theme.of(context).colorScheme.error
-                                  : Theme.of(context).colorScheme.primary,
-                            ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  if (records.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.xxl,
-                      ),
-                      child: Center(
-                        child: Text(
-                          'No records on this day',
-                          style: TextStyle(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
+                    ),
+                    const Spacer(),
+                    PrivacyText(
+                      balanceDisplay,
+                      style: Theme.of(context).textTheme.titleMedium
+                          ?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: balanceMinor < 0
+                                ? Theme.of(context).colorScheme.error
+                                : Theme.of(context).colorScheme.primary,
                           ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                if (records.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.xxl,
+                    ),
+                    child: Center(
+                      child: Text(
+                        'No records on this day',
+                        style: TextStyle(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurfaceVariant,
                         ),
                       ),
-                    )
-                  else
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 250),
+                    ),
+                  )
+                else
+                  Flexible(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 300),
                       child: ListView.separated(
                         shrinkWrap: true,
                         itemCount: records.length,
@@ -629,8 +628,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         },
                       ),
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
           ),
         ),

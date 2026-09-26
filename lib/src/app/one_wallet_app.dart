@@ -114,7 +114,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
           quality: GlassQuality.standard,
         ),
         dark: GlassThemeVariant(
-          settings: GlassThemeSettings(thickness: 50, blur: 22),
+          settings: GlassThemeSettings(thickness: 16, blur: 16),
           quality: GlassQuality.standard,
         ),
       ),
@@ -144,3 +144,4 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     );
   }
 }
+

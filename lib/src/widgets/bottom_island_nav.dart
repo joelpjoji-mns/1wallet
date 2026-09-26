@@ -56,7 +56,6 @@ class BottomIslandNavBar extends StatelessWidget {
                         semanticLabel: item.title,
                         icon: Icon(item.icon),
                         activeIcon: Icon(item.activeIcon),
-                        glowColor: scheme.primary.withAlphaFactor(0.3),
                       ),
                   ],
                   selectedIndex: selectedIndex,
@@ -66,7 +65,7 @@ class BottomIslandNavBar extends StatelessWidget {
                   horizontalPadding: 14,
                   verticalPadding: 12,
                   spacing: 6,
-                  showIndicator: true,
+                  showIndicator: false,
                   // Explicit indicator color that reads well in both themes
                   indicatorColor: scheme.primary.withAlphaFactor(
                     isDark ? 0.30 : 0.14,

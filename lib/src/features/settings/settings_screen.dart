@@ -136,7 +136,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       appBar: GlassAppBar(
         title: const Text('Settings'),
         actions: [
-          GlassIconButton(
+          GlassIconButton(size: 52, iconSize: 26,
             
             onPressed: () => context.push('/review'),
             icon: const Icon(Icons.fact_check_outlined),
@@ -648,5 +648,6 @@ class _PrivacyQuickCard extends StatelessWidget {
     );
   }
 }
+
 
 

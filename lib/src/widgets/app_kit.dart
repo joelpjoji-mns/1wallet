@@ -230,7 +230,7 @@ class GlassHeaderButton extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final badgeCount = badge ?? 0;
 
-    Widget button = Center(
+    Widget button = UnconstrainedBox(
       child: GlassIconButton(
         icon: Icon(icon),
         onPressed: onPressed,
@@ -323,7 +323,7 @@ class HeaderIconButton extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Center(
+          UnconstrainedBox(
             child: GlassIconButton(
               icon: Icon(icon),
               iconSize: 26,
@@ -1088,3 +1088,4 @@ class AppBackAction extends StatelessWidget {
     );
   }
 }
+
