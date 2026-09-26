@@ -153,13 +153,41 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
         .map((m) => m.amountMinor < 0 ? m.copyWith(amountMinor: 0) : m)
         .toList();
 
+    final theme = Theme.of(context);
+    final isAmoled = theme.scaffoldBackgroundColor == AppColors.amoledBackground;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       constraints: const BoxConstraints(minHeight: 178),
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: scheme.surface,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: scheme.outlineVariant),
+        border: Border.all(
+          color: isAmoled
+              ? Colors.white.withAlpha(24)
+              : (isDark
+                  ? scheme.outlineVariant.withAlpha(50)
+                  : scheme.outlineVariant),
+          width: 0.8,
+        ),
+        boxShadow: isAmoled
+            ? [
+                BoxShadow(
+                  color: Colors.black.withAlpha(160),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ]
+            : (isDark
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(100),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -183,36 +211,31 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                   ),
                 ),
               ),
-              PopupMenuButton<String>(
-                initialValue: _period,
-                onSelected: (value) => setState(() => _period = value),
-                itemBuilder: (context) => const [
-                  PopupMenuItem(value: 'Today', child: Text('Today')),
-                  PopupMenuItem(value: 'This week', child: Text('This week')),
-                  PopupMenuItem(value: 'This month', child: Text('This month')),
-                  PopupMenuItem(value: 'This year', child: Text('This year')),
+              GlassDropdownPill<String>(
+                value: _period,
+                options: const [
+                  GlassDropdownOption('Today', 'Today'),
+                  GlassDropdownOption('This week', 'This week'),
+                  GlassDropdownOption('This month', 'This month'),
+                  GlassDropdownOption('This year', 'This year'),
                 ],
-                child: HomeBalancePill(
-                  label: _period,
-                  icon: Icons.calendar_month,
-                  showChevron: true,
-                ),
+                onChanged: (value) => setState(() => _period = value),
+                icon: Icons.calendar_month,
+                semanticLabel: 'Balance period',
               ),
               const SizedBox(width: AppSpacing.xs),
               if (allCurrencies.length > 1 && forcedCurrency == null)
-                PopupMenuButton<String>(
-                  initialValue: displayCurrency,
-                  onSelected: (val) {
+                GlassDropdownPill<String>(
+                  value: displayCurrency,
+                  options: [
+                    for (final currency in allCurrencies)
+                      GlassDropdownOption(currency, currency),
+                  ],
+                  onChanged: (val) {
                     ref.read(ledgerProvider.notifier).setDisplayCurrency(val);
                   },
-                  itemBuilder: (context) => allCurrencies
-                      .map((c) => PopupMenuItem(value: c, child: Text(c)))
-                      .toList(),
-                  child: HomeBalancePill(
-                    label: displayCurrency,
-                    icon: Icons.currency_exchange_outlined,
-                    showChevron: true,
-                  ),
+                  icon: Icons.currency_exchange_outlined,
+                  semanticLabel: 'Display currency',
                 )
               else
                 HomeBalancePill(
@@ -223,28 +246,15 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
             ],
           ),
           const SizedBox(height: 2),
-          TweenAnimationBuilder<double>(
-            duration: const Duration(milliseconds: 600),
-            curve: Curves.easeOutCubic,
-            tween: Tween<double>(
-              begin: total.amountMinor.toDouble(),
-              end: total.amountMinor.toDouble(),
+          PrivacyText(
+            formatMoney(total, widget.state.preferences.locale),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+              fontSize: 40,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -1.2,
             ),
-            builder: (context, value, child) {
-              return PrivacyText(
-                formatMoney(
-                  total.copyWith(amountMinor: value.round()),
-                  widget.state.preferences.locale,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  fontSize: 40,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -1.2,
-                ),
-              );
-            },
           ),
 
           const SizedBox(height: AppSpacing.xs),
@@ -268,23 +278,13 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                               ),
                               border: Border.all(color: scheme.outlineVariant),
                             ),
-                            child: TweenAnimationBuilder<double>(
-                              duration: const Duration(milliseconds: 600),
-                              curve: Curves.easeOutCubic,
-                              tween: Tween<double>(
-                                begin: money.amountMinor.toDouble(),
-                                end: money.amountMinor.toDouble(),
+                            child: PrivacyText(
+                              '${money.currency} ${formatMoney(money, widget.state.preferences.locale)}',
+                              style: TextStyle(
+                                color: scheme.onSurfaceVariant,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
                               ),
-                              builder: (context, value, child) {
-                                return PrivacyText(
-                                  '${money.currency} ${formatMoney(money.copyWith(amountMinor: value.round()), widget.state.preferences.locale)}',
-                                  style: TextStyle(
-                                    color: scheme.onSurfaceVariant,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                );
-                              },
                             ),
                           ),
                           if (money != currencyBreakdown.last)
@@ -1127,26 +1127,23 @@ class _BalanceTrendHomeWidgetState
   }
 
   Widget _buildDropdown() {
-    return PopupMenuButton<String>(
-      initialValue: _period,
-      onSelected: (value) {
+    return GlassDropdownPill<String>(
+      value: _period,
+      options: const [
+        GlassDropdownOption('This week', 'This week'),
+        GlassDropdownOption('This month', 'This month'),
+        GlassDropdownOption('This year', 'This year'),
+        GlassDropdownOption('All time', 'All time'),
+      ],
+      onChanged: (value) {
         setState(() {
           _period = value;
           _scrollOffset = 0.0; // Reset view to "now" on zoom change
         });
         _savePreference(value);
       },
-      itemBuilder: (context) => const [
-        PopupMenuItem(value: 'This week', child: Text('This week')),
-        PopupMenuItem(value: 'This month', child: Text('This month')),
-        PopupMenuItem(value: 'This year', child: Text('This year')),
-        PopupMenuItem(value: 'All time', child: Text('All time')),
-      ],
-      child: HomeBalancePill(
-        label: _period,
-        icon: Icons.calendar_month,
-        showChevron: true,
-      ),
+      icon: Icons.calendar_month,
+      semanticLabel: 'Balance trend period',
     );
   }
 }
@@ -1584,36 +1581,29 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
       iconColor: Theme.of(context).colorScheme.secondary,
       actionLabel: 'Open',
       onAction: () => context.push('/recurring'),
-      headerTrailing: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: const ['1_week', '2_weeks', '1_month'].contains(filter)
-              ? filter
-              : '1_week',
-          isDense: true,
-          iconSize: 16,
-          style: TextStyle(
-            fontSize: 12,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-          items: const [
-            DropdownMenuItem(value: '1_week', child: Text('Next 7 days')),
-            DropdownMenuItem(value: '2_weeks', child: Text('Next 14 days')),
-            DropdownMenuItem(value: '1_month', child: Text('Next 30 days')),
-          ],
-          onChanged: (value) {
-            if (value != null) {
-              final newFilters = Map<String, String>.from(
-                state.preferences.homeWidgetFilters,
-              );
-              newFilters['upcomingScheduled'] = value;
-              ref
-                  .read(ledgerProvider.notifier)
-                  .updatePreferences(
-                    state.preferences.copyWith(homeWidgetFilters: newFilters),
-                  );
-            }
-          },
-        ),
+      headerTrailing: GlassDropdownPill<String>(
+        value: const ['1_week', '2_weeks', '1_month'].contains(filter)
+            ? filter
+            : '1_week',
+        options: const [
+          GlassDropdownOption('1_week', 'Next 7 days'),
+          GlassDropdownOption('2_weeks', 'Next 14 days'),
+          GlassDropdownOption('1_month', 'Next 30 days'),
+        ],
+        semanticLabel: 'Upcoming payment range',
+        onChanged: (value) {
+          if (value != null) {
+            final newFilters = Map<String, String>.from(
+              state.preferences.homeWidgetFilters,
+            );
+            newFilters['upcomingScheduled'] = value;
+            ref
+                .read(ledgerProvider.notifier)
+                .updatePreferences(
+                  state.preferences.copyWith(homeWidgetFilters: newFilters),
+                );
+          }
+        },
       ),
       child: Column(
         children: [

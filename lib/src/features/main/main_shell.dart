@@ -214,19 +214,10 @@ class _MainShellState extends ConsumerState<MainShell>
                     items: _tabs,
                     selectedIndex: selectedIndex,
                     onSelected: _selectTab,
-                    trailingAction: selectedIndex == 2 && showAction
-                        ? action
-                        : null,
+                    action: showAction ? action : null,
+                    compactAction: selectedIndex == 2,
                   ),
                 ),
-                if (showAction && selectedIndex != 2)
-                  Positioned(
-                    right: AppSpacing.lg,
-                    bottom:
-                        AppSizes.bottomBarClearance +
-                        MediaQuery.paddingOf(context).bottom,
-                    child: action,
-                  ),
               ],
             ),
           );

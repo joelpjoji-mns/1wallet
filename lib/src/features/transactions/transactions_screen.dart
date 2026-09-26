@@ -236,11 +236,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           TransactionCommandStrip(
             query: _query,
             typeLabel: _typeFilterLabel(typeFilter),
+            typeValue: typeFilter,
             dateLabel: _dateFilterLabel(dateFilter),
+            dateValue: dateFilter,
             accountLabel:
                 accountById(state, accountFilter)?.name ?? 'All accounts',
             categoryLabel: _categoryFilterLabel(state),
             statusLabel: _statusFilterLabel(statusFilter),
+            statusValue: statusFilter,
             typeActive: typeFilter != 'all',
             dateActive: dateFilter != _defaultDateFilter,
             accountActive: accountFilter != null,
@@ -250,11 +253,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             hasActiveFilters: hasActiveFilters,
             onQueryChanged: (value) => setState(() => _query = value),
             onClear: _clearFilters,
-            onTypeTap: () => _showTypeFilter(state),
-            onDateTap: _showDateFilter,
+            onTypeSelected: (value) =>
+                ref.read(transactionsTypeFilterProvider.notifier).state = value,
+            onDateSelected: (value) =>
+                ref.read(transactionsDateFilterProvider.notifier).state = value,
             onAccountTap: () => _showAccountFilter(state, accountFilter),
             onCategoryTap: () => _showCategoryFilter(state),
-            onStatusTap: _showStatusFilter,
+            onStatusSelected: (value) =>
+                ref.read(transactionsStatusFilterProvider.notifier).state =
+                    value,
           ),
           if (transactions.isNotEmpty)
             Padding(

@@ -264,6 +264,7 @@ class LedgerPreferences {
     this.glassBlurLevel = 9.0,
     this.glassProgressiveBlurStrength = 0.0,
     this.glassBackgroundOpacity = 0.15,
+    this.glassInteractionStrength = 0.35,
     this.notificationInboxEnabled = true,
     this.deviceNotificationsEnabled = false,
     this.quietHoursEnabled = false,
@@ -306,6 +307,7 @@ class LedgerPreferences {
   final double glassBlurLevel;
   final double glassProgressiveBlurStrength;
   final double glassBackgroundOpacity;
+  final double glassInteractionStrength;
   final bool notificationInboxEnabled;
   final bool deviceNotificationsEnabled;
   final bool quietHoursEnabled;
@@ -348,6 +350,7 @@ class LedgerPreferences {
     double? glassBlurLevel,
     double? glassProgressiveBlurStrength,
     double? glassBackgroundOpacity,
+    double? glassInteractionStrength,
     bool? notificationInboxEnabled,
     bool? deviceNotificationsEnabled,
     bool? quietHoursEnabled,
@@ -394,6 +397,8 @@ class LedgerPreferences {
           glassProgressiveBlurStrength ?? this.glassProgressiveBlurStrength,
       glassBackgroundOpacity:
           glassBackgroundOpacity ?? this.glassBackgroundOpacity,
+      glassInteractionStrength:
+          glassInteractionStrength ?? this.glassInteractionStrength,
       notificationInboxEnabled:
           notificationInboxEnabled ?? this.notificationInboxEnabled,
       deviceNotificationsEnabled:
@@ -427,10 +432,8 @@ class LedgerPreferences {
       merchantCategoryRules:
           merchantCategoryRules ?? this.merchantCategoryRules,
       hideSkippedInHistory: hideSkippedInHistory ?? this.hideSkippedInHistory,
-      showExcludedAccounts:
-          showExcludedAccounts ?? this.showExcludedAccounts,
-      showArchivedAccounts:
-          showArchivedAccounts ?? this.showArchivedAccounts,
+      showExcludedAccounts: showExcludedAccounts ?? this.showExcludedAccounts,
+      showArchivedAccounts: showArchivedAccounts ?? this.showArchivedAccounts,
     );
   }
 }

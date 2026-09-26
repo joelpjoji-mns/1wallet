@@ -105,29 +105,64 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
 
     final router = ref.watch(appRouterProvider);
     final themeState = ref.watch(themeControllerProvider);
+    final glass = ref.watch(
+      ledgerProvider.select(
+        (state) => (
+          blur: state.preferences.glassBlurLevel,
+          progressiveBlur: state.preferences.glassProgressiveBlurStrength,
+          fill: state.preferences.glassBackgroundOpacity,
+          visibility: state.preferences.glassSpecularOpacity,
+          saturation: state.preferences.glassSpecularSaturation,
+          refraction: state.preferences.glassRefractionLevel,
+          interaction: state.preferences.glassInteractionStrength,
+        ),
+      ),
+    );
+    final blur = (glass.blur + glass.progressiveBlur * 8).clamp(0.0, 24.0);
+    final fill = glass.fill.clamp(0.0, 0.5);
+    final interaction = glass.interaction.clamp(0.0, 1.0);
 
     return LiquidGlassWidgets.wrap(
       theme: GlassThemeData(
         light: GlassThemeVariant(
           settings: GlassThemeSettings(
-            thickness: 24,
-            blur: 10,
-            glassColor: Color(0x66FFFFFF),
+            thickness: 20,
+            blur: blur,
+            glassColor: Color.fromRGBO(255, 255, 255, fill),
+            visibility: glass.visibility.clamp(0.15, 1.0),
+            saturation: glass.saturation.clamp(0.0, 2.0),
+            refractiveIndex: 1.0 + glass.refraction.clamp(0.0, 1.0) * 0.25,
+            fresnelStrength: 0.4,
+            ambientStrength: 0.10,
+            chromaticAberration: 0.01,
           ),
           quality: GlassQuality.standard,
         ),
         dark: GlassThemeVariant(
           settings: GlassThemeSettings(
-            thickness: 24,
-            blur: 8,
-            glassColor: Color(0xCC000000),
-            lightIntensity: 0.12,
-            ambientStrength: 0.04,
+            thickness: 20,
+            blur: blur,
+            glassColor: Color.fromRGBO(255, 255, 255, fill * 0.4),
+            visibility: glass.visibility.clamp(0.15, 1.0),
+            saturation: glass.saturation.clamp(0.0, 2.0),
+            refractiveIndex: 1.0 + glass.refraction.clamp(0.0, 1.0) * 0.25,
+            lightIntensity: 0.16,
+            ambientStrength: 0.06,
+            fresnelStrength: 0.52,
+            edgeAbsorption: 0.14,
+            chromaticAberration: 0.01,
           ),
           quality: GlassQuality.standard,
         ),
+        interaction: GlassInteractionSettings(
+          stretch: 0.55 * interaction,
+          interactionScale: 1.0 + 0.14 * interaction,
+          resistance: 0.06 - 0.035 * interaction,
+        ),
       ),
-      adaptiveQuality: true,
+      // Keep one predictable quality tier instead of runtime benchmarking
+      // and repeatedly changing the glass implementation during navigation.
+      adaptiveQuality: false,
       brightnessResolver: (context) {
         if (themeState.themeMode == ThemeMode.light) return Brightness.light;
         if (themeState.themeMode == ThemeMode.dark) return Brightness.dark;

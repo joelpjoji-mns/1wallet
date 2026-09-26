@@ -140,6 +140,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   const SizedBox(height: AppSpacing.md),
 
+                  _GlassTuningSection(
+                    preferences: state.preferences,
+                    onSave: (preferences) => ref
+                        .read(ledgerProvider.notifier)
+                        .updatePreferences(preferences),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+
                   // ── Notifications ──
                   GlassGroupedSection(
                     header: const Text('Notifications'),
@@ -457,6 +465,153 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       'en_GB' => 'English (United Kingdom)',
       _ => locale,
     };
+  }
+}
+
+class _GlassTuningSection extends StatefulWidget {
+  const _GlassTuningSection({required this.preferences, required this.onSave});
+
+  final LedgerPreferences preferences;
+  final ValueChanged<LedgerPreferences> onSave;
+
+  @override
+  State<_GlassTuningSection> createState() => _GlassTuningSectionState();
+}
+
+class _GlassTuningSectionState extends State<_GlassTuningSection> {
+  late double _blur;
+  late double _fill;
+  late double _refraction;
+  late double _interaction;
+  late double _shine;
+
+  @override
+  void initState() {
+    super.initState();
+    _readPreferences();
+  }
+
+  @override
+  void didUpdateWidget(covariant _GlassTuningSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.preferences != widget.preferences) _readPreferences();
+  }
+
+  void _readPreferences() {
+    final preferences = widget.preferences;
+    _blur = preferences.glassBlurLevel.clamp(0, 18).toDouble();
+    _fill = preferences.glassBackgroundOpacity.clamp(0, .5).toDouble();
+    _refraction = preferences.glassRefractionLevel.clamp(0, 1).toDouble();
+    _interaction = preferences.glassInteractionStrength.clamp(0, 1).toDouble();
+    _shine = preferences.glassSpecularOpacity.clamp(.15, 1).toDouble();
+  }
+
+  void _save() => widget.onSave(
+    widget.preferences.copyWith(
+      glassBlurLevel: _blur,
+      glassBackgroundOpacity: _fill,
+      glassRefractionLevel: _refraction,
+      glassInteractionStrength: _interaction,
+      glassSpecularOpacity: _shine,
+    ),
+  );
+
+  Widget _slider(
+    String label,
+    String value,
+    double current,
+    double max,
+    ValueChanged<double> update,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        AppSpacing.xs,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(label)),
+              Text(
+                value,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          GlassSlider(
+            value: current,
+            min: 0,
+            max: max,
+            onChanged: update,
+            onChangeEnd: (_) => _save(),
+            label: label,
+            quality: GlassQuality.standard,
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassGroupedSection(
+      header: const Text('Glass appearance'),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.sm,
+            AppSpacing.md,
+            0,
+          ),
+          child: Text(
+            'Tune the shared glass surfaces and interactions across the app.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+        _slider(
+          'Frosting',
+          '${_blur.round()}',
+          _blur,
+          18,
+          (value) => setState(() => _blur = value),
+        ),
+        _slider(
+          'Tint strength',
+          '${(_fill * 100).round()}%',
+          _fill,
+          .5,
+          (value) => setState(() => _fill = value),
+        ),
+        _slider(
+          'Refraction',
+          '${(_refraction * 100).round()}%',
+          _refraction,
+          1,
+          (value) => setState(() => _refraction = value),
+        ),
+        _slider(
+          'Bounce',
+          '${(_interaction * 100).round()}%',
+          _interaction,
+          1,
+          (value) => setState(() => _interaction = value),
+        ),
+        _slider(
+          'Highlight',
+          '${(_shine * 100).round()}%',
+          _shine,
+          1,
+          (value) => setState(() => _shine = value),
+        ),
+      ],
+    );
   }
 }
 

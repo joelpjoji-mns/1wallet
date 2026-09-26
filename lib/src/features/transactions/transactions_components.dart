@@ -8,10 +8,13 @@ class TransactionCommandStrip extends StatelessWidget {
   const TransactionCommandStrip({
     required this.query,
     required this.typeLabel,
+    required this.typeValue,
     required this.dateLabel,
+    required this.dateValue,
     required this.accountLabel,
     required this.categoryLabel,
     required this.statusLabel,
+    required this.statusValue,
     required this.typeActive,
     required this.dateActive,
     required this.accountActive,
@@ -20,20 +23,23 @@ class TransactionCommandStrip extends StatelessWidget {
     required this.hasActiveFilters,
     required this.onQueryChanged,
     required this.onClear,
-    required this.onTypeTap,
-    required this.onDateTap,
+    required this.onTypeSelected,
+    required this.onDateSelected,
     required this.onAccountTap,
     required this.onCategoryTap,
-    required this.onStatusTap,
+    required this.onStatusSelected,
     super.key,
   });
 
   final String query;
   final String typeLabel;
+  final String typeValue;
   final String dateLabel;
+  final String dateValue;
   final String accountLabel;
   final String categoryLabel;
   final String statusLabel;
+  final String statusValue;
   final bool typeActive;
   final bool dateActive;
   final bool accountActive;
@@ -42,11 +48,11 @@ class TransactionCommandStrip extends StatelessWidget {
   final bool hasActiveFilters;
   final ValueChanged<String> onQueryChanged;
   final VoidCallback onClear;
-  final VoidCallback onTypeTap;
-  final VoidCallback onDateTap;
+  final ValueChanged<String> onTypeSelected;
+  final ValueChanged<String> onDateSelected;
   final VoidCallback onAccountTap;
   final VoidCallback onCategoryTap;
-  final VoidCallback onStatusTap;
+  final ValueChanged<String> onStatusSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -96,13 +102,44 @@ class TransactionCommandStrip extends StatelessWidget {
                               icon: Icons.filter_alt_outlined,
                               label: typeLabel,
                               active: typeActive,
-                              onTap: onTypeTap,
+                              value: typeValue,
+                              options: const [
+                                GlassDropdownOption('all', 'All records'),
+                                GlassDropdownOption(
+                                  'income',
+                                  'Income',
+                                  icon: Icons.trending_up_rounded,
+                                ),
+                                GlassDropdownOption(
+                                  'expense',
+                                  'Expense',
+                                  icon: Icons.trending_down_rounded,
+                                ),
+                                GlassDropdownOption(
+                                  'transfer',
+                                  'Transfer',
+                                  icon: Icons.swap_horiz_rounded,
+                                ),
+                              ],
+                              onSelected: onTypeSelected,
                             ),
                             FilterPill(
                               icon: Icons.date_range_outlined,
                               label: dateLabel,
                               active: dateActive,
-                              onTap: onDateTap,
+                              value: dateValue,
+                              options: const [
+                                GlassDropdownOption('all', 'All time'),
+                                GlassDropdownOption('today', 'Today'),
+                                GlassDropdownOption('this_week', 'This week'),
+                                GlassDropdownOption('this_month', 'This month'),
+                                GlassDropdownOption(
+                                  'last_30_days',
+                                  'Last 30 days',
+                                ),
+                                GlassDropdownOption('this_year', 'This year'),
+                              ],
+                              onSelected: onDateSelected,
                             ),
                             FilterPill(
                               icon: Icons.wallet_outlined,
@@ -120,7 +157,26 @@ class TransactionCommandStrip extends StatelessWidget {
                               icon: Icons.info_outline,
                               label: statusLabel,
                               active: statusActive,
-                              onTap: onStatusTap,
+                              value: statusValue,
+                              options: const [
+                                GlassDropdownOption('all', 'All statuses'),
+                                GlassDropdownOption(
+                                  'cleared',
+                                  'Cleared',
+                                  icon: Icons.check_circle_outline,
+                                ),
+                                GlassDropdownOption(
+                                  'pending',
+                                  'Pending',
+                                  icon: Icons.hourglass_empty_rounded,
+                                ),
+                                GlassDropdownOption(
+                                  'void',
+                                  'Skipped / Void',
+                                  icon: Icons.block_rounded,
+                                ),
+                              ],
+                              onSelected: onStatusSelected,
                             ),
                           ],
                         ),
@@ -166,41 +222,48 @@ class FilterPill extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.active,
-    required this.onTap,
+    this.onTap,
+    this.value,
+    this.options,
+    this.onSelected,
     super.key,
   });
 
   final IconData icon;
   final String label;
   final bool active;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final String? value;
+  final List<GlassDropdownOption<String>>? options;
+  final ValueChanged<String>? onSelected;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final background = active
-        ? scheme.primaryContainer
-        : scheme.surfaceContainerHighest;
+    if (options != null && value != null && onSelected != null) {
+      return Padding(
+        padding: const EdgeInsets.only(right: AppSpacing.xs),
+        child: GlassDropdownPill<String>(
+          value: value!,
+          options: options!,
+          onChanged: onSelected!,
+          icon: icon,
+          semanticLabel: label,
+        ),
+      );
+    }
     final foreground = active ? scheme.onPrimaryContainer : scheme.onSurface;
     return Padding(
       padding: const EdgeInsets.only(right: AppSpacing.xs),
-      child: ActionChip(
-        visualDensity: VisualDensity.compact,
-        avatar: Icon(icon, size: 16, color: foreground),
-        label: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 128),
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: foreground, fontWeight: FontWeight.w800),
-          ),
-        ),
-        backgroundColor: background,
-        side: BorderSide(
-          color: active ? scheme.primary : scheme.outlineVariant,
-        ),
-        onPressed: onTap,
+      child: GlassChip(
+        label: label,
+        icon: Icon(icon, size: 16, color: foreground),
+        selected: active,
+        selectedColor: scheme.primaryContainer,
+        labelStyle: TextStyle(color: foreground, fontWeight: FontWeight.w800),
+        onTap: onTap ?? () {},
+        quality: GlassQuality.standard,
+        useOwnLayer: true,
       ),
     );
   }

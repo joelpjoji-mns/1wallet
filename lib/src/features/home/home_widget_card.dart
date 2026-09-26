@@ -30,19 +30,51 @@ class HomeWidgetCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isAmoled = theme.scaffoldBackgroundColor == AppColors.amoledBackground;
+    final isDark = theme.brightness == Brightness.dark;
     final resolvedIconColor = iconColor ?? scheme.primary;
     final reorderScope = HomeWidgetCardReorderScope.maybeOf(context);
-    return GlassCard(
-      margin: EdgeInsets.zero,
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-      quality: GlassQuality.minimal,
-      child: Material(
-        color: Colors.transparent,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(
+          color: isAmoled
+              ? Colors.white.withAlpha(24) // subtle crisp boundary in pure black
+              : (isDark
+                  ? scheme.outlineVariant.withAlpha(50)
+                  : Colors.transparent),
+          width: 0.8,
+        ),
+        boxShadow: isAmoled
+            ? [
+                BoxShadow(
+                  color: Colors.black.withAlpha(160),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ]
+            : (isDark
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(100),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null),
+      ),
+      child: GlassCard(
+        margin: EdgeInsets.zero,
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+        quality: GlassQuality.minimal,
+        child: Material(
+          color: Colors.transparent,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             Row(
               children: [
                 HomeWidgetReorderableIcon(
@@ -113,6 +145,7 @@ class HomeWidgetCard extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }

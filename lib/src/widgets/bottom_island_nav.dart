@@ -23,14 +23,16 @@ class BottomIslandNavBar extends StatelessWidget {
     required this.items,
     required this.selectedIndex,
     required this.onSelected,
-    this.trailingAction,
+    this.action,
+    this.compactAction = false,
     super.key,
   });
 
   final List<IslandTabItem> items;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
-  final Widget? trailingAction;
+  final Widget? action;
+  final bool compactAction;
 
   @override
   Widget build(BuildContext context) {
@@ -40,86 +42,77 @@ class BottomIslandNavBar extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          AppSizes.bottomBarOuterVerticalPadding,
-          AppSpacing.md,
-          AppSizes.bottomBarOuterVerticalPadding,
-        ),
+        padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final hasAction = trailingAction != null;
-            final maxWidth =
-                AppSizes.islandMaxWidth + (hasAction ? 72 + AppSpacing.sm : 0);
-            final width = constraints.maxWidth < maxWidth
-                ? constraints.maxWidth
-                : maxWidth;
+            // Keep full natural island width without excessive empty gaps on sides
+            final islandWidth = (constraints.maxWidth - 28)
+                .clamp(320.0, AppSizes.islandMaxWidth)
+                .toDouble();
+            final totalWidth = constraints.maxWidth;
+
             return Align(
               alignment: Alignment.bottomCenter,
               child: SizedBox(
-                width: width,
-                child: Row(
+                width: totalWidth,
+                height: 148,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.bottomCenter,
                   children: [
-                    Expanded(
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 320),
-                        curve: Curves.easeOutCubic,
-                        child: GlassTabBar.bottom(
-                          tabs: [
-                            for (final item in items)
-                              GlassTab(
-                                label: item.title,
-                                semanticLabel: item.title,
-                                icon: Icon(item.icon),
-                                activeIcon: Icon(item.activeIcon),
-                              ),
-                          ],
-                          selectedIndex: selectedIndex,
-                          onTabSelected: (index) =>
-                              onSelected(items[index].pageIndex ?? index),
-                          barHeight: AppSizes.bottomBarContentHeight,
-                          horizontalPadding: 14,
-                          verticalPadding: 12,
-                          spacing: 6,
-                          showIndicator: true,
-                          quality: GlassQuality.standard,
-                          // Explicit indicator color that reads well in both themes
-                          indicatorColor: scheme.primary.withAlphaFactor(
-                            isDark ? 0.30 : 0.14,
-                          ),
-                          selectedIconColor: scheme.primary,
-                          unselectedIconColor: scheme.onSurfaceVariant,
-                          selectedLabelColor: scheme.primary,
-                          unselectedLabelColor: scheme.onSurfaceVariant,
-
-                          backgroundQuality: GlassQuality.standard,
-                          // Explicit glass settings to prevent AMOLED white bleed:
-                          // on pure-black AMOLED surfaces the shader can refract
-                          // against almost nothing and appear white — higher thickness
-                          // + more blur keeps the glass effect dark and visible.
-                          settings: LiquidGlassSettings(
-                            blur: isDark ? 26 : 16,
-                            thickness: isDark ? 30 : 26,
-                            glassColor: isDark
-                                ? const Color(0xD9000000)
-                                : const Color(0x26FFFFFF),
-                            whitenStrength: isDark ? 0 : 0.08,
-                            lightIntensity: isDark ? 0.12 : 0.5,
-                            ambientStrength: isDark ? 0.04 : 0.1,
-                            edgeAbsorption: isDark ? 0.22 : 0,
-                          ),
+                    // Animate island bar position: shifts to right slightly when FAB compacts down, or stays centered
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 380),
+                      curve: Curves.easeInOutCubicEmphasized,
+                      left: compactAction
+                          ? ((totalWidth - islandWidth) / 2) + 24
+                          : (totalWidth - islandWidth) / 2,
+                      bottom: 0,
+                      width: islandWidth,
+                      child: GlassTabBar.bottom(
+                        tabs: [
+                          for (final item in items)
+                            GlassTab(
+                              label: item.title,
+                              semanticLabel: item.title,
+                              icon: Icon(item.icon),
+                              activeIcon: Icon(item.activeIcon),
+                            ),
+                        ],
+                        selectedIndex: selectedIndex,
+                        onTabSelected: (index) =>
+                            onSelected(items[index].pageIndex ?? index),
+                        barHeight: AppSizes.bottomBarContentHeight,
+                        horizontalPadding: 10,
+                        verticalPadding: 12,
+                        spacing: 6,
+                        showIndicator: true,
+                        quality: GlassQuality.standard,
+                        indicatorColor: scheme.primary.withAlphaFactor(
+                          isDark ? 0.30 : 0.14,
                         ),
+                        selectedIconColor: scheme.primary,
+                        unselectedIconColor: scheme.onSurfaceVariant,
+                        selectedLabelColor: scheme.primary,
+                        unselectedLabelColor: scheme.onSurfaceVariant,
+                        backgroundQuality: GlassQuality.standard,
                       ),
                     ),
-                    if (trailingAction != null) ...[
-                      const SizedBox(width: AppSpacing.sm),
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 240),
-                        switchInCurve: Curves.easeOutCubic,
-                        switchOutCurve: Curves.easeInCubic,
-                        child: trailingAction!,
+                    if (action != null)
+                      // FAB moving down animation smoothly anchored to bottom right
+                      AnimatedPositioned(
+                        duration: const Duration(milliseconds: 380),
+                        curve: Curves.easeInOutCubicEmphasized,
+                        right: 14,
+                        bottom: compactAction
+                            ? 0
+                            : AppSizes.bottomBarContentHeight + 16,
+                        child: AnimatedOpacity(
+                          duration: const Duration(milliseconds: 250),
+                          opacity: 1.0,
+                          child: action!,
+                        ),
                       ),
-                    ],
                   ],
                 ),
               ),

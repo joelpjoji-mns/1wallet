@@ -415,9 +415,7 @@ LedgerState _migrateCategoryTaxonomy(
     );
   }
 
-  CaptureCandidate withRedirectedCandidateCategory(
-    CaptureCandidate candidate,
-  ) {
+  CaptureCandidate withRedirectedCandidateCategory(CaptureCandidate candidate) {
     final next = redirectCategoryId(candidate.suggestedCategoryId);
     if (next == candidate.suggestedCategoryId) return candidate;
     if (next != null) return candidate.copyWith(suggestedCategoryId: next);
@@ -600,6 +598,7 @@ Map<String, Object?> _preferencesToJson(LedgerPreferences preferences) {
     'glassBlurLevel': preferences.glassBlurLevel,
     'glassProgressiveBlurStrength': preferences.glassProgressiveBlurStrength,
     'glassBackgroundOpacity': preferences.glassBackgroundOpacity,
+    'glassInteractionStrength': preferences.glassInteractionStrength,
     'notificationInboxEnabled': preferences.notificationInboxEnabled,
     'deviceNotificationsEnabled': preferences.deviceNotificationsEnabled,
     'quietHoursEnabled': preferences.quietHoursEnabled,
@@ -703,6 +702,10 @@ LedgerPreferences _preferencesFromJson(Map<String, dynamic> json) {
     glassBackgroundOpacity: _double(
       json['glassBackgroundOpacity'],
       fallback: fallback.glassBackgroundOpacity,
+    ),
+    glassInteractionStrength: _double(
+      json['glassInteractionStrength'],
+      fallback: fallback.glassInteractionStrength,
     ),
     notificationInboxEnabled: _bool(
       json['notificationInboxEnabled'],

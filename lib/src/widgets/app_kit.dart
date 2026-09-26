@@ -19,6 +19,104 @@ class HeaderSaveAction extends StatefulWidget {
   State<HeaderSaveAction> createState() => _HeaderSaveActionState();
 }
 
+@immutable
+class GlassDropdownOption<T> {
+  const GlassDropdownOption(this.value, this.label, {this.icon});
+  final T value;
+  final String label;
+  final IconData? icon;
+}
+
+/// Compact glass dropdown used for short, non-searchable option lists.
+class GlassDropdownPill<T> extends StatelessWidget {
+  const GlassDropdownPill({
+    required this.value,
+    required this.options,
+    required this.onChanged,
+    this.icon,
+    this.semanticLabel,
+    super.key,
+  });
+
+  final T value;
+  final List<GlassDropdownOption<T>> options;
+  final ValueChanged<T> onChanged;
+  final IconData? icon;
+  final String? semanticLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final matching = options.where((option) => option.value == value);
+    final selected = matching.isEmpty ? null : matching.first;
+    final label =
+        selected?.label ?? (options.isEmpty ? '' : options.first.label);
+    return GlassMenu(
+      menuWidth: 220,
+      quality: GlassQuality.standard,
+      items: [
+        for (final option in options)
+          GlassMenuItem(
+            title: option.label,
+            isSelected: option.value == value,
+            icon: Icon(
+              option.icon ??
+                  (option.value == value
+                      ? Icons.check_rounded
+                      : Icons.circle_outlined),
+              size: 18,
+              color: option.value == value
+                  ? scheme.primary
+                  : scheme.onSurfaceVariant,
+            ),
+            onTap: () => onChanged(option.value),
+          ),
+      ],
+      triggerBuilder: (context, toggleMenu) => GlassButton.custom(
+        onTap: toggleMenu,
+        label: semanticLabel ?? label,
+        quality: GlassQuality.standard,
+        shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.pill),
+        useOwnLayer: true,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.xs,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 15, color: scheme.primary),
+                const SizedBox(width: AppSpacing.xxs),
+              ],
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 148),
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: scheme.onSurface,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 2),
+              Icon(
+                Icons.expand_more_rounded,
+                size: 17,
+                color: scheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _HeaderSaveActionState extends State<HeaderSaveAction> {
   bool _busy = false;
 
@@ -184,6 +282,7 @@ class IslandFloatingActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final interaction = GlassThemeData.of(context).interaction;
     Widget button = GlassButton(
       icon: Icon(icon),
       label: tooltip ?? 'Action',
@@ -194,23 +293,9 @@ class IslandFloatingActionButton extends StatelessWidget {
       iconColor: Theme.of(context).colorScheme.primary,
       useOwnLayer: true,
       quality: GlassQuality.standard,
-      settings: LiquidGlassSettings(
-        blur: Theme.of(context).brightness == Brightness.dark ? 16 : 12,
-        thickness: Theme.of(context).brightness == Brightness.dark ? 22 : 18,
-        glassColor: Theme.of(context).brightness == Brightness.dark
-            ? const Color(0xD9000000)
-            : const Color(0x26FFFFFF),
-        whitenStrength: 0,
-        lightIntensity: Theme.of(context).brightness == Brightness.dark
-            ? 0.12
-            : 0.5,
-        ambientStrength: Theme.of(context).brightness == Brightness.dark
-            ? 0.04
-            : 0.1,
-        edgeAbsorption: Theme.of(context).brightness == Brightness.dark
-            ? 0.22
-            : 0,
-      ),
+      stretch: interaction.stretch ?? 0.5,
+      interactionScale: interaction.interactionScale ?? 1.15,
+      resistance: interaction.resistance ?? 0.01,
     );
 
     final tooltipMessage = tooltip;
