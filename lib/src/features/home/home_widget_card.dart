@@ -36,19 +36,20 @@ class HomeWidgetCard extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final resolvedIconColor = iconColor ?? scheme.primary;
     final reorderScope = HomeWidgetCardReorderScope.maybeOf(context);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(
-          color: isAmoled
-              ? Colors.white.withAlpha(24) // subtle crisp boundary in pure black
-              : (isDark
-                  ? scheme.outlineVariant.withAlpha(50)
-                  : Colors.transparent),
-          width: 0.8,
+    return RepaintBoundary(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          border: Border.all(
+            color: isAmoled
+                ? Colors.white.withAlpha(24) // subtle crisp boundary in pure black
+                : (isDark
+                    ? scheme.outlineVariant.withAlpha(50)
+                    : Colors.transparent),
+            width: 0.8,
+          ),
         ),
-      ),
-      child: GlassCard(
+        child: GlassCard(
         margin: EdgeInsets.zero,
         padding: const EdgeInsets.all(AppSpacing.sm),
         shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
@@ -128,6 +129,7 @@ class HomeWidgetCard extends StatelessWidget {
           ],
         ),
       ),
+    ),
     ),
     );
   }

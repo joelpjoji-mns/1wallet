@@ -153,6 +153,115 @@ final _transactionsFlowProvider = Provider.autoDispose
       );
     });
 
+final _monthlyStatsProvider = Provider.autoDispose
+    .family<
+      ({Map<String, int> monthlyBalances, Map<String, int> monthlyFlows}),
+      ({String? accountFilter, String displayCurrency, String locale})
+    >((ref, params) {
+      final state = ref.watch(ledgerProvider);
+      final includedAccounts = params.accountFilter != null
+          ? {params.accountFilter}
+          : {
+              for (final a in state.accounts)
+                if (!a.isArchived && a.includeInTotals) a.id,
+            };
+
+      var running = state.accounts
+          .where((a) => includedAccounts.contains(a.id))
+          .fold<int>(0, (sum, a) {
+            final converted = convertMoneyForDisplay(
+              state,
+              a.openingBalance,
+              params.displayCurrency,
+            );
+            if (converted.currency != params.displayCurrency) {
+              return sum;
+            }
+            return sum + converted.amountMinor;
+          });
+
+      final monthlyBalances = <String, int>{};
+      final fullLedger = sortedTransactions(
+        state,
+        includeScheduled: false,
+      ).reversed;
+
+      for (final t in fullLedger) {
+        final monthStr = DateFormat(
+          'MMM yyyy',
+          params.locale,
+        ).format(t.occurredAt).toUpperCase();
+        var delta = 0;
+        if (includedAccounts.contains(t.accountId)) {
+          final sourceConverted = convertMoneyForDisplay(
+            state,
+            Money(
+              amountMinor: sourceDelta(t),
+              currency: t.amount.currency,
+            ),
+            params.displayCurrency,
+          );
+          if (sourceConverted.currency == params.displayCurrency) {
+            delta += sourceConverted.amountMinor;
+          }
+        }
+        if (t.counterAccountId != null &&
+            includedAccounts.contains(t.counterAccountId)) {
+          final counterConverted = convertMoneyForDisplay(
+            state,
+            Money(
+              amountMinor: counterDelta(t),
+              currency: (t.counterAmount ?? t.amount).currency,
+            ),
+            params.displayCurrency,
+          );
+          if (counterConverted.currency == params.displayCurrency) {
+            delta += counterConverted.amountMinor;
+          }
+        }
+        running += delta;
+        monthlyBalances[monthStr] = running;
+      }
+
+      final monthlyFlows = <String, int>{};
+      for (final t in fullLedger) {
+        if (t.status == 'scheduled' ||
+            t.status == 'paused' ||
+            t.status == 'void') {
+          continue;
+        }
+        if (t.isExcludedFromReports) continue;
+        if (!includedAccounts.contains(t.accountId) &&
+            (t.counterAccountId == null ||
+                !includedAccounts.contains(t.counterAccountId))) {
+          continue;
+        }
+
+        final monthStr = DateFormat(
+          'MMM yyyy',
+          params.locale,
+        ).format(t.occurredAt).toUpperCase();
+        final sign =
+            (incomeTypes.contains(t.type) || t.type == 'transferIn') ? 1 : -1;
+        final converted = convertMoneyForDisplay(
+          state,
+          t.amount,
+          params.displayCurrency,
+        );
+        if (converted.currency == params.displayCurrency) {
+          monthlyFlows[monthStr] =
+              (monthlyFlows[monthStr] ?? 0) + (converted.amountMinor * sign);
+        } else {
+          monthlyFlows[monthStr] = monthlyFlows[monthStr] ?? 0;
+        }
+      }
+
+      return (
+        monthlyBalances: monthlyBalances,
+        monthlyFlows: monthlyFlows,
+      );
+    });
+
 final transactionsTypeFilterProvider = StateProvider<String>((ref) => 'all');
 final transactionsDateFilterProvider = StateProvider<String>(
   (ref) => 'this_year',
@@ -242,6 +351,25 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             accountLabel:
                 accountById(state, accountFilter)?.name ?? 'All accounts',
             categoryLabel: _categoryFilterLabel(state),
+            categoryValue: _categoryFilters.isEmpty
+                ? (_includeUncategorizedCategory ? 'uncategorized' : 'all')
+                : (_categoryFilters.length == 1 && !_includeUncategorizedCategory
+                    ? _categoryFilters.first
+                    : null),
+            categoryOptions: [
+              const GlassDropdownOption('all', 'All categories'),
+              const GlassDropdownOption(
+                'uncategorized',
+                'Uncategorized',
+                icon: Icons.label_off_outlined,
+              ),
+              for (final cat in state.categories.where((c) => !c.isArchived))
+                GlassDropdownOption(
+                  cat.id,
+                  cat.name,
+                  icon: categoryIcon(cat),
+                ),
+            ],
             statusLabel: _statusFilterLabel(statusFilter),
             statusValue: statusFilter,
             typeActive: typeFilter != 'all',
@@ -259,6 +387,22 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 ref.read(transactionsDateFilterProvider.notifier).state = value,
             onAccountTap: () => _showAccountFilter(state, accountFilter),
             onCategoryTap: () => _showCategoryFilter(state),
+            onCategorySelected: (value) {
+              setState(() {
+                if (value == 'all') {
+                  _categoryFilters.clear();
+                  _includeUncategorizedCategory = false;
+                } else if (value == 'uncategorized') {
+                  _categoryFilters.clear();
+                  _includeUncategorizedCategory = true;
+                } else {
+                  _categoryFilters
+                    ..clear()
+                    ..add(value);
+                  _includeUncategorizedCategory = false;
+                }
+              });
+            },
             onStatusSelected: (value) =>
                 ref.read(transactionsStatusFilterProvider.notifier).state =
                     value,
@@ -322,98 +466,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   )
                 : Builder(
                     builder: (context) {
-                      final monthlyFlows = <String, int>{};
-                      for (final t in transactions) {
-                        final monthStr = DateFormat(
-                          'MMM yyyy',
-                          state.preferences.locale.replaceAll('_', '-'),
-                        ).format(t.occurredAt).toUpperCase();
-                        final sign =
-                            (incomeTypes.contains(t.type) ||
-                                t.type == 'transferIn')
-                            ? 1
-                            : -1;
-                        final converted = convertMoneyForDisplay(
-                          state,
-                          t.amount,
-                          state.preferences.displayCurrency,
-                        );
-                        if (converted.currency ==
-                            state.preferences.displayCurrency) {
-                          monthlyFlows[monthStr] =
-                              (monthlyFlows[monthStr] ?? 0) +
-                              (converted.amountMinor * sign);
-                        } else {
-                          monthlyFlows[monthStr] = monthlyFlows[monthStr] ?? 0;
-                        }
-                      }
-
-                      final includedAccounts = accountFilter != null
-                          ? {accountFilter}
-                          : {
-                              for (final a in state.accounts)
-                                if (!a.isArchived && a.includeInTotals) a.id,
-                            };
-
-                      var running = state.accounts
-                          .where((a) => includedAccounts.contains(a.id))
-                          .fold<int>(0, (sum, a) {
-                            final converted = convertMoneyForDisplay(
-                              state,
-                              a.openingBalance,
-                              state.preferences.displayCurrency,
-                            );
-                            if (converted.currency !=
-                                state.preferences.displayCurrency) {
-                              return sum;
-                            }
-                            return sum + converted.amountMinor;
-                          });
-
-                      final monthlyBalances = <String, int>{};
-                      final fullLedger = sortedTransactions(
-                        state,
-                        includeScheduled: false,
-                      ).reversed;
-
-                      for (final t in fullLedger) {
-                        final monthStr = DateFormat(
-                          'MMM yyyy',
-                          state.preferences.locale.replaceAll('_', '-'),
-                        ).format(t.occurredAt).toUpperCase();
-                        var delta = 0;
-                        if (includedAccounts.contains(t.accountId)) {
-                          final sourceConverted = convertMoneyForDisplay(
-                            state,
-                            Money(
-                              amountMinor: sourceDelta(t),
-                              currency: t.amount.currency,
-                            ),
-                            state.preferences.displayCurrency,
-                          );
-                          if (sourceConverted.currency ==
-                              state.preferences.displayCurrency) {
-                            delta += sourceConverted.amountMinor;
-                          }
-                        }
-                        if (t.counterAccountId != null &&
-                            includedAccounts.contains(t.counterAccountId)) {
-                          final counterConverted = convertMoneyForDisplay(
-                            state,
-                            Money(
-                              amountMinor: counterDelta(t),
-                              currency: (t.counterAmount ?? t.amount).currency,
-                            ),
-                            state.preferences.displayCurrency,
-                          );
-                          if (counterConverted.currency ==
-                              state.preferences.displayCurrency) {
-                            delta += counterConverted.amountMinor;
-                          }
-                        }
-                        running += delta;
-                        monthlyBalances[monthStr] = running;
-                      }
+                      final stats = ref.watch(
+                        _monthlyStatsProvider((
+                          accountFilter: accountFilter,
+                          displayCurrency: state.preferences.displayCurrency,
+                          locale: state.preferences.locale.replaceAll('_', '-'),
+                        )),
+                      );
+                      final monthlyBalances = stats.monthlyBalances;
+                      final monthlyFlows = stats.monthlyFlows;
 
                       final widgets = <Widget>[];
                       String? currentMonth;

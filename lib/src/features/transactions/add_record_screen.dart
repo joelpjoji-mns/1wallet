@@ -388,62 +388,19 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                             ),
                           ),
                           const SizedBox(width: AppSpacing.sm),
-                          PopupMenuButton<String>(
-                            initialValue: txCurrency,
-                            onSelected: (val) => setState(() {
+                          GlassDropdownPill<String>(
+                            value: txCurrency,
+                            options: availableCurrencies(state)
+                                .map((c) => GlassDropdownOption(c, c))
+                                .toList(),
+                            onChanged: (val) => setState(() {
                               _transactionCurrency = val;
                               _localAmountEdited = false;
                               _localAmount = '';
                               _localExpression = '';
                               _localAmountController.clear();
                             }),
-                            itemBuilder: (context) => availableCurrencies(state)
-                                .map(
-                                  (c) =>
-                                      PopupMenuItem(value: c, child: Text(c)),
-                                )
-                                .toList(),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.sm,
-                                vertical: 7,
-                              ),
-                              decoration: BoxDecoration(
-                                color: tone.withAlpha(180),
-                                borderRadius: BorderRadius.circular(
-                                  AppRadii.pill,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    txCurrency,
-                                    style: TextStyle(
-                                      color: tone.computeLuminance() > 0.5
-                                          ? Theme.of(
-                                              context,
-                                            ).colorScheme.onSurface
-                                          : Theme.of(
-                                              context,
-                                            ).colorScheme.surface,
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 12.5,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 5),
-                                  Icon(
-                                    Icons.expand_more_rounded,
-                                    size: 15,
-                                    color: tone.computeLuminance() > 0.5
-                                        ? Theme.of(
-                                            context,
-                                          ).colorScheme.onSurface
-                                        : Theme.of(context).colorScheme.surface,
-                                  ),
-                                ],
-                              ),
-                            ),
+                            semanticLabel: 'Select currency',
                           ),
                         ],
                       ),
@@ -646,37 +603,69 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                           ),
                         ),
                         const SizedBox(height: AppSpacing.md),
-                        DropdownButtonFormField<String>(
-                          initialValue:
-                              const [
-                                'cleared',
-                                'pending',
-                                'void',
-                              ].contains(_status)
-                              ? _status
-                              : 'cleared',
-                          decoration: InputDecoration(
-                            labelText: 'Status',
-                            prefixIcon: const Icon(Icons.info_outline),
-                            border: OutlineInputBorder(
+                        Material(
+                          color: Theme.of(context).colorScheme.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(AppRadii.md),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.md,
+                              vertical: AppSpacing.sm,
+                            ),
+                            decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(AppRadii.md),
+                              border: Border.all(
+                                color: Theme.of(context).colorScheme.outlineVariant,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Expanded(
+                                  child: Text(
+                                    'Status',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                      color: Theme.of(context).colorScheme.onSurface,
+                                    ),
+                                  ),
+                                ),
+                                GlassDropdownPill<String>(
+                                  value: const [
+                                    'cleared',
+                                    'pending',
+                                    'void',
+                                  ].contains(_status)
+                                      ? _status!
+                                      : 'cleared',
+                                  options: const [
+                                    GlassDropdownOption(
+                                      'cleared',
+                                      'Cleared',
+                                      icon: Icons.check_circle_outline,
+                                    ),
+                                    GlassDropdownOption(
+                                      'pending',
+                                      'Pending',
+                                      icon: Icons.hourglass_empty_rounded,
+                                    ),
+                                    GlassDropdownOption(
+                                      'void',
+                                      'Skipped / Void',
+                                      icon: Icons.block_rounded,
+                                    ),
+                                  ],
+                                  onChanged: (val) => setState(() => _status = val),
+                                  semanticLabel: 'Select status',
+                                ),
+                              ],
                             ),
                           ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'cleared',
-                              child: Text('Cleared'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'pending',
-                              child: Text('Pending'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'void',
-                              child: Text('Skipped / Void'),
-                            ),
-                          ],
-                          onChanged: (val) => setState(() => _status = val),
                         ),
                         const SizedBox(height: AppSpacing.md),
                       ],
