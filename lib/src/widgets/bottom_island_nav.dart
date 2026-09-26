@@ -65,7 +65,8 @@ class BottomIslandNavBar extends StatelessWidget {
                   horizontalPadding: 14,
                   verticalPadding: 12,
                   spacing: 6,
-                  showIndicator: false,
+                  showIndicator: true,
+                  quality: GlassQuality.standard,
                   // Explicit indicator color that reads well in both themes
                   indicatorColor: scheme.primary.withAlphaFactor(
                     isDark ? 0.30 : 0.14,
@@ -74,7 +75,7 @@ class BottomIslandNavBar extends StatelessWidget {
                   unselectedIconColor: scheme.onSurfaceVariant,
                   selectedLabelColor: scheme.primary,
                   unselectedLabelColor: scheme.onSurfaceVariant,
-                  quality: GlassQuality.premium,
+                  
                   backgroundQuality: GlassQuality.standard,
                   // Explicit glass settings to prevent AMOLED white bleed:
                   // on pure-black AMOLED surfaces the shader can refract
@@ -93,3 +94,5 @@ class BottomIslandNavBar extends StatelessWidget {
     );
   }
 }
+
+
