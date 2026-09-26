@@ -230,13 +230,15 @@ class GlassHeaderButton extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final badgeCount = badge ?? 0;
 
-    Widget button = GlassIconButton(
-      icon: Icon(icon),
-      onPressed: onPressed,
-      size: 48,
-      iconSize: 24,
-      quality: GlassQuality.standard,
-      semanticLabel: _headerButtonSemanticLabel(semanticLabel, badgeCount),
+    Widget button = Center(
+      child: GlassIconButton(
+        icon: Icon(icon),
+        onPressed: onPressed,
+        size: 48,
+        iconSize: 24,
+        quality: GlassQuality.standard,
+        semanticLabel: _headerButtonSemanticLabel(semanticLabel, badgeCount),
+      ),
     );
 
     if (badgeCount > 0) {
@@ -321,15 +323,17 @@ class HeaderIconButton extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          GlassIconButton(
-            icon: Icon(icon),
-            iconSize: 26,
-            size: 52,
-            quality: GlassQuality.standard,
-            onPressed: onPressed,
-            semanticLabel: _headerButtonSemanticLabel(
-              semanticLabel,
-              badgeCount,
+          Center(
+            child: GlassIconButton(
+              icon: Icon(icon),
+              iconSize: 26,
+              size: 52,
+              quality: GlassQuality.standard,
+              onPressed: onPressed,
+              semanticLabel: _headerButtonSemanticLabel(
+                semanticLabel,
+                badgeCount,
+              ),
             ),
           ),
           if (badgeCount > 0)

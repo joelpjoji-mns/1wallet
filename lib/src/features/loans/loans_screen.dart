@@ -9,6 +9,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../common/route_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -77,48 +78,72 @@ class LoansScreen extends ConsumerWidget {
               mode != 'edit' &&
               mode != 'new' &&
               mode != 'forecast') ...[
-            SectionCard(
-              title: 'Loan control center',
-              subtitle: 'Loan count and next scheduled EMI.',
-              child: Row(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: MetricTile(
-                      label: mode == 'past' ? 'Past loans' : 'Loans',
-                      value: '${listedLoans.length}',
-                      icon: Icons.account_balance_outlined,
-                      compact: true,
-                      tone: mode == 'past'
-                          ? MetricTone.standard
-                          : MetricTone.warning,
-                    ),
+                  Text(
+                    'Loan control center',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: MetricTile(
-                      label: mode == 'past' ? 'Archived' : 'Total EMI',
-                      value: mode == 'past'
-                          ? '${pastLoans.length}'
-                          : maskMoneyIfPrivate(
-                              state,
-                              formatMoney(
-                                Money(
-                                  amountMinor: emi,
-                                  currency: displayCurrency,
-                                ),
-                                state.preferences.locale,
-                              ),
-                            ),
-                      icon: mode == 'past'
-                          ? Icons.archive_outlined
-                          : Icons.event_repeat_outlined,
-                      compact: true,
-                      tone: mode == 'past'
-                          ? MetricTone.warning
-                          : MetricTone.danger,
-                    ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Loan count and next scheduled EMI.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ],
+              ),
+            ),
+            const Gap(AppSpacing.sm),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: GlassCard(
+                quality: GlassQuality.standard,
+                shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: MetricTile(
+                          label: mode == 'past' ? 'Past loans' : 'Loans',
+                          value: '${listedLoans.length}',
+                          icon: Icons.account_balance_outlined,
+                          compact: true,
+                          tone: mode == 'past'
+                              ? MetricTone.standard
+                              : MetricTone.warning,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: MetricTile(
+                          label: mode == 'past' ? 'Archived' : 'Total EMI',
+                          value: mode == 'past'
+                              ? '${pastLoans.length}'
+                              : maskMoneyIfPrivate(
+                                  state,
+                                  formatMoney(
+                                    Money(
+                                      amountMinor: emi,
+                                      currency: displayCurrency,
+                                    ),
+                                    state.preferences.locale,
+                                  ),
+                                ),
+                          icon: mode == 'past'
+                              ? Icons.archive_outlined
+                              : Icons.event_repeat_outlined,
+                          compact: true,
+                          tone: mode == 'past'
+                              ? MetricTone.warning
+                              : MetricTone.danger,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
             const Gap(AppSpacing.lg),
@@ -260,125 +285,153 @@ class _LoanFormState extends ConsumerState<LoanForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SectionCard(
-          title: loan == null ? 'Loan details' : 'Edit loan details',
-          subtitle: 'Create a loan account and optional scheduled EMI.',
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Loan name',
-                  prefixIcon: Icon(Icons.account_balance_outlined),
-                ),
+              Text(
+                loan == null ? 'Loan details' : 'Edit loan details',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
               ),
-              const SizedBox(height: AppSpacing.sm),
-              TextFormField(
-                controller: _lenderController,
-                decoration: const InputDecoration(
-                  labelText: 'Lender / institution',
-                  prefixIcon: Icon(Icons.business_outlined),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _principalController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: [
-                        ThousandsSeparatorInputFormatter(
-                          state.preferences.locale,
-                        ),
-                      ],
-                      decoration: const InputDecoration(
-                        labelText: 'Original Principal',
-                        prefixIcon: Icon(Icons.payments_outlined),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _currentBalanceController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: [
-                        ThousandsSeparatorInputFormatter(
-                          state.preferences.locale,
-                        ),
-                      ],
-                      decoration: const InputDecoration(
-                        labelText: 'Current Balance',
-                        prefixIcon: Icon(Icons.account_balance_wallet_outlined),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _emiController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: [
-                        ThousandsSeparatorInputFormatter(
-                          state.preferences.locale,
-                        ),
-                      ],
-                      decoration: const InputDecoration(
-                        labelText: 'Repayment amount',
-                        prefixIcon: Icon(Icons.event_repeat_outlined),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _rateController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: [
-                        ThousandsSeparatorInputFormatter(
-                          state.preferences.locale,
-                        ),
-                      ],
-                      decoration: const InputDecoration(
-                        labelText: 'Rate %',
-                        prefixIcon: Icon(Icons.percent_rounded),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              TextFormField(
-                controller: _tenureController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: const InputDecoration(
-                  labelText: 'Tenure count',
-                  prefixIcon: Icon(Icons.timelapse_outlined),
-                ),
+              const SizedBox(height: 2),
+              Text(
+                'Create a loan account and optional scheduled EMI.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ],
           ),
         ),
+        const Gap(AppSpacing.sm),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: GlassCard(
+            quality: GlassQuality.standard,
+            shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                children: [
+                  GlassTextField(
+                    controller: _nameController,
+                    placeholder: 'Loan name',
+                    prefixIcon: const Icon(Icons.account_balance_outlined),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  GlassTextField(
+                    controller: _lenderController,
+                    placeholder: 'Lender / institution',
+                    prefixIcon: const Icon(Icons.business_outlined),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GlassTextField(
+                          controller: _principalController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: [
+                            ThousandsSeparatorInputFormatter(
+                              state.preferences.locale,
+                            ),
+                          ],
+                          placeholder: 'Original Principal',
+                          prefixIcon: const Icon(Icons.payments_outlined),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: GlassTextField(
+                          controller: _currentBalanceController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: [
+                            ThousandsSeparatorInputFormatter(
+                              state.preferences.locale,
+                            ),
+                          ],
+                          placeholder: 'Current Balance',
+                          prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GlassTextField(
+                          controller: _emiController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: [
+                            ThousandsSeparatorInputFormatter(
+                              state.preferences.locale,
+                            ),
+                          ],
+                          placeholder: 'Repayment amount',
+                          prefixIcon: const Icon(Icons.event_repeat_outlined),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: GlassTextField(
+                          controller: _rateController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: [
+                            ThousandsSeparatorInputFormatter(
+                              state.preferences.locale,
+                            ),
+                          ],
+                          placeholder: 'Rate %',
+                          prefixIcon: const Icon(Icons.percent_rounded),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  GlassTextField(
+                    controller: _tenureController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    placeholder: 'Tenure count',
+                    prefixIcon: const Icon(Icons.timelapse_outlined),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
         const Gap(AppSpacing.lg),
-        SectionCard(
-          title: 'Repayment schedule',
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                'Repayment schedule',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+              ),
+            ],
+          ),
+        ),
+        const Gap(AppSpacing.sm),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: GlassCard(
+            quality: GlassQuality.standard,
+            shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
               PremiumRow(
                 icon: Icons.category_outlined,
                 title: 'Loan type',
@@ -517,7 +570,9 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                 subtitle: _currency,
                 onTap: () => _showCurrencyPicker(state),
               ),
-            ],
+                ],
+              ),
+            ),
           ),
         ),
         const Gap(AppSpacing.lg),
@@ -958,12 +1013,6 @@ class LoanDetailView extends ConsumerWidget {
                             const SizedBox(height: 8),
                             LinearProgressIndicator(
                               value: progress,
-                              minHeight: 8,
-                              backgroundColor: Theme.of(
-                                context,
-                              ).colorScheme.surfaceContainerHighest,
-                              color: Theme.of(context).colorScheme.primary,
-                              borderRadius: BorderRadius.circular(4),
                             ),
                           ],
                         );
@@ -1063,37 +1112,61 @@ class LoanDetailView extends ConsumerWidget {
         const Gap(AppSpacing.xxl),
 
         // Repayment History
-        SectionCard(
-          title: 'Repayment history',
-          subtitle: repaymentHistory.isEmpty
-              ? 'Posted EMI and repayment entries will appear here.'
-              : '${repaymentHistory.length} posted repayment${repaymentHistory.length == 1 ? '' : 's'}',
-          child: repaymentHistory.isEmpty
-              ? const EmptyState(
-                  icon: Icons.receipt_long_outlined,
-                  title: 'No repayment history yet',
-                  body:
-                      'Once repayments are posted, this loan will show the real timeline here.',
-                )
-              : Column(
-                  children: [
-                    for (
-                      var index = 0;
-                      index < repaymentHistory.length;
-                      index++
-                    ) ...[
-                      TransactionRow(
-                        state: state,
-                        transaction: repaymentHistory[index],
-                        onTap: () => context.push(
-                          '/transaction/${repaymentHistory[index].id}',
-                        ),
-                      ),
-                      if (index != repaymentHistory.length - 1)
-                        const SizedBox(height: AppSpacing.xxs),
-                    ],
-                  ],
-                ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Repayment history',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                repaymentHistory.isEmpty
+                    ? 'Posted EMI and repayment entries will appear here.'
+                    : '${repaymentHistory.length} posted repayment${repaymentHistory.length == 1 ? '' : 's'}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+        const Gap(AppSpacing.sm),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: GlassCard(
+            quality: GlassQuality.standard,
+            shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: repaymentHistory.isEmpty
+                  ? const EmptyState(
+                      icon: Icons.receipt_long_outlined,
+                      title: 'No repayment history yet',
+                      body:
+                          'Once repayments are posted, this loan will show the real timeline here.',
+                    )
+                  : Column(
+                      children: [
+                        for (
+                          var index = 0;
+                          index < repaymentHistory.length;
+                          index++
+                        ) ...[
+                          TransactionRow(
+                            state: state,
+                            transaction: repaymentHistory[index],
+                            onTap: () => context.push(
+                              '/transaction/${repaymentHistory[index].id}',
+                            ),
+                          ),
+                          if (index != repaymentHistory.length - 1)
+                            const SizedBox(height: AppSpacing.xxs),
+                        ],
+                      ],
+                    ),
+            ),
+          ),
         ),
       ],
     );
@@ -1351,9 +1424,6 @@ class _LoanCompactCard extends StatelessWidget {
                           const SizedBox(height: 6),
                           LinearProgressIndicator(
                             value: progress,
-                            backgroundColor: scheme.surfaceContainerHighest,
-                            color: scheme.primary,
-                            borderRadius: BorderRadius.circular(4),
                           ),
                         ],
                       );
@@ -2557,228 +2627,294 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               ],
             ),
           ),
-        SectionCard(
-          title: 'Payoff Simulation',
-          subtitle:
-              'Adjust your emergency fund and extra cash allocation to see the payoff graph.',
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TextFormField(
-                controller: _emergencyController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  ThousandsSeparatorInputFormatter(
-                    widget.state.preferences.locale,
-                  ),
-                ],
-                decoration: InputDecoration(
-                  labelText: 'Emergency Cash to keep',
-                  prefixText: currencySymbol,
-                  prefixIcon: const Icon(Icons.savings_outlined),
-                ),
-                onChanged: (val) {
-                  final newMinor = _amountMinorFromInput(
-                    val,
-                    baseCurrency,
-                  ).abs();
-                  _emergencyDebounce?.cancel();
-                  _emergencyDebounce = Timer(
-                    const Duration(milliseconds: 120),
-                    () {
-                      if (!mounted) return;
-                      ref
-                          .read(ledgerProvider.notifier)
-                          .updatePreferences(
-                            widget.state.preferences.copyWith(
-                              forecastEmergencyCashMinor: newMinor,
-                            ),
-                          );
-                      setState(() {});
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              DropdownButtonFormField<int>(
-                initialValue:
-                    const [
-                      0,
-                      7,
-                      14,
-                      30,
-                    ].contains(widget.state.preferences.loanPayoffDelayDays)
-                    ? widget.state.preferences.loanPayoffDelayDays
-                    : 0,
-                decoration: const InputDecoration(
-                  labelText: 'Delay before closing loan',
-                  prefixIcon: Icon(Icons.timer_outlined),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 0, child: Text('Close immediately')),
-                  DropdownMenuItem(value: 7, child: Text('Wait 1 week')),
-                  DropdownMenuItem(value: 14, child: Text('Wait 2 weeks')),
-                  DropdownMenuItem(value: 30, child: Text('Wait 1 month')),
-                ],
-                onChanged: (val) {
-                  if (val != null) {
-                    ref
-                        .read(ledgerProvider.notifier)
-                        .updatePreferences(
-                          widget.state.preferences.copyWith(
-                            loanPayoffDelayDays: val,
-                          ),
-                        );
-                  }
-                },
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Extra cash toward loans',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              SizedBox(
-                width: double.infinity,
-                child: SegmentedButton<double>(
-                  showSelectedIcon: false,
-                  segments: const [
-                    ButtonSegment(value: 0.0, label: Text('Base')),
-                    ButtonSegment(value: 0.5, label: Text('Balanced')),
-                    ButtonSegment(value: 1.0, label: Text('Max')),
-                  ],
-                  selected: {_snapAllocation(_debouncedExtraAllocationPercent)},
-                  onSelectionChanged: (selection) {
-                    final val = selection.first;
-                    setState(() {
-                      _extraAllocationPercent = val;
-                      _debouncedExtraAllocationPercent = val;
-                    });
-                    ref
-                        .read(ledgerProvider.notifier)
-                        .updatePreferences(
-                          widget.state.preferences.copyWith(
-                            forecastExtraAllocationPercent: val,
-                          ),
-                        );
-                  },
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
               Text(
-                _allocationHint(
-                  _snapAllocation(_debouncedExtraAllocationPercent),
-                ),
-                style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+                'Payoff Simulation',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Adjust your emergency fund and extra cash allocation to see the payoff graph.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ],
           ),
         ),
+        const Gap(AppSpacing.sm),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: GlassCard(
+            quality: GlassQuality.standard,
+            shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                children: [
+                  GlassTextField(
+                    controller: _emergencyController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      ThousandsSeparatorInputFormatter(
+                        widget.state.preferences.locale,
+                      ),
+                    ],
+                    placeholder: 'Emergency Cash to keep ($currencySymbol)',
+                    prefixIcon: const Icon(Icons.savings_outlined),
+                    onChanged: (val) {
+                      final newMinor = _amountMinorFromInput(
+                        val,
+                        baseCurrency,
+                      ).abs();
+                      _emergencyDebounce?.cancel();
+                      _emergencyDebounce = Timer(
+                        const Duration(milliseconds: 120),
+                        () {
+                          if (!mounted) return;
+                          ref
+                              .read(ledgerProvider.notifier)
+                              .updatePreferences(
+                                widget.state.preferences.copyWith(
+                                  forecastEmergencyCashMinor: newMinor,
+                                ),
+                              );
+                          setState(() {});
+                        },
+                      );
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  DropdownButtonFormField<int>(
+                    initialValue:
+                        const [
+                          0,
+                          7,
+                          14,
+                          30,
+                        ].contains(widget.state.preferences.loanPayoffDelayDays)
+                        ? widget.state.preferences.loanPayoffDelayDays
+                        : 0,
+                    decoration: const InputDecoration(
+                      labelText: 'Delay before closing loan',
+                      prefixIcon: Icon(Icons.timer_outlined),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 0, child: Text('Close immediately')),
+                      DropdownMenuItem(value: 7, child: Text('Wait 1 week')),
+                      DropdownMenuItem(value: 14, child: Text('Wait 2 weeks')),
+                      DropdownMenuItem(value: 30, child: Text('Wait 1 month')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        ref
+                            .read(ledgerProvider.notifier)
+                            .updatePreferences(
+                              widget.state.preferences.copyWith(
+                                loanPayoffDelayDays: val,
+                              ),
+                            );
+                      }
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Extra cash toward loans',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<double>(
+                      showSelectedIcon: false,
+                      segments: const [
+                        ButtonSegment(value: 0.0, label: Text('Base')),
+                        ButtonSegment(value: 0.5, label: Text('Balanced')),
+                        ButtonSegment(value: 1.0, label: Text('Max')),
+                      ],
+                      selected: {_snapAllocation(_debouncedExtraAllocationPercent)},
+                      onSelectionChanged: (selection) {
+                        final val = selection.first;
+                        setState(() {
+                          _extraAllocationPercent = val;
+                          _debouncedExtraAllocationPercent = val;
+                        });
+                        ref
+                            .read(ledgerProvider.notifier)
+                            .updatePreferences(
+                              widget.state.preferences.copyWith(
+                                forecastExtraAllocationPercent: val,
+                              ),
+                            );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    _allocationHint(
+                      _snapAllocation(_debouncedExtraAllocationPercent),
+                    ),
+                    style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
         const Gap(AppSpacing.lg),
 
-        SectionCard(
-          title: 'Projected Liquid Cash',
-          subtitle:
-              'Pinch, scroll, or tap +/− to zoom · drag to pan. Numbered dots mark when each loan is paid off.',
-          child: SizedBox(
-            height: 380,
-            child: DynamicForecastLineChart(
-              spots: spots,
-              chartWidth: lineChartWidth,
-              lineColor: scheme.primary,
-              balanceCurve: result.balanceCurve,
-              locale: locale,
-              payoffDots: payoffDots,
-              currencySymbol: currencySymbol,
-              isPrivate: widget.state.preferences.privacyModeEnabled,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Projected Liquid Cash',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Pinch, scroll, or tap +/− to zoom · drag to pan. Numbered dots mark when each loan is paid off.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+        const Gap(AppSpacing.sm),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: GlassCard(
+            quality: GlassQuality.standard,
+            shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: SizedBox(
+                height: 380,
+                child: DynamicForecastLineChart(
+                  spots: spots,
+                  chartWidth: lineChartWidth,
+                  lineColor: scheme.primary,
+                  balanceCurve: result.balanceCurve,
+                  locale: locale,
+                  payoffDots: payoffDots,
+                  currencySymbol: currencySymbol,
+                  isPrivate: widget.state.preferences.privacyModeEnabled,
+                ),
+              ),
             ),
           ),
         ),
 
         const Gap(AppSpacing.lg),
 
-        SectionCard(
-          title: 'Payoff Priority & Timeline',
-          subtitle:
-              'Drag and drop to change priority. The timeline reflects exactly when each loan pays off.',
-          child: ReorderableListView(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            onReorderItem: (oldIndex, newIndex) {
-              setState(() {
-                final item = _priorityLoans.removeAt(oldIndex);
-                _priorityLoans.insert(newIndex, item);
-              });
-              final newOrder = _priorityLoans.map((l) => l.id).toList();
-              // Important: Delay updatePreferences slightly so the ReorderableListView finishes its animation
-              // before the parent triggers a rebuild with the new state.
-              Future.delayed(const Duration(milliseconds: 50), () {
-                if (mounted) {
-                  ref
-                      .read(ledgerProvider.notifier)
-                      .updatePreferences(
-                        widget.state.preferences.copyWith(
-                          loanPriorityIds: newOrder,
-                        ),
-                      );
-                }
-              });
-            },
-            children: _priorityLoans.asMap().entries.map((entry) {
-              final index = entry.key;
-              final loan = entry.value;
-              final event = result.payoffEvents.firstWhereOrNull(
-                (e) => e.loan.id == loan.id,
-              );
-              final payoffStr = event != null
-                  ? ' · Pays off ${formatLedgerDate(event.payoffDate, locale)}'
-                  : ' · No payoff date (check EMI)';
-              final rawBal = accountBalance(widget.state, loan);
-              final outstandingBal = rawBal.copyWith(
-                amountMinor: rawBal.amountMinor.abs(),
-              );
-              final balStr = maskMoneyIfPrivate(
-                widget.state,
-                'Outstanding: ${formatMoney(outstandingBal, locale)}',
-              );
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Payoff Priority & Timeline',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Drag and drop to change priority. The timeline reflects exactly when each loan pays off.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+        const Gap(AppSpacing.sm),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: GlassCard(
+            quality: GlassQuality.standard,
+            shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: ReorderableListView(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                onReorderItem: (oldIndex, newIndex) {
+                  setState(() {
+                    final item = _priorityLoans.removeAt(oldIndex);
+                    _priorityLoans.insert(newIndex, item);
+                  });
+                  final newOrder = _priorityLoans.map((l) => l.id).toList();
+                  // Important: Delay updatePreferences slightly so the ReorderableListView finishes its animation
+                  // before the parent triggers a rebuild with the new state.
+                  Future.delayed(const Duration(milliseconds: 50), () {
+                    if (mounted) {
+                      ref
+                          .read(ledgerProvider.notifier)
+                          .updatePreferences(
+                            widget.state.preferences.copyWith(
+                              loanPriorityIds: newOrder,
+                            ),
+                          );
+                    }
+                  });
+                },
+                children: _priorityLoans.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final loan = entry.value;
+                  final event = result.payoffEvents.firstWhereOrNull(
+                    (e) => e.loan.id == loan.id,
+                  );
+                  final payoffStr = event != null
+                      ? ' · Pays off ${formatLedgerDate(event.payoffDate, locale)}'
+                      : ' · No payoff date (check EMI)';
+                  final rawBal = accountBalance(widget.state, loan);
+                  final outstandingBal = rawBal.copyWith(
+                    amountMinor: rawBal.amountMinor.abs(),
+                  );
+                  final balStr = maskMoneyIfPrivate(
+                    widget.state,
+                    'Outstanding: ${formatMoney(outstandingBal, locale)}',
+                  );
 
-              return ListTile(
-                key: ValueKey(loan.id),
-                leading: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ReorderableDragStartListener(
-                      index: index,
-                      child: const Icon(Icons.drag_handle),
-                    ),
-                    const SizedBox(width: 8),
-                    Semantics(
-                      label: 'Priority ${index + 1}',
-                      child: CircleAvatar(
-                        radius: 12,
-                        backgroundColor: scheme.primary,
-                        child: Text(
-                          '${index + 1}',
-                          style: TextStyle(
-                            color: scheme.onPrimary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                  return ListTile(
+                    key: ValueKey(loan.id),
+                    leading: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ReorderableDragStartListener(
+                          index: index,
+                          child: const Icon(Icons.drag_handle),
+                        ),
+                        const SizedBox(width: 8),
+                        Semantics(
+                          label: 'Priority ${index + 1}',
+                          child: CircleAvatar(
+                            radius: 12,
+                            backgroundColor: scheme.primary,
+                            child: Text(
+                              '${index + 1}',
+                              style: TextStyle(
+                                color: scheme.onPrimary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-                title: Text(loan.name),
-                subtitle: Text('$balStr$payoffStr'),
-              );
-            }).toList(),
+                    title: Text(loan.name),
+                    subtitle: Text('$balStr$payoffStr'),
+                  );
+                }).toList(),
+              ),
+            ),
           ),
         ),
       ],

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../auth/auth_user.dart';
 import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
 import '../../theme/theme_controller.dart';
-import '../../widgets/app_kit.dart';
 import '../../widgets/user_identity_widgets.dart';
 
 class SettingsProfileSection extends StatelessWidget {
@@ -23,28 +23,13 @@ class SettingsProfileSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return SectionCard(
-      title: 'Profile',
-      subtitle: 'Current auth mode and account actions.',
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  theme.colorScheme.primaryContainer.withAlpha(210),
-                  theme.colorScheme.surfaceContainerHigh,
-                  theme.colorScheme.tertiaryContainer.withAlpha(170),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(AppRadii.lg),
-              border: Border.all(color: theme.colorScheme.outlineVariant),
-            ),
-            child: Row(
+    return GlassCard(
+      quality: GlassQuality.premium,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          children: [
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 AuthUserAvatar(
@@ -86,44 +71,57 @@ class SettingsProfileSection extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          InfoRow(
-            label: 'Signed in as',
-            value: user?.email ?? 'Local user',
-            icon: Icons.account_circle_outlined,
-          ),
-          InfoRow(
-            label: 'Sync mode',
-            value: user?.isGoogleProvider == true ? 'Google' : 'Local',
-            icon: user?.isGoogleProvider == true
-                ? Icons.cloud_done_outlined
-                : Icons.cloud_outlined,
-            tone: user?.isGoogleProvider == true
-                ? MetricTone.positive
-                : MetricTone.standard,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          SizedBox(
-            width: double.infinity,
-            child: Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
+            const SizedBox(height: AppSpacing.lg),
+            Row(
               children: [
-                FilledButton.tonalIcon(
-                  onPressed: onOpenSync,
-                  icon: const Icon(Icons.cloud_sync_outlined),
-                  label: const Text('Open sync'),
+                Icon(Icons.account_circle_outlined, size: 20, color: theme.colorScheme.primary),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(child: Text('Signed in as')),
+                Text(user?.email ?? 'Local user', style: TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Icon(
+                  user?.isGoogleProvider == true
+                      ? Icons.cloud_done_outlined
+                      : Icons.cloud_outlined,
+                  size: 20,
+                  color: user?.isGoogleProvider == true
+                      ? Colors.green
+                      : theme.colorScheme.primary,
                 ),
-                FilledButton.tonalIcon(
-                  onPressed: onSignOut,
-                  icon: const Icon(Icons.logout_rounded),
-                  label: const Text('Sign out'),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(child: Text('Sync mode')),
+                Text(
+                  user?.isGoogleProvider == true ? 'Google' : 'Local',
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              width: double.infinity,
+              child: Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: [
+                  FilledButton.tonalIcon(
+                    onPressed: onOpenSync,
+                    icon: const Icon(Icons.cloud_sync_outlined),
+                    label: const Text('Open sync'),
+                  ),
+                  FilledButton.tonalIcon(
+                    onPressed: onSignOut,
+                    icon: const Icon(Icons.logout_rounded),
+                    label: const Text('Sign out'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -160,123 +158,85 @@ class SettingsPreferencesSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return SectionCard(
-      title: 'Preferences',
-      subtitle: 'Used by reports, forms, and dashboard widgets.',
-      child: Column(
-        children: [
-          PremiumRow(
-            icon: Icons.currency_exchange_outlined,
-            title: 'Base currency',
-            subtitle: preferences.baseCurrency,
-            meta: 'Default money unit',
-            onTap: onBaseCurrencyTap,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          PremiumRow(
-            icon: Icons.language_outlined,
-            title: 'Locale',
-            subtitle: localeLabel,
-            meta: preferences.locale.replaceAll('_', '-'),
-            onTap: onLocaleTap,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Icon(
-                Icons.calendar_today_outlined,
-                color: theme.colorScheme.primary,
-                size: 22,
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Month starts on day',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    if (startDayValidationError != null)
-                      Text(
-                        startDayValidationError!,
-                        style: TextStyle(
-                          color: theme.colorScheme.error,
-                          fontSize: 12,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              SizedBox(
-                width: 64,
-                child: Semantics(
-                  label: 'Month start day, 1 to 28',
-                  child: TextField(
-                    controller: startDayController,
-                    keyboardType: TextInputType.number,
-                    textAlign: TextAlign.center,
-                    // Restrict input to plain digits (no minus sign, decimal
-                    // point, or pasted junk) and cap the length at 2 chars
-                    // (the valid range is 1-28) so the field can't silently
-                    // hold something like "999" while validation catches up.
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(2),
-                    ],
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: AppSpacing.sm,
-                        vertical: AppSpacing.xs,
-                      ),
-                    ),
-                    onChanged: onStartDayChanged,
+    return GlassGroupedSection(header: const Text('Preferences'),
+      children: [
+        GlassListTile(
+          leading: const Icon(Icons.currency_exchange_outlined),
+          title: const Text('Base currency'),
+          subtitle: Text(preferences.baseCurrency),
+          trailing: const Icon(Icons.chevron_right, size: 20),
+          onTap: onBaseCurrencyTap,
+        ),
+        const GlassDivider(),
+        GlassListTile(
+          leading: const Icon(Icons.language_outlined),
+          title: const Text('Locale'),
+          subtitle: Text(localeLabel),
+          trailing: const Icon(Icons.chevron_right, size: 20),
+          onTap: onLocaleTap,
+        ),
+        const GlassDivider(),
+        GlassListTile(
+          leading: const Icon(Icons.calendar_today_outlined),
+          title: const Text('Month starts on day'),
+          subtitle: startDayValidationError != null
+              ? Text(startDayValidationError!, style: TextStyle(color: theme.colorScheme.error))
+              : null,
+          trailing: SizedBox(
+            width: 64,
+            child: Semantics(
+              label: 'Month start day, 1 to 28',
+              child: TextField(
+                controller: startDayController,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(2),
+                ],
+                decoration: const InputDecoration(
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.xs,
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          PremiumRow(
-            icon: Icons.palette_outlined,
-            title: 'Theme',
-            subtitle: switch (themeState.preference) {
-              AppThemePreference.system => 'System',
-              AppThemePreference.light => 'Light',
-              AppThemePreference.dark => 'Dark',
-              AppThemePreference.amoled => 'AMOLED',
-            },
-            meta: 'Material You color mode',
-            onTap: onThemeTap,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          PremiumRow(
-            icon: Icons.color_lens_outlined,
-            title: 'Accent',
-            subtitle: themeState.accentColor ?? 'System Material You',
-            meta: 'Drawer, buttons, navigation',
-            onTap: onAccentTap,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          const Divider(height: 1),
-          AppSwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            value: preferences.hideSkippedInHistory,
-            onChanged: onHideSkippedChanged,
-            title: const Text('Hide skipped in history'),
-            subtitle: Text(
-              'Hide skipped plan records from the main transaction history.',
-              style: TextStyle(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontSize: 12,
+                onChanged: onStartDayChanged,
               ),
             ),
           ),
-        ],
-      ),
+        ),
+        const GlassDivider(),
+        GlassListTile(
+          leading: const Icon(Icons.palette_outlined),
+          title: const Text('Theme'),
+          subtitle: Text(switch (themeState.preference) {
+            AppThemePreference.system => 'System',
+            AppThemePreference.light => 'Light',
+            AppThemePreference.amoled => 'Dark',
+          }),
+          trailing: const Icon(Icons.chevron_right, size: 20),
+          onTap: onThemeTap,
+        ),
+        const GlassDivider(),
+        GlassListTile(
+          leading: const Icon(Icons.color_lens_outlined),
+          title: const Text('Accent'),
+          subtitle: Text(themeState.accentColor ?? 'System Material You'),
+          trailing: const Icon(Icons.chevron_right, size: 20),
+          onTap: onAccentTap,
+        ),
+        const GlassDivider(),
+        GlassListTile(
+          title: const Text('Hide skipped in history'),
+          subtitle: const Text('Hide skipped plan records from the main transaction history.'),
+          trailing: GlassSwitch(
+            quality: GlassQuality.standard,
+            value: preferences.hideSkippedInHistory,
+            onChanged: onHideSkippedChanged,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -293,22 +253,21 @@ class SettingsFeatureHubSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SectionCard(
-      title: 'Feature hub',
-      subtitle: 'Advanced tools and detailed feature settings.',
-      child: Column(
-        children: [
-          for (final (index, link) in links.indexed) ...[
-            PremiumRow(
-              icon: link.$3,
-              title: link.$1,
-              subtitle: link.$2,
-              onTap: () => onOpenLink(link.$4),
-            ),
-            if (index < links.length - 1) const Divider(height: 1),
-          ],
+    return GlassGroupedSection(header: const Text('Feature hub'),
+      children: [
+        for (final (index, link) in links.indexed) ...[
+          GlassListTile(
+            leading: Icon(link.$3),
+            title: Text(link.$1),
+            subtitle: Text(link.$2),
+            trailing: const Icon(Icons.chevron_right, size: 20),
+            onTap: () => onOpenLink(link.$4),
+          ),
+          if (index < links.length - 1) const GlassDivider(),
         ],
-      ),
+      ],
     );
   }
 }
+
+

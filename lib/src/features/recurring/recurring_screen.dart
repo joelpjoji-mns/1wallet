@@ -417,6 +417,24 @@ class _RecurringCompactCard extends StatelessWidget {
     );
     final amountText = _recurringAmountLabel(state, transaction);
 
+    // Urgency calculation: scheduled items due within 3 calendar days
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dueDay = DateTime(
+      transaction.occurredAt.year,
+      transaction.occurredAt.month,
+      transaction.occurredAt.day,
+    );
+    final daysUntilDue = dueDay.difference(today).inDays;
+    final isUrgent = !historyMode &&
+        transaction.status == 'scheduled' &&
+        daysUntilDue >= 0 &&
+        daysUntilDue < 3;
+    final isDueToday = isUrgent && daysUntilDue == 0;
+    final urgentBorderColor = isDueToday
+        ? scheme.error
+        : scheme.error.withAlphaFactor(0.55);
+
     // Rendered in bulk for scrolling planned/history lists, so this stays
     // an opaque theme surface per liquid_glass_widgets guidance rather than
     // a refractive GlassCard (glass is reserved for navigation/control
@@ -424,9 +442,21 @@ class _RecurringCompactCard extends StatelessWidget {
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
+        color: transaction.status == 'paused'
+            ? scheme.surfaceContainerLow.withAlphaFactor(0.6)
+            : scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: scheme.outlineVariant.withAlpha(140)),
+        border: Border(
+          left: BorderSide(
+            color: isUrgent
+                ? urgentBorderColor
+                : scheme.outlineVariant.withAlpha(0),
+            width: isUrgent ? 4 : 0,
+          ),
+          top: BorderSide(color: scheme.outlineVariant.withAlpha(140)),
+          right: BorderSide(color: scheme.outlineVariant.withAlpha(140)),
+          bottom: BorderSide(color: scheme.outlineVariant.withAlpha(140)),
+        ),
       ),
       child: Material(
         color: Colors.transparent,
@@ -434,9 +464,11 @@ class _RecurringCompactCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadii.md),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: 12,
+            padding: EdgeInsets.fromLTRB(
+              isUrgent ? AppSpacing.sm : AppSpacing.md,
+              12,
+              AppSpacing.md,
+              12,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -455,12 +487,61 @@ class _RecurringCompactCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            primaryTitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w800),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  primaryTitle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.w800),
+                                ),
+                              ),
+                              if (isDueToday) ...[
+                                const SizedBox(width: AppSpacing.xs),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: scheme.errorContainer,
+                                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                                  ),
+                                  child: Text(
+                                    'TODAY',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.8,
+                                      color: scheme.onErrorContainer,
+                                    ),
+                                  ),
+                                ),
+                              ] else if (isUrgent) ...[
+                                const SizedBox(width: AppSpacing.xs),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: scheme.errorContainer.withAlphaFactor(0.6),
+                                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                                  ),
+                                  child: Text(
+                                    '${daysUntilDue}D',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.5,
+                                      color: scheme.onErrorContainer,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                           if (categorySubtitle != null) ...[
                             const SizedBox(height: 2),

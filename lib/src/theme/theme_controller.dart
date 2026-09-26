@@ -12,7 +12,7 @@ final themeControllerProvider =
       return ThemeController(prefs);
     });
 
-enum AppThemePreference { system, light, dark, amoled }
+enum AppThemePreference { system, light, amoled }
 
 class AppThemeState {
   const AppThemeState({
@@ -27,7 +27,7 @@ class AppThemeState {
 
   ThemeMode get themeMode => switch (preference) {
     AppThemePreference.light => ThemeMode.light,
-    AppThemePreference.dark || AppThemePreference.amoled => ThemeMode.dark,
+    AppThemePreference.amoled => ThemeMode.dark,
     AppThemePreference.system => ThemeMode.system,
   };
 
@@ -115,8 +115,11 @@ class ThemeController extends StateNotifier<AppThemeState> {
     try {
       final raw = _preferences.getString(_storageKey);
       final accent = _preferences.getString(_accentKey);
+      // Remap legacy 'dark' preference → 'amoled' (dark theme was removed;
+      // AMOLED is now the sole dark mode, labelled "Dark" in the UI).
+      final mappedRaw = raw == 'dark' ? 'amoled' : raw;
       final preference = AppThemePreference.values.firstWhere(
-        (item) => item.name == raw,
+        (item) => item.name == mappedRaw,
         orElse: () => AppThemePreference.amoled,
       );
       state = AppThemeState(

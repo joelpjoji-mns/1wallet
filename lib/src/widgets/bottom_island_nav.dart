@@ -34,10 +34,11 @@ class BottomIslandNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+        padding: const EdgeInsets.fromLTRB(14, 6, 14, 8),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final width = constraints.maxWidth < AppSizes.islandMaxWidth
@@ -55,19 +56,20 @@ class BottomIslandNavBar extends StatelessWidget {
                         semanticLabel: item.title,
                         icon: Icon(item.icon),
                         activeIcon: Icon(item.activeIcon),
-                        glowColor: scheme.primary.withAlphaFactor(0.2),
+                        glowColor: scheme.primary.withAlphaFactor(0.3),
                       ),
                   ],
                   selectedIndex: selectedIndex,
                   onTabSelected: (index) =>
                       onSelected(items[index].pageIndex ?? index),
-                  barHeight: 64,
-                  horizontalPadding: 12,
-                  verticalPadding: 8,
-                  spacing: 4,
+                  barHeight: 72,
+                  horizontalPadding: 14,
+                  verticalPadding: 12,
+                  spacing: 6,
                   showIndicator: true,
+                  // Explicit indicator color that reads well in both themes
                   indicatorColor: scheme.primary.withAlphaFactor(
-                    isDark ? 0.24 : 0.15,
+                    isDark ? 0.30 : 0.14,
                   ),
                   selectedIconColor: scheme.primary,
                   unselectedIconColor: scheme.onSurfaceVariant,
@@ -75,6 +77,14 @@ class BottomIslandNavBar extends StatelessWidget {
                   unselectedLabelColor: scheme.onSurfaceVariant,
                   quality: GlassQuality.premium,
                   backgroundQuality: GlassQuality.standard,
+                  // Explicit glass settings to prevent AMOLED white bleed:
+                  // on pure-black AMOLED surfaces the shader can refract
+                  // against almost nothing and appear white — higher thickness
+                  // + more blur keeps the glass effect dark and visible.
+                  settings: LiquidGlassSettings(
+                    blur: isDark ? 26 : 16,
+                    thickness: isDark ? 52 : 26,
+                  ),
                 ),
               ),
             );

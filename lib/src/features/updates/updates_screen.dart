@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
+import '../../design/tokens.dart';
 import '../../utils/app_reload.dart';
 import '../../widgets/app_kit.dart';
 import 'app_update_provider.dart';
@@ -18,8 +19,7 @@ class UpdatesScreen extends ConsumerWidget {
 
     return GlassIsolationScope(
       isolated: true,
-      defaultQuality: GlassQuality.premium,
-      child: Scaffold(
+      child: GlassScaffold(
         appBar: GlassAppBar(
           title: Text(
             'Updates',
@@ -32,31 +32,40 @@ class UpdatesScreen extends ConsumerWidget {
               : null,
           centerTitle: false,
           actions: [
-            IconButton(
-              tooltip: 'Check for updates',
-              icon: const Icon(Icons.refresh_rounded),
-              onPressed: state.status == UpdateStatus.checking
-                  ? null
-                  : () => provider.checkForUpdates(),
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.xs),
+              child: GlassIconButton(
+                icon: const Icon(Icons.refresh_rounded),
+                onPressed: state.status == UpdateStatus.checking
+                    ? null
+                    : () => provider.checkForUpdates(),
+                size: 44,
+                iconSize: 22,
+                
+                semanticLabel: 'Check for updates',
+              ),
             ),
           ],
         ),
         body: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.md,
+          ),
           children: [
-            _buildHeroCard(context, state, provider),
+            _buildHeroCard(context, state),
             if (hasUpdate) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               _buildReleaseInfoCard(context, state.latestRelease!),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               _buildChangelogCard(
                 context,
                 state.latestRelease!.changelog,
-                title: 'What\'s new in ${state.latestRelease!.versionName}',
+                title: "What's new in ${state.latestRelease!.versionName}",
               ),
             ],
             if (state.currentRelease != null && !hasUpdate) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               _buildChangelogCard(
                 context,
                 state.currentRelease!.changelog,
@@ -64,22 +73,20 @@ class UpdatesScreen extends ConsumerWidget {
               ),
             ],
             if (state.status == UpdateStatus.downloading) ...[
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.lg),
               _buildDownloadProgress(context, state),
             ],
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xl),
             _buildActionButtons(context, state, provider),
+            // Bottom clearance so last button isn't hidden by bottom nav
+            const SizedBox(height: AppSpacing.xl),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeroCard(
-    BuildContext context,
-    AppUpdateState state,
-    AppUpdateProvider provider,
-  ) {
+  Widget _buildHeroCard(BuildContext context, AppUpdateState state) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final hasUpdate = state.latestRelease != null;
@@ -97,7 +104,7 @@ class UpdatesScreen extends ConsumerWidget {
     Color color;
 
     if (state.status == UpdateStatus.checking) {
-      statusTitle = 'Checking for updates...';
+      statusTitle = 'Checking for updates…';
       statusSubtitle = 'Connecting to update servers';
       icon = Icons.sync_rounded;
       color = scheme.primary;
@@ -125,108 +132,128 @@ class UpdatesScreen extends ConsumerWidget {
       icon = Icons.download_done_rounded;
       color = scheme.primary;
     } else {
-      statusTitle = 'Opening installer...';
+      statusTitle = 'Opening installer…';
       statusSubtitle = 'Confirm prompt to finish updating';
       icon = Icons.install_mobile_rounded;
       color = scheme.primary;
     }
 
-    // Glass is reserved for navigation/control chrome; this is a scrolling
-    // page's content section, so it stays opaque (liquid_glass_widgets
-    // guidance: "Scrollable content cards" ❌).
-    return Container(
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(16),
+    // Hero summary panel — static (non-scrolling within itself), so
+    // GlassCard with standard quality is appropriate here.
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      shape: LiquidRoundedSuperellipse(
+        borderRadius: AppRadii.lg,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: CircleAvatar(
-                radius: 24,
-                backgroundColor: color.withValues(alpha: 0.12),
-                child: Icon(icon, color: color, size: 24),
-              ),
-              title: Text(
-                statusTitle,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              subtitle: Text(statusSubtitle),
+      
+      child: Column(
+        children: [
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: CircleAvatar(
+              radius: 24,
+              backgroundColor: color.withValues(alpha: 0.15),
+              child: Icon(icon, color: color, size: 24),
             ),
-            if (hasUpdate) ...[
-              const Divider(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Installed version',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                  Text(
-                    '$versionName ($versionCode)',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
+            title: Text(
+              statusTitle,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
               ),
-            ],
+            ),
+            subtitle: Text(
+              statusSubtitle,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          if (hasUpdate) ...[
+            Divider(
+              height: AppSpacing.xl,
+              color: scheme.outlineVariant.withValues(alpha: 0.5),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Installed version',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  '$versionName ($versionCode)',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildReleaseInfoCard(BuildContext context, AppUpdateRelease release) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Release Details',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+  Widget _buildReleaseInfoCard(
+    BuildContext context,
+    AppUpdateRelease release,
+  ) {
+    return GlassGroupedSection(
+      header: Text('Release Details'),
+      children: [
+        GlassListTile(
+          leading: Icon(
+            Icons.tag_rounded,
+            size: 20,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          title: const Text('Version Code'),
+          trailing: Text(
+            '${release.versionCode}',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(height: 8),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.info_outline),
-              title: const Text('Version Code'),
-              trailing: Text('${release.versionCode}'),
-            ),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.calendar_today),
-              title: const Text('Published At'),
-              trailing: Text(release.publishedAt.split('T').first),
-            ),
-            if (release.apk != null)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.sd_storage),
-                title: const Text('Size'),
-                trailing: Text(
-                  '${(release.apk!.sizeBytes / 1024 / 1024).toStringAsFixed(1)} MB',
-                ),
-              ),
-          ],
+          ),
         ),
-      ),
+        GlassDivider(),
+        GlassListTile(
+          leading: Icon(
+            Icons.calendar_today_rounded,
+            size: 20,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          title: const Text('Published'),
+          trailing: Text(
+            release.publishedAt.split('T').first,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        if (release.apk != null) ...[
+          GlassDivider(),
+          GlassListTile(
+            leading: Icon(
+              Icons.sd_storage_rounded,
+              size: 20,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            title: const Text('Download size'),
+            trailing: Text(
+              '${(release.apk!.sizeBytes / 1024 / 1024).toStringAsFixed(1)} MB',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -236,111 +263,117 @@ class UpdatesScreen extends ConsumerWidget {
     required String title,
   }) {
     if (changelog.isEmpty) {
-      return const SizedBox();
+      return const SizedBox.shrink();
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            if (changelog.newFeatures.isNotEmpty) ...[
-              Text(
-                'New Features',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              ...changelog.newFeatures.map(
-                (f) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('• '),
-                      Expanded(child: Text(f)),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-            if (changelog.bugFixes.isNotEmpty) ...[
-              Text(
-                'Bug Fixes',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.error,
-                ),
-              ),
-              ...changelog.bugFixes.map(
-                (f) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('• '),
-                      Expanded(child: Text(f)),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-            if (changelog.notes.isNotEmpty) ...[
-              Text(
-                'Notes',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.secondary,
-                ),
-              ),
-              ...changelog.notes.map(
-                (f) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('• '),
-                      Expanded(child: Text(f)),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ],
+    final scheme = Theme.of(context).colorScheme;
+
+    return GlassGroupedSection(
+      header: Text(title),
+      children: [
+        if (changelog.newFeatures.isNotEmpty) ...[
+          // Sub-section label for new features
+          _ChangelogSectionLabel(label: 'New Features', color: scheme.primary),
+          ...changelog.newFeatures.asMap().entries.map((entry) {
+            final isLast = entry.key == changelog.newFeatures.length - 1 &&
+                changelog.bugFixes.isEmpty &&
+                changelog.notes.isEmpty;
+            return _changelogItem(
+              context,
+              text: entry.value,
+              icon: Icons.fiber_new_rounded,
+              iconColor: scheme.primary,
+              showDivider: !isLast,
+            );
+          }),
+        ],
+        if (changelog.bugFixes.isNotEmpty) ...[
+          _ChangelogSectionLabel(label: 'Bug Fixes', color: scheme.error),
+          ...changelog.bugFixes.asMap().entries.map((entry) {
+            final isLast = entry.key == changelog.bugFixes.length - 1 &&
+                changelog.notes.isEmpty;
+            return _changelogItem(
+              context,
+              text: entry.value,
+              icon: Icons.bug_report_outlined,
+              iconColor: scheme.error,
+              showDivider: !isLast,
+            );
+          }),
+        ],
+        if (changelog.notes.isNotEmpty) ...[
+          _ChangelogSectionLabel(label: 'Notes', color: scheme.secondary),
+          ...changelog.notes.asMap().entries.map((entry) {
+            final isLast = entry.key == changelog.notes.length - 1;
+            return _changelogItem(
+              context,
+              text: entry.value,
+              icon: Icons.info_outline_rounded,
+              iconColor: scheme.secondary,
+              showDivider: !isLast,
+            );
+          }),
+        ],
+      ],
+    );
+  }
+
+  Widget _changelogItem(
+    BuildContext context, {
+    required String text,
+    required IconData icon,
+    required Color iconColor,
+    bool showDivider = true,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GlassListTile(
+          leading: Icon(icon, size: 20, color: iconColor),
+          title: Text(text),
         ),
-      ),
+        if (showDivider) GlassDivider(),
+      ],
     );
   }
 
   Widget _buildDownloadProgress(BuildContext context, AppUpdateState state) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Downloading...'),
-            Text('${(state.progress * 100).toStringAsFixed(1)}%'),
+            Text(
+              'Downloading…',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Text(
+              '${(state.progress * 100).toStringAsFixed(1)}%',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
-        const SizedBox(height: 8),
-        LinearProgressIndicator(value: state.progress),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpacing.xs),
+        LinearProgressIndicator(
+          value: state.progress,
+          
+        ),
+        const SizedBox(height: AppSpacing.xxs),
         Text(
-          '${(state.bytesWritten / 1024 / 1024).toStringAsFixed(1)} / ${(state.bytesExpected / 1024 / 1024).toStringAsFixed(1)} MB',
-          style: Theme.of(context).textTheme.bodySmall,
+          '${(state.bytesWritten / 1024 / 1024).toStringAsFixed(1)} / '
+          '${(state.bytesExpected / 1024 / 1024).toStringAsFixed(1)} MB',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
         ),
       ],
     );
@@ -355,32 +388,40 @@ class UpdatesScreen extends ConsumerWidget {
       return Column(
         children: [
           if (state.latestRelease != null)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
               child: Text(
-                'To apply this update, please use the button below to hard refresh the application. If that does not work, close the app entirely and reopen it.',
+                'To apply this update, please use the button below to hard '
+                'refresh the application. If that does not work, close the '
+                'app entirely and reopen it.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontWeight: FontWeight.bold, height: 1.5),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  height: 1.5,
+                ),
               ),
             ),
-          const SizedBox(height: 16),
+          if (state.latestRelease != null) const SizedBox(height: AppSpacing.md),
           if (state.latestRelease != null)
-            FilledButton.icon(
-              onPressed: reloadWebPage,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Reload App'),
+            GlassButton(
+              icon: const Icon(Icons.refresh_rounded),
+              label: 'Reload App',
+              onTap: reloadWebPage,
+              
             ),
           if (state.latestRelease == null && state.status == UpdateStatus.idle)
-            OutlinedButton.icon(
-              onPressed: () => provider.checkForUpdates(),
-              icon: const Icon(Icons.refresh),
-              label: const Text('Check for Updates'),
+            GlassButton(
+              icon: const Icon(Icons.refresh_rounded),
+              label: 'Check for Updates',
+              onTap: () => provider.checkForUpdates(),
+              
             ),
           if (state.status == UpdateStatus.error)
-            OutlinedButton.icon(
-              onPressed: () => provider.checkForUpdates(),
-              icon: const Icon(Icons.refresh),
-              label: const Text('Try Again'),
+            GlassButton(
+              icon: const Icon(Icons.refresh_rounded),
+              label: 'Try Again',
+              onTap: () => provider.checkForUpdates(),
+              
             ),
         ],
       );
@@ -390,32 +431,65 @@ class UpdatesScreen extends ConsumerWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         if (state.latestRelease != null && state.status == UpdateStatus.idle)
-          FilledButton.icon(
-            onPressed: () => provider.downloadUpdate(),
-            icon: const Icon(Icons.download),
-            label: const Text('Download Update'),
+          GlassButton(
+            icon: const Icon(Icons.download_rounded),
+            label: 'Download Update',
+            onTap: () => provider.downloadUpdate(),
+            
           ),
         if (state.status == UpdateStatus.downloaded)
-          FilledButton.icon(
-            onPressed: () => provider.installUpdate(),
-            icon: const Icon(Icons.install_mobile),
-            label: const Text('Install Update'),
+          GlassButton(
+            icon: const Icon(Icons.install_mobile_rounded),
+            label: 'Install Update',
+            onTap: () => provider.installUpdate(),
+            
           ),
         if (state.latestRelease == null && state.status == UpdateStatus.idle)
-          OutlinedButton.icon(
-            onPressed: () => provider.checkForUpdates(),
-            icon: const Icon(Icons.refresh),
-            label: const Text('Check for Updates'),
+          GlassButton(
+            icon: const Icon(Icons.refresh_rounded),
+            label: 'Check for Updates',
+            onTap: () => provider.checkForUpdates(),
+            
           ),
         // Errors previously left the action row empty, forcing users to find
         // the small app-bar refresh icon to retry a failed update check.
         if (state.status == UpdateStatus.error)
-          FilledButton.icon(
-            onPressed: () => provider.checkForUpdates(),
-            icon: const Icon(Icons.refresh),
-            label: const Text('Try Again'),
+          GlassButton(
+            icon: const Icon(Icons.refresh_rounded),
+            label: 'Try Again',
+            onTap: () => provider.checkForUpdates(),
+            
           ),
       ],
+    );
+  }
+}
+
+/// An inlined sub-section label inside a [GlassGroupedSection].
+///
+/// Renders as a non-tappable [GlassListTile] styled as a compact heading,
+/// so it blends naturally into the grouped glass surface without needing a
+/// separate card or divider.
+class _ChangelogSectionLabel extends StatelessWidget {
+  const _ChangelogSectionLabel({
+    required this.label,
+    required this.color,
+  });
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassListTile(
+      title: Text(
+        label,
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.3,
+        ),
+      ),
     );
   }
 }

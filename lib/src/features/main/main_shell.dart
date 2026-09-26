@@ -11,6 +11,7 @@ import '../../data/exchange_rate_service.dart';
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
+import '../../ledger/ledger_selectors.dart';
 import '../../widgets/user_identity_widgets.dart';
 import '../../widgets/bottom_island_nav.dart';
 import 'main_drawer_components.dart';
@@ -178,34 +179,6 @@ class _MainShellState extends ConsumerState<MainShell>
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  child: IgnorePointer(
-                    child: Container(
-                      height:
-                          AppSizes.bottomBarClearance +
-                          MediaQuery.paddingOf(context).bottom,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Theme.of(context).colorScheme.surface.withAlpha(0),
-                            Theme.of(
-                              context,
-                            ).colorScheme.surface.withAlpha(120),
-                            Theme.of(
-                              context,
-                            ).colorScheme.surface.withAlpha(190),
-                          ],
-                          stops: const [0.0, 0.5, 1.0],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
                   child: BottomIslandNavBar(
                     items: _tabs,
                     selectedIndex: selectedIndex,
@@ -307,6 +280,7 @@ class AppMainDrawer extends ConsumerWidget {
       ledger,
     ).where((n) => !n.read).length;
     final combinedInboxCount = pendingReviewCount + unreadNotificationCount;
+    final upcomingPlannedCount = _upcomingPlannedCount(ledger);
     final syncBadge = _syncBadge(sync);
     final updatesBadge =
         updateState.latestRelease != null &&
@@ -449,6 +423,7 @@ class AppMainDrawer extends ConsumerWidget {
                         'Planned payments',
                         Icons.event_repeat_outlined,
                         '/recurring',
+                        badge: _countBadge(upcomingPlannedCount),
                       ),
                       DrawerRowConfig.route(
                         'Loans',
@@ -690,6 +665,22 @@ class _DrawerPrivacyToggle extends ConsumerWidget {
 int _pendingReviewCount(LedgerState ledger) {
   return ledger.captureCandidates
       .where((candidate) => candidate.status == 'pending')
+      .length;
+}
+
+/// Returns how many scheduled transactions are due within the next 3 calendar
+/// days (today inclusive — e.g. today=Fri means Fri/Sat/Sun all count).
+int _upcomingPlannedCount(LedgerState ledger) {
+  final now = DateTime.now();
+  final startOfToday = DateTime(now.year, now.month, now.day);
+  final cutoff = startOfToday.add(const Duration(days: 3));
+  return scheduledTransactions(ledger)
+      .where(
+        (t) =>
+            t.status == 'scheduled' &&
+            !t.occurredAt.isBefore(startOfToday) &&
+            t.occurredAt.isBefore(cutoff),
+      )
       .length;
 }
 

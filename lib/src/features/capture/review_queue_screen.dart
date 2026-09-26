@@ -40,7 +40,7 @@ class ReviewQueueScreen extends ConsumerWidget {
 
     return GlassIsolationScope(
       isolated: true,
-      defaultQuality: GlassQuality.premium,
+      defaultQuality: GlassQuality.standard,
       child: Scaffold(
         appBar: GlassAppBar(
           title: Text(
@@ -81,13 +81,7 @@ class ReviewQueueScreen extends ConsumerWidget {
         ),
         body: SafeArea(
           child: items.isEmpty
-              ? const Center(
-                  child: EmptyState(
-                    icon: Icons.done_all_rounded,
-                    title: 'All caught up',
-                    body: 'New transactions and alerts will appear here.',
-                  ),
-                )
+              ? _buildEmptyState(context)
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(
                     AppSpacing.lg,
@@ -113,6 +107,29 @@ class ReviewQueueScreen extends ConsumerWidget {
     );
   }
 
+  /// Empty state wrapped in a centred GlassCard for visual polish.
+  Widget _buildEmptyState(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+        child: GlassCard(
+          useOwnLayer: true,
+          quality: GlassQuality.premium,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xl,
+            vertical: AppSpacing.xxl,
+          ),
+          shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.lg),
+          child: const EmptyState(
+            icon: Icons.done_all_rounded,
+            title: 'All caught up',
+            body: 'New transactions and alerts will appear here.',
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildCandidateCard(
     BuildContext context,
     WidgetRef ref,
@@ -133,7 +150,7 @@ class ReviewQueueScreen extends ConsumerWidget {
     // liquid_glass_widgets guidance); scrolling list rows stay opaque.
     return Material(
       color: scheme.surfaceContainerHigh,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(AppRadii.lg),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => context.push('/capture/${candidate.id}'),
@@ -142,7 +159,9 @@ class ReviewQueueScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ── Header: icon + merchant/date + amount ──────────────────
               Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   IconBubble(
                     icon: candidate.source == 'sms'
@@ -166,6 +185,7 @@ class ReviewQueueScreen extends ConsumerWidget {
                             fontWeight: FontWeight.w800,
                           ),
                         ),
+                        const SizedBox(height: 2),
                         Text(
                           DateFormat.MMMd(
                             state.preferences.locale.replaceAll('_', '-'),
@@ -200,89 +220,75 @@ class ReviewQueueScreen extends ConsumerWidget {
                   ],
                 ],
               ),
-              const SizedBox(height: AppSpacing.md),
-              Wrap(
-                spacing: AppSpacing.sm,
-                runSpacing: AppSpacing.sm,
-                children: [
-                  if (candidate.suggestedAccountId != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+
+              // ── Suggestion chips ────────────────────────────────────────
+              if (candidate.suggestedAccountId != null ||
+                  candidate.suggestedCategoryId != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    if (candidate.suggestedAccountId != null)
+                      GlassChip(
+                        label: state.accounts
+                                .where(
+                                  (a) => a.id == candidate.suggestedAccountId,
+                                )
+                                .firstOrNull
+                                ?.name ??
+                            'Account',
+                        icon: const Icon(
+                          Icons.account_balance_wallet_rounded,
+                        ),
+                        iconSize: 13,
+                        iconColor: scheme.primary,
+                        labelStyle: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        quality: GlassQuality.standard,
+                        useOwnLayer: true,
+                        semanticLabel:
+                            'Account: ${state.accounts.where((a) => a.id == candidate.suggestedAccountId).firstOrNull?.name ?? 'Account'}',
                       ),
-                      decoration: BoxDecoration(
-                        color: scheme.primaryContainer.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(8),
+                    if (candidate.suggestedCategoryId != null)
+                      GlassChip(
+                        label: _categoryChipText(state, candidate),
+                        icon: const Icon(Icons.category_rounded),
+                        iconSize: 13,
+                        iconColor: scheme.secondary,
+                        labelStyle: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        quality: GlassQuality.standard,
+                        useOwnLayer: true,
+                        semanticLabel:
+                            'Category: ${_categoryChipText(state, candidate)}',
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.account_balance_wallet_rounded,
-                            size: 14,
-                            color: scheme.primary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            state.accounts
-                                    .where(
-                                      (a) =>
-                                          a.id == candidate.suggestedAccountId,
-                                    )
-                                    .firstOrNull
-                                    ?.name ??
-                                'Account',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: scheme.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  if (candidate.suggestedCategoryId != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: scheme.secondaryContainer.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.category_rounded,
-                            size: 14,
-                            color: scheme.secondary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            _categoryChipText(state, candidate),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: scheme.secondary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
+                  ],
+                ),
+              ],
+
+              // ── Raw text preview ────────────────────────────────────────
               if (candidate.rawText != null &&
                   candidate.rawText!.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.sm),
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(AppSpacing.md),
+                  padding: const EdgeInsets.all(AppSpacing.sm),
                   decoration: BoxDecoration(
                     color: scheme.surfaceContainerHighest.withValues(
                       alpha: 0.5,
                     ),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppRadii.md),
                   ),
                   child: Text(
                     candidate.rawText!,
@@ -296,71 +302,92 @@ class ReviewQueueScreen extends ConsumerWidget {
                   ),
                 ),
               ],
+
+              // ── Divider between content and action buttons ──────────────
               if (candidate.status == 'pending') ...[
-                const SizedBox(height: AppSpacing.lg),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 1,
-                      child: IconButton(
-                        tooltip: 'Block Pattern',
-                        onPressed: () =>
-                            _showBlockDialog(context, ref, candidate),
-                        icon: const Icon(Icons.block_rounded),
-                        style: IconButton.styleFrom(
-                          foregroundColor: scheme.error,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: AppSpacing.md),
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: scheme.outlineVariant.withValues(alpha: 0.4),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+
+                // ── Action bar: block | dismiss | confirm ─────────────────
+                // Uses pill-shaped buttons at full height for easy tap targets.
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Block: GlassIconButton (standalone, glass chrome)
+                      Tooltip(
+                        message: 'Block Pattern',
+                        child: GlassIconButton(
+                          icon: const Icon(Icons.block_rounded),
+                          onPressed: () =>
+                              _showBlockDialog(context, ref, candidate),
+                          size: 48,
+                          iconSize: 22,
+                          glowColor: scheme.error,
+                          shape: GlassIconButtonShape.roundedSquare,
+                          borderRadius: AppRadii.pill,
+                          useOwnLayer: true,
+                          quality: GlassQuality.standard,
+                          semanticLabel: 'Block Pattern',
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+
+                      // Dismiss
+                      Expanded(
+                        flex: 2,
+                        child: TextButton.icon(
+                          onPressed: () => _updateCandidateStatus(
+                            context,
+                            ref,
+                            candidate.id,
+                            'rejected',
+                          ),
+                          icon: const Icon(Icons.close_rounded),
+                          label: const Text('Dismiss'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: scheme.error,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(AppRadii.pill),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      flex: 2,
-                      child: TextButton.icon(
-                        onPressed: () => _updateCandidateStatus(
-                          context,
-                          ref,
-                          candidate.id,
-                          'rejected',
-                        ),
-                        icon: const Icon(Icons.close_rounded),
-                        label: const Text('Dismiss'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: scheme.error,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      const SizedBox(width: AppSpacing.sm),
+
+                      // Confirm
+                      Expanded(
+                        flex: 3,
+                        child: FilledButton.icon(
+                          onPressed: () => _updateCandidateStatus(
+                            context,
+                            ref,
+                            candidate.id,
+                            'approved',
+                          ),
+                          icon: const Icon(Icons.check_rounded),
+                          label: const Text('Confirm'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: colorScheme.primaryContainer,
+                            foregroundColor: colorScheme.onPrimaryContainer,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(AppRadii.pill),
+                            ),
+                            elevation: 0,
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      flex: 3,
-                      child: FilledButton.icon(
-                        onPressed: () => _updateCandidateStatus(
-                          context,
-                          ref,
-                          candidate.id,
-                          'approved',
-                        ),
-                        icon: const Icon(Icons.check_rounded),
-                        label: const Text('Confirm'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: colorScheme.primaryContainer,
-                          foregroundColor: colorScheme.onPrimaryContainer,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ],
@@ -388,7 +415,7 @@ class ReviewQueueScreen extends ConsumerWidget {
       background: Container(
         decoration: BoxDecoration(
           color: theme.colorScheme.errorContainer,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(AppRadii.lg),
         ),
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -408,79 +435,87 @@ class ReviewQueueScreen extends ConsumerWidget {
                 scheme.primaryContainer.withValues(alpha: 0.25),
                 scheme.surfaceContainerHigh,
               ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => _openNotification(context, ref, notification),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: notification.read
-                    ? scheme.outlineVariant.withValues(alpha: 0.5)
-                    : scheme.primary.withValues(alpha: 0.3),
-                width: 1,
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  IconBubble(
-                    icon: icon,
-                    color: notification.read
-                        ? scheme.onSurfaceVariant
-                        : scheme.primary,
-                    compact: true,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Left-border accent for unread state
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: notification.read ? 0 : 4,
+                decoration: BoxDecoration(
+                  color: scheme.primary,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(AppRadii.lg),
+                    bottomLeft: Radius.circular(AppRadii.lg),
                   ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          notification.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: notification.read
-                                ? FontWeight.w600
-                                : FontWeight.w800,
-                            color: scheme.onSurface,
-                          ),
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      IconBubble(
+                        icon: icon,
+                        color: notification.read
+                            ? scheme.onSurfaceVariant
+                            : scheme.primary,
+                        compact: true,
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              notification.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: notification.read
+                                    ? FontWeight.w600
+                                    : FontWeight.w800,
+                                color: scheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              notification.body,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            Text(
+                              _relativeDate(notification.createdAt),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          notification.body,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          _relativeDate(notification.createdAt),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
+                      ),
+                      if (!notification.read) ...[
+                        const SizedBox(width: AppSpacing.sm),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Icon(
+                            Icons.fiber_manual_record,
+                            size: 10,
+                            color: scheme.primary,
                           ),
                         ),
                       ],
-                    ),
+                    ],
                   ),
-                  if (!notification.read) ...[
-                    const SizedBox(width: AppSpacing.sm),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Icon(
-                        Icons.fiber_manual_record,
-                        size: 12,
-                        color: scheme.primary,
-                      ),
-                    ),
-                  ],
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),

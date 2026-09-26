@@ -15,15 +15,6 @@ abstract final class AppTheme {
     systemColorScheme: systemColorScheme,
   );
 
-  static ThemeData dark({
-    String? accentColor,
-    ColorScheme? systemColorScheme,
-  }) => _theme(
-    Brightness.dark,
-    accentColor: accentColor,
-    systemColorScheme: systemColorScheme,
-  );
-
   static ThemeData amoled({
     String? accentColor,
     ColorScheme? systemColorScheme,

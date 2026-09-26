@@ -23,6 +23,7 @@ import 'home_components.dart';
 import 'home_widget_card.dart';
 import 'home_widget_models.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final _homeScheduledTransactionsProvider =
     Provider.autoDispose<List<TransactionRecord>>((ref) {
@@ -495,8 +496,29 @@ class BalanceTrendHomeWidget extends ConsumerStatefulWidget {
 
 class _BalanceTrendHomeWidgetState
     extends ConsumerState<BalanceTrendHomeWidget> {
-  String _period = 'This year';
+  String _period = 'This month';
   static const double _chartHeight = 200.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreference();
+  }
+
+  Future<void> _loadPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString('balance_trend_period');
+    if (saved != null && mounted) {
+      setState(() {
+        _period = saved;
+      });
+    }
+  }
+
+  Future<void> _savePreference(String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('balance_trend_period', value);
+  }
 
   /// Scroll offset in days relative to "now".
   /// 0 means "now" sits at the right edge of the viewport.
@@ -926,7 +948,7 @@ class _BalanceTrendHomeWidgetState
                         if (pastSpots.length > 1)
                           LineChartBarData(
                             spots: pastSpots,
-                            isCurved: true,
+                            isCurved: false,
                             curveSmoothness: 0.3,
                             color: scheme.primary,
                             barWidth: 1.2,
@@ -1105,10 +1127,13 @@ class _BalanceTrendHomeWidgetState
   Widget _buildDropdown() {
     return PopupMenuButton<String>(
       initialValue: _period,
-      onSelected: (value) => setState(() {
-        _period = value;
-        _scrollOffset = 0.0; // Reset view to "now" on zoom change
-      }),
+      onSelected: (value) {
+        setState(() {
+          _period = value;
+          _scrollOffset = 0.0; // Reset view to "now" on zoom change
+        });
+        _savePreference(value);
+      },
       itemBuilder: (context) => const [
         PopupMenuItem(value: 'This week', child: Text('This week')),
         PopupMenuItem(value: 'This month', child: Text('This month')),

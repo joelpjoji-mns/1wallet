@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
-import '../common/route_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../auth/auth_controller.dart';
 import '../../data/ledger_providers.dart';
 import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
 import '../../theme/theme_controller.dart';
-import '../../widgets/app_kit.dart';
 import '../../widgets/color_picker_dialog.dart';
 import '../common/full_screen_picker.dart';
 import 'settings_components.dart';
@@ -133,316 +132,289 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         .where((c) => c.status == 'pending')
         .length;
 
-    return RouteScaffold(
-      title: 'Settings',
-      actions: [
-        IconButton(
-          tooltip: 'Review queue',
-          onPressed: () => context.push('/review'),
-          icon: const Icon(Icons.fact_check_outlined),
-        ),
-      ],
-      child: Column(
-        children: [
-          // ── Profile ──
-          SettingsProfileSection(
-            user: user,
-            onOpenSync: () => context.push('/sync'),
-            onSignOut: () => _signOut(ref),
+    return GlassScaffold(
+      appBar: GlassAppBar(
+        title: const Text('Settings'),
+        actions: [
+          GlassIconButton(
+            
+            onPressed: () => context.push('/review'),
+            icon: const Icon(Icons.fact_check_outlined),
           ),
-          const Gap(AppSpacing.lg),
-
-          // ── Privacy (prominent quick access) ──
-          _PrivacyQuickCard(
-            enabled: state.preferences.privacyModeEnabled,
-            onChanged: (value) {
-              ref
-                  .read(ledgerProvider.notifier)
-                  .updatePreferences(
-                    state.preferences.copyWith(privacyModeEnabled: value),
-                  );
-              _showMessage(
-                value ? 'Privacy mode enabled' : 'Privacy mode disabled',
-              );
-            },
+        ],
+      ),
+      body: GlassIsolationScope(
+        isolated: true,
+        child: ListView(
+          padding: EdgeInsets.only(
+            top: MediaQuery.paddingOf(context).top + kToolbarHeight + AppSpacing.md,
+            bottom: MediaQuery.paddingOf(context).bottom + AppSpacing.xl,
+            left: AppSpacing.md,
+            right: AppSpacing.md,
           ),
-          const Gap(AppSpacing.lg),
+          children: [
+            // ── Profile ──
+            SettingsProfileSection(
+              user: user,
+              onOpenSync: () => context.push('/sync'),
+              onSignOut: () => _signOut(ref),
+            ),
+            const SizedBox(height: AppSpacing.lg),
 
-          // ── Preferences ──
-          SettingsPreferencesSection(
-            preferences: state.preferences,
-            themeState: themeState,
-            startDayController: _startDayController,
-            startDayValidationError: _startDayValidationError,
-            onStartDayChanged: (value) {
-              _startDayTouched = true;
-              _autoSaveStartDay(value);
-            },
-            onBaseCurrencyTap: () => context.push('/currencies'),
-            onLocaleTap: () => _showLocalePicker(state),
-            onThemeTap: () => _showThemePicker(ref, themeState.preference),
-            onAccentTap: _showAccentPicker,
-            onHideSkippedChanged: (value) {
-              ref
-                  .read(ledgerProvider.notifier)
-                  .updatePreferences(
-                    state.preferences.copyWith(hideSkippedInHistory: value),
-                  );
-              _showMessage(
-                value
-                    ? 'Skipped records hidden from history.'
-                    : 'Skipped records shown in history.',
-              );
-            },
-            localeLabel: _localeLabel(state.preferences.locale),
-          ),
-          const Gap(AppSpacing.lg),
+            // ── Privacy (prominent quick access) ──
+            _PrivacyQuickCard(
+              enabled: state.preferences.privacyModeEnabled,
+              onChanged: (value) {
+                ref
+                    .read(ledgerProvider.notifier)
+                    .updatePreferences(
+                      state.preferences.copyWith(privacyModeEnabled: value),
+                    );
+                _showMessage(
+                  value ? 'Privacy mode enabled' : 'Privacy mode disabled',
+                );
+              },
+            ),
+            const SizedBox(height: AppSpacing.lg),
 
-          // ── Feature hub ──
-          SettingsFeatureHubSection(
-            links: _managementLinks,
-            onOpenLink: (route) => context.push(route),
-          ),
-          const Gap(AppSpacing.lg),
+            // ── Preferences ──
+            SettingsPreferencesSection(
+              preferences: state.preferences,
+              themeState: themeState,
+              startDayController: _startDayController,
+              startDayValidationError: _startDayValidationError,
+              onStartDayChanged: (value) {
+                _startDayTouched = true;
+                _autoSaveStartDay(value);
+              },
+              onBaseCurrencyTap: () => context.push('/currencies'),
+              onLocaleTap: () => _showLocalePicker(state),
+              onThemeTap: () => _showThemePicker(ref, themeState.preference),
+              onAccentTap: _showAccentPicker,
+              onHideSkippedChanged: (value) {
+                ref
+                    .read(ledgerProvider.notifier)
+                    .updatePreferences(
+                      state.preferences.copyWith(hideSkippedInHistory: value),
+                    );
+                _showMessage(
+                  value
+                      ? 'Skipped records hidden from history.'
+                      : 'Skipped records shown in history.',
+                );
+              },
+              localeLabel: _localeLabel(state.preferences.locale),
+            ),
+            const SizedBox(height: AppSpacing.lg),
 
-          // ── Capture & automation ──
-          SectionCard(
-            title: 'Capture & automation',
-            subtitle:
-                'Manual review stays in control before automation posts anything.',
-            child: Column(
+            // ── Feature hub ──
+            SettingsFeatureHubSection(
+              links: _managementLinks,
+              onOpenLink: (route) => context.push(route),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            // ── Capture & automation ──
+            GlassGroupedSection(header: const Text('Capture & automation'),
               children: [
-                InfoRow(
-                  label: 'Pending review',
-                  value: '$pendingCaptures',
-                  icon: Icons.fact_check_outlined,
-                  tone: pendingCaptures > 0
-                      ? MetricTone.warning
-                      : MetricTone.standard,
-                ),
-                const InfoRow(
-                  label: 'Auto capture',
-                  value: 'SMS ready',
-                  icon: Icons.sms_outlined,
-                  tone: MetricTone.positive,
-                ),
-                const InfoRow(
-                  label: 'CSV imports',
-                  value: 'Ready',
-                  icon: Icons.table_chart_outlined,
-                  tone: MetricTone.positive,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
-                  children: [
-                    FilledButton.tonalIcon(
-                      onPressed: () => context.push('/review'),
-                      icon: const Icon(Icons.fact_check_outlined),
-                      label: const Text('Review queue'),
+                GlassListTile(
+                  leading: const Icon(Icons.fact_check_outlined),
+                  title: const Text('Pending review'),
+                  trailing: Text(
+                    '$pendingCaptures',
+                    style: TextStyle(
+                      color: pendingCaptures > 0
+                          ? theme.colorScheme.error
+                          : theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.bold,
                     ),
-                    FilledButton.tonalIcon(
-                      onPressed: () => context.push('/notifications'),
-                      icon: const Icon(Icons.notifications_outlined),
-                      label: const Text('Notifications'),
-                    ),
-                    FilledButton.tonalIcon(
-                      onPressed: () => context.push('/auto-capture'),
-                      icon: const Icon(Icons.auto_awesome_outlined),
-                      label: const Text('Auto capture'),
-                    ),
-                  ],
+                  ),
+                ),
+                const GlassDivider(),
+                const GlassListTile(
+                  leading: Icon(Icons.sms_outlined),
+                  title: Text('Auto capture'),
+                  trailing: Text('SMS ready'),
+                ),
+                const GlassDivider(),
+                const GlassListTile(
+                  leading: Icon(Icons.table_chart_outlined),
+                  title: Text('CSV imports'),
+                  trailing: Text('Ready'),
+                ),
+                const GlassDivider(),
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [
+                      FilledButton.tonalIcon(
+                        onPressed: () => context.push('/review'),
+                        icon: const Icon(Icons.fact_check_outlined),
+                        label: const Text('Review queue'),
+                      ),
+                      FilledButton.tonalIcon(
+                        onPressed: () => context.push('/notifications'),
+                        icon: const Icon(Icons.notifications_outlined),
+                        label: const Text('Notifications'),
+                      ),
+                      FilledButton.tonalIcon(
+                        onPressed: () => context.push('/auto-capture'),
+                        icon: const Icon(Icons.auto_awesome_outlined),
+                        label: const Text('Auto capture'),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
-          ),
-          const Gap(AppSpacing.lg),
+            const SizedBox(height: AppSpacing.lg),
 
-          // ── Notifications ──
-          SectionCard(
-            title: 'Notifications',
-            subtitle:
-                'Actionable native alerts for updates and time-sensitive wallet items.',
-            child: Column(
+            // ── Notifications ──
+            GlassGroupedSection(header: const Text('Notifications'),
               children: [
-                AppSwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: state.preferences.notificationInboxEnabled,
-                  onChanged: (value) {
-                    ref
-                        .read(ledgerProvider.notifier)
-                        .updatePreferences(
-                          state.preferences.copyWith(
-                            notificationInboxEnabled: value,
-                          ),
-                        );
-                    _showMessage(
-                      value
-                          ? 'Notification inbox enabled.'
-                          : 'Notification inbox paused.',
-                    );
-                  },
+                GlassListTile(
                   title: const Text('Notification inbox'),
-                  subtitle: Text(
-                    'Active reminder alerts.',
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                const Divider(height: 1),
-                AppSwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: state.preferences.deviceNotificationsEnabled,
-                  onChanged: (value) {
-                    ref
-                        .read(ledgerProvider.notifier)
-                        .updatePreferences(
-                          state.preferences.copyWith(
-                            deviceNotificationsEnabled: value,
-                          ),
-                        );
-                    _showMessage(
-                      value
-                          ? 'Device notifications enabled.'
-                          : 'Device notifications disabled.',
-                    );
-                  },
-                  title: const Text('Device notifications'),
-                  subtitle: Text(
-                    'Updates use native alerts when permission is granted.',
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                const Divider(height: 1),
-                AppSwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: state.preferences.quietHoursEnabled,
-                  onChanged: (value) {
-                    ref
-                        .read(ledgerProvider.notifier)
-                        .updatePreferences(
-                          state.preferences.copyWith(quietHoursEnabled: value),
-                        );
-                    _showMessage(
-                      value ? 'Quiet hours enabled' : 'Quiet hours disabled',
-                    );
-                  },
-                  title: const Text('Quiet hours'),
-                  subtitle: Text(
-                    '22:00 to 07:00',
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                const Divider(height: 1),
-                for (final channel in _notificationChannels) ...[
-                  AppSwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: state.preferences.channelScheduledEnabled,
+                  subtitle: const Text('Active reminder alerts.'),
+                  trailing: GlassSwitch(
+                    quality: GlassQuality.standard,
+                    value: state.preferences.notificationInboxEnabled,
                     onChanged: (value) {
-                      final prefs = state.preferences;
-                      if (channel.$1 == 'scheduled') {
-                        ref
-                            .read(ledgerProvider.notifier)
-                            .updatePreferences(
-                              prefs.copyWith(channelScheduledEnabled: value),
-                            );
-                      }
+                      ref
+                          .read(ledgerProvider.notifier)
+                          .updatePreferences(
+                            state.preferences.copyWith(
+                              notificationInboxEnabled: value,
+                            ),
+                          );
                       _showMessage(
                         value
-                            ? '${channel.$2} enabled'
-                            : '${channel.$2} paused',
+                            ? 'Notification inbox enabled.'
+                            : 'Notification inbox paused.',
                       );
                     },
-                    title: Row(
-                      children: [
-                        Icon(
-                          channel.$4,
-                          size: 20,
-                          color: theme.colorScheme.primary,
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: Text(
-                            channel.$2,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                  ),
+                ),
+                const GlassDivider(),
+                GlassListTile(
+                  title: const Text('Device notifications'),
+                  subtitle: const Text('Updates use native alerts when permission is granted.'),
+                  trailing: GlassSwitch(
+                    quality: GlassQuality.standard,
+                    value: state.preferences.deviceNotificationsEnabled,
+                    onChanged: (value) {
+                      ref
+                          .read(ledgerProvider.notifier)
+                          .updatePreferences(
+                            state.preferences.copyWith(
+                              deviceNotificationsEnabled: value,
+                            ),
+                          );
+                      _showMessage(
+                        value
+                            ? 'Device notifications enabled.'
+                            : 'Device notifications disabled.',
+                      );
+                    },
+                  ),
+                ),
+                const GlassDivider(),
+                GlassListTile(
+                  title: const Text('Quiet hours'),
+                  subtitle: const Text('22:00 to 07:00'),
+                  trailing: GlassSwitch(
+                    quality: GlassQuality.standard,
+                    value: state.preferences.quietHoursEnabled,
+                    onChanged: (value) {
+                      ref
+                          .read(ledgerProvider.notifier)
+                          .updatePreferences(
+                            state.preferences.copyWith(quietHoursEnabled: value),
+                          );
+                      _showMessage(
+                        value ? 'Quiet hours enabled' : 'Quiet hours disabled',
+                      );
+                    },
+                  ),
+                ),
+                const GlassDivider(),
+                for (final channel in _notificationChannels) ...[
+                  GlassListTile(
+                    leading: Icon(
+                      channel.$4,
+                      color: theme.colorScheme.primary,
                     ),
-                    subtitle: Padding(
-                      padding: const EdgeInsets.only(left: 28),
-                      child: Text(
-                        channel.$3,
-                        style: TextStyle(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          fontSize: 12,
-                        ),
-                      ),
+                    title: Text(channel.$2),
+                    subtitle: Text(channel.$3),
+                    trailing: GlassSwitch(
+                      quality: GlassQuality.standard,
+                      value: state.preferences.channelScheduledEnabled,
+                      onChanged: (value) {
+                        final prefs = state.preferences;
+                        if (channel.$1 == 'scheduled') {
+                          ref
+                              .read(ledgerProvider.notifier)
+                              .updatePreferences(
+                                prefs.copyWith(channelScheduledEnabled: value),
+                              );
+                        }
+                        _showMessage(
+                          value
+                              ? '${channel.$2} enabled'
+                              : '${channel.$2} paused',
+                        );
+                      },
                     ),
                   ),
                   if (channel != _notificationChannels.last)
-                    const Divider(height: 1),
+                    const GlassDivider(),
                 ],
-                const SizedBox(height: AppSpacing.sm),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.tonalIcon(
-                    onPressed: () => context.push('/notifications'),
-                    icon: const Icon(Icons.notifications_outlined),
-                    label: const Text('Open notification inbox'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Gap(AppSpacing.lg),
-
-          // ── Security & Privacy ──
-          SectionCard(
-            title: 'Security & privacy',
-            subtitle: 'Privacy mode is available up top and in the sidebar.',
-            child: Column(
-              children: [
-                AppSwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: state.preferences.biometricLockEnabled,
-                  onChanged: (value) {
-                    ref
-                        .read(ledgerProvider.notifier)
-                        .updatePreferences(
-                          state.preferences.copyWith(
-                            biometricLockEnabled: value,
-                          ),
-                        );
-                    _showMessage(
-                      value
-                          ? 'Biometric lock enabled'
-                          : 'Biometric lock disabled',
-                    );
-                  },
-                  title: const Text('Biometric lock'),
-                  subtitle: Text(
-                    'Requires a native security slice after the app shell is stable.',
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 12,
+                const GlassDivider(),
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.tonalIcon(
+                      onPressed: () => context.push('/notifications'),
+                      icon: const Icon(Icons.notifications_outlined),
+                      label: const Text('Open notification inbox'),
                     ),
                   ),
                 ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: AppSpacing.lg),
+
+            // ── Security & Privacy ──
+            GlassGroupedSection(header: const Text('Security & privacy'),
+              children: [
+                GlassListTile(
+                  title: const Text('Biometric lock'),
+                  subtitle: const Text('Requires a native security slice after the app shell is stable.'),
+                  trailing: GlassSwitch(
+                    quality: GlassQuality.standard,
+                    value: state.preferences.biometricLockEnabled,
+                    onChanged: (value) {
+                      ref
+                          .read(ledgerProvider.notifier)
+                          .updatePreferences(
+                            state.preferences.copyWith(
+                              biometricLockEnabled: value,
+                            ),
+                          );
+                      _showMessage(
+                        value
+                            ? 'Biometric lock enabled'
+                            : 'Biometric lock disabled',
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -505,14 +477,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             subtitle: switch (preference) {
               AppThemePreference.system => 'Follow device light/dark mode',
               AppThemePreference.light => 'Bright Material 3 surfaces',
-              AppThemePreference.dark => 'Dark navy surfaces',
               AppThemePreference.amoled => 'True-black OLED surfaces',
             },
             icon: switch (preference) {
               AppThemePreference.system => Icons.brightness_auto_outlined,
               AppThemePreference.light => Icons.light_mode_outlined,
-              AppThemePreference.dark => Icons.dark_mode_outlined,
-              AppThemePreference.amoled => Icons.brightness_2_outlined,
+              AppThemePreference.amoled => Icons.dark_mode_outlined,
             },
           ),
       ],
@@ -593,8 +563,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return switch (preference) {
       AppThemePreference.system => 'System',
       AppThemePreference.light => 'Light',
-      AppThemePreference.dark => 'Dark',
-      AppThemePreference.amoled => 'AMOLED',
+      AppThemePreference.amoled => 'Dark',
     };
   }
 
@@ -617,38 +586,14 @@ class _PrivacyQuickCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    // MergeSemantics combines the label text and the switch's toggled state
-    // into a single semantics node, mirroring AppSwitchListTile and the
-    // drawer's privacy toggle. Without it, screen readers expose an
-    // unlabeled tappable region plus a disconnected "Privacy mode" text
-    // node and a separately-focusable switch instead of one coherent
-    // on/off control.
     return MergeSemantics(
-      child: Material(
-        color: Colors.transparent,
+      child: GlassCard(
+        quality: GlassQuality.premium,
         child: InkWell(
           borderRadius: BorderRadius.circular(AppRadii.xl),
           onTap: () => onChanged(!enabled),
-          child: Container(
+          child: Padding(
             padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppRadii.xl),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: enabled
-                    ? [
-                        scheme.primaryContainer,
-                        scheme.tertiaryContainer.withAlpha(160),
-                      ]
-                    : [scheme.surfaceContainerHigh, scheme.surfaceContainerLow],
-              ),
-              border: Border.all(
-                color: enabled
-                    ? scheme.primary.withAlpha(120)
-                    : scheme.outlineVariant.withAlpha(160),
-              ),
-            ),
             child: Row(
               children: [
                 Container(
@@ -690,15 +635,6 @@ class _PrivacyQuickCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                // ExcludeFocus stops the switch from claiming its own
-                // keyboard-focus stop, which would otherwise block
-                // MergeSemantics from folding its toggled state into the
-                // single merged node. IgnorePointer keeps real touches
-                // routed through the InkWell above so the whole card
-                // toggles consistently; it still keeps the switch's
-                // toggled/label semantics visible while only stripping its
-                // own tap action, so it merges cleanly without a competing
-                // onTap.
                 ExcludeFocus(
                   child: IgnorePointer(
                     child: Switch(value: enabled, onChanged: onChanged),
@@ -712,3 +648,5 @@ class _PrivacyQuickCard extends StatelessWidget {
     );
   }
 }
+
+

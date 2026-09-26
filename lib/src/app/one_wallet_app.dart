@@ -108,10 +108,15 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     return LiquidGlassWidgets.wrap(
       adaptiveQuality: true,
       brightnessResolver: Theme.maybeBrightnessOf,
-      theme: GlassThemeData.simple(
-        blur: 10,
-        thickness: 30,
-        quality: GlassQuality.standard,
+      theme: GlassThemeData(
+        light: GlassThemeVariant(
+          settings: GlassThemeSettings(thickness: 28, blur: 14),
+          quality: GlassQuality.standard,
+        ),
+        dark: GlassThemeVariant(
+          settings: GlassThemeSettings(thickness: 50, blur: 22),
+          quality: GlassQuality.standard,
+        ),
       ),
       child: DynamicColorBuilder(
         builder: (lightDynamic, darkDynamic) {
@@ -124,15 +129,10 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
               accentColor: themeState.accentColor,
               systemColorScheme: useSystemAccent ? lightDynamic : null,
             ),
-            darkTheme: themeState.preference == AppThemePreference.amoled
-                ? AppTheme.amoled(
-                    accentColor: themeState.accentColor,
-                    systemColorScheme: useSystemAccent ? darkDynamic : null,
-                  )
-                : AppTheme.dark(
-                    accentColor: themeState.accentColor,
-                    systemColorScheme: useSystemAccent ? darkDynamic : null,
-                  ),
+            darkTheme: AppTheme.amoled(
+              accentColor: themeState.accentColor,
+              systemColorScheme: useSystemAccent ? darkDynamic : null,
+            ),
             themeMode: themeState.themeMode,
             builder: (context, child) {
               if (child == null) return const SizedBox.shrink();

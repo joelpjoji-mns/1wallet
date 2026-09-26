@@ -604,24 +604,31 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       ),
                     )
                   else
-                    for (final transaction in records) ...[
-                      TransactionRow(
-                        state: state,
-                        transaction: transaction,
-                        onTap: () {
-                          if (transaction.status == 'forecast') {
-                            final templateId =
-                                transaction.originalTransactionId;
-                            if (templateId != null) {
-                              context.push('/recurring/$templateId/edit');
-                            }
-                          } else {
-                            context.push('/transaction/${transaction.id}');
-                          }
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 250),
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: records.length,
+                        separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.sm),
+                        itemBuilder: (context, index) {
+                          final transaction = records[index];
+                          return TransactionRow(
+                            state: state,
+                            transaction: transaction,
+                            onTap: () {
+                              if (transaction.status == 'forecast') {
+                                final templateId = transaction.originalTransactionId;
+                                if (templateId != null) {
+                                  context.push('/recurring/$templateId/edit');
+                                }
+                              } else {
+                                context.push('/transaction/${transaction.id}');
+                              }
+                            },
+                          );
                         },
                       ),
-                      const SizedBox(height: AppSpacing.sm),
-                    ],
+                    ),
                 ],
               ),
             ),

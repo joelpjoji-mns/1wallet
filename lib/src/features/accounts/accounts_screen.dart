@@ -9,7 +9,6 @@ import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/privacy_text.dart';
-import '../transactions/transactions_components.dart';
 
 class AccountsScreen extends ConsumerStatefulWidget {
   const AccountsScreen({this.onMenuPressed, super.key});
@@ -71,21 +70,11 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
       ],
       child: Column(
         children: [
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(AppRadii.md),
-              border: Border.all(
-                color: Theme.of(context).colorScheme.outlineVariant,
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              child: CompactSearchField(
-                value: _query,
-                onChanged: (value) => setState(() => _query = value),
-              ),
-            ),
+          GlassSearchBar(
+            placeholder: 'Search accounts...',
+            onChanged: (value) => setState(() => _query = value),
+            useOwnLayer: true,
+            quality: GlassQuality.standard,
           ),
           const SizedBox(height: AppSpacing.sm),
           Expanded(
@@ -199,19 +188,24 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              FilterPill(
-                icon: Icons.balance_outlined,
-                label: 'Show excluded',
-                active: _showExcluded,
-                onTap: () => setState(() => _showExcluded = !_showExcluded),
-              ),
-              FilterPill(
-                icon: Icons.archive_outlined,
-                label: 'Show archived',
-                active: _showArchived,
-                onTap: () => setState(() => _showArchived = !_showArchived),
-              ),
-            ],
+                GlassChip(
+                  label: 'Show excluded',
+                  icon: const Icon(Icons.balance_outlined),
+                  selected: _showExcluded,
+                  onTap: () => setState(() => _showExcluded = !_showExcluded),
+                  useOwnLayer: true,
+                  quality: GlassQuality.standard,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                GlassChip(
+                  label: 'Show archived',
+                  icon: const Icon(Icons.archive_outlined),
+                  selected: _showArchived,
+                  onTap: () => setState(() => _showArchived = !_showArchived),
+                  useOwnLayer: true,
+                  quality: GlassQuality.standard,
+                ),
+              ],
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
