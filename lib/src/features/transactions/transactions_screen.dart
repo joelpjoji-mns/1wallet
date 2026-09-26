@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -421,7 +422,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         monthlyBalances[monthStr] = running;
                       }
 
-                      final items = <Object>[];
+                      final widgets = <Widget>[];
                       String? currentMonth;
                       DateTime? currentDay;
                       final now = DateTime.now();
@@ -431,80 +432,123 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         '_',
                         '-',
                       );
+
+                      String? currentDayLabel;
+                      List<TransactionRecord> currentDayTransactions = [];
+
+                      void flushDay() {
+                        if (currentDayTransactions.isNotEmpty &&
+                            currentDayLabel != null) {
+                          widgets.add(
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: AppSpacing.md,
+                              ),
+                              child: GlassGroupedSection(
+                                header: Text(currentDayLabel!),
+                                children: [
+                                  for (
+                                    var i = 0;
+                                    i < currentDayTransactions.length;
+                                    i++
+                                  ) ...[
+                                    if (i > 0) const GlassDivider(),
+                                    TransactionRow(
+                                      glass: true,
+                                      state: state,
+                                      transaction: currentDayTransactions[i],
+                                      selectedAccountId: accountFilter,
+                                      selected: _selectedTransactionIds
+                                          .contains(
+                                            currentDayTransactions[i].id,
+                                          ),
+                                      onLongPress: () {
+                                        setState(() {
+                                          if (_selectedTransactionIds.contains(
+                                            currentDayTransactions[i].id,
+                                          )) {
+                                            _selectedTransactionIds.remove(
+                                              currentDayTransactions[i].id,
+                                            );
+                                          } else {
+                                            _selectedTransactionIds.add(
+                                              currentDayTransactions[i].id,
+                                            );
+                                          }
+                                        });
+                                      },
+                                      onTap: () {
+                                        if (_selectedTransactionIds
+                                            .isNotEmpty) {
+                                          setState(() {
+                                            if (_selectedTransactionIds
+                                                .contains(
+                                                  currentDayTransactions[i].id,
+                                                )) {
+                                              _selectedTransactionIds.remove(
+                                                currentDayTransactions[i].id,
+                                              );
+                                            } else {
+                                              _selectedTransactionIds.add(
+                                                currentDayTransactions[i].id,
+                                              );
+                                            }
+                                          });
+                                        } else {
+                                          context.push(
+                                            '/transaction/${currentDayTransactions[i].id}',
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
+                          currentDayTransactions = [];
+                        }
+                      }
+
                       for (final t in transactions) {
                         final monthStr = DateFormat(
                           'MMM yyyy',
                           locale,
                         ).format(t.occurredAt).toUpperCase();
+
                         final isNewMonth = currentMonth != monthStr;
                         if (isNewMonth) {
+                          flushDay();
                           currentMonth = monthStr;
-                          items.add(
-                            _MonthHeaderItem(
-                              monthStr: monthStr,
-                              netFlow: monthlyFlows[monthStr] ?? 0,
-                              balance: monthlyBalances[monthStr] ?? 0,
-                            ),
-                          );
-                        }
-                        final occurredAt = t.occurredAt;
-                        final day = DateTime(
-                          occurredAt.year,
-                          occurredAt.month,
-                          occurredAt.day,
-                        );
-                        if (isNewMonth || currentDay != day) {
-                          currentDay = day;
-                          final String dayLabel;
-                          if (day == today) {
-                            dayLabel = 'Today';
-                          } else if (day == yesterday) {
-                            dayLabel = 'Yesterday';
-                          } else {
-                            dayLabel = DateFormat(
-                              'EEE, d MMM',
-                              locale,
-                            ).format(day);
-                          }
-                          items.add(_DayHeaderItem(dayLabel: dayLabel));
-                        }
-                        items.add(t);
-                      }
 
-                      return ListView.builder(
-                        padding: const EdgeInsets.only(
-                          bottom: AppSizes.bottomBarClearance,
-                        ),
-                        itemCount: items.length,
-                        itemBuilder: (context, index) {
-                          final item = items[index];
-                          if (item is _MonthHeaderItem) {
-                            final balanceStr = formatMoney(
-                              Money(
-                                amountMinor: item.balance,
-                                currency: state.preferences.displayCurrency,
-                              ),
-                              state.preferences.locale,
-                            );
-                            final flowStr = formatMoney(
-                              Money(
-                                amountMinor: item.netFlow,
-                                currency: state.preferences.displayCurrency,
-                              ),
-                              state.preferences.locale,
-                            );
-                            return Padding(
+                          final balanceStr = formatMoney(
+                            Money(
+                              amountMinor: monthlyBalances[monthStr] ?? 0,
+                              currency: state.preferences.displayCurrency,
+                            ),
+                            state.preferences.locale,
+                          );
+                          final flowStr = formatMoney(
+                            Money(
+                              amountMinor: monthlyFlows[monthStr] ?? 0,
+                              currency: state.preferences.displayCurrency,
+                            ),
+                            state.preferences.locale,
+                          );
+
+                          widgets.add(
+                            Padding(
                               padding: EdgeInsets.fromLTRB(
+                                0,
+                                widgets.isEmpty ? 0 : AppSpacing.md,
+                                0,
                                 AppSpacing.sm,
-                                index == 0 ? 0 : AppSpacing.md,
-                                AppSpacing.sm,
-                                AppSpacing.xs,
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   Text(
-                                    item.monthStr,
+                                    monthStr,
                                     style: Theme.of(context)
                                         .textTheme
                                         .titleSmall
@@ -548,101 +592,43 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                                   ),
                                 ],
                               ),
-                            );
-                          }
-
-                          if (item is _DayHeaderItem) {
-                            return Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                AppSpacing.sm,
-                                AppSpacing.xs,
-                                AppSpacing.sm,
-                                AppSpacing.xxs,
-                              ),
-                              child: Row(
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      item.dayLabel,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .labelSmall
-                                          ?.copyWith(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .onSurfaceVariant
-                                                .withValues(alpha: 0.7),
-                                          ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppSpacing.xs),
-                                  Expanded(
-                                    child: Divider(
-                                      height: 1,
-                                      thickness: 1,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .outlineVariant
-                                          .withValues(alpha: 0.5),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-
-                          final transaction = item as TransactionRecord;
-                          return Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: AppSpacing.xxs,
-                            ),
-                            child: TransactionRow(
-                              state: state,
-                              transaction: transaction,
-                              selectedAccountId: accountFilter,
-                              selected: _selectedTransactionIds.contains(
-                                transaction.id,
-                              ),
-                              onLongPress: () {
-                                setState(() {
-                                  if (_selectedTransactionIds.contains(
-                                    transaction.id,
-                                  )) {
-                                    _selectedTransactionIds.remove(
-                                      transaction.id,
-                                    );
-                                  } else {
-                                    _selectedTransactionIds.add(transaction.id);
-                                  }
-                                });
-                              },
-                              onTap: () {
-                                if (_selectedTransactionIds.isNotEmpty) {
-                                  setState(() {
-                                    if (_selectedTransactionIds.contains(
-                                      transaction.id,
-                                    )) {
-                                      _selectedTransactionIds.remove(
-                                        transaction.id,
-                                      );
-                                    } else {
-                                      _selectedTransactionIds.add(
-                                        transaction.id,
-                                      );
-                                    }
-                                  });
-                                } else {
-                                  context.push(
-                                    '/transaction/${transaction.id}',
-                                  );
-                                }
-                              },
                             ),
                           );
-                        },
+                        }
+
+                        final occurredAt = t.occurredAt;
+                        final day = DateTime(
+                          occurredAt.year,
+                          occurredAt.month,
+                          occurredAt.day,
+                        );
+                        if (isNewMonth || currentDay != day) {
+                          flushDay();
+                          currentDay = day;
+                          if (day == today) {
+                            currentDayLabel = 'Today';
+                          } else if (day == yesterday) {
+                            currentDayLabel = 'Yesterday';
+                          } else {
+                            currentDayLabel = DateFormat(
+                              'EEE, d MMM',
+                              locale,
+                            ).format(day);
+                          }
+                        }
+
+                        currentDayTransactions.add(t);
+                      }
+                      flushDay();
+
+                      return ListView.builder(
+                        padding: const EdgeInsets.only(
+                          bottom: AppSizes.bottomBarClearance,
+                        ),
+                        itemCount: widgets.length,
+                        itemBuilder: (context, index) => widgets[index],
                       );
+                      ;
                     },
                   ),
           ),

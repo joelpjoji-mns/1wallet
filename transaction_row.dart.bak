@@ -49,119 +49,6 @@ class TransactionRow extends StatelessWidget {
     // liquid_glass_widgets guidance this stays a lightweight opaque
     // surface rather than a refractive GlassCard; glass is reserved for
     // navigation/control chrome elsewhere in the app.
-    Widget content = Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        onTap: onTap,
-        onLongPress: onLongPress,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: selected
-                ? Theme.of(
-                    context,
-                  ).colorScheme.secondaryContainer.withAlpha(120)
-                : Colors.transparent,
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.sm,
-              vertical: AppSpacing.xs,
-            ),
-            child: Row(
-              children: [
-                IconBubble(
-                  icon: category == null || transaction.type == 'transfer'
-                      ? transactionIcon(transaction)
-                      : categoryIcon(category),
-                  color: categoryColor(category, context),
-                  compact: true,
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: inactive
-                              ? Theme.of(context).colorScheme.outline
-                              : null,
-                          decoration: transaction.status == 'void'
-                              ? TextDecoration.lineThrough
-                              : null,
-                        ),
-                      ),
-                      Text(
-                        _accountLine(account, counter),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      if (details.isNotEmpty)
-                        Text(
-                          details,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
-                            fontSize: 12,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    PrivacyText(
-                      _formatSignedMoney(amount),
-                      style: TextStyle(
-                        color: color,
-                        fontWeight: FontWeight.w900,
-                        decoration: transaction.status == 'void'
-                            ? TextDecoration.lineThrough
-                            : null,
-                      ),
-                    ),
-                    for (final text in secondaryTexts)
-                      PrivacyText(
-                        text,
-                        style: Theme.of(context).textTheme.labelSmall
-                            ?.copyWith(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w700,
-                            ),
-                      ),
-                    Text(
-                      _dateLabel(transaction.occurredAt),
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-
-    if (glass) return content;
-
     return RepaintBoundary(
       child: Container(
         clipBehavior: Clip.antiAlias,
@@ -170,7 +57,116 @@ class TransactionRow extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadii.md),
           border: Border.all(color: scheme.outlineVariant.withAlpha(140)),
         ),
-        child: content,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            onTap: onTap,
+            onLongPress: onLongPress,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: selected
+                    ? Theme.of(
+                        context,
+                      ).colorScheme.secondaryContainer.withAlpha(120)
+                    : Colors.transparent,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.xs,
+                ),
+                child: Row(
+                  children: [
+                    IconBubble(
+                      icon: category == null || transaction.type == 'transfer'
+                          ? transactionIcon(transaction)
+                          : categoryIcon(category),
+                      color: categoryColor(category, context),
+                      compact: true,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: inactive
+                                  ? Theme.of(context).colorScheme.outline
+                                  : null,
+                              decoration: transaction.status == 'void'
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
+                          Text(
+                            _accountLine(account, counter),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          if (details.isNotEmpty)
+                            Text(
+                              details,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                                fontSize: 12,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        PrivacyText(
+                          _formatSignedMoney(amount),
+                          style: TextStyle(
+                            color: color,
+                            fontWeight: FontWeight.w900,
+                            decoration: transaction.status == 'void'
+                                ? TextDecoration.lineThrough
+                                : null,
+                          ),
+                        ),
+                        for (final text in secondaryTexts)
+                          PrivacyText(
+                            text,
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                        Text(
+                          _dateLabel(transaction.occurredAt),
+                          style: Theme.of(context).textTheme.labelSmall,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -280,3 +276,6 @@ class TransactionRow extends StatelessWidget {
     return '$sign${formatMoney(money.copyWith(amountMinor: money.amountMinor.abs()), state.preferences.locale)}';
   }
 }
+
+
+
