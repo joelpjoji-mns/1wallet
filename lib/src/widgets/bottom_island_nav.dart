@@ -38,18 +38,31 @@ class BottomIslandNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final glassTheme = GlassThemeData.of(context);
+    final glassSettings = glassTheme.settingsFor(context)?.applyTo(
+          const LiquidGlassSettings(),
+        );
 
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: AppSizes.bottomBarOuterVerticalPadding,
+        ),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            // Keep full natural island width without excessive empty gaps on sides
-            final islandWidth = (constraints.maxWidth - 28)
-                .clamp(320.0, AppSizes.islandMaxWidth)
-                .toDouble();
             final totalWidth = constraints.maxWidth;
+            final hasDownFab = compactAction && action != null;
+            // When FAB is down beside the island bar, shrink the island and shift left
+            // leaving room for 64px FAB + 12px margin on the right.
+            final islandWidth = hasDownFab
+                ? (totalWidth - 76).clamp(240.0, AppSizes.islandMaxWidth - 76).toDouble()
+                : totalWidth.clamp(320.0, AppSizes.islandMaxWidth).toDouble();
+
+            final islandLeft = hasDownFab
+                ? 0.0
+                : (totalWidth - islandWidth) / 2;
 
             return Align(
               alignment: Alignment.bottomCenter,
@@ -60,13 +73,11 @@ class BottomIslandNavBar extends StatelessWidget {
                   clipBehavior: Clip.none,
                   alignment: Alignment.bottomCenter,
                   children: [
-                    // Animate island bar position: shifts to right slightly when FAB compacts down, or stays centered
+                    // Island bar position: shifts left and shrinks to fit FAB on right when down, or centered
                     AnimatedPositioned(
                       duration: const Duration(milliseconds: 380),
                       curve: Curves.easeInOutCubicEmphasized,
-                      left: compactAction
-                          ? ((totalWidth - islandWidth) / 2) + 24
-                          : (totalWidth - islandWidth) / 2,
+                      left: islandLeft,
                       bottom: 0,
                       width: islandWidth,
                       child: GlassTabBar.bottom(
@@ -83,10 +94,11 @@ class BottomIslandNavBar extends StatelessWidget {
                         onTabSelected: (index) =>
                             onSelected(items[index].pageIndex ?? index),
                         barHeight: AppSizes.bottomBarContentHeight,
-                        horizontalPadding: 10,
+                        horizontalPadding: hasDownFab ? 6 : 10,
                         verticalPadding: 12,
-                        spacing: 6,
+                        spacing: hasDownFab ? 4 : 6,
                         showIndicator: true,
+                        settings: glassSettings,
                         quality: GlassQuality.standard,
                         indicatorColor: scheme.primary.withAlphaFactor(
                           isDark ? 0.30 : 0.14,
@@ -103,7 +115,7 @@ class BottomIslandNavBar extends StatelessWidget {
                       AnimatedPositioned(
                         duration: const Duration(milliseconds: 380),
                         curve: Curves.easeInOutCubicEmphasized,
-                        right: 14,
+                        right: 0,
                         bottom: compactAction
                             ? 0
                             : AppSizes.bottomBarContentHeight + 16,

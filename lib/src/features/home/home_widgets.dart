@@ -171,23 +171,6 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                   : scheme.outlineVariant),
           width: 0.8,
         ),
-        boxShadow: isAmoled
-            ? [
-                BoxShadow(
-                  color: Colors.black.withAlpha(160),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ]
-            : (isDark
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withAlpha(100),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

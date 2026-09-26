@@ -47,23 +47,6 @@ class HomeWidgetCard extends StatelessWidget {
                   : Colors.transparent),
           width: 0.8,
         ),
-        boxShadow: isAmoled
-            ? [
-                BoxShadow(
-                  color: Colors.black.withAlpha(160),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ]
-            : (isDark
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withAlpha(100),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null),
       ),
       child: GlassCard(
         margin: EdgeInsets.zero,

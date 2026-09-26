@@ -580,35 +580,50 @@ class _GlassTuningSectionState extends State<_GlassTuningSection> {
           '${_blur.round()}',
           _blur,
           18,
-          (value) => setState(() => _blur = value),
+          (value) {
+            setState(() => _blur = value);
+            _save();
+          },
         ),
         _slider(
           'Tint strength',
           '${(_fill * 100).round()}%',
           _fill,
           .5,
-          (value) => setState(() => _fill = value),
+          (value) {
+            setState(() => _fill = value);
+            _save();
+          },
         ),
         _slider(
           'Refraction',
           '${(_refraction * 100).round()}%',
           _refraction,
           1,
-          (value) => setState(() => _refraction = value),
+          (value) {
+            setState(() => _refraction = value);
+            _save();
+          },
         ),
         _slider(
           'Bounce',
           '${(_interaction * 100).round()}%',
           _interaction,
           1,
-          (value) => setState(() => _interaction = value),
+          (value) {
+            setState(() => _interaction = value);
+            _save();
+          },
         ),
         _slider(
           'Highlight',
           '${(_shine * 100).round()}%',
           _shine,
           1,
-          (value) => setState(() => _shine = value),
+          (value) {
+            setState(() => _shine = value);
+            _save();
+          },
         ),
       ],
     );

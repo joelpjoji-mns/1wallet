@@ -282,7 +282,12 @@ class IslandFloatingActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final interaction = GlassThemeData.of(context).interaction;
+    final glassTheme = GlassThemeData.of(context);
+    final interaction = glassTheme.interaction;
+    final glassSettings = glassTheme.settingsFor(context)?.applyTo(
+          const LiquidGlassSettings(),
+        );
+
     Widget button = GlassButton(
       icon: Icon(icon),
       label: tooltip ?? 'Action',
@@ -291,6 +296,7 @@ class IslandFloatingActionButton extends StatelessWidget {
       height: 64,
       iconSize: 30,
       iconColor: Theme.of(context).colorScheme.primary,
+      settings: glassSettings,
       useOwnLayer: true,
       quality: GlassQuality.standard,
       stretch: interaction.stretch ?? 0.5,
