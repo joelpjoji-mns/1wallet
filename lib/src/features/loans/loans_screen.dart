@@ -32,6 +32,9 @@ class LoansScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(ledgerProvider);
+    if (mode == 'new' || mode == 'edit') {
+      return LoanForm(accountId: accountId);
+    }
     final allLoans = state.accounts
         .where(
           (account) => account.type == 'loan' || account.type == 'overdraft',
@@ -282,7 +285,12 @@ class _LoanFormState extends ConsumerState<LoanForm> {
     final loan = accountById(state, widget.accountId);
     _syncLoanDraft(state, loan);
     final sourceAccount = accountById(state, _sourceAccountId);
-    return Column(
+    return RouteScaffold(
+      title: loan == null ? 'New loan' : 'Edit loan',
+      actions: [
+        HeaderSaveAction(onPressed: () => _saveLoan(state, loan)),
+      ],
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
@@ -576,22 +584,8 @@ class _LoanFormState extends ConsumerState<LoanForm> {
           ),
         ),
         const Gap(AppSpacing.lg),
-        FilledButton.icon(
-          onPressed: _isSaving ? null : () => _saveLoan(state, loan),
-          icon: _isSaving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.save_outlined),
-          label: Text(
-            _isSaving
-                ? 'Saving…'
-                : (loan == null ? 'Create loan' : 'Save loan'),
-          ),
-        ),
       ],
+      ),
     );
   }
 

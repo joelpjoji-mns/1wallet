@@ -24,6 +24,7 @@
 // `loans_screen_form_bugfix_test.dart` already does, sidesteps that and is
 // the harness's established working pattern for this screen.
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -93,18 +94,16 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'Loan name'),
+      find.byType(CupertinoTextField).at(0),
       'Glass Consistency Loan',
     );
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'Original Principal'),
+      find.byType(CupertinoTextField).at(2),
       '50000',
     );
     await tester.pumpAndSettle();
 
-    final saveButton = find.widgetWithText(FilledButton, 'Create loan');
-    await tester.ensureVisible(saveButton);
-    await tester.pumpAndSettle();
+    final saveButton = find.bySemanticsLabel('Save');
     await tester.tap(saveButton);
     await tester.pumpAndSettle();
 

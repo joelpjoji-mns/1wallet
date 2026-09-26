@@ -372,12 +372,7 @@ class _SecureAccountDetailsScreenState
 
     return RouteScaffold(
       title: 'Secure Details',
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.check_rounded),
-          onPressed: () => _saveSecureDetails(account),
-        ),
-      ],
+      actions: [HeaderSaveAction(onPressed: () => _saveSecureDetails(account))],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

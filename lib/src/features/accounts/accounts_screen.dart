@@ -95,8 +95,11 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
                 : AppResponsiveLayout(
                     mobile: ReorderableListView.builder(
                       header: _buildListHeader(context, state, rows),
-                      padding: const EdgeInsets.only(
-                        bottom: AppSizes.bottomBarClearance + AppSpacing.xl,
+                      padding: EdgeInsets.only(
+                        bottom:
+                            AppSizes.bottomBarClearance +
+                            MediaQuery.paddingOf(context).bottom +
+                            AppSpacing.xl,
                       ),
                       itemCount: rows.length,
                       onReorderItem: (oldIndex, newIndex) {
@@ -188,24 +191,24 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-                GlassChip(
-                  label: 'Show excluded',
-                  icon: const Icon(Icons.balance_outlined),
-                  selected: _showExcluded,
-                  onTap: () => setState(() => _showExcluded = !_showExcluded),
-                  useOwnLayer: true,
-                  quality: GlassQuality.standard,
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                GlassChip(
-                  label: 'Show archived',
-                  icon: const Icon(Icons.archive_outlined),
-                  selected: _showArchived,
-                  onTap: () => setState(() => _showArchived = !_showArchived),
-                  useOwnLayer: true,
-                  quality: GlassQuality.standard,
-                ),
-              ],
+              GlassChip(
+                label: 'Show excluded',
+                icon: const Icon(Icons.balance_outlined),
+                selected: _showExcluded,
+                onTap: () => setState(() => _showExcluded = !_showExcluded),
+                useOwnLayer: true,
+                quality: GlassQuality.standard,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              GlassChip(
+                label: 'Show archived',
+                icon: const Icon(Icons.archive_outlined),
+                selected: _showArchived,
+                onTap: () => setState(() => _showArchived = !_showArchived),
+                useOwnLayer: true,
+                quality: GlassQuality.standard,
+              ),
+            ],
           ),
         ),
         const SizedBox(height: AppSpacing.sm),

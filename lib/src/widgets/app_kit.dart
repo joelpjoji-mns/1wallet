@@ -3,6 +3,42 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../design/tokens.dart';
 
+/// A consistent, accessible top-right action for single-screen form saves.
+class HeaderSaveAction extends StatefulWidget {
+  const HeaderSaveAction({
+    required this.onPressed,
+    super.key,
+    this.isSaving = false,
+  });
+
+  final Future<void> Function() onPressed;
+  final bool isSaving;
+
+  @override
+  State<HeaderSaveAction> createState() => _HeaderSaveActionState();
+}
+
+class _HeaderSaveActionState extends State<HeaderSaveAction> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) => HeaderIconButton(
+    icon: Icons.check_rounded,
+    loading: widget.isSaving || _busy,
+    onPressed: widget.isSaving || _busy
+        ? null
+        : () async {
+            setState(() => _busy = true);
+            try {
+              await widget.onPressed();
+            } finally {
+              if (mounted) setState(() => _busy = false);
+            }
+          },
+    semanticLabel: widget.isSaving || _busy ? 'Saving' : 'Save',
+  );
+}
+
 class AppResponsiveLayout extends StatelessWidget {
   const AppResponsiveLayout({
     required this.mobile,
@@ -66,7 +102,12 @@ class AppScreen extends StatelessWidget {
     // Adjust bottom clearance to account for bottom navigation bar on mobile
     final contentPadding = scrollable && !isDesktop
         ? padding.add(
-            const EdgeInsets.only(bottom: AppSizes.bottomBarClearance),
+            EdgeInsets.only(
+              bottom:
+                  AppSizes.bottomBarClearance +
+                  MediaQuery.paddingOf(context).bottom +
+                  AppSizes.bottomBarGap,
+            ),
           )
         : padding;
 
@@ -114,7 +155,12 @@ class AppScreen extends StatelessWidget {
           if (floatingActionButton != null)
             Positioned(
               right: isDesktop ? AppSpacing.xl : AppSpacing.lg,
-              bottom: isDesktop ? AppSpacing.xl : AppSizes.bottomBarClearance,
+              bottom: isDesktop
+                  ? AppSpacing.xl
+                  : AppSizes.bottomBar +
+                        AppSizes.bottomBarOuterVerticalPadding +
+                        MediaQuery.paddingOf(context).bottom +
+                        AppSizes.bottomBarGap,
               child: floatingActionButton!,
             ),
         ],
@@ -321,11 +367,13 @@ class HeaderIconButton extends StatelessWidget {
     super.key,
     this.badge,
     this.semanticLabel,
+    this.loading = false,
   });
 
   final IconData icon;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final int? badge;
+  final bool loading;
 
   /// Accessibility label announced by screen readers. Without this,
   /// `GlassIconButton` exposes an empty label and the button is announced
@@ -342,7 +390,12 @@ class HeaderIconButton extends StatelessWidget {
         children: [
           UnconstrainedBox(
             child: GlassIconButton(
-              icon: Icon(icon),
+              icon: loading
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(icon),
               iconSize: 22,
               size: 44,
               quality: GlassQuality.standard,

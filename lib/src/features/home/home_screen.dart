@@ -281,11 +281,12 @@ class _HomeDashboardList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(ledgerProvider);
-    const padding = EdgeInsets.fromLTRB(
+    final padding = EdgeInsets.fromLTRB(
       AppSpacing.md,
       AppSpacing.xs,
       AppSpacing.md,
-      AppSizes.bottomBarClearance,
+      AppSizes.bottomBarClearance +
+          MediaQuery.paddingOf(context).bottom,
     );
 
     Widget mobileView;

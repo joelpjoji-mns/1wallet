@@ -21,14 +21,15 @@ class UpdatesScreen extends ConsumerWidget {
     return RouteScaffold(
       title: 'Updates',
       actions: [
-        GlassIconButton(
-          icon: const Icon(Icons.refresh_rounded),
-          onPressed: state.status == UpdateStatus.checking
-              ? null
-              : () => provider.checkForUpdates(),
-          size: 44,
-          iconSize: 22,
-          semanticLabel: 'Check for updates',
+        Tooltip(
+          message: 'Check for updates',
+          child: HeaderIconButton(
+            icon: Icons.refresh_rounded,
+            onPressed: state.status == UpdateStatus.checking
+                ? null
+                : () => provider.checkForUpdates(),
+            semanticLabel: 'Check for updates',
+          ),
         ),
       ],
       child: GlassIsolationScope(
@@ -121,15 +122,13 @@ class UpdatesScreen extends ConsumerWidget {
       color = scheme.primary;
     }
 
-    // Hero summary panel — static (non-scrolling within itself), so
-    // GlassCard with standard quality is appropriate here.
-    return GlassCard(
-      margin: EdgeInsets.zero,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      shape: LiquidRoundedSuperellipse(
-        borderRadius: AppRadii.lg,
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: scheme.outlineVariant.withAlpha(140)),
       ),
-      
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         children: [
           ListTile(
@@ -184,10 +183,12 @@ class UpdatesScreen extends ConsumerWidget {
     BuildContext context,
     AppUpdateRelease release,
   ) {
-    return GlassGroupedSection(
-      header: Text('Release Details'),
-      children: [
-        GlassListTile(
+    return SectionCard(
+      title: 'Release Details',
+      compact: true,
+      child: Column(
+        children: [
+        ListTile(
           leading: Icon(
             Icons.tag_rounded,
             size: 20,
@@ -202,8 +203,8 @@ class UpdatesScreen extends ConsumerWidget {
             ),
           ),
         ),
-        GlassDivider(),
-        GlassListTile(
+        const Divider(height: 1),
+        ListTile(
           leading: Icon(
             Icons.calendar_today_rounded,
             size: 20,
@@ -219,8 +220,8 @@ class UpdatesScreen extends ConsumerWidget {
           ),
         ),
         if (release.apk != null) ...[
-          GlassDivider(),
-          GlassListTile(
+          const Divider(height: 1),
+          ListTile(
             leading: Icon(
               Icons.sd_storage_rounded,
               size: 20,
@@ -236,7 +237,8 @@ class UpdatesScreen extends ConsumerWidget {
             ),
           ),
         ],
-      ],
+        ],
+      ),
     );
   }
 
@@ -251,9 +253,11 @@ class UpdatesScreen extends ConsumerWidget {
 
     final scheme = Theme.of(context).colorScheme;
 
-    return GlassGroupedSection(
-      header: Text(title),
-      children: [
+    return SectionCard(
+      title: title,
+      compact: true,
+      child: Column(
+        children: [
         if (changelog.newFeatures.isNotEmpty) ...[
           // Sub-section label for new features
           _ChangelogSectionLabel(label: 'New Features', color: scheme.primary),
@@ -297,7 +301,8 @@ class UpdatesScreen extends ConsumerWidget {
             );
           }),
         ],
-      ],
+        ],
+      ),
     );
   }
 
@@ -311,11 +316,11 @@ class UpdatesScreen extends ConsumerWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        GlassListTile(
+        ListTile(
           leading: Icon(icon, size: 20, color: iconColor),
           title: Text(text),
         ),
-        if (showDivider) GlassDivider(),
+        if (showDivider) const Divider(height: 1),
       ],
     );
   }

@@ -524,25 +524,45 @@ class _PrivacyQuickCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassGroupedSection(
-      children: [
-        GlassListTile(
-          leading: Icon(
-            enabled ? Icons.visibility_off_rounded : Icons.visibility_outlined,
-          ),
-          title: const Text('Privacy mode'),
-          subtitle: Text(
-            enabled
-                ? 'Balances and amounts are hidden across the app.'
-                : 'Hide balances and amounts across the app.',
-          ),
-          trailing: GlassSwitch(
-            quality: GlassQuality.standard,
-            value: enabled,
-            onChanged: onChanged,
+    void toggle() => onChanged(!enabled);
+    return Semantics(
+      label: 'Privacy mode',
+      toggled: enabled,
+      onTap: toggle,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: toggle,
+        child: MergeSemantics(
+          child: ExcludeFocus(
+            child: ExcludeSemantics(
+              child: GlassGroupedSection(
+                children: [
+                  GlassListTile(
+                    leading: Icon(
+                      enabled
+                          ? Icons.visibility_off_rounded
+                          : Icons.visibility_outlined,
+                    ),
+                    title: const Text('Privacy mode'),
+                    subtitle: Text(
+                      enabled
+                          ? 'Balances and amounts are hidden across the app.'
+                          : 'Hide balances and amounts across the app.',
+                    ),
+                    trailing: IgnorePointer(
+                      child: GlassSwitch(
+                        quality: GlassQuality.standard,
+                        value: enabled,
+                        onChanged: onChanged,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
-      ],
+      ),
     );
   }
 }

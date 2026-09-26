@@ -38,7 +38,12 @@ class BottomIslandNavBar extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 6, 14, 8),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSizes.bottomBarOuterVerticalPadding,
+          AppSpacing.md,
+          AppSizes.bottomBarOuterVerticalPadding,
+        ),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final width = constraints.maxWidth < AppSizes.islandMaxWidth
@@ -61,7 +66,7 @@ class BottomIslandNavBar extends StatelessWidget {
                   selectedIndex: selectedIndex,
                   onTabSelected: (index) =>
                       onSelected(items[index].pageIndex ?? index),
-                  barHeight: 72,
+                  barHeight: AppSizes.bottomBarContentHeight,
                   horizontalPadding: 14,
                   verticalPadding: 12,
                   spacing: 6,

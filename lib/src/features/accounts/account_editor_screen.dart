@@ -95,15 +95,9 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                 ? null
                 : () => _confirmDeleteAccount(state, account),
           ),
-        IconButton(
-          icon: _isSaving
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.check_rounded),
-          onPressed: _isSaving ? null : () => _saveAccount(state, account),
+        HeaderSaveAction(
+          isSaving: _isSaving,
+          onPressed: () => _saveAccount(state, account),
         ),
       ],
       child: Column(
@@ -545,7 +539,9 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
       return;
     }
     final currency =
-        _selectedCurrency ?? account?.currency ?? state.preferences.baseCurrency;
+        _selectedCurrency ??
+        account?.currency ??
+        state.preferences.baseCurrency;
     final isCardType =
         _selectedType == 'card' || _selectedType == 'credit_card';
     Money? parsedCreditLimit;

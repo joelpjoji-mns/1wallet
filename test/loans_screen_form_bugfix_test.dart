@@ -8,6 +8,7 @@
 //      accounts. `_saveLoan` now disables the button / ignores re-entrant
 //      calls via an `_isSaving` flag.
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -16,6 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
 import 'package:one_wallet_flutter/src/features/loans/loans_screen.dart';
+import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 
 import 'test_harness.dart';
 
@@ -84,24 +86,22 @@ void main() {
     final loansBefore = container.read(ledgerProvider).accounts.length;
 
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'Loan name'),
+      find.byType(CupertinoTextField).at(0),
       'Bike Loan',
     );
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'Original Principal'),
+      find.byType(CupertinoTextField).at(2),
       '50000',
     );
     // 0 is a valid *digit* (so it passes the digits-only input formatter)
     // but is not a valid tenure length.
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'Tenure count'),
+      find.byType(CupertinoTextField).at(6),
       '0',
     );
     await tester.pumpAndSettle();
 
-    final saveButton = find.widgetWithText(FilledButton, 'Create loan');
-    await tester.ensureVisible(saveButton);
-    await tester.pumpAndSettle();
+    final saveButton = find.bySemanticsLabel('Save');
     await tester.tap(saveButton);
     await tester.pumpAndSettle();
 
@@ -122,13 +122,13 @@ void main() {
     await pumpLoanForm(tester);
 
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'Tenure count'),
+      find.byType(CupertinoTextField).at(6),
       '-12',
     );
     await tester.pumpAndSettle();
 
-    final field = tester.widget<TextFormField>(
-      find.widgetWithText(TextFormField, 'Tenure count'),
+    final field = tester.widget<CupertinoTextField>(
+      find.byType(CupertinoTextField).at(6),
     );
     expect(field.controller?.text, '12');
   });
@@ -144,18 +144,16 @@ void main() {
         .length;
 
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'Loan name'),
+      find.byType(CupertinoTextField).at(0),
       'Double Tap Loan',
     );
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'Original Principal'),
+      find.byType(CupertinoTextField).at(2),
       '75000',
     );
     await tester.pumpAndSettle();
 
-    final saveButton = find.widgetWithText(FilledButton, 'Create loan');
-    await tester.ensureVisible(saveButton);
-    await tester.pumpAndSettle();
+    final saveButton = find.byType(HeaderSaveAction);
     // Invoke onPressed twice back-to-back with no await in between, so
     // both calls run before the (fast, in-memory) ledger notifier gets a
     // chance to resolve the first save. This is what a real double-tap
@@ -164,7 +162,7 @@ void main() {
     // sequential `await tester.tap(...)` calls don't reproduce the race:
     // the mocked ledger resolves fast enough that the first save fully
     // completes before the second tap is even dispatched.)
-    final onPressed = tester.widget<FilledButton>(saveButton).onPressed!;
+    final onPressed = tester.widget<HeaderSaveAction>(saveButton).onPressed;
     onPressed();
     onPressed();
     await tester.pumpAndSettle();

@@ -82,9 +82,7 @@ void main() {
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light(),
             darkTheme: AppTheme.amoled(),
-            home: Scaffold(
-              body: TransactionsScreen(onMenuPressed: () {}),
-            ),
+            home: Scaffold(body: TransactionsScreen(onMenuPressed: () {})),
           ),
         ),
       );
@@ -92,10 +90,9 @@ void main() {
 
       // Default (nothing selected) actions.
       expect(find.bySemanticsLabel('Choose display currency'), findsOneWidget);
-      // The FAB also uses the "Add record" label (its own tooltip), so the
-      // header action is expected to be one of at least two matches here.
-      expect(find.bySemanticsLabel('Add record'), findsWidgets);
-      expect(find.bySemanticsLabel('Customize widgets'), findsOneWidget);
+      // History exposes exactly one add-record action: the floating button.
+      expect(find.bySemanticsLabel('Add record'), findsOneWidget);
+      expect(find.bySemanticsLabel('Customize widgets'), findsNothing);
 
       // Long-pressing a row enters multi-select mode, swapping the header
       // actions for delete/clear-selection controls.

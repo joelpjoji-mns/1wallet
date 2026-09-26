@@ -19,6 +19,43 @@ CloudWriteState _expectedStateFromMetadata(CloudSyncMetadata metadata) {
 }
 
 void main() {
+  test('CloudSyncMetadata.copyWith can clear the cloud baseline', () {
+    final metadata = CloudSyncMetadata(
+      deviceId: 'device-a',
+      lastCloudRevision: 12,
+      lastObservedCloudUpdatedAt: '2026-09-25T12:00:00.000Z',
+    );
+
+    final cleared = metadata.copyWith(
+      lastCloudRevision: null,
+      lastObservedCloudUpdatedAt: null,
+    );
+
+    expect(cleared.lastCloudRevision, isNull);
+    expect(cleared.lastObservedCloudUpdatedAt, isNull);
+    expect(metadata.lastCloudRevision, 12);
+  });
+
+  test('overwrite race conflict exposes both baseline and live versions', () {
+    final expected = CloudWriteState(
+      cloudRevision: 3,
+      updatedAt: DateTime.utc(2026, 9, 26, 10),
+    );
+    final live = CloudWriteState(
+      cloudRevision: 4,
+      updatedAt: DateTime.utc(2026, 9, 26, 11),
+    );
+    final conflict = CloudSyncConflictException(
+      'Wallet changed during overwrite. Expected $expected; cloud now contains $live.',
+      expected,
+      live,
+    );
+
+    expect(conflict.expected, expected);
+    expect(conflict.live, live);
+    expect(conflict.toString(), contains('during overwrite'));
+  });
+
   group('hasCloudSyncConflict', () {
     test('no conflict on the very first sync (nothing observed yet)', () {
       final conflict = hasCloudSyncConflict(

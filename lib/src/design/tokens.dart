@@ -19,8 +19,14 @@ abstract final class AppRadii {
 }
 
 abstract final class AppSizes {
-  static const double bottomBar = 86;
-  static const double bottomBarClearance = 140;
+  static const double bottomBarContentHeight = 72;
+  // GlassTabBar includes 12 px of internal top/bottom padding around its
+  // configured bar height, so this is its measured outer extent.
+  static const double bottomBar = bottomBarContentHeight + 24;
+  static const double bottomBarGap = AppSpacing.sm;
+  static const double bottomBarOuterVerticalPadding = AppSpacing.xxs;
+  static const double bottomBarClearance =
+      bottomBar + bottomBarOuterVerticalPadding * 2 + bottomBarGap;
   static const double rowLarge = 76;
   static const double islandMaxWidth = 430;
 }

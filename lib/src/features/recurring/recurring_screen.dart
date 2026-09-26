@@ -39,6 +39,9 @@ class RecurringScreen extends ConsumerWidget {
         : state.transactions.firstWhereOrNull(
             (transaction) => transaction.id == recordId,
           );
+    if (mode == 'new' || mode == 'edit') {
+      return RecurringForm(recordId: recordId);
+    }
     final listed = mode == 'past' ? recurringHistory : scheduled;
 
     final targetCurrency = state.preferences.displayCurrency;
@@ -446,21 +449,15 @@ class _RecurringCompactCard extends StatelessWidget {
             ? scheme.surfaceContainerLow.withAlphaFactor(0.6)
             : scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border(
-          left: BorderSide(
-            color: isUrgent
-                ? urgentBorderColor
-                : scheme.outlineVariant.withAlpha(0),
-            width: isUrgent ? 4 : 0,
-          ),
-          top: BorderSide(color: scheme.outlineVariant.withAlpha(140)),
-          right: BorderSide(color: scheme.outlineVariant.withAlpha(140)),
-          bottom: BorderSide(color: scheme.outlineVariant.withAlpha(140)),
-        ),
+        border: Border.all(color: scheme.outlineVariant.withAlpha(140)),
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
+      child: Row(
+        children: [
+          if (isUrgent) Container(width: 4, color: urgentBorderColor),
+          Expanded(
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
           borderRadius: BorderRadius.circular(AppRadii.md),
           onTap: onTap,
           child: Padding(
@@ -687,7 +684,10 @@ class _RecurringCompactCard extends StatelessWidget {
               ],
             ),
           ),
-        ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -766,7 +766,12 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
     final account = accountById(state, _accountId);
     final counterAccount = accountById(state, _counterAccountId);
     final category = categoryById(state, _categoryId);
-    return Column(
+    return RouteScaffold(
+      title: record == null ? 'New recurring' : 'Edit recurring',
+      actions: [
+        HeaderSaveAction(onPressed: () => _saveRecurring(state, record)),
+      ],
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SectionCard(
@@ -1090,22 +1095,8 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
           ),
         ),
         const Gap(AppSpacing.lg),
-        FilledButton.icon(
-          onPressed: _isSaving ? null : () => _saveRecurring(state, record),
-          icon: _isSaving
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.save_outlined),
-          label: Text(
-            record == null
-                ? 'Create scheduled record'
-                : 'Save scheduled record',
-          ),
-        ),
       ],
+      ),
     );
   }
 

@@ -234,16 +234,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 onPressed: () => _showDisplayCurrencyPicker(state),
                 semanticLabel: 'Choose display currency',
               ),
-              HeaderIconButton(
-                icon: Icons.add_rounded,
-                onPressed: () => context.push('/add'),
-                semanticLabel: 'Add record',
-              ),
-              HeaderIconButton(
-                icon: Icons.dashboard_customize_outlined,
-                onPressed: () => context.push('/widgets'),
-                semanticLabel: 'Customize widgets',
-              ),
             ],
       child: Column(
         children: [
@@ -445,34 +435,29 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                                 bottom: AppSpacing.md,
                               ),
                               child: GlassGroupedSection(
-                                header: Text(currentDayLabel!),
+                                header: Text(currentDayLabel),
                                 children: [
-                                  for (
-                                    var i = 0;
-                                    i < currentDayTransactions.length;
-                                    i++
-                                  ) ...[
-                                    if (i > 0) const GlassDivider(),
+                                  for (final entry
+                                      in currentDayTransactions.indexed) ...[
+                                    if (entry.$1 > 0) const GlassDivider(),
                                     TransactionRow(
                                       glass: true,
                                       state: state,
-                                      transaction: currentDayTransactions[i],
+                                      transaction: entry.$2,
                                       selectedAccountId: accountFilter,
                                       selected: _selectedTransactionIds
-                                          .contains(
-                                            currentDayTransactions[i].id,
-                                          ),
+                                          .contains(entry.$2.id),
                                       onLongPress: () {
                                         setState(() {
                                           if (_selectedTransactionIds.contains(
-                                            currentDayTransactions[i].id,
+                                            entry.$2.id,
                                           )) {
                                             _selectedTransactionIds.remove(
-                                              currentDayTransactions[i].id,
+                                              entry.$2.id,
                                             );
                                           } else {
                                             _selectedTransactionIds.add(
-                                              currentDayTransactions[i].id,
+                                              entry.$2.id,
                                             );
                                           }
                                         });
@@ -482,21 +467,19 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                                             .isNotEmpty) {
                                           setState(() {
                                             if (_selectedTransactionIds
-                                                .contains(
-                                                  currentDayTransactions[i].id,
-                                                )) {
+                                                .contains(entry.$2.id)) {
                                               _selectedTransactionIds.remove(
-                                                currentDayTransactions[i].id,
+                                                entry.$2.id,
                                               );
                                             } else {
                                               _selectedTransactionIds.add(
-                                                currentDayTransactions[i].id,
+                                                entry.$2.id,
                                               );
                                             }
                                           });
                                         } else {
                                           context.push(
-                                            '/transaction/${currentDayTransactions[i].id}',
+                                            '/transaction/${entry.$2.id}',
                                           );
                                         }
                                       },
@@ -622,13 +605,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       flushDay();
 
                       return ListView.builder(
-                        padding: const EdgeInsets.only(
-                          bottom: AppSizes.bottomBarClearance,
+                        padding: EdgeInsets.only(
+                          bottom:
+                              AppSizes.bottomBarClearance +
+                              MediaQuery.paddingOf(context).bottom,
                         ),
                         itemCount: widgets.length,
                         itemBuilder: (context, index) => widgets[index],
                       );
-                      ;
                     },
                   ),
           ),
@@ -1096,22 +1080,4 @@ String _statusFilterLabel(String value) {
     'void' => 'Skipped / Void',
     _ => 'All statuses',
   };
-}
-
-class _MonthHeaderItem {
-  final String monthStr;
-  final int balance;
-  final int netFlow;
-
-  _MonthHeaderItem({
-    required this.monthStr,
-    required this.balance,
-    required this.netFlow,
-  });
-}
-
-class _DayHeaderItem {
-  final String dayLabel;
-
-  _DayHeaderItem({required this.dayLabel});
 }

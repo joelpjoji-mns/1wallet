@@ -118,9 +118,13 @@ class CloudWriteState {
 class CloudSyncConflictException implements Exception {
   const CloudSyncConflictException([
     this.message = 'Wallet changed on another device since the last sync.',
+    this.expected,
+    this.live,
   ]);
 
   final String message;
+  final CloudWriteState? expected;
+  final CloudWriteState? live;
 
   @override
   String toString() => message;

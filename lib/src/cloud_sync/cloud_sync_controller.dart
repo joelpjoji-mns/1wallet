@@ -336,6 +336,10 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         lastObservedCloudUpdatedAt: live.updatedAt?.toUtc().toIso8601String(),
       );
       await adopted.save();
+      // Keep the local replacement protected if the transactional write
+      // discovers that another device wrote after the fresh server read.
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('has_unsynced_changes', true);
       state = state.copyWith(metadata: adopted, phase: CloudSyncPhase.idle);
       await uploadSnapshot(reason: 'user-overwrite');
     } catch (error) {
@@ -744,7 +748,13 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
               expected: expectedState,
               live: liveState,
             )) {
-              throw const CloudSyncConflictException();
+              throw CloudSyncConflictException(
+                'Wallet changed during overwrite. Expected $expectedState; '
+                'cloud now contains $liveState. Nothing was replaced. Retry '
+                'the overwrite to use the newer cloud version as its baseline.',
+                expectedState,
+                liveState,
+              );
             }
 
             final revision = nextCloudRevision(liveState.cloudRevision);
@@ -825,7 +835,9 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         phase: CloudSyncPhase.error,
         error: '$e',
       );
-      unawaited(_resolveUploadConflict(user.id));
+      if (reason != 'user-overwrite') {
+        unawaited(_resolveUploadConflict(user.id));
+      }
     } on CloudSyncOversizeException catch (e) {
       debugPrint('uploadSnapshot: oversize snapshot ($e)');
       // Retrying automatically cannot fix this; surface it distinctly and

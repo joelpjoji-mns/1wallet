@@ -17,6 +17,7 @@ import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../utils/number_formatter.dart';
 import '../../widgets/privacy_text.dart';
+import '../../widgets/app_kit.dart';
 import '../common/category_hierarchy_picker.dart';
 import '../common/full_screen_picker.dart';
 
@@ -216,22 +217,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                     ? null
                     : () => _scanReceipt(ImageSource.camera),
               ),
-              IconButton(
-                icon: _isSaving
-                    ? SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      )
-                    : Icon(
-                        Icons.check_rounded,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                onPressed: _isSaving ? null : _saveRecord,
-              ),
+              HeaderSaveAction(isSaving: _isSaving, onPressed: _saveRecord),
             ],
           ),
           body: SafeArea(
@@ -693,19 +679,6 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                           onChanged: (val) => setState(() => _status = val),
                         ),
                         const SizedBox(height: AppSpacing.md),
-                        FilledButton.icon(
-                          onPressed: _isSaving ? null : _saveRecord,
-                          icon: _isSaving
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.save_outlined),
-                          label: const Text('Save record'),
-                        ),
                       ],
                     ),
                   ],

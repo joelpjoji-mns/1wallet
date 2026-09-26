@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 const _cloudSyncStorageKey = 'one_wallet_flutter.cloud_sync.v1';
 const _metadataUnset = Object();
+const _nullableMetadataUnset = Object();
 
 @immutable
 class CloudSyncMetadata {
@@ -63,8 +64,8 @@ class CloudSyncMetadata {
     int? version,
     String? deviceId,
     String? userId,
-    int? lastCloudRevision,
-    String? lastObservedCloudUpdatedAt,
+    Object? lastCloudRevision = _nullableMetadataUnset,
+    Object? lastObservedCloudUpdatedAt = _nullableMetadataUnset,
     String? lastLocalChecksum,
     String? lastSnapshotChecksum,
     String? lastSnapshotPath,
@@ -84,9 +85,13 @@ class CloudSyncMetadata {
       version: version ?? this.version,
       deviceId: deviceId ?? this.deviceId,
       userId: userId ?? this.userId,
-      lastCloudRevision: lastCloudRevision ?? this.lastCloudRevision,
+      lastCloudRevision: identical(lastCloudRevision, _nullableMetadataUnset)
+          ? this.lastCloudRevision
+          : lastCloudRevision as int?,
       lastObservedCloudUpdatedAt:
-          lastObservedCloudUpdatedAt ?? this.lastObservedCloudUpdatedAt,
+          identical(lastObservedCloudUpdatedAt, _nullableMetadataUnset)
+          ? this.lastObservedCloudUpdatedAt
+          : lastObservedCloudUpdatedAt as String?,
       lastLocalChecksum: lastLocalChecksum ?? this.lastLocalChecksum,
       lastSnapshotChecksum: lastSnapshotChecksum ?? this.lastSnapshotChecksum,
       lastSnapshotPath: lastSnapshotPath ?? this.lastSnapshotPath,

@@ -160,9 +160,7 @@ void main() {
           .transactions
           .map((t) => t.id)
           .toSet();
-      final saveButton = find.text('Create scheduled record');
-      await tester.ensureVisible(saveButton);
-      await tester.pumpAndSettle();
+      final saveButton = find.bySemanticsLabel('Save');
       await tester.tap(saveButton);
       await tester.pumpAndSettle();
 
@@ -228,9 +226,7 @@ void main() {
           .transactions
           .map((t) => t.id)
           .toSet();
-      final saveButton = find.text('Create scheduled record');
-      await tester.ensureVisible(saveButton);
-      await tester.pumpAndSettle();
+      final saveButton = find.bySemanticsLabel('Save');
 
       await tester.tap(saveButton);
       await tester.tap(saveButton);
