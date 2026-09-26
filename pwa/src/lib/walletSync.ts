@@ -16,38 +16,62 @@ import {
   orderBy,
   query,
   runTransaction,
-  serverTimestamp,
+  Timestamp,
   type DocumentData,
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { db } from './firestore';
 import { getDeviceId } from './deviceId';
 import { decodeSnapshot, encodeSnapshot } from './ledgerCodec.ts';
 import type { LedgerSnapshot } from './ledgerTypes';
 import {
   assertFitsInOneCommit,
   hasWriteConflict,
+  nextCloudRevision,
+  readVersionConsistent,
+  splitIntoChunks,
+  timestampToMicros,
+  type VersionToken,
+} from './walletSyncGuards.ts';
+
+export {
+  CHUNK_SIZE,
+  MAX_CLOUD_REVISION,
+  timestampToMicros,
+  WalletSyncRevisionOverflowError,
+  WalletSyncTooLargeError,
+  WalletSyncUnstableError,
   splitIntoChunks,
 } from './walletSyncGuards.ts';
 
-export { CHUNK_SIZE, WalletSyncTooLargeError, splitIntoChunks } from './walletSyncGuards.ts';
-
 export interface CloudMeta {
-  updatedAtMs: number | null;
+  /**
+   * Epoch-**microseconds** token derived from `users/{uid}.updatedAt` via
+   * {@link timestampToMicros} — not `Timestamp.toMillis()`. See
+   * `ConflictBaseline.updatedAtToken` in `walletSyncGuards.ts` for why
+   * sub-millisecond precision matters here: it's what lets the conflict
+   * check tell apart two writes landing in the same millisecond, which is
+   * exactly the fallback signal a legacy (pre-`cloudRevision`) Flutter write
+   * relies on.
+   */
+  updatedAtToken: number | null;
   lastWriterDeviceId: string | null;
   /**
-   * Monotonically-incremented counter this client maintains on
-   * `users/{uid}.cloudRevision` (see `firebase/firestore.rules`, which
-   * validates its type/range but is written by this client only today —
-   * the Flutter client does not yet participate in this field). When
-   * present on both sides of a conflict check, it's the authoritative
-   * signal; when absent (an account never touched by a revision-aware
-   * client, or one only ever written by the current Flutter client), the
-   * check falls back to `updatedAtMs`.
+   * Monotonically-incremented counter both clients now maintain on
+   * `users/{uid}.cloudRevision` in the *same* transaction as the
+   * profile-metadata/`wallet_backups` chunk writes (see
+   * `firebase/firestore.rules`, which validates its type/range). When
+   * present on both sides of a conflict check, it's the primary signal —
+   * but *not* an automatic pass on its own: `updatedAtToken` is still
+   * cross-checked when both sides have one, because an older Flutter
+   * install that hasn't adopted `cloudRevision` yet can merge-update
+   * `updatedAt` without bumping the counter. When absent entirely (an
+   * account never touched by a revision-aware client), the check falls back
+   * to `updatedAtToken` alone.
    */
   cloudRevision: number | null;
   /**
    * Number of `wallet_backups/chunk_N` documents observed at the same
-   * instant as `updatedAtMs`/`cloudRevision` (i.e. from the same read).
+   * instant as `updatedAtToken`/`cloudRevision` (i.e. from the same read).
    * Trusted *only* when a subsequent write's conflict check confirms the
    * cloud state hasn't moved since that read — see `claimAndWriteSnapshot`.
    */
@@ -70,17 +94,33 @@ function chunkRef(uid: string, index: number) {
   return doc(db, 'users', uid, 'wallet_backups', `chunk_${index}`);
 }
 
-function cloudMetaFromUserDoc(data: DocumentData | undefined, chunkCount: number): CloudMeta {
-  if (!data) return { updatedAtMs: null, lastWriterDeviceId: null, cloudRevision: null, chunkCount };
-  const updatedAt = data.updatedAt;
-  const updatedAtMs =
-    updatedAt && typeof updatedAt.toMillis === 'function' ? (updatedAt.toMillis() as number) : null;
+/**
+ * Exported so `WalletDataContext`'s realtime listener can build a
+ * `CloudMeta`-shaped value from a raw `onSnapshot` payload and feed it
+ * straight into {@link hasWriteConflict} — reusing this instead of
+ * duplicating the same `cloudRevision`/`updatedAt` field parsing inline
+ * keeps that "did the cloud move since my baseline?" check in lockstep with
+ * the one `claimAndWriteSnapshot` uses for its own conflict check.
+ */
+export function cloudMetaFromUserDoc(data: DocumentData | undefined, chunkCount: number): CloudMeta {
+  if (!data) return { updatedAtToken: null, lastWriterDeviceId: null, cloudRevision: null, chunkCount };
   const cloudRevision = typeof data.cloudRevision === 'number' ? data.cloudRevision : null;
   return {
-    updatedAtMs,
+    updatedAtToken: timestampToMicros(data.updatedAt),
     lastWriterDeviceId: (data.lastWriterDeviceId as string | undefined) ?? null,
     cloudRevision,
     chunkCount,
+  };
+}
+
+/** Cheap "version check" read of just the fields that change on every atomic snapshot write. */
+async function readVersionToken(uid: string): Promise<VersionToken> {
+  const snap = await getDoc(doc(db, 'users', uid));
+  const meta = cloudMetaFromUserDoc(snap.exists() ? snap.data() : undefined, 0);
+  return {
+    cloudRevision: meta.cloudRevision,
+    updatedAtToken: meta.updatedAtToken,
+    lastWriterDeviceId: meta.lastWriterDeviceId,
   };
 }
 
@@ -142,8 +182,13 @@ async function downloadLegacySnapshot(uid: string): Promise<LedgerSnapshot> {
 
 export interface DownloadedSnapshot {
   snapshot: LedgerSnapshot;
-  /** Chunk doc count observed at the same instant, or `0` for the legacy fallback path. */
-  chunkCount: number;
+  /**
+   * Version-consistent cloud metadata captured atomically with `snapshot` —
+   * use this directly as the baseline for a subsequent
+   * {@link claimAndWriteSnapshot} call rather than a separate
+   * `readCloudMeta()` read (see below for why that matters).
+   */
+  meta: CloudMeta;
 }
 
 /**
@@ -156,41 +201,62 @@ export interface DownloadedSnapshot {
  * `wallet_backups` chunks, so this fallback is only ever needed once per
  * account: subsequent loads take the compressed-chunk path directly.
  *
- * Also reports the exact chunk count observed, so callers can later present
- * it back as part of `expectedMeta` for {@link claimAndWriteSnapshot} — this
- * is what lets a write compute an *exact* stale-chunk prune range without
- * needing a query inside the write transaction (Firestore transactions can't
- * run queries).
+ * The returned `meta` is captured **version-consistently** with `snapshot`
+ * via {@link readVersionConsistent}: the chunk query (or legacy fallback)
+ * is bracketed by two reads of `users/{uid}`'s `cloudRevision`/`updatedAt`,
+ * and the whole cycle retries if they disagree. Without this, a separate
+ * `Promise.all([downloadSnapshot(uid), readCloudMeta(uid)])` — as this
+ * provider used to do — could straddle an atomic snapshot write: the chunk
+ * query might return the *old* chunks while the metadata read returns the
+ * *new* `cloudRevision`. The caller would then store the new revision as its
+ * baseline alongside stale wallet content, and a later write from that same
+ * baseline would pass its own conflict check (the baseline matches "live")
+ * while actually clobbering a newer wallet with older data — exactly the
+ * class of bug `claimAndWriteSnapshot`'s conflict check exists to prevent,
+ * just smuggled in through a stale *read* instead of a stale write. Throws
+ * {@link WalletSyncUnstableError} if the cloud state changes on every one of
+ * `MAX_VERSION_CONSISTENCY_ATTEMPTS` attempts (an account being written to
+ * faster than this client can read it consistently).
  */
 export async function downloadSnapshot(uid: string): Promise<DownloadedSnapshot> {
-  const snap = await getDocs(query(backupsCollection(uid), orderBy('index')));
-  if (snap.empty) {
-    return { snapshot: await downloadLegacySnapshot(uid), chunkCount: 0 };
-  }
+  const { payload, version } = await readVersionConsistent(
+    () => readVersionToken(uid),
+    async () => {
+      const snap = await getDocs(query(backupsCollection(uid), orderBy('index')));
+      if (snap.empty) {
+        return { snapshot: await downloadLegacySnapshot(uid), chunkCount: 0 };
+      }
 
-  const parts: Uint8Array[] = [];
-  for (const d of snap.docs) {
-    const data = d.data();
-    const bytes = data.data as Bytes | undefined;
-    if (bytes) parts.push(bytes.toUint8Array());
-  }
-  const total = parts.reduce((sum, p) => sum + p.length, 0);
-  const merged = new Uint8Array(total);
-  let offset = 0;
-  for (const part of parts) {
-    merged.set(part, offset);
-    offset += part.length;
-  }
+      const parts: Uint8Array[] = [];
+      for (const d of snap.docs) {
+        const data = d.data();
+        const bytes = data.data as Bytes | undefined;
+        if (bytes) parts.push(bytes.toUint8Array());
+      }
+      const total = parts.reduce((sum, p) => sum + p.length, 0);
+      const merged = new Uint8Array(total);
+      let offset = 0;
+      for (const part of parts) {
+        merged.set(part, offset);
+        offset += part.length;
+      }
 
-  const jsonBytes = ungzip(merged);
-  const jsonStr = new TextDecoder('utf-8').decode(jsonBytes);
-  const parsed: unknown = JSON.parse(jsonStr);
+      const jsonBytes = ungzip(merged);
+      const jsonStr = new TextDecoder('utf-8').decode(jsonBytes);
+      const parsed: unknown = JSON.parse(jsonStr);
 
-  // Robust, defensive decode: every field is validated/coerced with safe
-  // fallbacks (mirrors lib/src/data/ledger_codec.dart), and any keys this
-  // client doesn't model yet are preserved via the `Extra` bag on each
-  // object instead of being silently dropped.
-  return { snapshot: decodeSnapshot(parsed), chunkCount: snap.docs.length };
+      // Robust, defensive decode: every field is validated/coerced with safe
+      // fallbacks (mirrors lib/src/data/ledger_codec.dart), and any keys this
+      // client doesn't model yet are preserved via the `Extra` bag on each
+      // object instead of being silently dropped.
+      return { snapshot: decodeSnapshot(parsed), chunkCount: snap.docs.length };
+    },
+  );
+
+  return {
+    snapshot: payload.snapshot,
+    meta: { ...version, chunkCount: payload.chunkCount },
+  };
 }
 
 /**
@@ -205,20 +271,19 @@ export async function downloadSnapshot(uid: string): Promise<DownloadedSnapshot>
  * in between the two steps that this client's later chunk-batch would then
  * silently clobber.
  *
- * Folding everything into one transaction closes that window for this
- * client's own writes, and — because the transaction reads `users/{uid}`
- * (which every writer, Flutter included, already touches on every save) —
- * Firestore's transaction engine will force a retry (re-running this whole
- * function, including the conflict check) if any other commit touches that
- * same document while this one is in flight. That gives real, practical
- * protection against a race with the current Flutter client too, **but it
- * is not a formally agreed cross-client protocol**: Flutter does not (yet)
- * read/write `cloudRevision`, does not perform its own compare-and-swap
- * transaction, and its chunk writes are not individually version-checked
- * within this transaction (only `users/{uid}` is `get()`-ed). Do not
- * describe this as guaranteeing atomicity *with* Flutter until Flutter
- * adopts a matching transactional protocol — see `firebase/README.md` for
- * the proposed shared schema.
+ * The Flutter client now implements the matching half of this protocol in
+ * `lib/src/cloud_sync/cloud_sync_write_guard.dart` / `CloudSyncController`:
+ * it reads `users/{uid}` live inside its own transaction, compares
+ * `cloudRevision` (or falls back to `updatedAt` when either side lacks it,
+ * with the same no-device-exemption semantics as {@link hasWriteConflict}),
+ * and writes its metadata bump + chunk sets + prune deletes together in one
+ * commit — so this is now a **formally shared cross-client protocol**, not
+ * just a same-origin safeguard with incidental Flutter protection. Both
+ * sides increment `cloudRevision` by exactly 1 per successful write and
+ * treat any mismatch (not just "older/newer") as a conflict, which is what
+ * closes the same-writer-identity race (two PWA tabs, or two app installs
+ * sharing a restored device id) that a `lastWriterDeviceId`-based check
+ * alone cannot.
  *
  * The exact stale-chunk prune range (`[newChunkCount, expectedMeta.chunkCount)`)
  * is only trustworthy because it's computed *after* confirming the cloud
@@ -232,13 +297,31 @@ export async function downloadSnapshot(uid: string): Promise<DownloadedSnapshot>
  * {@link assertFitsInOneCommit} for the size/write-count guard that fails
  * visibly instead of falling back to an unsafe non-atomic path when a
  * wallet is too large to write this way).
+ *
+ * Returns the exact {@link CloudMeta} this write produced — `nextRevision`,
+ * `deviceId` as `lastWriterDeviceId`, the precise `updatedAt` token, and
+ * `chunks.length` as the new `chunkCount` — so the caller (`persist()` in
+ * `WalletDataContext.tsx`) can adopt it directly as its new baseline instead
+ * of issuing a separate `readCloudMeta()` round-trip after the commit. That
+ * separate read used to be exactly the same class of bug this function's
+ * conflict check exists to prevent, just smuggled back in on the *read*
+ * side: if another writer's commit landed in the gap between this
+ * transaction committing and that follow-up read, the follow-up read would
+ * return *that other writer's* revision/timestamp, and this client would
+ * adopt it as "my own last-known-good baseline" — even though its in-memory
+ * ledger was never built from it. A subsequent write from that poisoned
+ * baseline would then pass its own conflict check and clobber the other
+ * writer's commit. Using a `Timestamp.now()` captured once, before the
+ * transaction (fixed across any transaction-internal retry, the same way
+ * `chunks`/`deviceId` already are), means this call always knows the exact
+ * value it wrote and never needs to ask the server what it just committed.
  */
 export async function claimAndWriteSnapshot(
   uid: string,
   snapshot: LedgerSnapshot,
   profile: { email: string | null; displayName: string | null },
   expectedMeta: CloudMeta,
-): Promise<void> {
+): Promise<CloudMeta> {
   const deviceId = getDeviceId();
 
   const jsonStr = JSON.stringify(encodeSnapshot(snapshot));
@@ -254,8 +337,12 @@ export async function claimAndWriteSnapshot(
   });
 
   const userRef = doc(db, 'users', uid);
+  // Captured once, outside (and before) the transaction body — see the doc
+  // comment above for why this must be the exact value returned as this
+  // write's `CloudMeta` baseline, not re-derived from a post-commit read.
+  const writeTimestamp = Timestamp.now();
 
-  await runTransaction(db, async (transaction) => {
+  return await runTransaction(db, async (transaction) => {
     const userSnap = await transaction.get(userRef);
     const cloudMeta = cloudMetaFromUserDoc(
       userSnap.exists() ? userSnap.data() : undefined,
@@ -269,14 +356,20 @@ export async function claimAndWriteSnapshot(
     // Past this point, the cloud state is confirmed unchanged since
     // `expectedMeta` was observed, so `expectedMeta.chunkCount` is now known
     // to be the true current chunk count — safe to use for an exact prune.
-    const nextRevision = (cloudMeta.cloudRevision ?? 0) + 1;
+    // `nextCloudRevision()` throws `WalletSyncRevisionOverflowError` here —
+    // before any `transaction.set()`/`transaction.delete()` call below is
+    // even issued — if bumping the counter would exceed the int32 ceiling
+    // `firestore.rules` enforces, so that failure mode is a clear, actionable
+    // error instead of an opaque rules-permission-denied rejection from the
+    // commit itself.
+    const nextRevision = nextCloudRevision(cloudMeta.cloudRevision);
     transaction.set(
       userRef,
       {
         email: profile.email,
         displayName: profile.displayName,
         authProvider: 'google',
-        updatedAt: serverTimestamp(),
+        updatedAt: writeTimestamp,
         lastWriterDeviceId: deviceId,
         cloudRevision: nextRevision,
       },
@@ -287,20 +380,35 @@ export async function claimAndWriteSnapshot(
       transaction.set(chunkRef(uid, i), {
         index: i,
         data: Bytes.fromUint8Array(chunk),
-        updatedAt: serverTimestamp(),
+        updatedAt: writeTimestamp,
       });
     });
     for (let i = chunks.length; i < expectedMeta.chunkCount; i++) {
       transaction.delete(chunkRef(uid, i));
     }
+
+    return {
+      updatedAtToken: timestampToMicros(writeTimestamp),
+      lastWriterDeviceId: deviceId,
+      cloudRevision: nextRevision,
+      chunkCount: chunks.length,
+    };
   });
 }
 
-/** Reads `users/{uid}`'s metadata plus the current `wallet_backups` chunk count, for conflict checks. */
+/**
+ * Reads `users/{uid}`'s metadata plus the current `wallet_backups` chunk
+ * count, for conflict checks — version-consistently (see the doc comment on
+ * {@link downloadSnapshot} for why the count and the revision/timestamp must
+ * come from the same cloud state, not two independent round-trips).
+ */
 export async function readCloudMeta(uid: string): Promise<CloudMeta> {
-  const [userSnap, countSnap] = await Promise.all([
-    getDoc(doc(db, 'users', uid)),
-    getCountFromServer(backupsCollection(uid)),
-  ]);
-  return cloudMetaFromUserDoc(userSnap.exists() ? userSnap.data() : undefined, countSnap.data().count);
+  const { payload: chunkCount, version } = await readVersionConsistent(
+    () => readVersionToken(uid),
+    async () => {
+      const countSnap = await getCountFromServer(backupsCollection(uid));
+      return countSnap.data().count;
+    },
+  );
+  return { ...version, chunkCount };
 }

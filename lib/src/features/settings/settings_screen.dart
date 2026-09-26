@@ -617,77 +617,95 @@ class _PrivacyQuickCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadii.xl),
-        onTap: () => onChanged(!enabled),
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadii.xl),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: enabled
-                  ? [
-                      scheme.primaryContainer,
-                      scheme.tertiaryContainer.withAlpha(160),
-                    ]
-                  : [scheme.surfaceContainerHigh, scheme.surfaceContainerLow],
+    // MergeSemantics combines the label text and the switch's toggled state
+    // into a single semantics node, mirroring AppSwitchListTile and the
+    // drawer's privacy toggle. Without it, screen readers expose an
+    // unlabeled tappable region plus a disconnected "Privacy mode" text
+    // node and a separately-focusable switch instead of one coherent
+    // on/off control.
+    return MergeSemantics(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadii.xl),
+          onTap: () => onChanged(!enabled),
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadii.xl),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: enabled
+                    ? [
+                        scheme.primaryContainer,
+                        scheme.tertiaryContainer.withAlpha(160),
+                      ]
+                    : [scheme.surfaceContainerHigh, scheme.surfaceContainerLow],
+              ),
+              border: Border.all(
+                color: enabled
+                    ? scheme.primary.withAlpha(120)
+                    : scheme.outlineVariant.withAlpha(160),
+              ),
             ),
-            border: Border.all(
-              color: enabled
-                  ? scheme.primary.withAlpha(120)
-                  : scheme.outlineVariant.withAlpha(160),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withAlpha(enabled ? 60 : 30),
+                    borderRadius: BorderRadius.circular(AppRadii.lg),
+                  ),
+                  child: Icon(
+                    enabled
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_outlined,
+                    color: scheme.primary,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Privacy mode',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        enabled
+                            ? 'Balances and amounts are hidden across the app.'
+                            : 'Hide balances and amounts across the app.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                // ExcludeFocus stops the switch from claiming its own
+                // keyboard-focus stop, which would otherwise block
+                // MergeSemantics from folding its toggled state into the
+                // single merged node. IgnorePointer keeps real touches
+                // routed through the InkWell above so the whole card
+                // toggles consistently; it still keeps the switch's
+                // toggled/label semantics visible while only stripping its
+                // own tap action, so it merges cleanly without a competing
+                // onTap.
+                ExcludeFocus(
+                  child: IgnorePointer(
+                    child: Switch(value: enabled, onChanged: onChanged),
+                  ),
+                ),
+              ],
             ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: scheme.primary.withAlpha(enabled ? 60 : 30),
-                  borderRadius: BorderRadius.circular(AppRadii.lg),
-                ),
-                child: Icon(
-                  enabled
-                      ? Icons.visibility_off_rounded
-                      : Icons.visibility_outlined,
-                  color: scheme.primary,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Privacy mode',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      enabled
-                          ? 'Balances and amounts are hidden across the app.'
-                          : 'Hide balances and amounts across the app.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              IgnorePointer(
-                child: Switch(value: enabled, onChanged: onChanged),
-              ),
-            ],
           ),
         ),
       ),

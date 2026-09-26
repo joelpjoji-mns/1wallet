@@ -64,17 +64,21 @@ class _CategoryHierarchyPickerState extends State<_CategoryHierarchyPicker> {
         ? childCategories(widget.state, root.id)
         : rootCategories(widget.state);
     final visibleOptions = _filtered(options);
+    final hasActiveQuery = _query.trim().isNotEmpty;
 
     return PopScope<String?>(
       canPop: !showingSubcategories,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        _showCategoryList();
+        // Step up exactly one level, same as the AppBar back button
+        // (`_handleBack`). Jumping straight to the top-level list here would
+        // skip intermediate levels in a 3+ level hierarchy whenever the
+        // system back gesture/button is used instead of the on-screen one.
+        _handleBack();
       },
       child: AppGlassPage(
         child: Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
+          appBar: GlassAppBar(
             leading: Tooltip(
               message: showingSubcategories ? 'Categories' : 'Back',
               child: GlassIconButton(
@@ -86,12 +90,11 @@ class _CategoryHierarchyPickerState extends State<_CategoryHierarchyPicker> {
             ),
             title: Text(
               showingSubcategories ? 'Choose subcategory' : widget.title,
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                color: scheme.onSurface,
-                fontSize: 20,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
+            centerTitle: false,
           ),
           body: SafeArea(
             top: false,
@@ -131,37 +134,60 @@ class _CategoryHierarchyPickerState extends State<_CategoryHierarchyPicker> {
                     onTap: _handleBack,
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  PremiumRow(
-                    icon: categoryIcon(root),
-                    title: 'Use ${root.name}',
-                    subtitle: 'Save without a subcategory',
-                    iconColor: categoryColor(root, context),
+                  Semantics(
                     selected: widget.selectedCategoryId == root.id,
-                    onTap: () => Navigator.of(context).pop(root.id),
+                    child: PremiumRow(
+                      icon: categoryIcon(root),
+                      title: 'Use ${root.name}',
+                      subtitle: 'Save without a subcategory',
+                      iconColor: categoryColor(root, context),
+                      selected: widget.selectedCategoryId == root.id,
+                      onTap: () => Navigator.of(context).pop(root.id),
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                 ],
                 if (visibleOptions.isEmpty)
-                  EmptyState(
-                    icon: Icons.search_off_rounded,
-                    title: 'No matches',
-                    body: 'Try a different search term.',
-                    actionLabel: 'Clear search',
-                    onAction: () => setState(() => _query = ''),
-                  )
+                  if (hasActiveQuery)
+                    EmptyState(
+                      icon: Icons.search_off_rounded,
+                      title: 'No matches',
+                      body: 'Try a different search term.',
+                      actionLabel: 'Clear search',
+                      onAction: () => setState(() => _query = ''),
+                    )
+                  else
+                    // The list is genuinely empty here (not a search
+                    // dead-end): either there are no categories yet, or
+                    // this root has no subcategories left. Don't offer a
+                    // "Clear search" action that has nothing to clear.
+                    EmptyState(
+                      icon: Icons.category_outlined,
+                      title: showingSubcategories
+                          ? 'No subcategories'
+                          : 'No categories yet',
+                      body: showingSubcategories
+                          ? '${root.name} has no subcategories to choose from.'
+                          : 'Create a category first to pick one here.',
+                    )
                 else
                   for (final category in visibleOptions) ...[
-                    PremiumRow(
-                      icon: categoryIcon(category),
-                      title: category.name,
-                      subtitle: showingSubcategories
-                          ? categoryPath(widget.state, category)
-                          : _rootSubtitle(widget.state, category),
-                      iconColor: categoryColor(category, context),
+                    Semantics(
                       selected: showingSubcategories
                           ? selectedChildId == category.id
                           : selectedRoot?.id == category.id,
-                      onTap: () => _select(category),
+                      child: PremiumRow(
+                        icon: categoryIcon(category),
+                        title: category.name,
+                        subtitle: showingSubcategories
+                            ? categoryPath(widget.state, category)
+                            : _rootSubtitle(widget.state, category),
+                        iconColor: categoryColor(category, context),
+                        selected: showingSubcategories
+                            ? selectedChildId == category.id
+                            : selectedRoot?.id == category.id,
+                        onTap: () => _select(category),
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.sm),
                   ],
@@ -185,13 +211,6 @@ class _CategoryHierarchyPickerState extends State<_CategoryHierarchyPicker> {
       return;
     }
     Navigator.of(context).pop();
-  }
-
-  void _showCategoryList() {
-    setState(() {
-      _activeRoot = null;
-      _query = '';
-    });
   }
 
   List<Category> _filtered(List<Category> options) {

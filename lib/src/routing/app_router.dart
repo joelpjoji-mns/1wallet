@@ -84,8 +84,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/account/new',
-        builder: (context, state) =>
-            const AppGlassPage(child: AccountEditorScreen()),
+        builder: (context, state) => AppGlassPage(
+          child: AccountEditorScreen(
+            initialType: state.uri.queryParameters['type'],
+          ),
+        ),
       ),
       GoRoute(
         path: '/account/:id',

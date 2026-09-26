@@ -5,14 +5,28 @@ import 'package:flutter/material.dart';
 import 'category_taxonomy.dart';
 import 'ledger_models.dart';
 
-const currentLedgerStateVersion = 16;
+// Bumped 16 -> 17 solely to force a one-time full category-taxonomy scan
+// (see `forceFullRedirectScan` below) on every already-persisted v16 local
+// ledger the next time it's decoded. That one-time scan self-heals any
+// dangling category references those ledgers might carry (the same class
+// of bug `forceFullCategoryReferenceScan` lets cloud restore opt into
+// explicitly) before they settle onto the O(categories) fast path forever
+// after, stamped at v17. No other schema change accompanies this bump.
+const currentLedgerStateVersion = 17;
 
 String encodeLedgerState(LedgerState state) {
   return jsonEncode(_ledgerToJson(state));
 }
 
-LedgerState normalizeLedgerState(LedgerState state) {
-  return _migrateLedgerState(state, fromVersion: state.version);
+LedgerState normalizeLedgerState(
+  LedgerState state, {
+  bool forceFullCategoryReferenceScan = false,
+}) {
+  return _migrateLedgerState(
+    state,
+    fromVersion: state.version,
+    forceFullCategoryReferenceScan: forceFullCategoryReferenceScan,
+  );
 }
 
 LedgerState decodeLedgerState(String source) {
@@ -63,7 +77,11 @@ LedgerState _ledgerFromJson(Map<String, dynamic> json) {
   return _migrateLedgerState(ledger, fromVersion: version);
 }
 
-LedgerState _migrateLedgerState(LedgerState state, {required int fromVersion}) {
+LedgerState _migrateLedgerState(
+  LedgerState state, {
+  required int fromVersion,
+  bool forceFullCategoryReferenceScan = false,
+}) {
   var next = state;
   if (fromVersion < 15) {
     final categoryIds = {for (final category in next.categories) category.id};
@@ -82,11 +100,28 @@ LedgerState _migrateLedgerState(LedgerState state, {required int fromVersion}) {
     ];
     next = next.copyWith(categories: categories);
   }
-  next = _migrateCategoryTaxonomy(next);
+  next = _migrateCategoryTaxonomy(
+    next,
+    // Only a genuinely legacy/foreign ledger (not yet at the current
+    // version) can contain dangling category references that need a full
+    // O(n) scan to find and clear — see the comment on
+    // `forceFullRedirectScan` inside `_migrateCategoryTaxonomy`. Trusted
+    // callers that construct a `LedgerState` from raw foreign data while
+    // stamping it at `currentLedgerStateVersion` (so the version check
+    // alone can't detect it needs migrating — e.g. cloud restore data
+    // built via `emptyLedgerState(...).copyWith(...)`) can opt into the
+    // same full scan explicitly via `forceFullCategoryReferenceScan`.
+    forceFullRedirectScan:
+        fromVersion < currentLedgerStateVersion ||
+        forceFullCategoryReferenceScan,
+  );
   return next.copyWith(version: currentLedgerStateVersion);
 }
 
-LedgerState _migrateCategoryTaxonomy(LedgerState state) {
+LedgerState _migrateCategoryTaxonomy(
+  LedgerState state, {
+  required bool forceFullRedirectScan,
+}) {
   final defaults = lifeCategoryTaxonomy();
   final defaultsById = {for (final category in defaults) category.id: category};
   final preferredByName = <String, String>{};
@@ -277,6 +312,23 @@ LedgerState _migrateCategoryTaxonomy(LedgerState state) {
   }
 
   for (final category in defaults) {
+    // A handful of defaults are themselves superseded by an alias entry
+    // above (e.g. `cat-charges`'s own name "Charges" is redirected to
+    // `cat-bank-fees` by the `preferredByName` alias table, same for
+    // `cat-sales`, `cat-cashback`, `cat-vehicle`, etc.). Unconditionally
+    // re-adding every default here would resurrect those retired ids on
+    // every single pass — even once every category/transaction that used
+    // to reference them has already been redirected to their replacement —
+    // permanently duplicating categories in the picker AND making
+    // `idRedirect` non-identity forever, which would force the expensive
+    // per-record rewrite below on *every* commit, forever (defeating the
+    // whole point of only doing that work when a merge actually happens).
+    // Skip re-adding a default whose own name no longer maps back to
+    // itself; it stays reachable via `defaultsById` for redirect-target
+    // lookups above, it just never reappears as a standalone category.
+    if (preferredByName[_categoryNameKey(category.name)] != category.id) {
+      continue;
+    }
     mergedById[category.id] = category.copyWith(
       isArchived: mergedById[category.id]?.isArchived ?? false,
     );
@@ -310,31 +362,168 @@ LedgerState _migrateCategoryTaxonomy(LedgerState state) {
     return idRedirect[id] ?? (validIds.contains(id) ? id : null);
   }
 
+  // `TransactionRecord.copyWith`/`CaptureCandidate.copyWith`/
+  // `FutureGenerationRule.copyWith` all use the common `field ?? this.field`
+  // idiom, which cannot express "clear this nullable field to null" — passing
+  // `null` is indistinguishable from "leave unchanged" and silently keeps the
+  // old value. That matters here: `redirectCategoryId` returns `null` for a
+  // categoryId that refers to a category no longer present (a dangling
+  // reference), and that must actually clear the field, not preserve the
+  // orphaned id. So when the redirect result is `null` (and there was a
+  // previous value to clear), rebuild the record directly instead of going
+  // through `copyWith`.
+  TransactionRecord withRedirectedTransactionCategory(
+    TransactionRecord transaction,
+  ) {
+    final next = redirectCategoryId(transaction.categoryId);
+    if (next == transaction.categoryId) return transaction;
+    if (next != null) return transaction.copyWith(categoryId: next);
+    return TransactionRecord(
+      id: transaction.id,
+      type: transaction.type,
+      status: transaction.status,
+      source: transaction.source,
+      accountId: transaction.accountId,
+      counterAccountId: transaction.counterAccountId,
+      amount: transaction.amount,
+      baseAmount: transaction.baseAmount,
+      counterAmount: transaction.counterAmount,
+      originalAmount: transaction.originalAmount,
+      fxRate: transaction.fxRate,
+      originalFxRate: transaction.originalFxRate,
+      categoryId: null,
+      occurredAt: transaction.occurredAt,
+      locationLabel: transaction.locationLabel,
+      paymentMethod: transaction.paymentMethod,
+      name: transaction.name,
+      notes: transaction.notes,
+      importBatchId: transaction.importBatchId,
+      recurrenceFrequency: transaction.recurrenceFrequency,
+      recurrenceInterval: transaction.recurrenceInterval,
+      recurrenceDaysOfWeek: transaction.recurrenceDaysOfWeek,
+      recurrenceDaysOfMonth: transaction.recurrenceDaysOfMonth,
+      recurrenceEndDate: transaction.recurrenceEndDate,
+      recurrenceLimit: transaction.recurrenceLimit,
+      attachments: transaction.attachments,
+      isReimbursable: transaction.isReimbursable,
+      isTaxDeductible: transaction.isTaxDeductible,
+      isExcludedFromReports: transaction.isExcludedFromReports,
+      sourceConfidence: transaction.sourceConfidence,
+      externalRef: transaction.externalRef,
+      originalTransactionId: transaction.originalTransactionId,
+      postMode: transaction.postMode,
+    );
+  }
+
+  CaptureCandidate withRedirectedCandidateCategory(
+    CaptureCandidate candidate,
+  ) {
+    final next = redirectCategoryId(candidate.suggestedCategoryId);
+    if (next == candidate.suggestedCategoryId) return candidate;
+    if (next != null) return candidate.copyWith(suggestedCategoryId: next);
+    return CaptureCandidate(
+      id: candidate.id,
+      source: candidate.source,
+      status: candidate.status,
+      createdAt: candidate.createdAt,
+      rawText: candidate.rawText,
+      parsedAmount: candidate.parsedAmount,
+      merchant: candidate.merchant,
+      transactionType: candidate.transactionType,
+      suggestedAccountId: candidate.suggestedAccountId,
+      suggestedCategoryId: null,
+      suggestedCategoryConfidence: candidate.suggestedCategoryConfidence,
+      suggestedCategoryReason: candidate.suggestedCategoryReason,
+    );
+  }
+
+  FutureGenerationRule withRedirectedRuleCategory(FutureGenerationRule rule) {
+    final next = redirectCategoryId(rule.categoryId);
+    if (next == rule.categoryId) return rule;
+    if (next != null) return rule.copyWith(categoryId: next);
+    return FutureGenerationRule(
+      id: rule.id,
+      name: rule.name,
+      enabled: rule.enabled,
+      kind: rule.kind,
+      postMode: rule.postMode,
+      type: rule.type,
+      accountId: rule.accountId,
+      counterAccountId: rule.counterAccountId,
+      categoryId: null,
+      amountMinor: rule.amountMinor,
+      currency: rule.currency,
+      frequency: rule.frequency,
+      interval: rule.interval,
+      dayOfMonth: rule.dayOfMonth,
+      daysOfWeek: rule.daysOfWeek,
+      startsOn: rule.startsOn,
+      endsOn: rule.endsOn,
+      occurrences: rule.occurrences,
+      skippedOccurrences: rule.skippedOccurrences,
+      paymentMethod: rule.paymentMethod,
+      notes: rule.notes,
+      tags: rule.tags,
+      createdAt: rule.createdAt,
+      updatedAt: rule.updatedAt,
+    );
+  }
+
+  // Rewriting every transaction/capture-candidate/rule is O(ledger size),
+  // which matters because this runs on every `_commit` (i.e. every user
+  // edit), not just on load/import/restore. Even just *checking* whether a
+  // rewrite is needed by scanning every record (e.g. collecting the set of
+  // referenced category ids) is still O(ledger size) — on a large ledger
+  // that check alone reintroduces the same per-edit cost we're trying to
+  // avoid. So the "do we need to touch records at all?" decision must stay
+  // O(categories), never O(transactions):
+  //
+  //  - `categoryMergeHappened` (O(categories)): true when the pass above
+  //    actually redirected some category id to a different canonical id
+  //    (a real name-collision merge, e.g. from `upsertCategory`). Any record
+  //    referencing the old id must follow the redirect.
+  //  - `forceFullRedirectScan`: true only when migrating a genuinely legacy
+  //    ledger (`fromVersion < currentLedgerStateVersion`, e.g. loading an
+  //    old archive/JSON payload) — the one place a full O(n) scan is
+  //    unavoidable, since only then can records reference category ids that
+  //    were never in this category list at all (dangling references, which
+  //    `redirectCategoryId` clears to null). `_commit` always calls this
+  //    with a ledger already at `currentLedgerStateVersion`, so that hot
+  //    path never pays this scan.
+  final categoryMergeHappened = idRedirect.entries.any(
+    (entry) => entry.key != entry.value,
+  );
+  final needsCategoryRedirect = categoryMergeHappened || forceFullRedirectScan;
+
+  final transactions = needsCategoryRedirect
+      ? [
+          for (final transaction in state.transactions)
+            withRedirectedTransactionCategory(transaction),
+        ]
+      : state.transactions;
+
+  final captureCandidates = needsCategoryRedirect
+      ? [
+          for (final candidate in state.captureCandidates)
+            withRedirectedCandidateCategory(candidate),
+        ]
+      : state.captureCandidates;
+
+  final preferences =
+      !needsCategoryRedirect || state.preferences.futureGenerationRules == null
+      ? state.preferences
+      : state.preferences.copyWith(
+          futureGenerationRules: [
+            for (final rule in state.preferences.futureGenerationRules!)
+              withRedirectedRuleCategory(rule),
+          ],
+        );
+
   return state.copyWith(
     categories: normalizedCategories,
-    transactions: [
-      for (final transaction in state.transactions)
-        transaction.copyWith(
-          categoryId: redirectCategoryId(transaction.categoryId),
-        ),
-    ],
-
-    captureCandidates: [
-      for (final candidate in state.captureCandidates)
-        candidate.copyWith(
-          suggestedCategoryId: redirectCategoryId(
-            candidate.suggestedCategoryId,
-          ),
-        ),
-    ],
-    preferences: state.preferences.futureGenerationRules == null
-        ? state.preferences
-        : state.preferences.copyWith(
-            futureGenerationRules: [
-              for (final rule in state.preferences.futureGenerationRules!)
-                rule.copyWith(categoryId: redirectCategoryId(rule.categoryId)),
-            ],
-          ),
+    transactions: transactions,
+    captureCandidates: captureCandidates,
+    preferences: preferences,
   );
 }
 

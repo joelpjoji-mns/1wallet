@@ -1786,9 +1786,23 @@ class LedgerController extends StateNotifier<LedgerState> {
     // user edit) cheap while still fully migrating+normalizing genuinely
     // legacy/out-of-date states.
     final normalized = normalizeLedgerState(withAutoArchived);
-    state = normalized;
-    await _repository.save(normalized);
 
+    // Mark this edit unsynced *before* mutating `state` (and before the
+    // `await _repository.save(...)` below) — not after both, as an earlier
+    // version of this method did. `state` is what CloudSyncController reads
+    // (via `ledgerProvider`) the instant a remote `users/{uid}` snapshot
+    // event fires; `has_unsynced_changes` is the flag it reads to decide
+    // whether a pull is safe to apply (`shouldAcceptCloudRestore()`). If
+    // `state` were mutated first and this flag flipped only after the
+    // `await _repository.save(...)` below, a remote snapshot event landing
+    // in that window would find `state` already reflecting this edit but
+    // `has_unsynced_changes` still `false` — wrongly treating an overwrite of
+    // this just-made, not-yet-recorded-as-unsynced edit as safe. Setting the
+    // flag first and awaiting it to complete before `state = normalized`
+    // closes that window: since nothing yields control between the two
+    // (Dart only switches tasks at `await`/microtask boundaries), any other
+    // callback can only ever observe both together, never the flag stale
+    // and `state` already updated.
     if (!_isRestoring) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('has_unsynced_changes', true);
@@ -1797,6 +1811,9 @@ class LedgerController extends StateNotifier<LedgerState> {
         DateTime.now().toUtc().toIso8601String(),
       );
     }
+
+    state = normalized;
+    await _repository.save(normalized);
 
     unawaited(SmsSpooler.updateTriggerWords(normalized));
     unawaited(NotificationSpooler.updateTriggerWords(normalized));

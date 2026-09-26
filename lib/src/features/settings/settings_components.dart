@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../auth/auth_user.dart';
 import '../../data/ledger_models.dart';
@@ -211,18 +212,29 @@ class SettingsPreferencesSection extends StatelessWidget {
               ),
               SizedBox(
                 width: 64,
-                child: TextField(
-                  controller: startDayController,
-                  keyboardType: TextInputType.number,
-                  textAlign: TextAlign.center,
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm,
-                      vertical: AppSpacing.xs,
+                child: Semantics(
+                  label: 'Month start day, 1 to 28',
+                  child: TextField(
+                    controller: startDayController,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    // Restrict input to plain digits (no minus sign, decimal
+                    // point, or pasted junk) and cap the length at 2 chars
+                    // (the valid range is 1-28) so the field can't silently
+                    // hold something like "999" while validation catches up.
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(2),
+                    ],
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.xs,
+                      ),
                     ),
+                    onChanged: onStartDayChanged,
                   ),
-                  onChanged: onStartDayChanged,
                 ),
               ),
             ],

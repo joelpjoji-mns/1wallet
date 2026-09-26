@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:local_auth/local_auth.dart';
@@ -20,9 +21,15 @@ import '../common/full_screen_picker.dart';
 import '../common/route_scaffold.dart';
 
 class AccountEditorScreen extends ConsumerStatefulWidget {
-  const AccountEditorScreen({super.key, this.accountId});
+  const AccountEditorScreen({super.key, this.accountId, this.initialType});
 
   final String? accountId;
+
+  /// Pre-selects the account type when creating a brand-new account (e.g.
+  /// jumping in from the Cards screen should default to "Credit card"
+  /// instead of forcing the user to change the type manually). Ignored when
+  /// editing an existing account.
+  final String? initialType;
 
   @override
   ConsumerState<AccountEditorScreen> createState() =>
@@ -33,6 +40,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
   final _nameController = TextEditingController();
   final _institutionController = TextEditingController();
   final _creditLimitController = TextEditingController();
+  final _openingBalanceController = TextEditingController();
   String? _loadedAccountId;
   var _includeInTotals = true;
   var _includeInReports = true;
@@ -42,6 +50,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
   Color? _selectedColor;
   String? _selectedType;
   String? _selectedCurrency;
+  bool _isSaving = false;
 
   bool _isCardUnlocked = false;
   String _unlockedNumber = '';
@@ -54,6 +63,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     _nameController.dispose();
     _institutionController.dispose();
     _creditLimitController.dispose();
+    _openingBalanceController.dispose();
     super.dispose();
   }
 
@@ -81,11 +91,19 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
           IconButton(
             tooltip: 'Delete account',
             icon: const Icon(Icons.delete_outline_rounded),
-            onPressed: () => _confirmDeleteAccount(state, account),
+            onPressed: _isSaving
+                ? null
+                : () => _confirmDeleteAccount(state, account),
           ),
         IconButton(
-          icon: const Icon(Icons.check_rounded),
-          onPressed: () => _saveAccount(state, account),
+          icon: _isSaving
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.check_rounded),
+          onPressed: _isSaving ? null : () => _saveAccount(state, account),
         ),
       ],
       child: Column(
@@ -227,6 +245,26 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                TextFormField(
+                  controller: _openingBalanceController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                    signed: true,
+                  ),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.\-]')),
+                  ],
+                  decoration: const InputDecoration(
+                    labelText: 'Opening balance',
+                    prefixIcon: Icon(Icons.savings_outlined),
+                    helperText:
+                        'Use a negative amount if this account already '
+                        'carries a balance you owe (e.g. credit card or '
+                        'loan debt).',
+                    helperMaxLines: 2,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Row(
@@ -472,13 +510,24 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     } else {
       _creditLimitController.text = '';
     }
+    final openingBalance = account?.openingBalance;
+    if (openingBalance != null && openingBalance.amountMinor != 0) {
+      final amt =
+          openingBalance.amountMinor /
+          math.pow(10, minorUnits(openingBalance.currency));
+      _openingBalanceController.text = amt.toStringAsFixed(
+        minorUnits(openingBalance.currency),
+      );
+    } else {
+      _openingBalanceController.text = '';
+    }
     _includeInTotals = account?.includeInTotals ?? true;
     _includeInReports = account?.includeInReports ?? true;
     _includeInNetWorth = account?.includeInNetWorth ?? true;
     _showOnHome = account?.showOnHome ?? true;
     _isArchived = account?.isArchived ?? false;
     _selectedColor = account?.color;
-    _selectedType = account?.type ?? 'bank';
+    _selectedType = account?.type ?? widget.initialType ?? 'bank';
     _selectedCurrency = account?.currency;
 
     // Reset unlock state on account change
@@ -489,19 +538,18 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
   }
 
   Future<void> _saveAccount(LedgerState state, Account? account) async {
+    if (_isSaving) return;
     final name = _nameController.text.trim();
     if (name.isEmpty) {
       _showAccountMessage('Enter an account name before saving.');
       return;
     }
+    final currency =
+        _selectedCurrency ?? account?.currency ?? state.preferences.baseCurrency;
     final isCardType =
         _selectedType == 'card' || _selectedType == 'credit_card';
     Money? parsedCreditLimit;
     if (isCardType && _creditLimitController.text.trim().isNotEmpty) {
-      final currency =
-          _selectedCurrency ??
-          account?.currency ??
-          state.preferences.baseCurrency;
       final normalized = _creditLimitController.text.replaceAll(
         RegExp(r'[^0-9.]'),
         '',
@@ -512,7 +560,20 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
         currency: currency,
       );
     }
+    final openingBalanceText = _openingBalanceController.text.trim();
+    final openingBalanceIsNegative = openingBalanceText.startsWith('-');
+    final openingBalanceDigits = openingBalanceText.replaceAll(
+      RegExp(r'[^0-9.]'),
+      '',
+    );
+    final openingBalanceMagnitude = double.tryParse(openingBalanceDigits) ?? 0;
+    final openingBalanceMinor =
+        ((openingBalanceIsNegative ? -1 : 1) *
+                openingBalanceMagnitude *
+                math.pow(10, minorUnits(currency)))
+            .round();
 
+    setState(() => _isSaving = true);
     try {
       await ref
           .read(ledgerProvider.notifier)
@@ -520,10 +581,8 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
             id: account?.id,
             name: name,
             type: _selectedType ?? account?.type ?? 'bank',
-            currency:
-                _selectedCurrency ??
-                account?.currency ??
-                state.preferences.baseCurrency,
+            currency: currency,
+            openingBalanceMinor: openingBalanceMinor,
             color: _selectedColor,
             institution: _institutionController.text,
             cardLast4: account?.cardLast4,
@@ -548,6 +607,8 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     } catch (error) {
       if (!mounted) return;
       _showAccountMessage(error.toString());
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 

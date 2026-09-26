@@ -304,11 +304,15 @@ class RecurringScreen extends ConsumerWidget {
 }
 
 List<TransactionRecord> _recurringHistoryTransactions(LedgerState state) {
+  // Respect the user's "hide skipped in history" preference instead of
+  // unconditionally dropping void (skipped) occurrences, matching the
+  // behavior already used by transactions_screen.dart and home_widgets.dart.
+  final hideSkipped = state.preferences.hideSkippedInHistory;
   final items = state.transactions
       .where(
         (transaction) =>
             _isRecurringHistorySource(transaction.source) &&
-            transaction.status != 'void' &&
+            !(hideSkipped && transaction.status == 'void') &&
             _isHistoricalRecurringTransaction(transaction),
       )
       .toList();
@@ -413,12 +417,17 @@ class _RecurringCompactCard extends StatelessWidget {
     );
     final amountText = _recurringAmountLabel(state, transaction);
 
-    return GlassCard(
-      margin: EdgeInsets.zero,
-      padding: EdgeInsets.zero,
-      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-      quality: GlassQuality.minimal,
+    // Rendered in bulk for scrolling planned/history lists, so this stays
+    // an opaque theme surface per liquid_glass_widgets guidance rather than
+    // a refractive GlassCard (glass is reserved for navigation/control
+    // chrome, e.g. the summary header above this list).
+    return Container(
       clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: scheme.outlineVariant.withAlpha(140)),
+      ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -653,6 +662,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
   String? _categoryId;
   DateTime _nextDate = DateTime.now().add(const Duration(days: 1));
   String? _postMode;
+  bool _isSaving = false;
 
   @override
   void dispose() {
@@ -1000,8 +1010,14 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
         ),
         const Gap(AppSpacing.lg),
         FilledButton.icon(
-          onPressed: () => _saveRecurring(state, record),
-          icon: const Icon(Icons.save_outlined),
+          onPressed: _isSaving ? null : () => _saveRecurring(state, record),
+          icon: _isSaving
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.save_outlined),
           label: Text(
             record == null
                 ? 'Create scheduled record'
@@ -1191,6 +1207,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
     LedgerState state,
     TransactionRecord? existing,
   ) async {
+    if (_isSaving) return;
     final amountMinor = _amountMinorFromInput(
       _amountController.text,
       _currency ?? state.preferences.baseCurrency,
@@ -1217,6 +1234,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
       );
       return;
     }
+    setState(() => _isSaving = true);
     try {
       final originalCurrency = _currency ?? state.preferences.baseCurrency;
 
@@ -1286,6 +1304,8 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
     } catch (error) {
       if (!mounted) return;
       _showRouteMessage(context, error.toString());
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 }
@@ -1792,17 +1812,10 @@ String _formatAmountInput(int amountMinor, String currency) {
 int _amountMinorFromInput(String value, String currency) {
   final clean = value.replaceAll(RegExp(r'[^0-9.]'), '');
   if (clean.isEmpty) return 0;
-  final parts = clean.split('.');
-  final integer = int.tryParse(parts[0]) ?? 0;
-  final fraction = parts.length > 1
-      ? (int.tryParse(
-              parts[1]
-                  .padRight(minorUnits(currency), '0')
-                  .substring(0, minorUnits(currency)),
-            ) ??
-            0)
-      : 0;
-  return integer * math.pow(10, minorUnits(currency)).toInt() + fraction;
+  // Round (rather than truncate) so extra fractional digits resolve to the
+  // nearest minor unit instead of silently dropping the last digit.
+  final parsed = double.tryParse(clean) ?? 0;
+  return (parsed * math.pow(10, minorUnits(currency))).round();
 }
 
 void _showRouteMessage(BuildContext context, String message) {

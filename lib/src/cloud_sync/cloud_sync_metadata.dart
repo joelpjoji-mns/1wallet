@@ -13,6 +13,7 @@ class CloudSyncMetadata {
     required this.deviceId,
     this.userId,
     this.lastCloudRevision,
+    this.lastObservedCloudUpdatedAt,
     this.lastLocalChecksum,
     this.lastSnapshotChecksum,
     this.lastSnapshotPath,
@@ -33,6 +34,16 @@ class CloudSyncMetadata {
   final String deviceId;
   final String? userId;
   final int? lastCloudRevision;
+
+  /// ISO-8601 UTC timestamp of the remote `users/{uid}.updatedAt` this
+  /// device's in-memory ledger is known to be consistent with — i.e. the
+  /// value observed at the moment of the last successful push or pull, not
+  /// a value read fresh right before a write attempt. Used as the
+  /// [uploadSnapshot] conflict baseline's legacy (pre-`cloudRevision`)
+  /// fallback, so a remote write that landed after this ledger was last
+  /// synced — but before an upload attempt starts serializing it — is still
+  /// correctly detected as a conflict instead of being silently clobbered.
+  final String? lastObservedCloudUpdatedAt;
   final String? lastLocalChecksum;
   final String? lastSnapshotChecksum;
   final String? lastSnapshotPath;
@@ -53,6 +64,7 @@ class CloudSyncMetadata {
     String? deviceId,
     String? userId,
     int? lastCloudRevision,
+    String? lastObservedCloudUpdatedAt,
     String? lastLocalChecksum,
     String? lastSnapshotChecksum,
     String? lastSnapshotPath,
@@ -73,6 +85,8 @@ class CloudSyncMetadata {
       deviceId: deviceId ?? this.deviceId,
       userId: userId ?? this.userId,
       lastCloudRevision: lastCloudRevision ?? this.lastCloudRevision,
+      lastObservedCloudUpdatedAt:
+          lastObservedCloudUpdatedAt ?? this.lastObservedCloudUpdatedAt,
       lastLocalChecksum: lastLocalChecksum ?? this.lastLocalChecksum,
       lastSnapshotChecksum: lastSnapshotChecksum ?? this.lastSnapshotChecksum,
       lastSnapshotPath: lastSnapshotPath ?? this.lastSnapshotPath,
@@ -99,6 +113,7 @@ class CloudSyncMetadata {
       'deviceId': deviceId,
       'userId': userId,
       'lastCloudRevision': lastCloudRevision,
+      'lastObservedCloudUpdatedAt': lastObservedCloudUpdatedAt,
       'lastLocalChecksum': lastLocalChecksum,
       'lastSnapshotChecksum': lastSnapshotChecksum,
       'lastSnapshotPath': lastSnapshotPath,
@@ -122,6 +137,7 @@ class CloudSyncMetadata {
       deviceId: json['deviceId'] as String? ?? const Uuid().v4(),
       userId: json['userId'] as String?,
       lastCloudRevision: json['lastCloudRevision'] as int?,
+      lastObservedCloudUpdatedAt: json['lastObservedCloudUpdatedAt'] as String?,
       lastLocalChecksum: json['lastLocalChecksum'] as String?,
       lastSnapshotChecksum: json['lastSnapshotChecksum'] as String?,
       lastSnapshotPath: json['lastSnapshotPath'] as String?,

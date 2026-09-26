@@ -39,9 +39,14 @@ class _CaptureDiagnosticsScreenState
     return RouteScaffold(
       title: 'Capture diagnostics',
       actions: [
-        HeaderIconButton(icon: Icons.refresh_rounded, onPressed: _refresh),
+        HeaderIconButton(
+          icon: Icons.refresh_rounded,
+          semanticLabel: 'Refresh diagnostics',
+          onPressed: _refresh,
+        ),
         HeaderIconButton(
           icon: Icons.delete_sweep_outlined,
+          semanticLabel: 'Clear diagnostics',
           onPressed: () async {
             await CaptureDiagnostics.clear();
             if (!mounted) return;

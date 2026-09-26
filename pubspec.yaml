@@ -71,6 +71,14 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
+  # Used directly by test/theme_controller_persistence_test.dart to simulate
+  # a SharedPreferences write failure (it's already a transitive dependency
+  # via shared_preferences; declaring it directly avoids the
+  # depend_on_referenced_packages lint).
+  shared_preferences_platform_interface: ^2.4.2
+  # Used directly by SecureKeyStore tests to provide deterministic storage.
+  flutter_secure_storage_platform_interface: ^2.1.1
+
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your

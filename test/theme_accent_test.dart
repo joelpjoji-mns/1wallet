@@ -41,6 +41,13 @@ void main() {
     final dark = AppTheme.dark();
     final amoled = AppTheme.amoled();
 
+    // Explicit, name-independent checks that regular dark mode never
+    // becomes pure black — only the dedicated AMOLED preference should.
+    expect(dark.scaffoldBackgroundColor, isNot(Colors.black));
+    expect(dark.colorScheme.surface, isNot(Colors.black));
+    expect(amoled.scaffoldBackgroundColor, Colors.black);
+    expect(amoled.colorScheme.surface, Colors.black);
+
     expect(dark.scaffoldBackgroundColor, AppColors.darkBackground);
     expect(dark.colorScheme.surface, isNot(AppColors.amoledBackground));
     expect(amoled.scaffoldBackgroundColor, AppColors.amoledBackground);

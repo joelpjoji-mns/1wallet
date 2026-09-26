@@ -37,6 +37,57 @@ class WidgetsManagerScreen extends ConsumerWidget {
       if (gallerySeen.add(widgetId)) galleryOrder.add(widgetId);
     }
 
+    final headerPanel = Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${visibleOrder.length} active on Home',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  '${HomeDashboardWidgetId.values.length - visibleOrder.length} available to add',
+                  style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+          FilledButton.tonalIcon(
+            onPressed: () {
+              ref.read(ledgerProvider.notifier).resetHomeWidgetOrder();
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(
+                  const SnackBar(
+                    content: Text('Home widgets reset'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+            },
+            icon: const Icon(Icons.restart_alt_rounded),
+            label: const Text('Reset order'),
+          ),
+        ],
+      ),
+    );
+
+    // The settings/common agent's `RouteScaffold.scrollView` hands this
+    // sliver-based body straight to `Scaffold.body` (still inside the shared
+    // `SafeArea` + centered max-width wrapper), instead of eagerly measuring
+    // it inside a `ListView(children: [child])`. That's what lets the
+    // `SliverList.builder` below build only the previews near the viewport
+    // rather than all ~16 live dashboard widgets at once.
     return RouteScaffold(
       title: 'Widgets Gallery',
       actions: [
@@ -52,77 +103,66 @@ class WidgetsManagerScreen extends ConsumerWidget {
           },
         ),
       ],
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(AppRadii.lg),
-              border: Border.all(color: theme.colorScheme.outlineVariant),
+      scrollView: CustomScrollView(
+        slivers: [
+          // Sliver header: the active-count summary panel plus the
+          // section intro text. This is a single (small, fixed) box, so
+          // it's fine for it to be built eagerly.
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.md,
+              AppSpacing.lg,
+              0,
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${visibleOrder.length} active on Home',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      Text(
-                        '${HomeDashboardWidgetId.values.length - visibleOrder.length} available to add',
-                        style: TextStyle(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
+            sliver: SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  headerPanel,
+                  const Gap(AppSpacing.lg),
+                  Text(
+                    'Live Widget Previews',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-                FilledButton.tonalIcon(
-                  onPressed: () {
-                    ref.read(ledgerProvider.notifier).resetHomeWidgetOrder();
-                    ScaffoldMessenger.of(context)
-                      ..hideCurrentSnackBar()
-                      ..showSnackBar(
-                        const SnackBar(
-                          content: Text('Home widgets reset'),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                  },
-                  icon: const Icon(Icons.restart_alt_rounded),
-                  label: const Text('Reset order'),
-                ),
-              ],
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Widgets are rendered live with your current data. Toggle them on or off for your Home screen.',
+                    style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                  const Gap(AppSpacing.md),
+                ],
+              ),
             ),
           ),
-          const Gap(AppSpacing.lg),
-          Text(
-            'Live Widget Previews',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w800,
+          // Lazily-built live previews: only the ones near the viewport
+          // are constructed (and their underlying dashboard data
+          // recomputed), instead of all ~16 at once.
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              0,
+              AppSpacing.lg,
+              AppSpacing.xxl,
+            ),
+            sliver: SliverList.builder(
+              itemCount: galleryOrder.length,
+              itemBuilder: (context, index) {
+                final widgetId = galleryOrder[index];
+                final isLast = index == galleryOrder.length - 1;
+                return Padding(
+                  padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacing.lg),
+                  child: _LiveWidgetPreview(
+                    widgetId: widgetId,
+                    isVisible: visibleOrder.contains(widgetId.storageKey),
+                    preferences: state.preferences,
+                  ),
+                );
+              },
             ),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Widgets are rendered live with your current data. Toggle them on or off for your Home screen.',
-            style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-          ),
-          const Gap(AppSpacing.md),
-          for (final widgetId in galleryOrder) ...[
-            _LiveWidgetPreview(
-              widgetId: widgetId,
-              isVisible: visibleOrder.contains(widgetId.storageKey),
-              preferences: state.preferences,
-            ),
-            if (widgetId != galleryOrder.last)
-              const SizedBox(height: AppSpacing.lg),
-          ],
         ],
       ),
     );

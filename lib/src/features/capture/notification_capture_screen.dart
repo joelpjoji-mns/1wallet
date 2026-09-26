@@ -78,6 +78,7 @@ class _NotificationCaptureScreenState
       actions: [
         HeaderIconButton(
           icon: Icons.fact_check_outlined,
+          semanticLabel: 'Review queue',
           onPressed: () => context.push('/review'),
         ),
       ],
@@ -291,10 +292,12 @@ class _NotificationCaptureScreenState
     final parsed = preview.parsed;
     if (preview.queued) return 'Would be queued';
     if (preview.duplicate) return 'Duplicate (already in ledger)';
-    if (parsed.matchedIgnoreWord != null)
+    if (parsed.matchedIgnoreWord != null) {
       return 'Ignored (matched ignore: "${parsed.matchedIgnoreWord}")';
-    if (preview.reason == CaptureBlockReason.missingAmount)
+    }
+    if (preview.reason == CaptureBlockReason.missingAmount) {
       return 'Ignored (no amount detected)';
+    }
     return 'Ignored (no trigger word matched)';
   }
 }

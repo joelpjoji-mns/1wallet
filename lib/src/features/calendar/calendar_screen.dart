@@ -97,6 +97,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         HeaderIconButton(
           icon: Icons.add_rounded,
           onPressed: () => context.push('/add'),
+          semanticLabel: 'Add record',
         ),
       ],
       child: Column(
@@ -105,6 +106,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           Row(
             children: [
               IconButton(
+                tooltip: 'Previous month',
                 onPressed: () => setState(
                   () => _visibleMonth = DateTime(
                     _visibleMonth.year,
@@ -134,6 +136,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 ),
               ),
               IconButton(
+                tooltip: 'Next month',
                 onPressed: () => setState(
                   () => _visibleMonth = DateTime(
                     _visibleMonth.year,

@@ -29,9 +29,20 @@ class ThousandsSeparatorInputFormatter extends TextInputFormatter {
     final formatter = NumberFormat.decimalPattern(locale);
 
     final parts = numericString.split('.');
+    // `int.parse` throws `FormatException` once the digit string exceeds
+    // the 64-bit integer range (e.g. a stray long paste, or ~19+ digits
+    // typed quickly) — an uncaught throw here happens synchronously inside
+    // Flutter's text-editing pipeline on every keystroke, so it would take
+    // down the whole edit instead of just rejecting the change. Reject the
+    // edit (like the "multiple decimal points" guard above) instead of
+    // crashing when the integer part is unparseable.
+    final integerValue = parts[0].isEmpty ? 0 : int.tryParse(parts[0]);
+    if (integerValue == null) {
+      return oldValue;
+    }
     String formattedText = parts[0].isEmpty
         ? ''
-        : formatter.format(int.parse(parts[0]));
+        : formatter.format(integerValue);
 
     if (parts.length > 1) {
       formattedText += '.${parts[1]}';
@@ -65,7 +76,16 @@ String formatNumberExpression(String expr, String locale) {
   return expr.replaceAllMapped(_numberPattern, (match) {
     final numericString = match.group(0)!;
     final parts = numericString.split('.');
-    String formattedText = formatter.format(int.parse(parts[0]));
+    // See the matching guard in `ThousandsSeparatorInputFormatter` above:
+    // `int.parse` throws once the integer part exceeds the 64-bit range.
+    // This runs per-match inside a calculator-style expression, so leave
+    // that one unparseable number as-is rather than throwing and breaking
+    // formatting for the rest of the expression.
+    final integerValue = int.tryParse(parts[0]);
+    if (integerValue == null) {
+      return numericString;
+    }
+    String formattedText = formatter.format(integerValue);
     if (parts.length > 1) {
       formattedText += '.${parts[1]}';
     } else if (numericString.endsWith('.')) {

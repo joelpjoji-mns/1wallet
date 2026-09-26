@@ -6,6 +6,7 @@ import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../utils/secure_key_store.dart';
+import '../../widgets/app_kit.dart';
 import '../../widgets/credit_card_view.dart';
 import '../common/route_scaffold.dart';
 
@@ -37,9 +38,10 @@ class _SecureAccountDetailsScreenState
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final state = ref.read(ledgerProvider);
-      final account = state.accounts.firstWhere(
+      final account = state.accounts.firstWhereOrNull(
         (a) => a.id == widget.accountId,
       );
+      if (account == null) return;
 
       if (account.encryptedDetails != null) {
         try {
@@ -164,7 +166,12 @@ class _SecureAccountDetailsScreenState
       setState(() {
         _customFields.add(MapEntry(nameCtrl.text, valueCtrl));
       });
+    } else {
+      // Not kept in _customFields (cancelled or left blank), so dispose here
+      // to avoid leaking the controller.
+      valueCtrl.dispose();
     }
+    nameCtrl.dispose();
   }
 
   Future<void> _saveSecureDetails(
@@ -341,7 +348,25 @@ class _SecureAccountDetailsScreenState
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(ledgerProvider);
-    final account = state.accounts.firstWhere((a) => a.id == widget.accountId);
+    final account = state.accounts.firstWhereOrNull(
+      (a) => a.id == widget.accountId,
+    );
+    if (account == null) {
+      return RouteScaffold(
+        title: 'Secure Details',
+        child: EmptyState(
+          icon: Icons.no_accounts_outlined,
+          title: 'Account not found',
+          body: 'This account is no longer available in your wallet data.',
+          actionLabel: 'Back',
+          onAction: () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            }
+          },
+        ),
+      );
+    }
 
     final isCard = account.type == 'card' || account.type == 'credit_card';
 
@@ -537,5 +562,14 @@ class _ExpiryDateFormatter extends TextInputFormatter {
       text: newText,
       selection: TextSelection.collapsed(offset: newText.length),
     );
+  }
+}
+
+extension _FirstWhereOrNull<T> on Iterable<T> {
+  T? firstWhereOrNull(bool Function(T value) test) {
+    for (final value in this) {
+      if (test(value)) return value;
+    }
+    return null;
   }
 }

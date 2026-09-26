@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
@@ -22,16 +23,33 @@ class DrawerConfig extends InheritedWidget {
 class RouteScaffold extends StatelessWidget {
   const RouteScaffold({
     required this.title,
-    required this.child,
+    this.child,
+    this.scrollView,
     super.key,
     this.actions = const [],
     this.floatingActionButton,
     this.drawer,
     this.hasDrawer = false,
-  });
+  }) : assert(
+         (child == null) != (scrollView == null),
+         'Provide exactly one of child or scrollView.',
+       );
 
   final String title;
-  final Widget child;
+
+  /// Content laid out inside the default padded [ListView]. Mutually
+  /// exclusive with [scrollView].
+  final Widget? child;
+
+  /// A pre-built scrollable (e.g. a [CustomScrollView] with slivers) used
+  /// directly as the scaffold body content in place of the default
+  /// [ListView]-wrapped [child]. Use this when a screen needs lazy/sliver
+  /// building (for example many live widget previews) instead of eagerly
+  /// building everything inside a single [Column]. Mutually exclusive with
+  /// [child]. The caller owns any internal padding/sliver headers — this
+  /// widget only supplies the shared [SafeArea] + centered max-width wrapper.
+  final Widget? scrollView;
+
   final List<Widget> actions;
   final Widget? floatingActionButton;
   final Widget? drawer;
@@ -61,20 +79,24 @@ class RouteScaffold extends StatelessWidget {
               )
             : null);
 
+    final content =
+        scrollView ??
+        ListView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.md,
+            AppSpacing.lg,
+            AppSpacing.xxl,
+          ),
+          children: [child!],
+        );
+
     Widget body = SafeArea(
       child: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              AppSpacing.md,
-              AppSpacing.lg,
-              AppSpacing.xxl,
-            ),
-            children: [child],
-          ),
+          child: content,
         ),
       ),
     );
@@ -82,30 +104,62 @@ class RouteScaffold extends StatelessWidget {
     Widget mobileView = Scaffold(
       drawer: effectiveDrawer,
       drawerEnableOpenDragGesture: effectiveDrawer != null,
-      appBar: AppBar(title: Text(title), actions: actions),
+      appBar: GlassAppBar(
+        title: Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        leading: effectiveDrawer != null
+            ? Builder(
+                builder: (scaffoldContext) => AppMenuAction(
+                  onPressed: Scaffold.of(scaffoldContext).openDrawer,
+                ),
+              )
+            : Navigator.of(context).canPop()
+            ? const AppBackAction()
+            : null,
+        actions: actions,
+        centerTitle: false,
+      ),
       floatingActionButton: floatingActionButton,
       body: body,
     );
 
     Widget desktopView = Scaffold(
-      appBar: AppBar(
-        title: Text(title),
+      appBar: GlassAppBar(
+        title: Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        ),
         actions: actions,
-        // Hide the hamburger menu button on desktop since the drawer is persistent
-        leading: effectiveDrawer != null ? const SizedBox.shrink() : null,
+        // Hide the hamburger menu button on desktop since the drawer is
+        // persistent, but GlassAppBar (unlike Material's AppBar) has no
+        // built-in Navigator awareness, so the back button still needs to
+        // be supplied explicitly whenever there's no persistent drawer and
+        // the route can actually be popped - otherwise every pushed desktop
+        // sub-route would silently lose its way back.
+        leading: effectiveDrawer != null
+            ? const SizedBox.shrink()
+            : (Navigator.of(context).canPop() ? const AppBackAction() : null),
+        centerTitle: false,
       ),
       floatingActionButton: floatingActionButton,
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (effectiveDrawer != null)
-            AppMainDrawer(
-              selectedIndex: -1,
-              isStatic: true,
-              onTabSelected: (index) {
-                context.go('/');
-              },
-            ),
+            drawer ??
+                AppMainDrawer(
+                  selectedIndex: -1,
+                  isStatic: true,
+                  onTabSelected: (index) {
+                    context.go('/');
+                  },
+                ),
           Expanded(child: body),
         ],
       ),

@@ -2,6 +2,7 @@ import 'dart:ui' show Tristate;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 
@@ -55,6 +56,89 @@ void main() {
           .getSemanticsData();
       expect(toggledData.flagsCollection.isToggled, Tristate.isTrue);
       expect(value, isTrue);
+
+      handle.dispose();
+    },
+  );
+
+  testWidgets(
+    'AppSwitchListTile uses the package GlassSwitch control (not the plain '
+    'Material Switch), matching the app-wide liquid_glass_widgets usage',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: AppSwitchListTile(
+              title: const Text('Quiet hours'),
+              value: false,
+              onChanged: (_) {},
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(GlassSwitch), findsOneWidget);
+      expect(find.byType(Switch), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'AppSwitchListTile does not nest its GlassSwitch inside a refractive '
+    'GlassCard when composed in the real SectionCard summary pattern',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SectionCard(
+              title: 'Notifications',
+              child: AppSwitchListTile(
+                title: const Text('Notification inbox'),
+                value: true,
+                onChanged: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // SectionCard defaults to an opaque surface, so nesting the switch's
+      // GlassSwitch inside it does not create the "refractive glass inside
+      // refractive glass" anti-pattern the package warns against.
+      expect(find.byType(GlassSwitch), findsOneWidget);
+      expect(find.byType(GlassCard), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'a disabled AppSwitchListTile (onChanged: null) ignores taps instead of '
+    'crashing on GlassSwitch\'s non-nullable onChanged',
+    (tester) async {
+      final handle = tester.ensureSemantics();
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: AppSwitchListTile(
+              title: Text('Quiet hours'),
+              value: false,
+              onChanged: null,
+            ),
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.byType(AppSwitchListTile));
+      await tester.pumpAndSettle();
+
+      // Still off — a disabled tile must not toggle, and the widget itself
+      // has no internal state that could have silently changed.
+      final data = tester
+          .getSemantics(find.byType(AppSwitchListTile))
+          .getSemanticsData();
+      expect(data.flagsCollection.isToggled, Tristate.isFalse);
+      expect(tester.takeException(), isNull);
 
       handle.dispose();
     },

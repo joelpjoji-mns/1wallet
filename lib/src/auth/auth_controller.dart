@@ -124,6 +124,7 @@ class AuthController extends StateNotifier<AuthState> {
     state = state.copyWith(isSigningIn: true, errorMessage: null);
     try {
       final user = await _repository.signInWithGoogle();
+      if (!mounted) return;
       if (user == null) {
         state = state.copyWith(
           phase: AuthPhase.signedOut,
@@ -140,6 +141,7 @@ class AuthController extends StateNotifier<AuthState> {
         errorMessage: null,
       );
     } catch (error) {
+      if (!mounted) return;
       state = state.copyWith(
         isSigningIn: false,
         errorMessage: _friendlyError(error),
@@ -193,6 +195,7 @@ class AuthController extends StateNotifier<AuthState> {
     state = state.copyWith(isSigningIn: true, errorMessage: null);
     try {
       final user = await task();
+      if (!mounted) return;
       state = state.copyWith(
         phase: user == null ? AuthPhase.signedOut : AuthPhase.signedIn,
         user: user,
@@ -200,6 +203,7 @@ class AuthController extends StateNotifier<AuthState> {
         errorMessage: null,
       );
     } catch (error) {
+      if (!mounted) return;
       state = state.copyWith(
         isSigningIn: false,
         errorMessage: _friendlyError(error),
@@ -210,6 +214,7 @@ class AuthController extends StateNotifier<AuthState> {
   Future<void> signOut() async {
     try {
       await _repository.signOut();
+      if (!mounted) return;
       state = state.copyWith(
         phase: AuthPhase.signedOut,
         user: null,
@@ -217,6 +222,7 @@ class AuthController extends StateNotifier<AuthState> {
         errorMessage: null,
       );
     } catch (error) {
+      if (!mounted) return;
       state = state.copyWith(errorMessage: _friendlyError(error));
     }
   }

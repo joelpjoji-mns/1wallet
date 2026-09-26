@@ -197,11 +197,22 @@ class AppHeader extends StatelessWidget {
   }
 }
 
+/// Combines a base accessibility label with a pending-badge count so screen
+/// readers announce e.g. "Open menu, 3 pending" instead of leaving the badge
+/// number as a disconnected, context-less text node.
+String? _headerButtonSemanticLabel(String? label, int? badge) {
+  final count = badge ?? 0;
+  if (label == null) return null;
+  if (count <= 0) return label;
+  return '$label, $count pending';
+}
+
 class GlassHeaderButton extends StatelessWidget {
   const GlassHeaderButton({
     required this.icon,
     required this.onPressed,
     this.badge,
+    this.semanticLabel,
     super.key,
   });
 
@@ -209,9 +220,15 @@ class GlassHeaderButton extends StatelessWidget {
   final VoidCallback onPressed;
   final int? badge;
 
+  /// Accessibility label announced by screen readers (e.g. "Open menu").
+  /// Without this, `GlassIconButton` exposes an empty label and the button
+  /// is announced with no description of its action.
+  final String? semanticLabel;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final badgeCount = badge ?? 0;
 
     Widget button = GlassIconButton(
       icon: Icon(icon),
@@ -219,9 +236,10 @@ class GlassHeaderButton extends StatelessWidget {
       size: 48,
       iconSize: 24,
       quality: GlassQuality.standard,
+      semanticLabel: _headerButtonSemanticLabel(semanticLabel, badgeCount),
     );
 
-    if ((badge ?? 0) > 0) {
+    if (badgeCount > 0) {
       button = Stack(
         clipBehavior: Clip.none,
         children: [
@@ -229,18 +247,24 @@ class GlassHeaderButton extends StatelessWidget {
           Positioned(
             right: 0,
             top: 0,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              decoration: BoxDecoration(
-                color: scheme.error,
-                borderRadius: BorderRadius.circular(AppRadii.pill),
-              ),
-              child: Text(
-                badge! > 9 ? '9+' : '$badge',
-                style: TextStyle(
-                  color: scheme.onError,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
+            // The badge count is already folded into the button's
+            // semanticLabel above, so exclude this purely visual duplicate
+            // from the semantics tree to avoid a redundant, out-of-context
+            // announcement.
+            child: ExcludeSemantics(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: scheme.error,
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                ),
+                child: Text(
+                  badgeCount > 9 ? '9+' : '$badgeCount',
+                  style: TextStyle(
+                    color: scheme.onError,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ),
@@ -263,7 +287,11 @@ class AppMenuAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassHeaderButton(icon: Icons.menu_rounded, onPressed: onPressed);
+    return GlassHeaderButton(
+      icon: Icons.menu_rounded,
+      onPressed: onPressed,
+      semanticLabel: 'Open menu',
+    );
   }
 }
 
@@ -273,14 +301,21 @@ class HeaderIconButton extends StatelessWidget {
     required this.onPressed,
     super.key,
     this.badge,
+    this.semanticLabel,
   });
 
   final IconData icon;
   final VoidCallback onPressed;
   final int? badge;
 
+  /// Accessibility label announced by screen readers. Without this,
+  /// `GlassIconButton` exposes an empty label and the button is announced
+  /// with no description of its action.
+  final String? semanticLabel;
+
   @override
   Widget build(BuildContext context) {
+    final badgeCount = badge ?? 0;
     return Padding(
       padding: const EdgeInsets.only(left: 6.0),
       child: Stack(
@@ -292,23 +327,35 @@ class HeaderIconButton extends StatelessWidget {
             size: 52,
             quality: GlassQuality.standard,
             onPressed: onPressed,
+            semanticLabel: _headerButtonSemanticLabel(
+              semanticLabel,
+              badgeCount,
+            ),
           ),
-          if ((badge ?? 0) > 0)
+          if (badgeCount > 0)
             Positioned(
               right: 8,
               top: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.error,
-                  borderRadius: BorderRadius.circular(AppRadii.pill),
-                ),
-                child: Text(
-                  badge! > 9 ? '9+' : '${badge!}',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onError,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
+              // Badge count is folded into the semanticLabel above; exclude
+              // this visual duplicate so screen readers don't announce it
+              // twice, disconnected from context.
+              child: ExcludeSemantics(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.error,
+                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                  ),
+                  child: Text(
+                    badgeCount > 9 ? '9+' : '$badgeCount',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onError,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ),
@@ -328,6 +375,7 @@ class SectionCard extends StatelessWidget {
     this.actionLabel,
     this.onAction,
     this.compact = false,
+    this.glass = false,
   });
 
   final String title;
@@ -337,64 +385,91 @@ class SectionCard extends StatelessWidget {
   final bool compact;
   final Widget child;
 
+  /// Opts this section into a refractive `GlassCard` surface instead of the
+  /// default opaque background.
+  ///
+  /// `SectionCard` is the app's general-purpose content-grouping wrapper —
+  /// nearly every scrolling screen (Settings, Categories, Loans, Sync,
+  /// Accounts, ...) stacks several of these as plain content sections, not
+  /// as a single standalone hero surface. Per the `liquid_glass_widgets`
+  /// package guidance, liquid glass is reserved for navigation/control
+  /// chrome and stacking many refractive surfaces on one scrolling screen
+  /// wastes GPU fill-rate, so this defaults to `false`. Only flip it on for
+  /// a genuinely standalone, non-scrolling hero card.
+  final bool glass;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return GlassCard(
-      margin: EdgeInsets.zero,
-      padding: EdgeInsets.zero,
-      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-      quality: GlassQuality.standard,
-      child: Material(
-        color: Colors.transparent,
-        child: Padding(
-          padding: EdgeInsets.all(compact ? AppSpacing.sm : AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w900),
-                        ),
-                        if (subtitle != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              subtitle!,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: scheme.onSurfaceVariant),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (actionLabel != null && onAction != null)
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.xs,
-                        ),
+
+    final content = Material(
+      color: Colors.transparent,
+      child: Padding(
+        padding: EdgeInsets.all(compact ? AppSpacing.sm : AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w900),
                       ),
-                      onPressed: onAction,
-                      child: Text(actionLabel!),
+                      if (subtitle != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            subtitle!,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: scheme.onSurfaceVariant),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (actionLabel != null && onAction != null)
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xs,
+                      ),
                     ),
-                ],
-              ),
-              SizedBox(height: compact ? AppSpacing.sm : AppSpacing.md),
-              child,
-            ],
-          ),
+                    onPressed: onAction,
+                    child: Text(actionLabel!),
+                  ),
+              ],
+            ),
+            SizedBox(height: compact ? AppSpacing.sm : AppSpacing.md),
+            child,
+          ],
         ),
       ),
+    );
+
+    if (glass) {
+      return GlassCard(
+        margin: EdgeInsets.zero,
+        padding: EdgeInsets.zero,
+        shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+        quality: GlassQuality.standard,
+        child: content,
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: scheme.outlineVariant.withAlpha(140)),
+      ),
+      child: content,
     );
   }
 }
@@ -408,6 +483,7 @@ class MetricTile extends StatelessWidget {
     this.tone = MetricTone.standard,
     this.compact = false,
     this.onTap,
+    this.glass = false,
   });
 
   final String label;
@@ -416,6 +492,17 @@ class MetricTile extends StatelessWidget {
   final MetricTone tone;
   final bool compact;
   final VoidCallback? onTap;
+
+  /// Opts this tile into a refractive `GlassCard` surface instead of the
+  /// default opaque background.
+  ///
+  /// `MetricTile` is almost always used two-to-four at a time inside a
+  /// `SectionCard`'s summary row — defaulting to glass here meant nesting
+  /// one refractive `GlassCard` inside another, which the package
+  /// explicitly calls an anti-pattern (double-refraction, wasted fill-rate).
+  /// Defaults to `false`; only flip it on for a standalone tile that isn't
+  /// nested in another glass surface.
+  final bool glass;
 
   @override
   Widget build(BuildContext context) {
@@ -429,47 +516,62 @@ class MetricTile extends StatelessWidget {
       MetricTone.warning => scheme.secondary,
       MetricTone.standard => scheme.primary,
     };
-    return GlassCard(
-      margin: EdgeInsets.zero,
-      padding: EdgeInsets.zero,
-      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-      quality: GlassQuality.standard,
-      clipBehavior: Clip.antiAlias,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          onTap: onTap,
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: compact ? AppSpacing.sm : AppSpacing.md,
-              vertical: compact ? AppSpacing.xs : AppSpacing.sm,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconBubble(icon: icon, color: color, compact: true),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
+
+    final content = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? AppSpacing.sm : AppSpacing.md,
+            vertical: compact ? AppSpacing.xs : AppSpacing.sm,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconBubble(icon: icon, color: color, compact: true),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
                 ),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
-                ),
-              ],
-            ),
+              ),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+              ),
+            ],
           ),
         ),
       ),
+    );
+
+    if (glass) {
+      return GlassCard(
+        margin: EdgeInsets.zero,
+        padding: EdgeInsets.zero,
+        shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+        quality: GlassQuality.standard,
+        clipBehavior: Clip.antiAlias,
+        child: content,
+      );
+    }
+
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: scheme.outlineVariant.withAlpha(140)),
+      ),
+      child: content,
     );
   }
 }
@@ -582,6 +684,7 @@ class PremiumRow extends StatelessWidget {
     this.selected = false,
     this.trailing,
     this.onLongPress,
+    this.glass = false,
   });
 
   final IconData icon;
@@ -595,111 +698,143 @@ class PremiumRow extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
 
+  /// Opts this row into a refractive `GlassCard` surface instead of the
+  /// default opaque background.
+  ///
+  /// `PremiumRow` is the app's general-purpose row for scrolling
+  /// lists/pickers (accounts, categories, currencies, transactions, ...),
+  /// often rendering dozens of instances at once. Per the
+  /// `liquid_glass_widgets` package guidance, liquid glass is reserved for
+  /// navigation/control chrome — dense list rows and scrolling content
+  /// should stay opaque, so this defaults to `false`. Only flip it on for a
+  /// genuinely standalone/highlighted row rendered a handful of times, not
+  /// for list items rendered in bulk.
+  final bool glass;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return GlassCard(
-      margin: EdgeInsets.zero,
-      padding: EdgeInsets.zero,
-      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-      quality: GlassQuality.standard,
-      clipBehavior: Clip.antiAlias,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          onTap: onTap,
-          onLongPress: onLongPress,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.md,
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: iconColor ?? scheme.surfaceContainerHighest,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: scheme.onSurface, size: 20),
+    final content = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.md,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: iconColor ?? scheme.surfaceContainerHighest,
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                child: Icon(icon, color: scheme.onSurface, size: 20),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: scheme.onSurface,
+                        fontSize: 15,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
                       Text(
-                        title,
+                        subtitle!,
                         style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: scheme.onSurface,
-                          fontSize: 15,
+                          color: scheme.onSurfaceVariant,
+                          fontSize: 12,
                         ),
                       ),
-                      if (subtitle != null) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          subtitle!,
-                          style: TextStyle(
-                            color: scheme.onSurfaceVariant,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                      if (meta != null || metaSubtitle != null) ...[
-                        const SizedBox(height: AppSpacing.xs),
-                        Wrap(
-                          spacing: AppSpacing.xs,
-                          runSpacing: 2,
-                          children: [
-                            if (meta != null)
-                              Text(
-                                meta!,
-                                style: TextStyle(
-                                  color: selected
-                                      ? scheme.primary
-                                      : scheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            if (metaSubtitle != null)
-                              Text(
-                                metaSubtitle!,
-                                style: TextStyle(
-                                  color: scheme.onSurfaceVariant
-                                      .withAlphaFactor(0.8),
-                                  fontSize: 12,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
-                      if (trailing != null) ...[
-                        const SizedBox(width: AppSpacing.sm),
-                        trailing!,
-                      ],
                     ],
-                  ),
+                    if (meta != null || metaSubtitle != null) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Wrap(
+                        spacing: AppSpacing.xs,
+                        runSpacing: 2,
+                        children: [
+                          if (meta != null)
+                            Text(
+                              meta!,
+                              style: TextStyle(
+                                color: selected
+                                    ? scheme.primary
+                                    : scheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          if (metaSubtitle != null)
+                            Text(
+                              metaSubtitle!,
+                              style: TextStyle(
+                                color: scheme.onSurfaceVariant.withAlphaFactor(
+                                  0.8,
+                                ),
+                                fontSize: 12,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                    if (trailing != null) ...[
+                      const SizedBox(width: AppSpacing.sm),
+                      trailing!,
+                    ],
+                  ],
                 ),
-                const SizedBox(width: AppSpacing.xs),
-                if (selected)
-                  Icon(Icons.check_circle_rounded, color: scheme.primary)
-                else
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    color: scheme.onSurfaceVariant,
-                  ),
-              ],
-            ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              if (selected)
+                Icon(Icons.check_circle_rounded, color: scheme.primary)
+              else
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: scheme.onSurfaceVariant,
+                ),
+            ],
           ),
         ),
       ),
+    );
+
+    if (glass) {
+      return GlassCard(
+        margin: EdgeInsets.zero,
+        padding: EdgeInsets.zero,
+        shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+        // GlassQuality.standard is the package's own recommended tier for
+        // scrollable list rows (lightweight shader, 5-10x faster than
+        // BackdropFilter, "works correctly during scrolling"). Reserve
+        // `premium` for static, non-scrolling hero surfaces instead.
+        quality: GlassQuality.standard,
+        clipBehavior: Clip.antiAlias,
+        child: content,
+      );
+    }
+
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: scheme.outlineVariant.withAlpha(140)),
+      ),
+      child: content,
     );
   }
 }
@@ -785,6 +920,7 @@ class AppSwitchListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final enabled = onChanged != null;
     // MergeSemantics combines the title/subtitle text and the Switch's
     // "toggled" state into a single semantics node, matching the platform's
     // own SwitchListTile behavior. Without it, screen readers (TalkBack /
@@ -833,17 +969,41 @@ class AppSwitchListTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
-              // ExcludeFocus keeps the Switch from claiming its own
-              // independent keyboard-focus stop. Without it, the Switch's
+              // ExcludeFocus keeps the switch from claiming its own
+              // independent keyboard-focus stop. Without it, the switch's
               // own focusability blocks MergeSemantics from absorbing its
               // toggled/enabled flags into the single merged node below,
               // leaving screen readers without the on/off state — matching
               // the workaround Flutter's own SwitchListTile applies.
+              //
+              // GlassSwitch is the package's own recommended replacement
+              // for Switch (it's an interactive control-layer widget, not
+              // dense list content, so this doesn't run afoul of the
+              // "no glass in scrolling content" guidance that keeps
+              // SectionCard/MetricTile/PremiumRow opaque). It's nested
+              // inside SectionCard here, but SectionCard is opaque by
+              // default now, so this isn't refractive-glass-in-glass.
+              // GlassSwitch's `onChanged` is non-nullable (unlike the
+              // built-in Switch), so the disabled (`onChanged == null`)
+              // case is reproduced manually with IgnorePointer + a dimmed
+              // opacity instead.
               ExcludeFocus(
-                child: Switch.adaptive(
-                  value: value,
-                  onChanged: onChanged,
-                  activeTrackColor: Theme.of(context).colorScheme.primary,
+                child: IgnorePointer(
+                  ignoring: !enabled,
+                  child: Opacity(
+                    opacity: enabled ? 1 : 0.38,
+                    child: GlassSwitch(
+                      value: value,
+                      onChanged: onChanged ?? (_) {},
+                      activeColor: Theme.of(context).colorScheme.primary,
+                      quality: GlassQuality.standard,
+                      // Empty, not omitted: GlassSwitch defaults to the
+                      // generic label 'Switch' when null, which would add
+                      // redundant noise to the merged label above (the
+                      // built-in Switch has no such fallback).
+                      semanticLabel: '',
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -920,6 +1080,7 @@ class AppBackAction extends StatelessWidget {
     return GlassHeaderButton(
       icon: Icons.arrow_back_rounded,
       onPressed: () => Navigator.of(context).maybePop(),
+      semanticLabel: 'Back',
     );
   }
 }

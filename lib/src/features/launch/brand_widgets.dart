@@ -153,7 +153,21 @@ class _LaunchBackdropState extends State<LaunchBackdrop>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 6000),
-    )..repeat(reverse: true);
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reduce Motion (iOS) / Remove animations (Android) — stop the
+    // continuously repeating float animation (and the per-frame heavy
+    // sigma-80 BackdropFilter blur recompute it drives) instead of forcing
+    // it on every user regardless of this accessibility preference.
+    if (MediaQuery.disableAnimationsOf(context)) {
+      if (_controller.isAnimating) _controller.stop();
+    } else if (!_controller.isAnimating) {
+      _controller.repeat(reverse: true);
+    }
   }
 
   @override
@@ -225,8 +239,33 @@ class _LaunchBackdropState extends State<LaunchBackdrop>
   }
 }
 
-class GlassCard extends StatelessWidget {
-  const GlassCard({
+/// A bespoke, dependency-free frosted panel for the pre-auth brand
+/// experience (Login/Onboarding), predating this app's adoption of
+/// `package:liquid_glass_widgets`.
+///
+/// ## Why this exists instead of the package's `GlassCard`
+///
+/// Login/Onboarding render on the app's bespoke [LaunchPalette] navy
+/// background rather than the Material `ColorScheme` the rest of the app
+/// (and `GlassThemeData`) is tuned for, and only appear a handful of times
+/// per screen (never as a dense repeated list row), so the performance
+/// concerns that justify keeping `PremiumRow`/`SectionCard`/`MetricTile`
+/// opaque by default (see `app_kit.dart`) don't apply here. Using a
+/// simple, self-contained frosted panel for this one distinct "brand
+/// moment" — rather than pulling in the shared `GlassThemeData` tuned for
+/// the Material-themed app — is a deliberate, defensible choice, not an
+/// oversight.
+///
+/// ## Do not use this outside Login/Onboarding
+///
+/// This widget was previously named `GlassCard`, silently shadowing
+/// `package:liquid_glass_widgets`'s real `GlassCard` for anyone importing
+/// this file. It's kept here only for `login_screen.dart` and
+/// `onboarding_screen.dart`; do not reach for it from any other screen —
+/// use the package's `GlassCard` (see `app_kit.dart`'s `SectionCard`/
+/// `MetricTile`/`PremiumRow` for the `glass: true` opt-in pattern) instead.
+class BrandFrostedPanel extends StatelessWidget {
+  const BrandFrostedPanel({
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(24),
@@ -240,21 +279,37 @@ class GlassCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final radius = borderRadius ?? 24.0;
+    // Reduce Transparency: MediaQuery.highContrastOf is the closest signal
+    // Flutter exposes for iOS/Android's "reduce transparency" accessibility
+    // setting — the same proxy `liquid_glass_widgets` itself uses (see
+    // GlassAccessibilityData.reduceTransparency) to degrade its own glass
+    // shader to a solid frosted surface. This bespoke panel previously
+    // ignored that signal entirely; mirror the package's behavior instead
+    // of leaving a translucent panel that fights the user's chosen contrast.
+    final reduceTransparency = MediaQuery.highContrastOf(context);
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        filter: reduceTransparency
+            ? ImageFilter.blur(sigmaX: 0, sigmaY: 0)
+            : ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
           padding: padding,
           decoration: BoxDecoration(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.05)
-                : Colors.white.withValues(alpha: 0.4),
+            color: reduceTransparency
+                ? (isDark ? const Color(0xFF14202B) : const Color(0xFFF3F6FA))
+                : (isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.white.withValues(alpha: 0.4)),
             borderRadius: BorderRadius.circular(radius),
             border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.1)
-                  : Colors.white.withValues(alpha: 0.5),
+              color: reduceTransparency
+                  ? (isDark
+                        ? Colors.white.withValues(alpha: 0.22)
+                        : Colors.black.withValues(alpha: 0.12))
+                  : (isDark
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : Colors.white.withValues(alpha: 0.5)),
             ),
           ),
           child: child,
@@ -328,6 +383,7 @@ class LaunchBrandMark extends StatefulWidget {
 class _LaunchBrandMarkState extends State<LaunchBrandMark>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
+  bool _reduceMotion = false;
 
   @override
   void initState() {
@@ -336,7 +392,31 @@ class _LaunchBrandMarkState extends State<LaunchBrandMark>
       vsync: this,
       duration: const Duration(milliseconds: 2400),
     );
-    if (widget.animated) _controller.repeat();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reduceMotion = MediaQuery.disableAnimationsOf(context);
+    _syncAnimation();
+  }
+
+  @override
+  void didUpdateWidget(LaunchBrandMark oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.animated != widget.animated) _syncAnimation();
+  }
+
+  // Reduce Motion (iOS) / Remove animations (Android) — freeze the
+  // continuously pulsing halo and glint sweep instead of forcing this
+  // purely decorative motion on users who have disabled it.
+  void _syncAnimation() {
+    final shouldAnimate = widget.animated && !_reduceMotion;
+    if (shouldAnimate && !_controller.isAnimating) {
+      _controller.repeat();
+    } else if (!shouldAnimate && _controller.isAnimating) {
+      _controller.stop();
+    }
   }
 
   @override
@@ -348,11 +428,12 @@ class _LaunchBrandMarkState extends State<LaunchBrandMark>
   @override
   Widget build(BuildContext context) {
     final palette = _resolveLaunchPalette(context);
+    final effectiveAnimated = widget.animated && !_reduceMotion;
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
         final t = _controller.value;
-        final pulse = widget.animated
+        final pulse = effectiveAnimated
             ? 1 + (math.sin(t * math.pi) * 0.04)
             : 1.0;
         final glintX = -widget.size + (widget.size * 2 * t);

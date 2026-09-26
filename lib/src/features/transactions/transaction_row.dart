@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
@@ -29,6 +28,7 @@ class TransactionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final account = accountById(state, transaction.accountId);
     final counter = accountById(state, transaction.counterAccountId);
     final category = categoryById(state, transaction.categoryId);
@@ -42,13 +42,19 @@ class TransactionRow extends StatelessWidget {
     final title = _title(category, account, counter);
     final details = transaction.notes?.trim() ?? '';
 
+    // Rows are rendered in bulk inside scrolling lists (Transactions,
+    // Recurring history, Home recent activity), so per the
+    // liquid_glass_widgets guidance this stays a lightweight opaque
+    // surface rather than a refractive GlassCard; glass is reserved for
+    // navigation/control chrome elsewhere in the app.
     return RepaintBoundary(
-      child: GlassCard(
-        margin: EdgeInsets.zero,
-        padding: EdgeInsets.zero,
-        shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-        quality: GlassQuality.minimal,
+      child: Container(
         clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          border: Border.all(color: scheme.outlineVariant.withAlpha(140)),
+        ),
         child: Material(
           color: Colors.transparent,
           child: InkWell(

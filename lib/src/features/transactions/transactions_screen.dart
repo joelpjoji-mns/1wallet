@@ -218,25 +218,30 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               HeaderIconButton(
                 icon: Icons.delete_outline_rounded,
                 onPressed: _confirmDeleteSelected,
+                semanticLabel: 'Delete selected transactions',
               ),
               HeaderIconButton(
                 icon: Icons.close_rounded,
                 onPressed: () =>
                     setState(() => _selectedTransactionIds.clear()),
+                semanticLabel: 'Clear selection',
               ),
             ]
           : [
               HeaderIconButton(
                 icon: Icons.currency_exchange_rounded,
                 onPressed: () => _showDisplayCurrencyPicker(state),
+                semanticLabel: 'Choose display currency',
               ),
               HeaderIconButton(
                 icon: Icons.add_rounded,
                 onPressed: () => context.push('/add'),
+                semanticLabel: 'Add record',
               ),
               HeaderIconButton(
                 icon: Icons.dashboard_customize_outlined,
                 onPressed: () => context.push('/widgets'),
+                semanticLabel: 'Customize widgets',
               ),
             ],
       child: Column(

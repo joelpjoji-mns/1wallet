@@ -28,6 +28,7 @@ class CardsScreen extends ConsumerWidget {
       subtitle: 'Custom card definitions, color, icon and outstanding balance.',
       accounts: cards,
       emptyTitle: 'No cards yet',
+      newAccountType: 'credit_card',
     );
   }
 }
@@ -38,12 +39,14 @@ class _AccountCollectionScreen extends ConsumerWidget {
     required this.subtitle,
     required this.accounts,
     required this.emptyTitle,
+    required this.newAccountType,
   });
 
   final String title;
   final String subtitle;
   final List<Account> accounts;
   final String emptyTitle;
+  final String newAccountType;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -52,7 +55,7 @@ class _AccountCollectionScreen extends ConsumerWidget {
       title: title,
       actions: [
         IconButton(
-          onPressed: () => context.push('/account/new'),
+          onPressed: () => context.push('/account/new?type=$newAccountType'),
           icon: const Icon(Icons.add_rounded),
         ),
       ],

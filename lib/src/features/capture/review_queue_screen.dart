@@ -38,64 +38,77 @@ class ReviewQueueScreen extends ConsumerWidget {
       return bDate.compareTo(aDate);
     });
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Review & Inbox'),
-        actions: [
-          IconButton(
-            tooltip: 'Auto-capture settings',
-            icon: const Icon(Icons.settings_suggest_outlined),
-            onPressed: () => context.push('/capture-settings'),
+    return GlassIsolationScope(
+      isolated: true,
+      defaultQuality: GlassQuality.premium,
+      child: Scaffold(
+        appBar: GlassAppBar(
+          title: Text(
+            'Review & Inbox',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
-          if (candidates.isNotEmpty) ...[
+          leading: Navigator.of(context).canPop()
+              ? const AppBackAction()
+              : null,
+          centerTitle: false,
+          actions: [
             IconButton(
-              tooltip: 'Approve All',
-              onPressed: () => _approveAll(context, ref, candidates),
-              icon: const Icon(Icons.done_all_rounded),
+              tooltip: 'Auto-capture settings',
+              icon: const Icon(Icons.settings_suggest_outlined),
+              onPressed: () => context.push('/capture-settings'),
             ),
-            IconButton(
-              tooltip: 'Dismiss All',
-              onPressed: () => _dismissAll(context, ref, candidates),
-              icon: const Icon(Icons.clear_all_rounded),
-            ),
-          ],
-          if (unreadCount > 0)
-            IconButton(
-              tooltip: 'Mark all read',
-              onPressed: () => _markAllRead(ref, allNotifications),
-              icon: const Icon(Icons.mark_email_read_outlined),
-            ),
-        ],
-      ),
-      body: SafeArea(
-        child: items.isEmpty
-            ? const Center(
-                child: EmptyState(
-                  icon: Icons.done_all_rounded,
-                  title: 'All caught up',
-                  body: 'New transactions and alerts will appear here.',
-                ),
-              )
-            : ListView.separated(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg,
-                  AppSpacing.md,
-                  AppSpacing.lg,
-                  AppSpacing.xxl,
-                ),
-                itemCount: items.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: AppSpacing.md),
-                itemBuilder: (context, index) {
-                  final item = items[index];
-                  if (item is CaptureCandidate) {
-                    return _buildCandidateCard(context, ref, state, item);
-                  } else if (item is AppNotification) {
-                    return _buildNotificationCard(context, ref, item);
-                  }
-                  return const SizedBox();
-                },
+            if (candidates.isNotEmpty) ...[
+              IconButton(
+                tooltip: 'Approve All',
+                onPressed: () => _approveAll(context, ref, candidates),
+                icon: const Icon(Icons.done_all_rounded),
               ),
+              IconButton(
+                tooltip: 'Dismiss All',
+                onPressed: () => _dismissAll(context, ref, candidates),
+                icon: const Icon(Icons.clear_all_rounded),
+              ),
+            ],
+            if (unreadCount > 0)
+              IconButton(
+                tooltip: 'Mark all read',
+                onPressed: () => _markAllRead(ref, allNotifications),
+                icon: const Icon(Icons.mark_email_read_outlined),
+              ),
+          ],
+        ),
+        body: SafeArea(
+          child: items.isEmpty
+              ? const Center(
+                  child: EmptyState(
+                    icon: Icons.done_all_rounded,
+                    title: 'All caught up',
+                    body: 'New transactions and alerts will appear here.',
+                  ),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    AppSpacing.md,
+                    AppSpacing.lg,
+                    AppSpacing.xxl,
+                  ),
+                  itemCount: items.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: AppSpacing.md),
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    if (item is CaptureCandidate) {
+                      return _buildCandidateCard(context, ref, state, item);
+                    } else if (item is AppNotification) {
+                      return _buildNotificationCard(context, ref, item);
+                    }
+                    return const SizedBox();
+                  },
+                ),
+        ),
       ),
     );
   }
@@ -116,247 +129,241 @@ class ReviewQueueScreen extends ConsumerWidget {
           )
         : scheme;
 
-    return GlassCard(
-      margin: EdgeInsets.zero,
-      padding: EdgeInsets.zero,
-      shape: LiquidRoundedSuperellipse(borderRadius: 20),
-      quality: GlassQuality.minimal,
+    // Glass is reserved for navigation/control chrome (per the
+    // liquid_glass_widgets guidance); scrolling list rows stay opaque.
+    return Material(
+      color: scheme.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(20),
       clipBehavior: Clip.antiAlias,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => context.push('/capture/${candidate.id}'),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    IconBubble(
-                      icon: candidate.source == 'sms'
-                          ? Icons.sms_rounded
-                          : Icons.receipt_long_rounded,
-                      color: colorScheme.primary,
-                      compact: true,
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            candidate.merchant ??
-                                candidate.transactionType?.toUpperCase() ??
-                                'UNKNOWN',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
+      child: InkWell(
+        onTap: () => context.push('/capture/${candidate.id}'),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  IconBubble(
+                    icon: candidate.source == 'sms'
+                        ? Icons.sms_rounded
+                        : Icons.receipt_long_rounded,
+                    color: colorScheme.primary,
+                    compact: true,
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          candidate.merchant ??
+                              candidate.transactionType?.toUpperCase() ??
+                              'UNKNOWN',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
                           ),
+                        ),
+                        Text(
+                          DateFormat.MMMd(
+                            state.preferences.locale.replaceAll('_', '-'),
+                          ).add_jm().format(candidate.createdAt),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (candidate.parsedAmount != null) ...[
+                    const SizedBox(width: AppSpacing.sm),
+                    Flexible(
+                      child: PrivacyText(
+                        (isIncome ? '+' : '') +
+                            formatMoney(
+                              candidate.parsedAmount!,
+                              state.preferences.locale,
+                            ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          color: isIncome
+                              ? positiveTone(context)
+                              : scheme.onSurface,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: [
+                  if (candidate.suggestedAccountId != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: scheme.primaryContainer.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.account_balance_wallet_rounded,
+                            size: 14,
+                            color: scheme.primary,
+                          ),
+                          const SizedBox(width: 4),
                           Text(
-                            DateFormat.MMMd(
-                              state.preferences.locale.replaceAll('_', '-'),
-                            ).add_jm().format(candidate.createdAt),
+                            state.accounts
+                                    .where(
+                                      (a) =>
+                                          a.id == candidate.suggestedAccountId,
+                                    )
+                                    .firstOrNull
+                                    ?.name ??
+                                'Account',
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
+                              color: scheme.primary,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    if (candidate.parsedAmount != null) ...[
-                      const SizedBox(width: AppSpacing.sm),
-                      Flexible(
-                        child: PrivacyText(
-                          (isIncome ? '+' : '') +
-                              formatMoney(
-                                candidate.parsedAmount!,
-                                state.preferences.locale,
-                              ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            color: isIncome
-                                ? positiveTone(context)
-                                : scheme.onSurface,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
+                  if (candidate.suggestedCategoryId != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
                       ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
-                  children: [
-                    if (candidate.suggestedAccountId != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: scheme.primaryContainer.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.account_balance_wallet_rounded,
-                              size: 14,
-                              color: scheme.primary,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              state.accounts
-                                      .where(
-                                        (a) =>
-                                            a.id ==
-                                            candidate.suggestedAccountId,
-                                      )
-                                      .firstOrNull
-                                      ?.name ??
-                                  'Account',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: scheme.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
+                      decoration: BoxDecoration(
+                        color: scheme.secondaryContainer.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    if (candidate.suggestedCategoryId != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: scheme.secondaryContainer.withValues(
-                            alpha: 0.5,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.category_rounded,
+                            size: 14,
+                            color: scheme.secondary,
                           ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.category_rounded,
-                              size: 14,
+                          const SizedBox(width: 4),
+                          Text(
+                            _categoryChipText(state, candidate),
+                            style: theme.textTheme.bodySmall?.copyWith(
                               color: scheme.secondary,
+                              fontWeight: FontWeight.w600,
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              _categoryChipText(state, candidate),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: scheme.secondary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              if (candidate.rawText != null &&
+                  candidate.rawText!.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.md),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerHighest.withValues(
+                      alpha: 0.5,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    candidate.rawText!,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontFamily: 'monospace',
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+              if (candidate.status == 'pending') ...[
+                const SizedBox(height: AppSpacing.lg),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: IconButton(
+                        tooltip: 'Block Pattern',
+                        onPressed: () =>
+                            _showBlockDialog(context, ref, candidate),
+                        icon: const Icon(Icons.block_rounded),
+                        style: IconButton.styleFrom(
+                          foregroundColor: scheme.error,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      flex: 2,
+                      child: TextButton.icon(
+                        onPressed: () => _updateCandidateStatus(
+                          context,
+                          ref,
+                          candidate.id,
+                          'rejected',
+                        ),
+                        icon: const Icon(Icons.close_rounded),
+                        label: const Text('Dismiss'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: scheme.error,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      flex: 3,
+                      child: FilledButton.icon(
+                        onPressed: () => _updateCandidateStatus(
+                          context,
+                          ref,
+                          candidate.id,
+                          'approved',
+                        ),
+                        icon: const Icon(Icons.check_rounded),
+                        label: const Text('Confirm'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: colorScheme.primaryContainer,
+                          foregroundColor: colorScheme.onPrimaryContainer,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-                if (candidate.rawText != null &&
-                    candidate.rawText!.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    decoration: BoxDecoration(
-                      color: scheme.surfaceContainerHighest.withValues(
-                        alpha: 0.5,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      candidate.rawText!,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        fontFamily: 'monospace',
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
-                if (candidate.status == 'pending') ...[
-                  const SizedBox(height: AppSpacing.lg),
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 1,
-                        child: IconButton(
-                          tooltip: 'Block Pattern',
-                          onPressed: () =>
-                              _showBlockDialog(context, ref, candidate),
-                          icon: const Icon(Icons.block_rounded),
-                          style: IconButton.styleFrom(
-                            foregroundColor: scheme.error,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        flex: 2,
-                        child: TextButton.icon(
-                          onPressed: () => _updateCandidateStatus(
-                            context,
-                            ref,
-                            candidate.id,
-                            'rejected',
-                          ),
-                          icon: const Icon(Icons.close_rounded),
-                          label: const Text('Dismiss'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: scheme.error,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        flex: 3,
-                        child: FilledButton.icon(
-                          onPressed: () => _updateCandidateStatus(
-                            context,
-                            ref,
-                            candidate.id,
-                            'approved',
-                          ),
-                          icon: const Icon(Icons.check_rounded),
-                          label: const Text('Confirm'),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: colorScheme.primaryContainer,
-                            foregroundColor: colorScheme.onPrimaryContainer,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 0,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
               ],
-            ),
+            ],
           ),
         ),
       ),
@@ -390,87 +397,88 @@ class ReviewQueueScreen extends ConsumerWidget {
           color: theme.colorScheme.onErrorContainer,
         ),
       ),
-      child: GlassCard(
-        margin: EdgeInsets.zero,
-        padding: EdgeInsets.zero,
-        shape: LiquidRoundedSuperellipse(borderRadius: 20),
-        quality: GlassQuality.minimal,
-        clipBehavior: Clip.antiAlias,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => _openNotification(context, ref, notification),
-            child: Container(
-              decoration: BoxDecoration(
-                color: notification.read
-                    ? Colors.transparent
-                    : scheme.primaryContainer.withValues(alpha: 0.25),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: notification.read
-                      ? scheme.outlineVariant.withValues(alpha: 0.5)
-                      : scheme.primary.withValues(alpha: 0.3),
-                  width: 1,
-                ),
+      // Glass is reserved for navigation/control chrome (per the
+      // liquid_glass_widgets guidance); scrolling list rows stay opaque. The
+      // unread tint is pre-blended onto an opaque base instead of relying on
+      // a blurred backdrop to show through a transparent color.
+      child: Material(
+        color: notification.read
+            ? scheme.surfaceContainerHigh
+            : Color.alphaBlend(
+                scheme.primaryContainer.withValues(alpha: 0.25),
+                scheme.surfaceContainerHigh,
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    IconBubble(
-                      icon: icon,
-                      color: notification.read
-                          ? scheme.onSurfaceVariant
-                          : scheme.primary,
-                      compact: true,
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            notification.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: notification.read
-                                  ? FontWeight.w600
-                                  : FontWeight.w800,
-                              color: scheme.onSurface,
-                            ),
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => _openNotification(context, ref, notification),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: notification.read
+                    ? scheme.outlineVariant.withValues(alpha: 0.5)
+                    : scheme.primary.withValues(alpha: 0.3),
+                width: 1,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  IconBubble(
+                    icon: icon,
+                    color: notification.read
+                        ? scheme.onSurfaceVariant
+                        : scheme.primary,
+                    compact: true,
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          notification.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: notification.read
+                                ? FontWeight.w600
+                                : FontWeight.w800,
+                            color: scheme.onSurface,
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            notification.body,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          Text(
-                            _relativeDate(notification.createdAt),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (!notification.read) ...[
-                      const SizedBox(width: AppSpacing.sm),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Icon(
-                          Icons.fiber_manual_record,
-                          size: 12,
-                          color: scheme.primary,
                         ),
+                        const SizedBox(height: 2),
+                        Text(
+                          notification.body,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          _relativeDate(notification.createdAt),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!notification.read) ...[
+                    const SizedBox(width: AppSpacing.sm),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Icon(
+                        Icons.fiber_manual_record,
+                        size: 12,
+                        color: scheme.primary,
                       ),
-                    ],
+                    ),
                   ],
-                ),
+                ],
               ),
             ),
           ),

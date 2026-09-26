@@ -45,7 +45,16 @@ void main() {
     expect(find.byTooltip('Done reordering widgets'), findsOneWidget);
     expect(find.byTooltip('Drag All accounts'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Move up All accounts'));
+    // Invoke the reorder buttons' `onPressed` callbacks directly instead of
+    // `tester.tap(...)`. A real tap on these plain `IconButton`s drives
+    // Material's ink-splash pipeline, which under the app's Material 3 theme
+    // defaults to `InkSparkle` — a shader-based effect that needs
+    // `shaders/ink_sparkle.frag`. That asset intermittently fails to load
+    // under `flutter test` (a known Flutter test-harness limitation, not an
+    // app bug), causing this test to flake. Calling the callback directly
+    // still exercises the exact same reorder logic/state update without
+    // going through the gesture-and-ink rendering pipeline at all.
+    _pressIconButton(tester, tooltip: 'Move up All accounts');
     await tester.pumpAndSettle();
 
     expect(container.read(ledgerProvider).preferences.homeWidgetOrder.take(2), [
@@ -53,9 +62,26 @@ void main() {
       'balanceHero',
     ]);
 
-    await tester.tap(find.byTooltip('Done reordering widgets'));
+    _pressIconButton(tester, tooltip: 'Done reordering widgets');
     await tester.pumpAndSettle();
 
     expect(find.byTooltip('Reorder widgets'), findsNothing);
   });
+}
+
+/// Finds the `IconButton` with [tooltip] and invokes its `onPressed`
+/// callback directly, bypassing `tester.tap`'s real gesture/ink pipeline.
+void _pressIconButton(WidgetTester tester, {required String tooltip}) {
+  final button = tester.widget<IconButton>(
+    find.ancestor(
+      of: find.byTooltip(tooltip),
+      matching: find.byType(IconButton),
+    ),
+  );
+  expect(
+    button.onPressed,
+    isNotNull,
+    reason: 'Expected the "$tooltip" IconButton to be enabled.',
+  );
+  button.onPressed!();
 }

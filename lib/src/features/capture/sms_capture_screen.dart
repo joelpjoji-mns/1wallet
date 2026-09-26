@@ -87,10 +87,12 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
       actions: [
         HeaderIconButton(
           icon: Icons.bug_report_outlined,
+          semanticLabel: 'Capture diagnostics',
           onPressed: () => context.push('/auto-capture/debug'),
         ),
         HeaderIconButton(
           icon: Icons.fact_check_outlined,
+          semanticLabel: 'Review queue',
           onPressed: () => context.push('/review'),
         ),
       ],
@@ -584,8 +586,9 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
       if (double.tryParse(clean) != null) continue;
       if (seen.contains(clean)) continue;
       seen.add(clean);
-      if (currentTriggers.contains(clean) || currentIgnores.contains(clean))
+      if (currentTriggers.contains(clean) || currentIgnores.contains(clean)) {
         continue;
+      }
       result.add(raw.trim());
     }
     return result.take(8).toList();

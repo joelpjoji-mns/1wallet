@@ -61,7 +61,23 @@ abstract final class SecureKeyStore {
   // Internal helpers
   // ---------------------------------------------------------------------------
 
-  static Future<enc.Key> _getOrCreateKey() async {
+  static Future<enc.Key> _getOrCreateKey() {
+    // Concurrent callers (e.g. saving several secure fields from different
+    // screens at once) must not race to independently create+persist two
+    // different device keys — whichever write lost would leave data
+    // encrypted under a key no longer in storage, permanently undecryptable.
+    // Memoize the in-flight/resolved Future so every caller shares the same
+    // read-or-create operation.
+    return _keyFuture ??= _loadOrCreateKey().catchError((Object error) {
+      // Don't cache a failed attempt: let the next call retry.
+      _keyFuture = null;
+      throw error;
+    });
+  }
+
+  static Future<enc.Key>? _keyFuture;
+
+  static Future<enc.Key> _loadOrCreateKey() async {
     String? stored = await _storage.read(key: _keyAlias);
     if (stored == null) {
       final bytes = _randomBytes(32);

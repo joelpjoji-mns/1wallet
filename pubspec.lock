@@ -519,7 +519,7 @@ packages:
     source: hosted
     version: "3.0.3"
   flutter_secure_storage_platform_interface:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: flutter_secure_storage_platform_interface
       sha256: "64951127f001f546891c86f414972bf49ef2c4c8a4c92c65f5790cc0c9100045"
@@ -1153,7 +1153,7 @@ packages:
     source: hosted
     version: "2.4.1"
   shared_preferences_platform_interface:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: shared_preferences_platform_interface
       sha256: "649dc798a33931919ea356c4305c2d1f81619ea6e92244070b520187b5140ef9"

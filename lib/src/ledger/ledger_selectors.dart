@@ -1087,7 +1087,18 @@ int minorUnits(String currency) => switch (currency.toUpperCase()) {
 };
 
 double? _inferredRateBetween(LedgerState state, String from, String to) {
+  // Falls back to scanning historical transactions for an implied rate when
+  // no explicit exchange rate is on file. That scan is O(ledger size), so
+  // memoize per (state, from, to): without this, rendering N transactions in
+  // a currency lacking an explicit rate re-scans the whole transaction list
+  // for every single one of them (O(n^2) on large ledgers). `state` is
+  // immutable, so the result is safe to cache for its lifetime.
+  final cache = _inferredRateCacheExpando[state] ??= <String, double?>{};
+  final cacheKey = '$from|$to';
+  if (cache.containsKey(cacheKey)) return cache[cacheKey];
+
   final transactions = sortedTransactions(state, includeScheduled: false);
+  double? found;
   for (final transaction in transactions) {
     final rate =
         _rateFromPair(transaction.amount, transaction.baseAmount, from, to) ??
@@ -1115,10 +1126,16 @@ double? _inferredRateBetween(LedgerState state, String from, String to) {
                 from,
                 to,
               ));
-    if (rate != null && rate > 0 && rate.isFinite) return rate;
+    if (rate != null && rate > 0 && rate.isFinite) {
+      found = rate;
+      break;
+    }
   }
-  return null;
+  cache[cacheKey] = found;
+  return found;
 }
+
+final _inferredRateCacheExpando = Expando<Map<String, double?>>();
 
 double? _rateFromPair(Money left, Money right, String from, String to) {
   final leftCurrency = left.currency.toUpperCase();

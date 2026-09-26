@@ -111,8 +111,7 @@ class _FullScreenPickerState<T> extends State<_FullScreenPicker<T>> {
 
     return AppGlassPage(
       child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
+        appBar: GlassAppBar(
           leading: GlassIconButton(
             icon: const Icon(Icons.arrow_back_rounded),
             semanticLabel: 'Back',
@@ -121,12 +120,11 @@ class _FullScreenPickerState<T> extends State<_FullScreenPicker<T>> {
           ),
           title: Text(
             widget.title,
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              color: scheme.onSurface,
-              fontSize: 20,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
+          centerTitle: false,
           actions: [
             if (widget.actionIcon != null && widget.onAction != null)
               Tooltip(
@@ -168,32 +166,48 @@ class _FullScreenPickerState<T> extends State<_FullScreenPicker<T>> {
                 const SizedBox(height: AppSpacing.md),
               ],
               if (widget.allowClear) ...[
-                PremiumRow(
-                  icon: Icons.clear_rounded,
-                  title: widget.clearLabel,
-                  subtitle: 'Show every option',
+                Semantics(
                   selected: widget.selectedValue == null,
-                  onTap: () => Navigator.of(context).pop(null),
+                  child: PremiumRow(
+                    icon: Icons.clear_rounded,
+                    title: widget.clearLabel,
+                    subtitle: 'Show every option',
+                    selected: widget.selectedValue == null,
+                    onTap: () => Navigator.of(context).pop(null),
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
               ],
               if (visibleOptions.isEmpty)
-                EmptyState(
-                  icon: Icons.search_off_rounded,
-                  title: 'No matches',
-                  body: 'Try a different search term.',
-                  actionLabel: 'Clear search',
-                  onAction: () => setState(() => _query = ''),
-                )
+                if (query.isEmpty)
+                  // The caller supplied zero options - this is not a search
+                  // dead-end, so don't offer a "Clear search" action that
+                  // has nothing to clear.
+                  const EmptyState(
+                    icon: Icons.inbox_outlined,
+                    title: 'Nothing to choose from',
+                    body: 'No options are available right now.',
+                  )
+                else
+                  EmptyState(
+                    icon: Icons.search_off_rounded,
+                    title: 'No matches',
+                    body: 'Try a different search term.',
+                    actionLabel: 'Clear search',
+                    onAction: () => setState(() => _query = ''),
+                  )
               else
                 for (final option in visibleOptions) ...[
-                  PremiumRow(
-                    icon: option.icon ?? Icons.circle_outlined,
-                    title: option.title,
-                    subtitle: option.subtitle,
-                    iconColor: option.iconColor,
+                  Semantics(
                     selected: option.value == widget.selectedValue,
-                    onTap: () => Navigator.of(context).pop(option.value),
+                    child: PremiumRow(
+                      icon: option.icon ?? Icons.circle_outlined,
+                      title: option.title,
+                      subtitle: option.subtitle,
+                      iconColor: option.iconColor,
+                      selected: option.value == widget.selectedValue,
+                      onTap: () => Navigator.of(context).pop(option.value),
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                 ],

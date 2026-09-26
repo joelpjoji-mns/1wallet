@@ -614,51 +614,72 @@ class _DrawerPrivacyToggle extends ConsumerWidget {
       );
     }
 
-    return Material(
-      color: enabled
-          ? scheme.primary.withAlpha(28)
-          : scheme.surface.withAlpha(160),
-      borderRadius: BorderRadius.circular(AppRadii.lg),
-      child: InkWell(
+    // MergeSemantics combines the label text and the switch's toggled state
+    // into a single semantics node, mirroring AppSwitchListTile. Without it,
+    // screen readers expose an unlabeled tappable region and a disconnected
+    // "Privacy mode" text node instead of one coherent on/off control.
+    return MergeSemantics(
+      child: Material(
+        color: enabled
+            ? scheme.primary.withAlpha(28)
+            : scheme.surface.withAlpha(160),
         borderRadius: BorderRadius.circular(AppRadii.lg),
-        onTap: toggle,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: 6,
-          ),
-          child: Row(
-            children: [
-              Icon(
-                enabled
-                    ? Icons.visibility_off_rounded
-                    : Icons.visibility_outlined,
-                size: 18,
-                color: scheme.primary,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  enabled ? 'Privacy mode · On' : 'Privacy mode · Off',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: scheme.onSurface,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+          onTap: toggle,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: 6,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  enabled
+                      ? Icons.visibility_off_rounded
+                      : Icons.visibility_outlined,
+                  size: 18,
+                  color: scheme.primary,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    enabled ? 'Privacy mode · On' : 'Privacy mode · Off',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: scheme.onSurface,
+                    ),
                   ),
                 ),
-              ),
-              IgnorePointer(
-                child: GlassSwitch(
-                  value: enabled,
-                  onChanged: (_) {},
-                  activeColor: scheme.primary,
-                  quality: GlassQuality.standard,
-                  enableHaptics: false,
-                  semanticLabel: 'Privacy mode',
+                // ExcludeFocus stops the switch from claiming its own
+                // keyboard-focus stop, which would otherwise block
+                // MergeSemantics from folding its toggled state into the
+                // single merged node (same rationale as AppSwitchListTile).
+                // IgnorePointer keeps real touches routed through the
+                // InkWell above so the whole row toggles consistently;
+                // since Flutter 3.8, IgnorePointer keeps the switch's
+                // toggled/label semantics visible while only stripping its
+                // own tap *action* (isBlockingUserActions), so it merges
+                // cleanly without a competing onTap. `onChanged` still
+                // calls the real `toggle()` (not a no-op) so the merged
+                // node's accessibility action is correct if that ever
+                // changes.
+                ExcludeFocus(
+                  child: IgnorePointer(
+                    child: GlassSwitch(
+                      value: enabled,
+                      onChanged: (_) => toggle(),
+                      activeColor: scheme.primary,
+                      quality: GlassQuality.standard,
+                      enableHaptics: false,
+                      semanticLabel: 'Privacy mode',
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

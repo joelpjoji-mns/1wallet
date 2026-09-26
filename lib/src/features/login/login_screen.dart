@@ -109,7 +109,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                               ],
                             ),
-                            child: GlassCard(
+                            child: BrandFrostedPanel(
                               padding: const EdgeInsets.all(32),
                               borderRadius: 32, // More curves
                               child: Column(
@@ -142,100 +142,109 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     ),
                                   ),
                                   const SizedBox(height: 32),
-                                  Material(
-                                    color: Colors.transparent,
-                                    child: InkWell(
-                                      onTap: unavailable || auth.isSigningIn
-                                          ? null
-                                          : () => ref
-                                                .read(
-                                                  authControllerProvider
-                                                      .notifier,
-                                                )
-                                                .signInWithGoogle(),
-                                      borderRadius: BorderRadius.circular(28),
-                                      child: AnimatedContainer(
-                                        duration: const Duration(
-                                          milliseconds: 200,
-                                        ),
-                                        height: 64,
-                                        decoration: BoxDecoration(
-                                          color:
-                                              Theme.of(context).brightness ==
-                                                  Brightness.dark
-                                              ? const Color(0xFF1F1F1F)
-                                              : Colors.white,
-                                          borderRadius: BorderRadius.circular(
-                                            28,
+                                  // Sign-in is unavailable (offline mode), so
+                                  // dim the button — otherwise it looks fully
+                                  // interactive even though onTap is null.
+                                  AnimatedOpacity(
+                                    duration: const Duration(milliseconds: 200),
+                                    opacity: unavailable ? 0.5 : 1.0,
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: unavailable || auth.isSigningIn
+                                            ? null
+                                            : () => ref
+                                                  .read(
+                                                    authControllerProvider
+                                                        .notifier,
+                                                  )
+                                                  .signInWithGoogle(),
+                                        borderRadius: BorderRadius.circular(28),
+                                        child: AnimatedContainer(
+                                          duration: const Duration(
+                                            milliseconds: 200,
                                           ),
-                                          border: Border.all(
+                                          height: 64,
+                                          decoration: BoxDecoration(
                                             color:
                                                 Theme.of(context).brightness ==
                                                     Brightness.dark
-                                                ? Colors.white.withValues(
-                                                    alpha: 0.12,
-                                                  )
-                                                : Colors.black.withValues(
-                                                    alpha: 0.08,
-                                                  ),
-                                            width: 1.5,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(
-                                                alpha: 0.06,
-                                              ),
-                                              blurRadius: 12,
-                                              offset: const Offset(0, 4),
+                                                ? const Color(0xFF1F1F1F)
+                                                : Colors.white,
+                                            borderRadius: BorderRadius.circular(
+                                              28,
                                             ),
-                                          ],
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            if (auth.isSigningIn)
-                                              SizedBox.square(
-                                                dimension: 24,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                      strokeWidth: 2.5,
-                                                      color: Theme.of(
+                                            border: Border.all(
+                                              color:
+                                                  Theme.of(
                                                         context,
-                                                      ).colorScheme.primary,
+                                                      ).brightness ==
+                                                      Brightness.dark
+                                                  ? Colors.white.withValues(
+                                                      alpha: 0.12,
+                                                    )
+                                                  : Colors.black.withValues(
+                                                      alpha: 0.08,
                                                     ),
-                                              )
-                                            else
-                                              ClipRRect(
-                                                borderRadius:
-                                                    BorderRadius.circular(4),
-                                                child: Image.asset(
-                                                  'assets/images/google_logo.png',
-                                                  height: 24,
-                                                  width: 24,
+                                              width: 1.5,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(
+                                                  alpha: 0.06,
+                                                ),
+                                                blurRadius: 12,
+                                                offset: const Offset(0, 4),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              if (auth.isSigningIn)
+                                                SizedBox.square(
+                                                  dimension: 24,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 2.5,
+                                                        color: Theme.of(
+                                                          context,
+                                                        ).colorScheme.primary,
+                                                      ),
+                                                )
+                                              else
+                                                ClipRRect(
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                  child: Image.asset(
+                                                    'assets/images/google_logo.png',
+                                                    height: 24,
+                                                    width: 24,
+                                                  ),
+                                                ),
+                                              const SizedBox(width: 14),
+                                              Text(
+                                                auth.isSigningIn
+                                                    ? 'Connecting...'
+                                                    : 'Continue with Google',
+                                                style: GoogleFonts.outfit(
+                                                  fontSize: 17,
+                                                  fontWeight: FontWeight.w600,
+                                                  color:
+                                                      Theme.of(
+                                                            context,
+                                                          ).brightness ==
+                                                          Brightness.dark
+                                                      ? Colors.white.withValues(
+                                                          alpha: 0.87,
+                                                        )
+                                                      : const Color(0xFF3C4043),
+                                                  letterSpacing: 0.1,
                                                 ),
                                               ),
-                                            const SizedBox(width: 14),
-                                            Text(
-                                              auth.isSigningIn
-                                                  ? 'Connecting...'
-                                                  : 'Continue with Google',
-                                              style: GoogleFonts.outfit(
-                                                fontSize: 17,
-                                                fontWeight: FontWeight.w600,
-                                                color:
-                                                    Theme.of(
-                                                          context,
-                                                        ).brightness ==
-                                                        Brightness.dark
-                                                    ? Colors.white.withValues(
-                                                        alpha: 0.87,
-                                                      )
-                                                    : const Color(0xFF3C4043),
-                                                letterSpacing: 0.1,
-                                              ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/ledger_models.dart';
+import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart' show minorUnits;
 import '../../auth/auth_controller.dart';
 import '../launch/brand_widgets.dart';
@@ -128,6 +129,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (!_enableReminders) {
       newPrefs = newPrefs.copyWith(notificationInboxEnabled: false);
     }
+    // The "Auto-capture transactions" switch was previously read into
+    // _enableAutoCapture but never written back to preferences, so opting
+    // out during onboarding had no effect and SMS capture stayed on by
+    // default. Honor an explicit opt-out here.
+    if (!_enableAutoCapture) {
+      newPrefs = newPrefs.copyWith(
+        smsCaptureEnabled: false,
+        notificationCaptureEnabled: false,
+      );
+    }
     await ledgerNotifier.updatePreferences(newPrefs);
 
     // Save accounts to ledger
@@ -227,7 +238,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         const SizedBox(height: 32),
         StaggeredFadeIn(
           delay: const Duration(milliseconds: 100),
-          child: GlassCard(
+          child: BrandFrostedPanel(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -249,28 +260,36 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                ListTile(
-                  title: Text(_baseCurrency),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  tileColor: Theme.of(
-                    context,
-                  ).colorScheme.surface.withValues(alpha: 0.5),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                // Wrapped in its own transparent Material so ink splashes
+                // paint above this row's background instead of being hidden
+                // beneath BrandFrostedPanel's own DecoratedBox (Flutter
+                // flags this combination as "background color or ink
+                // splashes may be invisible" otherwise).
+                Material(
+                  type: MaterialType.transparency,
+                  child: ListTile(
+                    title: Text(_baseCurrency),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    tileColor: Theme.of(
+                      context,
+                    ).colorScheme.surface.withValues(alpha: 0.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    onTap: () async {
+                      final curr = await showCurrencyPicker(
+                        context: context,
+                        state: ref.read(ledgerProvider),
+                        selectedValue: _baseCurrency,
+                      );
+                      if (curr != null) {
+                        setState(() {
+                          _baseCurrency = curr;
+                          _currentDraft.currency = curr;
+                        });
+                      }
+                    },
                   ),
-                  onTap: () async {
-                    final curr = await showCurrencyPicker(
-                      context: context,
-                      state: ref.read(ledgerProvider),
-                      selectedValue: _baseCurrency,
-                    );
-                    if (curr != null) {
-                      setState(() {
-                        _baseCurrency = curr;
-                        _currentDraft.currency = curr;
-                      });
-                    }
-                  },
                 ),
               ],
             ),
@@ -384,7 +403,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         const SizedBox(height: 32),
         StaggeredFadeIn(
           delay: const Duration(milliseconds: 100),
-          child: GlassCard(
+          child: BrandFrostedPanel(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -490,7 +509,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           ..._accounts.map(
             (a) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: GlassCard(
+              // Scrolling list rows stay opaque; glass is reserved for
+              // navigation/control chrome and standalone panels (see the
+              // other BrandFrostedPanel usages in this file for the
+              // profile, account-entry, and permissions steps, which
+              // remain glass since each renders once, not per list item).
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                ),
                 padding: const EdgeInsets.all(16),
                 child: ListTile(
                   leading: Icon(a.icon, color: a.color),
@@ -531,7 +559,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         const SizedBox(height: 32),
         StaggeredFadeIn(
           delay: const Duration(milliseconds: 100),
-          child: GlassCard(
+          child: BrandFrostedPanel(
             child: Column(
               children: [
                 SwitchListTile(

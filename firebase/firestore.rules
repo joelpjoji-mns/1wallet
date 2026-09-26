@@ -79,10 +79,16 @@ service cloud.firestore {
         isOptionalTimestamp(data, 'createdAt') &&
         isOptionalTimestamp(data, 'updatedAt') &&
         isOptionalStringOrNull(data, 'lastWriterDeviceId') &&
-        // Forward-compatible optimistic-concurrency fields: not written by
-        // the current Flutter or web clients yet, but validated now so that
-        // if/when a client starts sending them, malformed values (wrong
-        // type or out-of-range) are rejected rather than silently accepted.
+        // `cloudRevision`: both the Flutter and web clients now write this on
+        // every wallet sync (see `claimAndWriteSnapshot()` in
+        // `pwa/src/lib/walletSync.ts` and `CloudSyncController.uploadSnapshot()`
+        // in `lib/src/cloud_sync/cloud_sync_controller.dart`) as part of the
+        // shared optimistic-concurrency protocol — see `firebase/README.md`'s
+        // "Shared schema" section for the full cross-client conflict/version
+        // protocol this field participates in. `ledgerVersion` remains
+        // forward-compatible/not yet written by either client. Both are
+        // validated here regardless, so a malformed value (wrong type or
+        // out-of-range) is rejected rather than silently accepted.
         isOptionalBoundedInt(data, 'cloudRevision', 0, 2147483647) &&
         isOptionalBoundedInt(data, 'ledgerVersion', 1, 1000);
     }

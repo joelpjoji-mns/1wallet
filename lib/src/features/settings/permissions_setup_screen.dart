@@ -2,11 +2,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../auth/auth_controller.dart';
 import '../../features/launch/brand_widgets.dart';
 import '../../features/settings/permission_setup_controller.dart';
+import '../../widgets/app_kit.dart';
 
 class PermissionsSetupScreen extends ConsumerStatefulWidget {
   const PermissionsSetupScreen({super.key});
@@ -72,7 +74,16 @@ class _PermissionsSetupScreenState
     final scheme = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Setup')),
+      appBar: GlassAppBar(
+        title: Text(
+          'Setup',
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        leading: Navigator.of(context).canPop() ? const AppBackAction() : null,
+        centerTitle: false,
+      ),
       body: SafeArea(
         child: Column(
           children: [

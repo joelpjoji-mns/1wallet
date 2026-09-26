@@ -396,49 +396,53 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
     String currency,
   ) async {
     final controller = TextEditingController();
-    final rate = latestExchangeRate(
-      state,
-      currency,
-      state.preferences.baseCurrency,
-    );
-    if (rate != null) controller.text = rate.rate.toString();
+    try {
+      final rate = latestExchangeRate(
+        state,
+        currency,
+        state.preferences.baseCurrency,
+      );
+      if (rate != null) controller.text = rate.rate.toString();
 
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Set rate for $currency'),
-        content: TextField(
-          controller: controller,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [ThousandsSeparatorInputFormatter()],
-          decoration: InputDecoration(
-            labelText: '1 $currency = ? ${state.preferences.baseCurrency}',
+      final result = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Set rate for $currency'),
+          content: TextField(
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [ThousandsSeparatorInputFormatter()],
+            decoration: InputDecoration(
+              labelText: '1 $currency = ? ${state.preferences.baseCurrency}',
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.tonal(
+              onPressed: () => Navigator.of(context).pop(controller.text),
+              child: const Text('Save'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.tonal(
-            onPressed: () => Navigator.of(context).pop(controller.text),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
+      );
 
-    if (result != null && result.isNotEmpty) {
-      final value = double.tryParse(result.replaceAll(',', ''));
-      if (value != null && value > 0) {
-        await ref
-            .read(ledgerProvider.notifier)
-            .setExchangeRate(
-              base: currency,
-              quote: state.preferences.baseCurrency,
-              rate: value,
-            );
+      if (result != null && result.isNotEmpty) {
+        final value = double.tryParse(result.replaceAll(',', ''));
+        if (value != null && value > 0) {
+          await ref
+              .read(ledgerProvider.notifier)
+              .setExchangeRate(
+                base: currency,
+                quote: state.preferences.baseCurrency,
+                rate: value,
+              );
+        }
       }
+    } finally {
+      controller.dispose();
     }
   }
 }

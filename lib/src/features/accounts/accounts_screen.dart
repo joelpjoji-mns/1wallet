@@ -61,10 +61,12 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
         HeaderIconButton(
           icon: Icons.credit_card_outlined,
           onPressed: () => context.push('/cards'),
+          semanticLabel: 'Cards',
         ),
         HeaderIconButton(
           icon: Icons.account_balance_outlined,
           onPressed: () => context.push('/loans'),
+          semanticLabel: 'Loans',
         ),
       ],
       child: Column(

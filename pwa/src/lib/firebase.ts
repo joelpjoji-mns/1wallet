@@ -1,5 +1,4 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -11,7 +10,16 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
+// Deliberately does NOT import/initialize `firebase/firestore` here — this
+// module is imported eagerly by `AuthContext.tsx` (needed for the
+// login/loading screen before any user is signed in), so anything it pulls
+// in ends up in the app's critical initial-load bundle. Firestore's runtime
+// (and everything built on it — `../lib/walletSync`'s
+// `runTransaction`/`onSnapshot`/`getDocs`/etc.) is only ever needed once a
+// user is actually signed in and `Workspace`/`WalletDataProvider` render, so
+// `db` lives in the sibling `./firestore.ts` module instead, imported only
+// from that lazy-loaded side of the app. See `App.tsx`'s doc comment for the
+// full chunk-splitting rationale.
 export const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();

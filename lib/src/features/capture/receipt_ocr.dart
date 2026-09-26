@@ -271,10 +271,10 @@ AmountCandidate? _extractReceiptAmount(
     final nextLine = i < lines.length - 1 ? lines[i + 1] : null;
 
     if (previousLine != null && _amountKeywordScore(previousLine) > 0) {
-      fragments.add('\$previousLine \$line');
+      fragments.add('$previousLine $line');
     }
     if (nextLine != null && _amountKeywordScore(line) > 0) {
-      fragments.add('\$line \$nextLine');
+      fragments.add('$line $nextLine');
     }
 
     for (final fragment in fragments) {
@@ -373,7 +373,7 @@ double _parseAmountValue(String value) {
     if (parts.length == 2 &&
         decimalPart.length == 2 &&
         integerPart.length <= 3) {
-      return double.tryParse('\$integerPart.\$decimalPart') ?? double.nan;
+      return double.tryParse('$integerPart.$decimalPart') ?? double.nan;
     }
   }
   return double.tryParse(compactValue.replaceAll(',', '')) ?? double.nan;

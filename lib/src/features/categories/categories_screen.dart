@@ -118,7 +118,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   }
 
   Future<void> _openCategoryEditor(
-    BuildContext context,
+    BuildContext screenContext,
     LedgerState state, {
     Category? category,
     Category? parentCategory,
@@ -131,7 +131,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     String? errorText;
 
     await showDialog<void>(
-      context: context,
+      context: screenContext,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: Text(
@@ -257,8 +257,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                     );
                 if (!dialogContext.mounted) return;
                 Navigator.of(dialogContext).pop();
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context)
+                if (!screenContext.mounted) return;
+                ScaffoldMessenger.of(screenContext)
                   ..hideCurrentSnackBar()
                   ..showSnackBar(
                     SnackBar(

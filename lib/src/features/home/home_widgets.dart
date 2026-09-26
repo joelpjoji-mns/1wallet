@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import 'home_screen.dart';
@@ -546,6 +545,31 @@ class _BalanceTrendHomeWidgetState
           child: const SizedBox(
             height: _chartHeight,
             child: Center(child: Text('Preparing balance trend...')),
+          ),
+        ),
+      );
+    }
+
+    // Surface a genuine computation failure distinctly from "no data yet" so
+    // it isn't silently swallowed into an empty-state message.
+    final pastFailed = pastTrendAsync.hasError && !pastTrendAsync.hasValue;
+    final futureFailed = futureTrendAsync.hasError && !futureTrendAsync.hasValue;
+    if (pastFailed || futureFailed) {
+      return RepaintBoundary(
+        child: HomeWidgetCard(
+          title: 'Balance trend',
+          subtitle: _period,
+          icon: Icons.bar_chart_rounded,
+          iconColor: scheme.tertiary,
+          headerTrailing: _buildDropdown(),
+          child: SizedBox(
+            height: _chartHeight,
+            child: Center(
+              child: Text(
+                'Could not load balance trend',
+                style: TextStyle(color: scheme.error),
+              ),
+            ),
           ),
         ),
       );
@@ -1240,9 +1264,14 @@ class _CurrencyValuesHomeWidgetState
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _onTextChanged(defaultCurrency, _controllers[defaultCurrency]!.text);
-      }
+      if (!mounted) return;
+      // `_initData` can be re-triggered (e.g. by a rapid preference change)
+      // before this callback runs, which may dispose/remove the controller
+      // for `defaultCurrency` if it's no longer an enabled currency. Guard
+      // against that instead of asserting non-null to avoid a crash.
+      final controller = _controllers[defaultCurrency];
+      if (controller == null) return;
+      _onTextChanged(defaultCurrency, controller.text);
     });
   }
 
@@ -2180,7 +2209,11 @@ class _AccountTile extends ConsumerWidget {
         }
       },
       child: Container(
-        height: 60,
+        // A fixed `height` clips/overflows once accessibility text scaling
+        // makes the name/balance/currency rows taller than 60 logical
+        // pixels; a `minHeight` lets the tile grow instead (the surrounding
+        // `Wrap` sizes each row to its tallest tile, so this is safe here).
+        constraints: const BoxConstraints(minHeight: 60),
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
         decoration: BoxDecoration(
           color: color,
@@ -2399,12 +2432,17 @@ class DashboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
-      margin: EdgeInsets.zero,
+    final scheme = Theme.of(context).colorScheme;
+    // Scrolling dashboard content stays opaque (see HomeWidgetCard); glass is
+    // reserved for the navigation/control layer, not per-tile chart cards.
+    return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
-      shape: const LiquidRoundedSuperellipse(borderRadius: 16),
-      quality: GlassQuality.standard,
       clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(

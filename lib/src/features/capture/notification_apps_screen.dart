@@ -1,8 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
+import '../../widgets/app_kit.dart';
 import 'sms_inbox_reader.dart'; // we put the native methods here
 
 class NotificationAppsScreen extends ConsumerStatefulWidget {
@@ -19,10 +22,23 @@ class _NotificationAppsScreenState
   bool _isLoading = true;
   String _searchQuery = '';
 
+  bool get _isAndroid =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
   @override
   void initState() {
     super.initState();
-    _loadApps();
+    // The installed-apps list is an Android-only native call. Every caller
+    // already gates the "Target Apps" entry point behind an Android check,
+    // but this screen previously called the channel unconditionally, so
+    // reaching it on any other platform (or a host without the channel
+    // implemented) left it spinning forever instead of reporting that the
+    // feature is unavailable.
+    if (_isAndroid) {
+      _loadApps();
+    } else {
+      _isLoading = false;
+    }
   }
 
   Future<void> _loadApps() async {
@@ -64,90 +80,108 @@ class _NotificationAppsScreenState
       }
     }
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Target Apps')),
-      body: SafeArea(
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 800),
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search),
-                      hintText: 'Search apps...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+    return GlassIsolationScope(
+      isolated: true,
+      defaultQuality: GlassQuality.premium,
+      child: Scaffold(
+        appBar: GlassAppBar(
+          title: Text(
+            'Target Apps',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          leading: Navigator.of(context).canPop()
+              ? const AppBackAction()
+              : null,
+          centerTitle: false,
+        ),
+        body: SafeArea(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 800),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: TextField(
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.search),
+                        hintText: 'Search apps...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 0,
+                        ),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 0,
-                      ),
+                      onChanged: (value) =>
+                          setState(() => _searchQuery = value),
                     ),
-                    onChanged: (value) => setState(() => _searchQuery = value),
                   ),
-                ),
-                if (_isLoading)
-                  const Expanded(
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (_apps == null || _apps!.isEmpty)
-                  const Expanded(
-                    child: Center(
-                      child: Text('No apps found or unsupported platform.'),
-                    ),
-                  )
-                else
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: filteredApps.length,
-                      itemBuilder: (context, index) {
-                        final app = filteredApps[index];
-                        final isEnabled = targetPackages.contains(
-                          app.packageName.toLowerCase(),
-                        );
+                  if (_isLoading)
+                    const Expanded(
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (_apps == null || _apps!.isEmpty)
+                    const Expanded(
+                      child: Center(
+                        child: Text('No apps found or unsupported platform.'),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: filteredApps.length,
+                        itemBuilder: (context, index) {
+                          final app = filteredApps[index];
+                          final isEnabled = targetPackages.contains(
+                            app.packageName.toLowerCase(),
+                          );
 
-                        return SwitchListTile(
-                          secondary: AppIconWidget(
-                            packageName: app.packageName,
-                          ),
-                          title: Text(
-                            app.appName,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          subtitle: Text(
-                            app.packageName,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: scheme.onSurfaceVariant,
+                          return SwitchListTile(
+                            secondary: AppIconWidget(
+                              packageName: app.packageName,
                             ),
-                          ),
-                          value: isEnabled,
-                          onChanged: (val) {
-                            final next = Set<String>.from(
-                              prefs.notificationTargetPackages,
-                            );
-                            if (val) {
-                              next.add(app.packageName.toLowerCase());
-                            } else {
-                              next.remove(app.packageName.toLowerCase());
-                            }
-                            ref
-                                .read(ledgerProvider.notifier)
-                                .updatePreferences(
-                                  prefs.copyWith(
-                                    notificationTargetPackages: next.toList(),
-                                  ),
-                                );
-                          },
-                        );
-                      },
+                            title: Text(
+                              app.appName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: Text(
+                              app.packageName,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                            value: isEnabled,
+                            onChanged: (val) {
+                              final next = Set<String>.from(
+                                prefs.notificationTargetPackages,
+                              );
+                              if (val) {
+                                next.add(app.packageName.toLowerCase());
+                              } else {
+                                next.remove(app.packageName.toLowerCase());
+                              }
+                              ref
+                                  .read(ledgerProvider.notifier)
+                                  .updatePreferences(
+                                    prefs.copyWith(
+                                      notificationTargetPackages: next.toList(),
+                                    ),
+                                  );
+                            },
+                          );
+                        },
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

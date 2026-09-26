@@ -4,11 +4,11 @@ import 'package:intl/intl.dart' hide TextDirection;
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../common/route_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -66,6 +66,7 @@ class LoansScreen extends ConsumerWidget {
       },
       actions: [
         IconButton(
+          tooltip: 'Add loan',
           onPressed: () => context.push('/loans/new'),
           icon: const Icon(Icons.add_rounded),
         ),
@@ -194,6 +195,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
   final Set<int> _daysOfMonth = {};
   var _hideInterestInLedger = true;
   DateTime _nextEmiDate = DateTime.now().add(const Duration(days: 30));
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -362,6 +364,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
               TextFormField(
                 controller: _tenureController,
                 keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 decoration: const InputDecoration(
                   labelText: 'Tenure count',
                   prefixIcon: Icon(Icons.timelapse_outlined),
@@ -519,9 +522,19 @@ class _LoanFormState extends ConsumerState<LoanForm> {
         ),
         const Gap(AppSpacing.lg),
         FilledButton.icon(
-          onPressed: () => _saveLoan(state, loan),
-          icon: const Icon(Icons.save_outlined),
-          label: Text(loan == null ? 'Create loan' : 'Save loan'),
+          onPressed: _isSaving ? null : () => _saveLoan(state, loan),
+          icon: _isSaving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.save_outlined),
+          label: Text(
+            _isSaving
+                ? 'Saving…'
+                : (loan == null ? 'Create loan' : 'Save loan'),
+          ),
         ),
       ],
     );
@@ -618,7 +631,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
         ),
       ],
     );
-    if (next == null) return;
+    if (next == null || !mounted) return;
     setState(() => _loanKind = next);
   }
 
@@ -642,7 +655,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
           ),
       ],
     );
-    if (next == null) return;
+    if (next == null || !mounted) return;
     setState(() => _sourceAccountId = next);
   }
 
@@ -652,7 +665,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
       state: state,
       selectedValue: _currency,
     );
-    if (next == null) return;
+    if (next == null || !mounted) return;
     setState(() => _currency = next);
   }
 
@@ -663,11 +676,13 @@ class _LoanFormState extends ConsumerState<LoanForm> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (picked == null) return;
+    if (picked == null || !mounted) return;
     setState(() => _nextEmiDate = picked);
   }
 
   Future<void> _saveLoan(LedgerState state, Account? existingLoan) async {
+    // Guard against double-tap re-entry while a save is already in flight.
+    if (_isSaving) return;
     final name = _nameController.text.trim();
     final principalMinor = _amountMinorFromInput(
       _principalController.text,
@@ -694,11 +709,23 @@ class _LoanFormState extends ConsumerState<LoanForm> {
       _showRouteMessage(context, 'Enter the loan principal.');
       return;
     }
+    if (rate != null && rate < 0) {
+      _showRouteMessage(context, 'Interest rate cannot be negative.');
+      return;
+    }
+    if (tenure != null && tenure <= 0) {
+      _showRouteMessage(
+        context,
+        'Tenure must be a positive number of payments.',
+      );
+      return;
+    }
     final sourceAccount = accountById(state, _sourceAccountId);
     if (emiMinor > 0 && sourceAccount == null) {
       _showRouteMessage(context, 'Choose the account that pays the EMI.');
       return;
     }
+    setState(() => _isSaving = true);
     try {
       final loanDetails = AccountLoanDetails(
         loanKind: _loanKind,
@@ -796,6 +823,8 @@ class _LoanFormState extends ConsumerState<LoanForm> {
     } catch (error) {
       if (!mounted) return;
       _showRouteMessage(context, error.toString());
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 }
@@ -813,14 +842,23 @@ class LoanDetailView extends ConsumerWidget {
     final details = _effectiveLoanDetails(state, loan);
     final projection = _loanProjection(state, loan);
     final repaymentHistory = _loanHistoryRepayments(state, loan.id);
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        GlassCard(
-          margin: EdgeInsets.zero,
-          padding: EdgeInsets.zero,
-          shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-          quality: GlassQuality.standard,
+        // Liquid Glass is reserved for the navigation/control layer; this
+        // card lives inside RouteScaffold's scrolling ListView alongside
+        // every other section below it, so it stays a plain opaque surface
+        // instead of a GlassCard (see liquid_glass_widgets README: keep
+        // scrolling content/list rows opaque).
+        Container(
+          key: const ValueKey('loanDetailHeaderCard'),
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            border: Border.all(color: scheme.outlineVariant),
+          ),
           child: Material(
             color: Colors.transparent,
             child: Padding(
@@ -1146,12 +1184,17 @@ class _LoanCompactCard extends StatelessWidget {
       locale: state.preferences.locale,
     );
 
-    return GlassCard(
-      margin: EdgeInsets.zero,
-      padding: EdgeInsets.zero,
-      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-      quality: GlassQuality.minimal,
+    // Liquid Glass is reserved for the navigation/control layer; this card
+    // is a repeated row in the scrollable loans list, so it stays a plain
+    // opaque surface instead of a GlassCard (see liquid_glass_widgets
+    // README: keep scrolling content/list rows opaque).
+    return Container(
       clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -1610,6 +1653,11 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
       locale: widget.locale,
       symbol: widget.currencySymbol,
     );
+    // Themed marker color for payoff milestones so they stay legible (and
+    // don't clash with the primary "today" line) across light/dark/AMOLED.
+    final scheme = Theme.of(context).colorScheme;
+    final payoffColor = scheme.tertiary;
+    final onPayoffColor = scheme.onTertiary;
 
     return Stack(
       fit: StackFit.expand,
@@ -1709,16 +1757,16 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
 
                         return VerticalLine(
                           x: x,
-                          color: Colors.green.withValues(alpha: 0.5),
+                          color: payoffColor.withValues(alpha: 0.5),
                           strokeWidth: 1,
                           dashArray: [3, 3],
                           label: VerticalLineLabel(
                             show: true,
                             alignment: Alignment.bottomRight,
                             padding: const EdgeInsets.only(bottom: 4, left: 4),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 10,
-                              color: Colors.green,
+                              color: payoffColor,
                               fontWeight: FontWeight.bold,
                             ),
                             labelResolver: (_) => dateStr,
@@ -1758,7 +1806,11 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                         getDotPainter: (spot, percent, barData, index) {
                           final label = widget.payoffDots[spot.x];
                           if (label != null) {
-                            return NumberedDotPainter(label);
+                            return NumberedDotPainter(
+                              label,
+                              color: payoffColor,
+                              textColor: onPayoffColor,
+                            );
                           }
                           return FlDotCirclePainter(
                             radius: 0,
@@ -2706,15 +2758,18 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                       child: const Icon(Icons.drag_handle),
                     ),
                     const SizedBox(width: 8),
-                    CircleAvatar(
-                      radius: 12,
-                      backgroundColor: Colors.green,
-                      child: Text(
-                        '${index + 1}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                    Semantics(
+                      label: 'Priority ${index + 1}',
+                      child: CircleAvatar(
+                        radius: 12,
+                        backgroundColor: scheme.primary,
+                        child: Text(
+                          '${index + 1}',
+                          style: TextStyle(
+                            color: scheme.onPrimary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),

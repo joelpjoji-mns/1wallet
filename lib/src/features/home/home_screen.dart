@@ -234,6 +234,7 @@ class HomeScreen extends ConsumerWidget {
           icon: Icons.notifications_none_rounded,
           badge: pendingCount + notificationCount,
           onPressed: () => context.push('/notifications'),
+          semanticLabel: 'Notifications',
         ),
         AuthUserActionButton(
           user: user,

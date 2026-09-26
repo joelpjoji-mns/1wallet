@@ -375,6 +375,30 @@ body {
   background: rgba(248, 113, 113, 0.25);
 }
 
+/* Conflict banner — explicit, user-confirmed escape hatch from a stuck
+   unsynced local edit (see Workspace.tsx's ConflictBanner) */
+.conflict-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+.conflict-banner__message {
+  color: #f87171;
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0;
+  flex: 1;
+  min-width: 240px;
+}
+
 /* Modal */
 .modal-backdrop {
   position: fixed;

@@ -23,6 +23,9 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
   String? _status;
   File? _latestAutoBackup;
   DateTime? _latestAutoBackupTime;
+  // Guards against rapid double-taps opening two overlapping save/restore
+  // flows (e.g. two save-file dialogs, or a restore racing another restore).
+  bool _busy = false;
 
   @override
   void initState() {
@@ -50,7 +53,7 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
   }
 
   Future<void> _restoreFromAutoBackup() async {
-    if (_latestAutoBackup == null) return;
+    if (_latestAutoBackup == null || _busy) return;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -73,8 +76,9 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
         ],
       ),
     );
-    if (confirm != true) return;
+    if (confirm != true || !mounted) return;
 
+    setState(() => _busy = true);
     try {
       await ref
           .read(ledgerProvider.notifier)
@@ -127,6 +131,8 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
       }
       setState(() => _status = 'Auto-backup restore failed: $e');
       _showBackupMessage('Auto-backup restore failed.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -172,7 +178,7 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
               subtitle:
                   'A recent automatic local backup was found:\nLast modified: ${_formatDateTime(_latestAutoBackupTime!)}\nPath: ${_latestAutoBackup!.path}',
               child: FilledButton.icon(
-                onPressed: _restoreFromAutoBackup,
+                onPressed: _busy ? null : _restoreFromAutoBackup,
                 icon: const Icon(Icons.history_toggle_off_rounded),
                 label: const Text('Restore latest auto-backup'),
                 style: FilledButton.styleFrom(
@@ -188,7 +194,7 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
             subtitle:
                 'Generate a portable 1Wallet archive and save it to your device.',
             child: FilledButton.icon(
-              onPressed: _generateAndSaveArchive,
+              onPressed: _busy ? null : _generateAndSaveArchive,
               icon: const Icon(Icons.file_download_outlined),
               label: const Text('Save to file'),
             ),
@@ -199,7 +205,7 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
             subtitle:
                 'Pick an archive file from your device. Checksum validation runs before replacing local data.',
             child: FilledButton.tonalIcon(
-              onPressed: _pickAndRestoreArchive,
+              onPressed: _busy ? null : _pickAndRestoreArchive,
               icon: const Icon(Icons.restore_outlined),
               label: const Text('Restore from file'),
             ),
@@ -237,6 +243,8 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
   }
 
   Future<void> _generateAndSaveArchive() async {
+    if (_busy) return;
+    setState(() => _busy = true);
     final archive = ref.read(ledgerProvider.notifier).exportArchive();
 
     try {
@@ -260,10 +268,14 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
       if (!mounted) return;
       setState(() => _status = 'Failed to save archive: $e');
       _showBackupMessage('Failed to save archive.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _pickAndRestoreArchive() async {
+    if (_busy) return;
+    setState(() => _busy = true);
     String? fileText;
     String? fileName;
     try {
@@ -326,6 +338,8 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
       }
       setState(() => _status = 'Restore failed: $error');
       _showBackupMessage('Archive restore failed.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -10,11 +11,29 @@ import 'package:one_wallet_flutter/src/theme/app_theme.dart';
 
 import 'test_harness.dart';
 
+// Several capture/notification screens (e.g. SmsCaptureScreen,
+// NotificationCaptureScreen, NotificationAppsScreen) call this native
+// channel directly from initState to check permissions / list installed
+// apps. Without a mock handler, invokeMethod never completes under
+// flutter test (defaultTargetPlatform defaults to android in tests, so the
+// Android-only code paths do run), which either hangs pumpAndSettle behind
+// an indeterminate CircularProgressIndicator or silently leaves a
+// "Checking…" state forever. Answering with null lets every caller fall
+// back to its already-handled "unavailable/not granted" branch quickly.
+const _nativeCaptureChannel = MethodChannel('com.joelpjoji.one.wallet/sms');
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_nativeCaptureChannel, (call) async => null);
+  });
+
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_nativeCaptureChannel, null);
   });
 
   testWidgets('representative routes render without exceptions', (
@@ -78,6 +97,10 @@ void main() {
       '/import-sms',
       '/data-backup',
       '/auto-capture',
+      '/auto-capture/debug',
+      '/capture-settings',
+      '/notification-capture',
+      '/notification-capture/apps',
       '/updates',
       '/device-permissions',
       '/permissions-setup',

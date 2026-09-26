@@ -63,6 +63,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
   final _charges = <_ChargeDraft>[];
   DateTime _occurredAt = DateTime.now();
   bool _isScanning = false;
+  bool _isSaving = false;
   bool _localAmountEdited = false;
   bool _counterAmountEdited = false;
   String? _status;
@@ -165,63 +166,75 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       isCrossTransfer: isCrossTransfer,
     );
 
-    return DefaultTabController(
-      length: 2,
-      initialIndex: widget.initialTab,
-      child: Scaffold(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        appBar: AppBar(
+    return GlassIsolationScope(
+      isolated: true,
+      defaultQuality: GlassQuality.premium,
+      child: DefaultTabController(
+        length: 2,
+        initialIndex: widget.initialTab,
+        child: Scaffold(
           backgroundColor: Theme.of(context).colorScheme.surface,
-          elevation: 0,
-          leading: IconButton(
-            icon: Icon(
-              Icons.arrow_back_rounded,
-              color: Theme.of(context).colorScheme.onSurface,
+          appBar: GlassAppBar(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            centerTitle: false,
+            leading: IconButton(
+              icon: Icon(
+                Icons.arrow_back_rounded,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              onPressed: () {
+                if (context.canPop()) {
+                  context.pop();
+                } else {
+                  context.go('/');
+                }
+              },
             ),
-            onPressed: () {
-              if (context.canPop()) {
-                context.pop();
-              } else {
-                context.go('/');
-              }
-            },
-          ),
-          title: Text(
-            editingTransaction == null ? 'Add record' : 'Edit record',
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              color: Theme.of(context).colorScheme.onSurface,
+            title: Text(
+              editingTransaction == null ? 'Add record' : 'Edit record',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
             ),
-          ),
-          actions: [
-            IconButton(
-              icon: _isScanning
-                  ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
+            actions: [
+              IconButton(
+                icon: _isScanning
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      )
+                    : Icon(
+                        Icons.camera_alt_outlined,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
-                    )
-                  : Icon(
-                      Icons.camera_alt_outlined,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-              onPressed: _isScanning
-                  ? null
-                  : () => _scanReceipt(ImageSource.camera),
-            ),
-            IconButton(
-              icon: Icon(
-                Icons.check_rounded,
-                color: Theme.of(context).colorScheme.primary,
+                onPressed: _isScanning
+                    ? null
+                    : () => _scanReceipt(ImageSource.camera),
               ),
-              onPressed: _saveRecord,
-            ),
-          ],
-        ),
-        body: SafeArea(
+              IconButton(
+                icon: _isSaving
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      )
+                    : Icon(
+                        Icons.check_rounded,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                onPressed: _isSaving ? null : _saveRecord,
+              ),
+            ],
+          ),
+          body: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -350,17 +363,27 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                         (displayAmount.isEmpty
                                             ? '0'
                                             : displayAmount);
+                                    // Only prepend the expense/transfer minus
+                                    // sign when the calculation isn't already
+                                    // showing one (e.g. from a negated entry
+                                    // via +/- or a negative running total),
+                                    // to avoid a confusing "--12" display.
+                                    final needsMinusPrefix =
+                                        _type != 'income' &&
+                                        fullText != '0' &&
+                                        !fullText.startsWith('-');
                                     return FittedBox(
                                       fit: BoxFit.scaleDown,
                                       alignment: Alignment.centerRight,
                                       child: Text(
-                                        (_type == 'income' || fullText == '0'
-                                                ? ''
-                                                : '-') +
+                                        (needsMinusPrefix ? '-' : '') +
                                             _formatExpression(
                                               fullText,
                                               state.preferences.locale,
                                             ),
+                                        key: const Key(
+                                          'addRecordAmountDisplay',
+                                        ),
                                         maxLines: 1,
                                         textAlign: TextAlign.right,
                                         style: Theme.of(context)
@@ -671,8 +694,16 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                         ),
                         const SizedBox(height: AppSpacing.md),
                         FilledButton.icon(
-                          onPressed: _saveRecord,
-                          icon: const Icon(Icons.save_outlined),
+                          onPressed: _isSaving ? null : _saveRecord,
+                          icon: _isSaving
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.save_outlined),
                           label: const Text('Save record'),
                         ),
                       ],
@@ -683,6 +714,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -703,6 +735,23 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
         amount: amount.isEmpty ? '0.' : '$amount.',
         expression: expression,
       );
+    }
+    if (key == '+/-') {
+      // Toggle the sign of the operand currently being typed (standard
+      // calculator behavior). Only meaningful once a nonzero value has been
+      // entered; harmless no-op otherwise.
+      if (amount.startsWith('-')) {
+        return _CalcState(amount: amount.substring(1), expression: expression);
+      }
+      if (amount.isEmpty || amount == '0') {
+        return _CalcState(amount: amount, expression: expression);
+      }
+      return _CalcState(amount: '-$amount', expression: expression);
+    }
+    if (key == '%') {
+      final current = amount.trim().isEmpty ? '0' : amount;
+      final value = double.tryParse(current) ?? 0;
+      return _CalcState(amount: _trimNumber(value / 100), expression: expression);
     }
     if (RegExp(r'^\d$').hasMatch(key)) {
       return _CalcState(
@@ -950,6 +999,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
   }
 
   Future<void> _saveRecord() async {
+    if (_isSaving) return;
     final state = ref.read(ledgerProvider);
     final account = accountById(state, _accountId);
     if (account == null) {
@@ -1012,6 +1062,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       return;
     }
 
+    setState(() => _isSaving = true);
     try {
       final editingTransaction = widget.transactionId == null
           ? null
@@ -1105,7 +1156,10 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
         context.go('/');
       }
     } catch (e) {
+      if (!mounted) return;
       _showMessage('Could not save the record. Please try again.');
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -1425,20 +1479,22 @@ Color _toneColor(BuildContext context, String type) {
 int _amountMinorFromInput(String value, [String? currency]) {
   final clean = value.replaceAll(RegExp(r'[^0-9.]'), '');
   if (clean.isEmpty) return 0;
-  final parts = clean.split('.');
-  final integer = int.tryParse(parts[0]) ?? 0;
   final minors = currency != null ? minorUnits(currency) : 2;
-  final fraction = parts.length > 1
-      ? (int.tryParse(parts[1].padRight(minors, '0').substring(0, minors)) ?? 0)
-      : 0;
-  return (integer * math.pow(10, minors).toInt()) + fraction;
+  // Round (rather than truncate) so extra fractional digits the keypad lets
+  // a user type (e.g. "1.239" on a 2-decimal currency) resolve to the
+  // nearest minor unit instead of silently dropping the last digit.
+  final parsed = double.tryParse(clean) ?? 0;
+  return (parsed * math.pow(10, minors)).round();
 }
 
 String _formatAmountInput(int amountMinor, [String? currency]) {
   final minors = currency != null ? minorUnits(currency) : 2;
   final amount = amountMinor / math.pow(10, minors);
   if (amount == amount.roundToDouble()) return amount.round().toString();
-  return amount.toStringAsFixed(minors).replaceFirst(RegExp(r'0$'), '');
+  // Strip *all* trailing zeros (not just one) so 3-decimal currencies like
+  // KWD/BHD/OMR (e.g. amountMinor 1500 -> "1.500") render as "1.5" instead
+  // of the previously mis-trimmed "1.50".
+  return amount.toStringAsFixed(minors).replaceFirst(RegExp(r'0+$'), '');
 }
 
 String _trimNumber(double value) =>

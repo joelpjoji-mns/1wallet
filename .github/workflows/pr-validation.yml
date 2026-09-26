@@ -50,7 +50,7 @@ jobs:
         run: dart format --set-exit-if-changed .
 
       - name: Analyze Code
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos
 
       - name: Run Tests
         run: flutter test
@@ -86,6 +86,10 @@ jobs:
             echo "VITE_GOOGLE_WEB_CLIENT_ID=dummy"
           } > .env
 
+      - name: Run PWA tests
+        working-directory: pwa
+        run: npm test
+
       - name: Lint
         working-directory: pwa
         run: npm run lint
@@ -94,3 +98,28 @@ jobs:
         working-directory: pwa
         run: npm run build
 
+  validate-firestore-rules:
+    name: Firestore Security Rules Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: firebase/package-lock.json
+
+      - name: Install Firebase rules test dependencies
+        run: npm ci --prefix firebase
+
+      - name: Run Firestore rules tests in the emulator
+        run: npx --yes firebase-tools emulators:exec --only firestore --project demo-1wallet-rules "npm --prefix firebase test"

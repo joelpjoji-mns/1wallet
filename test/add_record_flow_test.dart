@@ -12,9 +12,7 @@ import 'package:one_wallet_flutter/src/theme/app_theme.dart';
 import 'fixtures/sample_ledger.dart';
 import 'test_harness.dart';
 
-// ignore_for_file: dead_code
 void main() {
-  return; // FIXME: Tests skipped due to massive UI changes
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
@@ -61,7 +59,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.check_rounded).first);
     await tester.pumpAndSettle();
     expect(container.read(ledgerProvider).transactions.length, beforeCount);
-    expect(find.text('Choose a category before saving.'), findsOneWidget);
+    expect(find.text('Choose a category.'), findsOneWidget);
 
     await tester.tap(find.text('Choose category'));
     await tester.pumpAndSettle();
@@ -103,11 +101,20 @@ void main() {
         ),
       ),
     );
+    // Seed state directly rather than relying on the controller's own
+    // startup load, which pipes the restored ledger through a background
+    // isolate (foundation.compute) that flutter_test can't reliably
+    // resolve before the first navigation below.
+    await container
+        .read(ledgerProvider.notifier)
+        .restoreLedgerState(sampleLedgerState());
+    await tester.pumpAndSettle();
     router.go('/add?transactionId=tx-salary');
     await tester.pumpAndSettle();
 
     expect(find.text('Edit record'), findsOneWidget);
-    await tester.tap(find.text('⌫').last);
+    // The backspace key renders as an icon, not literal text.
+    await tester.tap(find.byIcon(Icons.backspace_rounded).last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('9').last);
     await tester.pumpAndSettle();
@@ -144,6 +151,14 @@ void main() {
         ),
       ),
     );
+    // Seed state directly rather than relying on the controller's own
+    // startup load, which pipes the restored ledger through a background
+    // isolate (foundation.compute) that flutter_test can't reliably
+    // resolve before the first navigation below.
+    await container
+        .read(ledgerProvider.notifier)
+        .restoreLedgerState(sampleLedgerState());
+    await tester.pumpAndSettle();
     router.go('/transaction/tx-salary');
     await tester.pumpAndSettle();
 

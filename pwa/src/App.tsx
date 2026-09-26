@@ -1,32 +1,26 @@
-import type { LucideIcon } from 'lucide-react';
-import { Calendar, LayoutDashboard, LineChart, LogIn, LogOut, Receipt, Wallet } from 'lucide-react';
-import { useState } from 'react';
+import { LogIn, Wallet } from 'lucide-react';
+import { lazy, Suspense, useState } from 'react';
 import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from './lib/firebase';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { WalletDataProvider, useWalletData } from './context/WalletDataContext';
-import { AccountsPage } from './pages/AccountsPage';
-import { CalendarPage } from './pages/CalendarPage';
-import { HistoryPage } from './pages/HistoryPage';
-import { HomePage } from './pages/HomePage';
-import { PlannerPage } from './pages/PlannerPage';
 
-type SectionId = 'home' | 'history' | 'calendar' | 'planner' | 'accounts';
-
-type NavItem = {
-  id: SectionId;
-  name: string;
-  description: string;
-  icon: LucideIcon;
-};
-
-const navItems: NavItem[] = [
-  { id: 'home', name: 'Home', description: 'Overview and quick actions', icon: LayoutDashboard },
-  { id: 'history', name: 'History', description: 'Browse transactions and receipts', icon: Receipt },
-  { id: 'calendar', name: 'Calendar', description: 'Review cashflow by date', icon: Calendar },
-  { id: 'planner', name: 'Planner', description: 'Plan budgets, goals, and forecasts', icon: LineChart },
-  { id: 'accounts', name: 'Accounts', description: 'Manage wallets, cards, and balances', icon: Wallet },
-];
+// `Workspace` (everything rendered once a user is signed in) is lazy-loaded
+// as its own chunk specifically so the login screen's critical path never
+// has to fetch it — `Workspace.tsx` statically imports `WalletDataProvider`
+// from `./context/WalletDataContext`, which transitively pulls in
+// `../lib/walletSync` (Firestore `runTransaction`/`onSnapshot`/`getDocs`/
+// etc., plus `pako`'s gzip/ungzip and `../lib/ledgerCodec`) — none of which
+// a signed-out visitor needs. An earlier version of this file statically
+// imported `WalletDataProvider`/`useWalletData` directly (only the five
+// individual *pages* were lazy), so that entire dependency graph still
+// loaded eagerly as part of the initial bundle regardless of sign-in state,
+// showing up as a >500KB `WalletDataContext-*.js` chunk fetched immediately
+// on every page load, login screen included. Moving the dynamic `import()`
+// boundary up to wrap the whole signed-in workspace (rather than only its
+// individual pages) means that chunk — and everything under it — is now
+// only ever requested after `AppShell` actually renders `<Workspace />`,
+// i.e. after a real signed-in `user` exists.
+const Workspace = lazy(() => import('./Workspace').then((module) => ({ default: module.Workspace })));
 
 function LoginScreen() {
   const [signingIn, setSigningIn] = useState(false);
@@ -62,128 +56,6 @@ function LoginScreen() {
   );
 }
 
-function SyncBadge() {
-  const { phase, error } = useWalletData();
-  if (phase === 'error' || phase === 'conflict') {
-    return <span className="sync-badge sync-badge--error">{error ?? 'Sync issue'}</span>;
-  }
-  if (phase === 'loading' || phase === 'saving') {
-    return <span className="sync-badge">{phase === 'loading' ? 'Loading…' : 'Syncing…'}</span>;
-  }
-  return <span className="sync-badge sync-badge--ok">Synced</span>;
-}
-
-function Sidebar({
-  activeSection,
-  onSectionChange,
-}: {
-  activeSection: SectionId;
-  onSectionChange: (section: SectionId) => void;
-}) {
-  const { user, signOutUser } = useAuth();
-
-  return (
-    <div className="sidebar">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', padding: '0 16px' }}>
-        <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Wallet size={24} color="white" />
-        </div>
-        <h2 style={{ fontSize: '20px', fontWeight: 800 }}>1Wallet</h2>
-      </div>
-
-      <div style={{ padding: '0 16px', marginBottom: '20px' }}>
-        <SyncBadge />
-      </div>
-
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        {navItems.map(item => (
-          <button
-            key={item.id}
-            type="button"
-            className={`nav-item ${activeSection === item.id ? 'active' : ''}`}
-            onClick={() => onSectionChange(item.id)}
-            aria-current={activeSection === item.id ? 'page' : undefined}
-          >
-            <item.icon size={20} />
-            {item.name}
-          </button>
-        ))}
-      </div>
-
-      <div style={{ marginTop: 'auto', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--glass)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontWeight: 'bold' }}>{user?.displayName?.[0] || 'U'}</span>
-          </div>
-          <div style={{ flex: 1, overflow: 'hidden' }}>
-            <div style={{ fontWeight: 600, fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {user?.displayName || 'User'}
-            </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>My Wallet</div>
-          </div>
-          <button className="icon-btn" onClick={() => void signOutUser()} aria-label="Sign out" title="Sign out">
-            <LogOut size={18} />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function HomeBottomIsland({ activeSection, onSectionChange }: { activeSection: SectionId; onSectionChange: (section: SectionId) => void }) {
-  return (
-    <nav className="home-bottom-island" aria-label="Home quick navigation">
-      <div className="home-bottom-island__track">
-        {navItems.map(item => (
-          <button
-            key={item.id}
-            type="button"
-            className={`home-bottom-island__item ${activeSection === item.id ? 'active' : ''}`}
-            onClick={() => onSectionChange(item.id)}
-            aria-pressed={activeSection === item.id}
-          >
-            <item.icon size={22} />
-            {item.name}
-          </button>
-        ))}
-      </div>
-    </nav>
-  );
-}
-
-function Workspace() {
-  const [activeSection, setActiveSection] = useState<SectionId>('home');
-
-  const content = (() => {
-    switch (activeSection) {
-      case 'home':
-        return <HomePage />;
-      case 'history':
-        return <HistoryPage />;
-      case 'calendar':
-        return <CalendarPage />;
-      case 'planner':
-        return <PlannerPage />;
-      case 'accounts':
-        return <AccountsPage />;
-      default:
-        return null;
-    }
-  })();
-
-  return (
-    <WalletDataProvider>
-      <div className="app-container">
-        <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
-        <main className={`main-content ${activeSection === 'home' ? 'with-home-island' : ''}`}>{content}</main>
-        {activeSection === 'home' ? (
-          <HomeBottomIsland activeSection={activeSection} onSectionChange={setActiveSection} />
-        ) : null}
-      </div>
-    </WalletDataProvider>
-  );
-}
-
 function AppShell() {
   const { user, loading } = useAuth();
 
@@ -195,7 +67,11 @@ function AppShell() {
     return <LoginScreen />;
   }
 
-  return <Workspace />;
+  return (
+    <Suspense fallback={<div className="login-container">Loading...</div>}>
+      <Workspace />
+    </Suspense>
+  );
 }
 
 function App() {

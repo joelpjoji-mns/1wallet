@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
@@ -33,11 +32,17 @@ class HomeWidgetCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final resolvedIconColor = iconColor ?? scheme.primary;
     final reorderScope = HomeWidgetCardReorderScope.maybeOf(context);
-    return GlassCard(
-      margin: EdgeInsets.zero,
+    // Dashboard tiles are scrolling list/chart content, so per the Liquid
+    // Glass package's own guidance (blur reserved for the navigation/control
+    // layer, scrolling content stays opaque) this renders a lightweight
+    // themed opaque surface instead of a per-tile GlassCard/blur layer.
+    return Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
-      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-      quality: GlassQuality.standard,
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
       child: Material(
         color: Colors.transparent,
         child: Column(
@@ -438,7 +443,7 @@ class _MiniLineChartState extends State<MiniLineChart> {
             tooltipFormatter: widget.tooltipFormatter,
             minY: widget.minY,
             maxY: widget.maxY,
-            context: context,
+            dotBackgroundColor: scheme.surface,
           ),
           child: const SizedBox.expand(),
         ),
@@ -455,7 +460,7 @@ class _MiniLineChartPainter extends CustomPainter {
     required this.xAxisLabels,
     required this.yAxisLabels,
     required this.textColor,
-    required this.context,
+    required this.dotBackgroundColor,
     this.touchPosition,
     this.tooltipFormatter,
     this.minY,
@@ -472,7 +477,11 @@ class _MiniLineChartPainter extends CustomPainter {
   final String Function(num)? tooltipFormatter;
   final double? minY;
   final double? maxY;
-  final BuildContext context;
+
+  /// Background fill for the touch-indicator dot. Passed in (rather than
+  /// resolved via `Theme.of(context)` inside [paint]) so this painter never
+  /// needs to hold on to a [BuildContext] outside of the widget build phase.
+  final Color dotBackgroundColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -607,7 +616,7 @@ class _MiniLineChartPainter extends CustomPainter {
       canvas.drawLine(Offset(x, 0), Offset(x, chartHeight), vLinePaint);
 
       final dotPaint = Paint()..color = lineColor;
-      final dotBgPaint = Paint()..color = Theme.of(context).colorScheme.surface;
+      final dotBgPaint = Paint()..color = dotBackgroundColor;
       canvas.drawCircle(Offset(x, y), 5, dotBgPaint);
       canvas.drawCircle(Offset(x, y), 4, dotPaint);
 
@@ -653,6 +662,7 @@ class _MiniLineChartPainter extends CustomPainter {
         oldDelegate.xAxisLabels != xAxisLabels ||
         oldDelegate.yAxisLabels != yAxisLabels ||
         oldDelegate.textColor != textColor ||
+        oldDelegate.dotBackgroundColor != dotBackgroundColor ||
         oldDelegate.touchPosition != touchPosition;
   }
 }
