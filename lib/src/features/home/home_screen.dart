@@ -236,11 +236,16 @@ class HomeScreen extends ConsumerWidget {
           onPressed: () => context.push('/notifications'),
           semanticLabel: 'Notifications',
         ),
-        AuthUserActionButton(
-          user: user,
-          radius: 22,
-          tooltip: 'Open profile and settings',
-          onPressed: () => context.push('/settings'),
+        UnconstrainedBox(
+          child: Padding(
+            padding: const EdgeInsets.only(left: 6.0),
+            child: AuthUserActionButton(
+              user: user,
+              radius: 20,
+              tooltip: 'Open profile and settings',
+              onPressed: () => context.push('/settings'),
+            ),
+          ),
         ),
       ],
       scrollable: false,

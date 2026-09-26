@@ -105,6 +105,12 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     final themeState = ref.watch(themeControllerProvider);
 
     return LiquidGlassWidgets.wrap(
+      theme: const GlassThemeData(
+        dark: GlassThemeVariant(
+          settings: GlassThemeSettings(thickness: 2, blur: 8),
+          quality: GlassQuality.standard,
+        ),
+      ),
       adaptiveQuality: true,
       brightnessResolver: (context) {
         if (themeState.themeMode == ThemeMode.light) return Brightness.light;
