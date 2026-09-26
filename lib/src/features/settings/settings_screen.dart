@@ -136,7 +136,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return RouteScaffold(
       title: 'Settings',
       actions: [
-        GlassIconButton(size: 52, iconSize: 26,
+        GlassIconButton(
+          size: 44,
+          iconSize: 22,
           onPressed: () => context.push('/review'),
           icon: const Icon(Icons.fact_check_outlined),
         ),
@@ -151,7 +153,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               onOpenSync: () => context.push('/sync'),
               onSignOut: () => _signOut(ref),
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.md),
 
             // ── Privacy (prominent quick access) ──
             _PrivacyQuickCard(
@@ -167,7 +169,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 );
               },
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.md),
 
             // ── Preferences ──
             SettingsPreferencesSection(
@@ -197,14 +199,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               },
               localeLabel: _localeLabel(state.preferences.locale),
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.md),
 
             // ── Feature hub ──
             SettingsFeatureHubSection(
               links: _managementLinks,
               onOpenLink: (route) => context.push(route),
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.md),
 
             // ── Capture & automation ──
             GlassGroupedSection(header: const Text('Capture & automation'),
@@ -261,7 +263,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.md),
 
             // ── Notifications ──
             GlassGroupedSection(header: const Text('Notifications'),
@@ -376,7 +378,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.md),
 
             // ── Security & Privacy ──
             GlassGroupedSection(header: const Text('Security & privacy'),
@@ -577,66 +579,25 @@ class _PrivacyQuickCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return MergeSemantics(
-      child: GlassCard(
-        quality: GlassQuality.premium,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(AppRadii.xl),
-          onTap: () => onChanged(!enabled),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: scheme.primary.withAlpha(enabled ? 60 : 30),
-                    borderRadius: BorderRadius.circular(AppRadii.lg),
-                  ),
-                  child: Icon(
-                    enabled
-                        ? Icons.visibility_off_rounded
-                        : Icons.visibility_outlined,
-                    color: scheme.primary,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Privacy mode',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w900),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        enabled
-                            ? 'Balances and amounts are hidden across the app.'
-                            : 'Hide balances and amounts across the app.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                ExcludeFocus(
-                  child: IgnorePointer(
-                    child: Switch(value: enabled, onChanged: onChanged),
-                  ),
-                ),
-              ],
-            ),
+    return GlassGroupedSection(
+      children: [
+        GlassListTile(
+          leading: Icon(
+            enabled ? Icons.visibility_off_rounded : Icons.visibility_outlined,
+          ),
+          title: const Text('Privacy mode'),
+          subtitle: Text(
+            enabled
+                ? 'Balances and amounts are hidden across the app.'
+                : 'Hide balances and amounts across the app.',
+          ),
+          trailing: GlassSwitch(
+            quality: GlassQuality.standard,
+            value: enabled,
+            onChanged: onChanged,
           ),
         ),
-      ),
+      ],
     );
   }
 }

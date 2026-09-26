@@ -32,11 +32,11 @@ class SettingsProfileSection extends StatelessWidget {
           child: Column(
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   AuthUserAvatar(
                     user: user,
-                    radius: 32,
+                    radius: 28,
                     fallbackLabel: user?.initials ?? '1W',
                   ),
                   const SizedBox(width: AppSpacing.md),
@@ -52,94 +52,66 @@ class SettingsProfileSection extends StatelessWidget {
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        const SizedBox(height: 2),
                         Text(
                           user?.email ?? 'Not signed in',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: theme.colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
                           ),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Wrap(
-                          spacing: AppSpacing.xs,
-                          runSpacing: AppSpacing.xs,
-                          children: [AuthProviderChip(user: user)],
                         ),
                       ],
                     ),
                   ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            user?.isGoogleProvider == true
+                                ? Icons.cloud_done_outlined
+                                : Icons.cloud_outlined,
+                            size: 14,
+                            color: user?.isGoogleProvider == true
+                                ? Colors.green
+                                : theme.colorScheme.primary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            user?.isGoogleProvider == true ? 'Google Sync' : 'Local',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          FilledButton.tonal(
+                            onPressed: onOpenSync,
+                            style: FilledButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                            ),
+                            child: const Text('Sync', style: TextStyle(fontSize: 12)),
+                          ),
+                          const SizedBox(width: AppSpacing.xs),
+                          FilledButton.tonal(
+                            onPressed: onSignOut,
+                            style: FilledButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                            ),
+                            child: const Text('Sign out', style: TextStyle(fontSize: 12)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ],
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              Row(
-                children: [
-                  Icon(
-                    Icons.account_circle_outlined,
-                    size: 20,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  const Text('Signed in as'),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      user?.email ?? 'Local user',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.end,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  Icon(
-                    user?.isGoogleProvider == true
-                        ? Icons.cloud_done_outlined
-                        : Icons.cloud_outlined,
-                    size: 20,
-                    color: user?.isGoogleProvider == true
-                        ? Colors.green
-                        : theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  const Text('Sync mode'),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      user?.isGoogleProvider == true ? 'Google' : 'Local',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.end,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              SizedBox(
-                width: double.infinity,
-                child: Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
-                  children: [
-                    FilledButton.tonalIcon(
-                      onPressed: onOpenSync,
-                      icon: const Icon(Icons.cloud_sync_outlined),
-                      label: const Text('Open sync'),
-                    ),
-                    FilledButton.tonalIcon(
-                      onPressed: onSignOut,
-                      icon: const Icon(Icons.logout_rounded),
-                      label: const Text('Sign out'),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),
@@ -209,7 +181,8 @@ class SettingsPreferencesSection extends StatelessWidget {
                 )
               : null,
           trailing: SizedBox(
-            width: 64,
+            width: 48,
+            height: 32,
             child: Semantics(
               label: 'Month start day, 1 to 28',
               child: TextField(
@@ -222,10 +195,8 @@ class SettingsPreferencesSection extends StatelessWidget {
                 ],
                 decoration: const InputDecoration(
                   isDense: true,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
-                    vertical: AppSpacing.xs,
-                  ),
+                  contentPadding: EdgeInsets.zero,
+                  border: OutlineInputBorder(),
                 ),
                 onChanged: onStartDayChanged,
               ),
