@@ -38,10 +38,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ),
   ];
 
-  static const _accentOptions = [
-    ('system', 'System themed', 'Use your phone Material You accent'),
-    ('custom', 'Custom color', 'Pick a wallet accent color'),
-  ];
+  
 
   static const _notificationChannels = [
     (
@@ -184,7 +181,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               onBaseCurrencyTap: () => context.push('/currencies'),
               onLocaleTap: () => _showLocalePicker(state),
               onThemeTap: () => _showThemePicker(ref, themeState.preference),
-              onAccentTap: _showAccentPicker,
               onHideSkippedChanged: (value) {
                 ref
                     .read(ledgerProvider.notifier)
@@ -487,57 +483,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _showMessage('Theme preference saved.');
   }
 
-  Future<void> _showAccentPicker() async {
-    final next = await showFullScreenPicker<String>(
-      context: context,
-      title: 'Accent source',
-      searchable: false,
-      selectedValue: ref.read(themeControllerProvider).accentColor == null
-          ? 'system'
-          : 'custom',
-      options: [
-        for (final accent in _accentOptions)
-          PickerOption(
-            value: accent.$1,
-            title: accent.$2,
-            subtitle: accent.$3,
-            icon: accent.$1 == 'system'
-                ? Icons.smartphone_outlined
-                : Icons.palette_outlined,
-          ),
-      ],
-    );
-    if (next == null || !mounted) return;
-    if (next == 'custom') {
-      final currentColor = ref.read(themeControllerProvider).accentColor;
-      Color initialColor = Theme.of(context).colorScheme.primary;
-      if (currentColor != null &&
-          currentColor.length == 7 &&
-          currentColor.startsWith('#')) {
-        final intValue = int.tryParse(currentColor.substring(1), radix: 16);
-        if (intValue != null) {
-          initialColor = Color(intValue | 0xFF000000);
-        }
-      }
 
-      final color = await showAppColorPicker(
-        context: context,
-        initialColor: initialColor,
-        title: 'Custom accent',
-      );
-      if (color != null && mounted) {
-        final hex =
-            '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
-        await ref.read(themeControllerProvider.notifier).setAccentColor(hex);
-        if (!mounted) return;
-        _showMessage('Custom accent saved: $hex');
-      }
-    } else {
-      await ref.read(themeControllerProvider.notifier).setAccentColor(null);
-      if (!mounted) return;
-      _showMessage('System accent enabled.');
-    }
-  }
 
   Future<void> _signOut(WidgetRef ref) async {
     await ref.read(authControllerProvider.notifier).signOut();
@@ -601,6 +547,8 @@ class _PrivacyQuickCard extends StatelessWidget {
     );
   }
 }
+
+
 
 
 

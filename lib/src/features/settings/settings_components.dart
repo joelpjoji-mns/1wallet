@@ -131,7 +131,6 @@ class SettingsPreferencesSection extends StatelessWidget {
     required this.onBaseCurrencyTap,
     required this.onLocaleTap,
     required this.onThemeTap,
-    required this.onAccentTap,
     required this.onHideSkippedChanged,
     required this.localeLabel,
     super.key,
@@ -145,7 +144,6 @@ class SettingsPreferencesSection extends StatelessWidget {
   final VoidCallback onBaseCurrencyTap;
   final VoidCallback onLocaleTap;
   final VoidCallback onThemeTap;
-  final VoidCallback onAccentTap;
   final ValueChanged<bool> onHideSkippedChanged;
   final String localeLabel;
 
@@ -217,14 +215,6 @@ class SettingsPreferencesSection extends StatelessWidget {
         ),
         const GlassDivider(),
         GlassListTile(
-          leading: const Icon(Icons.color_lens_outlined),
-          title: const Text('Accent'),
-          subtitle: Text(themeState.accentColor ?? 'System Material You'),
-          trailing: const Icon(Icons.chevron_right, size: 20),
-          onTap: onAccentTap,
-        ),
-        const GlassDivider(),
-        GlassListTile(
           title: const Text('Hide skipped in history'),
           subtitle: const Text(
             'Hide skipped plan records from the main transaction history.',
@@ -269,3 +259,5 @@ class SettingsFeatureHubSection extends StatelessWidget {
     );
   }
 }
+
+

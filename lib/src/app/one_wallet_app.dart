@@ -106,7 +106,15 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
 
     return LiquidGlassWidgets.wrap(
       adaptiveQuality: true,
-      brightnessResolver: Theme.maybeBrightnessOf,
+      brightnessResolver: (context) {
+        if (themeState.themeMode == ThemeMode.light) return Brightness.light;
+        if (themeState.themeMode == ThemeMode.dark) return Brightness.dark;
+        try {
+          return MediaQuery.platformBrightnessOf(context);
+        } catch (_) {
+          return WidgetsBinding.instance.platformDispatcher.platformBrightness;
+        }
+      },
       child: Builder(
         builder: (context) {
           final useSystemAccent = themeState.accentColor == null;
