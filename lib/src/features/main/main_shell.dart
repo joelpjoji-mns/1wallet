@@ -37,8 +37,6 @@ class _MainShellState extends ConsumerState<MainShell>
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   late final PageController _pageController;
   final ValueNotifier<int> _selectedIndex = ValueNotifier(0);
-  double _dragDistance = 0;
-  double _dragVertical = 0;
 
   static const _tabs = [
     IslandTabItem(
@@ -102,7 +100,11 @@ class _MainShellState extends ConsumerState<MainShell>
     if (!_pageController.hasClients) return;
     final currentPage = _pageController.page?.round();
     if (currentPage == index) return;
-    _pageController.jumpToPage(index);
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
@@ -129,7 +131,7 @@ class _MainShellState extends ConsumerState<MainShell>
         builder: (context, selectedIndex, child) {
           Widget mainBody = PageView.builder(
             controller: _pageController,
-            physics: const PageScrollPhysics(parent: BouncingScrollPhysics()),
+            physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
             dragStartBehavior: DragStartBehavior.down,
             itemCount: _tabs.length,
             onPageChanged: (index) {
@@ -175,51 +177,22 @@ class _MainShellState extends ConsumerState<MainShell>
                   },
                 );
 
-          Widget mobileBody = Listener(
-            onPointerDown: (_) {
-              _dragDistance = 0;
-              _dragVertical = 0;
-            },
-            onPointerMove: (event) {
-              if (_selectedIndex.value == 0 && _dragDistance > -1000) {
-                _dragDistance += event.delta.dx;
-                _dragVertical += event.delta.dy;
-
-                // If the user is scrolling vertically, cancel the horizontal drawer swipe
-                if (_dragVertical.abs() > 20 &&
-                    _dragVertical.abs() > _dragDistance.abs()) {
-                  _dragDistance = -1000;
-                  return;
-                }
-
-                if (_dragDistance > 60) {
-                  if (!(_scaffoldKey.currentState?.isDrawerOpen ?? false)) {
-                    _scaffoldKey.currentState?.openDrawer();
-                  }
-                  _dragDistance = -1000;
-                } else if (_dragDistance < -20) {
-                  _dragDistance =
-                      -1000; // prevent triggering if swiped left first
-                }
-              }
-            },
-            child: Stack(
-              children: [
-                mainBody,
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: BottomIslandNavBar(
-                    items: _tabs,
-                    selectedIndex: selectedIndex,
-                    onSelected: _selectTab,
-                    action: showAction ? action : null,
-                    compactAction: selectedIndex == 2,
-                  ),
+          Widget mobileBody = Stack(
+            children: [
+              mainBody,
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: BottomIslandNavBar(
+                  items: _tabs,
+                  selectedIndex: selectedIndex,
+                  onSelected: _selectTab,
+                  action: showAction ? action : null,
+                  compactAction: selectedIndex == 2,
                 ),
-              ],
-            ),
+              ),
+            ],
           );
 
           Widget desktopBody = ColoredBox(

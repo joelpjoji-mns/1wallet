@@ -75,8 +75,8 @@ class BottomIslandNavBar extends StatelessWidget {
                   children: [
                     // Island bar position: shifts left and shrinks to fit FAB on right when down, or centered
                     AnimatedPositioned(
-                      duration: const Duration(milliseconds: 380),
-                      curve: Curves.easeInOutCubicEmphasized,
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
                       left: islandLeft,
                       bottom: 0,
                       width: islandWidth,
@@ -114,14 +114,14 @@ class BottomIslandNavBar extends StatelessWidget {
                       // FAB moving down animation smoothly anchored to bottom right
                       // When compactAction is true, center the 64px FAB with the 96px total bar height ((96 - 64) / 2 = 16)
                       AnimatedPositioned(
-                        duration: const Duration(milliseconds: 380),
-                        curve: Curves.easeInOutCubicEmphasized,
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutCubic,
                         right: 0,
                         bottom: compactAction
                             ? (AppSizes.bottomBar - 64) / 2
                             : AppSizes.bottomBarContentHeight + 16,
                         child: AnimatedOpacity(
-                          duration: const Duration(milliseconds: 250),
+                          duration: const Duration(milliseconds: 180),
                           opacity: 1.0,
                           child: action!,
                         ),
