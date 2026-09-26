@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:dynamic_color/dynamic_color.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../routing/app_router.dart';
@@ -108,8 +107,8 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     return LiquidGlassWidgets.wrap(
       adaptiveQuality: true,
       brightnessResolver: Theme.maybeBrightnessOf,
-      child: DynamicColorBuilder(
-        builder: (lightDynamic, darkDynamic) {
+      child: Builder(
+        builder: (context) {
           final useSystemAccent = themeState.accentColor == null;
           return MaterialApp.router(
             title: '1Wallet',
@@ -117,11 +116,11 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
             routerConfig: router,
             theme: AppTheme.light(
               accentColor: themeState.accentColor,
-              systemColorScheme: useSystemAccent ? lightDynamic : null,
+              systemColorScheme: null,
             ),
             darkTheme: AppTheme.amoled(
               accentColor: themeState.accentColor,
-              systemColorScheme: useSystemAccent ? darkDynamic : null,
+              systemColorScheme: null,
             ),
             themeMode: themeState.themeMode,
             builder: (context, child) {
@@ -134,5 +133,6 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     );
   }
 }
+
 
 

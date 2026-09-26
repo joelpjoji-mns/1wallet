@@ -52,47 +52,23 @@ abstract final class AppTheme {
       error: dark ? AppColors.dangerDark : AppColors.dangerLight,
       surface: amoled
           ? AppColors.amoledBackground
-          : _accentTintedSurface(
-              scheme.surface,
-              scheme.primary,
-              dark ? 0.03 : 0.018,
-            ),
+          : scheme.surface,
       surfaceContainerLowest: amoled
           ? AppColors.amoledBackground
           : scheme.surfaceContainerLowest,
       surfaceContainerLow: amoled
           ? const Color(0xFF080808)
-          : _accentTintedSurface(
-              scheme.surfaceContainerLow,
-              scheme.primary,
-              dark ? 0.08 : 0.045,
-            ),
+          : scheme.surfaceContainerLow,
       surfaceContainer: amoled
           ? const Color(0xFF0E0E0E)
-          : _accentTintedSurface(
-              scheme.surfaceContainer,
-              scheme.primary,
-              dark ? 0.10 : 0.06,
-            ),
+          : scheme.surfaceContainer,
       surfaceContainerHigh: amoled
           ? const Color(0xFF151515)
-          : _accentTintedSurface(
-              scheme.surfaceContainerHigh,
-              scheme.primary,
-              dark ? 0.12 : 0.075,
-            ),
+          : scheme.surfaceContainerHigh,
       surfaceContainerHighest: amoled
           ? const Color(0xFF1C1C1C)
-          : _accentTintedSurface(
-              scheme.surfaceContainerHighest,
-              scheme.primary,
-              dark ? 0.14 : 0.09,
-            ),
-      outlineVariant: _accentTintedSurface(
-        scheme.outlineVariant,
-        scheme.primary,
-        dark ? 0.18 : 0.12,
-      ),
+          : scheme.surfaceContainerHighest,
+      outlineVariant: scheme.outlineVariant,
     );
 
     final textTheme = Typography.material2021(
@@ -172,15 +148,6 @@ abstract final class AppTheme {
         return Color(intValue | 0xFF000000);
       }
     }
-    return null;
-  }
-
-  static Color _accentTintedSurface(
-    Color surface,
-    Color accent,
-    double opacity,
-  ) {
-    return Color.alphaBlend(accent.withAlphaFactor(opacity), surface);
   }
 }
 
