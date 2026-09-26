@@ -5,7 +5,6 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import '../../design/tokens.dart';
 import '../../utils/app_reload.dart';
 import '../../widgets/app_kit.dart';
-import '../common/route_scaffold.dart';
 import 'app_update_provider.dart';
 
 class UpdatesScreen extends ConsumerWidget {
@@ -18,23 +17,39 @@ class UpdatesScreen extends ConsumerWidget {
 
     final hasUpdate = state.latestRelease != null;
 
-    return RouteScaffold(
-      title: 'Updates',
-      actions: [
-        GlassIconButton(
-          icon: const Icon(Icons.refresh_rounded),
-          onPressed: state.status == UpdateStatus.checking
-              ? null
-              : () => provider.checkForUpdates(),
-          size: 44,
-          iconSize: 22,
-          semanticLabel: 'Check for updates',
+    return GlassScaffold(
+        appBar: GlassAppBar(
+          title: Text(
+            'Updates',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          leading: Navigator.of(context).canPop()
+              ? const AppBackAction()
+              : null,
+          centerTitle: false,
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.xs),
+              child: GlassIconButton(
+                icon: const Icon(Icons.refresh_rounded),
+                onPressed: state.status == UpdateStatus.checking
+                    ? null
+                    : () => provider.checkForUpdates(),
+                size: 44,
+                iconSize: 22,
+                
+                semanticLabel: 'Check for updates',
+              ),
+            ),
+          ],
         ),
-      ],
-      child: GlassIsolationScope(
-        isolated: true,
-        defaultQuality: GlassQuality.standard,
-        child: Column(
+        body: GlassIsolationScope(isolated: true, defaultQuality: GlassQuality.standard, child: ListView(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.md,
+          ),
           children: [
             _buildHeroCard(context, state),
             if (hasUpdate) ...[
@@ -476,7 +491,6 @@ class _ChangelogSectionLabel extends StatelessWidget {
     );
   }
 }
-
 
 
 
