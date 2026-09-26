@@ -61,28 +61,28 @@ abstract final class AppTheme {
           ? AppColors.amoledBackground
           : scheme.surfaceContainerLowest,
       surfaceContainerLow: amoled
-          ? const Color(0xFF080808)
+          ? Colors.white.withValues(alpha: 0.02)
           : _accentTintedSurface(
               scheme.surfaceContainerLow,
               scheme.primary,
               dark ? 0.08 : 0.045,
             ),
       surfaceContainer: amoled
-          ? const Color(0xFF0E0E0E)
+          ? Colors.white.withValues(alpha: 0.03)
           : _accentTintedSurface(
               scheme.surfaceContainer,
               scheme.primary,
               dark ? 0.10 : 0.06,
             ),
       surfaceContainerHigh: amoled
-          ? const Color(0xFF151515)
+          ? Colors.white.withValues(alpha: 0.04)
           : _accentTintedSurface(
               scheme.surfaceContainerHigh,
               scheme.primary,
               dark ? 0.12 : 0.075,
             ),
       surfaceContainerHighest: amoled
-          ? const Color(0xFF1C1C1C)
+          ? Colors.white.withValues(alpha: 0.06)
           : _accentTintedSurface(
               scheme.surfaceContainerHighest,
               scheme.primary,
@@ -183,3 +183,4 @@ abstract final class AppTheme {
     return Color.alphaBlend(accent.withAlphaFactor(opacity), surface);
   }
 }
+

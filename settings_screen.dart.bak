@@ -133,17 +133,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         .where((c) => c.status == 'pending')
         .length;
 
-    return RouteScaffold(
-      title: 'Settings',
-      actions: [
-        GlassIconButton(size: 52, iconSize: 26,
-          onPressed: () => context.push('/review'),
-          icon: const Icon(Icons.fact_check_outlined),
-        ),
-      ],
-      child: GlassIsolationScope(
+    return GlassScaffold(
+      appBar: GlassAppBar(
+        title: const Text('Settings'),
+        actions: [
+          GlassIconButton(size: 52, iconSize: 26,
+            
+            onPressed: () => context.push('/review'),
+            icon: const Icon(Icons.fact_check_outlined),
+          ),
+        ],
+      ),
+      body: GlassIsolationScope(
         isolated: true,
-        child: Column(
+        child: ListView(
+          padding: EdgeInsets.only(
+            top: MediaQuery.paddingOf(context).top + kToolbarHeight + AppSpacing.md,
+            bottom: MediaQuery.paddingOf(context).bottom + AppSpacing.xl,
+            left: AppSpacing.md,
+            right: AppSpacing.md,
+          ),
           children: [
             // ── Profile ──
             SettingsProfileSection(
