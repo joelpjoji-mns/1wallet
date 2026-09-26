@@ -108,16 +108,6 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     return LiquidGlassWidgets.wrap(
       adaptiveQuality: true,
       brightnessResolver: Theme.maybeBrightnessOf,
-      theme: GlassThemeData(
-        light: GlassThemeVariant(
-          settings: GlassThemeSettings(thickness: 28, blur: 14),
-          quality: GlassQuality.standard,
-        ),
-        dark: GlassThemeVariant(
-          settings: GlassThemeSettings(thickness: 2, blur: 8),
-          quality: GlassQuality.standard,
-        ),
-      ),
       child: DynamicColorBuilder(
         builder: (lightDynamic, darkDynamic) {
           final useSystemAccent = themeState.accentColor == null;
