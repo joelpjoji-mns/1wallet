@@ -6,69 +6,48 @@ import '../design/tokens.dart';
 abstract final class AppTheme {
   static bool disableGoogleFonts = false;
 
-  static ThemeData light({
-    String? accentColor,
-    ColorScheme? systemColorScheme,
-  }) => _theme(
-    Brightness.light,
-    accentColor: accentColor,
-    systemColorScheme: systemColorScheme,
-  );
+  static ThemeData light({ColorScheme? systemColorScheme}) =>
+      _theme(Brightness.light, systemColorScheme: systemColorScheme);
 
-  static ThemeData amoled({
-    String? accentColor,
-    ColorScheme? systemColorScheme,
-  }) => _theme(
+  static ThemeData amoled({ColorScheme? systemColorScheme}) => _theme(
     Brightness.dark,
     amoled: true,
-    accentColor: accentColor,
     systemColorScheme: systemColorScheme,
   );
 
   static ThemeData _theme(
     Brightness brightness, {
     bool amoled = false,
-    String? accentColor,
     ColorScheme? systemColorScheme,
   }) {
     final dark = brightness == Brightness.dark;
-    final customAccentColor = _parseAccentColor(accentColor);
     final baseScheme =
-        customAccentColor == null &&
-            systemColorScheme != null &&
-            systemColorScheme.brightness == brightness
+        systemColorScheme != null && systemColorScheme.brightness == brightness
         ? systemColorScheme
         : ColorScheme.fromSeed(
-            seedColor: customAccentColor ?? AppColors.primary,
+            seedColor: AppColors.primary,
             brightness: brightness,
           );
 
-    var scheme = baseScheme;
-    if (customAccentColor != null) {
-      scheme = scheme.copyWith(primary: customAccentColor);
-    }
-
-    scheme = scheme.copyWith(
+    final scheme = baseScheme.copyWith(
       error: dark ? AppColors.dangerDark : AppColors.dangerLight,
-      surface: amoled
-          ? AppColors.amoledBackground
-          : scheme.surface,
+      surface: amoled ? AppColors.amoledBackground : baseScheme.surface,
       surfaceContainerLowest: amoled
           ? AppColors.amoledBackground
-          : scheme.surfaceContainerLowest,
+          : baseScheme.surfaceContainerLowest,
       surfaceContainerLow: amoled
           ? const Color(0xFF080808)
-          : scheme.surfaceContainerLow,
+          : baseScheme.surfaceContainerLow,
       surfaceContainer: amoled
           ? const Color(0xFF0E0E0E)
-          : scheme.surfaceContainer,
+          : baseScheme.surfaceContainer,
       surfaceContainerHigh: amoled
           ? const Color(0xFF151515)
-          : scheme.surfaceContainerHigh,
+          : baseScheme.surfaceContainerHigh,
       surfaceContainerHighest: amoled
           ? const Color(0xFF1C1C1C)
-          : scheme.surfaceContainerHighest,
-      outlineVariant: scheme.outlineVariant,
+          : baseScheme.surfaceContainerHighest,
+      outlineVariant: baseScheme.outlineVariant,
     );
 
     final textTheme = Typography.material2021(
@@ -138,17 +117,4 @@ abstract final class AppTheme {
       ),
     );
   }
-
-  static Color? _parseAccentColor(String? accentColor) {
-    if (accentColor != null &&
-        accentColor.length == 7 &&
-        accentColor.startsWith('#')) {
-      final intValue = int.tryParse(accentColor.substring(1), radix: 16);
-      if (intValue != null) {
-        return Color(intValue | 0xFF000000);
-      }
-    }
-  }
 }
-
-

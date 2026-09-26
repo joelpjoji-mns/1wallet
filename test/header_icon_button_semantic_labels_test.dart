@@ -48,7 +48,7 @@ void main() {
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),
-          darkTheme: AppTheme.dark(),
+          darkTheme: AppTheme.amoled(),
           home: const Scaffold(body: AccountsScreen()),
         ),
       ),
@@ -81,7 +81,7 @@ void main() {
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light(),
-            darkTheme: AppTheme.dark(),
+            darkTheme: AppTheme.amoled(),
             home: Scaffold(
               body: TransactionsScreen(onMenuPressed: () {}),
             ),

@@ -38,7 +38,7 @@ void main() {
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),
-          darkTheme: AppTheme.dark(),
+          darkTheme: AppTheme.amoled(),
           home: const AddRecordScreen(initialAccountId: 'acc-cash'),
         ),
       ),
@@ -97,7 +97,7 @@ void main() {
           debugShowCheckedModeBanner: false,
           routerConfig: router,
           theme: AppTheme.light(),
-          darkTheme: AppTheme.dark(),
+          darkTheme: AppTheme.amoled(),
         ),
       ),
     );
@@ -147,7 +147,7 @@ void main() {
           debugShowCheckedModeBanner: false,
           routerConfig: router,
           theme: AppTheme.light(),
-          darkTheme: AppTheme.dark(),
+          darkTheme: AppTheme.amoled(),
         ),
       ),
     );
@@ -192,7 +192,7 @@ void main() {
           debugShowCheckedModeBanner: false,
           routerConfig: router,
           theme: AppTheme.light(),
-          darkTheme: AppTheme.dark(),
+          darkTheme: AppTheme.amoled(),
         ),
       ),
     );

@@ -8,7 +8,6 @@ import '../../data/ledger_providers.dart';
 import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
 import '../../theme/theme_controller.dart';
-import '../../widgets/color_picker_dialog.dart';
 import '../common/full_screen_picker.dart';
 import '../common/route_scaffold.dart';
 import 'settings_components.dart';

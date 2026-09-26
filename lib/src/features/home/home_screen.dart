@@ -241,7 +241,7 @@ class HomeScreen extends ConsumerWidget {
             padding: const EdgeInsets.only(left: 6.0),
             child: AuthUserActionButton(
               user: user,
-              radius: 20,
+              radius: 14,
               tooltip: 'Open profile and settings',
               onPressed: () => context.push('/settings'),
             ),
@@ -473,4 +473,3 @@ String _homeWidgetLabel(HomeDashboardWidgetId id) {
     HomeDashboardWidgetId.netWorth => 'Net Worth',
   };
 }
-

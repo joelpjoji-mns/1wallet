@@ -217,7 +217,7 @@ class AuthUserActionButton extends StatelessWidget {
         customBorder: const CircleBorder(),
         onTap: onPressed,
         child: Padding(
-          padding: const EdgeInsets.all(6),
+          padding: const EdgeInsets.all(4),
           child: AuthUserAvatar(
             user: user,
             radius: radius,

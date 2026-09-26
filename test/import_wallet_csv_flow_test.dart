@@ -36,7 +36,7 @@ void main() {
           debugShowCheckedModeBanner: false,
           routerConfig: router,
           theme: AppTheme.light(),
-          darkTheme: AppTheme.dark(),
+          darkTheme: AppTheme.amoled(),
         ),
       ),
     );
@@ -113,7 +113,7 @@ date,account,amount,category,notes
           debugShowCheckedModeBanner: false,
           routerConfig: router,
           theme: AppTheme.light(),
-          darkTheme: AppTheme.dark(),
+          darkTheme: AppTheme.amoled(),
         ),
       ),
     );

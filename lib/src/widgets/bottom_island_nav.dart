@@ -75,7 +75,7 @@ class BottomIslandNavBar extends StatelessWidget {
                   unselectedIconColor: scheme.onSurfaceVariant,
                   selectedLabelColor: scheme.primary,
                   unselectedLabelColor: scheme.onSurfaceVariant,
-                  
+
                   backgroundQuality: GlassQuality.standard,
                   // Explicit glass settings to prevent AMOLED white bleed:
                   // on pure-black AMOLED surfaces the shader can refract
@@ -83,7 +83,14 @@ class BottomIslandNavBar extends StatelessWidget {
                   // + more blur keeps the glass effect dark and visible.
                   settings: LiquidGlassSettings(
                     blur: isDark ? 26 : 16,
-                    thickness: isDark ? 52 : 26,
+                    thickness: isDark ? 30 : 26,
+                    glassColor: isDark
+                        ? const Color(0xD9000000)
+                        : const Color(0x26FFFFFF),
+                    whitenStrength: isDark ? 0 : 0.08,
+                    lightIntensity: isDark ? 0.12 : 0.5,
+                    ambientStrength: isDark ? 0.04 : 0.1,
+                    edgeAbsorption: isDark ? 0.22 : 0,
                   ),
                 ),
               ),
@@ -94,5 +101,3 @@ class BottomIslandNavBar extends StatelessWidget {
     );
   }
 }
-
-

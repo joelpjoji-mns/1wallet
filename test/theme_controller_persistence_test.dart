@@ -66,8 +66,8 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       final controller = ThemeController(prefs);
 
-      await controller.setPreference(AppThemePreference.dark);
-      expect(controller.state.preference, AppThemePreference.dark);
+      await controller.setPreference(AppThemePreference.amoled);
+      expect(controller.state.preference, AppThemePreference.amoled);
 
       store.failWrites = true;
       await expectLater(
@@ -78,121 +78,41 @@ void main() {
       // Rolled back to the last value that was actually persisted, instead
       // of silently keeping the failed "light" preference live in memory —
       // which would otherwise just as silently revert on the next launch.
-      expect(controller.state.preference, AppThemePreference.dark);
-    },
-  );
-
-  test(
-    'setAccentColor rolls back the optimistic update and rethrows when '
-    'persistence fails (both setString and remove paths)',
-    () async {
-      final prefs = await SharedPreferences.getInstance();
-      final controller = ThemeController(prefs);
-
-      await controller.setAccentColor('#112233');
-      expect(controller.state.accentColor, '#112233');
-
-      store.failWrites = true;
-      await expectLater(
-        controller.setAccentColor('#445566'),
-        throwsException,
-      );
-      expect(controller.state.accentColor, '#112233');
-
-      // Clearing the accent goes through `remove` rather than `setString`;
-      // that failure path should roll back the same way.
-      await expectLater(controller.setAccentColor(null), throwsException);
-      expect(controller.state.accentColor, '#112233');
-    },
-  );
-
-  test(
-    'an older setPreference call failing after a newer overlapping call '
-    'already succeeded does not clobber the newer preference',
-    () async {
-      final prefs = await SharedPreferences.getInstance();
-      final controller = ThemeController(prefs);
       expect(controller.state.preference, AppThemePreference.amoled);
-
-      // Gate the two writes so call A's completes *after* call B's, even
-      // though A was started first — simulating a slow older request that
-      // finishes after a faster newer one.
-      final gateA = store.addGate();
-      final gateB = store.addGate();
-
-      final futureA = controller.setPreference(AppThemePreference.dark);
-      final futureB = controller.setPreference(AppThemePreference.light);
-      // Both calls have applied their optimistic update by now; B (started
-      // second) is the current value.
-      expect(controller.state.preference, AppThemePreference.light);
-
-      // Let B's write land first and succeed.
-      gateB.complete();
-      await futureB;
-      expect(controller.state.preference, AppThemePreference.light);
-
-      // Now let A's (older) write land and fail.
-      store.failWrites = true;
-      gateA.complete();
-      await expectLater(futureA, throwsException);
-
-      // A must not roll back to its own "previous" (amoled, the default
-      // from before either call started) — that would silently clobber B's
-      // newer, already-persisted "light" selection.
-      expect(controller.state.preference, AppThemePreference.light);
     },
   );
 
-  test(
-    'an older setAccentColor call failing after a newer overlapping call '
-    'already succeeded does not clobber the newer accent',
-    () async {
-      final prefs = await SharedPreferences.getInstance();
-      final controller = ThemeController(prefs);
+  test('an older setPreference call failing after a newer overlapping call '
+      'already succeeded does not clobber the newer preference', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final controller = ThemeController(prefs);
+    expect(controller.state.preference, AppThemePreference.amoled);
 
-      final gateA = store.addGate();
-      final gateB = store.addGate();
+    // Gate the two writes so call A's completes *after* call B's, even
+    // though A was started first — simulating a slow older request that
+    // finishes after a faster newer one.
+    final gateA = store.addGate();
+    final gateB = store.addGate();
 
-      final futureA = controller.setAccentColor('#112233');
-      final futureB = controller.setAccentColor('#445566');
-      expect(controller.state.accentColor, '#445566');
+    final futureA = controller.setPreference(AppThemePreference.amoled);
+    final futureB = controller.setPreference(AppThemePreference.light);
+    // Both calls have applied their optimistic update by now; B (started
+    // second) is the current value.
+    expect(controller.state.preference, AppThemePreference.light);
 
-      gateB.complete();
-      await futureB;
-      expect(controller.state.accentColor, '#445566');
+    // Let B's write land first and succeed.
+    gateB.complete();
+    await futureB;
+    expect(controller.state.preference, AppThemePreference.light);
 
-      store.failWrites = true;
-      gateA.complete();
-      await expectLater(futureA, throwsException);
+    // Now let A's (older) write land and fail.
+    store.failWrites = true;
+    gateA.complete();
+    await expectLater(futureA, throwsException);
 
-      expect(controller.state.accentColor, '#445566');
-    },
-  );
-
-  test(
-    'an older setPreference failure does not clobber a newer, unrelated '
-    'accentColor change made in between',
-    () async {
-      final prefs = await SharedPreferences.getInstance();
-      final controller = ThemeController(prefs);
-
-      final gatePreference = store.addGate();
-
-      final preferenceFuture = controller.setPreference(
-        AppThemePreference.dark,
-      );
-      // A different field changes while the preference write is still
-      // in-flight; this is a normal, successful, unrelated call (no gate).
-      await controller.setAccentColor('#00ff00');
-      expect(controller.state.accentColor, '#00ff00');
-
-      store.failWrites = true;
-      gatePreference.complete();
-      await expectLater(preferenceFuture, throwsException);
-
-      // The failed preference write rolled back only `preference`; the
-      // unrelated, already-applied accent change must survive untouched.
-      expect(controller.state.accentColor, '#00ff00');
-    },
-  );
+    // A must not roll back to its own "previous" (amoled, the default
+    // from before either call started) — that would silently clobber B's
+    // newer, already-persisted "light" selection.
+    expect(controller.state.preference, AppThemePreference.light);
+  });
 }

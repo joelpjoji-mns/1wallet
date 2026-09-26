@@ -49,7 +49,7 @@ void main() {
           theme: AppTheme.light().copyWith(
             splashFactory: NoSplash.splashFactory,
           ),
-          darkTheme: AppTheme.dark().copyWith(
+          darkTheme: AppTheme.amoled().copyWith(
             splashFactory: NoSplash.splashFactory,
           ),
         ),

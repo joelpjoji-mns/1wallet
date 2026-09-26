@@ -12,45 +12,20 @@ import 'package:one_wallet_flutter/src/theme/app_theme.dart';
 import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 
 void main() {
-  test('custom accent overrides system dynamic scheme', () {
-    final systemScheme = ColorScheme.fromSeed(
-      seedColor: Colors.green,
-      brightness: Brightness.light,
-    );
-
-    final theme = AppTheme.light(
-      accentColor: '#123456',
-      systemColorScheme: systemScheme,
-    );
-
-    expect(theme.colorScheme.primary, const Color(0xFF123456));
-  });
-
-  test('system dynamic scheme is used when no custom accent is selected', () {
+  test('system dynamic scheme is the shared app accent source', () {
     final systemScheme = ColorScheme.fromSeed(
       seedColor: Colors.deepPurple,
       brightness: Brightness.dark,
     );
 
-    final theme = AppTheme.dark(systemColorScheme: systemScheme);
+    final theme = AppTheme.amoled(systemColorScheme: systemScheme);
 
     expect(theme.colorScheme.primary, systemScheme.primary);
   });
 
-  test('Dark and AMOLED have distinct surfaces with black AMOLED canvas', () {
-    final dark = AppTheme.dark();
+  test('AMOLED surfaces remain black-based', () {
     final amoled = AppTheme.amoled();
-
-    // Explicit, name-independent checks that regular dark mode never
-    // becomes pure black — only the dedicated AMOLED preference should.
-    expect(dark.scaffoldBackgroundColor, isNot(Colors.black));
-    expect(dark.colorScheme.surface, isNot(Colors.black));
     expect(amoled.scaffoldBackgroundColor, Colors.black);
-    expect(amoled.colorScheme.surface, Colors.black);
-
-    expect(dark.scaffoldBackgroundColor, AppColors.darkBackground);
-    expect(dark.colorScheme.surface, isNot(AppColors.amoledBackground));
-    expect(amoled.scaffoldBackgroundColor, AppColors.amoledBackground);
     expect(amoled.colorScheme.surface, AppColors.amoledBackground);
     expect(
       amoled.colorScheme.surfaceContainerLowest,
@@ -59,24 +34,17 @@ void main() {
     expect(amoled.cardTheme.color, const Color(0xFF080808));
   });
 
-  test('card surfaces are tinted by the selected accent', () {
-    final cyanTheme = AppTheme.light(accentColor: '#00BCD4');
-    final purpleTheme = AppTheme.light(accentColor: '#6750A4');
-
+  test('fallback accent is stable without dynamic color', () {
     expect(
-      cyanTheme.colorScheme.surfaceContainerLow,
-      isNot(purpleTheme.colorScheme.surfaceContainerLow),
-    );
-    expect(
-      cyanTheme.cardTheme.color,
-      cyanTheme.colorScheme.surfaceContainerLow,
+      AppTheme.light().colorScheme.primary,
+      AppTheme.light().colorScheme.primary,
     );
   });
 
   testWidgets('category and add-record colors follow theme color scheme', (
     WidgetTester tester,
   ) async {
-    final theme = AppTheme.light(accentColor: '#6750A4');
+    final theme = AppTheme.light();
     late Color incomeCategoryColor;
     late ({
       Color operatorBackground,
@@ -112,10 +80,10 @@ void main() {
     expect(incomePadColors.equalsForeground, theme.colorScheme.onTertiary);
   });
 
-  testWidgets('add-record FAB glass icon uses the selected accent', (
+  testWidgets('add-record FAB glass icon uses the theme accent', (
     WidgetTester tester,
   ) async {
-    final theme = AppTheme.light(accentColor: '#00BCD4');
+    final theme = AppTheme.light();
 
     await tester.pumpWidget(
       ProviderScope(
@@ -142,7 +110,7 @@ void main() {
   testWidgets('home balance pill uses accent tint instead of error color', (
     WidgetTester tester,
   ) async {
-    final theme = AppTheme.light(accentColor: '#00BCD4');
+    final theme = AppTheme.light();
 
     await tester.pumpWidget(
       MaterialApp(

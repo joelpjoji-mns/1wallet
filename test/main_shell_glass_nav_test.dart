@@ -38,6 +38,9 @@ void main() {
     final tabBar = find.byType(GlassTabBar);
     expect(tabBar, findsOneWidget);
     expect(tester.widget<GlassTabBar>(tabBar).selectedIndex, 0);
+    final glass = tester.widget<GlassTabBar>(tabBar);
+    expect(glass.settings?.glassColor, const Color(0xD9000000));
+    expect(glass.settings?.whitenStrength, 0);
 
     await tester.drag(find.byType(PageView), const Offset(-320, 0));
     await tester.pumpAndSettle();

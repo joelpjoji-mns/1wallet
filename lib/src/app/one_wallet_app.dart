@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
+import 'package:dynamic_color/dynamic_color.dart';
 
 import '../routing/app_router.dart';
 import '../theme/app_theme.dart';
@@ -105,9 +106,15 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     final themeState = ref.watch(themeControllerProvider);
 
     return LiquidGlassWidgets.wrap(
-      theme: const GlassThemeData(
+      theme: GlassThemeData(
         dark: GlassThemeVariant(
-          settings: GlassThemeSettings(thickness: 2, blur: 8),
+          settings: GlassThemeSettings(
+            thickness: 24,
+            blur: 8,
+            glassColor: Color(0xCC000000),
+            lightIntensity: 0.12,
+            ambientStrength: 0.04,
+          ),
           quality: GlassQuality.standard,
         ),
       ),
@@ -121,32 +128,20 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
           return WidgetsBinding.instance.platformDispatcher.platformBrightness;
         }
       },
-      child: Builder(
-        builder: (context) {
-          final useSystemAccent = themeState.accentColor == null;
-          return MaterialApp.router(
-            title: '1Wallet',
-            debugShowCheckedModeBanner: false,
-            routerConfig: router,
-            theme: AppTheme.light(
-              accentColor: themeState.accentColor,
-              systemColorScheme: null,
-            ),
-            darkTheme: AppTheme.amoled(
-              accentColor: themeState.accentColor,
-              systemColorScheme: null,
-            ),
-            themeMode: themeState.themeMode,
-            builder: (context, child) {
-              if (child == null) return const SizedBox.shrink();
-              return child;
-            },
-          );
-        },
+      child: DynamicColorBuilder(
+        builder: (lightDynamic, darkDynamic) => MaterialApp.router(
+          title: '1Wallet',
+          debugShowCheckedModeBanner: false,
+          routerConfig: router,
+          theme: AppTheme.light(systemColorScheme: lightDynamic),
+          darkTheme: AppTheme.amoled(systemColorScheme: darkDynamic),
+          themeMode: themeState.themeMode,
+          builder: (context, child) {
+            if (child == null) return const SizedBox.shrink();
+            return child;
+          },
+        ),
       ),
     );
   }
 }
-
-
-

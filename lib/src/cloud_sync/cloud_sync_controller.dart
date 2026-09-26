@@ -304,6 +304,72 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     }
   }
 
+  /// Explicitly replace the cloud wallet with this device's current ledger.
+  ///
+  /// The caller must obtain confirmation before invoking this method. We
+  /// adopt a fresh cloud baseline here, then `uploadSnapshot` checks that
+  /// baseline again inside its Firestore transaction so a write racing this
+  /// read is still reported as a conflict instead of being overwritten.
+  Future<void> overwriteCloudWithLocal() async {
+    final user = _ref.read(authControllerProvider).user;
+    if (user == null || state.phase == CloudSyncPhase.disabled) return;
+    if (state.phase == CloudSyncPhase.checking ||
+        state.phase == CloudSyncPhase.restoring ||
+        state.phase == CloudSyncPhase.uploading) {
+      return;
+    }
+
+    try {
+      state = state.copyWith(
+        phase: CloudSyncPhase.checking,
+        error: null,
+        pendingUpload: true,
+      );
+      final doc = await _firestore
+          .doc('users/${user.id}')
+          .get(const GetOptions(source: Source.server))
+          .timeout(cloudSyncReadTimeout);
+      final live = _cloudWriteStateFromDocData(doc.data());
+      final metadata = state.metadata ?? await CloudSyncMetadata.load();
+      final adopted = metadata.copyWith(
+        lastCloudRevision: live.cloudRevision,
+        lastObservedCloudUpdatedAt: live.updatedAt?.toUtc().toIso8601String(),
+      );
+      await adopted.save();
+      state = state.copyWith(metadata: adopted, phase: CloudSyncPhase.idle);
+      await uploadSnapshot(reason: 'user-overwrite');
+    } catch (error) {
+      state = state.copyWith(
+        phase: CloudSyncPhase.error,
+        pendingUpload: true,
+        error: 'Could not prepare the cloud overwrite: $error',
+      );
+    }
+  }
+
+  /// Explicitly discard local unsynced changes and restore the current cloud
+  /// snapshot. The caller must obtain confirmation before invoking this.
+  Future<void> useCloudCopy() async {
+    final user = _ref.read(authControllerProvider).user;
+    if (user == null || state.phase == CloudSyncPhase.disabled) return;
+    if (state.phase == CloudSyncPhase.checking ||
+        state.phase == CloudSyncPhase.restoring ||
+        state.phase == CloudSyncPhase.uploading) {
+      return;
+    }
+    final metadata = state.metadata ?? await CloudSyncMetadata.load();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_unsynced_changes', false);
+    await _restoreFromCloud(user.id, metadata);
+    if (state.phase == CloudSyncPhase.error) {
+      // A failed cloud read must never turn a local-only wallet into an
+      // apparent clean state; otherwise a later background upload might
+      // replace the cloud wallet without another explicit choice.
+      await prefs.setBool('has_unsynced_changes', true);
+      state = state.copyWith(pendingUpload: true);
+    }
+  }
+
   Future<void> _bootstrap(String userId) async {
     if (state.bootstrappedUserId == userId) return;
     try {
@@ -880,7 +946,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     String userId,
     CloudSyncMetadata currentMetadata,
   ) async {
-    state = state.copyWith(phase: CloudSyncPhase.restoring);
+    state = state.copyWith(phase: CloudSyncPhase.restoring, error: null);
     try {
       // Bracket the bulk chunk/legacy-collection download with two cheap
       // `users/{uid}` version reads, retrying the whole cycle if they
@@ -972,6 +1038,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         phase: CloudSyncPhase.idle,
         metadata: newMetadata,
         progress: 1.0,
+        error: null,
       );
     } on CloudSyncUnstableException catch (e) {
       developer.log('Firebase restore unstable', error: e);

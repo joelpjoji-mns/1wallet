@@ -45,6 +45,11 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
         sync.phase == CloudSyncPhase.checking ||
         sync.phase == CloudSyncPhase.restoring ||
         sync.phase == CloudSyncPhase.uploading;
+    final hasConflict =
+        sync.phase == CloudSyncPhase.error &&
+        (sync.error?.toLowerCase().contains('conflict') == true ||
+            sync.error?.toLowerCase().contains('changed on another device') ==
+                true);
 
     return AppScreen(
       title: 'Data & Sync',
@@ -148,6 +153,32 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                     value: sync.error!,
                     tone: MetricTone.warning,
                   ),
+                if (hasConflict) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Choose which complete wallet copy to keep. This replaces the other copy.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: isWorking ? null : _confirmUseCloudCopy,
+                        icon: const Icon(Icons.cloud_download_outlined),
+                        label: const Text('Use cloud copy'),
+                      ),
+                      FilledButton.tonalIcon(
+                        onPressed: isWorking ? null : _confirmOverwriteCloud,
+                        icon: const Icon(Icons.cloud_upload_outlined),
+                        label: const Text('Overwrite cloud with this device'),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -302,6 +333,52 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
       ),
     );
   }
+
+  Future<void> _confirmUseCloudCopy() async {
+    final confirmed = await _confirmReplacement(
+      title: 'Use cloud wallet?',
+      message:
+          'This replaces the wallet on this device with the cloud copy. Unsynced local changes will be discarded.',
+      action: 'Use cloud copy',
+    );
+    if (confirmed != true || !mounted) return;
+    await ref.read(cloudSyncControllerProvider.notifier).useCloudCopy();
+  }
+
+  Future<void> _confirmOverwriteCloud() async {
+    final confirmed = await _confirmReplacement(
+      title: 'Overwrite cloud wallet?',
+      message:
+          'This replaces the cloud wallet on your other devices with this device’s complete wallet.',
+      action: 'Overwrite cloud',
+    );
+    if (confirmed != true || !mounted) return;
+    await ref
+        .read(cloudSyncControllerProvider.notifier)
+        .overwriteCloudWithLocal();
+  }
+
+  Future<bool?> _confirmReplacement({
+    required String title,
+    required String message,
+    required String action,
+  }) => showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      content: Text(message),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: Text(action),
+        ),
+      ],
+    ),
+  );
 
   String _phaseLabel(CloudSyncPhase phase) {
     switch (phase) {

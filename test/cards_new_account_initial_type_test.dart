@@ -40,7 +40,7 @@ void main() {
             debugShowCheckedModeBanner: false,
             routerConfig: router,
             theme: AppTheme.light(),
-            darkTheme: AppTheme.dark(),
+            darkTheme: AppTheme.amoled(),
           ),
         ),
       );
@@ -75,7 +75,7 @@ void main() {
             debugShowCheckedModeBanner: false,
             routerConfig: router,
             theme: AppTheme.light(),
-            darkTheme: AppTheme.dark(),
+            darkTheme: AppTheme.amoled(),
           ),
         ),
       );

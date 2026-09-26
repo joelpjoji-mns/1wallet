@@ -147,6 +147,23 @@ class IslandFloatingActionButton extends StatelessWidget {
       iconColor: Theme.of(context).colorScheme.primary,
       useOwnLayer: true,
       quality: GlassQuality.standard,
+      settings: LiquidGlassSettings(
+        blur: Theme.of(context).brightness == Brightness.dark ? 16 : 12,
+        thickness: Theme.of(context).brightness == Brightness.dark ? 22 : 18,
+        glassColor: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xD9000000)
+            : const Color(0x26FFFFFF),
+        whitenStrength: 0,
+        lightIntensity: Theme.of(context).brightness == Brightness.dark
+            ? 0.12
+            : 0.5,
+        ambientStrength: Theme.of(context).brightness == Brightness.dark
+            ? 0.04
+            : 0.1,
+        edgeAbsorption: Theme.of(context).brightness == Brightness.dark
+            ? 0.22
+            : 0,
+      ),
     );
 
     final tooltipMessage = tooltip;
@@ -234,8 +251,8 @@ class GlassHeaderButton extends StatelessWidget {
       child: GlassIconButton(
         icon: Icon(icon),
         onPressed: onPressed,
-        size: 48,
-        iconSize: 24,
+        size: 40,
+        iconSize: 22,
         quality: GlassQuality.standard,
         semanticLabel: _headerButtonSemanticLabel(semanticLabel, badgeCount),
       ),
@@ -326,8 +343,8 @@ class HeaderIconButton extends StatelessWidget {
           UnconstrainedBox(
             child: GlassIconButton(
               icon: Icon(icon),
-              iconSize: 26,
-              size: 52,
+              iconSize: 22,
+              size: 44,
               quality: GlassQuality.standard,
               onPressed: onPressed,
               semanticLabel: _headerButtonSemanticLabel(
@@ -1088,4 +1105,3 @@ class AppBackAction extends StatelessWidget {
     );
   }
 }
-

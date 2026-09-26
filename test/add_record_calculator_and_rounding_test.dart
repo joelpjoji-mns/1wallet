@@ -58,7 +58,7 @@ void main() {
           theme: AppTheme.light().copyWith(
             splashFactory: NoSplash.splashFactory,
           ),
-          darkTheme: AppTheme.dark().copyWith(
+          darkTheme: AppTheme.amoled().copyWith(
             splashFactory: NoSplash.splashFactory,
           ),
           home: AddRecordScreen(
@@ -226,7 +226,7 @@ void main() {
             theme: AppTheme.light().copyWith(
               splashFactory: NoSplash.splashFactory,
             ),
-            darkTheme: AppTheme.dark().copyWith(
+            darkTheme: AppTheme.amoled().copyWith(
               splashFactory: NoSplash.splashFactory,
             ),
             home: const AddRecordScreen(initialAccountId: 'acc-cash'),

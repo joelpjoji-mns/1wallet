@@ -65,7 +65,7 @@ void main() {
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light(),
-            darkTheme: AppTheme.dark(),
+            darkTheme: AppTheme.amoled(),
             home: Scaffold(
               body: TransactionRow(
                 state: state,
@@ -155,7 +155,7 @@ void main() {
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light(),
-            darkTheme: AppTheme.dark(),
+            darkTheme: AppTheme.amoled(),
             home: Scaffold(body: RecurringScreen(mode: 'overview')),
           ),
         ),
