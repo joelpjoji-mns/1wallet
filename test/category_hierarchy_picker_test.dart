@@ -208,4 +208,51 @@ void main() {
       expect(harness.result, 'cat-food');
     },
   );
+
+  testWidgets('the AppBar leading button label switches between "Back" and '
+      '"Categories" as you drill in, and tapping it steps back one level', (
+    tester,
+  ) async {
+    // Covers the Material AppBar -> GlassAppBar conversion: the leading
+    // widget was always an explicit Tooltip+GlassIconButton (never relied
+    // on Material's auto-back-button), so this locks in that its dynamic
+    // label/semantics still switch correctly and the button still drives
+    // `_handleBack`.
+    final handle = tester.ensureSemantics();
+
+    final state = ledgerWith(const [
+      Category(id: 'cat-bills', name: 'Bills', kind: 'expense'),
+      Category(
+        id: 'cat-utilities',
+        name: 'Utilities',
+        kind: 'expense',
+        parentId: 'cat-bills',
+      ),
+    ]);
+
+    final harness = _PickerHarness(tester);
+    await harness.open(state);
+
+    // At the top-level list, the leading button means "Back" (close the
+    // picker).
+    expect(find.bySemanticsLabel('Back'), findsOneWidget);
+    expect(find.bySemanticsLabel('Categories'), findsNothing);
+
+    await tester.tap(find.text('Bills'));
+    await tester.pumpAndSettle();
+
+    // One level in, the same button now means "Categories" (go up to the
+    // top-level list) instead of closing the picker.
+    final leadingButton = find.bySemanticsLabel('Categories');
+    expect(leadingButton, findsOneWidget);
+    expect(find.bySemanticsLabel('Back'), findsNothing);
+
+    await tester.tap(leadingButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Choose category'), findsOneWidget);
+    expect(find.bySemanticsLabel('Back'), findsOneWidget);
+
+    handle.dispose();
+  });
 }

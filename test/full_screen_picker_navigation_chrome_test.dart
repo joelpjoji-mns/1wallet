@@ -69,7 +69,6 @@ void main() {
     tester,
   ) async {
     final handle = tester.ensureSemantics();
-    addTearDown(handle.dispose);
 
     final harness = _PickerHarness(tester);
     await harness.open();
@@ -82,13 +81,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(harness.result, isNull);
     expect(find.text('Pick one'), findsNothing);
+
+    handle.dispose();
   });
 
   testWidgets(
     'an optional trailing action renders with its tooltip and fires',
     (tester) async {
       final handle = tester.ensureSemantics();
-      addTearDown(handle.dispose);
 
       var actionFired = false;
       final harness = _PickerHarness(tester);
@@ -108,6 +108,8 @@ void main() {
       // Tooltip message is also reachable via a long-press-style Tooltip
       // widget lookup so the visual hint still works, not just semantics.
       expect(find.byTooltip('Add new'), findsOneWidget);
+
+      handle.dispose();
     },
   );
 
