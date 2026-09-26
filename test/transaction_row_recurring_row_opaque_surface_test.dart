@@ -27,7 +27,7 @@ void main() {
   });
 
   testWidgets(
-    'TransactionRow renders an opaque surface with no per-row GlassCard',
+    'TransactionRow renders a Liquid Glass surface and remains tappable',
     (tester) async {
       var tapped = false;
       final state = emptyLedgerState().copyWith(
@@ -83,27 +83,8 @@ void main() {
           of: find.byType(TransactionRow),
           matching: find.byType(GlassCard),
         ),
-        findsNothing,
+        findsOneWidget,
       );
-      expect(
-        find.descendant(
-          of: find.byType(TransactionRow),
-          matching: find.byType(BackdropFilter),
-        ),
-        findsNothing,
-      );
-
-      // Still a real, distinctly-colored opaque surface (not an invisible
-      // transparent container masquerading as "fixed").
-      final rowContainer = tester.widget<Container>(
-        find.descendant(
-          of: find.byType(TransactionRow),
-          matching: find.byType(Container).first,
-        ),
-      );
-      final decoration = rowContainer.decoration! as BoxDecoration;
-      expect(decoration.color, isNotNull);
-      expect(decoration.color, isNot(Colors.transparent));
 
       // Content and interactivity are unaffected by the surface change.
       expect(find.text('Coffee'), findsOneWidget);
@@ -112,68 +93,62 @@ void main() {
     },
   );
 
-  testWidgets(
-    'Recurring planned-list rows are opaque; only the summary header stays '
-    'glass',
-    (tester) async {
-      final now = DateTime.now();
-      final state = emptyLedgerState().copyWith(
-        accounts: [
-          Account(
-            id: 'acc-bank',
-            name: 'HDFC Main',
-            type: 'bank',
-            currency: 'USD',
-            openingBalance: const Money(amountMinor: 500000, currency: 'USD'),
-          ),
-        ],
-        transactions: [
-          TransactionRecord(
-            id: 'plan-rent',
-            type: 'expense',
-            status: 'scheduled',
-            source: 'recurring',
-            accountId: 'acc-bank',
-            amount: const Money(amountMinor: 32000, currency: 'USD'),
-            baseAmount: const Money(amountMinor: 32000, currency: 'USD'),
-            occurredAt: now.add(const Duration(days: 4)),
-            recurrenceFrequency: 'monthly',
-            name: 'Rent',
-          ),
-        ],
-      );
-
-      final container = ProviderContainer(
-        overrides: authenticatedSampleOverrides(ledger: state),
-      );
-      addTearDown(container.dispose);
-      await container.read(ledgerProvider.notifier).restoreLedgerState(state);
-
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: MaterialApp(
-            debugShowCheckedModeBanner: false,
-            theme: AppTheme.light(),
-            darkTheme: AppTheme.amoled(),
-            home: Scaffold(body: RecurringScreen(mode: 'overview')),
-          ),
+  testWidgets('Recurring planned-list rows use Liquid Glass surfaces', (
+    tester,
+  ) async {
+    final now = DateTime.now();
+    final state = emptyLedgerState().copyWith(
+      accounts: [
+        Account(
+          id: 'acc-bank',
+          name: 'HDFC Main',
+          type: 'bank',
+          currency: 'USD',
+          openingBalance: const Money(amountMinor: 500000, currency: 'USD'),
         ),
-      );
-      await tester.pumpAndSettle();
+      ],
+      transactions: [
+        TransactionRecord(
+          id: 'plan-rent',
+          type: 'expense',
+          status: 'scheduled',
+          source: 'recurring',
+          accountId: 'acc-bank',
+          amount: const Money(amountMinor: 32000, currency: 'USD'),
+          baseAmount: const Money(amountMinor: 32000, currency: 'USD'),
+          occurredAt: now.add(const Duration(days: 4)),
+          recurrenceFrequency: 'monthly',
+          name: 'Rent',
+        ),
+      ],
+    );
 
-      // Only the single "Planned summary" header card uses GlassCard; the
-      // scrollable list of plan rows below it must not add one per row.
-      expect(find.byType(GlassCard), findsOneWidget);
+    final container = ProviderContainer(
+      overrides: authenticatedSampleOverrides(ledger: state),
+    );
+    addTearDown(container.dispose);
+    await container.read(ledgerProvider.notifier).restoreLedgerState(state);
 
-      final rowFinder = find.byWidgetPredicate(
-        (widget) => widget.runtimeType.toString() == '_RecurringCompactCard',
-      );
-      expect(rowFinder, findsOneWidget);
-      expect(
-        find.descendant(of: rowFinder, matching: find.byType(GlassCard)),
-        findsNothing,
-      );
-    },
-  );
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          darkTheme: AppTheme.amoled(),
+          home: Scaffold(body: RecurringScreen(mode: 'overview')),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final rowFinder = find.byWidgetPredicate(
+      (widget) => widget.runtimeType.toString() == '_RecurringCompactCard',
+    );
+    expect(rowFinder, findsOneWidget);
+    expect(
+      find.descendant(of: rowFinder, matching: find.byType(GlassCard)),
+      findsOneWidget,
+    );
+  });
 }

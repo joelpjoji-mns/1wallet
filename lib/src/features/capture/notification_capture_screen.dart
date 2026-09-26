@@ -91,7 +91,7 @@ class _NotificationCaptureScreenState
                 'Turn incoming notifications into review-queue candidates automatically.',
             child: Column(
               children: [
-                SwitchListTile(
+                AppSwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: prefs.notificationCaptureEnabled,
                   onChanged: (value) {
@@ -214,7 +214,7 @@ class _NotificationCaptureScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TextField(
+                AppGlassTextField(
                   controller: _testController,
                   minLines: 3,
                   maxLines: 6,
@@ -383,7 +383,7 @@ class _WordEditorState extends State<_WordEditor> {
           Row(
             children: [
               Expanded(
-                child: TextField(
+                child: AppGlassTextField(
                   controller: _controller,
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => _add(),

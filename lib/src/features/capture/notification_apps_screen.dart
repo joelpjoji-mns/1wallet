@@ -105,18 +105,9 @@ class _NotificationAppsScreenState
                 children: [
                   Padding(
                     padding: const EdgeInsets.all(AppSpacing.md),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.search),
-                        hintText: 'Search apps...',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 0,
-                        ),
-                      ),
+                    child: PremiumSearchInput(
+                      hintText: 'Search apps...',
+                      value: _searchQuery,
                       onChanged: (value) =>
                           setState(() => _searchQuery = value),
                     ),
@@ -141,7 +132,7 @@ class _NotificationAppsScreenState
                             app.packageName.toLowerCase(),
                           );
 
-                          return SwitchListTile(
+                          return AppSwitchListTile(
                             secondary: AppIconWidget(
                               packageName: app.packageName,
                             ),

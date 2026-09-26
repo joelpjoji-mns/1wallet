@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../cloud_sync/cloud_sync_controller.dart';
 import '../../data/ledger_models.dart';
@@ -48,6 +49,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
     final hasConflict =
         sync.phase == CloudSyncPhase.error &&
         (sync.error?.toLowerCase().contains('conflict') == true ||
+            sync.error?.toLowerCase().contains('wallet changed') == true ||
             sync.error?.toLowerCase().contains('changed on another device') ==
                 true);
 
@@ -153,6 +155,32 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                     value: sync.error!,
                     tone: MetricTone.warning,
                   ),
+                if (sync.errorDetails != null) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    childrenPadding: const EdgeInsets.only(
+                      left: AppSpacing.md,
+                      right: AppSpacing.sm,
+                      bottom: AppSpacing.sm,
+                    ),
+                    title: Text(
+                      'Technical details',
+                      style: theme.textTheme.labelLarge,
+                    ),
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: SelectableText(
+                          sync.errorDetails!,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 if (hasConflict) ...[
                   const SizedBox(height: AppSpacing.sm),
                   Text(
@@ -166,15 +194,17 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                     spacing: AppSpacing.sm,
                     runSpacing: AppSpacing.sm,
                     children: [
-                      OutlinedButton.icon(
+                      AppActionButton(
+                        prominent: false,
                         onPressed: isWorking ? null : _confirmUseCloudCopy,
-                        icon: const Icon(Icons.cloud_download_outlined),
-                        label: const Text('Use cloud copy'),
+                        icon: Icons.cloud_download_outlined,
+                        label: 'Use cloud copy',
                       ),
-                      FilledButton.tonalIcon(
+                      AppActionButton(
+                        prominent: true,
                         onPressed: isWorking ? null : _confirmOverwriteCloud,
-                        icon: const Icon(Icons.cloud_upload_outlined),
-                        label: const Text('Overwrite cloud with this device'),
+                        icon: Icons.cloud_upload_outlined,
+                        label: 'Overwrite cloud with this device',
                       ),
                     ],
                   ),
@@ -362,22 +392,22 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
     required String title,
     required String message,
     required String action,
-  }) => showDialog<bool>(
+  }) => GlassDialog.show<bool>(
     context: context,
-    builder: (context) => AlertDialog(
-      title: Text(title),
-      content: Text(message),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: Text(action),
-        ),
-      ],
-    ),
+    title: title,
+    message: message,
+    barrierDismissible: true,
+    actions: [
+      GlassDialogAction(
+        label: 'Cancel',
+        onPressed: () => Navigator.of(context).pop(false),
+      ),
+      GlassDialogAction(
+        label: action,
+        isPrimary: true,
+        onPressed: () => Navigator.of(context).pop(true),
+      ),
+    ],
   );
 
   String _phaseLabel(CloudSyncPhase phase) {

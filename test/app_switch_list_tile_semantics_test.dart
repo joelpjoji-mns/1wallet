@@ -83,8 +83,7 @@ void main() {
   );
 
   testWidgets(
-    'AppSwitchListTile does not nest its GlassSwitch inside a refractive '
-    'GlassCard when composed in the real SectionCard summary pattern',
+    'AppSwitchListTile uses its package control inside a glass section',
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -101,11 +100,10 @@ void main() {
         ),
       );
 
-      // SectionCard defaults to an opaque surface, so nesting the switch's
-      // GlassSwitch inside it does not create the "refractive glass inside
-      // refractive glass" anti-pattern the package warns against.
+      // Switches are interactive controls and use the package's own-layer
+      // rendering within the surrounding glass section.
       expect(find.byType(GlassSwitch), findsOneWidget);
-      expect(find.byType(GlassCard), findsNothing);
+      expect(find.byType(GlassCard), findsOneWidget);
     },
   );
 

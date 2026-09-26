@@ -438,19 +438,12 @@ class _RecurringCompactCard extends StatelessWidget {
         ? scheme.error
         : scheme.error.withAlphaFactor(0.55);
 
-    // Rendered in bulk for scrolling planned/history lists, so this stays
-    // an opaque theme surface per liquid_glass_widgets guidance rather than
-    // a refractive GlassCard (glass is reserved for navigation/control
-    // chrome, e.g. the summary header above this list).
-    return Container(
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      padding: EdgeInsets.zero,
+      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+      quality: GlassQuality.minimal,
       clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: transaction.status == 'paused'
-            ? scheme.surfaceContainerLow.withAlphaFactor(0.6)
-            : scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: scheme.outlineVariant.withAlpha(140)),
-      ),
       child: Row(
         children: [
           if (isUrgent) Container(width: 4, color: urgentBorderColor),

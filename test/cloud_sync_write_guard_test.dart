@@ -73,6 +73,22 @@ void main() {
       expect(conflict, isFalse);
     });
 
+    test('matching revision accepts the same instant across local and UTC '
+        'DateTime representations', () {
+      final instant = DateTime.utc(2026, 9, 26, 11, 28, 59, 153);
+      final expected = CloudWriteState(cloudRevision: 2, updatedAt: instant);
+      final live = CloudWriteState(
+        cloudRevision: 2,
+        updatedAt: DateTime.fromMillisecondsSinceEpoch(
+          instant.millisecondsSinceEpoch,
+        ),
+      );
+
+      expect(live.updatedAt!.isUtc, isFalse);
+      expect(expected.updatedAt!.isUtc, isTrue);
+      expect(hasCloudSyncConflict(expected: expected, live: live), isFalse);
+    });
+
     test('revision path: conflict when another writer already bumped the '
         'revision past what this writer expected', () {
       final conflict = hasCloudSyncConflict(
@@ -798,6 +814,20 @@ void main() {
   });
 
   group('isCloudSyncVersionStable', () {
+    test('same instant is stable across local and UTC DateTime values', () {
+      final instant = DateTime.utc(2026, 9, 26, 11, 28, 59, 153);
+      final stable = isCloudSyncVersionStable(
+        before: CloudWriteState(cloudRevision: 2, updatedAt: instant),
+        after: CloudWriteState(
+          cloudRevision: 2,
+          updatedAt: DateTime.fromMillisecondsSinceEpoch(
+            instant.millisecondsSinceEpoch,
+          ),
+        ),
+      );
+      expect(stable, isTrue);
+    });
+
     test('stable when both reads agree on cloudRevision', () {
       final stable = isCloudSyncVersionStable(
         before: const CloudWriteState(cloudRevision: 5),

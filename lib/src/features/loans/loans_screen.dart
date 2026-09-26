@@ -88,12 +88,16 @@ class LoansScreen extends ConsumerWidget {
                 children: [
                   Text(
                     'Loan control center',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     'Loan count and next scheduled EMI.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -103,7 +107,9 @@ class LoansScreen extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
               child: GlassCard(
                 quality: GlassQuality.standard,
-                shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+                shape: const LiquidRoundedSuperellipse(
+                  borderRadius: AppRadii.md,
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   child: Row(
@@ -287,304 +293,323 @@ class _LoanFormState extends ConsumerState<LoanForm> {
     final sourceAccount = accountById(state, _sourceAccountId);
     return RouteScaffold(
       title: loan == null ? 'New loan' : 'Edit loan',
-      actions: [
-        HeaderSaveAction(onPressed: () => _saveLoan(state, loan)),
-      ],
+      actions: [HeaderSaveAction(onPressed: () => _saveLoan(state, loan))],
       child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                loan == null ? 'Loan details' : 'Edit loan details',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Create a loan account and optional scheduled EMI.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-              ),
-            ],
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  loan == null ? 'Loan details' : 'Edit loan details',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Create a loan account and optional scheduled EMI.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        const Gap(AppSpacing.sm),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          child: GlassCard(
-            quality: GlassQuality.standard,
-            shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                children: [
-                  GlassTextField(
-                    controller: _nameController,
-                    placeholder: 'Loan name',
-                    prefixIcon: const Icon(Icons.account_balance_outlined),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  GlassTextField(
-                    controller: _lenderController,
-                    placeholder: 'Lender / institution',
-                    prefixIcon: const Icon(Icons.business_outlined),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: GlassTextField(
-                          controller: _principalController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          inputFormatters: [
-                            ThousandsSeparatorInputFormatter(
-                              state.preferences.locale,
+          const Gap(AppSpacing.sm),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: GlassCard(
+              quality: GlassQuality.standard,
+              shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Column(
+                  children: [
+                    GlassTextField(
+                      controller: _nameController,
+                      placeholder: 'Loan name',
+                      prefixIcon: const Icon(Icons.account_balance_outlined),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    GlassTextField(
+                      controller: _lenderController,
+                      placeholder: 'Lender / institution',
+                      prefixIcon: const Icon(Icons.business_outlined),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GlassTextField(
+                            controller: _principalController,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
                             ),
-                          ],
-                          placeholder: 'Original Principal',
-                          prefixIcon: const Icon(Icons.payments_outlined),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: GlassTextField(
-                          controller: _currentBalanceController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
+                            inputFormatters: [
+                              ThousandsSeparatorInputFormatter(
+                                state.preferences.locale,
+                              ),
+                            ],
+                            placeholder: 'Original Principal',
+                            prefixIcon: const Icon(Icons.payments_outlined),
                           ),
-                          inputFormatters: [
-                            ThousandsSeparatorInputFormatter(
-                              state.preferences.locale,
-                            ),
-                          ],
-                          placeholder: 'Current Balance',
-                          prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: GlassTextField(
-                          controller: _emiController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: GlassTextField(
+                            controller: _currentBalanceController,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            inputFormatters: [
+                              ThousandsSeparatorInputFormatter(
+                                state.preferences.locale,
+                              ),
+                            ],
+                            placeholder: 'Current Balance',
+                            prefixIcon: const Icon(
+                              Icons.account_balance_wallet_outlined,
+                            ),
                           ),
-                          inputFormatters: [
-                            ThousandsSeparatorInputFormatter(
-                              state.preferences.locale,
-                            ),
-                          ],
-                          placeholder: 'Repayment amount',
-                          prefixIcon: const Icon(Icons.event_repeat_outlined),
                         ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: GlassTextField(
-                          controller: _rateController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GlassTextField(
+                            controller: _emiController,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            inputFormatters: [
+                              ThousandsSeparatorInputFormatter(
+                                state.preferences.locale,
+                              ),
+                            ],
+                            placeholder: 'Repayment amount',
+                            prefixIcon: const Icon(Icons.event_repeat_outlined),
                           ),
-                          inputFormatters: [
-                            ThousandsSeparatorInputFormatter(
-                              state.preferences.locale,
-                            ),
-                          ],
-                          placeholder: 'Rate %',
-                          prefixIcon: const Icon(Icons.percent_rounded),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  GlassTextField(
-                    controller: _tenureController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    placeholder: 'Tenure count',
-                    prefixIcon: const Icon(Icons.timelapse_outlined),
-                  ),
-                ],
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: GlassTextField(
+                            controller: _rateController,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            inputFormatters: [
+                              ThousandsSeparatorInputFormatter(
+                                state.preferences.locale,
+                              ),
+                            ],
+                            placeholder: 'Rate %',
+                            prefixIcon: const Icon(Icons.percent_rounded),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    GlassTextField(
+                      controller: _tenureController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      placeholder: 'Tenure count',
+                      prefixIcon: const Icon(Icons.timelapse_outlined),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-        const Gap(AppSpacing.lg),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Repayment schedule',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
-              ),
-            ],
+          const Gap(AppSpacing.lg),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Repayment schedule',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        const Gap(AppSpacing.sm),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          child: GlassCard(
-            quality: GlassQuality.standard,
-            shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-              PremiumRow(
-                icon: Icons.category_outlined,
-                title: 'Loan type',
-                subtitle: accountTypeLabel(_loanKind),
-                onTap: _showLoanKindPicker,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              DropdownButtonFormField<String>(
-                initialValue:
-                    const [
-                      'daily',
-                      'weekly',
-                      'monthly',
-                      'yearly',
-                    ].contains(_frequency)
-                    ? _frequency
-                    : 'monthly',
-                decoration: const InputDecoration(
-                  labelText: 'EMI Frequency',
-                  prefixIcon: Icon(Icons.repeat_outlined),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'daily', child: Text('Daily')),
-                  DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
-                  DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
-                  DropdownMenuItem(value: 'yearly', child: Text('Yearly')),
-                ],
-                onChanged: (value) =>
-                    setState(() => _frequency = value ?? 'monthly'),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              TextFormField(
-                initialValue: _interval.toString(),
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText:
-                      'Every X ${_frequency == 'daily' ? 'day' : _frequency.replaceAll('ly', '')}s',
-                  prefixIcon: const Icon(Icons.timer_outlined),
-                ),
-                onChanged: (value) => _interval = int.tryParse(value) ?? 1,
-              ),
-              if (_frequency == 'weekly') ...[
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  'On these days:',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Wrap(
-                  spacing: 8,
+          const Gap(AppSpacing.sm),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: GlassCard(
+              quality: GlassQuality.standard,
+              shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (var i = 1; i <= 7; i++)
-                      FilterChip(
-                        label: Text(['', 'M', 'T', 'W', 'T', 'F', 'S', 'S'][i]),
-                        selected: _daysOfWeek.contains(i),
-                        onSelected: (selected) {
-                          setState(() {
-                            if (selected) {
-                              if (_daysOfWeek.length < _interval) {
-                                _daysOfWeek.add(i);
-                              }
-                            } else {
-                              _daysOfWeek.remove(i);
-                            }
-                          });
-                        },
+                    PremiumRow(
+                      icon: Icons.category_outlined,
+                      title: 'Loan type',
+                      subtitle: accountTypeLabel(_loanKind),
+                      onTap: _showLoanKindPicker,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    DropdownButtonFormField<String>(
+                      initialValue:
+                          const [
+                            'daily',
+                            'weekly',
+                            'monthly',
+                            'yearly',
+                          ].contains(_frequency)
+                          ? _frequency
+                          : 'monthly',
+                      decoration: const InputDecoration(
+                        labelText: 'EMI Frequency',
+                        prefixIcon: Icon(Icons.repeat_outlined),
                       ),
+                      items: const [
+                        DropdownMenuItem(value: 'daily', child: Text('Daily')),
+                        DropdownMenuItem(
+                          value: 'weekly',
+                          child: Text('Weekly'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'monthly',
+                          child: Text('Monthly'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'yearly',
+                          child: Text('Yearly'),
+                        ),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _frequency = value ?? 'monthly'),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    TextFormField(
+                      initialValue: _interval.toString(),
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText:
+                            'Every X ${_frequency == 'daily' ? 'day' : _frequency.replaceAll('ly', '')}s',
+                        prefixIcon: const Icon(Icons.timer_outlined),
+                      ),
+                      onChanged: (value) =>
+                          _interval = int.tryParse(value) ?? 1,
+                    ),
+                    if (_frequency == 'weekly') ...[
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        'On these days:',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          for (var i = 1; i <= 7; i++)
+                            FilterChip(
+                              label: Text(
+                                ['', 'M', 'T', 'W', 'T', 'F', 'S', 'S'][i],
+                              ),
+                              selected: _daysOfWeek.contains(i),
+                              onSelected: (selected) {
+                                setState(() {
+                                  if (selected) {
+                                    if (_daysOfWeek.length < _interval) {
+                                      _daysOfWeek.add(i);
+                                    }
+                                  } else {
+                                    _daysOfWeek.remove(i);
+                                  }
+                                });
+                              },
+                            ),
+                        ],
+                      ),
+                    ],
+                    if (_frequency == 'monthly') ...[
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        'On these days of the month:',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          for (var i = 1; i <= 31; i++)
+                            FilterChip(
+                              label: Text('$i'),
+                              padding: EdgeInsets.zero,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                              selected: _daysOfMonth.contains(i),
+                              onSelected: (selected) {
+                                setState(() {
+                                  if (selected) {
+                                    if (_daysOfMonth.length < _interval) {
+                                      _daysOfMonth.add(i);
+                                    }
+                                  } else {
+                                    _daysOfMonth.remove(i);
+                                  }
+                                });
+                              },
+                            ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.sm),
+                    PremiumRow(
+                      icon: sourceAccount == null
+                          ? Icons.account_balance_wallet_outlined
+                          : accountIcon(sourceAccount),
+                      title: 'Pay from',
+                      subtitle: sourceAccount?.name ?? 'Choose source account',
+                      iconColor: sourceAccount == null
+                          ? null
+                          : accountDisplayColor(sourceAccount),
+                      onTap: () => _showSourceAccountPicker(state),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    AppSwitchListTile(
+                      title: const Text('Hide interest in main ledger'),
+                      value: _hideInterestInLedger,
+                      onChanged: (value) =>
+                          setState(() => _hideInterestInLedger = value),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    PremiumRow(
+                      icon: Icons.calendar_month_outlined,
+                      title: 'Next EMI date',
+                      subtitle: formatLedgerDate(
+                        _nextEmiDate,
+                        state.preferences.locale,
+                      ),
+                      onTap: _pickNextEmiDate,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    PremiumRow(
+                      icon: Icons.currency_exchange_outlined,
+                      title: 'Currency',
+                      subtitle: _currency,
+                      onTap: () => _showCurrencyPicker(state),
+                    ),
                   ],
                 ),
-              ],
-              if (_frequency == 'monthly') ...[
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  'On these days of the month:',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    for (var i = 1; i <= 31; i++)
-                      FilterChip(
-                        label: Text('$i'),
-                        padding: EdgeInsets.zero,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        selected: _daysOfMonth.contains(i),
-                        onSelected: (selected) {
-                          setState(() {
-                            if (selected) {
-                              if (_daysOfMonth.length < _interval) {
-                                _daysOfMonth.add(i);
-                              }
-                            } else {
-                              _daysOfMonth.remove(i);
-                            }
-                          });
-                        },
-                      ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: AppSpacing.sm),
-              PremiumRow(
-                icon: sourceAccount == null
-                    ? Icons.account_balance_wallet_outlined
-                    : accountIcon(sourceAccount),
-                title: 'Pay from',
-                subtitle: sourceAccount?.name ?? 'Choose source account',
-                iconColor: sourceAccount == null
-                    ? null
-                    : accountDisplayColor(sourceAccount),
-                onTap: () => _showSourceAccountPicker(state),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              AppSwitchListTile(
-                title: const Text('Hide interest in main ledger'),
-                value: _hideInterestInLedger,
-                onChanged: (value) =>
-                    setState(() => _hideInterestInLedger = value),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              PremiumRow(
-                icon: Icons.calendar_month_outlined,
-                title: 'Next EMI date',
-                subtitle: formatLedgerDate(
-                  _nextEmiDate,
-                  state.preferences.locale,
-                ),
-                onTap: _pickNextEmiDate,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              PremiumRow(
-                icon: Icons.currency_exchange_outlined,
-                title: 'Currency',
-                subtitle: _currency,
-                onTap: () => _showCurrencyPicker(state),
-              ),
-                ],
               ),
             ),
           ),
-        ),
-        const Gap(AppSpacing.lg),
-      ],
+          const Gap(AppSpacing.lg),
+        ],
       ),
     );
   }
@@ -895,19 +920,12 @@ class LoanDetailView extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Liquid Glass is reserved for the navigation/control layer; this
-        // card lives inside RouteScaffold's scrolling ListView alongside
-        // every other section below it, so it stays a plain opaque surface
-        // instead of a GlassCard (see liquid_glass_widgets README: keep
-        // scrolling content/list rows opaque).
-        Container(
+        GlassCard(
           key: const ValueKey('loanDetailHeaderCard'),
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            border: Border.all(color: scheme.outlineVariant),
-          ),
+          margin: EdgeInsets.zero,
+          padding: EdgeInsets.zero,
+          shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+          quality: GlassQuality.standard,
           child: Material(
             color: Colors.transparent,
             child: Padding(
@@ -1005,9 +1023,7 @@ class LoanDetailView extends ConsumerWidget {
                               ],
                             ),
                             const SizedBox(height: 8),
-                            LinearProgressIndicator(
-                              value: progress,
-                            ),
+                            LinearProgressIndicator(value: progress),
                           ],
                         );
                       },
@@ -1113,14 +1129,18 @@ class LoanDetailView extends ConsumerWidget {
             children: [
               Text(
                 'Repayment history',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 2),
               Text(
                 repaymentHistory.isEmpty
                     ? 'Posted EMI and repayment entries will appear here.'
                     : '${repaymentHistory.length} posted repayment${repaymentHistory.length == 1 ? '' : 's'}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -1251,17 +1271,12 @@ class _LoanCompactCard extends StatelessWidget {
       locale: state.preferences.locale,
     );
 
-    // Liquid Glass is reserved for the navigation/control layer; this card
-    // is a repeated row in the scrollable loans list, so it stays a plain
-    // opaque surface instead of a GlassCard (see liquid_glass_widgets
-    // README: keep scrolling content/list rows opaque).
-    return Container(
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      padding: EdgeInsets.zero,
+      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+      quality: GlassQuality.minimal,
       clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: scheme.outlineVariant),
-      ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -1416,9 +1431,7 @@ class _LoanCompactCard extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 6),
-                          LinearProgressIndicator(
-                            value: progress,
-                          ),
+                          LinearProgressIndicator(value: progress),
                         ],
                       );
                     },
@@ -2628,12 +2641,16 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
             children: [
               Text(
                 'Payoff Simulation',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 2),
               Text(
                 'Adjust your emergency fund and extra cash allocation to see the payoff graph.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -2696,7 +2713,10 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                       prefixIcon: Icon(Icons.timer_outlined),
                     ),
                     items: const [
-                      DropdownMenuItem(value: 0, child: Text('Close immediately')),
+                      DropdownMenuItem(
+                        value: 0,
+                        child: Text('Close immediately'),
+                      ),
                       DropdownMenuItem(value: 7, child: Text('Wait 1 week')),
                       DropdownMenuItem(value: 14, child: Text('Wait 2 weeks')),
                       DropdownMenuItem(value: 30, child: Text('Wait 1 month')),
@@ -2735,7 +2755,9 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                         ButtonSegment(value: 0.5, label: Text('Balanced')),
                         ButtonSegment(value: 1.0, label: Text('Max')),
                       ],
-                      selected: {_snapAllocation(_debouncedExtraAllocationPercent)},
+                      selected: {
+                        _snapAllocation(_debouncedExtraAllocationPercent),
+                      },
                       onSelectionChanged: (selection) {
                         final val = selection.first;
                         setState(() {
@@ -2757,7 +2779,10 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                     _allocationHint(
                       _snapAllocation(_debouncedExtraAllocationPercent),
                     ),
-                    style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -2773,12 +2798,16 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
             children: [
               Text(
                 'Projected Liquid Cash',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 2),
               Text(
                 'Pinch, scroll, or tap +/− to zoom · drag to pan. Numbered dots mark when each loan is paid off.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -2817,12 +2846,16 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
             children: [
               Text(
                 'Payoff Priority & Timeline',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 2),
               Text(
                 'Drag and drop to change priority. The timeline reflects exactly when each loan pays off.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),

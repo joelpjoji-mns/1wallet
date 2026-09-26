@@ -223,9 +223,9 @@ class HomeScreen extends ConsumerWidget {
             },
           ),
         if (reorderMode)
-          IconButton(
-            tooltip: 'Done reordering widgets',
-            icon: const Icon(Icons.check_rounded),
+          HeaderIconButton(
+            icon: Icons.check_rounded,
+            semanticLabel: 'Done reordering widgets',
             onPressed: () =>
                 ref.read(_homeWidgetReorderModeProvider.notifier).state = false,
           ),
@@ -285,8 +285,7 @@ class _HomeDashboardList extends ConsumerWidget {
       AppSpacing.md,
       AppSpacing.xs,
       AppSpacing.md,
-      AppSizes.bottomBarClearance +
-          MediaQuery.paddingOf(context).bottom,
+      AppSizes.bottomBarClearance + MediaQuery.paddingOf(context).bottom,
     );
 
     Widget mobileView;

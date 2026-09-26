@@ -136,14 +136,14 @@ class _SecureAccountDetailsScreenState
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            AppGlassTextField(
               controller: nameCtrl,
               decoration: const InputDecoration(
                 labelText: 'Field Name (e.g. PIN)',
               ),
             ),
             const SizedBox(height: 8),
-            TextField(
+            AppGlassTextField(
               controller: valueCtrl,
               decoration: const InputDecoration(labelText: 'Value'),
             ),

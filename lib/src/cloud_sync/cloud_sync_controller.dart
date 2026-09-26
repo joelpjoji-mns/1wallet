@@ -34,6 +34,7 @@ class CloudSyncState {
   const CloudSyncState({
     this.phase = CloudSyncPhase.disabled,
     this.error,
+    this.errorDetails,
     this.disabledReason,
     this.metadata,
     this.pendingUpload = false,
@@ -45,6 +46,7 @@ class CloudSyncState {
 
   final CloudSyncPhase phase;
   final String? error;
+  final String? errorDetails;
   final String? disabledReason;
   final CloudSyncMetadata? metadata;
   final bool pendingUpload;
@@ -59,6 +61,7 @@ class CloudSyncState {
   CloudSyncState copyWith({
     CloudSyncPhase? phase,
     Object? error = _unset,
+    Object? errorDetails = _unset,
     Object? disabledReason = _unset,
     Object? metadata = _unset,
     bool? pendingUpload,
@@ -70,6 +73,9 @@ class CloudSyncState {
     return CloudSyncState(
       phase: phase ?? this.phase,
       error: identical(error, _unset) ? this.error : error as String?,
+      errorDetails: identical(errorDetails, _unset)
+          ? (identical(error, _unset) ? this.errorDetails : null)
+          : errorDetails as String?,
       disabledReason: identical(disabledReason, _unset)
           ? this.disabledReason
           : disabledReason as String?,
@@ -661,7 +667,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       final expectedState = CloudWriteState(
         cloudRevision: metadata.lastCloudRevision,
         updatedAt: metadata.lastObservedCloudUpdatedAt != null
-            ? DateTime.tryParse(metadata.lastObservedCloudUpdatedAt!)
+            ? DateTime.tryParse(metadata.lastObservedCloudUpdatedAt!)?.toUtc()
             : null,
       );
 
@@ -749,9 +755,8 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
               live: liveState,
             )) {
               throw CloudSyncConflictException(
-                'Wallet changed during overwrite. Expected $expectedState; '
-                'cloud now contains $liveState. Nothing was replaced. Retry '
-                'the overwrite to use the newer cloud version as its baseline.',
+                'Wallet changed during overwrite. Nothing was replaced. '
+                'Review the latest cloud state and try again.',
                 expectedState,
                 liveState,
               );
@@ -833,7 +838,8 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       state = state.copyWith(
         pendingUpload: true,
         phase: CloudSyncPhase.error,
-        error: '$e',
+        error: e.message,
+        errorDetails: e.technicalDetails,
       );
       if (reason != 'user-overwrite') {
         unawaited(_resolveUploadConflict(user.id));
@@ -1271,9 +1277,9 @@ CloudWriteState _cloudWriteStateFromDocData(Map<String, dynamic>? data) {
   DateTime? updatedAt;
   final updatedAtRaw = data['updatedAt'];
   if (updatedAtRaw is Timestamp) {
-    updatedAt = updatedAtRaw.toDate();
+    updatedAt = updatedAtRaw.toDate().toUtc();
   } else if (updatedAtRaw is String) {
-    updatedAt = DateTime.tryParse(updatedAtRaw);
+    updatedAt = DateTime.tryParse(updatedAtRaw)?.toUtc();
   }
 
   return CloudWriteState(

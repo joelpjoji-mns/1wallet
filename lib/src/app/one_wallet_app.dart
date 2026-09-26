@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:dynamic_color/dynamic_color.dart';
@@ -107,6 +108,14 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
 
     return LiquidGlassWidgets.wrap(
       theme: GlassThemeData(
+        light: GlassThemeVariant(
+          settings: GlassThemeSettings(
+            thickness: 24,
+            blur: 10,
+            glassColor: Color(0x66FFFFFF),
+          ),
+          quality: GlassQuality.standard,
+        ),
         dark: GlassThemeVariant(
           settings: GlassThemeSettings(
             thickness: 24,
@@ -138,7 +147,14 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
           themeMode: themeState.themeMode,
           builder: (context, child) {
             if (child == null) return const SizedBox.shrink();
-            return child;
+            final theme = Theme.of(context);
+            return CupertinoTheme(
+              data: CupertinoThemeData(
+                brightness: theme.brightness,
+                primaryColor: theme.colorScheme.primary,
+              ),
+              child: child,
+            );
           },
         ),
       ),

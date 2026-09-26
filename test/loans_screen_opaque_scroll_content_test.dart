@@ -97,10 +97,7 @@ void main() {
       find.byType(CupertinoTextField).at(0),
       'Glass Consistency Loan',
     );
-    await tester.enterText(
-      find.byType(CupertinoTextField).at(2),
-      '50000',
-    );
+    await tester.enterText(find.byType(CupertinoTextField).at(2), '50000');
     await tester.pumpAndSettle();
 
     final saveButton = find.bySemanticsLabel('Save');
@@ -120,26 +117,26 @@ void main() {
     return (container, router);
   }
 
-  testWidgets(
-    'a loans overview list row (_LoanCompactCard) is not wrapped in GlassCard',
-    (tester) async {
-      await createLoanAndReturnOverview(tester);
+  testWidgets('a loans overview list row uses a Liquid Glass surface', (
+    tester,
+  ) async {
+    await createLoanAndReturnOverview(tester);
 
-      final cardFinder = find.byWidgetPredicate(
-        (widget) => widget.runtimeType.toString() == '_LoanCompactCard',
-      );
-      expect(cardFinder, findsWidgets);
+    final cardFinder = find.byWidgetPredicate(
+      (widget) => widget.runtimeType.toString() == '_LoanCompactCard',
+    );
+    expect(cardFinder, findsWidgets);
 
-      final glassInsideCard = find.descendant(
-        of: cardFinder.first,
-        matching: find.byType(GlassCard),
-      );
-      expect(glassInsideCard, findsNothing);
-    },
-  );
+    final glassInsideCard = find.descendant(
+      of: cardFinder.first,
+      matching: find.byType(GlassCard),
+    );
+    expect(glassInsideCard, findsOneWidget);
+  });
 
-  testWidgets('the loan detail header card (LoanDetailView) is not wrapped in '
-      'GlassCard', (tester) async {
+  testWidgets('the loan detail header uses a Liquid Glass surface', (
+    tester,
+  ) async {
     final (container, router) = await createLoanAndReturnOverview(tester);
     final loanId = container
         .read(ledgerProvider)
@@ -156,15 +153,6 @@ void main() {
     final headerFinder = find.byKey(const ValueKey('loanDetailHeaderCard'));
     expect(headerFinder, findsOneWidget);
 
-    final glassInsideHeader = find.descendant(
-      of: headerFinder,
-      matching: find.byType(GlassCard),
-    );
-    expect(glassInsideHeader, findsNothing);
-    // The header container itself must not be a GlassCard either.
-    expect(
-      find.ancestor(of: headerFinder, matching: find.byType(GlassCard)),
-      findsNothing,
-    );
+    expect(tester.widget(headerFinder), isA<GlassCard>());
   });
 }

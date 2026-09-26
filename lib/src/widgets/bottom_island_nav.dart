@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:cupertino_native/cupertino_native.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../design/tokens.dart';
@@ -53,51 +56,77 @@ class BottomIslandNavBar extends StatelessWidget {
               alignment: Alignment.bottomCenter,
               child: SizedBox(
                 width: width,
-                child: GlassTabBar.bottom(
-                  tabs: [
-                    for (final item in items)
-                      GlassTab(
-                        label: item.title,
-                        semanticLabel: item.title,
-                        icon: Icon(item.icon),
-                        activeIcon: Icon(item.activeIcon),
-                      ),
-                  ],
-                  selectedIndex: selectedIndex,
-                  onTabSelected: (index) =>
-                      onSelected(items[index].pageIndex ?? index),
-                  barHeight: AppSizes.bottomBarContentHeight,
-                  horizontalPadding: 14,
-                  verticalPadding: 12,
-                  spacing: 6,
-                  showIndicator: true,
-                  quality: GlassQuality.standard,
-                  // Explicit indicator color that reads well in both themes
-                  indicatorColor: scheme.primary.withAlphaFactor(
-                    isDark ? 0.30 : 0.14,
-                  ),
-                  selectedIconColor: scheme.primary,
-                  unselectedIconColor: scheme.onSurfaceVariant,
-                  selectedLabelColor: scheme.primary,
-                  unselectedLabelColor: scheme.onSurfaceVariant,
+                child:
+                    (defaultTargetPlatform == TargetPlatform.iOS ||
+                        defaultTargetPlatform == TargetPlatform.macOS)
+                    ? CupertinoTheme(
+                        data: CupertinoThemeData(
+                          brightness: Theme.of(context).brightness,
+                          primaryColor: scheme.primary,
+                        ),
+                        child: CNTabBar(
+                          items: [
+                            for (final item in items)
+                              CNTabBarItem(
+                                label: item.title,
+                                icon: CNSymbol(_symbolFor(item)),
+                              ),
+                          ],
+                          currentIndex: selectedIndex,
+                          onTap: (index) =>
+                              onSelected(items[index].pageIndex ?? index),
+                          tint: scheme.primary,
+                          backgroundColor: isDark
+                              ? const Color(0xE6000000)
+                              : scheme.surface.withAlpha(235),
+                          height: AppSizes.bottomBarContentHeight,
+                        ),
+                      )
+                    : GlassTabBar.bottom(
+                        tabs: [
+                          for (final item in items)
+                            GlassTab(
+                              label: item.title,
+                              semanticLabel: item.title,
+                              icon: Icon(item.icon),
+                              activeIcon: Icon(item.activeIcon),
+                            ),
+                        ],
+                        selectedIndex: selectedIndex,
+                        onTabSelected: (index) =>
+                            onSelected(items[index].pageIndex ?? index),
+                        barHeight: AppSizes.bottomBarContentHeight,
+                        horizontalPadding: 14,
+                        verticalPadding: 12,
+                        spacing: 6,
+                        showIndicator: true,
+                        quality: GlassQuality.standard,
+                        // Explicit indicator color that reads well in both themes
+                        indicatorColor: scheme.primary.withAlphaFactor(
+                          isDark ? 0.30 : 0.14,
+                        ),
+                        selectedIconColor: scheme.primary,
+                        unselectedIconColor: scheme.onSurfaceVariant,
+                        selectedLabelColor: scheme.primary,
+                        unselectedLabelColor: scheme.onSurfaceVariant,
 
-                  backgroundQuality: GlassQuality.standard,
-                  // Explicit glass settings to prevent AMOLED white bleed:
-                  // on pure-black AMOLED surfaces the shader can refract
-                  // against almost nothing and appear white — higher thickness
-                  // + more blur keeps the glass effect dark and visible.
-                  settings: LiquidGlassSettings(
-                    blur: isDark ? 26 : 16,
-                    thickness: isDark ? 30 : 26,
-                    glassColor: isDark
-                        ? const Color(0xD9000000)
-                        : const Color(0x26FFFFFF),
-                    whitenStrength: isDark ? 0 : 0.08,
-                    lightIntensity: isDark ? 0.12 : 0.5,
-                    ambientStrength: isDark ? 0.04 : 0.1,
-                    edgeAbsorption: isDark ? 0.22 : 0,
-                  ),
-                ),
+                        backgroundQuality: GlassQuality.standard,
+                        // Explicit glass settings to prevent AMOLED white bleed:
+                        // on pure-black AMOLED surfaces the shader can refract
+                        // against almost nothing and appear white — higher thickness
+                        // + more blur keeps the glass effect dark and visible.
+                        settings: LiquidGlassSettings(
+                          blur: isDark ? 26 : 16,
+                          thickness: isDark ? 30 : 26,
+                          glassColor: isDark
+                              ? const Color(0xD9000000)
+                              : const Color(0x26FFFFFF),
+                          whitenStrength: isDark ? 0 : 0.08,
+                          lightIntensity: isDark ? 0.12 : 0.5,
+                          ambientStrength: isDark ? 0.04 : 0.1,
+                          edgeAbsorption: isDark ? 0.22 : 0,
+                        ),
+                      ),
               ),
             );
           },
@@ -106,3 +135,11 @@ class BottomIslandNavBar extends StatelessWidget {
     );
   }
 }
+
+String _symbolFor(IslandTabItem item) => switch (item.title.toLowerCase()) {
+  'home' => 'house',
+  'history' => 'clock',
+  'calendar' => 'calendar',
+  'accounts' => 'creditcard',
+  _ => 'circle.grid.2x2',
+};

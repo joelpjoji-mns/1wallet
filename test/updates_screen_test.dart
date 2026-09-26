@@ -23,9 +23,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    'update status, release-details, and changelog sections render opaque '
-    '(no GlassCard): glass is reserved for navigation/control chrome, not '
-    'this scrolling page\'s content sections',
+    'update status, release-details, and changelog sections use glass surfaces',
     (tester) async {
       final release = AppUpdateRelease(
         id: 'r1',
@@ -81,8 +79,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Sanity: all three content sections actually rendered from the
-      // fixture (otherwise the GlassCard absence check below would be
-      // vacuous).
+      // fixture before checking their package surfaces.
       expect(find.text('Update Available'), findsOneWidget);
       expect(find.text('Release Details'), findsOneWidget);
       expect(find.text("What's new in 1.2.3"), findsOneWidget);
@@ -90,9 +87,7 @@ void main() {
       expect(find.text('Fix B'), findsOneWidget);
       expect(find.text('Note C'), findsOneWidget);
 
-      // Structural regression: none of this scrolling content uses
-      // GlassCard.
-      expect(find.byType(GlassCard), findsNothing);
+      expect(find.byType(GlassCard), findsWidgets);
     },
   );
 }

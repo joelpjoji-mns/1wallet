@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
+import 'package:cupertino_native/cupertino_native.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../design/tokens.dart';
@@ -289,60 +293,12 @@ class GlassHeaderButton extends StatelessWidget {
   final String? semanticLabel;
 
   @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final badgeCount = badge ?? 0;
-
-    Widget button = UnconstrainedBox(
-      child: GlassIconButton(
-        icon: Icon(icon),
-        onPressed: onPressed,
-        size: 40,
-        iconSize: 22,
-        quality: GlassQuality.standard,
-        semanticLabel: _headerButtonSemanticLabel(semanticLabel, badgeCount),
-      ),
-    );
-
-    if (badgeCount > 0) {
-      button = Stack(
-        clipBehavior: Clip.none,
-        children: [
-          button,
-          Positioned(
-            right: 0,
-            top: 0,
-            // The badge count is already folded into the button's
-            // semanticLabel above, so exclude this purely visual duplicate
-            // from the semantics tree to avoid a redundant, out-of-context
-            // announcement.
-            child: ExcludeSemantics(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                decoration: BoxDecoration(
-                  color: scheme.error,
-                  borderRadius: BorderRadius.circular(AppRadii.pill),
-                ),
-                child: Text(
-                  badgeCount > 9 ? '9+' : '$badgeCount',
-                  style: TextStyle(
-                    color: scheme.onError,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-      child: button,
-    );
-  }
+  Widget build(BuildContext context) => HeaderIconButton(
+    icon: icon,
+    onPressed: onPressed,
+    badge: badge,
+    semanticLabel: semanticLabel,
+  );
 }
 
 class AppMenuAction extends StatelessWidget {
@@ -383,6 +339,33 @@ class HeaderIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final badgeCount = badge ?? 0;
+    final isApple =
+        defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS;
+    final symbol = _sfSymbolFor(icon);
+    if (isApple && symbol != null) {
+      return Padding(
+        padding: const EdgeInsets.only(left: 6),
+        child: Semantics(
+          button: true,
+          label: _headerButtonSemanticLabel(semanticLabel, badgeCount),
+          child: CupertinoTheme(
+            data: CupertinoThemeData(
+              brightness: Theme.of(context).brightness,
+              primaryColor: Theme.of(context).colorScheme.primary,
+            ),
+            child: CNButton.icon(
+              icon: CNSymbol(symbol, size: 22),
+              size: 44,
+              enabled: onPressed != null,
+              onPressed: onPressed,
+              tint: Theme.of(context).colorScheme.primary,
+              style: CNButtonStyle.glass,
+            ),
+          ),
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.only(left: 6.0),
       child: Stack(
@@ -440,6 +423,107 @@ class HeaderIconButton extends StatelessWidget {
   }
 }
 
+String? _sfSymbolFor(IconData icon) => switch (icon) {
+  Icons.menu_rounded || Icons.menu => 'line.3.horizontal',
+  Icons.arrow_back_rounded || Icons.arrow_back => 'chevron.left',
+  Icons.add_rounded || Icons.add => 'plus',
+  Icons.check_rounded || Icons.check => 'checkmark',
+  Icons.close_rounded || Icons.close => 'xmark',
+  Icons.search_rounded || Icons.search => 'magnifyingglass',
+  Icons.refresh_rounded || Icons.refresh => 'arrow.clockwise',
+  Icons.more_horiz_rounded || Icons.more_horiz => 'ellipsis',
+  Icons.edit_rounded || Icons.edit => 'pencil',
+  Icons.delete_outline_rounded || Icons.delete_outline => 'trash',
+  Icons.notifications_outlined || Icons.notifications => 'bell',
+  _ => null,
+};
+
+/// Shared action control. Apple builds use the package's native button;
+/// Android and other platforms use the package's shader-backed glass button.
+class AppActionButton extends StatelessWidget {
+  const AppActionButton({
+    required this.label,
+    required this.onPressed,
+    super.key,
+    this.icon,
+    this.enabled = true,
+    this.prominent = false,
+    this.compact = false,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final IconData? icon;
+  final bool enabled;
+  final bool prominent;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isApple =
+        defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS;
+    if (isApple) {
+      return Semantics(
+        button: true,
+        label: label,
+        child: CupertinoTheme(
+          data: CupertinoThemeData(
+            brightness: Theme.of(context).brightness,
+            primaryColor: scheme.primary,
+          ),
+          child: CNButton(
+            label: label,
+            enabled: enabled && onPressed != null,
+            onPressed: onPressed,
+            height: compact ? 34 : 48,
+            tint: scheme.primary,
+            style: prominent
+                ? CNButtonStyle.prominentGlass
+                : CNButtonStyle.glass,
+          ),
+        ),
+      );
+    }
+
+    final content = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (icon != null) ...[
+          Icon(
+            icon,
+            size: 18,
+            color: prominent ? scheme.onPrimary : scheme.primary,
+          ),
+          const SizedBox(width: AppSpacing.xs),
+        ],
+        Text(
+          label,
+          style: TextStyle(
+            color: prominent ? scheme.onPrimary : scheme.primary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+    return GlassButton.custom(
+      label: label,
+      onTap: onPressed ?? () {},
+      enabled: enabled && onPressed != null,
+      height: compact ? 36 : 48,
+      shape: LiquidRoundedRectangle(borderRadius: AppRadii.pill),
+      useOwnLayer: true,
+      quality: GlassQuality.standard,
+      style: prominent ? GlassButtonStyle.prominent : GlassButtonStyle.filled,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 18),
+        child: content,
+      ),
+    );
+  }
+}
+
 class SectionCard extends StatelessWidget {
   const SectionCard({
     required this.title,
@@ -449,7 +533,7 @@ class SectionCard extends StatelessWidget {
     this.actionLabel,
     this.onAction,
     this.compact = false,
-    this.glass = false,
+    this.glass = true,
   });
 
   final String title;
@@ -459,17 +543,8 @@ class SectionCard extends StatelessWidget {
   final bool compact;
   final Widget child;
 
-  /// Opts this section into a refractive `GlassCard` surface instead of the
-  /// default opaque background.
-  ///
-  /// `SectionCard` is the app's general-purpose content-grouping wrapper —
-  /// nearly every scrolling screen (Settings, Categories, Loans, Sync,
-  /// Accounts, ...) stacks several of these as plain content sections, not
-  /// as a single standalone hero surface. Per the `liquid_glass_widgets`
-  /// package guidance, liquid glass is reserved for navigation/control
-  /// chrome and stacking many refractive surfaces on one scrolling screen
-  /// wastes GPU fill-rate, so this defaults to `false`. Only flip it on for
-  /// a genuinely standalone, non-scrolling hero card.
+  /// Uses the package's refractive glass surface when true. Set false when
+  /// this section is already placed on another glass surface.
   final bool glass;
 
   @override
@@ -508,15 +583,10 @@ class SectionCard extends StatelessWidget {
                   ),
                 ),
                 if (actionLabel != null && onAction != null)
-                  TextButton(
-                    style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.xs,
-                      ),
-                    ),
+                  AppActionButton(
+                    label: actionLabel!,
                     onPressed: onAction,
-                    child: Text(actionLabel!),
+                    compact: true,
                   ),
               ],
             ),
@@ -741,6 +811,86 @@ class _PremiumSearchInputState extends State<PremiumSearchInput> {
       searchIconColor: scheme.primary,
       quality: GlassQuality.standard,
       useOwnLayer: true,
+    );
+  }
+}
+
+/// Material-compatible input API backed by the package's glass text field.
+/// This lets existing form flows migrate without changing validation or
+/// controllers while keeping input surfaces consistent across routes.
+class AppGlassTextField extends StatelessWidget {
+  const AppGlassTextField({
+    super.key,
+    this.controller,
+    this.focusNode,
+    this.decoration = const InputDecoration(),
+    this.keyboardType,
+    this.textInputAction,
+    this.inputFormatters,
+    this.minLines,
+    this.maxLines = 1,
+    this.maxLength,
+    this.obscureText = false,
+    this.enabled = true,
+    this.readOnly = false,
+    this.autofocus = false,
+    this.onChanged,
+    this.onSubmitted,
+    this.textAlign = TextAlign.start,
+    this.style,
+  });
+
+  final TextEditingController? controller;
+  final FocusNode? focusNode;
+  final InputDecoration decoration;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final List<TextInputFormatter>? inputFormatters;
+  final int? minLines;
+  final int maxLines;
+  final int? maxLength;
+  final bool obscureText;
+  final bool enabled;
+  final bool readOnly;
+  final bool autofocus;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  final TextAlign textAlign;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    final decorationEnabled = decoration.enabled;
+    final effectiveEnabled = enabled && decorationEnabled;
+    Widget? suffix = decoration.suffixIcon;
+    if (suffix == null && decoration.suffixText != null) {
+      suffix = Padding(
+        padding: const EdgeInsetsDirectional.only(end: AppSpacing.sm),
+        child: Center(widthFactor: 1, child: Text(decoration.suffixText!)),
+      );
+    }
+
+    return GlassTextField(
+      controller: controller,
+      focusNode: focusNode,
+      placeholder: decoration.hintText ?? decoration.labelText,
+      prefixIcon: decoration.prefixIcon,
+      suffixIcon: suffix,
+      keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      inputFormatters: inputFormatters,
+      minLines: minLines,
+      maxLines: maxLines,
+      maxLength: maxLength,
+      obscureText: obscureText,
+      enabled: effectiveEnabled,
+      readOnly: readOnly,
+      autofocus: autofocus,
+      onChanged: onChanged,
+      onSubmitted: onSubmitted,
+      textStyle:
+          style ?? TextStyle(color: Theme.of(context).colorScheme.onSurface),
+      quality: GlassQuality.standard,
     );
   }
 }
@@ -982,6 +1132,7 @@ class AppSwitchListTile extends StatelessWidget {
     super.key,
     this.subtitle,
     this.icon,
+    this.secondary,
     this.contentPadding,
   });
 
@@ -990,6 +1141,7 @@ class AppSwitchListTile extends StatelessWidget {
   final bool value;
   final ValueChanged<bool>? onChanged;
   final IconData? icon;
+  final Widget? secondary;
   final EdgeInsetsGeometry? contentPadding;
 
   @override
@@ -1013,6 +1165,10 @@ class AppSwitchListTile extends StatelessWidget {
               ),
           child: Row(
             children: [
+              if (secondary != null) ...[
+                secondary!,
+                const SizedBox(width: AppSpacing.sm),
+              ],
               if (icon != null) ...[
                 IconBubble(icon: icon!, compact: true),
                 const SizedBox(width: AppSpacing.md),
@@ -1050,33 +1206,38 @@ class AppSwitchListTile extends StatelessWidget {
               // leaving screen readers without the on/off state — matching
               // the workaround Flutter's own SwitchListTile applies.
               //
-              // GlassSwitch is the package's own recommended replacement
-              // for Switch (it's an interactive control-layer widget, not
-              // dense list content, so this doesn't run afoul of the
-              // "no glass in scrolling content" guidance that keeps
-              // SectionCard/MetricTile/PremiumRow opaque). It's nested
-              // inside SectionCard here, but SectionCard is opaque by
-              // default now, so this isn't refractive-glass-in-glass.
-              // GlassSwitch's `onChanged` is non-nullable (unlike the
-              // built-in Switch), so the disabled (`onChanged == null`)
-              // case is reproduced manually with IgnorePointer + a dimmed
-              // opacity instead.
+              // Prefer the CupertinoNative platform switch on Apple devices
+              // and Liquid Glass's switch on Android and other platforms.
               ExcludeFocus(
                 child: IgnorePointer(
                   ignoring: !enabled,
                   child: Opacity(
                     opacity: enabled ? 1 : 0.38,
-                    child: GlassSwitch(
-                      value: value,
-                      onChanged: onChanged ?? (_) {},
-                      activeColor: Theme.of(context).colorScheme.primary,
-                      quality: GlassQuality.standard,
-                      // Empty, not omitted: GlassSwitch defaults to the
-                      // generic label 'Switch' when null, which would add
-                      // redundant noise to the merged label above (the
-                      // built-in Switch has no such fallback).
-                      semanticLabel: '',
-                    ),
+                    child:
+                        defaultTargetPlatform == TargetPlatform.iOS ||
+                            defaultTargetPlatform == TargetPlatform.macOS
+                        ? CupertinoTheme(
+                            data: CupertinoThemeData(
+                              brightness: Theme.of(context).brightness,
+                              primaryColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
+                            ),
+                            child: CNSwitch(
+                              value: value,
+                              enabled: enabled,
+                              onChanged: onChanged ?? (_) {},
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          )
+                        : GlassSwitch(
+                            value: value,
+                            onChanged: onChanged ?? (_) {},
+                            activeColor: Theme.of(context).colorScheme.primary,
+                            useOwnLayer: true,
+                            quality: GlassQuality.standard,
+                            semanticLabel: '',
+                          ),
                   ),
                 ),
               ),
@@ -1129,7 +1290,12 @@ class EmptyState extends StatelessWidget {
           ),
           if (actionLabel != null && onAction != null) ...[
             const SizedBox(height: AppSpacing.md),
-            FilledButton.tonal(onPressed: onAction, child: Text(actionLabel!)),
+            AppActionButton(
+              label: actionLabel!,
+              onPressed: onAction,
+              icon: Icons.add_rounded,
+              prominent: true,
+            ),
           ],
         ],
       ),

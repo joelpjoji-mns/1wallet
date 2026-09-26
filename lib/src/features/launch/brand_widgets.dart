@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../design/tokens.dart';
 import '../../startup/startup_state.dart';
@@ -277,7 +278,6 @@ class BrandFrostedPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final radius = borderRadius ?? 24.0;
     // Reduce Transparency: MediaQuery.highContrastOf is the closest signal
     // Flutter exposes for iOS/Android's "reduce transparency" accessibility
@@ -286,35 +286,12 @@ class BrandFrostedPanel extends StatelessWidget {
     // shader to a solid frosted surface. This bespoke panel previously
     // ignored that signal entirely; mirror the package's behavior instead
     // of leaving a translucent panel that fights the user's chosen contrast.
-    final reduceTransparency = MediaQuery.highContrastOf(context);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: BackdropFilter(
-        filter: reduceTransparency
-            ? ImageFilter.blur(sigmaX: 0, sigmaY: 0)
-            : ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            color: reduceTransparency
-                ? (isDark ? const Color(0xFF14202B) : const Color(0xFFF3F6FA))
-                : (isDark
-                      ? Colors.white.withValues(alpha: 0.05)
-                      : Colors.white.withValues(alpha: 0.4)),
-            borderRadius: BorderRadius.circular(radius),
-            border: Border.all(
-              color: reduceTransparency
-                  ? (isDark
-                        ? Colors.white.withValues(alpha: 0.22)
-                        : Colors.black.withValues(alpha: 0.12))
-                  : (isDark
-                        ? Colors.white.withValues(alpha: 0.1)
-                        : Colors.white.withValues(alpha: 0.5)),
-            ),
-          ),
-          child: child,
-        ),
-      ),
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      padding: padding,
+      shape: LiquidRoundedSuperellipse(borderRadius: radius),
+      quality: GlassQuality.standard,
+      child: child,
     );
   }
 }

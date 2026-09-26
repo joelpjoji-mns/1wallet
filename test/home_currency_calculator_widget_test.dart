@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:one_wallet_flutter/src/data/ledger_codec.dart';
 import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 import 'package:one_wallet_flutter/src/features/home/home_widgets.dart';
+import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 
 import 'test_harness.dart';
 
@@ -65,7 +66,7 @@ void main() {
       expect(find.text('No rate'), findsWidgets);
 
       // Typing into the GBP field re-propagates the conversion to INR.
-      await tester.enterText(find.byType(TextField).at(1), '2');
+      await tester.enterText(find.byType(AppGlassTextField).at(1), '2');
       await tester.pumpAndSettle();
 
       expect(find.text('200'), findsOneWidget);
@@ -73,36 +74,33 @@ void main() {
     },
   );
 
-  testWidgets(
-    'removing then re-adding a currency does not crash and disposes '
-    'stale controllers',
-    (tester) async {
-      var state = _ledger(enabledCurrencies: const ['INR', 'USD', 'EUR']);
+  testWidgets('removing then re-adding a currency does not crash and disposes '
+      'stale controllers', (tester) async {
+    var state = _ledger(enabledCurrencies: const ['INR', 'USD', 'EUR']);
 
-      await tester.pumpWidget(_wrap(state));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('USD'), findsOneWidget);
-      expect(find.textContaining('EUR'), findsOneWidget);
+    await tester.pumpWidget(_wrap(state));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('USD'), findsOneWidget);
+    expect(find.textContaining('EUR'), findsOneWidget);
 
-      // Disable USD - its controller must be disposed without throwing, and
-      // the deferred post-frame recalculation must not touch it either.
-      state = _ledger(enabledCurrencies: const ['INR', 'EUR']);
-      await tester.pumpWidget(_wrap(state));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('USD'), findsNothing);
-      expect(find.textContaining('EUR'), findsOneWidget);
-      expect(tester.takeException(), isNull);
+    // Disable USD - its controller must be disposed without throwing, and
+    // the deferred post-frame recalculation must not touch it either.
+    state = _ledger(enabledCurrencies: const ['INR', 'EUR']);
+    await tester.pumpWidget(_wrap(state));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('USD'), findsNothing);
+    expect(find.textContaining('EUR'), findsOneWidget);
+    expect(tester.takeException(), isNull);
 
-      // Re-enable USD and disable EUR in the same step to exercise both
-      // controller creation and disposal together.
-      state = _ledger(enabledCurrencies: const ['INR', 'USD']);
-      await tester.pumpWidget(_wrap(state));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('USD'), findsOneWidget);
-      expect(find.textContaining('EUR'), findsNothing);
-      expect(tester.takeException(), isNull);
-    },
-  );
+    // Re-enable USD and disable EUR in the same step to exercise both
+    // controller creation and disposal together.
+    state = _ledger(enabledCurrencies: const ['INR', 'USD']);
+    await tester.pumpWidget(_wrap(state));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('USD'), findsOneWidget);
+    expect(find.textContaining('EUR'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 Widget _wrap(LedgerState state) {

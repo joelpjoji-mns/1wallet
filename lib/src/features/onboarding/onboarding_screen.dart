@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -14,6 +15,7 @@ import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:uuid/uuid.dart';
 import '../../data/ledger_providers.dart';
 import '../../widgets/currency_picker.dart';
+import '../../widgets/app_kit.dart';
 import '../../utils/number_formatter.dart';
 
 class _AccountDraft {
@@ -247,7 +249,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                TextField(
+                AppGlassTextField(
                   controller: _displayNameController,
                   decoration: const InputDecoration(
                     hintText: 'Your name',
@@ -407,7 +409,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextField(
+                AppGlassTextField(
                   onChanged: (v) => setState(() => _currentDraft.name = v),
                   decoration: const InputDecoration(
                     hintText: 'Account name (e.g. Cash, Savings)',
@@ -448,7 +450,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-                TextField(
+                AppGlassTextField(
                   onChanged: (v) => setState(() => _currentDraft.opening = v),
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
@@ -509,17 +511,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           ..._accounts.map(
             (a) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              // Scrolling list rows stay opaque; glass is reserved for
-              // navigation/control chrome and standalone panels (see the
-              // other BrandFrostedPanel usages in this file for the
-              // profile, account-entry, and permissions steps, which
-              // remain glass since each renders once, not per list item).
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                ),
-                padding: const EdgeInsets.all(16),
+              child: GlassCard(
+                margin: EdgeInsets.zero,
+                padding: const EdgeInsets.all(4),
+                shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+                quality: GlassQuality.standard,
                 child: ListTile(
                   leading: Icon(a.icon, color: a.color),
                   title: Text(
@@ -562,7 +558,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           child: BrandFrostedPanel(
             child: Column(
               children: [
-                SwitchListTile(
+                AppSwitchListTile(
                   title: const Text('Auto-capture transactions'),
                   subtitle: const Text(
                     'Scan SMS and notifications for expenses.',
@@ -570,7 +566,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   value: _enableAutoCapture,
                   onChanged: (v) => setState(() => _enableAutoCapture = v),
                 ),
-                SwitchListTile(
+                AppSwitchListTile(
                   title: const Text('Reminders'),
                   subtitle: const Text(
                     'Get notified for upcoming bills and EMIs.',

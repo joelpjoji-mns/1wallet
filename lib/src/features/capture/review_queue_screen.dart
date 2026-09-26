@@ -678,7 +678,7 @@ class ReviewQueueScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                 ],
-                TextField(
+                AppGlassTextField(
                   controller: controller,
                   decoration: const InputDecoration(
                     labelText: 'Regex Pattern',

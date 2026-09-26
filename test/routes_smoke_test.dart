@@ -22,6 +22,15 @@ import 'test_harness.dart';
 // back to its already-handled "unavailable/not granted" branch quickly.
 const _nativeCaptureChannel = MethodChannel('com.joelpjoji.one.wallet/sms');
 
+Future<void> _pumpRouteTransition(WidgetTester tester) async {
+  // Glass shaders and live dashboard charts may keep scheduling frames after
+  // a route is fully visible. Pump through the route transition without
+  // waiting for those intentional animations to become idle.
+  for (var frame = 0; frame < 8; frame++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -58,7 +67,7 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await _pumpRouteTransition(tester);
     expect(tester.takeException(), isNull);
 
     const routes = [
@@ -109,7 +118,7 @@ void main() {
     for (final route in routes) {
       router.go(route);
       try {
-        await tester.pumpAndSettle();
+        await _pumpRouteTransition(tester);
         expect(tester.takeException(), isNull, reason: route);
         if (route == '/settings') {
           expect(find.text('Liquid glass appearance'), findsNothing);
@@ -150,7 +159,7 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await _pumpRouteTransition(tester);
 
     const routes = [
       '/',
@@ -170,7 +179,7 @@ void main() {
     for (final route in routes) {
       router.go(route);
       try {
-        await tester.pumpAndSettle();
+        await _pumpRouteTransition(tester);
         expect(tester.takeException(), isNull, reason: route);
       } catch (e) {
         if (e.toString().contains('semantics.parentDataDirty')) {

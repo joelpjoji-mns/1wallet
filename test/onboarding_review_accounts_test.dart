@@ -4,9 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart' as liquid_glass;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:one_wallet_flutter/src/features/launch/brand_widgets.dart';
 import 'package:one_wallet_flutter/src/features/onboarding/onboarding_screen.dart';
 import 'package:one_wallet_flutter/src/theme/app_theme.dart';
+import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 
 import 'test_harness.dart';
 
@@ -36,9 +36,9 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('review-accounts step shows the added account on an opaque row, '
-      'not a per-item BrandFrostedPanel (glass stays reserved for the '
-      'standalone profile/account-entry/permissions panels)', (tester) async {
+  testWidgets('review-accounts flow keeps working with glass inputs and rows', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1080, 2400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -74,7 +74,7 @@ void main() {
 
     // Step 3 (Account): fill in one account and save it, which advances
     // straight to the review step.
-    final textFields = find.byType(TextField);
+    final textFields = find.byType(AppGlassTextField);
     await tester.enterText(textFields.at(0), 'Test Wallet');
     await tester.enterText(textFields.at(1), '100');
     await tester.tap(find.widgetWithText(FilledButton, 'Save account'));
@@ -84,28 +84,12 @@ void main() {
     final accountName = find.text('Test Wallet');
     expect(accountName, findsOneWidget);
 
-    // ...but its row must not be wrapped in a BrandFrostedPanel (the
-    // bespoke, brand_widgets-owned panel used by the standalone
-    // profile/account-entry/permissions panels) anywhere in its ancestor
-    // chain, nor in the real `package:liquid_glass_widgets` GlassCard
-    // (imported here under a distinct `liquid_glass.` prefix so the two
-    // "glass card" concepts can never be confused with each other):
-    // glass is reserved for navigation/control chrome and those standalone
-    // panels, not this scrolling per-account list row. (PageView only
-    // builds pages within its cache extent, so asserting a fixed panel
-    // *count* across the whole tree would be brittle; checking this
-    // specific row's ancestry is the precise, page-agnostic regression
-    // check.)
-    expect(
-      find.ancestor(of: accountName, matching: find.byType(BrandFrostedPanel)),
-      findsNothing,
-    );
     expect(
       find.ancestor(
         of: accountName,
         matching: find.byType(liquid_glass.GlassCard),
       ),
-      findsNothing,
+      findsWidgets,
     );
   });
 }

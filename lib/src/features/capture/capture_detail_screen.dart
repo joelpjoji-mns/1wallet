@@ -98,7 +98,7 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
             subtitle: 'Edit these before confirming the capture candidate.',
             child: Column(
               children: [
-                TextField(
+                AppGlassTextField(
                   controller: _amountController,
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
@@ -110,7 +110,7 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                TextField(
+                AppGlassTextField(
                   controller: _merchantController,
                   decoration: const InputDecoration(
                     labelText: 'Merchant / notes',

@@ -42,7 +42,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byTooltip('Done reordering widgets'), findsOneWidget);
+    expect(find.bySemanticsLabel('Done reordering widgets'), findsOneWidget);
     expect(find.byTooltip('Drag All accounts'), findsOneWidget);
 
     // Invoke the reorder buttons' `onPressed` callbacks directly instead of
@@ -54,7 +54,7 @@ void main() {
     // app bug), causing this test to flake. Calling the callback directly
     // still exercises the exact same reorder logic/state update without
     // going through the gesture-and-ink rendering pipeline at all.
-    _pressIconButton(tester, tooltip: 'Move up All accounts');
+    await _pressGlassAction(tester, label: 'Move up All accounts');
     await tester.pumpAndSettle();
 
     expect(container.read(ledgerProvider).preferences.homeWidgetOrder.take(2), [
@@ -62,26 +62,19 @@ void main() {
       'balanceHero',
     ]);
 
-    _pressIconButton(tester, tooltip: 'Done reordering widgets');
+    await _pressGlassAction(tester, label: 'Done reordering widgets');
     await tester.pumpAndSettle();
 
     expect(find.byTooltip('Reorder widgets'), findsNothing);
   });
 }
 
-/// Finds the `IconButton` with [tooltip] and invokes its `onPressed`
-/// callback directly, bypassing `tester.tap`'s real gesture/ink pipeline.
-void _pressIconButton(WidgetTester tester, {required String tooltip}) {
-  final button = tester.widget<IconButton>(
-    find.ancestor(
-      of: find.byTooltip(tooltip),
-      matching: find.byType(IconButton),
-    ),
-  );
-  expect(
-    button.onPressed,
-    isNotNull,
-    reason: 'Expected the "$tooltip" IconButton to be enabled.',
-  );
-  button.onPressed!();
+/// Activates a package glass icon action through its accessible label.
+Future<void> _pressGlassAction(
+  WidgetTester tester, {
+  required String label,
+}) async {
+  final action = find.bySemanticsLabel(label);
+  expect(action, findsOneWidget, reason: 'Expected "$label" to be available.');
+  await tester.tap(action);
 }

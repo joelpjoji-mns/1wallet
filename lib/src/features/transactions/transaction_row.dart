@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
@@ -14,7 +15,7 @@ class TransactionRow extends StatelessWidget {
     this.onLongPress,
     this.selected = false,
     this.side = 'single',
-    this.glass = false,
+    this.glass = true,
     super.key,
     this.selectedAccountId,
   });
@@ -44,11 +45,6 @@ class TransactionRow extends StatelessWidget {
     final title = _title(category, account, counter);
     final details = transaction.notes?.trim() ?? '';
 
-    // Rows are rendered in bulk inside scrolling lists (Transactions,
-    // Recurring history, Home recent activity), so per the
-    // liquid_glass_widgets guidance this stays a lightweight opaque
-    // surface rather than a refractive GlassCard; glass is reserved for
-    // navigation/control chrome elsewhere in the app.
     Widget content = Material(
       color: Colors.transparent,
       child: InkWell(
@@ -101,9 +97,7 @@ class TransactionRow extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurfaceVariant,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                       if (details.isNotEmpty)
@@ -139,13 +133,10 @@ class TransactionRow extends StatelessWidget {
                     for (final text in secondaryTexts)
                       PrivacyText(
                         text,
-                        style: Theme.of(context).textTheme.labelSmall
-                            ?.copyWith(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w700,
-                            ),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     Text(
                       _dateLabel(transaction.occurredAt),
@@ -160,7 +151,16 @@ class TransactionRow extends StatelessWidget {
       ),
     );
 
-    if (glass) return content;
+    if (glass) {
+      return GlassCard(
+        margin: EdgeInsets.zero,
+        padding: EdgeInsets.zero,
+        shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+        quality: GlassQuality.minimal,
+        clipBehavior: Clip.antiAlias,
+        child: content,
+      );
+    }
 
     return RepaintBoundary(
       child: Container(

@@ -108,7 +108,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                 'Turn incoming bank SMS into review-queue candidates automatically.',
             child: Column(
               children: [
-                SwitchListTile(
+                AppSwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: prefs.smsCaptureEnabled,
                   onChanged: (value) {
@@ -244,7 +244,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TextField(
+                AppGlassTextField(
                   controller: _testController,
                   minLines: 3,
                   maxLines: 6,
@@ -710,7 +710,7 @@ class _WordEditorState extends State<_WordEditor> {
           Row(
             children: [
               Expanded(
-                child: TextField(
+                child: AppGlassTextField(
                   controller: _controller,
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => _add(),

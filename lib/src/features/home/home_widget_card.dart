@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
@@ -32,17 +33,11 @@ class HomeWidgetCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final resolvedIconColor = iconColor ?? scheme.primary;
     final reorderScope = HomeWidgetCardReorderScope.maybeOf(context);
-    // Dashboard tiles are scrolling list/chart content, so per the Liquid
-    // Glass package's own guidance (blur reserved for the navigation/control
-    // layer, scrolling content stays opaque) this renders a lightweight
-    // themed opaque surface instead of a per-tile GlassCard/blur layer.
-    return Container(
+    return GlassCard(
+      margin: EdgeInsets.zero,
       padding: const EdgeInsets.all(AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: scheme.outlineVariant),
-      ),
+      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+      quality: GlassQuality.minimal,
       child: Material(
         color: Colors.transparent,
         child: Column(
@@ -82,32 +77,29 @@ class HomeWidgetCard extends StatelessWidget {
                 ),
                 if (reorderScope?.reorderMode ?? false) ...[
                   const SizedBox(width: AppSpacing.xs),
-                  IconButton(
-                    tooltip: 'Move up ${reorderScope!.label}',
-                    visualDensity: VisualDensity.compact,
+                  GlassIconButton(
+                    semanticLabel: 'Move up ${reorderScope!.label}',
                     icon: const Icon(Icons.keyboard_arrow_up_rounded),
                     onPressed: reorderScope.canMoveUp
                         ? reorderScope.onMoveUp
                         : null,
+                    quality: GlassQuality.minimal,
                   ),
-                  IconButton(
-                    tooltip: 'Move down ${reorderScope.label}',
-                    visualDensity: VisualDensity.compact,
+                  GlassIconButton(
+                    semanticLabel: 'Move down ${reorderScope.label}',
                     icon: const Icon(Icons.keyboard_arrow_down_rounded),
                     onPressed: reorderScope.canMoveDown
                         ? reorderScope.onMoveDown
                         : null,
+                    quality: GlassQuality.minimal,
                   ),
                 ],
                 if (actionLabel != null && onAction != null) ...[
                   const SizedBox(width: AppSpacing.xs),
-                  TextButton(
-                    style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                    ),
+                  AppActionButton(
+                    label: actionLabel!,
                     onPressed: onAction,
-                    child: Text(actionLabel!),
+                    compact: true,
                   ),
                 ],
                 if (headerTrailing != null) ...[

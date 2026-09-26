@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import 'home_screen.dart';
 import 'home_widgets_extra.dart';
@@ -575,7 +576,8 @@ class _BalanceTrendHomeWidgetState
     // Surface a genuine computation failure distinctly from "no data yet" so
     // it isn't silently swallowed into an empty-state message.
     final pastFailed = pastTrendAsync.hasError && !pastTrendAsync.hasValue;
-    final futureFailed = futureTrendAsync.hasError && !futureTrendAsync.hasValue;
+    final futureFailed =
+        futureTrendAsync.hasError && !futureTrendAsync.hasValue;
     if (pastFailed || futureFailed) {
       return RepaintBoundary(
         child: HomeWidgetCard(
@@ -1453,7 +1455,7 @@ class _CalculatorRow extends StatelessWidget {
                   fontSize = 14;
                 }
 
-                return TextField(
+                return AppGlassTextField(
                   controller: controller,
                   onChanged: onChanged,
                   enabled: hasRate,
@@ -2457,17 +2459,11 @@ class DashboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    // Scrolling dashboard content stays opaque (see HomeWidgetCard); glass is
-    // reserved for the navigation/control layer, not per-tile chart cards.
-    return Container(
+    return GlassCard(
+      margin: EdgeInsets.zero,
       padding: const EdgeInsets.all(AppSpacing.lg),
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.outlineVariant),
-      ),
+      shape: LiquidRoundedSuperellipse(borderRadius: 16),
+      quality: GlassQuality.standard,
       child: Material(
         color: Colors.transparent,
         child: InkWell(

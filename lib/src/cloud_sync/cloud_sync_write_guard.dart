@@ -126,6 +126,11 @@ class CloudSyncConflictException implements Exception {
   final CloudWriteState? expected;
   final CloudWriteState? live;
 
+  String? get technicalDetails {
+    if (expected == null && live == null) return null;
+    return 'Expected $expected; cloud now contains $live.';
+  }
+
   @override
   String toString() => message;
 }
@@ -324,7 +329,11 @@ bool hasCloudSyncConflict({
     final liveUpdatedAt = live.updatedAt;
     final expectedUpdatedAt = expected.updatedAt;
     if (liveUpdatedAt != null && expectedUpdatedAt != null) {
-      return liveUpdatedAt != expectedUpdatedAt;
+      // DateTime equality also distinguishes UTC and local representations
+      // on some Dart runtimes. Firestore's Timestamp.toDate() can produce a
+      // local DateTime while the persisted metadata is parsed from an ISO
+      // string ending in `Z`; compare the represented instant instead.
+      return !liveUpdatedAt.isAtSameMomentAs(expectedUpdatedAt);
     }
     return false;
   }
@@ -543,11 +552,16 @@ bool isCloudSyncVersionStable({
     final beforeUpdatedAt = before.updatedAt;
     final afterUpdatedAt = after.updatedAt;
     if (beforeUpdatedAt != null && afterUpdatedAt != null) {
-      return beforeUpdatedAt == afterUpdatedAt;
+      return beforeUpdatedAt.isAtSameMomentAs(afterUpdatedAt);
     }
     return true;
   }
-  return before.updatedAt == after.updatedAt;
+  final beforeUpdatedAt = before.updatedAt;
+  final afterUpdatedAt = after.updatedAt;
+  if (beforeUpdatedAt == null || afterUpdatedAt == null) {
+    return beforeUpdatedAt == null && afterUpdatedAt == null;
+  }
+  return beforeUpdatedAt.isAtSameMomentAs(afterUpdatedAt);
 }
 
 /// Brackets `fetchPayload` (a bulk read whose result must describe one

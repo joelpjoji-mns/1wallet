@@ -408,7 +408,7 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
         context: context,
         builder: (context) => AlertDialog(
           title: Text('Set rate for $currency'),
-          content: TextField(
+          content: AppGlassTextField(
             controller: controller,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [ThousandsSeparatorInputFormatter()],
