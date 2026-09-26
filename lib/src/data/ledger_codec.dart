@@ -623,6 +623,8 @@ Map<String, Object?> _preferencesToJson(LedgerPreferences preferences) {
     'notificationTargetPackages': preferences.notificationTargetPackages,
     'merchantCategoryRules': preferences.merchantCategoryRules,
     'hideSkippedInHistory': preferences.hideSkippedInHistory,
+    'showExcludedAccounts': preferences.showExcludedAccounts,
+    'showArchivedAccounts': preferences.showArchivedAccounts,
   };
 }
 
@@ -789,6 +791,14 @@ LedgerPreferences _preferencesFromJson(Map<String, dynamic> json) {
     hideSkippedInHistory: _bool(
       json['hideSkippedInHistory'],
       fallback: fallback.hideSkippedInHistory,
+    ),
+    showExcludedAccounts: _bool(
+      json['showExcludedAccounts'],
+      fallback: fallback.showExcludedAccounts,
+    ),
+    showArchivedAccounts: _bool(
+      json['showArchivedAccounts'],
+      fallback: fallback.showArchivedAccounts,
     ),
   );
 }

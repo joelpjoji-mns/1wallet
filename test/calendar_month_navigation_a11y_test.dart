@@ -67,7 +67,7 @@ void main() {
   );
 
   testWidgets(
-    'header Add record button exposes a semantic label for screen readers',
+    'calendar has no duplicate header Add record action',
     (tester) async {
       final handle = tester.ensureSemantics();
       final state = _ledger();
@@ -82,11 +82,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // `find.byType(HeaderIconButton)` resolves to that widget's own
-      // (unlabeled) render object; the semantic label actually lives on a
-      // nested `Semantics` node further down inside `GlassIconButton`, so
-      // search the semantics tree directly by label instead.
-      expect(find.bySemanticsLabel('Add record'), findsOneWidget);
+      // MainShell owns the fixed add action; Calendar no longer duplicates it
+      // in the page header.
+      expect(find.bySemanticsLabel('Add record'), findsNothing);
 
       handle.dispose();
     },

@@ -8,6 +8,7 @@ import '../../data/ledger_providers.dart';
 import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
 import '../../theme/theme_controller.dart';
+import '../../security/app_lock.dart';
 import '../common/full_screen_picker.dart';
 import '../common/route_scaffold.dart';
 import 'settings_components.dart';
@@ -37,71 +38,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ),
   ];
 
-  
-
   static const _notificationChannels = [
     (
       'scheduled',
       'Scheduled records',
       'Upcoming and overdue payments, transfers, bills, and income.',
       Icons.event_repeat_outlined,
-    ),
-  ];
-
-  static const _managementLinks = [
-    (
-      'Sync',
-      'Google sign-in, cloud restore, background upload, and sync status.',
-      Icons.cloud_sync_outlined,
-      '/sync',
-    ),
-    (
-      'Device permissions',
-      'Camera and photos access with a clear reason for each prompt.',
-      Icons.security_outlined,
-      '/device-permissions',
-    ),
-    (
-      'Currencies',
-      'Default currency, enabled currencies, exchange rates, and refresh status.',
-      Icons.currency_exchange_outlined,
-      '/currencies',
-    ),
-    (
-      'Categories',
-      'Expense and income trees, hidden stats, archive controls.',
-      Icons.category_outlined,
-      '/categories',
-    ),
-    (
-      'Widgets',
-      'Add, restore, and review Home tiles for cashflow, trends, and accounts.',
-      Icons.widgets_outlined,
-      '/widgets',
-    ),
-    (
-      'Import & backup',
-      'CSV, Wallet exports, native backups, notification captures, and duplicate checks.',
-      Icons.file_upload_outlined,
-      '/imports',
-    ),
-    (
-      'Cards',
-      'Statement cycle, dues, utilization, and payment flows.',
-      Icons.credit_card_outlined,
-      '/cards',
-    ),
-    (
-      'Loans & EMI',
-      'Payoff calculator, schedules, and loan account tracking.',
-      Icons.account_balance_outlined,
-      '/loans',
-    ),
-    (
-      'Recurring',
-      'Bills, subscriptions, expected income, and reminders.',
-      Icons.event_repeat_outlined,
-      '/recurring',
     ),
   ];
 
@@ -125,284 +67,288 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final auth = ref.watch(authControllerProvider);
     final themeState = ref.watch(themeControllerProvider);
     final user = auth.user;
-    final pendingCaptures = state.captureCandidates
-        .where((c) => c.status == 'pending')
-        .length;
+    final appLock = ref.watch(appLockProvider);
 
     return RouteScaffold(
       title: 'Settings',
-      actions: [
-        GlassIconButton(
-          size: 44,
-          iconSize: 22,
-          onPressed: () => context.push('/review'),
-          icon: const Icon(Icons.fact_check_outlined),
-        ),
-      ],
       child: GlassIsolationScope(
         isolated: true,
-        child: Column(
-          children: [
-            // ── Profile ──
-            SettingsProfileSection(
-              user: user,
-              onOpenSync: () => context.push('/sync'),
-              onSignOut: () => _signOut(ref),
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // ── Privacy (prominent quick access) ──
-            _PrivacyQuickCard(
-              enabled: state.preferences.privacyModeEnabled,
-              onChanged: (value) {
-                ref
-                    .read(ledgerProvider.notifier)
-                    .updatePreferences(
-                      state.preferences.copyWith(privacyModeEnabled: value),
-                    );
-                _showMessage(
-                  value ? 'Privacy mode enabled' : 'Privacy mode disabled',
-                );
-              },
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // ── Preferences ──
-            SettingsPreferencesSection(
-              preferences: state.preferences,
-              themeState: themeState,
-              startDayController: _startDayController,
-              startDayValidationError: _startDayValidationError,
-              onStartDayChanged: (value) {
-                _startDayTouched = true;
-                _autoSaveStartDay(value);
-              },
-              onBaseCurrencyTap: () => context.push('/currencies'),
-              onLocaleTap: () => _showLocalePicker(state),
-              onThemeTap: () => _showThemePicker(ref, themeState.preference),
-              onHideSkippedChanged: (value) {
-                ref
-                    .read(ledgerProvider.notifier)
-                    .updatePreferences(
-                      state.preferences.copyWith(hideSkippedInHistory: value),
-                    );
-                _showMessage(
-                  value
-                      ? 'Skipped records hidden from history.'
-                      : 'Skipped records shown in history.',
-                );
-              },
-              localeLabel: _localeLabel(state.preferences.locale),
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // ── Feature hub ──
-            SettingsFeatureHubSection(
-              links: _managementLinks,
-              onOpenLink: (route) => context.push(route),
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // ── Capture & automation ──
-            GlassGroupedSection(header: const Text('Capture & automation'),
-              children: [
-                GlassListTile(
-                  leading: const Icon(Icons.fact_check_outlined),
-                  title: const Text('Pending review'),
-                  trailing: Text(
-                    '$pendingCaptures',
-                    style: TextStyle(
-                      color: pendingCaptures > 0
-                          ? theme.colorScheme.error
-                          : theme.colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.bold,
-                    ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: SizedBox(
+              width: double.infinity,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // ── Profile ──
+                  SettingsProfileSection(
+                    user: user,
+                    onSignOut: () => _signOut(ref),
                   ),
-                ),
-                const GlassDivider(),
-                const GlassListTile(
-                  leading: Icon(Icons.sms_outlined),
-                  title: Text('Auto capture'),
-                  trailing: Text('SMS ready'),
-                ),
-                const GlassDivider(),
-                const GlassListTile(
-                  leading: Icon(Icons.table_chart_outlined),
-                  title: Text('CSV imports'),
-                  trailing: Text('Ready'),
-                ),
-                const GlassDivider(),
-                Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.sm,
+                  const SizedBox(height: AppSpacing.md),
+
+                  // ── Privacy (prominent quick access) ──
+                  _PrivacyQuickCard(
+                    enabled: state.preferences.privacyModeEnabled,
+                    onChanged: (value) {
+                      ref
+                          .read(ledgerProvider.notifier)
+                          .updatePreferences(
+                            state.preferences.copyWith(
+                              privacyModeEnabled: value,
+                            ),
+                          );
+                      _showMessage(
+                        value
+                            ? 'Privacy mode enabled'
+                            : 'Privacy mode disabled',
+                      );
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+
+                  // ── Preferences ──
+                  SettingsPreferencesSection(
+                    preferences: state.preferences,
+                    themeState: themeState,
+                    startDayController: _startDayController,
+                    startDayValidationError: _startDayValidationError,
+                    onStartDayChanged: (value) {
+                      _startDayTouched = true;
+                      _autoSaveStartDay(value);
+                    },
+                    onBaseCurrencyTap: () => context.push('/currencies'),
+                    onLocaleTap: () => _showLocalePicker(state),
+                    onThemeTap: () =>
+                        _showThemePicker(ref, themeState.preference),
+                    onHideSkippedChanged: (value) {
+                      ref
+                          .read(ledgerProvider.notifier)
+                          .updatePreferences(
+                            state.preferences.copyWith(
+                              hideSkippedInHistory: value,
+                            ),
+                          );
+                      _showMessage(
+                        value
+                            ? 'Skipped records hidden from history.'
+                            : 'Skipped records shown in history.',
+                      );
+                    },
+                    localeLabel: _localeLabel(state.preferences.locale),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+
+                  // ── Notifications ──
+                  GlassGroupedSection(
+                    header: const Text('Notifications'),
                     children: [
-                      FilledButton.tonalIcon(
-                        onPressed: () => context.push('/review'),
-                        icon: const Icon(Icons.fact_check_outlined),
-                        label: const Text('Review queue'),
+                      GlassListTile(
+                        title: const Text('Notification inbox'),
+                        subtitle: const Text('Active reminder alerts.'),
+                        trailing: GlassSwitch(
+                          quality: GlassQuality.standard,
+                          value: state.preferences.notificationInboxEnabled,
+                          onChanged: (value) {
+                            ref
+                                .read(ledgerProvider.notifier)
+                                .updatePreferences(
+                                  state.preferences.copyWith(
+                                    notificationInboxEnabled: value,
+                                  ),
+                                );
+                            _showMessage(
+                              value
+                                  ? 'Notification inbox enabled.'
+                                  : 'Notification inbox paused.',
+                            );
+                          },
+                        ),
                       ),
-                      FilledButton.tonalIcon(
-                        onPressed: () => context.push('/notifications'),
-                        icon: const Icon(Icons.notifications_outlined),
-                        label: const Text('Notifications'),
+                      const GlassDivider(),
+                      GlassListTile(
+                        title: const Text('Device notifications'),
+                        subtitle: const Text(
+                          'Updates use native alerts when permission is granted.',
+                        ),
+                        trailing: GlassSwitch(
+                          quality: GlassQuality.standard,
+                          value: state.preferences.deviceNotificationsEnabled,
+                          onChanged: (value) {
+                            ref
+                                .read(ledgerProvider.notifier)
+                                .updatePreferences(
+                                  state.preferences.copyWith(
+                                    deviceNotificationsEnabled: value,
+                                  ),
+                                );
+                            _showMessage(
+                              value
+                                  ? 'Device notifications enabled.'
+                                  : 'Device notifications disabled.',
+                            );
+                          },
+                        ),
                       ),
-                      FilledButton.tonalIcon(
-                        onPressed: () => context.push('/auto-capture'),
-                        icon: const Icon(Icons.auto_awesome_outlined),
-                        label: const Text('Auto capture'),
+                      const GlassDivider(),
+                      GlassListTile(
+                        title: const Text('Quiet hours'),
+                        subtitle: const Text('22:00 to 07:00'),
+                        trailing: GlassSwitch(
+                          quality: GlassQuality.standard,
+                          value: state.preferences.quietHoursEnabled,
+                          onChanged: (value) {
+                            ref
+                                .read(ledgerProvider.notifier)
+                                .updatePreferences(
+                                  state.preferences.copyWith(
+                                    quietHoursEnabled: value,
+                                  ),
+                                );
+                            _showMessage(
+                              value
+                                  ? 'Quiet hours enabled'
+                                  : 'Quiet hours disabled',
+                            );
+                          },
+                        ),
+                      ),
+                      const GlassDivider(),
+                      for (final channel in _notificationChannels) ...[
+                        GlassListTile(
+                          leading: Icon(
+                            channel.$4,
+                            color: theme.colorScheme.primary,
+                          ),
+                          title: Text(channel.$2),
+                          subtitle: Text(channel.$3),
+                          trailing: GlassSwitch(
+                            quality: GlassQuality.standard,
+                            value: state.preferences.channelScheduledEnabled,
+                            onChanged: (value) {
+                              final prefs = state.preferences;
+                              if (channel.$1 == 'scheduled') {
+                                ref
+                                    .read(ledgerProvider.notifier)
+                                    .updatePreferences(
+                                      prefs.copyWith(
+                                        channelScheduledEnabled: value,
+                                      ),
+                                    );
+                              }
+                              _showMessage(
+                                value
+                                    ? '${channel.$2} enabled'
+                                    : '${channel.$2} paused',
+                              );
+                            },
+                          ),
+                        ),
+                        if (channel != _notificationChannels.last)
+                          const GlassDivider(),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+
+                  GlassGroupedSection(
+                    header: const Text('Account visibility'),
+                    children: [
+                      GlassListTile(
+                        title: const Text('Show excluded accounts'),
+                        subtitle: const Text(
+                          'Include accounts excluded from totals in the account list.',
+                        ),
+                        trailing: GlassSwitch(
+                          quality: GlassQuality.standard,
+                          value: state.preferences.showExcludedAccounts,
+                          onChanged: (value) => ref
+                              .read(ledgerProvider.notifier)
+                              .updatePreferences(
+                                state.preferences.copyWith(
+                                  showExcludedAccounts: value,
+                                ),
+                              ),
+                        ),
+                      ),
+                      const GlassDivider(),
+                      GlassListTile(
+                        title: const Text('Show archived accounts'),
+                        subtitle: const Text(
+                          'Include archived accounts in the account list.',
+                        ),
+                        trailing: GlassSwitch(
+                          quality: GlassQuality.standard,
+                          value: state.preferences.showArchivedAccounts,
+                          onChanged: (value) => ref
+                              .read(ledgerProvider.notifier)
+                              .updatePreferences(
+                                state.preferences.copyWith(
+                                  showArchivedAccounts: value,
+                                ),
+                              ),
+                        ),
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: AppSpacing.md),
 
-            // ── Notifications ──
-            GlassGroupedSection(header: const Text('Notifications'),
-              children: [
-                GlassListTile(
-                  title: const Text('Notification inbox'),
-                  subtitle: const Text('Active reminder alerts.'),
-                  trailing: GlassSwitch(
-                    quality: GlassQuality.standard,
-                    value: state.preferences.notificationInboxEnabled,
-                    onChanged: (value) {
-                      ref
-                          .read(ledgerProvider.notifier)
-                          .updatePreferences(
-                            state.preferences.copyWith(
-                              notificationInboxEnabled: value,
-                            ),
-                          );
-                      _showMessage(
-                        value
-                            ? 'Notification inbox enabled.'
-                            : 'Notification inbox paused.',
-                      );
-                    },
+                  // ── Security & Privacy ──
+                  GlassGroupedSection(
+                    header: const Text('Security & privacy'),
+                    children: [
+                      GlassListTile(
+                        title: const Text('Biometric lock'),
+                        subtitle: Text(
+                          appLock.message ??
+                              'Require biometrics or your device credential when opening the app.',
+                        ),
+                        trailing: IgnorePointer(
+                          ignoring: appLock.busy,
+                          child: GlassSwitch(
+                            quality: GlassQuality.standard,
+                            value: appLock.enabled,
+                            onChanged: (value) async {
+                              if (value) {
+                                await ref
+                                    .read(appLockProvider.notifier)
+                                    .enable();
+                                final current = ref.read(appLockProvider);
+                                _showMessage(
+                                  current.enabled
+                                      ? 'App lock enabled on this device.'
+                                      : current.message ??
+                                            'App lock was not enabled.',
+                                );
+                              } else {
+                                await ref
+                                    .read(appLockProvider.notifier)
+                                    .disable();
+                                _showMessage(
+                                  'App lock disabled on this device.',
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                      const GlassDivider(),
+                      GlassListTile(
+                        leading: const Icon(Icons.security_outlined),
+                        title: const Text('Device permissions'),
+                        subtitle: const Text(
+                          'Manage camera, photos, and notification access.',
+                        ),
+                        trailing: const Icon(Icons.chevron_right, size: 20),
+                        onTap: () => context.push('/device-permissions'),
+                      ),
+                    ],
                   ),
-                ),
-                const GlassDivider(),
-                GlassListTile(
-                  title: const Text('Device notifications'),
-                  subtitle: const Text('Updates use native alerts when permission is granted.'),
-                  trailing: GlassSwitch(
-                    quality: GlassQuality.standard,
-                    value: state.preferences.deviceNotificationsEnabled,
-                    onChanged: (value) {
-                      ref
-                          .read(ledgerProvider.notifier)
-                          .updatePreferences(
-                            state.preferences.copyWith(
-                              deviceNotificationsEnabled: value,
-                            ),
-                          );
-                      _showMessage(
-                        value
-                            ? 'Device notifications enabled.'
-                            : 'Device notifications disabled.',
-                      );
-                    },
-                  ),
-                ),
-                const GlassDivider(),
-                GlassListTile(
-                  title: const Text('Quiet hours'),
-                  subtitle: const Text('22:00 to 07:00'),
-                  trailing: GlassSwitch(
-                    quality: GlassQuality.standard,
-                    value: state.preferences.quietHoursEnabled,
-                    onChanged: (value) {
-                      ref
-                          .read(ledgerProvider.notifier)
-                          .updatePreferences(
-                            state.preferences.copyWith(quietHoursEnabled: value),
-                          );
-                      _showMessage(
-                        value ? 'Quiet hours enabled' : 'Quiet hours disabled',
-                      );
-                    },
-                  ),
-                ),
-                const GlassDivider(),
-                for (final channel in _notificationChannels) ...[
-                  GlassListTile(
-                    leading: Icon(
-                      channel.$4,
-                      color: theme.colorScheme.primary,
-                    ),
-                    title: Text(channel.$2),
-                    subtitle: Text(channel.$3),
-                    trailing: GlassSwitch(
-                      quality: GlassQuality.standard,
-                      value: state.preferences.channelScheduledEnabled,
-                      onChanged: (value) {
-                        final prefs = state.preferences;
-                        if (channel.$1 == 'scheduled') {
-                          ref
-                              .read(ledgerProvider.notifier)
-                              .updatePreferences(
-                                prefs.copyWith(channelScheduledEnabled: value),
-                              );
-                        }
-                        _showMessage(
-                          value
-                              ? '${channel.$2} enabled'
-                              : '${channel.$2} paused',
-                        );
-                      },
-                    ),
-                  ),
-                  if (channel != _notificationChannels.last)
-                    const GlassDivider(),
                 ],
-                const GlassDivider(),
-                Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.tonalIcon(
-                      onPressed: () => context.push('/notifications'),
-                      icon: const Icon(Icons.notifications_outlined),
-                      label: const Text('Open notification inbox'),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-            const SizedBox(height: AppSpacing.md),
-
-            // ── Security & Privacy ──
-            GlassGroupedSection(header: const Text('Security & privacy'),
-              children: [
-                GlassListTile(
-                  title: const Text('Biometric lock'),
-                  subtitle: const Text('Requires a native security slice after the app shell is stable.'),
-                  trailing: GlassSwitch(
-                    quality: GlassQuality.standard,
-                    value: state.preferences.biometricLockEnabled,
-                    onChanged: (value) {
-                      ref
-                          .read(ledgerProvider.notifier)
-                          .updatePreferences(
-                            state.preferences.copyWith(
-                              biometricLockEnabled: value,
-                            ),
-                          );
-                      _showMessage(
-                        value
-                            ? 'Biometric lock enabled'
-                            : 'Biometric lock disabled',
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -481,8 +427,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (!mounted) return;
     _showMessage('Theme preference saved.');
   }
-
-
 
   Future<void> _signOut(WidgetRef ref) async {
     await ref.read(authControllerProvider.notifier).signOut();
@@ -566,10 +510,3 @@ class _PrivacyQuickCard extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
-
-

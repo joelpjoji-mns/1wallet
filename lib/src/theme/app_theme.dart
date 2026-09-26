@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../design/tokens.dart';
 
 abstract final class AppTheme {
-  static bool disableGoogleFonts = false;
-
   static ThemeData light({ColorScheme? systemColorScheme}) =>
       _theme(Brightness.light, systemColorScheme: systemColorScheme);
 
@@ -59,9 +56,7 @@ abstract final class AppTheme {
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
-      fontFamily: disableGoogleFonts
-          ? 'Outfit'
-          : GoogleFonts.outfit().fontFamily,
+      fontFamily: 'Inter',
       scaffoldBackgroundColor: amoled
           ? AppColors.amoledBackground
           : dark

@@ -81,25 +81,20 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final locale = state.preferences.locale.replaceAll('_', '-');
     final selectedAccount = accountById(state, _accountFilter);
     final selectedCategory = categoryById(state, _categoryFilter);
+    final bottomDockClearance =
+        AppSizes.bottomBarClearance + MediaQuery.paddingOf(context).bottom;
 
     return AppScreen(
       maxWidth: 1400,
       title: 'Calendar',
       scrollable: false,
-      padding: const EdgeInsets.fromLTRB(
+      padding: EdgeInsets.fromLTRB(
         AppSpacing.md,
         AppSpacing.xs,
         AppSpacing.md,
-        115.0,
+        bottomDockClearance,
       ),
       onMenuPressed: widget.onMenuPressed,
-      actions: [
-        HeaderIconButton(
-          icon: Icons.add_rounded,
-          onPressed: () => context.push('/add'),
-          semanticLabel: 'Add record',
-        ),
-      ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -612,7 +607,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       child: ListView.separated(
                         shrinkWrap: true,
                         itemCount: records.length,
-                        separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.sm),
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: AppSpacing.sm),
                         itemBuilder: (context, index) {
                           final transaction = records[index];
                           return TransactionRow(
@@ -620,7 +616,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                             transaction: transaction,
                             onTap: () {
                               if (transaction.status == 'forecast') {
-                                final templateId = transaction.originalTransactionId;
+                                final templateId =
+                                    transaction.originalTransactionId;
                                 if (templateId != null) {
                                   context.push('/recurring/$templateId/edit');
                                 }

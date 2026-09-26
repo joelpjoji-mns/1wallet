@@ -62,8 +62,7 @@ void main() {
   });
 
   testWidgets(
-    'TransactionsScreen header actions expose semantic labels in default '
-    'and selection modes',
+    'TransactionsScreen exposes header actions without a duplicate add action',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1080, 2400));
       final handle = tester.ensureSemantics();
@@ -90,8 +89,9 @@ void main() {
 
       // Default (nothing selected) actions.
       expect(find.bySemanticsLabel('Choose display currency'), findsOneWidget);
-      // History exposes exactly one add-record action: the floating button.
-      expect(find.bySemanticsLabel('Add record'), findsOneWidget);
+      // MainShell owns the fixed add action across tabs; the page itself must
+      // not duplicate it in its scrolling content.
+      expect(find.bySemanticsLabel('Add record'), findsNothing);
       expect(find.bySemanticsLabel('Customize widgets'), findsNothing);
 
       // Long-pressing a row enters multi-select mode, swapping the header

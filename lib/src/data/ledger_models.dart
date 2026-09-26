@@ -286,6 +286,8 @@ class LedgerPreferences {
     this.notificationTargetPackages = kDefaultNotificationPackages,
     this.merchantCategoryRules = const {},
     this.hideSkippedInHistory = false,
+    this.showExcludedAccounts = true,
+    this.showArchivedAccounts = false,
   });
 
   final String baseCurrency;
@@ -326,6 +328,8 @@ class LedgerPreferences {
   final List<String> notificationTargetPackages;
   final Map<String, String> merchantCategoryRules;
   final bool hideSkippedInHistory;
+  final bool showExcludedAccounts;
+  final bool showArchivedAccounts;
 
   LedgerPreferences copyWith({
     String? baseCurrency,
@@ -366,6 +370,8 @@ class LedgerPreferences {
     List<String>? notificationTargetPackages,
     Map<String, String>? merchantCategoryRules,
     bool? hideSkippedInHistory,
+    bool? showExcludedAccounts,
+    bool? showArchivedAccounts,
   }) {
     return LedgerPreferences(
       baseCurrency: baseCurrency ?? this.baseCurrency,
@@ -421,6 +427,10 @@ class LedgerPreferences {
       merchantCategoryRules:
           merchantCategoryRules ?? this.merchantCategoryRules,
       hideSkippedInHistory: hideSkippedInHistory ?? this.hideSkippedInHistory,
+      showExcludedAccounts:
+          showExcludedAccounts ?? this.showExcludedAccounts,
+      showArchivedAccounts:
+          showArchivedAccounts ?? this.showArchivedAccounts,
     );
   }
 }

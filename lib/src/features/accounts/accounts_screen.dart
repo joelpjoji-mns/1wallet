@@ -21,8 +21,6 @@ class AccountsScreen extends ConsumerStatefulWidget {
 
 class _AccountsScreenState extends ConsumerState<AccountsScreen> {
   var _query = '';
-  var _showExcluded = true;
-  var _showArchived = false;
   List<String>? _order;
 
   @override
@@ -69,6 +67,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
         ),
       ],
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           GlassSearchBar(
             placeholder: 'Search accounts...',
@@ -168,8 +167,12 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
     final order = _order ?? const <String>[];
     final byId = {for (final account in state.accounts) account.id: account};
     return order.map((id) => byId[id]).whereType<Account>().where((account) {
-      if (!_showArchived && account.isArchived) return false;
-      if (!_showExcluded && !account.includeInTotals) return false;
+      if (!state.preferences.showArchivedAccounts && account.isArchived) {
+        return false;
+      }
+      if (!state.preferences.showExcludedAccounts && !account.includeInTotals) {
+        return false;
+      }
       if (query.isEmpty) return true;
       return [
         account.name,
@@ -187,31 +190,6 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
   ) {
     return Column(
       children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              GlassChip(
-                label: 'Show excluded',
-                icon: const Icon(Icons.balance_outlined),
-                selected: _showExcluded,
-                onTap: () => setState(() => _showExcluded = !_showExcluded),
-                useOwnLayer: true,
-                quality: GlassQuality.standard,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              GlassChip(
-                label: 'Show archived',
-                icon: const Icon(Icons.archive_outlined),
-                selected: _showArchived,
-                onTap: () => setState(() => _showArchived = !_showArchived),
-                useOwnLayer: true,
-                quality: GlassQuality.standard,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
         _CurrencySummaryHeader(state: state, accounts: rows),
         const SizedBox(height: AppSpacing.xs),
         Row(
@@ -224,11 +202,6 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
                   context,
                 ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
               ),
-            ),
-            FilledButton.tonalIcon(
-              onPressed: () => context.push('/account/new'),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Add account'),
             ),
           ],
         ),

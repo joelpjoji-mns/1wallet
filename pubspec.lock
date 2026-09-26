@@ -177,14 +177,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.9"
-  cupertino_native:
-    dependency: "direct main"
-    description:
-      name: cupertino_native
-      sha256: "5f42e85a091797afb86bb30a25fffd7188335de97278fa4bb80c0f564c874e89"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.1"
   dbus:
     dependency: transitive
     description:
@@ -576,14 +568,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "17.5.0"
-  google_fonts:
-    dependency: "direct main"
-    description:
-      name: google_fonts
-      sha256: e3cb3ee6b47fd2472c23de6da5744796a4da195137759ddb3fbcc9467b7b3c7d
-      url: "https://pub.dev"
-    source: hosted
-    version: "8.2.1"
   google_identity_services_web:
     dependency: transitive
     description:

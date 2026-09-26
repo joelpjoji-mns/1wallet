@@ -15,7 +15,7 @@ import 'home_widget_models.dart';
 import 'home_widgets.dart';
 
 final homeSelectedAccountProvider = StateProvider<String?>((ref) => null);
-final _homeWidgetReorderModeProvider = StateProvider.autoDispose<bool>(
+final homeWidgetReorderModeProvider = StateProvider.autoDispose<bool>(
   (ref) => false,
 );
 
@@ -66,8 +66,7 @@ class HomeScreen extends ConsumerWidget {
     final notificationCount = ref.watch(_homeNotificationCountProvider);
     final widgetOrder = ref.watch(_homeWidgetOrderProvider);
     final user = ref.watch(_homeAuthUserProvider);
-    final selectedAccountId = ref.watch(homeSelectedAccountProvider);
-    final reorderMode = ref.watch(_homeWidgetReorderModeProvider);
+    final reorderMode = ref.watch(homeWidgetReorderModeProvider);
 
     final sync = ref.watch(cloudSyncControllerProvider);
     final theme = Theme.of(context);
@@ -186,25 +185,6 @@ class HomeScreen extends ConsumerWidget {
     return AppScreen(
       title: '1Wallet',
       onMenuPressed: onMenuPressed,
-      floatingActionButton: reorderMode
-          ? null
-          : IslandFloatingActionButton(
-              icon: Icons.add_rounded,
-              tooltip: 'Add record',
-              onPressed: () {
-                if (selectedAccountId == null ||
-                    selectedAccountId == 'cash_group') {
-                  context.push('/add');
-                  return;
-                }
-                context.push(
-                  Uri(
-                    path: '/add',
-                    queryParameters: {'accountId': selectedAccountId},
-                  ).toString(),
-                );
-              },
-            ),
       actions: [
         if (reorderMode)
           IconButton(
@@ -227,7 +207,7 @@ class HomeScreen extends ConsumerWidget {
             icon: Icons.check_rounded,
             semanticLabel: 'Done reordering widgets',
             onPressed: () =>
-                ref.read(_homeWidgetReorderModeProvider.notifier).state = false,
+                ref.read(homeWidgetReorderModeProvider.notifier).state = false,
           ),
 
         HeaderIconButton(
@@ -404,7 +384,7 @@ class _HomeDashboardList extends ConsumerWidget {
   }
 
   void _enterReorderMode(BuildContext context, WidgetRef ref) {
-    ref.read(_homeWidgetReorderModeProvider.notifier).state = true;
+    ref.read(homeWidgetReorderModeProvider.notifier).state = true;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(

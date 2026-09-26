@@ -202,11 +202,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           : 'Transactions',
       maxWidth: 1400,
       onMenuPressed: widget.onMenuPressed,
-      floatingActionButton: IslandFloatingActionButton(
-        icon: Icons.add_rounded,
-        tooltip: 'Add record',
-        onPressed: () => context.push('/add'),
-      ),
       scrollable: false,
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.md,
@@ -236,6 +231,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               ),
             ],
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TransactionCommandStrip(
             query: _query,

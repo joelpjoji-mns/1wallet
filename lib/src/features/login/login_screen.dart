@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../auth/auth_controller.dart';
 import '../launch/brand_widgets.dart';
@@ -50,7 +49,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         const Spacer(),
                         Text(
                           'SIGN IN',
-                          style: GoogleFonts.outfit(
+                          style: TextStyle(
+                            fontFamily: 'Inter',
                             fontWeight: FontWeight.w800,
                             fontSize: 14,
                             letterSpacing: 2,
@@ -72,7 +72,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         StaggeredFadeIn(
                           child: Text(
                             'Welcome.\n1Wallet.',
-                            style: GoogleFonts.outfit(
+                            style: TextStyle(
+                              fontFamily: 'Inter',
                               fontSize: 52,
                               fontWeight: FontWeight.w900,
                               height: 0.95,
@@ -86,7 +87,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           delay: const Duration(milliseconds: 100),
                           child: Text(
                             'A smarter way to track, plan, and grow your money effortlessly.',
-                            style: GoogleFonts.outfit(
+                            style: TextStyle(
+                              fontFamily: 'Inter',
                               fontSize: 19,
                               fontWeight: FontWeight.w400,
                               color: Theme.of(
@@ -119,7 +121,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     unavailable
                                         ? 'Sync offline'
                                         : 'Ready to start?',
-                                    style: GoogleFonts.outfit(
+                                    style: TextStyle(
+                                      fontFamily: 'Inter',
                                       fontSize: 26,
                                       fontWeight: FontWeight.w800,
                                       color: Theme.of(
@@ -132,7 +135,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     unavailable
                                         ? 'Cloud sync is currently unavailable. You can still use the app locally.'
                                         : 'Sign in to sync your data securely across all your devices.',
-                                    style: GoogleFonts.outfit(
+                                    style: TextStyle(
+                                      fontFamily: 'Inter',
                                       fontSize: 16,
                                       color: Theme.of(context)
                                           .colorScheme
@@ -228,7 +232,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                                 auth.isSigningIn
                                                     ? 'Connecting...'
                                                     : 'Continue with Google',
-                                                style: GoogleFonts.outfit(
+                                                style: TextStyle(
+                                                  fontFamily: 'Inter',
                                                   fontSize: 17,
                                                   fontWeight: FontWeight.w600,
                                                   color:
@@ -264,7 +269,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       child: Text(
                                         auth.errorMessage!,
                                         textAlign: TextAlign.center,
-                                        style: GoogleFonts.outfit(
+                                        style: TextStyle(
+                                          fontFamily: 'Inter',
                                           color: Theme.of(
                                             context,
                                           ).colorScheme.error,
@@ -283,7 +289,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         Center(
                           child: Text(
                             'Secure • Private • Local First',
-                            style: GoogleFonts.outfit(
+                            style: TextStyle(
+                              fontFamily: 'Inter',
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                               letterSpacing: 1,

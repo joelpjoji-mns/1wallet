@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:cupertino_native/cupertino_native.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../design/tokens.dart';
@@ -339,33 +336,6 @@ class HeaderIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final badgeCount = badge ?? 0;
-    final isApple =
-        defaultTargetPlatform == TargetPlatform.iOS ||
-        defaultTargetPlatform == TargetPlatform.macOS;
-    final symbol = _sfSymbolFor(icon);
-    if (isApple && symbol != null) {
-      return Padding(
-        padding: const EdgeInsets.only(left: 6),
-        child: Semantics(
-          button: true,
-          label: _headerButtonSemanticLabel(semanticLabel, badgeCount),
-          child: CupertinoTheme(
-            data: CupertinoThemeData(
-              brightness: Theme.of(context).brightness,
-              primaryColor: Theme.of(context).colorScheme.primary,
-            ),
-            child: CNButton.icon(
-              icon: CNSymbol(symbol, size: 22),
-              size: 44,
-              enabled: onPressed != null,
-              onPressed: onPressed,
-              tint: Theme.of(context).colorScheme.primary,
-              style: CNButtonStyle.glass,
-            ),
-          ),
-        ),
-      );
-    }
     return Padding(
       padding: const EdgeInsets.only(left: 6.0),
       child: Stack(
@@ -423,23 +393,7 @@ class HeaderIconButton extends StatelessWidget {
   }
 }
 
-String? _sfSymbolFor(IconData icon) => switch (icon) {
-  Icons.menu_rounded || Icons.menu => 'line.3.horizontal',
-  Icons.arrow_back_rounded || Icons.arrow_back => 'chevron.left',
-  Icons.add_rounded || Icons.add => 'plus',
-  Icons.check_rounded || Icons.check => 'checkmark',
-  Icons.close_rounded || Icons.close => 'xmark',
-  Icons.search_rounded || Icons.search => 'magnifyingglass',
-  Icons.refresh_rounded || Icons.refresh => 'arrow.clockwise',
-  Icons.more_horiz_rounded || Icons.more_horiz => 'ellipsis',
-  Icons.edit_rounded || Icons.edit => 'pencil',
-  Icons.delete_outline_rounded || Icons.delete_outline => 'trash',
-  Icons.notifications_outlined || Icons.notifications => 'bell',
-  _ => null,
-};
-
-/// Shared action control. Apple builds use the package's native button;
-/// Android and other platforms use the package's shader-backed glass button.
+/// Shared cross-platform action control backed by Liquid Glass.
 class AppActionButton extends StatelessWidget {
   const AppActionButton({
     required this.label,
@@ -461,32 +415,6 @@ class AppActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final isApple =
-        defaultTargetPlatform == TargetPlatform.iOS ||
-        defaultTargetPlatform == TargetPlatform.macOS;
-    if (isApple) {
-      return Semantics(
-        button: true,
-        label: label,
-        child: CupertinoTheme(
-          data: CupertinoThemeData(
-            brightness: Theme.of(context).brightness,
-            primaryColor: scheme.primary,
-          ),
-          child: CNButton(
-            label: label,
-            enabled: enabled && onPressed != null,
-            onPressed: onPressed,
-            height: compact ? 34 : 48,
-            tint: scheme.primary,
-            style: prominent
-                ? CNButtonStyle.prominentGlass
-                : CNButtonStyle.glass,
-          ),
-        ),
-      );
-    }
-
     final content = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1213,31 +1141,14 @@ class AppSwitchListTile extends StatelessWidget {
                   ignoring: !enabled,
                   child: Opacity(
                     opacity: enabled ? 1 : 0.38,
-                    child:
-                        defaultTargetPlatform == TargetPlatform.iOS ||
-                            defaultTargetPlatform == TargetPlatform.macOS
-                        ? CupertinoTheme(
-                            data: CupertinoThemeData(
-                              brightness: Theme.of(context).brightness,
-                              primaryColor: Theme.of(
-                                context,
-                              ).colorScheme.primary,
-                            ),
-                            child: CNSwitch(
-                              value: value,
-                              enabled: enabled,
-                              onChanged: onChanged ?? (_) {},
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          )
-                        : GlassSwitch(
-                            value: value,
-                            onChanged: onChanged ?? (_) {},
-                            activeColor: Theme.of(context).colorScheme.primary,
-                            useOwnLayer: true,
-                            quality: GlassQuality.standard,
-                            semanticLabel: '',
-                          ),
+                    child: GlassSwitch(
+                      value: value,
+                      onChanged: onChanged ?? (_) {},
+                      activeColor: Theme.of(context).colorScheme.primary,
+                      useOwnLayer: true,
+                      quality: GlassQuality.standard,
+                      semanticLabel: '',
+                    ),
                   ),
                 ),
               ),

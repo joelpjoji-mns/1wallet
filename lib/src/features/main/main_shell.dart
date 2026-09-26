@@ -17,7 +17,8 @@ import '../../widgets/bottom_island_nav.dart';
 import 'main_drawer_components.dart';
 import '../accounts/accounts_screen.dart';
 import '../calendar/calendar_screen.dart';
-import '../home/home_screen.dart';
+import '../home/home_screen.dart'
+    show HomeScreen, homeSelectedAccountProvider, homeWidgetReorderModeProvider;
 import '../notifications/notification_engine.dart';
 import '../../services/notification_service.dart';
 import '../transactions/transactions_screen.dart';
@@ -144,6 +145,36 @@ class _MainShellState extends ConsumerState<MainShell>
             },
           );
 
+          final homeReordering = ref.watch(homeWidgetReorderModeProvider);
+          final showAction = selectedIndex != 0 || !homeReordering;
+          final action = selectedIndex == 3
+              ? IslandFloatingActionButton(
+                  key: const ValueKey('add-account-action'),
+                  icon: Icons.add_rounded,
+                  tooltip: 'Add account',
+                  onPressed: () => context.push('/account/new'),
+                )
+              : IslandFloatingActionButton(
+                  key: const ValueKey('add-record-action'),
+                  icon: Icons.add_rounded,
+                  tooltip: 'Add record',
+                  onPressed: () {
+                    if (selectedIndex == 0) {
+                      final accountId = ref.read(homeSelectedAccountProvider);
+                      if (accountId != null && accountId != 'cash_group') {
+                        context.push(
+                          Uri(
+                            path: '/add',
+                            queryParameters: {'accountId': accountId},
+                          ).toString(),
+                        );
+                        return;
+                      }
+                    }
+                    context.push('/add');
+                  },
+                );
+
           Widget mobileBody = Listener(
             onPointerDown: (_) {
               _dragDistance = 0;
@@ -183,8 +214,19 @@ class _MainShellState extends ConsumerState<MainShell>
                     items: _tabs,
                     selectedIndex: selectedIndex,
                     onSelected: _selectTab,
+                    trailingAction: selectedIndex == 2 && showAction
+                        ? action
+                        : null,
                   ),
                 ),
+                if (showAction && selectedIndex != 2)
+                  Positioned(
+                    right: AppSpacing.lg,
+                    bottom:
+                        AppSizes.bottomBarClearance +
+                        MediaQuery.paddingOf(context).bottom,
+                    child: action,
+                  ),
               ],
             ),
           );
@@ -199,7 +241,19 @@ class _MainShellState extends ConsumerState<MainShell>
                   isStatic: true,
                   onTabSelected: _selectTab,
                 ),
-                Expanded(child: mainBody),
+                Expanded(
+                  child: Stack(
+                    children: [
+                      Positioned.fill(child: mainBody),
+                      if (showAction)
+                        Positioned(
+                          right: AppSpacing.xl,
+                          bottom: AppSpacing.xl,
+                          child: action,
+                        ),
+                    ],
+                  ),
+                ),
               ],
             ),
           );
@@ -430,16 +484,6 @@ class AppMainDrawer extends ConsumerWidget {
                         Icons.account_balance_outlined,
                         '/loans',
                       ),
-                    ],
-                    selectedIndex: selectedIndex,
-                    onTabSelected: onTabSelected,
-                  ),
-                  DrawerSection(
-                    title: 'Planning & money',
-                    titleColor: scheme.secondary,
-                    icon: Icons.timeline_rounded,
-                    surfaceTint: scheme.secondary,
-                    rows: [
                       DrawerRowConfig.route(
                         'Loan forecast',
                         Icons.show_chart_rounded,

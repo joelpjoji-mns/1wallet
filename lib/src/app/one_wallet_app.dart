@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:dynamic_color/dynamic_color.dart';
@@ -12,6 +11,7 @@ import '../cloud_sync/cloud_sync_controller.dart';
 import '../data/ledger_providers.dart';
 import '../features/capture/sms_inbox_reader.dart';
 import '../startup/startup_state.dart';
+import '../security/app_lock.dart';
 
 class OneWalletApp extends ConsumerStatefulWidget {
   const OneWalletApp({super.key});
@@ -147,14 +147,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
           themeMode: themeState.themeMode,
           builder: (context, child) {
             if (child == null) return const SizedBox.shrink();
-            final theme = Theme.of(context);
-            return CupertinoTheme(
-              data: CupertinoThemeData(
-                brightness: theme.brightness,
-                primaryColor: theme.colorScheme.primary,
-              ),
-              child: child,
-            );
+            return AppLockGate(child: child);
           },
         ),
       ),

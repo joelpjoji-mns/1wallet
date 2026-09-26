@@ -11,13 +11,11 @@ import '../../widgets/user_identity_widgets.dart';
 class SettingsProfileSection extends StatelessWidget {
   const SettingsProfileSection({
     required this.user,
-    required this.onOpenSync,
     required this.onSignOut,
     super.key,
   });
 
   final AuthUser? user;
-  final VoidCallback onOpenSync;
   final VoidCallback onSignOut;
 
   @override
@@ -81,8 +79,13 @@ class SettingsProfileSection extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            user?.isGoogleProvider == true ? 'Google Sync' : 'Local',
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                            user?.isGoogleProvider == true
+                                ? 'Google Sync'
+                                : 'Local',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
@@ -91,21 +94,17 @@ class SettingsProfileSection extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           FilledButton.tonal(
-                            onPressed: onOpenSync,
-                            style: FilledButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                            ),
-                            child: const Text('Sync', style: TextStyle(fontSize: 12)),
-                          ),
-                          const SizedBox(width: AppSpacing.xs),
-                          FilledButton.tonal(
                             onPressed: onSignOut,
                             style: FilledButton.styleFrom(
                               visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
                             ),
-                            child: const Text('Sign out', style: TextStyle(fontSize: 12)),
+                            child: const Text(
+                              'Sign out',
+                              style: TextStyle(fontSize: 12),
+                            ),
                           ),
                         ],
                       ),
@@ -229,35 +228,3 @@ class SettingsPreferencesSection extends StatelessWidget {
     );
   }
 }
-
-class SettingsFeatureHubSection extends StatelessWidget {
-  const SettingsFeatureHubSection({
-    required this.links,
-    required this.onOpenLink,
-    super.key,
-  });
-
-  final List<(String, String, IconData, String)> links;
-  final ValueChanged<String> onOpenLink;
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassGroupedSection(
-      header: const Text('Feature hub'),
-      children: [
-        for (final (index, link) in links.indexed) ...[
-          GlassListTile(
-            leading: Icon(link.$3),
-            title: Text(link.$1),
-            subtitle: Text(link.$2),
-            trailing: const Icon(Icons.chevron_right, size: 20),
-            onTap: () => onOpenLink(link.$4),
-          ),
-          if (index < links.length - 1) const GlassDivider(),
-        ],
-      ],
-    );
-  }
-}
-
-

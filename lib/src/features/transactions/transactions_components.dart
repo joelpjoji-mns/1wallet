@@ -303,7 +303,7 @@ class MiniFlowStat extends StatelessWidget {
               color: color,
               fontSize: 14,
               fontWeight: FontWeight.w900,
-              fontFamily: 'Outfit',
+              fontFamily: 'Inter',
             ),
           ),
         ),
