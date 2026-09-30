@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -194,59 +195,6 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                               labelText: 'Institution',
                             ),
                           ),
-                          if (isCardType) ...[
-                            const SizedBox(height: AppSpacing.sm),
-                            TextFormField(
-                              controller: _creditLimitController,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                              inputFormatters: [
-                                ThousandsSeparatorInputFormatter(
-                                  state.preferences.locale,
-                                ),
-                              ],
-                              decoration: const InputDecoration(
-                                labelText: 'Credit limit',
-                                prefixIcon: Icon(Icons.credit_score_outlined),
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _DaySelectorField(
-                                    label: 'Bill date',
-                                    day: _statementDay,
-                                    icon: Icons.receipt_outlined,
-                                    onChanged: (day) =>
-                                        setState(() => _statementDay = day),
-                                  ),
-                                ),
-                                const SizedBox(width: AppSpacing.sm),
-                                Expanded(
-                                  child: _DaySelectorField(
-                                    label: 'Due date',
-                                    day: _dueDay,
-                                    icon: Icons.event_outlined,
-                                    onChanged: (day) =>
-                                        setState(() => _dueDay = day),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                            TextFormField(
-                              controller: _notifyDaysController,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                labelText: 'Notify days before due',
-                                hintText: 'e.g. 3',
-                                prefixIcon: Icon(Icons.notifications_active_outlined),
-                              ),
-                            ),
-                          ],
                         ],
                       ),
                     ),
@@ -322,6 +270,66 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
               ],
             ),
           ),
+          if (isCardType) ...[
+            const Gap(AppSpacing.lg),
+            SectionCard(
+              title: 'Card Billing & Due Date',
+              subtitle:
+                  'Statement bill date, payment due date and credit limit.',
+              child: Column(
+                children: [
+                  TextFormField(
+                    controller: _creditLimitController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [
+                      ThousandsSeparatorInputFormatter(
+                        state.preferences.locale,
+                      ),
+                    ],
+                    decoration: const InputDecoration(
+                      labelText: 'Credit limit',
+                      prefixIcon: Icon(Icons.credit_score_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _DaySelectorField(
+                          label: 'Bill date',
+                          day: _statementDay,
+                          icon: Icons.receipt_outlined,
+                          onChanged: (day) =>
+                              setState(() => _statementDay = day),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: _DaySelectorField(
+                          label: 'Due date',
+                          day: _dueDay,
+                          icon: Icons.event_outlined,
+                          onChanged: (day) => setState(() => _dueDay = day),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextFormField(
+                    controller: _notifyDaysController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Notify days before due',
+                      hintText: 'e.g. 3',
+                      prefixIcon: Icon(Icons.notifications_active_outlined),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const Gap(AppSpacing.lg),
           SectionCard(
             title: 'Balance and reporting',
@@ -919,34 +927,87 @@ class _DaySelectorField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final text = day != null ? '${_formatDay(day!)} of month' : 'Select day';
+    final scheme = theme.colorScheme;
     final hasValue = day != null;
 
-    return InkWell(
-      onTap: () async {
-        final picked = await showDayOfMonthPicker(
-          context: context,
-          title: label,
-          initialDay: day,
-        );
-        if (picked != null) {
-          onChanged(picked == 0 ? null : picked);
-        }
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon),
-          suffixIcon: const Icon(Icons.arrow_drop_down_rounded, size: 28),
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: hasValue
-                ? theme.colorScheme.onSurface
-                : theme.colorScheme.onSurfaceVariant,
-            fontWeight: hasValue ? FontWeight.w600 : FontWeight.normal,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () async {
+          final picked = await showDayOfMonthPicker(
+            context: context,
+            title: label,
+            initialDay: day,
+          );
+          if (picked != null) {
+            onChanged(picked == 0 ? null : picked);
+          }
+        },
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: 12,
+          ),
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(
+              color: hasValue
+                  ? scheme.primary.withValues(alpha: 0.6)
+                  : scheme.outlineVariant,
+              width: hasValue ? 1.5 : 1.0,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: hasValue
+                      ? scheme.primary.withValues(alpha: 0.12)
+                      : scheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  icon,
+                  size: 20,
+                  color: hasValue ? scheme.primary : scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      hasValue ? '${_formatDay(day!)} day' : 'Select day',
+                      style: TextStyle(
+                        fontWeight: hasValue ? FontWeight.w800 : FontWeight.w600,
+                        color: hasValue ? scheme.onSurface : scheme.outline,
+                        fontSize: 13,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.calendar_month_outlined,
+                size: 16,
+                color: hasValue ? scheme.primary : scheme.outline,
+              ),
+            ],
           ),
         ),
       ),
@@ -963,20 +1024,21 @@ Future<int?> showDayOfMonthPicker({
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
+    elevation: 0,
     builder: (context) {
       final theme = Theme.of(context);
       final scheme = theme.colorScheme;
       return SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Container(
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHigh,
-              borderRadius: BorderRadius.circular(AppRadii.xl),
-              border: Border.all(
-                color: scheme.outlineVariant.withValues(alpha: 0.5),
-              ),
-            ),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.md,
+            AppSpacing.md,
+            AppSpacing.lg,
+          ),
+          child: GlassCard(
+            quality: GlassQuality.premium,
+            shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.xl),
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.lg),
               child: Column(
@@ -985,31 +1047,70 @@ Future<int?> showDayOfMonthPicker({
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.calendar_month_rounded, color: scheme.primary),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: scheme.primary.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.calendar_month_rounded,
+                          color: scheme.primary,
+                          size: 20,
+                        ),
+                      ),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
-                        child: Text(
-                          title,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            Text(
+                              'Choose day of each month (1 - 31)',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       if (initialDay != null)
-                        TextButton(
+                        TextButton.icon(
                           onPressed: () => Navigator.of(context).pop(0),
-                          child: const Text('Clear'),
+                          icon: const Icon(Icons.clear_rounded, size: 16),
+                          label: const Text('Clear'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: scheme.error,
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                          ),
                         ),
                     ],
                   ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    'Select day of month (1 - 31)',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
                   const SizedBox(height: AppSpacing.md),
+                  // Weekday header
+                  Row(
+                    children: [
+                      for (final d in ['S', 'M', 'T', 'W', 'T', 'F', 'S'])
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              d,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -1024,34 +1125,49 @@ Future<int?> showDayOfMonthPicker({
                     itemBuilder: (context, index) {
                       final day = index + 1;
                       final isSelected = day == initialDay;
-                      return InkWell(
-                        onTap: () => Navigator.of(context).pop(day),
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? scheme.primary
-                                : scheme.surfaceContainerHighest
-                                    .withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(10),
-                            border: isSelected
-                                ? null
-                                : Border.all(
-                                    color: scheme.outlineVariant
-                                        .withValues(alpha: 0.4),
-                                  ),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            '$day',
-                            style: TextStyle(
-                              fontWeight: isSelected
-                                  ? FontWeight.w900
-                                  : FontWeight.w600,
+                      return Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => Navigator.of(context).pop(day),
+                          borderRadius: BorderRadius.circular(12),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            decoration: BoxDecoration(
                               color: isSelected
-                                  ? scheme.onPrimary
-                                  : scheme.onSurface,
-                              fontSize: 14,
+                                  ? scheme.primary
+                                  : scheme.surfaceContainerHighest
+                                      .withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isSelected
+                                    ? scheme.primary
+                                    : scheme.outlineVariant
+                                        .withValues(alpha: 0.5),
+                                width: isSelected ? 2.0 : 1.0,
+                              ),
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: scheme.primary
+                                            .withValues(alpha: 0.35),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              '$day',
+                              style: TextStyle(
+                                fontWeight: isSelected
+                                    ? FontWeight.w900
+                                    : FontWeight.w600,
+                                color: isSelected
+                                    ? scheme.onPrimary
+                                    : scheme.onSurface,
+                                fontSize: 15,
+                              ),
                             ),
                           ),
                         ),
