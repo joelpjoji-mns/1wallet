@@ -140,7 +140,8 @@ class _FullScreenPickerState<T> extends State<_FullScreenPicker<T>> {
         ),
         body: SafeArea(
           top: false,
-          child: ListView(
+          child: AppTopFadeMask(
+            child: ListView(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.md,
               0,
@@ -215,6 +216,7 @@ class _FullScreenPickerState<T> extends State<_FullScreenPicker<T>> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

@@ -77,7 +77,8 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
           ),
           const SizedBox(height: AppSpacing.sm),
           Expanded(
-            child: rows.isEmpty
+            child: AppTopFadeMask(
+              child: rows.isEmpty
                 ? SingleChildScrollView(
                     child: Column(
                       children: [
@@ -156,6 +157,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
                       ),
                     ),
                   ),
+            ),
           ),
         ],
       ),

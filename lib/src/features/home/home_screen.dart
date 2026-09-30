@@ -235,10 +235,12 @@ class HomeScreen extends ConsumerWidget {
         children: [
           ?syncIndicator,
           Expanded(
-            child: _HomeDashboardList(
-              widgetOrder: widgetOrder,
-              onTabSelected: onTabSelected,
-              reorderMode: reorderMode,
+            child: AppTopFadeMask(
+              child: _HomeDashboardList(
+                widgetOrder: widgetOrder,
+                onTabSelected: onTabSelected,
+                reorderMode: reorderMode,
+              ),
             ),
           ),
         ],

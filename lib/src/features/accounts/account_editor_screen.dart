@@ -41,9 +41,9 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
   final _institutionController = TextEditingController();
   final _creditLimitController = TextEditingController();
   final _openingBalanceController = TextEditingController();
-  final _statementDayController = TextEditingController();
-  final _dueDayController = TextEditingController();
   final _notifyDaysController = TextEditingController();
+  int? _statementDay;
+  int? _dueDay;
   String? _loadedAccountId;
   var _includeInTotals = true;
   var _includeInReports = true;
@@ -67,8 +67,6 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     _institutionController.dispose();
     _creditLimitController.dispose();
     _openingBalanceController.dispose();
-    _statementDayController.dispose();
-    _dueDayController.dispose();
     _notifyDaysController.dispose();
     super.dispose();
   }
@@ -218,26 +216,22 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                             Row(
                               children: [
                                 Expanded(
-                                  child: TextFormField(
-                                    controller: _statementDayController,
-                                    keyboardType: TextInputType.number,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Bill date (day)',
-                                      hintText: '1-31',
-                                      prefixIcon: Icon(Icons.receipt_outlined),
-                                    ),
+                                  child: _DaySelectorField(
+                                    label: 'Bill date',
+                                    day: _statementDay,
+                                    icon: Icons.receipt_outlined,
+                                    onChanged: (day) =>
+                                        setState(() => _statementDay = day),
                                   ),
                                 ),
                                 const SizedBox(width: AppSpacing.sm),
                                 Expanded(
-                                  child: TextFormField(
-                                    controller: _dueDayController,
-                                    keyboardType: TextInputType.number,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Due date (day)',
-                                      hintText: '1-31',
-                                      prefixIcon: Icon(Icons.event_outlined),
-                                    ),
+                                  child: _DaySelectorField(
+                                    label: 'Due date',
+                                    day: _dueDay,
+                                    icon: Icons.event_outlined,
+                                    onChanged: (day) =>
+                                        setState(() => _dueDay = day),
                                   ),
                                 ),
                               ],
@@ -551,8 +545,8 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     final isCardType =
         (account?.type ?? widget.initialType) == 'card' ||
         (account?.type ?? widget.initialType) == 'credit_card';
-    _statementDayController.text = account?.statementDay?.toString() ?? '';
-    _dueDayController.text = account?.dueDay?.toString() ?? '';
+    _statementDay = account?.statementDay;
+    _dueDay = account?.dueDay;
     _notifyDaysController.text =
         account?.notifyDaysBeforeDue?.toString() ?? (isCardType ? '3' : '');
     final openingBalance = account?.openingBalance;
@@ -611,10 +605,8 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
           currency: currency,
         );
       }
-      final sVal = int.tryParse(_statementDayController.text.trim());
-      if (sVal != null) statementDay = sVal.clamp(1, 31);
-      final dVal = int.tryParse(_dueDayController.text.trim());
-      if (dVal != null) dueDay = dVal.clamp(1, 31);
+      statementDay = _statementDay;
+      dueDay = _dueDay;
       final nVal = int.tryParse(_notifyDaysController.text.trim());
       if (nVal != null) notifyDays = nVal.clamp(1, 30);
     }
@@ -902,4 +894,176 @@ class _DetailField extends StatelessWidget {
       ),
     );
   }
+}
+
+class _DaySelectorField extends StatelessWidget {
+  const _DaySelectorField({
+    required this.label,
+    required this.day,
+    required this.icon,
+    required this.onChanged,
+  });
+
+  final String label;
+  final int? day;
+  final IconData icon;
+  final ValueChanged<int?> onChanged;
+
+  String _formatDay(int d) {
+    if (d == 1 || d == 21 || d == 31) return '${d}st';
+    if (d == 2 || d == 22) return '${d}nd';
+    if (d == 3 || d == 23) return '${d}rd';
+    return '${d}th';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final text = day != null ? '${_formatDay(day!)} of month' : 'Select day';
+    final hasValue = day != null;
+
+    return InkWell(
+      onTap: () async {
+        final picked = await showDayOfMonthPicker(
+          context: context,
+          title: label,
+          initialDay: day,
+        );
+        if (picked != null) {
+          onChanged(picked == 0 ? null : picked);
+        }
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon),
+          suffixIcon: const Icon(Icons.arrow_drop_down_rounded, size: 28),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: hasValue
+                ? theme.colorScheme.onSurface
+                : theme.colorScheme.onSurfaceVariant,
+            fontWeight: hasValue ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Future<int?> showDayOfMonthPicker({
+  required BuildContext context,
+  required String title,
+  int? initialDay,
+}) async {
+  return showModalBottomSheet<int?>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) {
+      final theme = Theme.of(context);
+      final scheme = theme.colorScheme;
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Container(
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(AppRadii.xl),
+              border: Border.all(
+                color: scheme.outlineVariant.withValues(alpha: 0.5),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.calendar_month_rounded, color: scheme.primary),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      if (initialDay != null)
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(0),
+                          child: const Text('Clear'),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Select day of month (1 - 31)',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 7,
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
+                      childAspectRatio: 1.0,
+                    ),
+                    itemCount: 31,
+                    itemBuilder: (context, index) {
+                      final day = index + 1;
+                      final isSelected = day == initialDay;
+                      return InkWell(
+                        onTap: () => Navigator.of(context).pop(day),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? scheme.primary
+                                : scheme.surfaceContainerHighest
+                                    .withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(10),
+                            border: isSelected
+                                ? null
+                                : Border.all(
+                                    color: scheme.outlineVariant
+                                        .withValues(alpha: 0.4),
+                                  ),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            '$day',
+                            style: TextStyle(
+                              fontWeight: isSelected
+                                  ? FontWeight.w900
+                                  : FontWeight.w600,
+                              color: isSelected
+                                  ? scheme.onPrimary
+                                  : scheme.onSurface,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
 }

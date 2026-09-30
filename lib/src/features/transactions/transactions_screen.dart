@@ -456,7 +456,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               ),
             ),
           Expanded(
-            child: transactions.isEmpty
+            child: AppTopFadeMask(
+              child: transactions.isEmpty
                 ? EmptyState(
                     icon: Icons.format_list_bulleted_rounded,
                     title: 'No matching transactions',
@@ -685,6 +686,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       );
                     },
                   ),
+            ),
           ),
         ],
       ),

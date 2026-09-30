@@ -167,6 +167,49 @@ class AppResponsiveLayout extends StatelessWidget {
   }
 }
 
+/// Dissolves the top of scrollable content linearly from 0% to 100% opacity
+/// using a mathematical alpha mask. Prevents hard cutoffs and avoids dirty shadow
+/// tints across all themes (Dark, Light, AMOLED).
+class AppTopFadeMask extends StatelessWidget {
+  const AppTopFadeMask({
+    required this.child,
+    this.fadeHeight = 28.0,
+    this.enabled = true,
+    super.key,
+  });
+
+  final Widget child;
+  final double fadeHeight;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled) return child;
+
+    return ShaderMask(
+      shaderCallback: (Rect bounds) {
+        if (bounds.height <= 0) {
+          return const LinearGradient(
+            colors: [Colors.white, Colors.white],
+          ).createShader(bounds);
+        }
+        final double stop = (fadeHeight / bounds.height).clamp(0.001, 1.0);
+        return LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: const [
+            Colors.transparent,
+            Colors.white,
+          ],
+          stops: [0.0, stop],
+        ).createShader(bounds);
+      },
+      blendMode: BlendMode.dstIn,
+      child: child,
+    );
+  }
+}
+
 class AppScreen extends StatelessWidget {
   const AppScreen({
     required this.title,
@@ -211,7 +254,9 @@ class AppScreen extends StatelessWidget {
         : padding;
 
     Widget body = scrollable
-        ? ListView(padding: contentPadding, children: [child])
+        ? AppTopFadeMask(
+            child: ListView(padding: contentPadding, children: [child]),
+          )
         : Padding(padding: contentPadding, child: child);
 
     // Apply width constraint but preserve tight vertical constraints
@@ -248,37 +293,7 @@ class AppScreen extends StatelessWidget {
                   ),
                 ),
                 Expanded(
-                  child: Stack(
-                    children: [
-                      body,
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        height: 18,
-                        child: IgnorePointer(
-                          child: Builder(
-                            builder: (context) {
-                              final surface =
-                                  Theme.of(context).scaffoldBackgroundColor;
-                              return DecoratedBox(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      surface.withValues(alpha: 0.75),
-                                      surface.withValues(alpha: 0.0),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  child: body,
                 ),
               ],
             ),
