@@ -605,7 +605,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxHeight: 280),
                       child: AppTopFadeMask(
-                        fadeHeight: 20.0,
                         child: ListView.separated(
                           shrinkWrap: true,
                           itemCount: records.length,

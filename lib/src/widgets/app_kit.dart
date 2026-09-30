@@ -173,7 +173,7 @@ class AppResponsiveLayout extends StatelessWidget {
 class AppTopFadeMask extends StatelessWidget {
   const AppTopFadeMask({
     required this.child,
-    this.fadeHeight = 28.0,
+    this.fadeHeight = 12.0,
     this.enabled = true,
     super.key,
   });

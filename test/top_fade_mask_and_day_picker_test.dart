@@ -9,7 +9,7 @@ void main() {
       const MaterialApp(
         home: Scaffold(
           body: AppTopFadeMask(
-            fadeHeight: 28.0,
+            fadeHeight: 12.0,
             child: SizedBox(
               width: 200,
               height: 200,
