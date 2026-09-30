@@ -107,7 +107,19 @@ class BalanceHomeWidget extends ConsumerStatefulWidget {
 }
 
 class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
-  String _period = 'This month';
+  String get _period =>
+      widget.state.preferences.homeWidgetFilters['balanceHero'] ?? 'This month';
+
+  void _onPeriodChanged(String? value) {
+    if (value == null) return;
+    final newFilters = Map<String, String>.from(
+      widget.state.preferences.homeWidgetFilters,
+    );
+    newFilters['balanceHero'] = value;
+    ref.read(ledgerProvider.notifier).updatePreferences(
+          widget.state.preferences.copyWith(homeWidgetFilters: newFilters),
+        );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -202,7 +214,7 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                   GlassDropdownOption('This month', 'This month'),
                   GlassDropdownOption('This year', 'This year'),
                 ],
-                onChanged: (value) => setState(() => _period = value),
+                onChanged: _onPeriodChanged,
                 icon: Icons.calendar_month,
                 semanticLabel: 'Balance period',
               ),
@@ -490,6 +502,12 @@ class _BalanceTrendHomeWidgetState
   }
 
   Future<void> _loadPreference() async {
+    final filterSaved =
+        widget.state.preferences.homeWidgetFilters['balanceTrend'];
+    if (filterSaved != null && filterSaved.isNotEmpty) {
+      if (mounted) setState(() => _period = filterSaved);
+      return;
+    }
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString('balance_trend_period');
     if (saved != null && mounted) {
@@ -500,6 +518,13 @@ class _BalanceTrendHomeWidgetState
   }
 
   Future<void> _savePreference(String value) async {
+    final newFilters = Map<String, String>.from(
+      widget.state.preferences.homeWidgetFilters,
+    );
+    newFilters['balanceTrend'] = value;
+    ref.read(ledgerProvider.notifier).updatePreferences(
+          widget.state.preferences.copyWith(homeWidgetFilters: newFilters),
+        );
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('balance_trend_period', value);
   }
@@ -2046,10 +2071,10 @@ class TopCategoriesHomeWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = _categoryTotals(state, income: false).take(5).toList();
+    final items = _categoryTotals(state, income: false);
     return _CategoryListWidget(
       state: state,
-      title: 'Top categories',
+      title: 'Categories',
       icon: Icons.category_outlined,
       iconColor: Theme.of(context).colorScheme.error,
       actionLabel: 'Records',
@@ -2059,7 +2084,7 @@ class TopCategoriesHomeWidget extends StatelessWidget {
   }
 }
 
-class _CategoryListWidget extends StatelessWidget {
+class _CategoryListWidget extends ConsumerStatefulWidget {
   const _CategoryListWidget({
     required this.state,
     required this.title,
@@ -2079,16 +2104,28 @@ class _CategoryListWidget extends StatelessWidget {
   final List<_CategoryTotal> items;
 
   @override
+  ConsumerState<_CategoryListWidget> createState() => _CategoryListWidgetState();
+}
+
+class _CategoryListWidgetState extends ConsumerState<_CategoryListWidget> {
+  final Set<String> _expandedCategoryIds = {};
+
+  void _onSelectCategory(Set<String> categoryIds) {
+    ref.read(transactionsCategoryFilterProvider.notifier).state = categoryIds;
+    widget.onRecords();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final total = items.fold<int>(0, (sum, item) => sum + item.amountMinor);
+    final total = widget.items.fold<int>(0, (sum, item) => sum + item.amountMinor);
     return RepaintBoundary(
       child: HomeWidgetCard(
-        title: title,
-        icon: icon,
-        iconColor: iconColor,
-        actionLabel: actionLabel,
-        onAction: onRecords,
-        child: items.isEmpty
+        title: widget.title,
+        icon: widget.icon,
+        iconColor: widget.iconColor,
+        actionLabel: widget.actionLabel,
+        onAction: widget.onRecords,
+        child: widget.items.isEmpty
             ? Text(
                 'No matching records this month.',
                 style: TextStyle(
@@ -2097,22 +2134,239 @@ class _CategoryListWidget extends StatelessWidget {
               )
             : Column(
                 children: [
-                  for (final item in items) ...[
-                    HomeProgressRow(
-                      label: item.label,
-                      value: formatMoney(
-                        _displayBaseMoney(state, item.amountMinor),
-                        state.preferences.locale,
-                      ),
-                      progress: total == 0 ? 0 : item.amountMinor / total,
-                      color: item.color ?? iconColor,
+                  for (final item in widget.items) ...[
+                    _CategoryItemWidget(
+                      item: item,
+                      totalSpend: total,
+                      state: widget.state,
+                      isExpanded: _expandedCategoryIds.contains(item.categoryId),
+                      onToggleExpand: () {
+                        setState(() {
+                          if (_expandedCategoryIds.contains(item.categoryId)) {
+                            _expandedCategoryIds.remove(item.categoryId);
+                          } else {
+                            _expandedCategoryIds.add(item.categoryId);
+                          }
+                        });
+                      },
+                      onSelectCategory: _onSelectCategory,
                     ),
-                    if (item != items.last)
+                    if (item != widget.items.last)
                       const SizedBox(height: AppSpacing.sm),
                   ],
                 ],
               ),
       ),
+    );
+  }
+}
+
+class _CategoryItemWidget extends StatelessWidget {
+  const _CategoryItemWidget({
+    required this.item,
+    required this.totalSpend,
+    required this.state,
+    required this.isExpanded,
+    required this.onToggleExpand,
+    required this.onSelectCategory,
+  });
+
+  final _CategoryTotal item;
+  final int totalSpend;
+  final LedgerState state;
+  final bool isExpanded;
+  final VoidCallback onToggleExpand;
+  final ValueChanged<Set<String>> onSelectCategory;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final hasChildren = item.subcategories.isNotEmpty;
+    final color = item.color ?? scheme.error;
+    final progress =
+        totalSpend == 0 ? 0.0 : (item.amountMinor / totalSpend).clamp(0.0, 1.0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: hasChildren ? onToggleExpand : () => onSelectCategory(item.allCategoryIds),
+          borderRadius: BorderRadius.circular(10),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        item.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    PrivacyText(
+                      formatMoney(
+                        _displayBaseMoney(state, item.amountMinor),
+                        state.preferences.locale,
+                      ),
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                    ),
+                    if (hasChildren) ...[
+                      const SizedBox(width: 4),
+                      Icon(
+                        isExpanded
+                            ? Icons.keyboard_arrow_up_rounded
+                            : Icons.keyboard_arrow_down_rounded,
+                        size: 20,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ] else ...[
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 18,
+                        color: scheme.onSurfaceVariant.withAlphaFactor(0.5),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 5),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                  child: LinearProgressIndicator(
+                    minHeight: 5,
+                    value: progress,
+                    color: color,
+                    backgroundColor: scheme.surfaceContainerHighest,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (hasChildren && isExpanded) ...[
+          Container(
+            margin: const EdgeInsets.only(left: 14, top: 4, bottom: 4),
+            padding: const EdgeInsets.only(left: 10),
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(
+                  color: color.withAlphaFactor(0.35),
+                  width: 2,
+                ),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                InkWell(
+                  onTap: () => onSelectCategory(item.allCategoryIds),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                    child: Row(
+                      children: [
+                        Icon(Icons.filter_list_rounded, size: 14, color: scheme.primary),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'All ${item.label}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: scheme.primary,
+                            ),
+                          ),
+                        ),
+                        Icon(Icons.chevron_right_rounded, size: 16, color: scheme.primary),
+                      ],
+                    ),
+                  ),
+                ),
+                for (final sub in item.subcategories) ...[
+                  InkWell(
+                    onTap: () => onSelectCategory(sub.allCategoryIds),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: sub.color ?? color,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  sub.label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              PrivacyText(
+                                formatMoney(
+                                  _displayBaseMoney(state, sub.amountMinor),
+                                  state.preferences.locale,
+                                ),
+                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                size: 16,
+                                color: scheme.onSurfaceVariant.withAlphaFactor(0.5),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(AppRadii.pill),
+                            child: LinearProgressIndicator(
+                              minHeight: 3,
+                              value: item.amountMinor == 0
+                                  ? 0.0
+                                  : (sub.amountMinor / item.amountMinor).clamp(0.0, 1.0),
+                              color: (sub.color ?? color).withAlphaFactor(0.8),
+                              backgroundColor:
+                                  scheme.surfaceContainerHighest.withAlphaFactor(0.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -2360,6 +2614,36 @@ List<_AccountGroupSummary> _accountGroupSummaries(LedgerState state) {
   return groups;
 }
 
+class _CategoryBucket {
+  _CategoryBucket({
+    required this.id,
+    required this.label,
+    this.color,
+  });
+
+  final String id;
+  final String label;
+  final Color? color;
+  int totalAmountMinor = 0;
+  int directAmountMinor = 0;
+  final Map<String, _SubcategoryEntry> subTotals = {};
+  final Set<String> categoryIds = {};
+}
+
+class _SubcategoryEntry {
+  _SubcategoryEntry({
+    required this.id,
+    required this.label,
+    required this.amountMinor,
+    this.color,
+  });
+
+  final String id;
+  final String label;
+  int amountMinor;
+  final Color? color;
+}
+
 List<_CategoryTotal> _categoryTotals(
   LedgerState state, {
   required bool income,
@@ -2367,7 +2651,8 @@ List<_CategoryTotal> _categoryTotals(
   final now = DateTime.now();
   final start = DateTime(now.year, now.month);
   final end = DateTime(now.year, now.month + 1);
-  final totals = <String, _CategoryTotal>{};
+  final rootBuckets = <String, _CategoryBucket>{};
+
   for (final transaction in state.transactions) {
     if (transaction.status == 'scheduled' ||
         transaction.status == 'paused' ||
@@ -2383,16 +2668,82 @@ List<_CategoryTotal> _categoryTotals(
     if (!income && !expenseTypes.contains(transaction.type)) continue;
 
     final category = categoryById(state, transaction.categoryId);
-    final key = category?.id ?? '__uncategorized__';
-    final existing = totals[key];
-    totals[key] = _CategoryTotal(
-      label: category?.name ?? 'Uncategorized',
-      amountMinor:
-          (existing?.amountMinor ?? 0) + transaction.baseAmount.amountMinor,
-      color: category?.color ?? existing?.color,
-    );
+    final amount = transaction.baseAmount.amountMinor;
+
+    if (category == null) {
+      final bucket = rootBuckets.putIfAbsent(
+        '__uncategorized__',
+        () => _CategoryBucket(id: '__uncategorized__', label: 'Uncategorized'),
+      );
+      bucket.totalAmountMinor += amount;
+      bucket.categoryIds.add('__uncategorized__');
+    } else {
+      final root = rootCategoryFor(state, category);
+      final bucket = rootBuckets.putIfAbsent(
+        root.id,
+        () => _CategoryBucket(
+          id: root.id,
+          label: root.name,
+          color: root.color,
+        ),
+      );
+      bucket.totalAmountMinor += amount;
+      bucket.categoryIds.add(root.id);
+      bucket.categoryIds.add(category.id);
+
+      if (category.id != root.id) {
+        final currentSub = bucket.subTotals[category.id];
+        if (currentSub != null) {
+          currentSub.amountMinor += amount;
+        } else {
+          bucket.subTotals[category.id] = _SubcategoryEntry(
+            id: category.id,
+            label: category.name,
+            amountMinor: amount,
+            color: category.color ?? root.color,
+          );
+        }
+      } else {
+        bucket.directAmountMinor += amount;
+      }
+    }
   }
-  final items = totals.values.toList();
+
+  final items = <_CategoryTotal>[];
+  for (final b in rootBuckets.values) {
+    final subList = <_CategoryTotal>[];
+    if (b.subTotals.isNotEmpty) {
+      for (final sub in b.subTotals.values) {
+        subList.add(_CategoryTotal(
+          categoryId: sub.id,
+          label: sub.label,
+          amountMinor: sub.amountMinor,
+          color: sub.color,
+          allCategoryIds: {sub.id},
+        ));
+      }
+      if (b.directAmountMinor > 0) {
+        subList.add(_CategoryTotal(
+          categoryId: b.id,
+          label: '${b.label} (Direct)',
+          amountMinor: b.directAmountMinor,
+          color: b.color,
+          allCategoryIds: {b.id},
+        ));
+      }
+      subList.sort((a, b) => b.amountMinor.compareTo(a.amountMinor));
+    }
+
+    items.add(_CategoryTotal(
+      categoryId: b.id,
+      label: b.label,
+      amountMinor: b.totalAmountMinor,
+      color: b.color,
+      subcategories: subList,
+      allCategoryIds: b.categoryIds,
+    ));
+  }
+
   items.sort((left, right) => right.amountMinor.compareTo(left.amountMinor));
   return items;
 }
@@ -2415,14 +2766,20 @@ class _AccountGroupSummary {
 
 class _CategoryTotal {
   const _CategoryTotal({
+    required this.categoryId,
     required this.label,
     required this.amountMinor,
     this.color,
+    this.subcategories = const [],
+    this.allCategoryIds = const {},
   });
 
+  final String categoryId;
   final String label;
   final int amountMinor;
   final Color? color;
+  final List<_CategoryTotal> subcategories;
+  final Set<String> allCategoryIds;
 }
 
 class DashboardCard extends StatelessWidget {

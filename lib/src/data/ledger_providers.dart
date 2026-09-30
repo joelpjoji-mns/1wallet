@@ -864,6 +864,10 @@ class LedgerController extends StateNotifier<LedgerState> {
     AccountLoanDetails? loanDetails,
     Map<String, String>? encryptedDetails,
     Money? creditLimit,
+    int? statementDay,
+    int? dueDay,
+    int? notifyDaysBeforeDue,
+    String? lastPaidBillMonth,
     bool includeInTotals = true,
     bool includeInReports = true,
     bool includeInNetWorth = true,
@@ -888,6 +892,10 @@ class LedgerController extends StateNotifier<LedgerState> {
       loanDetails: loanDetails ?? existing?.loanDetails,
       encryptedDetails: encryptedDetails ?? existing?.encryptedDetails,
       creditLimit: creditLimit ?? existing?.creditLimit,
+      statementDay: statementDay ?? existing?.statementDay,
+      dueDay: dueDay ?? existing?.dueDay,
+      notifyDaysBeforeDue: notifyDaysBeforeDue ?? existing?.notifyDaysBeforeDue,
+      lastPaidBillMonth: lastPaidBillMonth ?? existing?.lastPaidBillMonth,
       includeInTotals: includeInTotals,
       includeInReports: includeInReports,
       includeInNetWorth: includeInNetWorth,
@@ -921,6 +929,17 @@ class LedgerController extends StateNotifier<LedgerState> {
       state.copyWith(accounts: accounts, transactions: transactions),
     );
     return account;
+  }
+
+  Future<void> markCardBillPaid(String accountId, String? cycleMonth) async {
+    final account = accountById(state, accountId);
+    if (account == null) return;
+    final updated = account.copyWith(lastPaidBillMonth: cycleMonth);
+    final accounts = [
+      for (final a in state.accounts)
+        a.id == accountId ? updated : a,
+    ];
+    await _commit(state.copyWith(accounts: accounts));
   }
 
   Future<void> deleteAccount(String id) async {

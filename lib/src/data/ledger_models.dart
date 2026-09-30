@@ -531,6 +531,10 @@ class Account {
     this.isArchived = false,
     this.sortOrder = 0,
     this.creditLimit,
+    this.statementDay,
+    this.dueDay,
+    this.notifyDaysBeforeDue,
+    this.lastPaidBillMonth,
   });
 
   final String id;
@@ -552,6 +556,10 @@ class Account {
   final bool isArchived;
   final int sortOrder;
   final Money? creditLimit;
+  final int? statementDay;
+  final int? dueDay;
+  final int? notifyDaysBeforeDue;
+  final String? lastPaidBillMonth;
 
   String? get displayLast4 => cardLast4 ?? accountLast4;
 
@@ -581,6 +589,10 @@ class Account {
     bool? isArchived,
     int? sortOrder,
     Money? creditLimit,
+    int? statementDay,
+    int? dueDay,
+    int? notifyDaysBeforeDue,
+    String? lastPaidBillMonth,
   }) {
     return Account(
       id: id ?? this.id,
@@ -602,6 +614,10 @@ class Account {
       isArchived: isArchived ?? this.isArchived,
       sortOrder: sortOrder ?? this.sortOrder,
       creditLimit: creditLimit ?? this.creditLimit,
+      statementDay: statementDay ?? this.statementDay,
+      dueDay: dueDay ?? this.dueDay,
+      notifyDaysBeforeDue: notifyDaysBeforeDue ?? this.notifyDaysBeforeDue,
+      lastPaidBillMonth: lastPaidBillMonth ?? this.lastPaidBillMonth,
     );
   }
 }

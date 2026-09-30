@@ -96,7 +96,37 @@ class RouteScaffold extends StatelessWidget {
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
-          child: content,
+          child: Stack(
+            children: [
+              content,
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 18,
+                child: IgnorePointer(
+                  child: Builder(
+                    builder: (context) {
+                      final surface =
+                          Theme.of(context).scaffoldBackgroundColor;
+                      return DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              surface.withValues(alpha: 0.75),
+                              surface.withValues(alpha: 0.0),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

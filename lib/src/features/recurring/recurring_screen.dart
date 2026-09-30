@@ -401,6 +401,7 @@ class _RecurringCompactCard extends StatelessWidget {
     final recurrence = _recurringCadenceLabel(
       transaction.recurrenceFrequency,
       transaction.recurrenceInterval,
+      transaction.recurrenceDaysOfMonth,
     );
     final extraLine = _recurringExtraLine(
       state,
@@ -431,12 +432,12 @@ class _RecurringCompactCard extends StatelessWidget {
     final daysUntilDue = dueDay.difference(today).inDays;
     final isUrgent = !historyMode &&
         transaction.status == 'scheduled' &&
-        daysUntilDue >= 0 &&
         daysUntilDue < 3;
+    final isOverdue = isUrgent && daysUntilDue < 0;
     final isDueToday = isUrgent && daysUntilDue == 0;
-    final urgentBorderColor = isDueToday
+    final urgentBorderColor = isDueToday || isOverdue
         ? scheme.error
-        : scheme.error.withAlphaFactor(0.55);
+        : scheme.error.withAlphaFactor(0.7);
 
     return GlassCard(
       margin: EdgeInsets.zero,
@@ -444,13 +445,15 @@ class _RecurringCompactCard extends StatelessWidget {
       shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
       quality: GlassQuality.minimal,
       clipBehavior: Clip.antiAlias,
-      child: Row(
-        children: [
-          if (isUrgent) Container(width: 4, color: urgentBorderColor),
-          Expanded(
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (isUrgent) Container(width: 4, color: urgentBorderColor),
+            Expanded(
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
           borderRadius: BorderRadius.circular(AppRadii.md),
           onTap: onTap,
           child: Padding(
@@ -488,7 +491,28 @@ class _RecurringCompactCard extends StatelessWidget {
                                       ?.copyWith(fontWeight: FontWeight.w800),
                                 ),
                               ),
-                              if (isDueToday) ...[
+                              if (isOverdue) ...[
+                                const SizedBox(width: AppSpacing.xs),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: scheme.errorContainer,
+                                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                                  ),
+                                  child: Text(
+                                    'OVERDUE',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.8,
+                                      color: scheme.onErrorContainer,
+                                    ),
+                                  ),
+                                ),
+                              ] else if (isDueToday) ...[
                                 const SizedBox(width: AppSpacing.xs),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
@@ -681,6 +705,7 @@ class _RecurringCompactCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -999,6 +1024,23 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                           });
                         },
                       ),
+                    FilterChip(
+                      label: const Text('Last day of month'),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      selected: _daysOfMonth.contains(32),
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _daysOfMonth.add(32);
+                            _updateNextDateToMatchRecurrence();
+                          } else {
+                            _daysOfMonth.remove(32);
+                            _updateNextDateToMatchRecurrence();
+                          }
+                        });
+                      },
+                    ),
                   ],
                 ),
               ],
@@ -1922,8 +1964,18 @@ String _recurringPrimaryTitle(
   return category?.name ?? transactionTypeLabel(transaction.type);
 }
 
-String _recurringCadenceLabel(String? frequency, [int interval = 1]) {
+String _recurringCadenceLabel(
+  String? frequency, [
+  int interval = 1,
+  List<int>? daysOfMonth,
+]) {
   final n = interval < 1 ? 1 : interval;
+  if (frequency == 'monthly' && daysOfMonth != null && daysOfMonth.isNotEmpty) {
+    final daysStr = daysOfMonth
+        .map((d) => d >= 32 || d == -1 ? 'Last day' : '$d')
+        .join(', ');
+    return n == 1 ? 'Monthly on $daysStr' : 'Every $n months on $daysStr';
+  }
   final unit = switch (frequency) {
     'daily' => n == 1 ? 'day' : 'days',
     'weekly' => n == 1 ? 'week' : 'weeks',

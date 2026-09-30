@@ -447,7 +447,7 @@ String _homeWidgetLabel(HomeDashboardWidgetId id) {
     HomeDashboardWidgetId.cardPaymentPlan => 'Card Payment Plan',
     HomeDashboardWidgetId.loanPayoff => 'Loans & EMIs',
     HomeDashboardWidgetId.balanceTrend => 'Balance Trend',
-    HomeDashboardWidgetId.topCategories => 'Top Categories',
+    HomeDashboardWidgetId.topCategories => 'Categories',
     HomeDashboardWidgetId.currencyValues => 'Currency calculator',
     HomeDashboardWidgetId.creditUtilization => 'Credit Utilization',
     HomeDashboardWidgetId.netWorth => 'Net Worth',

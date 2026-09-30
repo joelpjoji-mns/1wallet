@@ -129,11 +129,41 @@ class _MainShellState extends ConsumerState<MainShell>
       child: ValueListenableBuilder<int>(
         valueListenable: _selectedIndex,
         builder: (context, selectedIndex, child) {
+          final state = ref.watch(ledgerProvider);
+          final dueCardCount = creditCardsDueSoonCount(state);
+
+          final tabs = [
+            const IslandTabItem(
+              title: 'Home',
+              icon: Icons.home_outlined,
+              activeIcon: Icons.home_rounded,
+            ),
+            const IslandTabItem(
+              title: 'History',
+              icon: Icons.receipt_long_outlined,
+              activeIcon: Icons.receipt_long_rounded,
+              pageIndex: 1,
+            ),
+            const IslandTabItem(
+              title: 'Calendar',
+              icon: Icons.calendar_month_outlined,
+              activeIcon: Icons.calendar_month_rounded,
+              pageIndex: 2,
+            ),
+            IslandTabItem(
+              title: 'Accounts',
+              icon: Icons.wallet_outlined,
+              activeIcon: Icons.wallet_rounded,
+              pageIndex: 3,
+              badgeCount: dueCardCount > 0 ? dueCardCount : null,
+            ),
+          ];
+
           Widget mainBody = PageView.builder(
             controller: _pageController,
             physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
             dragStartBehavior: DragStartBehavior.down,
-            itemCount: _tabs.length,
+            itemCount: tabs.length,
             onPageChanged: (index) {
               if (_selectedIndex.value != index) {
                 _selectedIndex.value = index;
@@ -185,7 +215,7 @@ class _MainShellState extends ConsumerState<MainShell>
                 right: 0,
                 bottom: 0,
                 child: BottomIslandNavBar(
-                  items: _tabs,
+                  items: tabs,
                   selectedIndex: selectedIndex,
                   onSelected: _selectTab,
                   action: showAction ? action : null,

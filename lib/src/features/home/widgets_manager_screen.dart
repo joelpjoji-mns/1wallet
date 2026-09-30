@@ -34,6 +34,7 @@ class WidgetsManagerScreen extends ConsumerWidget {
       ...defaultHomeWidgetOrder,
       ...HomeDashboardWidgetId.values,
     ]) {
+      if (widgetId == HomeDashboardWidgetId.cardPaymentPlan) continue;
       if (gallerySeen.add(widgetId)) galleryOrder.add(widgetId);
     }
 

@@ -95,20 +95,20 @@ DateTime advanceRecurrenceCursor({
 
       // Look for the next day in the SAME month
       for (final day in sortedDays) {
-        if (day > currentDay) {
-          // ensure the day exists in the current month (e.g. Feb 30 -> Feb 28)
-          final maxDay = DateTime(current.year, current.month + 1, 0).day;
-          final safeDay = day > maxDay ? maxDay : day;
-          if (safeDay > currentDay) {
-            return DateTime(
-              current.year,
-              current.month,
-              safeDay,
-              current.hour,
-              current.minute,
-              current.second,
-            );
-          }
+        // ensure the day exists in the current month (e.g. Feb 30 -> Feb 28, day 32/last day -> maxDay)
+        final maxDay = DateTime(current.year, current.month + 1, 0).day;
+        final safeDay = (day >= 32 || day == -1)
+            ? maxDay
+            : (day > maxDay ? maxDay : day);
+        if (safeDay > currentDay) {
+          return DateTime(
+            current.year,
+            current.month,
+            safeDay,
+            current.hour,
+            current.minute,
+            current.second,
+          );
         }
       }
 
@@ -120,7 +120,9 @@ DateTime advanceRecurrenceCursor({
         nextMonthDate.month + 1,
         0,
       ).day;
-      final safeDay = targetDay > maxDayNextMonth ? maxDayNextMonth : targetDay;
+      final safeDay = (targetDay >= 32 || targetDay == -1)
+          ? maxDayNextMonth
+          : (targetDay > maxDayNextMonth ? maxDayNextMonth : targetDay);
 
       return DateTime(
         nextMonthDate.year,

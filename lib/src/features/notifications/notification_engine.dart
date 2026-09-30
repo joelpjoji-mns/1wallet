@@ -94,16 +94,9 @@ NotificationPreferences normalizeNotificationPreferences(
 /// Builds the notification inbox from ledger state.
 ///
 /// - Overdue scheduled payments
-List<AppNotification> buildNotificationInbox(LedgerState state) {
+List<AppNotification> buildNotificationInbox(LedgerState state, {DateTime? now}) {
   final notifications = <AppNotification>[];
-  // NOTE: `now` is regenerated on every call, so `createdAt` (and therefore
-  // the "just now" / "Xm ago" relative label rendered from it) always
-  // reflects render time rather than when the underlying condition first
-  // became true. There is no stable "first triggered at" timestamp stored
-  // in LedgerState today; wiring one up would require persisting
-  // per-notification-id timestamps alongside read/dismissed ids. Left as a
-  // low-priority follow-up rather than risking a broader state-shape change.
-  final now = DateTime.now();
+  final currentTime = now ?? DateTime.now();
 
   // The master "Notification inbox" toggle disables the in-app inbox
   // entirely (native/device alerts are gated separately in
@@ -114,7 +107,7 @@ List<AppNotification> buildNotificationInbox(LedgerState state) {
 
   // Scheduled payment notifications
   if (state.preferences.channelScheduledEnabled) {
-    final today = DateTime(now.year, now.month, now.day);
+    final today = DateTime(currentTime.year, currentTime.month, currentTime.day);
     for (final transaction in scheduledTransactions(
       state,
     ).where((t) => t.status == 'scheduled')) {
@@ -162,11 +155,62 @@ List<AppNotification> buildNotificationInbox(LedgerState state) {
               amount: transaction.amount,
               when: when,
             ),
-            createdAt: now,
+            createdAt: currentTime,
             actionRoute: '/recurring/${transaction.id}',
           ),
         );
       }
+    }
+  }
+
+  // Credit card due / overdue notifications
+  for (final account in state.accounts) {
+    final status = creditCardDueStatus(state, account, now: currentTime);
+    if (status == null || status.isPaid) continue;
+
+    final balance = accountBalance(state, account);
+    final balanceText = formatMoney(
+      convertMoneyForDisplay(state, balance),
+      state.preferences.locale,
+    );
+
+    final todayKey =
+        '${currentTime.year}-${currentTime.month.toString().padLeft(2, '0')}-${currentTime.day.toString().padLeft(2, '0')}';
+
+    if (status.isOverdue) {
+      final when = status.daysUntilDue == -1
+          ? 'yesterday'
+          : '${-status.daysUntilDue} days ago';
+      notifications.add(
+        AppNotification(
+          id: 'card_overdue_${account.id}_$todayKey',
+          channel: AppNotificationChannel.scheduled,
+          title: 'Bill overdue: ${account.name}',
+          body: state.preferences.privacyModeEnabled
+              ? 'Credit card bill was due $when.'
+              : 'Payment of $balanceText was due $when.',
+          createdAt: status.dueDate,
+          actionRoute: '/cards',
+        ),
+      );
+    } else if (status.isDueSoon) {
+      final when = status.daysUntilDue == 0
+          ? 'today'
+          : (status.daysUntilDue == 1
+              ? 'tomorrow'
+              : 'in ${status.daysUntilDue} days');
+      notifications.add(
+        AppNotification(
+          id: 'card_due_${account.id}_$todayKey',
+          channel: AppNotificationChannel.scheduled,
+          title: 'Bill due soon: ${account.name}',
+          body: state.preferences.privacyModeEnabled
+              ? 'Credit card bill is due $when.'
+              : 'Payment of $balanceText is due $when.',
+          createdAt: currentTime,
+          actionRoute: '/cards',
+        ),
+      );
     }
   }
 

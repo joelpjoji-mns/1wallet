@@ -564,6 +564,24 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                                 });
                               },
                             ),
+                          FilterChip(
+                            label: const Text('Last day of month'),
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            selected: _daysOfMonth.contains(32),
+                            onSelected: (selected) {
+                              setState(() {
+                                if (selected) {
+                                  if (_daysOfMonth.length < _interval) {
+                                    _daysOfMonth.add(32);
+                                  }
+                                } else {
+                                  _daysOfMonth.remove(32);
+                                }
+                              });
+                            },
+                          ),
                         ],
                       ),
                     ],
@@ -2424,6 +2442,20 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
     }
   }
 
+  void _flushEmergencyCash() {
+    _emergencyDebounce?.cancel();
+    if (!mounted) return;
+    final newMinor = _amountMinorFromInput(
+      _emergencyController.text,
+      widget.state.preferences.baseCurrency,
+    ).abs();
+    ref.read(ledgerProvider.notifier).updatePreferences(
+          widget.state.preferences.copyWith(
+            forecastEmergencyCashMinor: newMinor,
+          ),
+        );
+  }
+
   @override
   void dispose() {
     _forecastDebounce?.cancel();
@@ -2665,6 +2697,18 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               padding: const EdgeInsets.all(AppSpacing.md),
               child: Column(
                 children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                      child: Text(
+                        'Emergency Fund / Savings Buffer',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                    ),
+                  ),
                   GlassTextField(
                     controller: _emergencyController,
                     keyboardType: TextInputType.number,
@@ -2673,8 +2717,9 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                         widget.state.preferences.locale,
                       ),
                     ],
-                    placeholder: 'Emergency Cash to keep ($currencySymbol)',
+                    placeholder: 'Enter amount to protect ($currencySymbol)',
                     prefixIcon: const Icon(Icons.savings_outlined),
+                    onSubmitted: (_) => _flushEmergencyCash(),
                     onChanged: (val) {
                       final newMinor = _amountMinorFromInput(
                         val,

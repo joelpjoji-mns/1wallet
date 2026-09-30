@@ -93,6 +93,7 @@ HomeDashboardWidgetId? homeWidgetIdFromStorageKey(String key) {
     'upcomingDue': HomeDashboardWidgetId.upcomingScheduled,
     'loansAndEmis': HomeDashboardWidgetId.emiTracker,
     'cards': HomeDashboardWidgetId.cardDebt,
+    'cardPaymentPlan': HomeDashboardWidgetId.cardDebt,
   };
   return byKey[key];
 }

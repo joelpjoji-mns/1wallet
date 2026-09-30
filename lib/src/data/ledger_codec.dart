@@ -888,6 +888,13 @@ Map<String, Object?> _accountToJson(Account account) {
     'showOnHome': account.showOnHome,
     'isArchived': account.isArchived,
     'sortOrder': account.sortOrder,
+    'creditLimit': account.creditLimit == null
+        ? null
+        : _moneyToJson(account.creditLimit!),
+    'statementDay': account.statementDay,
+    'dueDay': account.dueDay,
+    'notifyDaysBeforeDue': account.notifyDaysBeforeDue,
+    'lastPaidBillMonth': account.lastPaidBillMonth,
   };
 }
 
@@ -940,6 +947,16 @@ Account _accountFromJson(Map<String, dynamic> json) {
     showOnHome: _bool(json['showOnHome'], fallback: true),
     isArchived: _bool(json['isArchived']),
     sortOrder: _int(json['sortOrder']),
+    creditLimit: json['creditLimit'] == null
+        ? null
+        : _moneyFromJson(
+            json['creditLimit'],
+            fallback: Money(amountMinor: 0, currency: currency),
+          ),
+    statementDay: _nullableInt(json['statementDay']),
+    dueDay: _nullableInt(json['dueDay']),
+    notifyDaysBeforeDue: _nullableInt(json['notifyDaysBeforeDue']),
+    lastPaidBillMonth: _nullableString(json['lastPaidBillMonth']),
   );
 }
 

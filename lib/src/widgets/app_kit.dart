@@ -247,7 +247,39 @@ class AppScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                Expanded(child: body),
+                Expanded(
+                  child: Stack(
+                    children: [
+                      body,
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: 18,
+                        child: IgnorePointer(
+                          child: Builder(
+                            builder: (context) {
+                              final surface =
+                                  Theme.of(context).scaffoldBackgroundColor;
+                              return DecoratedBox(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      surface.withValues(alpha: 0.75),
+                                      surface.withValues(alpha: 0.0),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),

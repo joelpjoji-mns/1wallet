@@ -10,12 +10,14 @@ class IslandTabItem {
     required this.icon,
     required this.activeIcon,
     this.pageIndex,
+    this.badgeCount,
   });
 
   final String title;
   final IconData icon;
   final IconData activeIcon;
   final int? pageIndex;
+  final int? badgeCount;
 }
 
 class BottomIslandNavBar extends StatelessWidget {
@@ -86,8 +88,21 @@ class BottomIslandNavBar extends StatelessWidget {
                             GlassTab(
                               label: item.title,
                               semanticLabel: item.title,
-                              icon: Icon(item.icon),
-                              activeIcon: Icon(item.activeIcon),
+                              icon: item.badgeCount != null && item.badgeCount! > 0
+                                  ? Badge.count(
+                                      count: item.badgeCount!,
+                                      backgroundColor: scheme.error,
+                                      child: Icon(item.icon),
+                                    )
+                                  : Icon(item.icon),
+                              activeIcon:
+                                  item.badgeCount != null && item.badgeCount! > 0
+                                      ? Badge.count(
+                                          count: item.badgeCount!,
+                                          backgroundColor: scheme.error,
+                                          child: Icon(item.activeIcon),
+                                        )
+                                      : Icon(item.activeIcon),
                             ),
                         ],
                         selectedIndex: selectedIndex,

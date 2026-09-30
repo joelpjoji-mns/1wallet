@@ -41,6 +41,9 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
   final _institutionController = TextEditingController();
   final _creditLimitController = TextEditingController();
   final _openingBalanceController = TextEditingController();
+  final _statementDayController = TextEditingController();
+  final _dueDayController = TextEditingController();
+  final _notifyDaysController = TextEditingController();
   String? _loadedAccountId;
   var _includeInTotals = true;
   var _includeInReports = true;
@@ -64,6 +67,9 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     _institutionController.dispose();
     _creditLimitController.dispose();
     _openingBalanceController.dispose();
+    _statementDayController.dispose();
+    _dueDayController.dispose();
+    _notifyDaysController.dispose();
     super.dispose();
   }
 
@@ -206,6 +212,44 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                               decoration: const InputDecoration(
                                 labelText: 'Credit limit',
                                 prefixIcon: Icon(Icons.credit_score_outlined),
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _statementDayController,
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Bill date (day)',
+                                      hintText: '1-31',
+                                      prefixIcon: Icon(Icons.receipt_outlined),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _dueDayController,
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Due date (day)',
+                                      hintText: '1-31',
+                                      prefixIcon: Icon(Icons.event_outlined),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            TextFormField(
+                              controller: _notifyDaysController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Notify days before due',
+                                hintText: 'e.g. 3',
+                                prefixIcon: Icon(Icons.notifications_active_outlined),
                               ),
                             ),
                           ],
@@ -504,6 +548,13 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     } else {
       _creditLimitController.text = '';
     }
+    final isCardType =
+        (account?.type ?? widget.initialType) == 'card' ||
+        (account?.type ?? widget.initialType) == 'credit_card';
+    _statementDayController.text = account?.statementDay?.toString() ?? '';
+    _dueDayController.text = account?.dueDay?.toString() ?? '';
+    _notifyDaysController.text =
+        account?.notifyDaysBeforeDue?.toString() ?? (isCardType ? '3' : '');
     final openingBalance = account?.openingBalance;
     if (openingBalance != null && openingBalance.amountMinor != 0) {
       final amt =
@@ -545,16 +596,27 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     final isCardType =
         _selectedType == 'card' || _selectedType == 'credit_card';
     Money? parsedCreditLimit;
-    if (isCardType && _creditLimitController.text.trim().isNotEmpty) {
-      final normalized = _creditLimitController.text.replaceAll(
-        RegExp(r'[^0-9.]'),
-        '',
-      );
-      final parsed = double.tryParse(normalized) ?? 0;
-      parsedCreditLimit = Money(
-        amountMinor: (parsed * math.pow(10, minorUnits(currency))).round(),
-        currency: currency,
-      );
+    int? statementDay;
+    int? dueDay;
+    int? notifyDays;
+    if (isCardType) {
+      if (_creditLimitController.text.trim().isNotEmpty) {
+        final normalized = _creditLimitController.text.replaceAll(
+          RegExp(r'[^0-9.]'),
+          '',
+        );
+        final parsed = double.tryParse(normalized) ?? 0;
+        parsedCreditLimit = Money(
+          amountMinor: (parsed * math.pow(10, minorUnits(currency))).round(),
+          currency: currency,
+        );
+      }
+      final sVal = int.tryParse(_statementDayController.text.trim());
+      if (sVal != null) statementDay = sVal.clamp(1, 31);
+      final dVal = int.tryParse(_dueDayController.text.trim());
+      if (dVal != null) dueDay = dVal.clamp(1, 31);
+      final nVal = int.tryParse(_notifyDaysController.text.trim());
+      if (nVal != null) notifyDays = nVal.clamp(1, 30);
     }
     final openingBalanceText = _openingBalanceController.text.trim();
     final openingBalanceIsNegative = openingBalanceText.startsWith('-');
@@ -590,6 +652,9 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
             isArchived: _isArchived,
             encryptedDetails: account?.encryptedDetails,
             creditLimit: parsedCreditLimit,
+            statementDay: statementDay,
+            dueDay: dueDay,
+            notifyDaysBeforeDue: notifyDays,
           );
       if (!mounted) return;
       _showAccountMessage(

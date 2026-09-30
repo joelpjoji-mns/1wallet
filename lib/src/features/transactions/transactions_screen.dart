@@ -267,6 +267,8 @@ final transactionsDateFilterProvider = StateProvider<String>(
   (ref) => 'this_year',
 );
 final transactionsStatusFilterProvider = StateProvider<String>((ref) => 'all');
+final transactionsCategoryFilterProvider =
+    StateProvider<Set<String>>((ref) => <String>{});
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({required this.onMenuPressed, super.key});
@@ -292,12 +294,16 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final typeFilter = ref.watch(transactionsTypeFilterProvider);
     final dateFilter = ref.watch(transactionsDateFilterProvider);
     final statusFilter = ref.watch(transactionsStatusFilterProvider);
+    final globalCategoryFilter = ref.watch(transactionsCategoryFilterProvider);
+    final effectiveCategoryFilters = globalCategoryFilter.isNotEmpty
+        ? globalCategoryFilter
+        : _categoryFilters;
     final filterState = _TransactionFilterState(
       query: _query,
       typeFilter: typeFilter,
       dateFilter: dateFilter,
       statusFilter: statusFilter,
-      categoryFilterIds: _categoryFilters,
+      categoryFilterIds: effectiveCategoryFilters,
       includeUncategorizedCategory: _includeUncategorizedCategory,
       accountFilter: accountFilter,
     );
@@ -695,10 +701,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         statusFilter != 'all' ||
         accountFilter != null ||
         _categoryFilters.isNotEmpty ||
+        ref.read(transactionsCategoryFilterProvider).isNotEmpty ||
         _includeUncategorizedCategory;
   }
 
   void _clearFilters() {
+    ref.read(transactionsCategoryFilterProvider.notifier).state = {};
     setState(() {
       _query = '';
       _categoryFilters.clear();
