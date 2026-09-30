@@ -829,7 +829,6 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
             }
 
             final revision = nextCloudRevision(liveState.cloudRevision);
-            final latestTxDate = getLatestTransactionDate(currentLedger);
 
             transaction.set(userRef, {
               'email': user.email,
@@ -838,10 +837,6 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
               'updatedAt': writeTimestamp,
               'lastWriterDeviceId': metadata.deviceId,
               'cloudRevision': revision,
-              'transactionCount': currentLedger.transactions.length,
-              'accountCount': currentLedger.accounts.length,
-              if (latestTxDate != null)
-                'latestTransactionAt': latestTxDate.toUtc().toIso8601String(),
             }, SetOptions(merge: true));
 
             for (var i = 0; i < chunks.length; i++) {
