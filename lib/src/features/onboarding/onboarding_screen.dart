@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -13,6 +14,7 @@ import '../launch/brand_widgets.dart';
 import 'onboarding_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:uuid/uuid.dart';
+import '../../cloud_sync/cloud_sync_controller.dart';
 import '../../data/ledger_providers.dart';
 import '../../widgets/currency_picker.dart';
 import '../../widgets/app_kit.dart';
@@ -143,26 +145,69 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     }
     await ledgerNotifier.updatePreferences(newPrefs);
 
-    // Save accounts to ledger
-    for (final draft in _accounts) {
-      final parsedOpening =
-          double.tryParse(draft.opening.replaceAll(RegExp(r'[^0-9.]'), '')) ??
-          0;
-      final openingBalanceMinor =
-          (parsedOpening * math.pow(10, minorUnits(draft.currency))).round();
-      await ledgerNotifier.upsertAccount(
-        id: const Uuid().v4(),
-        name: draft.name,
-        type: draft.type,
-        currency: draft.currency,
-        openingBalanceMinor: openingBalanceMinor,
-        color: draft.color,
-      );
+    final cloudSync = ref.read(cloudSyncControllerProvider);
+    if (cloudSync.hasCloudWallet) {
+      // Guard: strictly refuse to overwrite cloud wallet from onboarding
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Existing cloud wallet found. Restoring your wallet instead of creating a new account.',
+            ),
+          ),
+        );
+        ref.read(cloudSyncControllerProvider.notifier).retryBootstrap();
+        context.go('/launch');
+      }
+      return;
+    }
+
+    // Guard: if wallet data already arrived (e.g. cloud restored while the
+    // user was stepping through onboarding), skip creating new accounts to
+    // prevent duplicates being pushed back over the real cloud backup.
+    final ledgerAfterPrefs = ref.read(ledgerProvider);
+    final hasExistingData =
+        ledgerAfterPrefs.accounts.isNotEmpty ||
+        ledgerAfterPrefs.transactions.isNotEmpty;
+
+    if (!hasExistingData) {
+      // Save accounts to ledger — only when we know there is no existing
+      // wallet data; an empty ledger means this really is a fresh setup.
+      for (final draft in _accounts) {
+        final parsedOpening =
+            double.tryParse(
+              draft.opening.replaceAll(RegExp(r'[^0-9.]'), ''),
+            ) ??
+            0;
+        final openingBalanceMinor =
+            (parsedOpening * math.pow(10, minorUnits(draft.currency))).round();
+        await ledgerNotifier.upsertAccount(
+          id: const Uuid().v4(),
+          name: draft.name,
+          type: draft.type,
+          currency: draft.currency,
+          openingBalanceMinor: openingBalanceMinor,
+          color: draft.color,
+        );
+      }
     }
 
     await ref
         .read(onboardingControllerProvider.notifier)
         .setCompleted(authUser.id, true);
+
+    // Force an immediate cloud upload so the brand-new wallet reaches
+    // Firebase right away, before the user can clear app data or background
+    // the app within the normal 2500ms upload debounce window.
+    // Only needed for genuinely new wallets — if existing cloud data was
+    // already restored, the sync controller handles uploads automatically.
+    if (!hasExistingData) {
+      unawaited(
+        ref
+            .read(cloudSyncControllerProvider.notifier)
+            .uploadSnapshot(reason: 'onboarding'),
+      );
+    }
 
     if (!mounted) return;
     context.go('/permissions-setup');
@@ -170,6 +215,57 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cloudSync = ref.watch(cloudSyncControllerProvider);
+    if (cloudSync.hasCloudWallet) {
+      return Scaffold(
+        body: LaunchBackdrop(
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.cloud_done_rounded,
+                    size: 64,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Cloud Wallet Found',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'We detected an existing wallet for your Google account. Your data is safe in Firebase.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    onPressed: () {
+                      ref
+                          .read(cloudSyncControllerProvider.notifier)
+                          .retryBootstrap();
+                      context.go('/launch');
+                    },
+                    icon: const Icon(Icons.restore_rounded),
+                    label: const Text('Restore My Wallet'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: LaunchBackdrop(
         child: SafeArea(

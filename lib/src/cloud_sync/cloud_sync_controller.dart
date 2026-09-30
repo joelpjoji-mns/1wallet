@@ -42,6 +42,7 @@ class CloudSyncState {
     this.bootstrappedUserId,
     this.progress,
     this.progressMessage,
+    this.hasCloudWallet = false,
   });
 
   final CloudSyncPhase phase;
@@ -54,6 +55,7 @@ class CloudSyncState {
   final String? bootstrappedUserId;
   final double? progress;
   final String? progressMessage;
+  final bool hasCloudWallet;
 
   bool get isChecking => phase == CloudSyncPhase.checking;
   bool get isRestoring => phase == CloudSyncPhase.restoring;
@@ -69,6 +71,7 @@ class CloudSyncState {
     Object? bootstrappedUserId = _unset,
     Object? progress = _unset,
     Object? progressMessage = _unset,
+    bool? hasCloudWallet,
   }) {
     return CloudSyncState(
       phase: phase ?? this.phase,
@@ -93,6 +96,7 @@ class CloudSyncState {
       progressMessage: identical(progressMessage, _unset)
           ? this.progressMessage
           : progressMessage as String?,
+      hasCloudWallet: hasCloudWallet ?? this.hasCloudWallet,
     );
   }
 }
@@ -428,6 +432,8 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         legacyPreferencesDocExists: prefsDoc.exists,
       );
 
+      state = state.copyWith(hasCloudWallet: walletDataExists);
+
       if (walletDataExists) {
         final cloudState = _cloudWriteStateFromDocData(userDoc.data());
         final lastWriterDeviceId = cloudState.lastWriterDeviceId;
@@ -630,6 +636,16 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
   Future<void> uploadSnapshot({required String reason}) async {
     final user = _ref.read(authControllerProvider).user;
     if (user == null) return;
+
+    // Safety guard against clobbering an existing cloud wallet from onboarding / seed
+    if ((reason == 'onboarding' || reason == 'seed') && state.hasCloudWallet) {
+      debugPrint(
+        'uploadSnapshot: blocked $reason from overwriting existing cloud wallet',
+      );
+      state = state.copyWith(phase: CloudSyncPhase.idle);
+      unawaited(fullSync(reason: 'cloud_wallet_protection'));
+      return;
+    }
 
     if (reason == 'auto') {
       if (state.phase == CloudSyncPhase.checking ||
