@@ -1547,6 +1547,7 @@ class CreditCardDueStatus {
     required this.isDueSoon,
     required this.isOverdue,
     required this.cycleKey,
+    this.isStatementGenerated = false,
   });
 
   final Account account;
@@ -1557,6 +1558,22 @@ class CreditCardDueStatus {
   final bool isDueSoon;
   final bool isOverdue;
   final String cycleKey;
+  final bool isStatementGenerated;
+}
+
+/// Helper returning ordinal suffix for a day number ('st', 'nd', 'rd', 'th').
+String daySuffix(int day) {
+  if (day >= 11 && day <= 13) return 'th';
+  switch (day % 10) {
+    case 1:
+      return 'st';
+    case 2:
+      return 'nd';
+    case 3:
+      return 'rd';
+    default:
+      return 'th';
+  }
 }
 
 CreditCardDueStatus? creditCardDueStatus(
@@ -1565,59 +1582,109 @@ CreditCardDueStatus? creditCardDueStatus(
   DateTime? now,
 }) {
   if (account.isArchived ||
-      (account.type != 'credit_card' && account.type != 'card') ||
-      account.dueDay == null) {
+      (account.type != 'credit_card' && account.type != 'card')) {
+    return null;
+  }
+
+  // Must have at least dueDay or statementDay configured
+  if (account.dueDay == null && account.statementDay == null) {
     return null;
   }
 
   final current = now ?? DateTime.now();
   final today = DateTime(current.year, current.month, current.day);
-  final dueDay = account.dueDay!;
+  final dueDay = account.dueDay;
   final statementDay = account.statementDay;
 
-  final maxDayThisMonth = DateTime(current.year, current.month + 1, 0).day;
-  final thisMonthDueDate = DateTime(
-    current.year,
-    current.month,
-    dueDay.clamp(1, maxDayThisMonth),
-  );
-
   DateTime targetDueDate;
-  if (today.difference(thisMonthDueDate).inDays > 20) {
-    final nextMonth = DateTime(current.year, current.month + 1);
-    final maxDayNextMonth =
-        DateTime(nextMonth.year, nextMonth.month + 1, 0).day;
-    targetDueDate = DateTime(
-      nextMonth.year,
-      nextMonth.month,
-      dueDay.clamp(1, maxDayNextMonth),
-    );
-  } else {
-    targetDueDate = thisMonthDueDate;
-  }
-
-  final cycleKey =
-      '${targetDueDate.year}-${targetDueDate.month.toString().padLeft(2, '0')}';
-  final isPaid = account.lastPaidBillMonth == cycleKey;
-
-  final daysDiff = targetDueDate.difference(today).inDays;
-  final notifyDays = account.notifyDaysBeforeDue ?? 3;
-
   DateTime? statementDate;
-  if (statementDay != null) {
-    final stmtMonth = statementDay > dueDay
-        ? DateTime(targetDueDate.year, targetDueDate.month - 1)
-        : DateTime(targetDueDate.year, targetDueDate.month);
-    final maxStmtDay = DateTime(stmtMonth.year, stmtMonth.month + 1, 0).day;
-    statementDate = DateTime(
-      stmtMonth.year,
-      stmtMonth.month,
-      statementDay.clamp(1, maxStmtDay),
+  String cycleKey;
+
+  if (dueDay != null) {
+    final maxDayThisMonth = DateTime(current.year, current.month + 1, 0).day;
+    final thisMonthDueDate = DateTime(
+      current.year,
+      current.month,
+      dueDay.clamp(1, maxDayThisMonth),
     );
+
+    final thisMonthCycleKey =
+        '${thisMonthDueDate.year}-${thisMonthDueDate.month.toString().padLeft(2, '0')}';
+    final thisMonthPaid = account.lastPaidBillMonth == thisMonthCycleKey;
+
+    if (thisMonthPaid && today.isAfter(thisMonthDueDate)) {
+      // This month's bill was already paid and its due date has passed.
+      // Advance to next month's cycle.
+      final nextMonth = DateTime(current.year, current.month + 1);
+      final maxDayNextMonth =
+          DateTime(nextMonth.year, nextMonth.month + 1, 0).day;
+      targetDueDate = DateTime(
+        nextMonth.year,
+        nextMonth.month,
+        dueDay.clamp(1, maxDayNextMonth),
+      );
+    } else {
+      // Focus on this month's due date (whether paid, upcoming, or overdue)
+      targetDueDate = thisMonthDueDate;
+    }
+
+    cycleKey =
+        '${targetDueDate.year}-${targetDueDate.month.toString().padLeft(2, '0')}';
+
+    if (statementDay != null) {
+      final stmtMonth = statementDay > dueDay
+          ? DateTime(targetDueDate.year, targetDueDate.month - 1)
+          : DateTime(targetDueDate.year, targetDueDate.month);
+      final maxStmtDay = DateTime(stmtMonth.year, stmtMonth.month + 1, 0).day;
+      statementDate = DateTime(
+        stmtMonth.year,
+        stmtMonth.month,
+        statementDay.clamp(1, maxStmtDay),
+      );
+    }
+  } else {
+    // Only statementDay is configured (no explicit dueDay)
+    final maxStmtDayThisMonth =
+        DateTime(current.year, current.month + 1, 0).day;
+    final thisMonthStmtDate = DateTime(
+      current.year,
+      current.month,
+      statementDay!.clamp(1, maxStmtDayThisMonth),
+    );
+
+    final thisMonthCycleKey =
+        '${thisMonthStmtDate.year}-${thisMonthStmtDate.month.toString().padLeft(2, '0')}';
+    final thisMonthPaid = account.lastPaidBillMonth == thisMonthCycleKey;
+
+    if (thisMonthPaid && today.isAfter(thisMonthStmtDate)) {
+      final nextMonth = DateTime(current.year, current.month + 1);
+      final maxStmtDayNextMonth =
+          DateTime(nextMonth.year, nextMonth.month + 1, 0).day;
+      statementDate = DateTime(
+        nextMonth.year,
+        nextMonth.month,
+        statementDay.clamp(1, maxStmtDayNextMonth),
+      );
+    } else {
+      statementDate = thisMonthStmtDate;
+    }
+
+    // Default 20-day grace period after statement generation
+    targetDueDate = statementDate.add(const Duration(days: 20));
+    cycleKey =
+        '${statementDate.year}-${statementDate.month.toString().padLeft(2, '0')}';
   }
+
+  final isPaid = account.lastPaidBillMonth == cycleKey;
+  final daysDiff = targetDueDate.difference(today).inDays;
+  final notifyDays = account.notifyDaysBeforeDue ??
+      (account.statementDay != null ? 3 : 7);
 
   final isOverdue = !isPaid && daysDiff < 0;
   final isDueSoon = !isPaid && (daysDiff >= 0 && daysDiff <= notifyDays);
+  final isStatementGenerated = !isPaid &&
+      statementDate != null &&
+      (today.isAfter(statementDate) || today.isAtSameMomentAs(statementDate));
 
   return CreditCardDueStatus(
     account: account,
@@ -1628,15 +1695,30 @@ CreditCardDueStatus? creditCardDueStatus(
     isDueSoon: isDueSoon,
     isOverdue: isOverdue,
     cycleKey: cycleKey,
+    isStatementGenerated: isStatementGenerated,
   );
 }
 
 int creditCardsDueSoonCount(LedgerState state, {DateTime? now}) {
+  final currentTime = now ?? DateTime.now();
+  final todayKey =
+      '${currentTime.year}-${currentTime.month.toString().padLeft(2, '0')}-${currentTime.day.toString().padLeft(2, '0')}';
+  final dismissedIds = state.preferences.dismissedNotificationIds.toSet();
+
   var count = 0;
   for (final account in state.accounts) {
-    final status = creditCardDueStatus(state, account, now: now);
-    if (status != null && (status.isDueSoon || status.isOverdue)) {
-      count++;
+    final status = creditCardDueStatus(state, account, now: currentTime);
+    if (status == null || status.isPaid) continue;
+    if (status.isDueSoon || status.isOverdue || status.isStatementGenerated) {
+      final isDismissed =
+          dismissedIds.contains('card_overdue_${account.id}_$todayKey') ||
+          dismissedIds.contains('card_due_${account.id}_$todayKey') ||
+          dismissedIds.contains(
+            'card_statement_${account.id}_${status.cycleKey}_$todayKey',
+          );
+      if (!isDismissed) {
+        count++;
+      }
     }
   }
   return count;

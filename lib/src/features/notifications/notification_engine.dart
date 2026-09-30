@@ -48,6 +48,12 @@ class AppNotification {
     required this.createdAt,
     this.read = false,
     this.actionRoute,
+    this.accountId,
+    this.cycleKey,
+    this.amount,
+    this.badgeLabel,
+    this.isOverdue = false,
+    this.isDueSoon = false,
   });
 
   final String id;
@@ -57,6 +63,12 @@ class AppNotification {
   final DateTime createdAt;
   final bool read;
   final String? actionRoute;
+  final String? accountId;
+  final String? cycleKey;
+  final Money? amount;
+  final String? badgeLabel;
+  final bool isOverdue;
+  final bool isDueSoon;
 }
 
 /// Normalizes notification preferences from raw ledger state.
@@ -163,14 +175,18 @@ List<AppNotification> buildNotificationInbox(LedgerState state, {DateTime? now})
     }
   }
 
-  // Credit card due / overdue notifications
+  // Credit card due / overdue / statement notifications
   for (final account in state.accounts) {
     final status = creditCardDueStatus(state, account, now: currentTime);
     if (status == null || status.isPaid) continue;
 
     final balance = accountBalance(state, account);
+    final absBalance = Money(
+      amountMinor: balance.amountMinor.abs(),
+      currency: balance.currency,
+    );
     final balanceText = formatMoney(
-      convertMoneyForDisplay(state, balance),
+      convertMoneyForDisplay(state, absBalance),
       state.preferences.locale,
     );
 
@@ -191,6 +207,13 @@ List<AppNotification> buildNotificationInbox(LedgerState state, {DateTime? now})
               : 'Payment of $balanceText was due $when.',
           createdAt: status.dueDate,
           actionRoute: '/cards',
+          accountId: account.id,
+          cycleKey: status.cycleKey,
+          amount: absBalance,
+          badgeLabel: status.daysUntilDue == -1
+              ? 'Overdue yesterday'
+              : 'Overdue ${-status.daysUntilDue}d',
+          isOverdue: true,
         ),
       );
     } else if (status.isDueSoon) {
@@ -209,6 +232,33 @@ List<AppNotification> buildNotificationInbox(LedgerState state, {DateTime? now})
               : 'Payment of $balanceText is due $when.',
           createdAt: currentTime,
           actionRoute: '/cards',
+          accountId: account.id,
+          cycleKey: status.cycleKey,
+          amount: absBalance,
+          badgeLabel: status.daysUntilDue == 0
+              ? 'Due today'
+              : (status.daysUntilDue == 1
+                  ? 'Due tomorrow'
+                  : 'Due in ${status.daysUntilDue}d'),
+          isDueSoon: true,
+        ),
+      );
+    } else if (status.isStatementGenerated) {
+      final when = 'in ${status.daysUntilDue} days';
+      notifications.add(
+        AppNotification(
+          id: 'card_statement_${account.id}_${status.cycleKey}_$todayKey',
+          channel: AppNotificationChannel.scheduled,
+          title: 'Statement ready: ${account.name}',
+          body: state.preferences.privacyModeEnabled
+              ? 'Monthly statement was generated (due $when).'
+              : 'Monthly bill of $balanceText generated. Due $when.',
+          createdAt: status.statementDate ?? currentTime,
+          actionRoute: '/cards',
+          accountId: account.id,
+          cycleKey: status.cycleKey,
+          amount: absBalance,
+          badgeLabel: 'Bill ready',
         ),
       );
     }
@@ -228,6 +278,12 @@ List<AppNotification> buildNotificationInbox(LedgerState state, {DateTime? now})
           createdAt: n.createdAt,
           read: readIds.contains(n.id),
           actionRoute: n.actionRoute,
+          accountId: n.accountId,
+          cycleKey: n.cycleKey,
+          amount: n.amount,
+          badgeLabel: n.badgeLabel,
+          isOverdue: n.isOverdue,
+          isDueSoon: n.isDueSoon,
         ),
       )
       .toList();

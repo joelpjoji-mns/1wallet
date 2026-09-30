@@ -297,21 +297,62 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: _DaySelectorField(
-                          label: 'Bill date',
-                          day: _statementDay,
-                          icon: Icons.receipt_outlined,
-                          onChanged: (day) =>
-                              setState(() => _statementDay = day),
+                        child: DropdownButtonFormField<int?>(
+                          value: _statementDay,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Bill date',
+                            prefixIcon: Icon(Icons.receipt_outlined),
+                          ),
+                          selectedItemBuilder: (context) {
+                            return [
+                              const Text('Not set', style: TextStyle(color: Colors.grey)),
+                              for (int d = 1; d <= 31; d++)
+                                Text('Day $d', style: const TextStyle(fontWeight: FontWeight.w700)),
+                            ];
+                          },
+                          items: [
+                            const DropdownMenuItem(
+                              value: null,
+                              child: Text('Not set'),
+                            ),
+                            for (int d = 1; d <= 31; d++)
+                              DropdownMenuItem(
+                                value: d,
+                                child: Text('Day $d (${_daySuffix(d)} of month)'),
+                              ),
+                          ],
+                          onChanged: (val) => setState(() => _statementDay = val),
                         ),
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
-                        child: _DaySelectorField(
-                          label: 'Due date',
-                          day: _dueDay,
-                          icon: Icons.event_outlined,
-                          onChanged: (day) => setState(() => _dueDay = day),
+                        child: DropdownButtonFormField<int?>(
+                          value: _dueDay,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Due date',
+                            prefixIcon: Icon(Icons.event_outlined),
+                          ),
+                          selectedItemBuilder: (context) {
+                            return [
+                              const Text('Not set', style: TextStyle(color: Colors.grey)),
+                              for (int d = 1; d <= 31; d++)
+                                Text('Day $d', style: const TextStyle(fontWeight: FontWeight.w700)),
+                            ];
+                          },
+                          items: [
+                            const DropdownMenuItem(
+                              value: null,
+                              child: Text('Not set'),
+                            ),
+                            for (int d = 1; d <= 31; d++)
+                              DropdownMenuItem(
+                                value: d,
+                                child: Text('Day $d (${_daySuffix(d)} of month)'),
+                              ),
+                          ],
+                          onChanged: (val) => setState(() => _dueDay = val),
                         ),
                       ),
                     ],
@@ -901,6 +942,20 @@ class _DetailField extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+String _daySuffix(int day) {
+  if (day >= 11 && day <= 13) return 'th';
+  switch (day % 10) {
+    case 1:
+      return 'st';
+    case 2:
+      return 'nd';
+    case 3:
+      return 'rd';
+    default:
+      return 'th';
   }
 }
 

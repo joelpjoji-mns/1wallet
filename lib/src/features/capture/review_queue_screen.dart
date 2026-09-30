@@ -97,7 +97,7 @@ class ReviewQueueScreen extends ConsumerWidget {
                     if (item is CaptureCandidate) {
                       return _buildCandidateCard(context, ref, state, item);
                     } else if (item is AppNotification) {
-                      return _buildNotificationCard(context, ref, item);
+                      return _buildNotificationCard(context, ref, state, item);
                     }
                     return const SizedBox();
                   },
@@ -400,10 +400,258 @@ class ReviewQueueScreen extends ConsumerWidget {
   Widget _buildNotificationCard(
     BuildContext context,
     WidgetRef ref,
+    LedgerState state,
     AppNotification notification,
   ) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final account = notification.accountId != null
+        ? accountById(state, notification.accountId!)
+        : null;
+
+    if (account != null) {
+      final accountColor = account.color ?? scheme.primary;
+      final dueStatus = creditCardDueStatus(state, account);
+
+      return Dismissible(
+        key: ValueKey(notification.id),
+        direction: DismissDirection.endToStart,
+        onDismissed: (_) => _dismiss(ref, notification.id),
+        background: Container(
+          decoration: BoxDecoration(
+            color: scheme.errorContainer,
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+          ),
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Icon(
+            Icons.archive_outlined,
+            color: scheme.onErrorContainer,
+          ),
+        ),
+        child: Material(
+          color: notification.read
+              ? scheme.surfaceContainerHigh
+              : Color.alphaBlend(
+                  (notification.isOverdue || notification.isDueSoon
+                          ? scheme.error
+                          : scheme.primary)
+                      .withValues(alpha: 0.12),
+                  scheme.surfaceContainerHigh,
+                ),
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => _openNotification(context, ref, notification),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    AppSpacing.lg,
+                    AppSpacing.lg,
+                    AppSpacing.sm,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: accountColor.withValues(alpha: 0.18),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          accountIcon(account),
+                          size: 22,
+                          color: accountColor,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    account.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style:
+                                        theme.textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                                if (notification.badgeLabel != null) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 7,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: (notification.isOverdue ||
+                                              notification.isDueSoon
+                                              ? scheme.error
+                                              : scheme.primary)
+                                          .withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      notification.badgeLabel!,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: notification.isOverdue ||
+                                                notification.isDueSoon
+                                            ? scheme.error
+                                            : scheme.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              [
+                                if (account.institution?.isNotEmpty == true)
+                                  account.institution!,
+                                if (dueStatus != null)
+                                  'Due ${dueStatus.daysUntilDue >= 0 ? "in ${dueStatus.daysUntilDue}d" : "${-dueStatus.daysUntilDue}d ago"} (${dueStatus.dueDate.day}/${dueStatus.dueDate.month})',
+                              ].join(' · '),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (notification.amount != null) ...[
+                        const SizedBox(width: AppSpacing.sm),
+                        Flexible(
+                          child: PrivacyText(
+                            formatMoney(
+                              convertMoneyForDisplay(
+                                state,
+                                notification.amount!,
+                              ),
+                              state.preferences.locale,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              color: notification.isOverdue
+                                  ? scheme.error
+                                  : scheme.onSurface,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                  child: Text(
+                    notification.body,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: scheme.outlineVariant.withValues(alpha: 0.3),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    AppSpacing.xs,
+                    AppSpacing.md,
+                    AppSpacing.sm,
+                  ),
+                  child: Row(
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => _dismiss(ref, notification.id),
+                        icon: const Icon(Icons.close_rounded, size: 16),
+                        label: const Text('Dismiss'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: scheme.onSurfaceVariant,
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        tooltip: 'View Card Details',
+                        icon: const Icon(Icons.credit_card_outlined, size: 20),
+                        onPressed: () => context.push('/cards'),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      FilledButton.icon(
+                        onPressed: () async {
+                          final cycle =
+                              notification.cycleKey ?? dueStatus?.cycleKey;
+                          await ref
+                              .read(ledgerProvider.notifier)
+                              .markCardBillPaid(account.id, cycle);
+                          await _dismiss(ref, notification.id);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content:
+                                    Text('Marked ${account.name} bill as paid'),
+                                behavior: SnackBarBehavior.floating,
+                                action: SnackBarAction(
+                                  label: 'Undo',
+                                  onPressed: () {
+                                    ref
+                                        .read(ledgerProvider.notifier)
+                                        .markCardBillPaid(account.id, null);
+                                  },
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.check_rounded, size: 16),
+                        label: const Text('Confirm Paid'),
+                        style: FilledButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadii.pill),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final icon = switch (notification.channel) {
       AppNotificationChannel.scheduled => Icons.event_repeat_rounded,
     };
@@ -424,10 +672,6 @@ class ReviewQueueScreen extends ConsumerWidget {
           color: theme.colorScheme.onErrorContainer,
         ),
       ),
-      // Glass is reserved for navigation/control chrome (per the
-      // liquid_glass_widgets guidance); scrolling list rows stay opaque. The
-      // unread tint is pre-blended onto an opaque base instead of relying on
-      // a blurred backdrop to show through a transparent color.
       child: Material(
         color: notification.read
             ? scheme.surfaceContainerHigh
@@ -439,80 +683,119 @@ class ReviewQueueScreen extends ConsumerWidget {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => _openNotification(context, ref, notification),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: Column(
             children: [
-              // Left-border accent for unread state
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: notification.read ? 0 : 4,
-                decoration: BoxDecoration(
-                  color: scheme.primary,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(AppRadii.lg),
-                    bottomLeft: Radius.circular(AppRadii.lg),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      IconBubble(
-                        icon: icon,
-                        color: notification.read
-                            ? scheme.onSurfaceVariant
-                            : scheme.primary,
-                        compact: true,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: notification.read ? 0 : 4,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: scheme.primary,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(AppRadii.lg),
+                        bottomLeft: Radius.circular(AppRadii.lg),
                       ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              notification.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: notification.read
-                                    ? FontWeight.w600
-                                    : FontWeight.w800,
-                                color: scheme.onSurface,
-                              ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          IconBubble(
+                            icon: icon,
+                            color: notification.read
+                                ? scheme.onSurfaceVariant
+                                : scheme.primary,
+                            compact: true,
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  notification.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: notification.read
+                                        ? FontWeight.w600
+                                        : FontWeight.w800,
+                                    color: scheme.onSurface,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  notification.body,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                const SizedBox(height: AppSpacing.sm),
+                                Text(
+                                  _relativeDate(notification.createdAt),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              notification.body,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: scheme.onSurfaceVariant,
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                            Text(
-                              _relativeDate(notification.createdAt),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: scheme.onSurfaceVariant,
+                          ),
+                          if (!notification.read) ...[
+                            const SizedBox(width: AppSpacing.sm),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Icon(
+                                Icons.fiber_manual_record,
+                                size: 10,
+                                color: scheme.primary,
                               ),
                             ),
                           ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: scheme.outlineVariant.withValues(alpha: 0.3),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: 4,
+                ),
+                child: Row(
+                  children: [
+                    TextButton.icon(
+                      onPressed: () => _dismiss(ref, notification.id),
+                      icon: const Icon(Icons.close_rounded, size: 16),
+                      label: const Text('Dismiss'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: scheme.onSurfaceVariant,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (notification.actionRoute != null)
+                      TextButton.icon(
+                        onPressed: () =>
+                            _openNotification(context, ref, notification),
+                        icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                        label: const Text('View'),
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
                         ),
                       ),
-                      if (!notification.read) ...[
-                        const SizedBox(width: AppSpacing.sm),
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Icon(
-                            Icons.fiber_manual_record,
-                            size: 10,
-                            color: scheme.primary,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+                  ],
                 ),
               ),
             ],

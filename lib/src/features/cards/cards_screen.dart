@@ -133,6 +133,11 @@ class _CardAccountTile extends ConsumerWidget {
                 ? 'Due tomorrow'
                 : 'Due in ${dueStatus.daysUntilDue} days');
         badgeIcon = Icons.alarm_rounded;
+      } else if (dueStatus.isStatementGenerated) {
+        badgeColor = scheme.primary.withAlphaFactor(0.18);
+        badgeTextColor = scheme.primary;
+        badgeLabel = 'Bill ready · Due in ${dueStatus.daysUntilDue}d';
+        badgeIcon = Icons.receipt_long_rounded;
       } else {
         badgeColor = scheme.surfaceContainerHighest;
         badgeTextColor = scheme.onSurfaceVariant;

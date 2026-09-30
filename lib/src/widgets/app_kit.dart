@@ -167,13 +167,12 @@ class AppResponsiveLayout extends StatelessWidget {
   }
 }
 
-/// Dissolves the top of scrollable content linearly from 0% to 100% opacity
-/// using a mathematical alpha mask. Prevents hard cutoffs and avoids dirty shadow
-/// tints across all themes (Dark, Light, AMOLED).
+/// Dissolves the top of scrollable content with mathematical smootherstep easing
+/// using an alpha mask. Prevents hard cutoffs, bands, and step jumps.
 class AppTopFadeMask extends StatelessWidget {
   const AppTopFadeMask({
     required this.child,
-    this.fadeHeight = 12.0,
+    this.fadeHeight = 20.0,
     this.enabled = true,
     super.key,
   });
@@ -198,10 +197,27 @@ class AppTopFadeMask extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: const [
-            Colors.transparent,
-            Colors.white,
+            Color(0x00FFFFFF), // 0% opacity (completely faded)
+            Color(0x0AFFFFFF), // 4% opacity (smooth non-linear start)
+            Color(0x29FFFFFF), // 16% opacity
+            Color(0x5EFFFFFF), // 37% opacity
+            Color(0x9EFFFFFF), // 62% opacity
+            Color(0xD6FFFFFF), // 84% opacity
+            Color(0xF5FFFFFF), // 96% opacity
+            Color(0xFFFFFFFF), // 100% opacity (continuous blend, no line)
+            Color(0xFFFFFFFF),
           ],
-          stops: [0.0, stop],
+          stops: [
+            0.0,
+            stop * 0.15,
+            stop * 0.30,
+            stop * 0.50,
+            stop * 0.70,
+            stop * 0.85,
+            stop * 0.95,
+            stop,
+            1.0,
+          ],
         ).createShader(bounds);
       },
       blendMode: BlendMode.dstIn,

@@ -107,6 +107,73 @@ void main() {
 
       expect(creditCardsDueSoonCount(state, now: now), 0);
     });
+
+    test('supports statement-only configuration without explicit dueDay', () {
+      final stmtOnlyAccount = Account(
+        id: 'card-stmt-only',
+        name: 'Statement Card',
+        type: 'credit_card',
+        currency: 'USD',
+        openingBalance: const Money(amountMinor: -20000, currency: 'USD'),
+        statementDay: 1, // 1st of month
+      );
+      final state = baseState.copyWith(accounts: [stmtOnlyAccount]);
+      final now = DateTime(2026, 10, 5); // After statement date
+
+      final status = creditCardDueStatus(state, stmtOnlyAccount, now: now);
+      expect(status, isNotNull);
+      expect(status!.isStatementGenerated, isTrue);
+      expect(status.statementDate, isNotNull);
+      expect(status.statementDate!.day, 1);
+      expect(status.dueDate, isNotNull); // Has default grace period
+
+      final notifications = buildNotificationInbox(state, now: now);
+      expect(
+        notifications.any((n) => n.id.startsWith('card_statement_card-stmt-only_')),
+        isTrue,
+      );
+    });
+
+    test('supports due-only configuration without explicit statementDay', () {
+      final dueOnlyAccount = Account(
+        id: 'card-due-only',
+        name: 'Due Only Card',
+        type: 'credit_card',
+        currency: 'USD',
+        openingBalance: const Money(amountMinor: -15000, currency: 'USD'),
+        dueDay: 15,
+        notifyDaysBeforeDue: 5,
+      );
+      final state = baseState.copyWith(accounts: [dueOnlyAccount]);
+      final now = DateTime(2026, 10, 12); // 3 days before due date
+
+      final status = creditCardDueStatus(state, dueOnlyAccount, now: now);
+      expect(status, isNotNull);
+      expect(status!.isDueSoon, isTrue);
+      expect(status.daysUntilDue, 3);
+
+      final notifications = buildNotificationInbox(state, now: now);
+      expect(
+        notifications.any((n) => n.id.startsWith('card_due_card-due-only_')),
+        isTrue,
+      );
+    });
+
+    test('dismissing card notification excludes it for today', () {
+      final now = DateTime(2026, 10, 3);
+      final todayKey = '2026-10-03';
+      final dismissedId = 'card_due_${account.id}_$todayKey';
+
+      final dismissedState = baseState.copyWith(
+        preferences: baseState.preferences.copyWith(
+          dismissedNotificationIds: [dismissedId],
+        ),
+      );
+
+      expect(creditCardsDueSoonCount(dismissedState, now: now), 0);
+      final notifications = buildNotificationInbox(dismissedState, now: now);
+      expect(notifications.any((n) => n.id == dismissedId), isFalse);
+    });
   });
 
   group('Ledger Codec Account serialization', () {
