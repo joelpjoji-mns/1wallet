@@ -47,6 +47,14 @@ class CloudSyncState {
     this.cloudTransactionCount,
     this.cloudAccountCount,
     this.cloudLatestTransactionAt,
+    this.verifiedCloudRevision,
+    this.verifiedCloudUpdatedAt,
+    this.verifiedCloudChunkCount,
+    this.verifiedCloudTransactionCount,
+    this.verifiedCloudAccountCount,
+    this.isVerifyingCloud = false,
+    this.cloudVerificationStatus,
+    this.lastVerifiedAt,
   });
 
   final CloudSyncPhase phase;
@@ -63,6 +71,14 @@ class CloudSyncState {
   final int? cloudTransactionCount;
   final int? cloudAccountCount;
   final DateTime? cloudLatestTransactionAt;
+  final int? verifiedCloudRevision;
+  final DateTime? verifiedCloudUpdatedAt;
+  final int? verifiedCloudChunkCount;
+  final int? verifiedCloudTransactionCount;
+  final int? verifiedCloudAccountCount;
+  final bool isVerifyingCloud;
+  final String? cloudVerificationStatus;
+  final DateTime? lastVerifiedAt;
 
   bool get isChecking => phase == CloudSyncPhase.checking;
   bool get isRestoring => phase == CloudSyncPhase.restoring;
@@ -82,6 +98,14 @@ class CloudSyncState {
     Object? cloudTransactionCount = _unset,
     Object? cloudAccountCount = _unset,
     Object? cloudLatestTransactionAt = _unset,
+    Object? verifiedCloudRevision = _unset,
+    Object? verifiedCloudUpdatedAt = _unset,
+    Object? verifiedCloudChunkCount = _unset,
+    Object? verifiedCloudTransactionCount = _unset,
+    Object? verifiedCloudAccountCount = _unset,
+    bool? isVerifyingCloud,
+    Object? cloudVerificationStatus = _unset,
+    Object? lastVerifiedAt = _unset,
   }) {
     return CloudSyncState(
       phase: phase ?? this.phase,
@@ -116,6 +140,28 @@ class CloudSyncState {
       cloudLatestTransactionAt: identical(cloudLatestTransactionAt, _unset)
           ? this.cloudLatestTransactionAt
           : cloudLatestTransactionAt as DateTime?,
+      verifiedCloudRevision: identical(verifiedCloudRevision, _unset)
+          ? this.verifiedCloudRevision
+          : verifiedCloudRevision as int?,
+      verifiedCloudUpdatedAt: identical(verifiedCloudUpdatedAt, _unset)
+          ? this.verifiedCloudUpdatedAt
+          : verifiedCloudUpdatedAt as DateTime?,
+      verifiedCloudChunkCount: identical(verifiedCloudChunkCount, _unset)
+          ? this.verifiedCloudChunkCount
+          : verifiedCloudChunkCount as int?,
+      verifiedCloudTransactionCount: identical(verifiedCloudTransactionCount, _unset)
+          ? this.verifiedCloudTransactionCount
+          : verifiedCloudTransactionCount as int?,
+      verifiedCloudAccountCount: identical(verifiedCloudAccountCount, _unset)
+          ? this.verifiedCloudAccountCount
+          : verifiedCloudAccountCount as int?,
+      isVerifyingCloud: isVerifyingCloud ?? this.isVerifyingCloud,
+      cloudVerificationStatus: identical(cloudVerificationStatus, _unset)
+          ? this.cloudVerificationStatus
+          : cloudVerificationStatus as String?,
+      lastVerifiedAt: identical(lastVerifiedAt, _unset)
+          ? this.lastVerifiedAt
+          : lastVerifiedAt as DateTime?,
     );
   }
 }
@@ -410,6 +456,112 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       // replace the cloud wallet without another explicit choice.
       await prefs.setBool('has_unsynced_changes', true);
       state = state.copyWith(pendingUpload: true);
+    }
+  }
+
+  /// Queries Google Cloud Firestore directly from the server (bypassing local cache)
+  /// to verify the live backup status, cloud revision, chunk count, and transaction count.
+  Future<void> verifyCloudBackup() async {
+    final user = _ref.read(authControllerProvider).user;
+    if (user == null) {
+      state = state.copyWith(
+        cloudVerificationStatus: 'Please sign in to verify your cloud backup.',
+      );
+      return;
+    }
+
+    state = state.copyWith(
+      isVerifyingCloud: true,
+      cloudVerificationStatus: 'Contacting Google Cloud Firestore…',
+    );
+
+    try {
+      final userDoc = await _firestore
+          .doc('users/${user.id}')
+          .get(const GetOptions(source: Source.server))
+          .timeout(cloudSyncReadTimeout);
+
+      if (!userDoc.exists) {
+        state = state.copyWith(
+          isVerifyingCloud: false,
+          cloudVerificationStatus: 'No cloud wallet found in Firebase for this account.',
+        );
+        return;
+      }
+
+      final userData = userDoc.data() ?? {};
+      final cloudRevision = userData['cloudRevision'] as int?;
+      DateTime? cloudUpdatedAt;
+      final rawUpdated = userData['updatedAt'];
+      if (rawUpdated is Timestamp) {
+        cloudUpdatedAt = rawUpdated.toDate().toLocal();
+      } else if (rawUpdated is String) {
+        cloudUpdatedAt = DateTime.tryParse(rawUpdated)?.toLocal();
+      }
+
+      final chunksSnap = await _firestore
+          .collection('users/${user.id}/wallet_backups')
+          .get(const GetOptions(source: Source.server))
+          .timeout(cloudSyncReadTimeout);
+
+      if (chunksSnap.docs.isEmpty) {
+        state = state.copyWith(
+          isVerifyingCloud: false,
+          verifiedCloudRevision: cloudRevision,
+          verifiedCloudUpdatedAt: cloudUpdatedAt,
+          verifiedCloudChunkCount: 0,
+          cloudVerificationStatus: 'User record exists (rev #$cloudRevision), but no backup chunks found.',
+        );
+        return;
+      }
+
+      final sortedDocs = chunksSnap.docs.toList()
+        ..sort((a, b) {
+          final idxA = a.data()['index'] as int? ?? 0;
+          final idxB = b.data()['index'] as int? ?? 0;
+          return idxA.compareTo(idxB);
+        });
+
+      final compressedBytes = <int>[];
+      for (final doc in sortedDocs) {
+        final blob = doc.data()['data'] as Blob?;
+        if (blob != null) {
+          compressedBytes.addAll(blob.bytes);
+        }
+      }
+
+      final decompressedBytes = GZipDecoder().decodeBytes(compressedBytes);
+      final jsonPayload = utf8.decode(decompressedBytes);
+      final data = jsonDecode(jsonPayload) as Map<String, dynamic>;
+
+      final cloudTxList = (data['transactions'] as List?) ?? const [];
+      final cloudAccList = (data['accounts'] as List?) ?? const [];
+      final cloudTxCount = cloudTxList.length;
+      final cloudAccCount = cloudAccList.length;
+      final localLedger = _ref.read(ledgerProvider);
+      final localTxCount = localLedger.transactions.length;
+
+      final isMatched = (cloudTxCount == localTxCount);
+      final status = isMatched
+          ? '100% In Sync: $cloudTxCount transactions verified on Firebase.'
+          : 'Verified on Firebase: $cloudTxCount transactions (Device has $localTxCount).';
+
+      state = state.copyWith(
+        isVerifyingCloud: false,
+        verifiedCloudRevision: cloudRevision,
+        verifiedCloudUpdatedAt: cloudUpdatedAt,
+        verifiedCloudChunkCount: sortedDocs.length,
+        verifiedCloudTransactionCount: cloudTxCount,
+        verifiedCloudAccountCount: cloudAccCount,
+        cloudVerificationStatus: status,
+        lastVerifiedAt: DateTime.now(),
+      );
+    } catch (e) {
+      debugPrint('verifyCloudBackup error: $e');
+      state = state.copyWith(
+        isVerifyingCloud: false,
+        cloudVerificationStatus: 'Verification error: $e',
+      );
     }
   }
 

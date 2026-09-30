@@ -208,7 +208,13 @@ class AppUpdateState {
 }
 
 class AppUpdateProvider extends StateNotifier<AppUpdateState> {
-  final Dio _dio = Dio();
+  final Dio _dio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(minutes: 5),
+    ),
+  );
+  CancelToken? _downloadCancelToken;
 
   AppUpdateProvider() : super(AppUpdateState()) {
     _init();
@@ -306,7 +312,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
           final prefs = await SharedPreferences.getInstance();
           const notificationKey = 'lastNotifiedVersionCode.stable';
           final lastNotifiedVersionCode = prefs.getInt(notificationKey) ?? 0;
-          if (latestVersionCode > lastNotifiedVersionCode ||
+          if (latestVersionCode > lastNotifiedVersionCode &&
               latestVersionCode > currentVersionCode) {
             await NotificationService.showUpdateNotification(
               release.versionName,
@@ -359,7 +365,11 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
   }
 
   Future<void> downloadUpdate() async {
+    if (state.status == UpdateStatus.downloading) return;
     if (state.latestRelease?.apk == null) return;
+
+    _downloadCancelToken?.cancel();
+    _downloadCancelToken = CancelToken();
 
     state = state.copyWith(
       status: UpdateStatus.downloading,
@@ -379,6 +389,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
       await _dio.download(
         apk.downloadUrl,
         savePath,
+        cancelToken: _downloadCancelToken,
         onReceiveProgress: (received, total) {
           if (total != -1) {
             state = state.copyWith(
@@ -396,7 +407,6 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
       // -----------------------------------------------------------------------
       state = state.copyWith(
         progress: 1.0,
-        // Show a brief "verifying" message via bytesWritten > bytesExpected trick
       );
 
       final downloadedFile = File(savePath);
@@ -426,11 +436,34 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
         downloadedApkPath: savePath,
       );
     } catch (e) {
+      if (e is DioException && CancelToken.isCancel(e)) {
+        state = state.copyWith(
+          status: UpdateStatus.idle,
+          progress: 0.0,
+          bytesWritten: 0,
+          clearErrorMessage: true,
+        );
+        return;
+      }
       state = state.copyWith(
         status: UpdateStatus.error,
         errorMessage: 'Failed to download update: $e',
       );
+    } finally {
+      _downloadCancelToken = null;
     }
+  }
+
+  void cancelDownload() {
+    if (_downloadCancelToken != null && !_downloadCancelToken!.isCancelled) {
+      _downloadCancelToken!.cancel('User cancelled download');
+    }
+    state = state.copyWith(
+      status: UpdateStatus.idle,
+      progress: 0.0,
+      bytesWritten: 0,
+      clearErrorMessage: true,
+    );
   }
 
   Future<void> installUpdate() async {

@@ -68,6 +68,15 @@ class NotificationService {
       },
     );
 
+    final launchDetails =
+        await _notificationsPlugin.getNotificationAppLaunchDetails();
+    if (launchDetails?.didNotificationLaunchApp ?? false) {
+      final payload = launchDetails?.notificationResponse?.payload;
+      if (payload != null && payload.trim().isNotEmpty) {
+        pendingNotificationRoute = payload;
+      }
+    }
+
     tz.initializeTimeZones();
     try {
       final TimezoneInfo timeZoneInfo =
@@ -78,6 +87,16 @@ class NotificationService {
     }
 
     _initialized = true;
+  }
+
+  static void checkPendingNotificationLaunch(
+    void Function(String route) onRoute,
+  ) {
+    final route = pendingNotificationRoute;
+    if (route != null) {
+      pendingNotificationRoute = null;
+      onRoute(route);
+    }
   }
 
   static Future<void> requestPermissions() async {
@@ -118,6 +137,7 @@ class NotificationService {
       title: 'Update Available',
       body: 'Version $version is ready to install',
       notificationDetails: notificationDetails,
+      payload: '/updates',
     );
   }
 

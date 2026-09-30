@@ -423,14 +423,18 @@ class UpdatesScreen extends ConsumerWidget {
             icon: const Icon(Icons.download_rounded),
             label: 'Download Update',
             onTap: () => provider.downloadUpdate(),
-            
+          ),
+        if (state.status == UpdateStatus.downloading)
+          GlassButton(
+            icon: const Icon(Icons.close_rounded),
+            label: 'Cancel Download',
+            onTap: () => provider.cancelDownload(),
           ),
         if (state.status == UpdateStatus.downloaded)
           GlassButton(
             icon: const Icon(Icons.install_mobile_rounded),
             label: 'Install Update',
             onTap: () => provider.installUpdate(),
-            
           ),
         if (state.latestRelease == null && state.status == UpdateStatus.idle)
           GlassButton(

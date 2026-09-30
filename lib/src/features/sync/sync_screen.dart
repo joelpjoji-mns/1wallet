@@ -416,6 +416,106 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                 label: Text(isWorking ? 'Syncing...' : 'Sync now'),
               ),
             ),
+            const Gap(AppSpacing.md),
+            SectionCard(
+              title: 'Live Cloud Verification',
+              subtitle:
+                  'Directly query Google Cloud Firestore to verify what is stored on Firebase servers.',
+              compact: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (sync.cloudVerificationStatus != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      decoration: BoxDecoration(
+                        color: sync.cloudVerificationStatus!.contains('100% In Sync') ||
+                                sync.cloudVerificationStatus!.contains('Verified')
+                            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
+                            : theme.colorScheme.errorContainer.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            sync.cloudVerificationStatus!.contains('100% In Sync') ||
+                                    sync.cloudVerificationStatus!.contains('Verified')
+                                ? Icons.verified_rounded
+                                : Icons.info_outline_rounded,
+                            size: 18,
+                            color: sync.cloudVerificationStatus!.contains('100% In Sync') ||
+                                    sync.cloudVerificationStatus!.contains('Verified')
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.error,
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Text(
+                              sync.cloudVerificationStatus!,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (sync.verifiedCloudRevision != null) ...[
+                    InfoRow(
+                      icon: Icons.tag_rounded,
+                      label: 'Cloud Revision',
+                      value: 'Revision #${sync.verifiedCloudRevision}',
+                    ),
+                    if (sync.verifiedCloudUpdatedAt != null)
+                      InfoRow(
+                        icon: Icons.cloud_done_outlined,
+                        label: 'Firebase Server Time',
+                        value: DateFormat.yMMMd().add_jms().format(sync.verifiedCloudUpdatedAt!),
+                      ),
+                    if (sync.verifiedCloudTransactionCount != null)
+                      InfoRow(
+                        icon: Icons.receipt_long_outlined,
+                        label: 'Transactions on Cloud',
+                        value: '${sync.verifiedCloudTransactionCount} records',
+                      ),
+                    if (sync.verifiedCloudAccountCount != null)
+                      InfoRow(
+                        icon: Icons.account_balance_wallet_outlined,
+                        label: 'Accounts on Cloud',
+                        value: '${sync.verifiedCloudAccountCount} accounts',
+                      ),
+                    if (sync.verifiedCloudChunkCount != null)
+                      InfoRow(
+                        icon: Icons.folder_zip_outlined,
+                        label: 'Cloud Chunks',
+                        value: '${sync.verifiedCloudChunkCount} chunk(s)',
+                      ),
+                  ],
+                  const SizedBox(height: AppSpacing.sm),
+                  FilledButton.tonalIcon(
+                    onPressed: sync.isVerifyingCloud
+                        ? null
+                        : () => ref
+                            .read(cloudSyncControllerProvider.notifier)
+                            .verifyCloudBackup(),
+                    icon: sync.isVerifyingCloud
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.verified_user_outlined),
+                    label: Text(
+                      sync.isVerifyingCloud
+                          ? 'Checking Google Cloud…'
+                          : 'Verify Cloud Copy in Firebase',
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
 
           const Gap(AppSpacing.lg),

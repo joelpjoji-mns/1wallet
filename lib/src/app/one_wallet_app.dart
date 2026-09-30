@@ -10,6 +10,7 @@ import '../theme/theme_controller.dart';
 import '../cloud_sync/cloud_sync_controller.dart';
 import '../data/ledger_providers.dart';
 import '../features/capture/sms_inbox_reader.dart';
+import '../services/notification_service.dart';
 import '../startup/startup_state.dart';
 import '../security/app_lock.dart';
 
@@ -24,6 +25,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
   late final AppLifecycleListener _listener;
 
   String? _pendingSmsRoute;
+  String? _pendingNotificationRoute;
   bool _processingSpooledForRoute = false;
 
   @override
@@ -39,6 +41,12 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
         _pendingSmsRoute = route;
         _tryPushPendingRoute();
       }
+      NotificationService.checkPendingNotificationLaunch((route) {
+        if (mounted) {
+          _pendingNotificationRoute = route;
+          _tryPushPendingRoute();
+        }
+      });
     });
     listenForSmsRoute((route) {
       if (mounted) {
@@ -46,17 +54,34 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
         _tryPushPendingRoute();
       }
     });
+    NotificationService.onNotificationTapped = (route) {
+      if (mounted) {
+        _pendingNotificationRoute = route;
+        _tryPushPendingRoute();
+      }
+    };
   }
 
   void _tryPushPendingRoute() {
-    if (_pendingSmsRoute == null || !mounted) return;
+    if (!mounted) return;
     final startup = ref.read(startupStateProvider);
-    if (!startup.isPending && startup.destination == StartupDestination.home) {
+    if (startup.isPending || startup.destination != StartupDestination.home) {
+      return;
+    }
+
+    if (_pendingNotificationRoute != null) {
+      final route = _pendingNotificationRoute!;
+      _pendingNotificationRoute = null;
+      ref.read(appRouterProvider).push(route);
+    }
+
+    if (_pendingSmsRoute != null) {
+      final route = _pendingSmsRoute!;
+      _pendingSmsRoute = null;
       // Process any spooled notifications/SMS first so the review queue is
       // populated *before* we navigate to it. Without this await the route
       // arrives before the candidates are committed and the queue looks empty.
-      _processPendingSpoolThenPush(_pendingSmsRoute!);
-      _pendingSmsRoute = null;
+      _processPendingSpoolThenPush(route);
     }
   }
 
@@ -75,6 +100,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
 
   @override
   void dispose() {
+    NotificationService.onNotificationTapped = null;
     _listener.dispose();
     super.dispose();
   }
