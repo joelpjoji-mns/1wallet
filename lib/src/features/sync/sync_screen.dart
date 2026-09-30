@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../cloud_sync/cloud_sync_controller.dart';
+import '../../cloud_sync/cloud_sync_write_guard.dart';
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
@@ -52,6 +53,13 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
             sync.error?.toLowerCase().contains('wallet changed') == true ||
             sync.error?.toLowerCase().contains('changed on another device') ==
                 true);
+    final localLatest = getLatestTransactionDate(state);
+    final cloudLatest = sync.cloudLatestTransactionAt;
+    final isCloudOlder = localLatest != null &&
+        cloudLatest != null &&
+        cloudLatest.isBefore(localLatest);
+    final isCloudFewer = sync.cloudTransactionCount != null &&
+        sync.cloudTransactionCount! < state.transactions.length;
 
     return AppScreen(
       title: 'Data & Sync',
@@ -109,7 +117,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              enabled ? _phaseLabel(sync.phase) : 'Not syncing',
+                              enabled ? _phaseLabel(sync) : 'Not syncing',
                               style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w800,
                               ),
@@ -182,31 +190,156 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                   ),
                 ],
                 if (hasConflict) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    'Choose which complete wallet copy to keep. This replaces the other copy.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                  const SizedBox(height: AppSpacing.md),
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: (isCloudOlder || isCloudFewer)
+                          ? theme.colorScheme.errorContainer.withValues(alpha: 0.25)
+                          : theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: (isCloudOlder || isCloudFewer)
+                            ? theme.colorScheme.error
+                            : theme.colorScheme.outlineVariant,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.sm,
-                    children: [
-                      AppActionButton(
-                        prominent: false,
-                        onPressed: isWorking ? null : _confirmUseCloudCopy,
-                        icon: Icons.cloud_download_outlined,
-                        label: 'Use cloud copy',
-                      ),
-                      AppActionButton(
-                        prominent: true,
-                        onPressed: isWorking ? null : _confirmOverwriteCloud,
-                        icon: Icons.cloud_upload_outlined,
-                        label: 'Overwrite cloud with this device',
-                      ),
-                    ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              (isCloudOlder || isCloudFewer)
+                                  ? Icons.warning_amber_rounded
+                                  : Icons.compare_arrows_rounded,
+                              color: (isCloudOlder || isCloudFewer)
+                                  ? theme.colorScheme.error
+                                  : theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: Text(
+                                (isCloudOlder || isCloudFewer)
+                                    ? 'Potential Data Downgrade Detected'
+                                    : 'Sync Conflict Detected',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: (isCloudOlder || isCloudFewer)
+                                      ? theme.colorScheme.error
+                                      : null,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          (isCloudOlder || isCloudFewer)
+                              ? 'The cloud copy appears to be older or has fewer transactions than this device. Keeping this device will safely update the cloud.'
+                              : 'Choose which complete wallet copy to keep. This replaces the other copy.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        Table(
+                          columnWidths: const {
+                            0: FlexColumnWidth(2),
+                            1: FlexColumnWidth(2.5),
+                            2: FlexColumnWidth(2.5),
+                          },
+                          children: [
+                            TableRow(
+                              children: [
+                                const SizedBox.shrink(),
+                                Text(
+                                  'This Device',
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  'Cloud Copy',
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const TableRow(children: [
+                              SizedBox(height: 6),
+                              SizedBox(height: 6),
+                              SizedBox(height: 6),
+                            ]),
+                            TableRow(
+                              children: [
+                                Text('Latest Record', style: theme.textTheme.bodySmall),
+                                Text(
+                                  localLatest != null ? DateFormat.yMMMd().format(localLatest) : 'None',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  cloudLatest != null ? DateFormat.yMMMd().format(cloudLatest) : 'Unknown',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: isCloudOlder ? theme.colorScheme.error : null,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const TableRow(children: [
+                              SizedBox(height: 4),
+                              SizedBox(height: 4),
+                              SizedBox(height: 4),
+                            ]),
+                            TableRow(
+                              children: [
+                                Text('Transactions', style: theme.textTheme.bodySmall),
+                                Text(
+                                  '${state.transactions.length}',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  sync.cloudTransactionCount != null ? '${sync.cloudTransactionCount}' : 'Unknown',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: isCloudFewer ? theme.colorScheme.error : null,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        Wrap(
+                          spacing: AppSpacing.sm,
+                          runSpacing: AppSpacing.sm,
+                          children: [
+                            AppActionButton(
+                              prominent: true,
+                              onPressed: isWorking ? null : _confirmOverwriteCloud,
+                              icon: Icons.cloud_upload_outlined,
+                              label: (isCloudOlder || isCloudFewer)
+                                  ? 'Keep this device & update cloud'
+                                  : 'Overwrite cloud with this device',
+                            ),
+                            AppActionButton(
+                              prominent: false,
+                              onPressed: isWorking
+                                  ? null
+                                  : () => _confirmUseCloudCopy(isCloudOlder: isCloudOlder),
+                              icon: Icons.cloud_download_outlined,
+                              label: 'Use cloud copy',
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ],
@@ -364,12 +497,34 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
     );
   }
 
-  Future<void> _confirmUseCloudCopy() async {
+  Future<void> _confirmUseCloudCopy({bool isCloudOlder = false}) async {
+    final localLatest = getLatestTransactionDate(ref.read(ledgerProvider));
+    final cloudLatest =
+        ref.read(cloudSyncControllerProvider).cloudLatestTransactionAt;
+
+    final String message;
+    final String title;
+    final String action;
+
+    if (isCloudOlder) {
+      title = 'Replace with older cloud copy?';
+      message =
+          'WARNING: The cloud copy is older than your device records!\n\n'
+          '• Local latest record: ${localLatest != null ? DateFormat.yMMMd().format(localLatest) : 'None'}\n'
+          '• Cloud latest record: ${cloudLatest != null ? DateFormat.yMMMd().format(cloudLatest) : 'Older'}\n\n'
+          'Using the cloud copy will replace your device data with older records and you may lose recent transactions. Are you sure you want to proceed?';
+      action = 'Discard local & use cloud';
+    } else {
+      title = 'Use cloud wallet?';
+      message =
+          'This replaces the wallet on this device with the cloud copy. Unsynced local changes will be discarded.';
+      action = 'Use cloud copy';
+    }
+
     final confirmed = await _confirmReplacement(
-      title: 'Use cloud wallet?',
-      message:
-          'This replaces the wallet on this device with the cloud copy. Unsynced local changes will be discarded.',
-      action: 'Use cloud copy',
+      title: title,
+      message: message,
+      action: action,
     );
     if (confirmed != true || !mounted) return;
     await ref.read(cloudSyncControllerProvider.notifier).useCloudCopy();
@@ -410,8 +565,8 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
     ],
   );
 
-  String _phaseLabel(CloudSyncPhase phase) {
-    switch (phase) {
+  String _phaseLabel(CloudSyncState sync) {
+    switch (sync.phase) {
       case CloudSyncPhase.checking:
         return 'Checking cloud wallet';
       case CloudSyncPhase.restoring:
@@ -421,7 +576,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
       case CloudSyncPhase.error:
         return 'Needs attention';
       default:
-        return 'Synced locally';
+        return sync.pendingUpload
+            ? 'Changes waiting to upload'
+            : 'Synced with cloud';
     }
   }
 

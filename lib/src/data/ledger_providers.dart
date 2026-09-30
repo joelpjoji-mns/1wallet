@@ -125,11 +125,13 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
 
       while (nextDate.isBefore(now)) {
         if (scheduled.recurrenceLimit != null &&
-            currentCount >= scheduled.recurrenceLimit!)
+            currentCount >= scheduled.recurrenceLimit!) {
           break;
+        }
         if (scheduled.recurrenceEndDate != null &&
-            nextDate.isAfter(scheduled.recurrenceEndDate!))
+            nextDate.isAfter(scheduled.recurrenceEndDate!)) {
           break;
+        }
 
         final dateStr =
             '${nextDate.year}${nextDate.month.toString().padLeft(2, '0')}${nextDate.day.toString().padLeft(2, '0')}';
@@ -1835,33 +1837,32 @@ class LedgerController extends StateNotifier<LedgerState> {
 
       // 1. App documents directory -> 1Wallet subfolder
       final docsDir = await getApplicationDocumentsDirectory();
-      final docsSubDir = Directory('${docsDir.path}/1Wallet');
-      await docsSubDir.create(recursive: true);
-      final docsFile = File('${docsSubDir.path}/1wallet_auto_backup.onewallet');
-      await docsFile.writeAsString(archive);
+      await _writeAutoBackupToDirectory(
+        Directory('${docsDir.path}/1Wallet'),
+        archive,
+        ledger,
+      );
 
       // 2. App external storage directory -> 1Wallet subfolder (Android only)
       if (!foundation.kIsWeb && Platform.isAndroid) {
         final extDir = await getExternalStorageDirectory();
         if (extDir != null) {
-          final extSubDir = Directory('${extDir.path}/1Wallet');
-          await extSubDir.create(recursive: true);
-          final extFile = File(
-            '${extSubDir.path}/1wallet_auto_backup.onewallet',
+          await _writeAutoBackupToDirectory(
+            Directory('${extDir.path}/1Wallet'),
+            archive,
+            ledger,
           );
-          await extFile.writeAsString(archive);
         }
 
         // 3. Public Download directory -> 1Wallet subfolder (best-effort)
         try {
           final downloadDir = Directory('/storage/emulated/0/Download');
           if (await downloadDir.exists()) {
-            final downloadSubDir = Directory('${downloadDir.path}/1Wallet');
-            await downloadSubDir.create(recursive: true);
-            final downloadFile = File(
-              '${downloadSubDir.path}/1wallet_auto_backup.onewallet',
+            await _writeAutoBackupToDirectory(
+              Directory('${downloadDir.path}/1Wallet'),
+              archive,
+              ledger,
             );
-            await downloadFile.writeAsString(archive);
           }
         } catch (_) {}
 
@@ -1869,12 +1870,11 @@ class LedgerController extends StateNotifier<LedgerState> {
         try {
           final documentsDir = Directory('/storage/emulated/0/Documents');
           if (await documentsDir.exists()) {
-            final documentsSubDir = Directory('${documentsDir.path}/1Wallet');
-            await documentsSubDir.create(recursive: true);
-            final documentsFile = File(
-              '${documentsSubDir.path}/1wallet_auto_backup.onewallet',
+            await _writeAutoBackupToDirectory(
+              Directory('${documentsDir.path}/1Wallet'),
+              archive,
+              ledger,
             );
-            await documentsFile.writeAsString(archive);
           }
         } catch (_) {}
       }
@@ -1883,57 +1883,107 @@ class LedgerController extends StateNotifier<LedgerState> {
     }
   }
 
+  Future<void> _writeAutoBackupToDirectory(
+    Directory dir,
+    String archive,
+    LedgerState ledger,
+  ) async {
+    await dir.create(recursive: true);
+    final mainFile = File('${dir.path}/1wallet_auto_backup.onewallet');
+    final prevFile = File('${dir.path}/1wallet_auto_backup_previous.onewallet');
+    final safetyFile = File('${dir.path}/1wallet_auto_backup_safety.onewallet');
+
+    if (await mainFile.exists()) {
+      try {
+        final existingContent = await mainFile.readAsString();
+        final existingLedger = decodeLedgerArchive(existingContent);
+        // If the existing backup has more transactions or newer records than the current ledger,
+        // protect it from being lost by saving it as a safety backup!
+        if (!LedgerState.isIncomingLedgerSafer(existingLedger, ledger)) {
+          await mainFile.copy(safetyFile.path);
+        } else {
+          await mainFile.copy(prevFile.path);
+        }
+      } catch (_) {
+        try {
+          await mainFile.copy(prevFile.path);
+        } catch (_) {}
+      }
+    }
+    await mainFile.writeAsString(archive);
+  }
+
   Future<File?> getLatestAutoBackupFile() async {
     if (foundation.kIsWeb) return null;
     final candidates = <File>[];
     try {
       final docsDir = await getApplicationDocumentsDirectory();
-      candidates.add(
-        File('${docsDir.path}/1Wallet/1wallet_auto_backup.onewallet'),
-      );
-      candidates.add(File('${docsDir.path}/1wallet_auto_backup.onewallet'));
+      for (final sub in ['${docsDir.path}/1Wallet', docsDir.path]) {
+        candidates.add(File('$sub/1wallet_auto_backup.onewallet'));
+        candidates.add(File('$sub/1wallet_auto_backup_safety.onewallet'));
+        candidates.add(File('$sub/1wallet_auto_backup_previous.onewallet'));
+      }
 
       if (Platform.isAndroid) {
         final extDir = await getExternalStorageDirectory();
         if (extDir != null) {
-          candidates.add(
-            File('${extDir.path}/1Wallet/1wallet_auto_backup.onewallet'),
-          );
-          candidates.add(File('${extDir.path}/1wallet_auto_backup.onewallet'));
+          for (final sub in ['${extDir.path}/1Wallet', extDir.path]) {
+            candidates.add(File('$sub/1wallet_auto_backup.onewallet'));
+            candidates.add(File('$sub/1wallet_auto_backup_safety.onewallet'));
+            candidates.add(File('$sub/1wallet_auto_backup_previous.onewallet'));
+          }
         }
-        candidates.add(
-          File(
-            '/storage/emulated/0/Download/1Wallet/1wallet_auto_backup.onewallet',
-          ),
-        );
-        candidates.add(
-          File('/storage/emulated/0/Download/1wallet_auto_backup.onewallet'),
-        );
-        candidates.add(
-          File(
-            '/storage/emulated/0/Documents/1Wallet/1wallet_auto_backup.onewallet',
-          ),
-        );
-        candidates.add(
-          File('/storage/emulated/0/Documents/1wallet_auto_backup.onewallet'),
-        );
+        for (final base in [
+          '/storage/emulated/0/Download/1Wallet',
+          '/storage/emulated/0/Download',
+          '/storage/emulated/0/Documents/1Wallet',
+          '/storage/emulated/0/Documents',
+        ]) {
+          candidates.add(File('$base/1wallet_auto_backup.onewallet'));
+          candidates.add(File('$base/1wallet_auto_backup_safety.onewallet'));
+          candidates.add(File('$base/1wallet_auto_backup_previous.onewallet'));
+        }
       }
     } catch (_) {}
 
-    File? newest;
+    File? bestFile;
+    LedgerState? bestState;
     DateTime? newestTime;
+
     for (final file in candidates) {
       try {
         if (await file.exists()) {
           final stat = await file.stat();
-          if (newestTime == null || stat.modified.isAfter(newestTime)) {
+          LedgerState? state;
+          try {
+            final content = await file.readAsString();
+            state = decodeLedgerArchive(content);
+          } catch (_) {}
+
+          if (bestFile == null) {
+            bestFile = file;
+            bestState = state;
             newestTime = stat.modified;
-            newest = file;
+          } else if (state != null && bestState != null) {
+            // Prefer the backup with safer / more transactions and newer records
+            if (LedgerState.isIncomingLedgerSafer(bestState, state) &&
+                !LedgerState.isIncomingLedgerSafer(state, bestState)) {
+              bestFile = file;
+              bestState = state;
+              newestTime = stat.modified;
+            } else if (newestTime == null || stat.modified.isAfter(newestTime)) {
+              bestFile = file;
+              bestState = state;
+              newestTime = stat.modified;
+            }
+          } else if (newestTime == null || stat.modified.isAfter(newestTime)) {
+            bestFile = file;
+            newestTime = stat.modified;
           }
         }
       } catch (_) {}
     }
-    return newest;
+    return bestFile;
   }
 
   Future<void> restoreFromAutoBackup(File file, {bool force = false}) async {

@@ -90,6 +90,19 @@
 /// still fires correctly.
 library;
 
+import '../data/ledger_models.dart';
+
+DateTime? getLatestTransactionDate(LedgerState ledger) {
+  if (ledger.transactions.isEmpty) return null;
+  DateTime? latest;
+  for (final tx in ledger.transactions) {
+    if (latest == null || tx.occurredAt.isAfter(latest)) {
+      latest = tx.occurredAt;
+    }
+  }
+  return latest;
+}
+
 /// The relevant fields of `users/{uid}` used to detect a concurrent writer.
 /// Also doubles as the "expected" baseline captured before a write attempt.
 class CloudWriteState {
@@ -97,6 +110,9 @@ class CloudWriteState {
     this.cloudRevision,
     this.updatedAt,
     this.lastWriterDeviceId,
+    this.transactionCount,
+    this.accountCount,
+    this.latestTransactionAt,
   });
 
   /// No prior observation at all (e.g. first-ever sync on this device).
@@ -105,11 +121,16 @@ class CloudWriteState {
   final int? cloudRevision;
   final DateTime? updatedAt;
   final String? lastWriterDeviceId;
+  final int? transactionCount;
+  final int? accountCount;
+  final DateTime? latestTransactionAt;
 
   @override
   String toString() =>
       'CloudWriteState(cloudRevision: $cloudRevision, updatedAt: $updatedAt, '
-      'lastWriterDeviceId: $lastWriterDeviceId)';
+      'lastWriterDeviceId: $lastWriterDeviceId, '
+      'txCount: $transactionCount, accCount: $accountCount, '
+      'latestTxAt: $latestTransactionAt)';
 }
 
 /// Thrown when a write is aborted because the cloud state changed since the
@@ -400,7 +421,17 @@ bool shouldPullCloudSnapshot({
   required int? lastKnownCloudRevision,
   required String? cloudLastWriterDeviceId,
   required String localDeviceId,
+  DateTime? localLatestTransactionAt,
+  DateTime? cloudLatestTransactionAt,
 }) {
+  // Anti-downgrade safeguard: if local wallet has transactions strictly newer
+  // than the cloud's latest transaction, NEVER pull down an older cloud snapshot!
+  if (localLatestTransactionAt != null &&
+      cloudLatestTransactionAt != null &&
+      localLatestTransactionAt.isAfter(cloudLatestTransactionAt)) {
+    return false;
+  }
+
   final isCloudNewer =
       cloudUpdatedAt != null &&
       localModifiedAt != null &&

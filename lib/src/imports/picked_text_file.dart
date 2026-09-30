@@ -14,25 +14,32 @@ PickedTextFile decodePickedTextFile({
   required List<String> allowedExtensions,
 }) {
   final normalizedName = name.trim().isEmpty ? 'selected file' : name.trim();
-  if (!_hasAllowedExtension(normalizedName, allowedExtensions)) {
-    throw FormatException(
-      'Unsupported file type for $normalizedName. Allowed: ${allowedExtensions.join(', ')}.',
-    );
-  }
   if (bytes.isEmpty) {
     throw FormatException('$normalizedName is empty.');
   }
 
+  String text;
   try {
-    final text = utf8.decode(bytes, allowMalformed: false);
+    text = utf8.decode(bytes, allowMalformed: false);
     if (text.trim().isEmpty) {
       throw FormatException('$normalizedName does not contain readable text.');
     }
-    return PickedTextFile(name: normalizedName, text: text);
   } on FormatException catch (error) {
     if (error.message.contains(normalizedName)) rethrow;
     throw FormatException('$normalizedName is not valid UTF-8 text.');
   }
+
+  final isAllowed = _hasAllowedExtension(normalizedName, allowedExtensions);
+  final trimmed = text.trim();
+  final isJsonArchive = trimmed.startsWith('{') && trimmed.endsWith('}');
+
+  if (!isAllowed && !isJsonArchive) {
+    throw FormatException(
+      'Unsupported file type for $normalizedName. Allowed: ${allowedExtensions.join(', ')}.',
+    );
+  }
+
+  return PickedTextFile(name: normalizedName, text: text);
 }
 
 bool _hasAllowedExtension(String name, List<String> allowedExtensions) {

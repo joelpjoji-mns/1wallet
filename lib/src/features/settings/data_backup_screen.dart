@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../cloud_sync/cloud_sync_controller.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
@@ -83,9 +84,16 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
       await ref
           .read(ledgerProvider.notifier)
           .restoreFromAutoBackup(_latestAutoBackup!);
+      try {
+        await ref
+            .read(cloudSyncControllerProvider.notifier)
+            .overwriteCloudWithLocal();
+      } catch (e) {
+        debugPrint('Cloud sync after auto-backup restore: $e');
+      }
       if (!mounted) return;
-      setState(() => _status = 'Restored successfully from auto-backup.');
-      _showBackupMessage('Auto-backup restored successfully.');
+      setState(() => _status = 'Restored successfully from auto-backup and synced to cloud.');
+      _showBackupMessage('Auto-backup restored and synced to cloud.');
     } catch (e) {
       if (!mounted) return;
       if (e.toString().contains('Restore rejected')) {
@@ -117,9 +125,16 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
             await ref
                 .read(ledgerProvider.notifier)
                 .restoreFromAutoBackup(_latestAutoBackup!, force: true);
+            try {
+              await ref
+                  .read(cloudSyncControllerProvider.notifier)
+                  .overwriteCloudWithLocal();
+            } catch (e) {
+              debugPrint('Cloud sync after force auto-backup restore: $e');
+            }
             if (!mounted) return;
-            setState(() => _status = 'Restored successfully from auto-backup.');
-            _showBackupMessage('Auto-backup restored successfully.');
+            setState(() => _status = 'Restored successfully from auto-backup and synced to cloud.');
+            _showBackupMessage('Auto-backup restored and synced to cloud.');
             return;
           } catch (forceError) {
             if (!mounted) return;
@@ -290,9 +305,16 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
       fileName = file.name;
 
       await ref.read(ledgerProvider.notifier).importArchive(fileText);
+      try {
+        await ref
+            .read(cloudSyncControllerProvider.notifier)
+            .overwriteCloudWithLocal();
+      } catch (e) {
+        debugPrint('Cloud sync after archive restore: $e');
+      }
       if (!mounted) return;
-      setState(() => _status = 'Restored successfully from $fileName.');
-      _showBackupMessage('Archive restored successfully.');
+      setState(() => _status = 'Restored successfully from $fileName and synced to cloud.');
+      _showBackupMessage('Archive restored and synced to cloud.');
     } catch (error) {
       if (!mounted) return;
       if (error.toString().contains('Restore rejected')) {
@@ -324,9 +346,16 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
             await ref
                 .read(ledgerProvider.notifier)
                 .importArchive(fileText, force: true);
+            try {
+              await ref
+                  .read(cloudSyncControllerProvider.notifier)
+                  .overwriteCloudWithLocal();
+            } catch (e) {
+              debugPrint('Cloud sync after force archive restore: $e');
+            }
             if (!mounted) return;
-            setState(() => _status = 'Restored successfully from $fileName.');
-            _showBackupMessage('Archive restored successfully.');
+            setState(() => _status = 'Restored successfully from $fileName and synced to cloud.');
+            _showBackupMessage('Archive restored and synced to cloud.');
             return;
           } catch (e) {
             if (!mounted) return;

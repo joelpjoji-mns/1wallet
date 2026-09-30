@@ -44,6 +44,9 @@ class CloudSyncState {
     this.progress,
     this.progressMessage,
     this.hasCloudWallet = false,
+    this.cloudTransactionCount,
+    this.cloudAccountCount,
+    this.cloudLatestTransactionAt,
   });
 
   final CloudSyncPhase phase;
@@ -57,6 +60,9 @@ class CloudSyncState {
   final double? progress;
   final String? progressMessage;
   final bool hasCloudWallet;
+  final int? cloudTransactionCount;
+  final int? cloudAccountCount;
+  final DateTime? cloudLatestTransactionAt;
 
   bool get isChecking => phase == CloudSyncPhase.checking;
   bool get isRestoring => phase == CloudSyncPhase.restoring;
@@ -73,6 +79,9 @@ class CloudSyncState {
     Object? progress = _unset,
     Object? progressMessage = _unset,
     bool? hasCloudWallet,
+    Object? cloudTransactionCount = _unset,
+    Object? cloudAccountCount = _unset,
+    Object? cloudLatestTransactionAt = _unset,
   }) {
     return CloudSyncState(
       phase: phase ?? this.phase,
@@ -98,6 +107,15 @@ class CloudSyncState {
           ? this.progressMessage
           : progressMessage as String?,
       hasCloudWallet: hasCloudWallet ?? this.hasCloudWallet,
+      cloudTransactionCount: identical(cloudTransactionCount, _unset)
+          ? this.cloudTransactionCount
+          : cloudTransactionCount as int?,
+      cloudAccountCount: identical(cloudAccountCount, _unset)
+          ? this.cloudAccountCount
+          : cloudAccountCount as int?,
+      cloudLatestTransactionAt: identical(cloudLatestTransactionAt, _unset)
+          ? this.cloudLatestTransactionAt
+          : cloudLatestTransactionAt as DateTime?,
     );
   }
 }
@@ -279,6 +297,8 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       final cloudUpdatedAt = cloudState.updatedAt;
       final cloudRevision = cloudState.cloudRevision;
 
+      final localLedger = _ref.read(ledgerProvider);
+      final localLatestTx = getLatestTransactionDate(localLedger);
       final prefs = await SharedPreferences.getInstance();
       final hasUnsyncedChanges = prefs.getBool('has_unsynced_changes') ?? false;
       final localModifiedAtStr = prefs.getString('last_local_modified_at');
@@ -286,12 +306,18 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           ? DateTime.tryParse(localModifiedAtStr)
           : null;
 
+      state = state.copyWith(
+        cloudTransactionCount: cloudState.transactionCount,
+        cloudAccountCount: cloudState.accountCount,
+        cloudLatestTransactionAt: cloudState.latestTransactionAt,
+      );
+
       final bool shouldPull;
       if (!userDoc.exists) {
         shouldPull = false;
       } else {
         shouldPull = shouldPullCloudSnapshot(
-          hasLocalUserData: _walletHasUserData(_ref.read(ledgerProvider)),
+          hasLocalUserData: _walletHasUserData(localLedger),
           hasUnsyncedLocalChanges: hasUnsyncedChanges,
           cloudUpdatedAt: cloudUpdatedAt,
           localModifiedAt: localModifiedAt,
@@ -299,6 +325,8 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           lastKnownCloudRevision: metadata.lastCloudRevision,
           cloudLastWriterDeviceId: lastWriterDeviceId,
           localDeviceId: metadata.deviceId,
+          localLatestTransactionAt: localLatestTx,
+          cloudLatestTransactionAt: cloudState.latestTransactionAt,
         );
       }
 
@@ -441,7 +469,9 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         final cloudUpdatedAt = cloudState.updatedAt;
         final cloudRevision = cloudState.cloudRevision;
 
-        final hasUserData = _walletHasUserData(_ref.read(ledgerProvider));
+        final localLedger = _ref.read(ledgerProvider);
+        final hasUserData = _walletHasUserData(localLedger);
+        final localLatestTx = getLatestTransactionDate(localLedger);
         final prefs = await SharedPreferences.getInstance();
         final hasUnsyncedChanges =
             prefs.getBool('has_unsynced_changes') ?? false;
@@ -450,8 +480,14 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
             ? DateTime.tryParse(localModifiedAtStr)
             : null;
 
+        state = state.copyWith(
+          cloudTransactionCount: cloudState.transactionCount,
+          cloudAccountCount: cloudState.accountCount,
+          cloudLatestTransactionAt: cloudState.latestTransactionAt,
+        );
+
         debugPrint(
-          'CloudSync _bootstrap: userDoc.exists=${userDoc.exists}, lastWriterDeviceId=$lastWriterDeviceId, metadata.deviceId=${metadata.deviceId}, hasUserData=$hasUserData, hasUnsyncedChanges=$hasUnsyncedChanges, localModifiedAt=$localModifiedAt, cloudUpdatedAt=$cloudUpdatedAt',
+          'CloudSync _bootstrap: userDoc.exists=${userDoc.exists}, lastWriterDeviceId=$lastWriterDeviceId, metadata.deviceId=${metadata.deviceId}, hasUserData=$hasUserData, hasUnsyncedChanges=$hasUnsyncedChanges, localModifiedAt=$localModifiedAt, cloudUpdatedAt=$cloudUpdatedAt, localLatestTx=$localLatestTx, cloudLatestTx=${cloudState.latestTransactionAt}',
         );
 
         final bool shouldPull = shouldPullCloudSnapshot(
@@ -463,6 +499,8 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           lastKnownCloudRevision: metadata.lastCloudRevision,
           cloudLastWriterDeviceId: lastWriterDeviceId,
           localDeviceId: metadata.deviceId,
+          localLatestTransactionAt: localLatestTx,
+          cloudLatestTransactionAt: cloudState.latestTransactionAt,
         );
 
         if (shouldPull) {
@@ -791,6 +829,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
             }
 
             final revision = nextCloudRevision(liveState.cloudRevision);
+            final latestTxDate = getLatestTransactionDate(currentLedger);
 
             transaction.set(userRef, {
               'email': user.email,
@@ -799,6 +838,10 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
               'updatedAt': writeTimestamp,
               'lastWriterDeviceId': metadata.deviceId,
               'cloudRevision': revision,
+              'transactionCount': currentLedger.transactions.length,
+              'accountCount': currentLedger.accounts.length,
+              if (latestTxDate != null)
+                'latestTransactionAt': latestTxDate.toUtc().toIso8601String(),
             }, SetOptions(merge: true));
 
             for (var i = 0; i < chunks.length; i++) {
@@ -947,6 +990,8 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           .timeout(cloudSyncReadTimeout);
       final cloudState = _cloudWriteStateFromDocData(userDoc.data());
 
+      final localLedger = _ref.read(ledgerProvider);
+      final localLatestTx = getLatestTransactionDate(localLedger);
       final prefs = await SharedPreferences.getInstance();
       final hasUnsyncedChanges = prefs.getBool('has_unsynced_changes') ?? false;
       final localModifiedAtStr = prefs.getString('last_local_modified_at');
@@ -954,10 +999,16 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           ? DateTime.tryParse(localModifiedAtStr)
           : null;
 
+      state = state.copyWith(
+        cloudTransactionCount: cloudState.transactionCount,
+        cloudAccountCount: cloudState.accountCount,
+        cloudLatestTransactionAt: cloudState.latestTransactionAt,
+      );
+
       final shouldPull =
           userDoc.exists &&
           shouldPullCloudSnapshot(
-            hasLocalUserData: _walletHasUserData(_ref.read(ledgerProvider)),
+            hasLocalUserData: _walletHasUserData(localLedger),
             hasUnsyncedLocalChanges: hasUnsyncedChanges,
             cloudUpdatedAt: cloudState.updatedAt,
             localModifiedAt: localModifiedAt,
@@ -965,6 +1016,8 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
             lastKnownCloudRevision: metadata.lastCloudRevision,
             cloudLastWriterDeviceId: cloudState.lastWriterDeviceId,
             localDeviceId: metadata.deviceId,
+            localLatestTransactionAt: localLatestTx,
+            cloudLatestTransactionAt: cloudState.latestTransactionAt,
           );
 
       final resolution = resolveCloudSyncConflict(
@@ -1056,7 +1109,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       final incomingHasData =
           ledger.accounts.isNotEmpty || ledger.transactions.isNotEmpty;
 
-      // Safety guard: NEVER overwrite a populated local ledger with an empty cloud snapshot!
+      // Safety guard 1: NEVER overwrite a populated local ledger with an empty cloud snapshot!
       if (!incomingHasData && currentHasData) {
         debugPrint(
           'CloudSync _restoreFromCloud: incoming cloud snapshot has 0 accounts/transactions, '
@@ -1071,6 +1124,31 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         );
         await uploadSnapshot(reason: 'protect_local_from_empty_cloud');
         return;
+      }
+
+      // Safety guard 2: NEVER silently downgrade local data if local has newer records!
+      final incomingLatest = getLatestTransactionDate(ledger);
+      if (currentHasData && incomingHasData) {
+        final localLatest = getLatestTransactionDate(currentLedger);
+        if (localLatest != null &&
+            incomingLatest != null &&
+            localLatest.isAfter(incomingLatest)) {
+          debugPrint(
+            'CloudSync _restoreFromCloud: local data has newer records ($localLatest) '
+            'than cloud snapshot ($incomingLatest). Refusing to downgrade; healing cloud with local data.',
+          );
+          state = state.copyWith(
+            phase: CloudSyncPhase.idle,
+            progress: 1.0,
+            pendingUpload: true,
+            hasCloudWallet: true,
+            cloudTransactionCount: ledger.transactions.length,
+            cloudAccountCount: ledger.accounts.length,
+            cloudLatestTransactionAt: incomingLatest,
+          );
+          await uploadSnapshot(reason: 'protect_local_newer_records');
+          return;
+        }
       }
 
       await _ledger.restoreLedgerState(ledger);
@@ -1111,6 +1189,9 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         progress: 1.0,
         error: null,
         hasCloudWallet: hasWalletNow,
+        cloudTransactionCount: ledger.transactions.length,
+        cloudAccountCount: ledger.accounts.length,
+        cloudLatestTransactionAt: incomingLatest,
       );
 
       if (restoreData['_healedFromLegacyOrBackup'] == true) {
@@ -1395,10 +1476,21 @@ CloudWriteState _cloudWriteStateFromDocData(Map<String, dynamic>? data) {
     updatedAt = DateTime.tryParse(updatedAtRaw)?.toUtc();
   }
 
+  DateTime? latestTxAt;
+  final latestTxRaw = data['latestTransactionAt'];
+  if (latestTxRaw is Timestamp) {
+    latestTxAt = latestTxRaw.toDate().toUtc();
+  } else if (latestTxRaw is String) {
+    latestTxAt = DateTime.tryParse(latestTxRaw)?.toUtc();
+  }
+
   return CloudWriteState(
     cloudRevision: data['cloudRevision'] as int?,
     updatedAt: updatedAt,
     lastWriterDeviceId: data['lastWriterDeviceId'] as String?,
+    transactionCount: data['transactionCount'] as int?,
+    accountCount: data['accountCount'] as int?,
+    latestTransactionAt: latestTxAt,
   );
 }
 
