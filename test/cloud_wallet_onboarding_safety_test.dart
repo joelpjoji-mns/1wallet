@@ -241,4 +241,52 @@ void main() {
     final startup = container.read(startupStateProvider);
     expect(startup.destination, StartupDestination.onboarding);
   });
+
+  test('startupState routes to home when onboarding is completed even if hasCloudWallet is true', () {
+    final container = ProviderContainer(
+      overrides: [
+        themeControllerProvider.overrideWith(
+          (ref) => _FakeThemeController(const AppThemeState(isLoaded: true)),
+        ),
+        authControllerProvider.overrideWith(
+          (ref) => _FakeAuthController(authenticatedState),
+        ),
+        ledgerLoadStateProvider.overrideWith(
+          (ref) => const LedgerLoadState.ready(hasPersistedLedger: false),
+        ),
+        ledgerProvider.overrideWith(
+          (ref) => _FakeLedgerController(emptyLedgerState()),
+        ),
+        permissionSetupControllerProvider.overrideWith(
+          (ref) => PermissionSetupController()
+            ..state = const PermissionSetupState(
+              userId: testUserId,
+              completed: true,
+            ),
+        ),
+        cloudSyncControllerProvider.overrideWith(
+          (ref) => _FakeCloudSyncController(
+            const CloudSyncState(
+              phase: CloudSyncPhase.idle,
+              bootstrapComplete: true,
+              bootstrappedUserId: testUserId,
+              hasCloudWallet: true,
+            ),
+          ),
+        ),
+        onboardingControllerProvider.overrideWith(
+          (ref) => OnboardingController()
+            ..state = const OnboardingState(
+              userId: testUserId,
+              completed: true,
+            ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final startup = container.read(startupStateProvider);
+    expect(startup.destination, StartupDestination.home);
+    expect(startup.isRecoverableError, isFalse);
+  });
 }

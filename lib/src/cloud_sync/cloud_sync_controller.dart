@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../auth/auth_controller.dart';
+import '../data/ledger_archive.dart';
 import '../data/ledger_codec.dart';
 import '../data/ledger_models.dart';
 import '../data/ledger_providers.dart';
@@ -647,6 +648,17 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       return;
     }
 
+    final currentLedger = _ref.read(ledgerProvider);
+    final isLocalEmpty =
+        currentLedger.accounts.isEmpty && currentLedger.transactions.isEmpty;
+    if (isLocalEmpty && state.hasCloudWallet && reason != 'user-overwrite') {
+      debugPrint(
+        'uploadSnapshot: blocked $reason because local ledger is empty while cloud wallet exists',
+      );
+      state = state.copyWith(phase: CloudSyncPhase.idle);
+      return;
+    }
+
     if (reason == 'auto') {
       if (state.phase == CloudSyncPhase.checking ||
           state.phase == CloudSyncPhase.restoring) {
@@ -1037,6 +1049,30 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         return;
       }
 
+      final currentLedger = _ref.read(ledgerProvider);
+      final currentHasData =
+          currentLedger.accounts.isNotEmpty ||
+          currentLedger.transactions.isNotEmpty;
+      final incomingHasData =
+          ledger.accounts.isNotEmpty || ledger.transactions.isNotEmpty;
+
+      // Safety guard: NEVER overwrite a populated local ledger with an empty cloud snapshot!
+      if (!incomingHasData && currentHasData) {
+        debugPrint(
+          'CloudSync _restoreFromCloud: incoming cloud snapshot has 0 accounts/transactions, '
+          'but local ledger has ${currentLedger.accounts.length} accounts. '
+          'Refusing to wipe local data; healing cloud instead.',
+        );
+        state = state.copyWith(
+          phase: CloudSyncPhase.idle,
+          progress: 1.0,
+          pendingUpload: true,
+          hasCloudWallet: true,
+        );
+        await uploadSnapshot(reason: 'protect_local_from_empty_cloud');
+        return;
+      }
+
       await _ledger.restoreLedgerState(ledger);
 
       await prefs.setBool('has_unsynced_changes', false);
@@ -1068,12 +1104,19 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       );
       await newMetadata.save();
 
+      final bool hasWalletNow = incomingHasData || currentHasData;
       state = state.copyWith(
         phase: CloudSyncPhase.idle,
         metadata: newMetadata,
         progress: 1.0,
         error: null,
+        hasCloudWallet: hasWalletNow,
       );
+
+      if (restoreData['_healedFromLegacyOrBackup'] == true) {
+        debugPrint('CloudSync: healing cloud with recovered legacy/backup data');
+        await uploadSnapshot(reason: 'heal_cloud_from_recovery');
+      }
     } on CloudSyncUnstableException catch (e) {
       developer.log('Firebase restore unstable', error: e);
       state = state.copyWith(phase: CloudSyncPhase.error, error: '$e');
@@ -1086,12 +1129,10 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     }
   }
 
-  /// Downloads and decodes the wallet snapshot: the compressed
-  /// `wallet_backups/chunk_N` blobs, falling back to the legacy
-  /// per-document collections if no compressed backup exists yet. Pulled
-  /// out of `_restoreFromCloud` so it can be re-run wholesale by
-  /// [readCloudSyncVersionConsistent] if the cloud state turns out to have
-  /// changed mid-download.
+  /// Downloads and decodes the wallet snapshot with 3-tier recovery:
+  /// 1. Modern chunked backup (wallet_backups/chunk_N).
+  /// 2. Legacy uncompressed collections (users/$userId/accounts, etc.) if chunked is empty.
+  /// 3. Local auto-backup file (1wallet_auto_backup.onewallet) if both cloud tiers are empty.
   Future<Map<String, dynamic>> _fetchCloudRestoreData(String userId) async {
     final backupQuery = await _firestore
         .collection('users/$userId/wallet_backups')
@@ -1099,7 +1140,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         .get()
         .timeout(cloudSyncReadTimeout);
 
-    Map<String, dynamic> restoreData;
+    Map<String, dynamic>? chunkedData;
 
     if (backupQuery.docs.isNotEmpty) {
       state = state.copyWith(
@@ -1130,14 +1171,26 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       // Using compute for heavy unzipping
       final bytes = await compute(_decodeGzipBytes, compressedBytes);
       final jsonStr = await compute(utf8.decode, bytes);
-      restoreData = await compute(jsonDecode, jsonStr) as Map<String, dynamic>;
-      restoreData['userId'] = userId;
-    } else {
-      state = state.copyWith(
-        progressMessage: 'Loading legacy collections...',
-        progress: 0.5,
+      chunkedData = await compute(jsonDecode, jsonStr) as Map<String, dynamic>;
+      chunkedData['userId'] = userId;
+
+      final accounts = (chunkedData['accounts'] as List?) ?? const [];
+      final txns = (chunkedData['transactions'] as List?) ?? const [];
+      if (accounts.isNotEmpty || txns.isNotEmpty) {
+        return chunkedData;
+      }
+      debugPrint(
+        'CloudSync _fetchCloudRestoreData: chunked backup has 0 accounts and 0 transactions. Falling back to legacy collections...',
       );
-      // Fallback to legacy uncompressed collections if no compressed backup exists
+    }
+
+    // Tier 2: Fallback to legacy uncompressed collections if no compressed backup exists,
+    // OR if the chunked backup was empty (e.g. from an erroneous empty snapshot).
+    state = state.copyWith(
+      progressMessage: 'Checking legacy collections...',
+      progress: 0.5,
+    );
+    try {
       final results = await Future.wait([
         _firestore.collection('users/$userId/accounts').get(),
         _firestore.collection('users/$userId/categories').get(),
@@ -1154,18 +1207,61 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       final importsQuery = results[4] as QuerySnapshot<Map<String, dynamic>>;
       final prefsDoc = results[5] as DocumentSnapshot<Map<String, dynamic>>;
 
-      restoreData = {
-        'userId': userId,
-        'preferences': prefsDoc.exists ? prefsDoc.data() : null,
-        'accounts': accountsQuery.docs.map((d) => d.data()).toList(),
-        'categories': categoriesQuery.docs.map((d) => d.data()).toList(),
-        'transactions': txnsQuery.docs.map((d) => d.data()).toList(),
-        'captureCandidates': captureQuery.docs.map((d) => d.data()).toList(),
-        'importBatches': importsQuery.docs.map((d) => d.data()).toList(),
-      };
+      if (accountsQuery.docs.isNotEmpty || txnsQuery.docs.isNotEmpty) {
+        debugPrint(
+          'CloudSync _fetchCloudRestoreData: recovered ${accountsQuery.docs.length} accounts and ${txnsQuery.docs.length} transactions from legacy collections!',
+        );
+        return {
+          'userId': userId,
+          'preferences': prefsDoc.exists ? prefsDoc.data() : null,
+          'accounts': accountsQuery.docs.map((d) => d.data()).toList(),
+          'categories': categoriesQuery.docs.map((d) => d.data()).toList(),
+          'transactions': txnsQuery.docs.map((d) => d.data()).toList(),
+          'captureCandidates': captureQuery.docs.map((d) => d.data()).toList(),
+          'importBatches': importsQuery.docs.map((d) => d.data()).toList(),
+          '_healedFromLegacyOrBackup': true,
+        };
+      }
+    } catch (e) {
+      debugPrint('CloudSync _fetchCloudRestoreData legacy fetch error: $e');
     }
 
-    return restoreData;
+    // Tier 3: If both chunked and legacy collections have 0 accounts/txns,
+    // check if the local device has an auto-backup file!
+    try {
+      final autoBackupFile = await _ledger.getLatestAutoBackupFile();
+      if (autoBackupFile != null && await autoBackupFile.exists()) {
+        debugPrint(
+          'CloudSync _fetchCloudRestoreData: checking local auto-backup file: ${autoBackupFile.path}',
+        );
+        final content = await autoBackupFile.readAsString();
+        final localState = decodeLedgerArchive(content);
+        if (localState.accounts.isNotEmpty || localState.transactions.isNotEmpty) {
+          debugPrint(
+            'CloudSync _fetchCloudRestoreData: recovered ${localState.accounts.length} accounts and ${localState.transactions.length} transactions from auto-backup!',
+          );
+          final autoBackupData = _encodeCloudSnapshotData((localState, null));
+          autoBackupData['userId'] = userId;
+          autoBackupData['_healedFromLegacyOrBackup'] = true;
+          return autoBackupData;
+        }
+      }
+    } catch (e) {
+      debugPrint('CloudSync _fetchCloudRestoreData auto-backup recovery error: $e');
+    }
+
+    if (chunkedData != null) {
+      return chunkedData;
+    }
+
+    return {
+      'userId': userId,
+      'accounts': const [],
+      'categories': const [],
+      'transactions': const [],
+      'captureCandidates': const [],
+      'importBatches': const [],
+    };
   }
 
   Future<void> prepareForLocalClear() async {
@@ -1190,6 +1286,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       phase: CloudSyncPhase.idle,
       bootstrapComplete: true,
       bootstrappedUserId: user.id,
+      hasCloudWallet: false,
       error: 'Restoration skipped. You are working with local data.',
     );
   }

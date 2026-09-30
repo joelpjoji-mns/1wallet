@@ -118,18 +118,6 @@ final startupStateProvider = Provider<StartupState>((ref) {
     );
   }
 
-  // If Firebase has an existing cloud wallet for this user, NEVER route to onboarding!
-  // The user already has an established wallet in Firebase. Clobbering it with a
-  // fresh onboarding setup must never be allowed.
-  if (cloudSync.hasCloudWallet) {
-    return const StartupState.recoverableError(
-      title: 'Cloud wallet found',
-      message:
-          'Your cloud wallet was found in Firebase but is not yet synced to this device. '
-          'Tap "Try again" to restore your accounts.',
-    );
-  }
-
   if (onboarding.userId != userId && !onboarding.isLoading) {
     Future.microtask(() {
       ref.read(onboardingControllerProvider.notifier).loadForUser(userId);
@@ -157,6 +145,18 @@ final startupStateProvider = Provider<StartupState>((ref) {
   // If the user already completed onboarding for this account, send them home.
   if (onboarding.completed && onboarding.userId == userId) {
     return const StartupState.ready(destination: StartupDestination.home);
+  }
+
+  // If Firebase has an existing cloud wallet for this user, NEVER route to onboarding!
+  // The user already has an established wallet in Firebase. Clobbering it with a
+  // fresh onboarding setup must never be allowed.
+  if (cloudSync.hasCloudWallet) {
+    return const StartupState.recoverableError(
+      title: 'Cloud wallet found',
+      message:
+          'Your cloud wallet was found in Firebase but is not yet synced to this device. '
+          'Tap "Try again" to restore your accounts.',
+    );
   }
 
   return const StartupState.ready(destination: StartupDestination.onboarding);
