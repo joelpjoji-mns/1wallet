@@ -262,6 +262,7 @@ export function WalletDataProvider({ children }: { children: ReactNode }) {
     // heavily regression-tested reset path (`uidSwitchGuard.test.ts`,
     // `uidSwitchRender.test.ts`, `pendingSaveRaceGuard.test.ts`) for a
     // cosmetic lint fix with no user-visible effect.
+    // oxlint-disable-next-line react/set-state-in-effect
     commitSnapshot(emptyLedgerSnapshot());
     lastKnownMetaRef.current = EMPTY_CLOUD_META;
     setError(null);
@@ -596,6 +597,7 @@ export function WalletDataProvider({ children }: { children: ReactNode }) {
   return <WalletDataContext.Provider value={value}>{children}</WalletDataContext.Provider>;
 }
 
+// oxlint-disable-next-line react/only-export-components
 export function useWalletData(): WalletDataContextValue {
   const ctx = useContext(WalletDataContext);
   if (!ctx) throw new Error('useWalletData must be used within WalletDataProvider');

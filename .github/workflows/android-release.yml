@@ -81,7 +81,7 @@ concurrency:
 jobs:
   release:
     name: Build and publish APK
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'push'
     env:
       APK_PATH: build/app/outputs/flutter-apk/app-release.apk
@@ -335,7 +335,7 @@ jobs:
 
   release-web:
     name: Build and publish Web (PWA)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'push'
     env:
       FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID || 'wallet-1a5af' }}

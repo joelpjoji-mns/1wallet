@@ -24,6 +24,7 @@ function toDatetimeLocal(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+// oxlint-disable-next-line react/only-export-components
 export function transactionToFormValue(t?: TransactionRecord, defaultAccountId = ''): TransactionFormValue {
   if (!t) {
     return {

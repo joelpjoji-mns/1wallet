@@ -16,6 +16,7 @@ export interface AccountFormValue {
   showOnHome: boolean;
 }
 
+// oxlint-disable-next-line react/only-export-components
 export function accountToFormValue(a?: Account): AccountFormValue {
   if (!a) {
     return {
