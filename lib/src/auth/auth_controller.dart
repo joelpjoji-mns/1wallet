@@ -227,6 +227,23 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
+  Future<void> deleteAccount() async {
+    try {
+      await _repository.deleteAccount();
+      if (!mounted) return;
+      state = state.copyWith(
+        phase: AuthPhase.signedOut,
+        user: null,
+        isSigningIn: false,
+        errorMessage: null,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      state = state.copyWith(errorMessage: _friendlyError(error));
+      rethrow;
+    }
+  }
+
   void clearError() {
     if (state.errorMessage == null) return;
     state = state.copyWith(errorMessage: null);
@@ -309,6 +326,58 @@ class AuthRepository {
       GoogleSignIn().signOut(),
     ]);
   }
+
+  Future<void> deleteAccount() async {
+    final user = firebase_auth.FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      await user.delete();
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        final reauthed = await _reauthenticate(user);
+        if (reauthed) {
+          await user.delete();
+        } else {
+          throw const AuthFailure('Re-authentication was cancelled.');
+        }
+      } else {
+        rethrow;
+      }
+    } finally {
+      try {
+        await GoogleSignIn().signOut();
+      } catch (_) {}
+    }
+  }
+
+  Future<bool> _reauthenticate(firebase_auth.User user) async {
+    final isGoogle = user.providerData.any(
+      (p) => p.providerId == 'google.com',
+    );
+    if (isGoogle) {
+      final googleSignIn = GoogleSignIn(
+        scopes: const ['email', 'profile'],
+        clientId: FirebaseEnv.googleClientIdForPlatform,
+        serverClientId: kIsWeb ? null : FirebaseEnv.googleWebClientId,
+      );
+      final googleUser = await googleSignIn.signIn();
+      if (googleUser == null) return false;
+
+      final googleAuth = await googleUser.authentication;
+      if (googleAuth.idToken == null && googleAuth.accessToken == null) {
+        throw const AuthFailure(
+          'Google did not return a token. Check the OAuth client IDs in `.env`.',
+        );
+      }
+      final credential = firebase_auth.GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      await user.reauthenticateWithCredential(credential);
+      return true;
+    }
+    return false;
+  }
 }
 
 @immutable
@@ -336,6 +405,8 @@ String _friendlyError(Object error) {
   if (error is AuthFailure) return error.message;
   if (error is firebase_auth.FirebaseAuthException) {
     return switch (error.code) {
+      'requires-recent-login' =>
+        'Deleting your account requires recent authentication. Please sign in again.',
       'account-exists-with-different-credential' =>
         'That Google email is already linked to another sign-in method.',
       'invalid-credential' || 'wrong-password' =>

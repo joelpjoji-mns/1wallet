@@ -233,6 +233,33 @@ test('owner can read, create, update, and delete their own transactions', async 
   await assertSucceeds(ref.delete());
 });
 
+test('owner can delete their own user profile document, while others cannot', async () => {
+  const db = ownerDb();
+  await assertSucceeds(
+    db.doc(`users/${OWNER_UID}`).set({
+      email: 'owner@example.com',
+      lastWriterDeviceId: 'web-device-1',
+    }),
+  );
+  const other = otherDb();
+  await assertFails(other.doc(`users/${OWNER_UID}`).delete());
+  const anon = anonDb();
+  await assertFails(anon.doc(`users/${OWNER_UID}`).delete());
+  await assertSucceeds(db.doc(`users/${OWNER_UID}`).delete());
+});
+
+test('owner can delete their own metadata preferences document', async () => {
+  const db = ownerDb();
+  await assertSucceeds(
+    db.doc(`users/${OWNER_UID}/metadata/preferences`).set({
+      theme: 'dark',
+    }),
+  );
+  const other = otherDb();
+  await assertFails(other.doc(`users/${OWNER_UID}/metadata/preferences`).delete());
+  await assertSucceeds(db.doc(`users/${OWNER_UID}/metadata/preferences`).delete());
+});
+
 // Deterministic regression for the atomic check-and-claim-and-write
 // transaction `claimAndWriteSnapshot()` in `pwa/src/lib/walletSync.ts` uses
 // to guard `users/{uid}` + chunk writes together. Mirrors its conflict logic

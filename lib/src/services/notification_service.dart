@@ -141,6 +141,15 @@ class NotificationService {
     );
   }
 
+  static Future<void> cancelAll() async {
+    if (!_initialized) return;
+    try {
+      await _notificationsPlugin
+          .cancelAll()
+          .timeout(const Duration(milliseconds: 500));
+    } catch (_) {}
+  }
+
   static Future<void> syncScheduledNotifications(LedgerState state) async {
     if (!_initialized) return;
 

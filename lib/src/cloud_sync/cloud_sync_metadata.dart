@@ -188,4 +188,9 @@ class CloudSyncMetadata {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_cloudSyncStorageKey, jsonEncode(toJson()));
   }
+
+  static Future<void> clear() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_cloudSyncStorageKey);
+  }
 }

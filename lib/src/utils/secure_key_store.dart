@@ -57,6 +57,14 @@ abstract final class SecureKeyStore {
   /// Use this to decide whether to migrate after decryption.
   static bool isLegacyFormat(String stored) => !_isNewFormat(stored);
 
+  /// Clears stored cryptographic keys from the device secure storage.
+  static Future<void> clear() async {
+    _keyFuture = null;
+    try {
+      await _storage.deleteAll().timeout(const Duration(milliseconds: 500));
+    } catch (_) {}
+  }
+
   // ---------------------------------------------------------------------------
   // Internal helpers
   // ---------------------------------------------------------------------------
@@ -94,8 +102,9 @@ abstract final class SecureKeyStore {
 
   static Future<String> _decryptNew(String stored) async {
     final separatorIdx = stored.indexOf(':');
-    if (separatorIdx < 0)
+    if (separatorIdx < 0) {
       throw const FormatException('Invalid encrypted format');
+    }
     final ivBytes = base64Decode(stored.substring(0, separatorIdx));
     final cipherBase64 = stored.substring(separatorIdx + 1);
     final iv = enc.IV(ivBytes);

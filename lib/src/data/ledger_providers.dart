@@ -288,6 +288,16 @@ class LedgerController extends StateNotifier<LedgerState> {
     await _repository.clear();
   }
 
+  Future<void> purgeAllLocalData() async {
+    _spoolPollTimer?.cancel();
+    _prefsSaveTimer?.cancel();
+    _autoBackupTimer?.cancel();
+    await deleteAllAutoBackupFiles();
+    await _repository.clear();
+    state = emptyLedgerState(userId: 'local-user');
+    _setLoadState(const LedgerLoadState.ready(hasPersistedLedger: false));
+  }
+
   Future<void> processSpooledSms() async {
     try {
       final spooled = await SmsSpooler.popSpooledMessages();
@@ -2008,6 +2018,52 @@ class LedgerController extends StateNotifier<LedgerState> {
   Future<void> restoreFromAutoBackup(File file, {bool force = false}) async {
     final content = await file.readAsString();
     await importArchive(content, force: force);
+  }
+
+  Future<void> deleteAllAutoBackupFiles() async {
+    if (foundation.kIsWeb) return;
+    final candidates = <File>[];
+    try {
+      final docsDir = await getApplicationDocumentsDirectory()
+          .timeout(const Duration(milliseconds: 500));
+      for (final sub in ['${docsDir.path}/1Wallet', docsDir.path]) {
+        candidates.add(File('$sub/1wallet_auto_backup.onewallet'));
+        candidates.add(File('$sub/1wallet_auto_backup_safety.onewallet'));
+        candidates.add(File('$sub/1wallet_auto_backup_previous.onewallet'));
+      }
+
+      if (Platform.isAndroid) {
+        final extDir = await getExternalStorageDirectory()
+            .timeout(const Duration(milliseconds: 500));
+        if (extDir != null) {
+          for (final sub in ['${extDir.path}/1Wallet', extDir.path]) {
+            candidates.add(File('$sub/1wallet_auto_backup.onewallet'));
+            candidates.add(File('$sub/1wallet_auto_backup_safety.onewallet'));
+            candidates.add(File('$sub/1wallet_auto_backup_previous.onewallet'));
+          }
+        }
+        for (final base in [
+          '/storage/emulated/0/Download/1Wallet',
+          '/storage/emulated/0/Download',
+          '/storage/emulated/0/Documents/1Wallet',
+          '/storage/emulated/0/Documents',
+        ]) {
+          candidates.add(File('$base/1wallet_auto_backup.onewallet'));
+          candidates.add(File('$base/1wallet_auto_backup_safety.onewallet'));
+          candidates.add(File('$base/1wallet_auto_backup_previous.onewallet'));
+        }
+      }
+    } catch (_) {}
+
+    for (final file in candidates) {
+      try {
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (e) {
+        debugPrint('Error deleting backup file ${file.path}: $e');
+      }
+    }
   }
 }
 

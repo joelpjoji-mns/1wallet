@@ -300,12 +300,12 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId);
       allow create, update: if isOwner(userId) && isValidUserDocument(request.resource.data);
-      allow delete: if false;
+      allow delete: if isOwner(userId);
 
       match /metadata/{metadataId} {
         allow read: if isOwner(userId) && metadataId == 'preferences';
         allow create, update: if isOwner(userId) && metadataId == 'preferences';
-        allow delete: if false;
+        allow delete: if isOwner(userId);
       }
 
       match /accounts/{documentId} {
@@ -354,17 +354,19 @@ service cloud.firestore {
       match /wallets/{walletId} {
         allow read: if isOwner(userId) && walletId == 'default';
         allow create, update: if isOwner(userId) && isValidWalletDocument(request.resource.data, walletId);
-        allow delete: if false;
+        allow delete: if isOwner(userId);
 
         match /snapshots/{snapshotId} {
           allow read: if isOwner(userId) && walletId == 'default';
           allow create: if isOwner(userId) && walletId == 'default' && isValidSnapshotDocument(request.resource.data, snapshotId);
-          allow update, delete: if false;
+          allow update: if false;
+          allow delete: if isOwner(userId);
 
           match /chunks/{chunkId} {
             allow read: if isOwner(userId) && walletId == 'default';
             allow create: if isOwner(userId) && walletId == 'default' && isValidChunkDocument(request.resource.data, chunkId);
-            allow update, delete: if false;
+            allow update: if false;
+            allow delete: if isOwner(userId);
           }
         }
       }

@@ -11,6 +11,7 @@ import '../../theme/theme_controller.dart';
 import '../../security/app_lock.dart';
 import '../common/full_screen_picker.dart';
 import '../common/route_scaffold.dart';
+import 'account_deletion_controller.dart';
 import 'settings_components.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -353,6 +354,43 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: AppSpacing.md),
+
+                  // ── Danger zone ──
+                  GlassGroupedSection(
+                    header: Text(
+                      'Danger zone',
+                      style: TextStyle(
+                        color: theme.colorScheme.error,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    children: [
+                      GlassListTile(
+                        leading: Icon(
+                          Icons.delete_forever_rounded,
+                          color: theme.colorScheme.error,
+                        ),
+                        title: Text(
+                          'Delete account',
+                          style: TextStyle(
+                            color: theme.colorScheme.error,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          'Permanently wipe all local data, cloud sync backups, and your account.',
+                        ),
+                        trailing: Icon(
+                          Icons.chevron_right,
+                          size: 20,
+                          color: theme.colorScheme.error,
+                        ),
+                        onTap: _showDeleteAccountDialog,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
                 ],
               ),
             ),
@@ -360,6 +398,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _showDeleteAccountDialog() async {
+    final deleted = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const _DeleteAccountDialog(),
+    );
+
+    if (!mounted) return;
+    if (deleted == true) {
+      _showMessage('Account and all data have been deleted.');
+      context.go('/login');
+    }
   }
 
   String? get _startDayValidationError {
@@ -680,3 +732,164 @@ class _PrivacyQuickCard extends StatelessWidget {
     );
   }
 }
+
+class _DeleteAccountDialog extends ConsumerStatefulWidget {
+  const _DeleteAccountDialog();
+
+  @override
+  ConsumerState<_DeleteAccountDialog> createState() =>
+      _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
+  final _confirmationController = TextEditingController();
+  bool _canDelete = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _confirmationController.addListener(() {
+      final matches =
+          _confirmationController.text.trim().toUpperCase() == 'DELETE';
+      if (matches != _canDelete) {
+        setState(() => _canDelete = matches);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _confirmationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _onConfirmDelete() async {
+    final success = await ref
+        .read(accountDeletionControllerProvider.notifier)
+        .deleteAccountAndAllData();
+    if (success && mounted) {
+      Navigator.of(context).pop(true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final deletionState = ref.watch(accountDeletionControllerProvider);
+    final isBusy = deletionState.isBusy;
+
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(
+            Icons.warning_amber_rounded,
+            color: theme.colorScheme.error,
+            size: 28,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              'Delete account & data?',
+              style: TextStyle(
+                color: theme.colorScheme.error,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'This action is irreversible. All of your data will be permanently wiped:',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            const Text('• Local ledger, accounts, and transactions'),
+            const Text('• All cloud backups and synced data in Firebase'),
+            const Text('• Device auto-backup files and encryption keys'),
+            const Text('• Account login credentials and profile'),
+            const SizedBox(height: AppSpacing.md),
+            if (!isBusy) ...[
+              const Text(
+                'Type DELETE below to confirm:',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              TextField(
+                controller: _confirmationController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'DELETE',
+                  isDense: true,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                  ),
+                ),
+              ),
+            ],
+            if (isBusy) ...[
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Text(
+                      deletionState.statusMessage,
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (deletionState.errorMessage != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
+                ),
+                child: Text(
+                  deletionState.errorMessage!,
+                  style: TextStyle(
+                    color: theme.colorScheme.onErrorContainer,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: isBusy
+              ? null
+              : () {
+                  ref.read(accountDeletionControllerProvider.notifier).reset();
+                  Navigator.of(context).pop(false);
+                },
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: (_canDelete && !isBusy) ? _onConfirmDelete : null,
+          style: FilledButton.styleFrom(
+            backgroundColor: theme.colorScheme.error,
+            foregroundColor: theme.colorScheme.onError,
+          ),
+          child: const Text('Delete everything'),
+        ),
+      ],
+    );
+  }
+}
+

@@ -1506,6 +1506,97 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     _localClearInProgress = false;
   }
 
+  Future<void> deleteAllCloudData({required String userId}) async {
+    _localClearInProgress = true;
+    _cancelTimers();
+    await _userDocSubscription?.cancel();
+    _userDocSubscription = null;
+
+    try {
+      if (Firebase.apps.isNotEmpty) {
+        // 1. Delete wallets and nested snapshots/chunks if any
+        try {
+          final walletsSnap = await _firestore
+              .collection('users/$userId/wallets')
+              .get(const GetOptions(source: Source.server))
+              .timeout(cloudSyncReadTimeout);
+          for (final walletDoc in walletsSnap.docs) {
+            try {
+              final snapsSnap = await walletDoc.reference
+                  .collection('snapshots')
+                  .get(const GetOptions(source: Source.server))
+                  .timeout(cloudSyncReadTimeout);
+              for (final snapDoc in snapsSnap.docs) {
+                await _deleteCollection(snapDoc.reference.collection('chunks'));
+                await snapDoc.reference.delete();
+              }
+            } catch (e) {
+              developer.log('Error deleting snapshots for wallet ${walletDoc.id}: $e');
+            }
+            await walletDoc.reference.delete();
+          }
+        } catch (e) {
+          developer.log('Error deleting wallets: $e');
+        }
+
+        // 2. Delete all subcollections under users/$userId
+        const subcollections = [
+          'wallet_backups',
+          'accounts',
+          'categories',
+          'transactions',
+          'budgets',
+          'goals',
+          'captureCandidates',
+          'importBatches',
+          'metadata',
+        ];
+
+        for (final sub in subcollections) {
+          try {
+            await _deleteCollection(_firestore.collection('users/$userId/$sub'));
+          } catch (e) {
+            developer.log('Error deleting subcollection $sub: $e');
+          }
+        }
+
+        // 3. Delete user document itself
+        try {
+          await _firestore
+              .doc('users/$userId')
+              .delete()
+              .timeout(cloudSyncReadTimeout);
+        } catch (e) {
+          developer.log('Error deleting user doc: $e');
+        }
+      }
+    } finally {
+      await CloudSyncMetadata.clear();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('has_unsynced_changes');
+      _disableSync();
+    }
+  }
+
+  Future<void> _deleteCollection(
+    CollectionReference collectionRef, {
+    int batchSize = 100,
+  }) async {
+    while (true) {
+      final snapshot = await collectionRef
+          .limit(batchSize)
+          .get(const GetOptions(source: Source.server))
+          .timeout(cloudSyncReadTimeout);
+      if (snapshot.docs.isEmpty) break;
+      final batch = _firestore.batch();
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+      if (snapshot.docs.length < batchSize) break;
+    }
+  }
+
   void skipBootstrap() {
     final user = _ref.read(authControllerProvider).user;
     if (user == null) return;
