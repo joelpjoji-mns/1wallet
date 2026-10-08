@@ -513,6 +513,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                                 bottom: AppSpacing.md,
                               ),
                               child: GlassGroupedSection(
+                                margin: EdgeInsets.zero,
+                                shape: const LiquidRoundedSuperellipse(
+                                  borderRadius: AppRadii.md,
+                                ),
                                 header: Text(currentDayLabel),
                                 children: [
                                   for (final entry
