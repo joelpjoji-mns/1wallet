@@ -65,22 +65,80 @@ class LedgerLoadState {
 class LedgerRepository {
   const LedgerRepository();
 
+  static Future<File?> _getLocalLedgerFile() async {
+    if (foundation.kIsWeb) return null;
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      return File('${dir.path}/1wallet_ledger_state.json');
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<LedgerState?> load() async {
     final preferences = await SharedPreferences.getInstance();
     final payload = preferences.getString(_ledgerStorageKey);
-    if (payload == null || payload.trim().isEmpty) return null;
-    return await foundation.compute(decodeLedgerState, payload);
+    LedgerState? fallback;
+    if (payload != null && payload.trim().isNotEmpty) {
+      try {
+        final decoded = await foundation.compute(decodeLedgerState, payload);
+        if (_hasWalletData(decoded)) {
+          return decoded;
+        }
+        fallback = decoded;
+      } catch (e) {
+        debugPrint('Failed to decode ledger from SharedPreferences: $e');
+      }
+    }
+
+    // Secondary source of truth: atomic file on device storage
+    final file = await _getLocalLedgerFile();
+    if (file != null && await file.exists()) {
+      try {
+        final content = await file.readAsString();
+        if (content.trim().isNotEmpty) {
+          final decoded = await foundation.compute(decodeLedgerState, content);
+          if (_hasWalletData(decoded)) {
+            // Restore SharedPreferences from file cache
+            await preferences.setString(_ledgerStorageKey, content);
+            return decoded;
+          }
+          fallback ??= decoded;
+        }
+      } catch (e) {
+        debugPrint('Failed to load ledger from local file: $e');
+      }
+    }
+    return fallback;
   }
 
   Future<void> save(LedgerState state) async {
     final preferences = await SharedPreferences.getInstance();
     final payload = await foundation.compute(encodeLedgerState, state);
     await preferences.setString(_ledgerStorageKey, payload);
+
+    // Also persist atomically to file
+    final file = await _getLocalLedgerFile();
+    if (file != null) {
+      try {
+        final tempFile = File('${file.path}.tmp');
+        await tempFile.writeAsString(payload);
+        await tempFile.rename(file.path);
+      } catch (e) {
+        debugPrint('Failed to write atomic local ledger file: $e');
+      }
+    }
   }
 
   Future<void> clear() async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.remove(_ledgerStorageKey);
+    final file = await _getLocalLedgerFile();
+    if (file != null && await file.exists()) {
+      try {
+        await file.delete();
+      } catch (_) {}
+    }
   }
 }
 
@@ -259,10 +317,37 @@ class LedgerController extends StateNotifier<LedgerState> {
         unawaited(SmsSpooler.updateTriggerWords(fixed));
         unawaited(NotificationSpooler.updateTriggerWords(fixed));
       } else {
-        state = emptyLedgerState();
+        // Self-healing: if SharedPreferences was cleared or empty, attempt recovery from auto-backup files!
+        final backupFile = await getLatestAutoBackupFile();
+        if (backupFile != null && await backupFile.exists()) {
+          try {
+            final content = await backupFile.readAsString();
+            final recovered = decodeLedgerArchive(content);
+            if (_hasWalletData(recovered)) {
+              final fixed = await foundation.compute(
+                fixStaleScheduledTransactions,
+                recovered,
+              );
+              state = fixed;
+              unawaited(_repository.save(fixed));
+              unawaited(SmsSpooler.updateTriggerWords(fixed));
+              unawaited(NotificationSpooler.updateTriggerWords(fixed));
+              debugPrint('Successfully self-healed and restored wallet from auto-backup: ${backupFile.path}');
+            } else if (!_hasWalletData(state)) {
+              state = emptyLedgerState();
+            }
+          } catch (e) {
+            debugPrint('Failed to recover from auto-backup file: $e');
+            if (!_hasWalletData(state)) {
+              state = emptyLedgerState();
+            }
+          }
+        } else if (!_hasWalletData(state)) {
+          state = emptyLedgerState();
+        }
       }
       _setLoadState(
-        LedgerLoadState.ready(hasPersistedLedger: restored != null),
+        LedgerLoadState.ready(hasPersistedLedger: _hasWalletData(state)),
       );
       unawaited(processSpooledSms());
       unawaited(processSpooledNotifications());
@@ -276,6 +361,22 @@ class LedgerController extends StateNotifier<LedgerState> {
       });
     } catch (error) {
       if (!mounted) return;
+      // Also try backup recovery on error
+      try {
+        final backupFile = await getLatestAutoBackupFile();
+        if (backupFile != null && await backupFile.exists()) {
+          final content = await backupFile.readAsString();
+          final recovered = decodeLedgerArchive(content);
+          if (_hasWalletData(recovered)) {
+            state = recovered;
+            unawaited(_repository.save(recovered));
+            _setLoadState(
+              const LedgerLoadState.ready(hasPersistedLedger: true),
+            );
+            return;
+          }
+        }
+      } catch (_) {}
       _setLoadState(
         LedgerLoadState.failed('Unable to restore local wallet: $error'),
       );
@@ -298,11 +399,17 @@ class LedgerController extends StateNotifier<LedgerState> {
     _setLoadState(const LedgerLoadState.ready(hasPersistedLedger: false));
   }
 
+  bool _isProcessingSpooledSms = false;
+  bool _isProcessingSpooledNotifications = false;
+
   Future<void> processSpooledSms() async {
+    if (_isProcessingSpooledSms) return;
+    _isProcessingSpooledSms = true;
     try {
       final spooled = await SmsSpooler.popSpooledMessages();
       if (spooled.isEmpty) return;
 
+      final newCandidates = <CaptureCandidate>[];
       for (final payload in spooled) {
         final body = payload['body'] as String?;
         final timestampStr = payload['timestamp'] as String?;
@@ -315,26 +422,48 @@ class LedgerController extends StateNotifier<LedgerState> {
               payload['notificationShown'] == true ||
               payload['nativeNotificationShown'] == true ||
               payload['nativeSource'] != null;
-          await importSmsMessageDetailed(
-            body,
+
+          final result = _evaluateCaptureMessage(
+            rawText: body,
+            source: 'sms',
+            triggerWords: state.preferences.smsTriggerWords,
+            ignoreWords: state.preferences.smsIgnoreWords,
             receivedAt: receivedAt,
-            stage: 'spool-sms',
             nativeAccepted: nativeAccepted || payload.isNotEmpty,
             notificationShown: true,
             forceQueue: true,
+            additionalCandidates: newCandidates,
           );
+
+          if (result.queued && result.candidate != null) {
+            newCandidates.add(result.candidate!);
+          }
+          await CaptureDiagnostics.recordResult(stage: 'spool-sms', result: result);
         }
+      }
+
+      if (newCandidates.isNotEmpty) {
+        await _commit(
+          state.copyWith(
+            captureCandidates: [...newCandidates, ...state.captureCandidates],
+          ),
+        );
       }
     } catch (e) {
       debugPrint('Error processing spooled SMS: $e');
+    } finally {
+      _isProcessingSpooledSms = false;
     }
   }
 
   Future<void> processSpooledNotifications() async {
+    if (_isProcessingSpooledNotifications) return;
+    _isProcessingSpooledNotifications = true;
     try {
       final spooled = await NotificationSpooler.popSpooledMessages();
       if (spooled.isEmpty) return;
 
+      final newCandidates = <CaptureCandidate>[];
       for (final payload in spooled) {
         final body = payload['body'] as String?;
         final timestampStr = payload['timestamp'] as String?;
@@ -347,18 +476,40 @@ class LedgerController extends StateNotifier<LedgerState> {
               payload['notificationShown'] == true ||
               payload['nativeNotificationShown'] == true ||
               payload['nativeSource'] != null;
-          await importNotificationMessageDetailed(
-            body,
+
+          final result = _evaluateCaptureMessage(
+            rawText: body,
+            source: 'notification',
+            triggerWords: state.preferences.notificationTriggerWords,
+            ignoreWords: state.preferences.notificationIgnoreWords,
             receivedAt: receivedAt,
-            stage: 'spool-notification',
             nativeAccepted: nativeAccepted || payload.isNotEmpty,
             notificationShown: true,
             forceQueue: true,
+            additionalCandidates: newCandidates,
+          );
+
+          if (result.queued && result.candidate != null) {
+            newCandidates.add(result.candidate!);
+          }
+          await CaptureDiagnostics.recordResult(
+            stage: 'spool-notification',
+            result: result,
           );
         }
       }
+
+      if (newCandidates.isNotEmpty) {
+        await _commit(
+          state.copyWith(
+            captureCandidates: [...newCandidates, ...state.captureCandidates],
+          ),
+        );
+      }
     } catch (e) {
       debugPrint('Error processing spooled notifications: $e');
+    } finally {
+      _isProcessingSpooledNotifications = false;
     }
   }
 
@@ -1792,15 +1943,32 @@ class LedgerController extends StateNotifier<LedgerState> {
     List<({String text, DateTime receivedAt})> messages,
   ) async {
     final results = <CaptureImportResult>[];
+    final newCandidates = <CaptureCandidate>[];
+
     for (final message in messages) {
-      results.add(
-        await importSmsMessageDetailed(
-          message.text,
-          receivedAt: message.receivedAt,
-          stage: 'scan-inbox',
+      final result = _evaluateCaptureMessage(
+        rawText: message.text,
+        source: 'sms',
+        triggerWords: state.preferences.smsTriggerWords,
+        ignoreWords: state.preferences.smsIgnoreWords,
+        receivedAt: message.receivedAt,
+        additionalCandidates: newCandidates,
+      );
+      if (result.queued && result.candidate != null) {
+        newCandidates.add(result.candidate!);
+      }
+      results.add(result);
+    }
+
+    // Single atomic commit for all discovered candidates from the batch
+    if (newCandidates.isNotEmpty) {
+      await _commit(
+        state.copyWith(
+          captureCandidates: [...newCandidates, ...state.captureCandidates],
         ),
       );
     }
+
     return results;
   }
 
