@@ -819,6 +819,111 @@ class LedgerController extends StateNotifier<LedgerState> {
     );
   }
 
+  /// Merges multiple transactions from the same account into a single transaction.
+  /// The amounts are summed up, notes are merged, and the original transactions
+  /// are replaced by the newly created merged transaction.
+  Future<TransactionRecord> mergeTransactions({
+    required Set<String> transactionIds,
+    String? categoryId,
+    String? name,
+    String? notes,
+  }) async {
+    if (transactionIds.length < 2) {
+      throw ArgumentError('At least 2 transactions are required to merge.');
+    }
+
+    final targetList = state.transactions
+        .where((t) => transactionIds.contains(t.id))
+        .toList();
+
+    if (targetList.length != transactionIds.length) {
+      throw StateError('Some transactions to merge were not found.');
+    }
+
+    // Constraint 1: Must be from the same account
+    final firstAccountId = targetList.first.accountId;
+    final allSameAccount = targetList.every((t) => t.accountId == firstAccountId);
+    if (!allSameAccount) {
+      throw ArgumentError(
+        'All transactions must belong to the same account to be merged.',
+      );
+    }
+
+    // Sort by occurredAt (newest first for latest timestamp, or oldest first)
+    targetList.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+    final latestTx = targetList.first;
+
+    // Determine type: if all same type, keep it. Otherwise default to 'expense'
+    final firstType = targetList.first.type;
+    final allSameType = targetList.every((t) => t.type == firstType);
+    final mergedType = allSameType ? firstType : 'expense';
+
+    // Sum amount (amountMinor)
+    final totalAmountMinor = targetList.fold<int>(
+      0,
+      (sum, t) => sum + t.amount.amountMinor,
+    );
+
+    // Sum baseAmount
+    final totalBaseAmountMinor = targetList.fold<int>(
+      0,
+      (sum, t) => sum + t.baseAmount.amountMinor,
+    );
+
+    // Determine category: if passed explicitly, use it; else if all have same categoryId, use that
+    final effectiveCategoryId = categoryId ??
+        (targetList.every((t) => t.categoryId == targetList.first.categoryId)
+            ? targetList.first.categoryId
+            : null);
+
+    // Default name if not provided
+    final effectiveName = (name != null && name.trim().isNotEmpty)
+        ? name.trim()
+        : (targetList.firstWhereOrNull((t) => t.name != null && t.name!.trim().isNotEmpty)?.name ??
+            'Merged transaction');
+
+    // Default notes if not provided: include source transactions info
+    final effectiveNotes = (notes != null && notes.trim().isNotEmpty)
+        ? notes.trim()
+        : 'Merged from ${targetList.length} transactions:\n${targetList.map((t) => '• ${t.name ?? "Transaction"}: ${t.amount.amountMinor / 100} (${t.occurredAt.toLocal().toString().split(" ").first})').join('\n')}';
+
+    final mergedTx = TransactionRecord(
+      id: _newId('tx'),
+      type: mergedType,
+      status: targetList.any((t) => t.status == 'cleared') ? 'cleared' : targetList.first.status,
+      source: 'manual',
+      accountId: firstAccountId,
+      amount: Money(
+        amountMinor: totalAmountMinor,
+        currency: latestTx.amount.currency,
+      ),
+      baseAmount: Money(
+        amountMinor: totalBaseAmountMinor,
+        currency: latestTx.baseAmount.currency,
+      ),
+      categoryId: effectiveCategoryId,
+      occurredAt: latestTx.occurredAt,
+      name: effectiveName,
+      notes: effectiveNotes,
+      attachments: [
+        for (final t in targetList) ...t.attachments,
+      ],
+    );
+
+    // Remove old transactions and prepend merged transaction
+    final remainingTransactions = state.transactions
+        .where((t) => !transactionIds.contains(t.id))
+        .toList();
+
+    await _commit(
+      state.copyWith(
+        transactions: [mergedTx, ...remainingTransactions],
+      ),
+    );
+
+    return mergedTx;
+  }
+
   Future<void> addAttachment(
     String transactionId,
     TransactionAttachment attachment,
@@ -1268,7 +1373,8 @@ class LedgerController extends StateNotifier<LedgerState> {
     await _commit(state.copyWith(preferences: preferences));
   }
 
-  _CaptureDuplicateKind? _captureDuplicateKind({
+  ({_CaptureDuplicateKind kind, String? matchedId, String? matchedType})?
+      _captureDuplicateKind({
     required LedgerState state,
     required ParsedTransactionMessage parsed,
     required DateTime receivedAt,
@@ -1279,13 +1385,24 @@ class LedgerController extends StateNotifier<LedgerState> {
         c.rawText == parsed.rawText &&
         c.createdAt.difference(receivedAt).abs().inHours < 24;
 
-    if (state.captureCandidates.any(
-      (candidate) => candidate.status == 'pending' && sameRawText(candidate),
-    )) {
-      return _CaptureDuplicateKind.pendingText;
+    // 1. Exact raw-text match against pending candidates.
+    for (final c in state.captureCandidates) {
+      if (c.status == 'pending' && sameRawText(c)) {
+        return (
+          kind: _CaptureDuplicateKind.pendingText,
+          matchedId: c.id,
+          matchedType: 'candidate',
+        );
+      }
     }
-    if (additionalCandidates.any(sameRawText)) {
-      return _CaptureDuplicateKind.batch;
+    for (final c in additionalCandidates) {
+      if (sameRawText(c)) {
+        return (
+          kind: _CaptureDuplicateKind.batch,
+          matchedId: c.id,
+          matchedType: 'candidate',
+        );
+      }
     }
 
     final amount = parsed.amount;
@@ -1337,14 +1454,97 @@ class LedgerController extends StateNotifier<LedgerState> {
         return false;
       }
 
-      if (state.captureCandidates.any(isDuplicateCandidate)) {
-        return _CaptureDuplicateKind.pendingAmount;
+      // 2. Amount-based match against pending candidates.
+      for (final c in state.captureCandidates) {
+        if (isDuplicateCandidate(c)) {
+          return (
+            kind: _CaptureDuplicateKind.pendingAmount,
+            matchedId: c.id,
+            matchedType: 'candidate',
+          );
+        }
       }
-      if (additionalCandidates.any(isDuplicateCandidate)) {
-        return _CaptureDuplicateKind.batch;
+      for (final c in additionalCandidates) {
+        if (isDuplicateCandidate(c)) {
+          return (
+            kind: _CaptureDuplicateKind.batch,
+            matchedId: c.id,
+            matchedType: 'candidate',
+          );
+        }
+      }
+
+      // 3. Check against already-posted transactions.
+      final matchedTx = _findDuplicateTransaction(
+        state: state,
+        parsed: parsed,
+        amount: amount,
+        receivedAt: receivedAt,
+        matchedAccountId: matchedAccountId,
+      );
+      if (matchedTx != null) {
+        return (
+          kind: _CaptureDuplicateKind.postedTransaction,
+          matchedId: matchedTx.id,
+          matchedType: 'transaction',
+        );
       }
     }
 
+    return null;
+  }
+
+  /// Searches posted transactions for one that matches the parsed SMS.
+  /// Looks at amount, account, date proximity, and merchant similarity.
+  TransactionRecord? _findDuplicateTransaction({
+    required LedgerState state,
+    required ParsedTransactionMessage parsed,
+    required Money amount,
+    required DateTime receivedAt,
+    required String? matchedAccountId,
+  }) {
+    for (final tx in state.transactions) {
+      // Only consider live transactions (not void/scheduled).
+      if (tx.status == 'void' || tx.status == 'scheduled') continue;
+
+      // Amount must match.
+      if (tx.amount.amountMinor != amount.amountMinor ||
+          tx.amount.currency.toUpperCase() !=
+              amount.currency.toUpperCase()) {
+        continue;
+      }
+
+      // Must be within 7 days of each other.
+      final daysDiff = tx.occurredAt.difference(receivedAt).abs().inDays;
+      if (daysDiff > 7) continue;
+
+      // If we know the account, it must match.
+      if (matchedAccountId != null && tx.accountId != matchedAccountId) {
+        continue;
+      }
+
+      // Merchant similarity check (if both have one).
+      if (parsed.merchant != null && tx.name != null) {
+        final txName = tx.name!.trim().toLowerCase();
+        final smsMerchant = parsed.merchant!.trim().toLowerCase();
+        if (txName == smsMerchant ||
+            (txName.length > 3 && smsMerchant.contains(txName)) ||
+            (smsMerchant.length > 3 && txName.contains(smsMerchant))) {
+          return tx;
+        }
+      }
+
+      // Same account + same amount + within 24 hours is a strong signal.
+      if (matchedAccountId != null && daysDiff <= 1) {
+        return tx;
+      }
+
+      // Same amount within 24 hours without account info is still a likely
+      // match (e.g. user manually entered it).
+      if (daysDiff == 0) {
+        return tx;
+      }
+    }
     return null;
   }
 
@@ -1526,24 +1726,26 @@ class LedgerController extends StateNotifier<LedgerState> {
     }
 
     final matchedAccountId = _matchAccountToSms(state, parsed);
-    final duplicateKind = _captureDuplicateKind(
+    final duplicateMatch = _captureDuplicateKind(
       state: state,
       parsed: parsed,
       receivedAt: actualReceivedAt,
       matchedAccountId: matchedAccountId,
       additionalCandidates: additionalCandidates,
     );
-    if (duplicateKind != null &&
+    if (duplicateMatch != null &&
         !(forceQueue &&
-            duplicateKind == _CaptureDuplicateKind.postedTransaction)) {
+            duplicateMatch.kind == _CaptureDuplicateKind.postedTransaction)) {
       return CaptureImportResult(
         source: source,
         status: CaptureImportStatus.duplicate,
-        reason: _reasonForDuplicate(duplicateKind),
+        reason: _reasonForDuplicate(duplicateMatch.kind),
         receivedAt: actualReceivedAt,
         parsed: parsed,
         nativeAccepted: nativeAccepted,
         notificationShown: notificationShown,
+        duplicateOfId: duplicateMatch.matchedId,
+        duplicateOfType: duplicateMatch.matchedType,
       );
     }
 

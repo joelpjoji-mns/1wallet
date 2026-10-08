@@ -29,6 +29,8 @@ class CaptureImportResult {
     this.nativeAccepted = false,
     this.categoryId,
     this.categoryReason,
+    this.duplicateOfId,
+    this.duplicateOfType,
   });
 
   final String source;
@@ -42,6 +44,14 @@ class CaptureImportResult {
   final bool nativeAccepted;
   final String? categoryId;
   final String? categoryReason;
+
+  /// The ID of the existing transaction or capture candidate that this
+  /// message duplicates. `null` when there is no duplicate.
+  final String? duplicateOfId;
+
+  /// Either `'transaction'` or `'candidate'` — tells the UI which detail
+  /// screen to navigate to when the user taps the duplicate link.
+  final String? duplicateOfType;
 
   bool get queued => status == CaptureImportStatus.queued;
   bool get ignored => status == CaptureImportStatus.ignored;

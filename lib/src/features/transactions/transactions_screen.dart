@@ -10,6 +10,7 @@ import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/privacy_text.dart';
+import '../common/category_hierarchy_picker.dart';
 import '../common/full_screen_picker.dart';
 import '../home/home_screen.dart';
 import 'transactions_components.dart';
@@ -326,6 +327,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       ),
       actions: _selectedTransactionIds.isNotEmpty
           ? [
+              if (_selectedTransactionIds.length >= 2)
+                HeaderIconButton(
+                  icon: Icons.call_merge_rounded,
+                  onPressed: _showMergeDialog,
+                  semanticLabel: 'Merge selected transactions',
+                ),
               HeaderIconButton(
                 icon: Icons.delete_outline_rounded,
                 onPressed: _confirmDeleteSelected,
@@ -1023,6 +1030,99 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       await ref.read(ledgerProvider.notifier).deleteTransactions(ids);
     }
   }
+
+  Future<void> _showMergeDialog() async {
+    final state = ref.read(ledgerProvider);
+    final selectedList = state.transactions
+        .where((t) => _selectedTransactionIds.contains(t.id))
+        .toList();
+
+    if (selectedList.length < 2) return;
+
+    // Check constraint: All must belong to the same account
+    final firstAccountId = selectedList.first.accountId;
+    final allSameAccount = selectedList.every((t) => t.accountId == firstAccountId);
+    if (!allSameAccount) {
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Cannot merge'),
+          content: const Text(
+            'All selected transactions must belong to the same account to be merged.',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final account = accountById(state, firstAccountId);
+    final allSameCategory = selectedList.every(
+      (t) => t.categoryId == selectedList.first.categoryId,
+    );
+    final initialCategoryId = allSameCategory ? selectedList.first.categoryId : null;
+
+    final totalAmountMinor = selectedList.fold<int>(
+      0,
+      (sum, t) => sum + t.amount.amountMinor,
+    );
+    final totalMoney = Money(
+      amountMinor: totalAmountMinor,
+      currency: selectedList.first.amount.currency,
+    );
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => _MergeTransactionsSheet(
+        state: state,
+        selectedTransactions: selectedList,
+        account: account,
+        totalMoney: totalMoney,
+        initialCategoryId: initialCategoryId,
+        allSameCategory: allSameCategory,
+        onMerge: ({String? categoryId, String? name, String? notes}) async {
+          final ids = Set<String>.from(_selectedTransactionIds);
+          setState(() {
+            _selectedTransactionIds.clear();
+          });
+          try {
+            await ref.read(ledgerProvider.notifier).mergeTransactions(
+              transactionIds: ids,
+              categoryId: categoryId,
+              name: name,
+              notes: notes,
+            );
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Merged ${ids.length} transactions into one (${formatMoney(totalMoney, state.preferences.locale)}).',
+                  ),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to merge transactions: $e'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          }
+        },
+      ),
+    );
+  }
 }
 
 class _TransactionFilterState {
@@ -1154,4 +1254,412 @@ String _statusFilterLabel(String value) {
     'void' => 'Skipped / Void',
     _ => 'All statuses',
   };
+}
+
+class _MergeTransactionsSheet extends StatefulWidget {
+  const _MergeTransactionsSheet({
+    required this.state,
+    required this.selectedTransactions,
+    required this.account,
+    required this.totalMoney,
+    required this.initialCategoryId,
+    required this.allSameCategory,
+    required this.onMerge,
+  });
+
+  final LedgerState state;
+  final List<TransactionRecord> selectedTransactions;
+  final Account? account;
+  final Money totalMoney;
+  final String? initialCategoryId;
+  final bool allSameCategory;
+  final void Function({String? categoryId, String? name, String? notes}) onMerge;
+
+  @override
+  State<_MergeTransactionsSheet> createState() => _MergeTransactionsSheetState();
+}
+
+class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
+  late String? _selectedCategoryId;
+  late final TextEditingController _nameController;
+  late final TextEditingController _notesController;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCategoryId = widget.initialCategoryId;
+
+    final defaultName = widget.selectedTransactions
+            .where((t) => t.name != null && t.name!.trim().isNotEmpty)
+            .firstOrNull
+            ?.name ??
+        'Merged transaction';
+    _nameController = TextEditingController(text: defaultName);
+
+    final defaultNotes = 'Merged from ${widget.selectedTransactions.length} transactions:\n${widget.selectedTransactions.map((t) => '• ${t.name ?? "Transaction"}: ${t.amount.amountMinor / 100} (${t.occurredAt.toLocal().toString().split(" ").first})').join('\n')}';
+    _notesController = TextEditingController(text: defaultNotes);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final category = categoryById(widget.state, _selectedCategoryId);
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.72,
+      minChildSize: 0.45,
+      maxChildSize: 0.94,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: BoxDecoration(
+            color: theme.scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(AppRadii.lg),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(40),
+                blurRadius: 16,
+                offset: const Offset(0, -4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // Drag handle
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(top: 10, bottom: 6),
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: scheme.onSurfaceVariant.withAlpha(60),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.xs,
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.call_merge_rounded,
+                      color: scheme.primary,
+                      size: 24,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Merge transactions',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'Combine ${widget.selectedTransactions.length} transactions into one',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              // Body
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  children: [
+                    // Summary card
+                    Card(
+                      margin: EdgeInsets.zero,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadii.md),
+                        side: BorderSide(color: scheme.outlineVariant.withAlpha(50)),
+                      ),
+                      color: scheme.surfaceContainerHighest.withAlpha(50),
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Sum total amount',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                Text(
+                                  formatMoney(
+                                    widget.totalMoney,
+                                    widget.state.preferences.locale,
+                                  ),
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: scheme.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Account',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                Text(
+                                  widget.account?.name ?? 'Unknown account',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+
+                    // Category selection
+                    Text(
+                      'Category',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    if (widget.allSameCategory && _selectedCategoryId != null)
+                      Text(
+                        'All selected transactions share this category. Tap below if you want to change it.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      )
+                    else
+                      Text(
+                        'Transactions have different or missing categories. Please choose one for the merged transaction:',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.error,
+                        ),
+                      ),
+                    const SizedBox(height: AppSpacing.xs),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(AppRadii.md),
+                      onTap: () async {
+                        final picked = await showCategoryHierarchyPicker(
+                          context: context,
+                          state: widget.state,
+                          selectedCategoryId: _selectedCategoryId,
+                          title: 'Choose category for merged',
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            _selectedCategoryId = picked.isEmpty ? null : picked;
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        decoration: BoxDecoration(
+                          color: scheme.surfaceContainerHighest.withAlpha(40),
+                          borderRadius: BorderRadius.circular(AppRadii.md),
+                          border: Border.all(
+                            color: _selectedCategoryId == null && !widget.allSameCategory
+                                ? scheme.error.withAlpha(120)
+                                : scheme.outlineVariant.withAlpha(60),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              category != null ? categoryIcon(category) : Icons.category_outlined,
+                              color: scheme.primary,
+                              size: 20,
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: Text(
+                                category?.name ?? 'No category selected (Tap to choose)',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: category != null
+                                      ? scheme.onSurface
+                                      : scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                            const Icon(Icons.chevron_right_rounded, size: 20),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+
+                    // Name field
+                    Text(
+                      'Transaction name',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    TextField(
+                      controller: _nameController,
+                      decoration: InputDecoration(
+                        hintText: 'e.g. Swiggy order batch',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppRadii.md),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                          vertical: AppSpacing.sm,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+
+                    // Items to be merged preview
+                    Text(
+                      'Transactions being merged (${widget.selectedTransactions.length})',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Card(
+                      margin: EdgeInsets.zero,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadii.md),
+                        side: BorderSide(color: scheme.outlineVariant.withAlpha(50)),
+                      ),
+                      color: scheme.surfaceContainerHighest.withAlpha(25),
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        child: Column(
+                          children: [
+                            for (final t in widget.selectedTransactions) ...[
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.xs,
+                                  vertical: AppSpacing.xs,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.receipt_long_outlined,
+                                      size: 16,
+                                      color: scheme.onSurfaceVariant,
+                                    ),
+                                    const SizedBox(width: AppSpacing.xs),
+                                    Expanded(
+                                      child: Text(
+                                        t.name ?? 'Transaction',
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    Text(
+                                      formatMoney(
+                                        t.amount,
+                                        widget.state.preferences.locale,
+                                      ),
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+
+                    // Notes
+                    Text(
+                      'Notes',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    TextField(
+                      controller: _notesController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppRadii.md),
+                        ),
+                        contentPadding: const EdgeInsets.all(AppSpacing.md),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // Action buttons
+                    FilledButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        widget.onMerge(
+                          categoryId: _selectedCategoryId,
+                          name: _nameController.text.trim(),
+                          notes: _notesController.text.trim(),
+                        );
+                      },
+                      icon: const Icon(Icons.call_merge_rounded),
+                      label: Text(
+                        'Merge into ${formatMoney(widget.totalMoney, widget.state.preferences.locale)}',
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }

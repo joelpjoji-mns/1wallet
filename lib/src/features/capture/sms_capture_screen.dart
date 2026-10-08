@@ -391,6 +391,24 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                   value: parsed.merchant ?? 'Not detected',
                   icon: Icons.storefront_outlined,
                 ),
+                if (preview.duplicate && preview.duplicateOfId != null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  FilledButton.tonalIcon(
+                    onPressed: () {
+                      if (preview.duplicateOfType == 'transaction') {
+                        context.push('/transaction/${preview.duplicateOfId}');
+                      } else {
+                        context.push('/review');
+                      }
+                    },
+                    icon: const Icon(Icons.open_in_new_rounded),
+                    label: Text(
+                      preview.duplicateOfType == 'transaction'
+                          ? 'View matching transaction'
+                          : 'View in review queue',
+                    ),
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.sm),
                 FilledButton.tonalIcon(
                   onPressed: preview.queued ? _queueTestMessage : null,
@@ -489,9 +507,26 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
       final duplicates = results.where((result) => result.duplicate).length;
       final ignored = results.where((result) => result.ignored).length;
 
-      _showMessage(
-        'Scanned ${messages.length} messages · queued $queued · duplicates $duplicates · ignored $ignored.',
-      );
+      if (!mounted) return;
+
+      // Only show results that are queued or duplicate (skip ignored/noise).
+      final interestingResults = results
+          .where((r) => r.queued || r.duplicate)
+          .toList();
+
+      if (interestingResults.isEmpty) {
+        _showMessage(
+          'Scanned ${messages.length} messages · no transactions found.',
+        );
+      } else {
+        _showScanResultsSheet(
+          totalScanned: messages.length,
+          queued: queued,
+          duplicates: duplicates,
+          ignored: ignored,
+          results: interestingResults,
+        );
+      }
     } catch (e) {
       _showMessage('Could not scan inbox: $e');
     } finally {
@@ -601,6 +636,334 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
       ..showSnackBar(
         SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
       );
+  }
+
+  void _showScanResultsSheet({
+    required int totalScanned,
+    required int queued,
+    required int duplicates,
+    required int ignored,
+    required List<CaptureImportResult> results,
+  }) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        final state = ref.watch(ledgerProvider);
+        final theme = Theme.of(sheetContext);
+        final scheme = theme.colorScheme;
+        final txMap = {for (final tx in state.transactions) tx.id: tx};
+        final candidateMap = {
+          for (final c in state.captureCandidates) c.id: c,
+        };
+
+        return DraggableScrollableSheet(
+          initialChildSize: 0.65,
+          minChildSize: 0.4,
+          maxChildSize: 0.92,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: theme.scaffoldBackgroundColor,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(AppRadii.lg),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(40),
+                    blurRadius: 16,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  // Drag handle
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 10, bottom: 6),
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: scheme.onSurfaceVariant.withAlpha(60),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  // Header summary
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.sm,
+                      AppSpacing.lg,
+                      AppSpacing.md,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Scan results',
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded),
+                              onPressed: () => Navigator.of(sheetContext).pop(),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Scanned $totalScanned SMS · $queued queued · $duplicates duplicate${duplicates == 1 ? '' : 's'}',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                        if (queued > 0) ...[
+                          const SizedBox(height: AppSpacing.sm),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.tonalIcon(
+                              onPressed: () {
+                                Navigator.of(sheetContext).pop();
+                                context.push('/review');
+                              },
+                              icon: const Icon(Icons.fact_check_outlined),
+                              label: Text('Open review queue ($queued queued)'),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  // Results list
+                  Expanded(
+                    child: ListView.separated(
+                      controller: scrollController,
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      itemCount: results.length,
+                      separatorBuilder: (context, _) =>
+                          const SizedBox(height: AppSpacing.sm),
+                      itemBuilder: (context, index) {
+                        final item = results[index];
+                        final isDuplicate = item.duplicate;
+                        final parsed = item.parsed;
+                        final dupId = item.duplicateOfId;
+                        final dupType = item.duplicateOfType;
+
+                        TransactionRecord? matchedTx;
+                        CaptureCandidate? matchedCandidate;
+                        if (dupId != null) {
+                          if (dupType == 'transaction') {
+                            matchedTx = txMap[dupId];
+                          } else if (dupType == 'candidate') {
+                            matchedCandidate = candidateMap[dupId];
+                          }
+                        }
+
+                        final amountText = parsed.amount != null
+                            ? formatMoney(parsed.amount!, state.preferences.locale)
+                            : null;
+
+                        return Card(
+                          margin: EdgeInsets.zero,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadii.md),
+                            side: BorderSide(
+                              color: isDuplicate
+                                  ? scheme.tertiary.withAlpha(70)
+                                  : scheme.outlineVariant.withAlpha(50),
+                            ),
+                          ),
+                          color: isDuplicate
+                              ? scheme.tertiaryContainer.withAlpha(25)
+                              : scheme.surfaceContainerHighest.withAlpha(40),
+                          child: Padding(
+                            padding: const EdgeInsets.all(AppSpacing.md),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(
+                                      isDuplicate
+                                          ? Icons.copy_rounded
+                                          : Icons.mark_email_read_outlined,
+                                      size: 20,
+                                      color: isDuplicate
+                                          ? scheme.tertiary
+                                          : scheme.primary,
+                                    ),
+                                    const SizedBox(width: AppSpacing.sm),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Flexible(
+                                                child: Text(
+                                                  parsed.merchant ??
+                                                      (parsed.transactionType == 'income'
+                                                          ? 'Incoming payment'
+                                                          : 'Payment'),
+                                                  style: theme
+                                                      .textTheme.titleSmall
+                                                      ?.copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              if (amountText != null)
+                                                Text(
+                                                  amountText,
+                                                  style: theme
+                                                      .textTheme.titleSmall
+                                                      ?.copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: parsed.transactionType ==
+                                                            'income'
+                                                        ? scheme.primary
+                                                        : scheme.error,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: isDuplicate
+                                                  ? scheme.tertiary
+                                                      .withAlpha(35)
+                                                  : scheme.primary
+                                                      .withAlpha(30),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              isDuplicate
+                                                  ? (item.reason ==
+                                                          CaptureBlockReason
+                                                              .duplicatePosted
+                                                      ? 'Duplicate: already entered'
+                                                      : 'Duplicate: already in review')
+                                                  : 'Added to review',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: isDuplicate
+                                                    ? scheme.tertiary
+                                                    : scheme.primary,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: AppSpacing.sm),
+                                Text(
+                                  parsed.rawText,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                // Clickable duplicate button/banner
+                                if (isDuplicate && dupId != null) ...[
+                                  const SizedBox(height: AppSpacing.sm),
+                                  InkWell(
+                                    borderRadius:
+                                        BorderRadius.circular(AppRadii.sm),
+                                    onTap: () {
+                                      Navigator.of(sheetContext).pop();
+                                      if (dupType == 'transaction') {
+                                        context.push('/transaction/$dupId');
+                                      } else {
+                                        context.push('/review');
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: scheme.tertiary.withAlpha(20),
+                                        borderRadius:
+                                            BorderRadius.circular(AppRadii.sm),
+                                        border: Border.all(
+                                          color: scheme.tertiary.withAlpha(60),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.link_rounded,
+                                            size: 16,
+                                            color: scheme.tertiary,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              dupType == 'transaction'
+                                                  ? (matchedTx != null
+                                                      ? 'View transaction: ${matchedTx.name ?? formatMoney(matchedTx.amount, state.preferences.locale)}'
+                                                      : 'View matched transaction')
+                                                  : (matchedCandidate != null && matchedCandidate.merchant != null
+                                                      ? 'View candidate: ${matchedCandidate.merchant}'
+                                                      : 'View in review queue'),
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: scheme.tertiary,
+                                              ),
+                                            ),
+                                          ),
+                                          Icon(
+                                            Icons.chevron_right_rounded,
+                                            size: 18,
+                                            color: scheme.tertiary,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 }
 

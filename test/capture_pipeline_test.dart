@@ -119,4 +119,31 @@ void main() {
     expect(result.candidate?.suggestedCategoryId, 'cat-dining');
     expect(result.candidate?.suggestedCategoryReason, contains('Learned'));
   });
+
+  test(
+    'matches already posted transaction as duplicate and populates duplicateOfId',
+    () async {
+      final controller = await controllerWithAccount();
+      addTearDown(controller.dispose);
+
+      // Add a manual or posted transaction
+      final tx = await controller.upsertTransaction(
+        id: 'tx-existing-1',
+        type: 'expense',
+        accountId: 'acc-main',
+        amountMinor: 89000, // INR 890.00
+        name: 'SWIGGY',
+        occurredAt: DateTime.now(),
+      );
+
+      const sms =
+          'HDFC Bank: INR 890.00 debited from card XX1234 at SWIGGY on today.';
+      final preview = controller.previewSmsMessage(sms);
+
+      expect(preview.status, CaptureImportStatus.duplicate);
+      expect(preview.reason, CaptureBlockReason.duplicatePosted);
+      expect(preview.duplicateOfId, tx.id);
+      expect(preview.duplicateOfType, 'transaction');
+    },
+  );
 }
