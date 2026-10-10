@@ -352,13 +352,8 @@ class LedgerController extends StateNotifier<LedgerState> {
       unawaited(processSpooledSms());
       unawaited(processSpooledNotifications());
 
-      // Start active foreground polling for instant updates
-      _spoolPollTimer?.cancel();
-      _spoolPollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-        if (!mounted) return;
-        unawaited(processSpooledSms());
-        unawaited(processSpooledNotifications());
-      });
+      // Start active foreground polling only if auto-capture is enabled
+      _syncSpoolPolling();
     } catch (error) {
       if (!mounted) return;
       // Also try backup recovery on error
@@ -397,6 +392,37 @@ class LedgerController extends StateNotifier<LedgerState> {
     await _repository.clear();
     state = emptyLedgerState(userId: 'local-user');
     _setLoadState(const LedgerLoadState.ready(hasPersistedLedger: false));
+  }
+
+  bool _isSpoolPollingPaused = false;
+
+  void pauseSpoolPolling() {
+    _isSpoolPollingPaused = true;
+    _spoolPollTimer?.cancel();
+    _spoolPollTimer = null;
+  }
+
+  void resumeSpoolPolling() {
+    _isSpoolPollingPaused = false;
+    unawaited(processSpooledSms());
+    unawaited(processSpooledNotifications());
+    _syncSpoolPolling();
+  }
+
+  void _syncSpoolPolling() {
+    _spoolPollTimer?.cancel();
+    _spoolPollTimer = null;
+    if (_isSpoolPollingPaused || !mounted) return;
+
+    final smsEnabled = state.preferences.smsCaptureEnabled;
+    final notifEnabled = state.preferences.notificationCaptureEnabled;
+    if (!smsEnabled && !notifEnabled) return;
+
+    _spoolPollTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (!mounted) return;
+      unawaited(processSpooledSms());
+      unawaited(processSpooledNotifications());
+    });
   }
 
   bool _isProcessingSpooledSms = false;
@@ -2273,11 +2299,24 @@ class LedgerController extends StateNotifier<LedgerState> {
       );
     }
 
+    final prevPrefs = state.preferences;
+    final nextPrefs = normalized.preferences;
+    final capturePrefsChanged =
+        prevPrefs.smsCaptureEnabled != nextPrefs.smsCaptureEnabled ||
+        prevPrefs.notificationCaptureEnabled != nextPrefs.notificationCaptureEnabled ||
+        !foundation.listEquals(prevPrefs.smsTriggerWords, nextPrefs.smsTriggerWords) ||
+        !foundation.listEquals(prevPrefs.smsIgnoreWords, nextPrefs.smsIgnoreWords) ||
+        !foundation.listEquals(prevPrefs.notificationTriggerWords, nextPrefs.notificationTriggerWords) ||
+        !foundation.listEquals(prevPrefs.notificationIgnoreWords, nextPrefs.notificationIgnoreWords);
+
     state = normalized;
     await _repository.save(normalized);
 
-    unawaited(SmsSpooler.updateTriggerWords(normalized));
-    unawaited(NotificationSpooler.updateTriggerWords(normalized));
+    if (capturePrefsChanged) {
+      unawaited(SmsSpooler.updateTriggerWords(normalized));
+      unawaited(NotificationSpooler.updateTriggerWords(normalized));
+      _syncSpoolPolling();
+    }
 
     if (!_isRestoring) {
       _autoBackupTimer?.cancel();

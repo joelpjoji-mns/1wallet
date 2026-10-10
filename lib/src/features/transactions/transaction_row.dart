@@ -156,15 +156,17 @@ class TransactionRow extends StatelessWidget {
 
     if (glass) {
       if (isAmoled) {
-        return content;
+        return RepaintBoundary(child: content);
       }
-      return GlassCard(
-        margin: EdgeInsets.zero,
-        padding: EdgeInsets.zero,
-        shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-        quality: GlassQuality.minimal,
-        clipBehavior: Clip.antiAlias,
-        child: content,
+      return RepaintBoundary(
+        child: GlassCard(
+          margin: EdgeInsets.zero,
+          padding: EdgeInsets.zero,
+          shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+          quality: GlassQuality.minimal,
+          clipBehavior: Clip.antiAlias,
+          child: content,
+        ),
       );
     }
 

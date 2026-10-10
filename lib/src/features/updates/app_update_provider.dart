@@ -215,6 +215,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
     ),
   );
   CancelToken? _downloadCancelToken;
+  DateTime? _lastCheckedAt;
 
   AppUpdateProvider() : super(AppUpdateState()) {
     _init();
@@ -246,7 +247,14 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
     await checkForUpdates();
   }
 
-  Future<void> checkForUpdates() async {
+  Future<void> checkForUpdates({bool force = false}) async {
+    if (!force &&
+        _lastCheckedAt != null &&
+        DateTime.now().difference(_lastCheckedAt!) < const Duration(hours: 6)) {
+      return;
+    }
+    _lastCheckedAt = DateTime.now();
+
     state = state.copyWith(
       status: UpdateStatus.checking,
       clearErrorMessage: true,

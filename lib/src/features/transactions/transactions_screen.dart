@@ -490,7 +490,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       final monthlyBalances = stats.monthlyBalances;
                       final monthlyFlows = stats.monthlyFlows;
 
-                      final widgets = <Widget>[];
+                      final entries = <_HistoryEntry>[];
                       String? currentMonth;
                       DateTime? currentDay;
                       final now = DateTime.now();
@@ -507,68 +507,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       void flushDay() {
                         if (currentDayTransactions.isNotEmpty &&
                             currentDayLabel != null) {
-                          widgets.add(
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                bottom: AppSpacing.md,
-                              ),
-                              child: GlassGroupedSection(
-                                margin: EdgeInsets.zero,
-                                shape: const LiquidRoundedSuperellipse(
-                                  borderRadius: AppRadii.md,
-                                ),
-                                header: Text(currentDayLabel),
-                                children: [
-                                  for (final entry
-                                      in currentDayTransactions.indexed) ...[
-                                    if (entry.$1 > 0) const GlassDivider(),
-                                    TransactionRow(
-                                      glass: true,
-                                      state: state,
-                                      transaction: entry.$2,
-                                      selectedAccountId: accountFilter,
-                                      selected: _selectedTransactionIds
-                                          .contains(entry.$2.id),
-                                      onLongPress: () {
-                                        setState(() {
-                                          if (_selectedTransactionIds.contains(
-                                            entry.$2.id,
-                                          )) {
-                                            _selectedTransactionIds.remove(
-                                              entry.$2.id,
-                                            );
-                                          } else {
-                                            _selectedTransactionIds.add(
-                                              entry.$2.id,
-                                            );
-                                          }
-                                        });
-                                      },
-                                      onTap: () {
-                                        if (_selectedTransactionIds
-                                            .isNotEmpty) {
-                                          setState(() {
-                                            if (_selectedTransactionIds
-                                                .contains(entry.$2.id)) {
-                                              _selectedTransactionIds.remove(
-                                                entry.$2.id,
-                                              );
-                                            } else {
-                                              _selectedTransactionIds.add(
-                                                entry.$2.id,
-                                              );
-                                            }
-                                          });
-                                        } else {
-                                          context.push(
-                                            '/transaction/${entry.$2.id}',
-                                          );
-                                        }
-                                      },
-                                    ),
-                                  ],
-                                ],
-                              ),
+                          entries.add(
+                            _DayGroupEntry(
+                              dayLabel: currentDayLabel,
+                              transactions: currentDayTransactions,
                             ),
                           );
                           currentDayTransactions = [];
@@ -601,62 +543,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                             state.preferences.locale,
                           );
 
-                          widgets.add(
-                            Padding(
-                              padding: EdgeInsets.fromLTRB(
-                                0,
-                                widgets.isEmpty ? 0 : AppSpacing.md,
-                                0,
-                                AppSpacing.sm,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Text(
-                                    monthStr,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleSmall
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w800,
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.primary,
-                                        ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: PrivacyText(
-                                          'Balance $balanceStr',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.w700,
-                                                color: Theme.of(
-                                                  context,
-                                                ).colorScheme.onSurfaceVariant,
-                                              ),
-                                        ),
-                                      ),
-                                      PrivacyText(
-                                        '∑ $flowStr',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w700,
-                                              color: Theme.of(
-                                                context,
-                                              ).colorScheme.onSurfaceVariant,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
+                          entries.add(
+                            _MonthHeaderEntry(
+                              monthStr: monthStr,
+                              balanceStr: balanceStr,
+                              flowStr: flowStr,
+                              isFirst: entries.isEmpty,
                             ),
                           );
                         }
@@ -692,8 +584,132 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                               AppSizes.bottomBarClearance +
                               MediaQuery.paddingOf(context).bottom,
                         ),
-                        itemCount: widgets.length,
-                        itemBuilder: (context, index) => widgets[index],
+                        itemCount: entries.length,
+                        itemBuilder: (context, index) {
+                          final item = entries[index];
+                          if (item is _MonthHeaderEntry) {
+                            return Padding(
+                              padding: EdgeInsets.fromLTRB(
+                                0,
+                                item.isFirst ? 0 : AppSpacing.md,
+                                0,
+                                AppSpacing.sm,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Text(
+                                    item.monthStr,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleSmall
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w800,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: PrivacyText(
+                                          'Balance ${item.balanceStr}',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurfaceVariant,
+                                              ),
+                                        ),
+                                      ),
+                                      PrivacyText(
+                                        '∑ ${item.flowStr}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onSurfaceVariant,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+
+                          final dayGroup = item as _DayGroupEntry;
+                          return RepaintBoundary(
+                            child: Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: AppSpacing.md,
+                              ),
+                              child: GlassGroupedSection(
+                                margin: EdgeInsets.zero,
+                                shape: const LiquidRoundedSuperellipse(
+                                  borderRadius: AppRadii.md,
+                                ),
+                                header: Text(dayGroup.dayLabel),
+                                children: [
+                                  for (final entry in dayGroup.transactions.indexed) ...[
+                                    if (entry.$1 > 0) const GlassDivider(),
+                                    TransactionRow(
+                                      glass: true,
+                                      state: state,
+                                      transaction: entry.$2,
+                                      selectedAccountId: accountFilter,
+                                      selected: _selectedTransactionIds
+                                          .contains(entry.$2.id),
+                                      onLongPress: () {
+                                        setState(() {
+                                          if (_selectedTransactionIds.contains(
+                                            entry.$2.id,
+                                          )) {
+                                            _selectedTransactionIds.remove(
+                                              entry.$2.id,
+                                            );
+                                          } else {
+                                            _selectedTransactionIds.add(
+                                              entry.$2.id,
+                                            );
+                                          }
+                                        });
+                                      },
+                                      onTap: () {
+                                        if (_selectedTransactionIds.isNotEmpty) {
+                                          setState(() {
+                                            if (_selectedTransactionIds
+                                                .contains(entry.$2.id)) {
+                                              _selectedTransactionIds.remove(
+                                                entry.$2.id,
+                                              );
+                                            } else {
+                                              _selectedTransactionIds.add(
+                                                entry.$2.id,
+                                              );
+                                            }
+                                          });
+                                        } else {
+                                          context.push(
+                                            '/transaction/${entry.$2.id}',
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
+                        },
                       );
                     },
                   ),
@@ -1667,3 +1683,30 @@ class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
     );
   }
 }
+
+sealed class _HistoryEntry {}
+
+class _MonthHeaderEntry extends _HistoryEntry {
+  _MonthHeaderEntry({
+    required this.monthStr,
+    required this.balanceStr,
+    required this.flowStr,
+    required this.isFirst,
+  });
+
+  final String monthStr;
+  final String balanceStr;
+  final String flowStr;
+  final bool isFirst;
+}
+
+class _DayGroupEntry extends _HistoryEntry {
+  _DayGroupEntry({
+    required this.dayLabel,
+    required this.transactions,
+  });
+
+  final String dayLabel;
+  final List<TransactionRecord> transactions;
+}
+

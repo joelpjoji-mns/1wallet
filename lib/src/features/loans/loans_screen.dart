@@ -1768,7 +1768,8 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                 bottom: 8.0,
                 right: 16.0,
               ),
-              child: LineChart(
+              child: RepaintBoundary(
+                child: LineChart(
                 LineChartData(
                   minY: _currentMinY,
                   maxY: _currentMaxY,
@@ -1987,6 +1988,7 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
               ),
             ),
           ),
+        ),
         ),
         Positioned(
           right: 6,
@@ -2254,7 +2256,8 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
                 bottom: 8.0,
                 right: 16.0,
               ),
-              child: BarChart(
+              child: RepaintBoundary(
+                child: BarChart(
                 BarChartData(
                   minY: _currentMinY,
                   maxY: _currentMaxY,
@@ -2332,6 +2335,7 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
               ),
             ),
           ),
+        ),
         ),
         Row(
           children: [

@@ -834,7 +834,8 @@ class _BalanceTrendHomeWidgetState
                 padding: const EdgeInsets.only(right: 16.0, top: 16.0),
                 child: SizedBox(
                   height: _chartHeight,
-                  child: LineChart(
+                  child: RepaintBoundary(
+                    child: LineChart(
                     LineChartData(
                       clipData: FlClipData.all(),
                       gridData: FlGridData(
@@ -1090,6 +1091,7 @@ class _BalanceTrendHomeWidgetState
                     ),
                   ),
                 ),
+              ),
               ),
               // Legend row
               Padding(

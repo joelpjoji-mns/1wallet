@@ -17,15 +17,17 @@ class ExchangeRateService {
 
   ExchangeRateService(this._ref);
 
-  Future<void> refreshRatesIfStale() async {
+  Future<void> refreshRatesIfStale({
+    Duration maxAge = const Duration(hours: 1),
+  }) async {
     final state = _ref.read(ledgerProvider);
     bool isStale = false;
 
-    // Check if any API-provided rate is older than 5 minutes
+    // Check if any API-provided rate is older than maxAge (defaults to 1 hour to prevent radio battery churn)
     for (final rate in state.exchangeRates) {
       if (rate.provider != null &&
           DateTime.now().difference(rate.updatedAt ?? rate.asOfDate) >
-              const Duration(minutes: 5)) {
+              maxAge) {
         isStale = true;
         break;
       }

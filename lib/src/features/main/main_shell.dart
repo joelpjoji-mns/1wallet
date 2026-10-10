@@ -38,31 +38,6 @@ class _MainShellState extends ConsumerState<MainShell>
   late final PageController _pageController;
   final ValueNotifier<int> _selectedIndex = ValueNotifier(0);
 
-  static const _tabs = [
-    IslandTabItem(
-      title: 'Home',
-      icon: Icons.home_outlined,
-      activeIcon: Icons.home_rounded,
-    ),
-    IslandTabItem(
-      title: 'History',
-      icon: Icons.receipt_long_outlined,
-      activeIcon: Icons.receipt_long_rounded,
-      pageIndex: 1,
-    ),
-    IslandTabItem(
-      title: 'Calendar',
-      icon: Icons.calendar_month_outlined,
-      activeIcon: Icons.calendar_month_rounded,
-      pageIndex: 2,
-    ),
-    IslandTabItem(
-      title: 'Accounts',
-      icon: Icons.wallet_outlined,
-      activeIcon: Icons.wallet_rounded,
-      pageIndex: 3,
-    ),
-  ];
 
   @override
   void initState() {
@@ -129,8 +104,9 @@ class _MainShellState extends ConsumerState<MainShell>
       child: ValueListenableBuilder<int>(
         valueListenable: _selectedIndex,
         builder: (context, selectedIndex, child) {
-          final state = ref.watch(ledgerProvider);
-          final dueCardCount = creditCardsDueSoonCount(state);
+          final dueCardCount = ref.watch(
+            ledgerProvider.select((state) => creditCardsDueSoonCount(state)),
+          );
 
           final tabs = [
             const IslandTabItem(
@@ -214,12 +190,14 @@ class _MainShellState extends ConsumerState<MainShell>
                 left: 0,
                 right: 0,
                 bottom: 0,
-                child: BottomIslandNavBar(
-                  items: tabs,
-                  selectedIndex: selectedIndex,
-                  onSelected: _selectTab,
-                  action: showAction ? action : null,
-                  compactAction: selectedIndex == 2,
+                child: RepaintBoundary(
+                  child: BottomIslandNavBar(
+                    items: tabs,
+                    selectedIndex: selectedIndex,
+                    onSelected: _selectTab,
+                    action: showAction ? action : null,
+                    compactAction: selectedIndex == 2,
+                  ),
                 ),
               ),
             ],

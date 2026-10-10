@@ -27,7 +27,7 @@ class UpdatesScreen extends ConsumerWidget {
             icon: Icons.refresh_rounded,
             onPressed: state.status == UpdateStatus.checking
                 ? null
-                : () => provider.checkForUpdates(),
+                : () => provider.checkForUpdates(force: true),
             semanticLabel: 'Check for updates',
           ),
         ),

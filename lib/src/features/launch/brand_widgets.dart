@@ -183,19 +183,18 @@ class _LaunchBackdropState extends State<LaunchBackdrop>
     final isDark = theme.brightness == Brightness.dark;
     final bg = isDark ? const Color(0xFF000000) : const Color(0xFFF0F4F8);
 
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        final t = _controller.value;
-        final xOffset1 = 50 * math.sin(t * math.pi * 2);
-        final yOffset1 = 50 * math.cos(t * math.pi * 2);
+    final background = RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          final t = _controller.value;
+          final xOffset1 = 50 * math.sin(t * math.pi * 2);
+          final yOffset1 = 50 * math.cos(t * math.pi * 2);
 
-        final xOffset2 = -40 * math.cos(t * math.pi * 2);
-        final yOffset2 = 60 * math.sin(t * math.pi * 2);
+          final xOffset2 = -40 * math.cos(t * math.pi * 2);
+          final yOffset2 = 60 * math.sin(t * math.pi * 2);
 
-        return Container(
-          color: bg,
-          child: Stack(
+          return Stack(
             children: [
               Positioned(
                 top: -100 + yOffset1,
@@ -228,14 +227,23 @@ class _LaunchBackdropState extends State<LaunchBackdrop>
               Positioned.fill(
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
-                  child: Container(color: Colors.transparent),
+                  child: const SizedBox.expand(),
                 ),
               ),
-              if (widget.child != null) widget.child!,
             ],
-          ),
-        );
-      },
+          );
+        },
+      ),
+    );
+
+    return Container(
+      color: bg,
+      child: Stack(
+        children: [
+          Positioned.fill(child: background),
+          if (widget.child != null) widget.child!,
+        ],
+      ),
     );
   }
 }

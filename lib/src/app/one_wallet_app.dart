@@ -107,6 +107,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
 
   void _onStateChanged(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      ref.read(ledgerProvider.notifier).resumeSpoolPolling();
       // If there's a pending navigation route (e.g. tapping the auto-capture
       // notification), _processPendingSpoolThenPush already handles spool
       // processing + navigation atomically. Only fire background processing
@@ -118,6 +119,10 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
       ref
           .read(cloudSyncControllerProvider.notifier)
           .checkAndTriggerSync(fromResume: true);
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.inactive) {
+      ref.read(ledgerProvider.notifier).pauseSpoolPolling();
     }
   }
 
