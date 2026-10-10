@@ -61,6 +61,7 @@ dependencies:
   crypto: ^3.0.6
   flutter_colorpicker: ^1.1.0
   archive: ^4.0.9
+  syncfusion_flutter_pdf: ^28.1.33
   timezone: ^0.11.0
   flutter_timezone: ^5.1.0
   web: ^1.1.1

@@ -1,8 +1,12 @@
+import 'dart:convert';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:one_wallet_flutter/src/capture/capture_pipeline.dart';
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
+import 'package:one_wallet_flutter/src/features/capture/capture_diagnostics.dart';
+import 'package:one_wallet_flutter/src/features/capture/sms_inbox_reader.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -146,4 +150,99 @@ void main() {
       expect(preview.duplicateOfType, 'transaction');
     },
   );
+
+  test(
+    'importNotificationsBatchDetailed scans multiple notifications and queues valid ones with source notification',
+    () async {
+      final controller = await controllerWithAccount();
+      addTearDown(controller.dispose);
+
+      final now = DateTime.now();
+      final batch = [
+        (
+          text: 'Google Pay: Paid INR 250.00 to Starbucks on UPI',
+          receivedAt: now,
+          sender: 'Google Pay',
+        ),
+        (
+          text: 'Daily horoscope: today will be a bright and sunny day',
+          receivedAt: now,
+          sender: 'Daily News',
+        ),
+        (
+          text: 'Google Pay: Paid INR 250.00 to Starbucks on UPI',
+          receivedAt: now,
+          sender: 'Google Pay',
+        ),
+      ];
+
+      final results = await controller.importNotificationsBatchDetailed(batch);
+      expect(results, hasLength(3));
+
+      // 1st is queued
+      expect(results[0].queued, isTrue);
+      expect(results[0].status, CaptureImportStatus.queued);
+      expect(results[0].source, 'notification');
+      expect(results[0].candidate?.merchant, contains('Starbucks'));
+
+      // 2nd is ignored
+      expect(results[1].ignored, isTrue);
+      expect(results[1].status, CaptureImportStatus.ignored);
+
+      // 3rd is duplicate of the queued candidate
+      expect(results[2].duplicate, isTrue);
+      expect(results[2].status, CaptureImportStatus.duplicate);
+
+      // Verify only 1 candidate was added to state with source notification
+      expect(controller.state.captureCandidates, hasLength(1));
+      expect(controller.state.captureCandidates.first.source, 'notification');
+
+      // Verify diagnostics recorded
+      final events = await CaptureDiagnostics.recentEvents();
+      final scanEvents = events.where((e) => e.stage == 'scan-notification').toList();
+      expect(scanEvents, hasLength(3));
+    },
+  );
+
+  test('readActiveAndroidNotifications invokes method channel and parses notifications', () async {
+    const channel = MethodChannel('com.joelpjoji.one.wallet/sms');
+    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      if (call.method == 'readActiveNotifications') {
+        return jsonEncode([
+          {
+            'id': 'sbn_1',
+            'packageName': 'com.google.android.apps.nbu.paisa.user',
+            'appName': 'Google Pay',
+            'title': 'Paid to Starbucks',
+            'text': 'INR 250.00 debited from bank account',
+            'bigText': 'Ref no 123456789',
+            'body': 'Paid to Starbucks INR 250.00 debited from bank account',
+            'date': 1700000000000,
+          },
+          {
+            'id': 'sbn_2',
+            'packageName': 'com.whatsapp',
+            'appName': 'WhatsApp',
+            'title': 'Alice',
+            'text': 'See you at 5pm!',
+            'bigText': '',
+            'body': 'Alice See you at 5pm!',
+            'date': 1700000010000,
+          },
+        ]);
+      }
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+
+    final notifications = await readActiveAndroidNotifications();
+    expect(notifications, hasLength(2));
+    expect(notifications[0].id, 'sbn_1');
+    expect(notifications[0].appName, 'Google Pay');
+    expect(notifications[0].packageName, 'com.google.android.apps.nbu.paisa.user');
+    expect(notifications[0].body, 'Paid to Starbucks INR 250.00 debited from bank account');
+    expect(notifications[1].appName, 'WhatsApp');
+  });
 }

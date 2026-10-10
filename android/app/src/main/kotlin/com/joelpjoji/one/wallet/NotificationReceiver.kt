@@ -16,8 +16,29 @@ class NotificationReceiver : NotificationListenerService() {
         // spool growth while surfacing drops as diagnostics instead of
         // silently discarding queued captures.
         private const val MAX_SPOOL_ENTRIES = 500
+
+        @Volatile
+        var instance: NotificationReceiver? = null
     }
 
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        instance = this
+    }
+
+    override fun onListenerDisconnected() {
+        super.onListenerDisconnected()
+        if (instance == this) {
+            instance = null
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (instance == this) {
+            instance = null
+        }
+    }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         if (sbn == null) return

@@ -17,7 +17,10 @@ import android.provider.Settings
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.drawable.Drawable
+import android.app.Notification
+import android.content.ComponentName
+import android.os.Build
+import android.service.notification.NotificationListenerService
 import java.io.ByteArrayOutputStream
 
 class MainActivity : FlutterFragmentActivity() {
@@ -132,6 +135,91 @@ class MainActivity : FlutterFragmentActivity() {
 					val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
 					startActivity(intent)
 					result.success(true)
+				}
+				"readActiveNotifications" -> {
+					try {
+						val hasPermission = NotificationManagerCompat.getEnabledListenerPackages(this@MainActivity).contains(packageName)
+						if (!hasPermission) {
+							result.error("PERMISSION_DENIED", "Notification access permission not granted", null)
+							return@setMethodCallHandler
+						}
+
+						var instance = NotificationReceiver.instance
+						if (instance == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+							try {
+								NotificationListenerService.requestRebind(
+									ComponentName(this@MainActivity, NotificationReceiver::class.java)
+								)
+								var waited = 0
+								while (NotificationReceiver.instance == null && waited < 400) {
+									Thread.sleep(50)
+									waited += 50
+								}
+								instance = NotificationReceiver.instance
+							} catch (_: Exception) {
+							}
+						}
+
+						if (instance == null) {
+							result.error("SERVICE_UNAVAILABLE", "Notification listener service not connected. Please ensure Notification Access is enabled.", null)
+							return@setMethodCallHandler
+						}
+
+						val requestedPackages = call.argument<List<String>>("packageNames")?.map { it.lowercase() }?.toSet()
+						val sbns = instance.activeNotifications ?: emptyArray()
+						val jsonArray = JSONArray()
+						val pm = packageManager
+
+						for (sbn in sbns) {
+							if (sbn == null) continue
+							val pkg = sbn.packageName ?: continue
+							if (pkg == packageName) continue
+
+							if (requestedPackages != null && requestedPackages.isNotEmpty()) {
+								if (!requestedPackages.contains(pkg.lowercase())) {
+									continue
+								}
+							}
+
+							val extras = sbn.notification?.extras
+							val title = extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
+							val text = extras?.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
+							val bigText = extras?.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString() ?: ""
+							val subText = extras?.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString() ?: ""
+
+							val combinedText = "$title $text $bigText".trim()
+							if (combinedText.isEmpty()) continue
+
+							val appName = try {
+								val appInfo = pm.getApplicationInfo(pkg, 0)
+								pm.getApplicationLabel(appInfo).toString()
+							} catch (_: Exception) {
+								pkg
+							}
+
+							val postTime = if (sbn.postTime > 0) {
+								sbn.postTime
+							} else {
+								val nWhen = sbn.notification?.`when` ?: 0L
+								if (nWhen > 0) nWhen else System.currentTimeMillis()
+							}
+
+							val obj = JSONObject()
+							obj.put("id", sbn.key ?: "${pkg}_${sbn.id}_${postTime}")
+							obj.put("packageName", pkg)
+							obj.put("appName", appName)
+							obj.put("title", title)
+							obj.put("text", text)
+							obj.put("bigText", bigText)
+							obj.put("subText", subText)
+							obj.put("body", combinedText)
+							obj.put("date", postTime)
+							jsonArray.put(obj)
+						}
+						result.success(jsonArray.toString())
+					} catch (e: Exception) {
+						result.error("ERROR", e.message, null)
+					}
 				}
 				"getInstalledApps" -> {
 					try {

@@ -130,7 +130,16 @@ class NotificationService {
       priority: Priority.high,
       color: await _notificationAccentColor(),
     );
-    final notificationDetails = NotificationDetails(android: androidDetails);
+    const darwinDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    final notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: darwinDetails,
+      macOS: darwinDetails,
+    );
 
     await _notificationsPlugin.show(
       id: 0,
@@ -307,7 +316,16 @@ class NotificationService {
       priority: Priority.high,
       color: await _notificationAccentColor(),
     );
-    final notificationDetails = NotificationDetails(android: androidDetails);
+    const darwinDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    final notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: darwinDetails,
+      macOS: darwinDetails,
+    );
 
     final tzDate = tz.TZDateTime.from(scheduledDate, tz.local);
 
@@ -367,7 +385,16 @@ class NotificationService {
       color: await _notificationAccentColor(),
       styleInformation: BigTextStyleInformation(notification.body),
     );
-    final notificationDetails = NotificationDetails(android: androidDetails);
+    const darwinDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    final notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: darwinDetails,
+      macOS: darwinDetails,
+    );
 
     await _notificationsPlugin.show(
       id: notification.id.hashCode,

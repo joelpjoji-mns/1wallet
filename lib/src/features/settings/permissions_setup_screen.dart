@@ -33,13 +33,21 @@ class _PermissionsSetupScreenState
     setState(() => _requestingAll = true);
     try {
       if (!kIsWeb) {
-        await [
-          Permission.notification,
-          Permission.camera,
-          Permission.photos,
-          Permission.storage,
-          Permission.sms,
-        ].request();
+        if (defaultTargetPlatform == TargetPlatform.android) {
+          await [
+            Permission.notification,
+            Permission.camera,
+            Permission.photos,
+            Permission.storage,
+            Permission.sms,
+          ].request();
+        } else {
+          await [
+            Permission.notification,
+            Permission.camera,
+            Permission.photos,
+          ].request();
+        }
       } else {
         try {
           await Permission.notification.request();
@@ -135,20 +143,24 @@ class _PermissionsSetupScreenState
                         ),
                         child: Column(
                           children: [
-                            _buildPermissionItem(
-                              context,
-                              icon: Icons.sms_rounded,
-                              title: 'Auto-Capture (SMS)',
-                              description:
-                                  'Automatically track expenses from bank messages.',
-                            ),
-                            Divider(
-                              height: 1,
-                              color: scheme.outlineVariant.withValues(
-                                alpha: 0.3,
+                            if (!kIsWeb &&
+                                defaultTargetPlatform ==
+                                    TargetPlatform.android) ...[
+                              _buildPermissionItem(
+                                context,
+                                icon: Icons.sms_rounded,
+                                title: 'Auto-Capture (SMS)',
+                                description:
+                                    'Automatically track expenses from bank messages.',
                               ),
-                              indent: 64,
-                            ),
+                              Divider(
+                                height: 1,
+                                color: scheme.outlineVariant.withValues(
+                                  alpha: 0.3,
+                                ),
+                                indent: 64,
+                              ),
+                            ],
                             _buildPermissionItem(
                               context,
                               icon: Icons.notifications_active_rounded,

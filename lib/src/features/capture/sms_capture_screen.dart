@@ -100,7 +100,22 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // ── Scan existing inbox (kept up top for quick access) ──
-          if (_isAndroid) ...[_scanInboxCard(scheme), const Gap(AppSpacing.lg)],
+          if (_isAndroid) ...[
+            _scanInboxCard(scheme),
+            const Gap(AppSpacing.lg),
+          ] else ...[
+            SectionCard(
+              title: 'Platform availability',
+              subtitle:
+                  'Automatic background SMS capture is supported on Android. On iOS and Web, system privacy restrictions prevent background message reading. You can still test SMS messages below or import bank statements directly.',
+              child: OutlinedButton.icon(
+                onPressed: () => context.push('/sync'),
+                icon: const Icon(Icons.file_upload_outlined),
+                label: const Text('Go to Statement Imports'),
+              ),
+            ),
+            const Gap(AppSpacing.lg),
+          ],
           // ── Master toggle ──
           SectionCard(
             title: 'Automatic capture',

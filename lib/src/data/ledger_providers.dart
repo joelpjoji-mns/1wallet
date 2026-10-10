@@ -1712,6 +1712,19 @@ class LedgerController extends StateNotifier<LedgerState> {
     );
   }
 
+  CaptureImportResult previewNotificationMessage(
+    String rawText, {
+    DateTime? receivedAt,
+  }) {
+    return _evaluateCaptureMessage(
+      rawText: rawText,
+      source: 'notification',
+      triggerWords: state.preferences.notificationTriggerWords,
+      ignoreWords: state.preferences.notificationIgnoreWords,
+      receivedAt: receivedAt,
+    );
+  }
+
   Future<CaptureCandidate?> importSmsMessage(
     String rawText, {
     DateTime? receivedAt,
@@ -1976,6 +1989,53 @@ class LedgerController extends StateNotifier<LedgerState> {
     List<({String text, DateTime receivedAt})> messages,
   ) async {
     final results = await importSmsMessagesBatchDetailed(messages);
+    return results
+        .where((result) => result.queued)
+        .map((result) => result.candidate)
+        .whereType<CaptureCandidate>()
+        .toList();
+  }
+
+  Future<List<CaptureImportResult>> importNotificationsBatchDetailed(
+    List<({String text, DateTime receivedAt, String? sender})> notifications,
+  ) async {
+    final results = <CaptureImportResult>[];
+    final newCandidates = <CaptureCandidate>[];
+
+    for (final notification in notifications) {
+      final result = _evaluateCaptureMessage(
+        rawText: notification.text,
+        source: 'notification',
+        triggerWords: state.preferences.notificationTriggerWords,
+        ignoreWords: state.preferences.notificationIgnoreWords,
+        receivedAt: notification.receivedAt,
+        additionalCandidates: newCandidates,
+      );
+      if (result.queued && result.candidate != null) {
+        newCandidates.add(result.candidate!);
+      }
+      results.add(result);
+      await CaptureDiagnostics.recordResult(
+        stage: 'scan-notification',
+        result: result,
+      );
+    }
+
+    if (newCandidates.isNotEmpty) {
+      await _commit(
+        state.copyWith(
+          captureCandidates: [...newCandidates, ...state.captureCandidates],
+        ),
+      );
+    }
+
+    return results;
+  }
+
+  Future<List<CaptureCandidate>> importNotificationsBatch(
+    List<({String text, DateTime receivedAt, String? sender})> notifications,
+  ) async {
+    final results = await importNotificationsBatchDetailed(notifications);
     return results
         .where((result) => result.queued)
         .map((result) => result.candidate)
