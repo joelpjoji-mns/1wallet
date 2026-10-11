@@ -109,9 +109,9 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
               subtitle:
                   'Automatic background SMS capture is supported on Android. On iOS and Web, system privacy restrictions prevent background message reading. You can still test SMS messages below or import bank statements directly.',
               child: OutlinedButton.icon(
-                onPressed: () => context.push('/sync'),
-                icon: const Icon(Icons.file_upload_outlined),
-                label: const Text('Go to Statement Imports'),
+                onPressed: () => context.push('/import-statement'),
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                label: const Text('Import Bank Statement'),
               ),
             ),
             const Gap(AppSpacing.lg),

@@ -103,9 +103,9 @@ class _NotificationCaptureScreenState
               subtitle:
                   'Automatic notification listener is supported on Android. On iOS and Web, system security prevents reading notifications from other apps. You can test notification formats using the tester below or import bank statements directly.',
               child: OutlinedButton.icon(
-                onPressed: () => context.push('/sync'),
-                icon: const Icon(Icons.file_upload_outlined),
-                label: const Text('Go to Statement Imports'),
+                onPressed: () => context.push('/import-statement'),
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                label: const Text('Import Bank Statement'),
               ),
             ),
             const Gap(AppSpacing.lg),

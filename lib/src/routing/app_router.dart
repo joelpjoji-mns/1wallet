@@ -239,6 +239,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/imports', redirect: (context, state) => '/sync'),
       GoRoute(
+        path: '/import-statement',
+        builder: (context, state) =>
+            const AppGlassPage(child: ImportStatementScreen()),
+      ),
+      GoRoute(
         path: '/imports/:id',
         builder: (context, state) => AppGlassPage(
           child: ImportBatchDetailScreen(

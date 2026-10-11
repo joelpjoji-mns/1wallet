@@ -553,10 +553,10 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
           const Gap(AppSpacing.lg),
 
           PremiumRow(
-            icon: Icons.backup_outlined,
-            title: 'Local File Backup',
-            subtitle: 'Export or restore a checksum-protected ledger archive',
-            onTap: () => context.push('/data-backup'),
+            icon: Icons.picture_as_pdf_outlined,
+            title: 'Import Bank Statement (PDF)',
+            subtitle: 'Extract and import transactions from bank statement PDFs',
+            onTap: () => context.push('/import-statement'),
           ),
           const SizedBox(height: AppSpacing.sm),
           PremiumRow(
@@ -565,6 +565,13 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
             subtitle: 'Confirm, edit, or dismiss imported capture candidates',
             meta: pending == 0 ? null : '$pending',
             onTap: () => context.push('/review'),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          PremiumRow(
+            icon: Icons.backup_outlined,
+            title: 'Local File Backup',
+            subtitle: 'Export or restore a checksum-protected ledger archive',
+            onTap: () => context.push('/data-backup'),
           ),
           const Gap(AppSpacing.lg),
           SectionCard(
