@@ -9,7 +9,6 @@ import 'package:intl/intl.dart';
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
-import '../../imports/bank_profiles.dart';
 import '../../imports/pdf_text_extractor.dart';
 import '../../imports/statement_parser.dart';
 import '../../imports/wallet_csv_parser.dart' show ParsedWalletCsvRow;
@@ -35,10 +34,11 @@ class _ImportStatementScreenState
 
   // Parse results
   StatementParseResult? _result;
-  BankProfile? _selectedProfile;
   String? _selectedAccountId;
+  String? _selectedCurrency;
+  bool _showRawText = false;
 
-  // Raw text for re-parsing with different profile
+  // Raw text for re-parsing
   String? _rawText;
 
   @override
@@ -66,8 +66,8 @@ class _ImportStatementScreenState
         SectionCard(
           title: 'Import from PDF',
           subtitle:
-              'Pick a bank statement PDF to extract transactions. '
-              'Supports SBI, HDFC, ICICI, Axis, Kotak, PNB, and other Indian banks.',
+              'Select any bank or credit card PDF statement. '
+              'The smart self-recovering parser automatically extracts transactions, dates, amounts, and currency.',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -81,7 +81,7 @@ class _ImportStatementScreenState
                 const Center(child: CircularProgressIndicator()),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  'Extracting text from PDF…',
+                  'Reading and self-recovering statement…',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall,
                 ),
@@ -101,36 +101,53 @@ class _ImportStatementScreenState
         ],
         const SizedBox(height: AppSpacing.lg),
         SectionCard(
-          title: 'Supported banks',
+          title: 'Universal bank & card support',
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final profile in allBankProfiles
-                  .where((p) => p.id != 'generic_in'))
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.account_balance_outlined,
-                        size: 16,
-                        color: theme.colorScheme.primary,
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Text(profile.name, style: theme.textTheme.bodyMedium),
-                    ],
-                  ),
-                ),
-              Padding(
-                padding: const EdgeInsets.only(top: AppSpacing.xs),
-                child: Text(
-                  'Other banks with standard statement formats may also work.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                ),
+              _buildFeatureRow(
+                theme,
+                Icons.check_circle_outline,
+                'Multi-strategy parser handles any bank or credit card layout',
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              _buildFeatureRow(
+                theme,
+                Icons.currency_exchange_outlined,
+                'Auto-detects currencies (₹ INR, \$ USD, € EUR, £ GBP, etc.)',
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              _buildFeatureRow(
+                theme,
+                Icons.lock_open_outlined,
+                'Supports password-protected e-statements with smart password hints',
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              _buildFeatureRow(
+                theme,
+                Icons.auto_fix_high_outlined,
+                'Self-recovers from wrapped lines, token headers, and card tables',
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              _buildFeatureRow(
+                theme,
+                Icons.security_outlined,
+                '100% private & processed on-device (no financial data leaves your phone)',
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFeatureRow(ThemeData theme, IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: theme.colorScheme.primary),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Text(text, style: theme.textTheme.bodyMedium),
         ),
       ],
     );
@@ -144,136 +161,172 @@ class _ImportStatementScreenState
     final state = ref.watch(ledgerProvider);
     final accounts = state.accounts;
 
-    // Default to first account if none selected.
     final effectiveAccountId =
         _selectedAccountId ?? (accounts.isNotEmpty ? accounts.first.id : null);
+    final effectiveCurrency = _selectedCurrency ?? result.detectedCurrency;
+
+    final title = result.bankName != null
+        ? '${result.bankName} Statement'
+        : 'Bank Statement';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Summary card
         SectionCard(
-          title: 'Detected: ${result.profile.name}',
+          title: title,
           subtitle: _fileName,
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: MetricTile(
-                  label: 'Parsed',
-                  value: '${result.rows.length}',
-                  icon: Icons.check_circle_outline,
-                  compact: true,
-                  tone: result.rows.isNotEmpty
-                      ? MetricTone.positive
-                      : MetricTone.warning,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: MetricTile(
-                  label: 'Skipped',
-                  value: '${result.skippedLines}',
-                  icon: Icons.skip_next_outlined,
-                  compact: true,
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: AppSpacing.md),
-
-        // Bank profile override
-        SectionCard(
-          title: 'Bank profile',
-          child: DropdownButtonFormField<String>(
-            initialValue: _selectedProfile?.id ?? result.profile.id,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
-            ),
-            items: [
-              for (final profile in allBankProfiles)
-                DropdownMenuItem(
-                  value: profile.id,
-                  child: Text(profile.name),
-                ),
-            ],
-            onChanged: (value) async {
-              if (value == null || _rawText == null) return;
-              final newProfile = allBankProfiles.firstWhere(
-                (p) => p.id == value,
-              );
-              final accName =
-                  _getAccountName(accounts, effectiveAccountId ?? '');
-              final reResult = await compute(
-                _runStatementParser,
-                (
-                  fullText: _rawText!,
-                  profile: newProfile,
-                  accountName: accName,
-                ),
-              );
-              if (!mounted) return;
-              setState(() {
-                _selectedProfile = newProfile;
-                _result = reResult;
-              });
-            },
-          ),
-        ),
-
-        const SizedBox(height: AppSpacing.md),
-
-        // Target account selector
-        if (accounts.isNotEmpty)
-          SectionCard(
-            title: 'Import to account',
-            child: DropdownButtonFormField<String>(
-              initialValue: effectiveAccountId,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: AppSpacing.sm,
-                ),
-              ),
-              items: [
-                for (final account in accounts)
-                  DropdownMenuItem(
-                    value: account.id,
-                    child: Text(account.name),
+              Row(
+                children: [
+                  Expanded(
+                    child: MetricTile(
+                      label: 'Parsed',
+                      value: '${result.rows.length}',
+                      icon: Icons.check_circle_outline,
+                      compact: true,
+                      tone: result.rows.isNotEmpty
+                          ? MetricTone.positive
+                          : MetricTone.warning,
+                    ),
                   ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: MetricTile(
+                      label: 'Currency',
+                      value: effectiveCurrency,
+                      icon: Icons.payments_outlined,
+                      compact: true,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: MetricTile(
+                      label: 'Skipped',
+                      value: '${result.skippedLines}',
+                      icon: Icons.skip_next_outlined,
+                      compact: true,
+                    ),
+                  ),
+                ],
+              ),
+              if (result.rows.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  children: [
+                    Icon(Icons.auto_mode_outlined, size: 14, color: theme.colorScheme.primary),
+                    const SizedBox(width: AppSpacing.xs),
+                    Text(
+                      'Parsed using ${result.strategy.label}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
               ],
-              onChanged: (value) {
-                if (value == null) return;
-                setState(() => _selectedAccountId = value);
-              },
-            ),
+            ],
           ),
+        ),
 
         const SizedBox(height: AppSpacing.md),
 
-        // Transaction preview list
+        // Target Account & Currency Configuration Card
+        SectionCard(
+          title: 'Import settings',
+          child: Column(
+            children: [
+              if (accounts.isNotEmpty)
+                DropdownButtonFormField<String>(
+                  initialValue: effectiveAccountId,
+                  decoration: const InputDecoration(
+                    labelText: 'Target Account',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.sm,
+                    ),
+                  ),
+                  items: [
+                    for (final account in accounts)
+                      DropdownMenuItem(
+                        value: account.id,
+                        child: Text('${account.name} (${account.currency})'),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _selectedAccountId = value);
+                  },
+                ),
+              const SizedBox(height: AppSpacing.sm),
+              DropdownButtonFormField<String>(
+                initialValue: effectiveCurrency,
+                decoration: const InputDecoration(
+                  labelText: 'Currency',
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm,
+                  ),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'INR', child: Text('INR (₹)')),
+                  DropdownMenuItem(value: 'USD', child: Text('USD (\$)')),
+                  DropdownMenuItem(value: 'EUR', child: Text('EUR (€)')),
+                  DropdownMenuItem(value: 'GBP', child: Text('GBP (£)')),
+                  DropdownMenuItem(value: 'CAD', child: Text('CAD (\$)')),
+                  DropdownMenuItem(value: 'AUD', child: Text('AUD (\$)')),
+                  DropdownMenuItem(value: 'SGD', child: Text('SGD (\$)')),
+                  DropdownMenuItem(value: 'AED', child: Text('AED (د.إ)')),
+                ],
+                onChanged: (value) {
+                  if (value == null || value == effectiveCurrency) return;
+                  setState(() => _selectedCurrency = value);
+                  _reParseWithCurrency(value, effectiveAccountId);
+                },
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: AppSpacing.md),
+
+        // Transaction preview list or Diagnostic report
         SectionCard(
           title: 'Transactions preview',
           subtitle: '${result.rows.length} transactions found',
           child: result.rows.isEmpty
-              ? const EmptyState(
-                  icon: Icons.search_off_outlined,
-                  title: 'No transactions found',
-                  body:
-                      'Try selecting a different bank profile, or the statement format may not be supported yet.',
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    EmptyState(
+                      icon: Icons.search_off_outlined,
+                      title: 'No transactions found',
+                      body: result.diagnostics ??
+                          'The statement text could not be parsed into transactions.',
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    OutlinedButton.icon(
+                      onPressed: _busy
+                          ? null
+                          : () => _reParseRelaxed(effectiveCurrency, effectiveAccountId),
+                      icon: const Icon(Icons.refresh_outlined),
+                      label: const Text('Try Relaxed Scanner Mode'),
+                    ),
+                  ],
                 )
               : Column(
                   children: [
                     for (var i = 0;
                         i < result.rows.length && i < 50;
                         i++) ...[
-                      _TransactionPreviewTile(row: result.rows[i]),
+                      _TransactionPreviewTile(
+                        row: result.rows[i],
+                        currency: effectiveCurrency,
+                      ),
                       if (i < result.rows.length - 1 && i < 49)
                         const Divider(height: 1),
                     ],
@@ -292,6 +345,34 @@ class _ImportStatementScreenState
                 ),
         ),
 
+        const SizedBox(height: AppSpacing.md),
+
+        // Optional Raw Text Debug Viewer
+        if (_rawText != null)
+          OutlinedButton.icon(
+            onPressed: () => setState(() => _showRawText = !_showRawText),
+            icon: Icon(_showRawText ? Icons.visibility_off : Icons.visibility),
+            label: Text(_showRawText ? 'Hide extracted text' : 'View extracted PDF text'),
+          ),
+
+        if (_showRawText && _rawText != null) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Container(
+            height: 200,
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: SingleChildScrollView(
+              child: SelectableText(
+                _rawText!,
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+              ),
+            ),
+          ),
+        ],
+
         const SizedBox(height: AppSpacing.lg),
 
         // Action buttons
@@ -307,7 +388,8 @@ class _ImportStatementScreenState
                           _rawText = null;
                           _error = null;
                           _fileName = null;
-                          _selectedProfile = null;
+                          _selectedCurrency = null;
+                          _showRawText = false;
                         }),
                 child: const Text('Back'),
               ),
@@ -317,7 +399,7 @@ class _ImportStatementScreenState
               child: FilledButton.icon(
                 onPressed: _busy || result.rows.isEmpty
                     ? null
-                    : () => _confirmImport(effectiveAccountId),
+                    : () => _confirmImport(effectiveAccountId, effectiveCurrency),
                 icon: const Icon(Icons.file_download_done_outlined),
                 label: Text('Import ${result.rows.length}'),
               ),
@@ -357,7 +439,7 @@ class _ImportStatementScreenState
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'You can undo this import from the Sync screen by rolling back the import batch.',
+            'You can undo this import from the Data & Sync screen by rolling back the import batch.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
@@ -374,7 +456,8 @@ class _ImportStatementScreenState
                     _rawText = null;
                     _error = null;
                     _fileName = null;
-                    _selectedProfile = null;
+                    _selectedCurrency = null;
+                    _showRawText = false;
                   }),
                   icon: const Icon(Icons.add),
                   label: const Text('Import another'),
@@ -430,16 +513,43 @@ class _ImportStatementScreenState
         throw Exception('The selected PDF file is empty.');
       }
 
-      // Extract text from PDF in a background isolate to keep UI responsive.
-      final rawText = await compute(extractAllTextFromPdf, bytes);
+      // Extract text from PDF, prompting for password if protected.
+      String rawText = '';
+      String? password;
+      var unlocked = false;
+
+      while (!unlocked) {
+        try {
+          rawText = await compute(
+            _runPdfExtractor,
+            (bytes: bytes, password: password),
+          );
+          unlocked = true;
+        } catch (e) {
+          final errStr = e.toString().toLowerCase();
+          if (errStr.contains('password') || errStr.contains('encrypted')) {
+            if (!mounted) return;
+            final enteredPassword = await _showPasswordDialog(
+              isRetry: password != null,
+            );
+            if (enteredPassword == null || enteredPassword.isEmpty) {
+              setState(() => _busy = false);
+              return;
+            }
+            password = enteredPassword;
+          } else {
+            rethrow;
+          }
+        }
+      }
+
       if (rawText.trim().isEmpty) {
         throw Exception(
           'No readable text found in this PDF. '
-          'Scanned/image-based PDFs are not currently supported.',
+          'Scanned image-based PDFs without selectable text are not supported.',
         );
       }
 
-      // Parse with auto-detected profile in a background isolate.
       final state = ref.read(ledgerProvider);
       final accounts = state.accounts;
       final accountName = accounts.isNotEmpty ? accounts.first.name : '';
@@ -448,8 +558,9 @@ class _ImportStatementScreenState
         _runStatementParser,
         (
           fullText: rawText,
-          profile: null,
           accountName: accountName,
+          currency: null,
+          forceRelaxed: false,
         ),
       );
 
@@ -459,7 +570,7 @@ class _ImportStatementScreenState
         _rawText = rawText;
         _fileName = file.name;
         _result = parseResult;
-        _selectedProfile = parseResult.profile;
+        _selectedCurrency = parseResult.detectedCurrency;
       });
     } catch (e) {
       setState(() {
@@ -469,7 +580,112 @@ class _ImportStatementScreenState
     }
   }
 
-  Future<void> _confirmImport(String? accountId) async {
+  Future<String?> _showPasswordDialog({bool isRetry = false}) async {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(isRetry ? 'Incorrect password' : 'PDF password required'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isRetry
+                  ? 'The password was incorrect. Please try again:'
+                  : 'This statement is password-protected. Enter the password to unlock:',
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                border: OutlineInputBorder(),
+              ),
+              onSubmitted: (val) => Navigator.of(ctx).pop(val),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text(
+                '💡 Common bank password formats:\n'
+                '• SBI: DOB (DDMMYYYY) + last 5 digits of mobile/A/c\n'
+                '• HDFC: Customer ID (lowercase) or PAN (uppercase)\n'
+                '• ICICI: DOB (DDMM) + last 4 digits of A/c\n'
+                '• Axis: Name (first 4 letters) + last 4 digits of A/c / mobile\n'
+                '• Kotak / PNB / BOB: Account number or DOB',
+                style: TextStyle(fontSize: 11),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(null),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text),
+            child: const Text('Unlock'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _reParseWithCurrency(String currency, String? accountId) async {
+    if (_rawText == null) return;
+    final state = ref.read(ledgerProvider);
+    final accountName = _getAccountName(state.accounts, accountId ?? '');
+
+    final reResult = await compute(
+      _runStatementParser,
+      (
+        fullText: _rawText!,
+        accountName: accountName,
+        currency: currency,
+        forceRelaxed: false,
+      ),
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _result = reResult;
+    });
+  }
+
+  Future<void> _reParseRelaxed(String currency, String? accountId) async {
+    if (_rawText == null) return;
+    setState(() => _busy = true);
+
+    final state = ref.read(ledgerProvider);
+    final accountName = _getAccountName(state.accounts, accountId ?? '');
+
+    final reResult = await compute(
+      _runStatementParser,
+      (
+        fullText: _rawText!,
+        accountName: accountName,
+        currency: currency,
+        forceRelaxed: true,
+      ),
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _result = reResult;
+    });
+  }
+
+  Future<void> _confirmImport(String? accountId, String currency) async {
     final result = _result;
     if (result == null || result.rows.isEmpty) return;
 
@@ -482,12 +698,14 @@ class _ImportStatementScreenState
     final effectiveAccountId = accountId ?? state.accounts.first.id;
     final accountName = _getAccountName(state.accounts, effectiveAccountId);
 
-    // Re-map rows with the selected account name.
     final rows = result.rows
         .map((row) => ParsedWalletCsvRow(
               rowNumber: row.rowNumber,
               accountName: accountName,
-              amount: row.amount,
+              amount: Money(
+                amountMinor: row.amount.amountMinor,
+                currency: currency,
+              ),
               type: row.type,
               categoryName: row.categoryName,
               notes: row.notes,
@@ -538,9 +756,13 @@ class _ImportStatementScreenState
 // ── Preview Row Widget ──
 
 class _TransactionPreviewTile extends StatelessWidget {
-  const _TransactionPreviewTile({required this.row});
+  const _TransactionPreviewTile({
+    required this.row,
+    required this.currency,
+  });
 
   final ParsedWalletCsvRow row;
+  final String currency;
 
   @override
   Widget build(BuildContext context) {
@@ -551,7 +773,7 @@ class _TransactionPreviewTile extends StatelessWidget {
         ? theme.colorScheme.error
         : theme.colorScheme.primary;
 
-    final amountStr = _formatAmount(row.amount);
+    final amountStr = _formatAmount(row.amount.amountMinor, currency);
     final dateStr = row.occurredAt != null
         ? DateFormat('dd MMM yyyy').format(row.occurredAt!)
         : '—';
@@ -602,17 +824,17 @@ class _TransactionPreviewTile extends StatelessWidget {
     );
   }
 
-  String _formatAmount(Money amount) {
-    final major = amount.amountMinor / 100;
+  String _formatAmount(int minor, String curr) {
+    final major = minor / 100;
     final formatter = NumberFormat.currency(
-      symbol: _currencySymbol(amount.currency),
+      symbol: _currencySymbol(curr),
       decimalDigits: 2,
     );
     return formatter.format(major);
   }
 
-  String _currencySymbol(String currency) {
-    switch (currency.toUpperCase()) {
+  String _currencySymbol(String curr) {
+    switch (curr.toUpperCase()) {
       case 'INR':
         return '₹';
       case 'USD':
@@ -621,18 +843,25 @@ class _TransactionPreviewTile extends StatelessWidget {
         return '€';
       case 'GBP':
         return '£';
+      case 'AED':
+        return 'د.إ';
       default:
-        return currency;
+        return '$curr ';
     }
   }
 }
 
+String _runPdfExtractor(({Uint8List bytes, String? password}) args) {
+  return extractAllTextFromPdf(args.bytes, password: args.password);
+}
+
 StatementParseResult _runStatementParser(
-  ({String fullText, BankProfile? profile, String accountName}) args,
+  ({String fullText, String accountName, String? currency, bool? forceRelaxed}) args,
 ) {
   return parseStatement(
     args.fullText,
-    profile: args.profile,
     accountName: args.accountName,
+    defaultCurrency: args.currency,
+    forceRelaxedMode: args.forceRelaxed ?? false,
   );
 }

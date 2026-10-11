@@ -4,10 +4,12 @@ import 'package:syncfusion_flutter_pdf/pdf.dart';
 
 /// Extracts all text from a PDF file's bytes, page by page.
 ///
-/// Returns a list of strings, one per page. Pages whose text extraction
-/// fails silently return an empty string for that page.
-List<String> extractTextFromPdf(Uint8List bytes) {
-  final document = PdfDocument(inputBytes: bytes);
+/// If [password] is provided, attempts to open the encrypted PDF with it.
+/// Throws if the document is password-protected and no or invalid password is provided.
+List<String> extractTextFromPdf(Uint8List bytes, {String? password}) {
+  final document = password != null && password.isNotEmpty
+      ? PdfDocument(inputBytes: bytes, password: password)
+      : PdfDocument(inputBytes: bytes);
   try {
     final pages = <String>[];
     for (var i = 0; i < document.pages.count; i++) {
@@ -28,6 +30,6 @@ List<String> extractTextFromPdf(Uint8List bytes) {
 }
 
 /// Extracts all text from a PDF as a single combined string.
-String extractAllTextFromPdf(Uint8List bytes) {
-  return extractTextFromPdf(bytes).join('\n');
+String extractAllTextFromPdf(Uint8List bytes, {String? password}) {
+  return extractTextFromPdf(bytes, password: password).join('\n');
 }
