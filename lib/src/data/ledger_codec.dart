@@ -50,7 +50,7 @@ Map<String, Object?> _ledgerToJson(LedgerState state) {
 }
 
 LedgerState _ledgerFromJson(Map<String, dynamic> json) {
-  final version = _int(json['version'], fallback: 0);
+  final version = _int(json['version']);
   final ledger = LedgerState(
     version: version,
     userId: _string(json['userId'], fallback: 'local-user'),
@@ -390,7 +390,6 @@ LedgerState _migrateCategoryTaxonomy(
       originalAmount: transaction.originalAmount,
       fxRate: transaction.fxRate,
       originalFxRate: transaction.originalFxRate,
-      categoryId: null,
       occurredAt: transaction.occurredAt,
       locationLabel: transaction.locationLabel,
       paymentMethod: transaction.paymentMethod,
@@ -428,7 +427,6 @@ LedgerState _migrateCategoryTaxonomy(
       merchant: candidate.merchant,
       transactionType: candidate.transactionType,
       suggestedAccountId: candidate.suggestedAccountId,
-      suggestedCategoryId: null,
       suggestedCategoryConfidence: candidate.suggestedCategoryConfidence,
       suggestedCategoryReason: candidate.suggestedCategoryReason,
     );
@@ -447,7 +445,6 @@ LedgerState _migrateCategoryTaxonomy(
       type: rule.type,
       accountId: rule.accountId,
       counterAccountId: rule.counterAccountId,
-      categoryId: null,
       amountMinor: rule.amountMinor,
       currency: rule.currency,
       frequency: rule.frequency,
@@ -524,18 +521,21 @@ LedgerState _migrateCategoryTaxonomy(
   );
 }
 
+final RegExp _nonAlphaNumRegex = RegExp(r'[^a-z0-9]+');
+final RegExp _multiWhitespaceRegex = RegExp(r'\s+');
+
 String _categoryNameKey(String name) {
   return name
       .trim()
       .toLowerCase()
       .replaceAll('&', 'and')
-      .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+      .replaceAll(_nonAlphaNumRegex, ' ')
       .trim()
-      .replaceAll(RegExp(r'\s+'), ' ');
+      .replaceAll(_multiWhitespaceRegex, ' ');
 }
 
 String _crispCategoryName(String name) {
-  final normalized = name.trim().replaceAll(RegExp(r'\s+'), ' ');
+  final normalized = name.trim().replaceAll(_multiWhitespaceRegex, ' ');
   if (normalized.isEmpty) return 'Miscellaneous';
   return normalized[0].toUpperCase() + normalized.substring(1);
 }
@@ -1073,7 +1073,7 @@ TransactionRecord _transactionFromJson(Map<String, dynamic> json) {
     type: _string(json['type'], fallback: 'expense'),
     status: _string(json['status'], fallback: 'cleared'),
     source: _string(json['source'], fallback: 'manual'),
-    accountId: _string(json['accountId'], fallback: ''),
+    accountId: _string(json['accountId']),
     counterAccountId: _nullableString(json['counterAccountId']),
     amount: amount,
     baseAmount: _moneyFromJson(json['baseAmount'], fallback: amount),
@@ -1320,13 +1320,16 @@ Map<String, String> _stringMap(
   return result;
 }
 
+final RegExp _hex6Regex = RegExp(r'^[0-9a-fA-F]{6}$');
+final RegExp _hex8Regex = RegExp(r'^[0-9a-fA-F]{8}$');
+
 Color? _color(Object? value) {
   if (value is String) {
     final normalized = value.trim().replaceFirst('#', '');
-    if (RegExp(r'^[0-9a-fA-F]{6}$').hasMatch(normalized)) {
+    if (_hex6Regex.hasMatch(normalized)) {
       return Color(int.parse('FF$normalized', radix: 16));
     }
-    if (RegExp(r'^[0-9a-fA-F]{8}$').hasMatch(normalized)) {
+    if (_hex8Regex.hasMatch(normalized)) {
       return Color(int.parse(normalized, radix: 16));
     }
   }

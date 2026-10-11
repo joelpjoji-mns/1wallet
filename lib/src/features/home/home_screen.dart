@@ -90,7 +90,6 @@ class HomeScreen extends ConsumerWidget {
           border: Border(
             bottom: BorderSide(
               color: scheme.primary.withValues(alpha: 0.15),
-              width: 1,
             ),
           ),
         ),
@@ -138,7 +137,6 @@ class HomeScreen extends ConsumerWidget {
           border: Border(
             bottom: BorderSide(
               color: scheme.error.withValues(alpha: 0.3),
-              width: 1,
             ),
           ),
         ),

@@ -81,7 +81,6 @@ class _NotificationAppsScreenState
     }
 
     return GlassIsolationScope(
-      isolated: true,
       defaultQuality: GlassQuality.premium,
       child: Scaffold(
         appBar: GlassAppBar(

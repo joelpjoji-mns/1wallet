@@ -1170,6 +1170,7 @@ String accountTypeLabel(String type) => transactionTypeLabel(type);
 
 bool isLiabilityAccount(Account account) {
   return account.type == 'credit_card' ||
+      account.type == 'card' ||
       account.type == 'loan' ||
       account.type == 'overdraft';
 }
@@ -1194,18 +1195,11 @@ Color positiveTone(BuildContext context) {
       : AppColors.positiveLight;
 }
 
-/// Theme-aware warning/amber color for cautionary states.
-Color warningTone(BuildContext context) {
-  return Theme.of(context).brightness == Brightness.dark
-      ? const Color(0xFFE9C46A)
-      : AppColors.warning;
-}
-
 IconData accountIcon(Account account) {
   return switch (account.type) {
     'cash' => Icons.payments_outlined,
     'bank' => Icons.account_balance_outlined,
-    'credit_card' => Icons.credit_card_outlined,
+    'credit_card' || 'card' => Icons.credit_card_outlined,
     'loan' || 'overdraft' => Icons.account_balance_outlined,
     'wallet' => Icons.account_balance_wallet_outlined,
     _ => Icons.wallet_outlined,
@@ -1388,12 +1382,14 @@ IconData categoryIcon(Category? category) {
       : Icons.label_outline_rounded;
 }
 
+final RegExp _nonAlphaNumericRegex = RegExp(r'[^a-z0-9]+');
+
 String _categoryIconKey(Category? category) {
   if (category == null) return '';
   return '${category.id} ${category.name}'
       .toLowerCase()
       .replaceAll('&', 'and')
-      .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+      .replaceAll(_nonAlphaNumericRegex, ' ')
       .trim();
 }
 
@@ -1464,16 +1460,17 @@ AccountLoanDetails effectiveLoanDetails(LedgerState state, Account loan) {
 
 TransactionRecord? existingLoanEmi(LedgerState state, String? loanId) {
   if (loanId == null) return null;
-  final matches =
-      scheduledTransactions(state)
-          .where(
-            (transaction) =>
-                transaction.type == 'loan_repayment' &&
-                transaction.counterAccountId == loanId,
-          )
-          .toList()
-        ..sort((left, right) => left.occurredAt.compareTo(right.occurredAt));
-  return matches.isEmpty ? null : matches.first;
+  TransactionRecord? earliest;
+  for (final transaction in scheduledTransactions(state)) {
+    if (transaction.type == 'loan_repayment' &&
+        transaction.counterAccountId == loanId) {
+      if (earliest == null ||
+          transaction.occurredAt.isBefore(earliest.occurredAt)) {
+        earliest = transaction;
+      }
+    }
+  }
+  return earliest;
 }
 
 LoanProjection loanProjection(LedgerState state, Account loan) {
@@ -1524,17 +1521,6 @@ LoanProjection loanProjection(LedgerState state, Account loan) {
     monthsRemaining: forecast.monthsRemaining,
     estimatedInterestMinor: forecast.totalInterestMinor,
   );
-}
-
-List<int> forecastMonthsForLoan(LedgerState state, Account loan) {
-  final projection = loanProjection(state, loan);
-  final months = projection.monthsRemaining;
-  final values = <int>{0, 3, 6, 12};
-  if (months != null && months > 0) values.add(months);
-  final sorted = values.toList()..sort();
-  return sorted
-      .where((month) => months == null || month == 0 || month <= months)
-      .toList();
 }
 
 ({int? monthsRemaining, int totalInterestMinor, int remainingMinor})

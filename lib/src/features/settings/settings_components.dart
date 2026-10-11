@@ -30,11 +30,9 @@ class SettingsProfileSection extends StatelessWidget {
           child: Column(
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   AuthUserAvatar(
                     user: user,
-                    radius: 28,
                     fallbackLabel: user?.initials ?? '1W',
                   ),
                   const SizedBox(width: AppSpacing.md),

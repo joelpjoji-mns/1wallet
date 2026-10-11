@@ -19,8 +19,6 @@ Future<Color?> showAppColorPicker({
             onColorChanged: (color) {
               selectedColor = color;
             },
-            enableAlpha: false,
-            displayThumbColor: true,
           ),
         ),
         actions: <Widget>[

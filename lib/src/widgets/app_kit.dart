@@ -391,7 +391,6 @@ class AppHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final canPop = Navigator.of(context).canPop();
     return GlassIsolationScope(
-      isolated: true,
       defaultQuality: GlassQuality.premium,
       child: GlassAppBar(
         title: Text(
@@ -408,8 +407,6 @@ class AppHeader extends StatelessWidget {
             ? const AppBackAction()
             : null,
         actions: actions,
-        centerTitle: false,
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       ),
     );
   }
@@ -504,7 +501,6 @@ class HeaderIconButton extends StatelessWidget {
                     )
                   : Icon(icon),
               iconSize: 22,
-              size: 44,
               quality: GlassQuality.standard,
               onPressed: onPressed,
               semanticLabel: _headerButtonSemanticLabel(
@@ -1033,7 +1029,6 @@ class PremiumRow extends StatelessWidget {
             vertical: AppSpacing.md,
           ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
                 width: 40,
@@ -1181,7 +1176,6 @@ class InfoRow extends StatelessWidget {
             const SizedBox(width: AppSpacing.xs),
           ],
           Expanded(
-            flex: 1,
             child: Text(
               label,
               style: TextStyle(color: scheme.onSurfaceVariant),

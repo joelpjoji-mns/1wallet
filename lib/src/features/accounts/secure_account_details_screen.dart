@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -86,7 +88,7 @@ class _SecureAccountDetailsScreenState
 
           // Silently migrate legacy-format values to the new secure format.
           if (hasLegacy && mounted) {
-            _saveSecureDetails(account, silent: true);
+            unawaited(_saveSecureDetails(account, silent: true));
           }
 
           if (mounted) setState(() {});

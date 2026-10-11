@@ -313,13 +313,12 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                           },
                           items: [
                             const DropdownMenuItem(
-                              value: null,
                               child: Text('Not set'),
                             ),
                             for (int d = 1; d <= 31; d++)
                               DropdownMenuItem(
                                 value: d,
-                                child: Text('Day $d (${_daySuffix(d)} of month)'),
+                                child: Text('Day $d (${daySuffix(d)} of month)'),
                               ),
                           ],
                           onChanged: (val) => setState(() => _statementDay = val),
@@ -343,13 +342,12 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                           },
                           items: [
                             const DropdownMenuItem(
-                              value: null,
                               child: Text('Not set'),
                             ),
                             for (int d = 1; d <= 31; d++)
                               DropdownMenuItem(
                                 value: d,
-                                child: Text('Day $d (${_daySuffix(d)} of month)'),
+                                child: Text('Day $d (${daySuffix(d)} of month)'),
                               ),
                           ],
                           onChanged: (val) => setState(() => _dueDay = val),
@@ -481,7 +479,6 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     try {
       final authenticated = await auth.authenticate(
         localizedReason: 'Authenticate to view secure details',
-        biometricOnly: false,
       );
       if (authenticated && mounted) {
         if (account.encryptedDetails != null) {
@@ -555,7 +552,6 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     try {
       final authenticated = await auth.authenticate(
         localizedReason: 'Authenticate to edit secure details',
-        biometricOnly: false,
       );
       if (authenticated && context.mounted) {
         // Since they authenticated successfully, let's also unlock inline.
@@ -837,7 +833,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
       ),
     );
     if (confirmed != true) return;
-    _updateArchiveState(account, true, 'Account closed and archived.');
+    await _updateArchiveState(account, true, 'Account closed and archived.');
   }
 
   Future<void> _reopenAccount(LedgerState state, Account account) async {
@@ -861,7 +857,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
       ),
     );
     if (confirmed != true) return;
-    _updateArchiveState(account, false, 'Account reopened.');
+    await _updateArchiveState(account, false, 'Account reopened.');
   }
 
   Future<void> _updateArchiveState(
@@ -942,20 +938,6 @@ class _DetailField extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-String _daySuffix(int day) {
-  if (day >= 11 && day <= 13) return 'th';
-  switch (day % 10) {
-    case 1:
-      return 'st';
-    case 2:
-      return 'nd';
-    case 3:
-      return 'rd';
-    default:
-      return 'th';
   }
 }
 
@@ -1063,7 +1045,6 @@ Future<int?> showDayOfMonthPicker({
                       crossAxisCount: 7,
                       mainAxisSpacing: 8,
                       crossAxisSpacing: 8,
-                      childAspectRatio: 1.0,
                     ),
                     itemCount: 31,
                     itemBuilder: (context, index) {

@@ -73,7 +73,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return RouteScaffold(
       title: 'Settings',
       child: GlassIsolationScope(
-        isolated: true,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 800),
@@ -598,7 +597,6 @@ class _GlassTuningSectionState extends State<_GlassTuningSection> {
           ),
           GlassSlider(
             value: current,
-            min: 0,
             max: max,
             onChanged: update,
             onChangeEnd: (_) => _save(),

@@ -174,7 +174,7 @@ class _FullScreenPickerState<T> extends State<_FullScreenPicker<T>> {
                     title: widget.clearLabel,
                     subtitle: 'Show every option',
                     selected: widget.selectedValue == null,
-                    onTap: () => Navigator.of(context).pop(null),
+                    onTap: () => Navigator.of(context).pop(),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),

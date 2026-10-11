@@ -336,7 +336,7 @@ bool _detectMonthFirst(List<String> lines, {String? currency}) {
 
 final _monthMap = {
   'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
-  'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
+  'jul': 7, 'aug': 8, 'sep': 9, 'sept': 9, 'oct': 10, 'nov': 11, 'dec': 12,
   'january': 1, 'february': 2, 'march': 3, 'april': 4, 'june': 6,
   'july': 7, 'august': 8, 'september': 9, 'october': 10, 'november': 11, 'december': 12,
 };
@@ -514,7 +514,7 @@ DateTime? _parseAnyDate(
     final d = int.tryParse(m5.group(1)!);
     final mStr = m5.group(2)!.toLowerCase();
     final m = _monthMap[mStr];
-    if (d == null || m == null) return null;
+    if (d == null || m == null || d < 1 || d > 31) return null;
     final y = fallbackYear ?? DateTime.now().year;
     return DateTime(y, m, d);
   }
@@ -689,8 +689,14 @@ List<ParsedWalletCsvRow> _resolveCandidateRows(
           }
         }
       } else {
+        int? earlierBal;
         if (i < candidates.length - 1 && candidates[i + 1].runningBalance != null) {
-          final earlierBal = candidates[i + 1].runningBalance!;
+          earlierBal = candidates[i + 1].runningBalance!;
+        } else if (i == candidates.length - 1 && initialBalance != null) {
+          earlierBal = initialBalance;
+        }
+
+        if (earlierBal != null) {
           final delta = curr.runningBalance! - earlierBal;
           if (delta != 0) {
             final targetMinor = delta.abs();
@@ -1006,7 +1012,6 @@ ParsedWalletCsvRow _buildRow(
       currency: currency,
     ),
     type: type,
-    categoryName: null,
     notes: notes,
     occurredAt: date,
   );

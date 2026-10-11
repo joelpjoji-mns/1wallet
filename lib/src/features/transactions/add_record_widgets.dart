@@ -453,7 +453,6 @@ class _AddRecordCalcKeyState extends State<AddRecordCalcKey> {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: widget.foregroundColor.withAlpha(15),
-              width: 1,
             ),
           ),
           child: Center(

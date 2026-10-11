@@ -196,7 +196,6 @@ class CreditCardView extends StatelessWidget {
             const SizedBox(height: 15),
             Wrap(
               alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.start,
               runSpacing: 15,
               children: [
                 Container(

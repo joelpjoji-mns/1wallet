@@ -21,7 +21,6 @@ class LocalAppAuthenticator implements AppAuthenticator {
   @override
   Future<bool> authenticate() => _auth.authenticate(
     localizedReason: 'Unlock 1Wallet',
-    biometricOnly: false,
   );
 }
 

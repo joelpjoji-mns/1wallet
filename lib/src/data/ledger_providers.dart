@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' as foundation;
 import 'package:flutter/material.dart';
@@ -178,6 +179,28 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
   // 2. Generate auto-posted transactions
   for (final scheduled in updatedTransactions) {
     if (scheduled.status == 'scheduled' && scheduled.postMode == 'auto') {
+      if (scheduled.recurrenceFrequency == 'once' ||
+          scheduled.recurrenceFrequency == null) {
+        if (scheduled.occurredAt.isBefore(now)) {
+          final dateStr =
+              '${scheduled.occurredAt.year}${scheduled.occurredAt.month.toString().padLeft(2, '0')}${scheduled.occurredAt.day.toString().padLeft(2, '0')}';
+          final autoId = '${scheduled.id}-auto-$dateStr';
+          final alreadyExists = ledger.transactions.any((t) => t.id == autoId);
+          if (!alreadyExists && !newAutoPosted.any((t) => t.id == autoId)) {
+            changed = true;
+            newAutoPosted.add(
+              scheduled.copyWith(
+                id: autoId,
+                status: 'cleared',
+                occurredAt: scheduled.occurredAt,
+                originalTransactionId: scheduled.id,
+              ),
+            );
+          }
+        }
+        continue;
+      }
+
       DateTime nextDate = scheduled.occurredAt;
       int currentCount = initialHistoryCount[scheduled.id] ?? 0;
 
@@ -205,7 +228,6 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
               status: 'cleared',
               occurredAt: nextDate,
               originalTransactionId: scheduled.id,
-              postMode: null, // Clear postMode on the posted instance
             ),
           );
         }
@@ -257,6 +279,10 @@ LedgerState fixStaleScheduledTransactions(LedgerState ledger) {
         (scheduled.occurredAt.isBefore(latestOccurredAt) ||
             scheduled.occurredAt.isAtSameMomentAs(latestOccurredAt))) {
       changed = true;
+      if (scheduled.recurrenceFrequency == 'once' ||
+          scheduled.recurrenceFrequency == null) {
+        return scheduled.copyWith(status: 'finished');
+      }
       DateTime nextDate = scheduled.occurredAt;
       while (nextDate.isBefore(latestOccurredAt) ||
           nextDate.isAtSameMomentAs(latestOccurredAt)) {
@@ -390,7 +416,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     _autoBackupTimer?.cancel();
     await deleteAllAutoBackupFiles();
     await _repository.clear();
-    state = emptyLedgerState(userId: 'local-user');
+    state = emptyLedgerState();
     _setLoadState(const LedgerLoadState.ready(hasPersistedLedger: false));
   }
 
@@ -636,21 +662,6 @@ class LedgerController extends StateNotifier<LedgerState> {
     await setHomeWidgetPreferences(order: order);
   }
 
-  Future<void> setHomeWidgetFilter(String widgetId, String? preset) async {
-    final key = widgetId.trim();
-    if (key.isEmpty) return;
-    final nextFilters = Map<String, String>.from(
-      state.preferences.homeWidgetFilters,
-    );
-    final value = preset?.trim();
-    if (value == null || value.isEmpty) {
-      nextFilters.remove(key);
-    } else {
-      nextFilters[key] = value;
-    }
-    await setHomeWidgetPreferences(filters: nextFilters);
-  }
-
   Future<void> resetHomeWidgetOrder() async {
     const defaults = LedgerPreferences();
     await _commit(
@@ -697,10 +708,6 @@ class LedgerController extends StateNotifier<LedgerState> {
         DateTime.now().toUtc().toIso8601String(),
       );
     });
-  }
-
-  Future<void> resetLedger() async {
-    await clearLocalWallet(userId: state.userId);
   }
 
   Future<void> setDisplayCurrency(String currency) async {
@@ -842,7 +849,13 @@ class LedgerController extends StateNotifier<LedgerState> {
     if (counterAmount != null &&
         counterAmount.currency.toUpperCase() != amount.currency.toUpperCase() &&
         amount.amountMinor != 0) {
-      fxRate = counterAmount.amountMinor / amount.amountMinor;
+      final counterMajor = counterAmount.amountMinor /
+          math.pow(10, minorUnits(counterAmount.currency));
+      final sourceMajor =
+          amount.amountMinor / math.pow(10, minorUnits(amount.currency));
+      if (sourceMajor != 0) {
+        fxRate = counterMajor / sourceMajor;
+      }
     }
 
     double? originalFxRate;
@@ -850,7 +863,13 @@ class LedgerController extends StateNotifier<LedgerState> {
         originalAmount.currency.toUpperCase() !=
             amount.currency.toUpperCase() &&
         originalAmount.amountMinor != 0) {
-      originalFxRate = amount.amountMinor / originalAmount.amountMinor;
+      final sourceMajor =
+          amount.amountMinor / math.pow(10, minorUnits(amount.currency));
+      final originalMajor = originalAmount.amountMinor /
+          math.pow(10, minorUnits(originalAmount.currency));
+      if (originalMajor != 0) {
+        originalFxRate = sourceMajor / originalMajor;
+      }
     }
 
     final transaction = TransactionRecord(
@@ -1017,6 +1036,10 @@ class LedgerController extends StateNotifier<LedgerState> {
       throw StateError('Some transactions to merge were not found.');
     }
 
+    if (targetList.any((t) => t.type == 'transfer')) {
+      throw ArgumentError('Transfers cannot be merged.');
+    }
+
     // Constraint 1: Must be from the same account
     final firstAccountId = targetList.first.accountId;
     final allSameAccount = targetList.every((t) => t.accountId == firstAccountId);
@@ -1030,22 +1053,33 @@ class LedgerController extends StateNotifier<LedgerState> {
     targetList.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
     final latestTx = targetList.first;
 
-    // Determine type: if all same type, keep it. Otherwise default to 'expense'
     final firstType = targetList.first.type;
     final allSameType = targetList.every((t) => t.type == firstType);
-    final mergedType = allSameType ? firstType : 'expense';
+
+    int netDeltaMinor = 0;
+    int netBaseDeltaMinor = 0;
+    for (final t in targetList) {
+      final delta = sourceDelta(t);
+      netDeltaMinor += delta;
+      netBaseDeltaMinor += (delta >= 0 ? t.baseAmount.amountMinor : -t.baseAmount.amountMinor);
+    }
+
+    final String mergedType;
+    if (allSameType) {
+      mergedType = firstType;
+    } else {
+      mergedType = netDeltaMinor >= 0 ? 'income' : 'expense';
+    }
 
     // Sum amount (amountMinor)
-    final totalAmountMinor = targetList.fold<int>(
-      0,
-      (sum, t) => sum + t.amount.amountMinor,
-    );
+    final totalAmountMinor = allSameType
+        ? targetList.fold<int>(0, (sum, t) => sum + t.amount.amountMinor)
+        : netDeltaMinor.abs();
 
     // Sum baseAmount
-    final totalBaseAmountMinor = targetList.fold<int>(
-      0,
-      (sum, t) => sum + t.baseAmount.amountMinor,
-    );
+    final totalBaseAmountMinor = allSameType
+        ? targetList.fold<int>(0, (sum, t) => sum + t.baseAmount.amountMinor)
+        : netBaseDeltaMinor.abs();
 
     // Determine category: if passed explicitly, use it; else if all have same categoryId, use that
     final effectiveCategoryId = categoryId ??
@@ -1313,9 +1347,24 @@ class LedgerController extends StateNotifier<LedgerState> {
   }
 
   Future<void> archiveCategory(String id, {required bool archived}) async {
+    final idsToUpdate = <String>{id};
+    if (archived) {
+      void collectDescendants(String parentId) {
+        for (final c in state.categories) {
+          if (c.parentId == parentId && !idsToUpdate.contains(c.id)) {
+            idsToUpdate.add(c.id);
+            collectDescendants(c.id);
+          }
+        }
+      }
+      collectDescendants(id);
+    }
+
     final categories = [
       for (final category in state.categories)
-        category.id == id ? category.copyWith(isArchived: archived) : category,
+        idsToUpdate.contains(category.id)
+            ? category.copyWith(isArchived: archived)
+            : category,
     ];
     await _commit(state.copyWith(categories: categories));
   }
@@ -1335,11 +1384,7 @@ class LedgerController extends StateNotifier<LedgerState> {
         isUsedInTx || isUsedInRules || isUsedInCaptures || hasChildren;
 
     if (isUsed) {
-      final categories = [
-        for (final category in state.categories)
-          category.id == id ? category.copyWith(isArchived: true) : category,
-      ];
-      await _commit(state.copyWith(categories: categories));
+      await archiveCategory(id, archived: true);
     } else {
       final categories = state.categories
           .where((category) => category.id != id)
@@ -1439,81 +1484,6 @@ class LedgerController extends StateNotifier<LedgerState> {
       ),
     );
     return transaction;
-  }
-
-  Future<List<TransactionRecord>> approveCaptureCandidates(
-    Iterable<String> ids,
-  ) async {
-    final idSet = ids.toSet();
-    final newTransactions = <TransactionRecord>[];
-
-    var preferences = state.preferences;
-    final candidates = [
-      for (final candidate in state.captureCandidates)
-        if (idSet.contains(candidate.id))
-          () {
-            if (candidate.parsedAmount == null) return candidate;
-
-            final account =
-                accountById(state, candidate.suggestedAccountId) ??
-                state.accounts
-                    .where((account) => !account.isArchived)
-                    .firstOrNull ??
-                (state.accounts.isEmpty ? null : state.accounts.first);
-
-            if (account == null) return candidate;
-
-            final type = candidate.transactionType == 'income'
-                ? 'income'
-                : 'expense';
-            final category =
-                categoryById(state, candidate.suggestedCategoryId) ??
-                _matchCategory(state, candidate.merchant, type);
-            final amount = candidate.parsedAmount!.copyWith(
-              currency: account.currency,
-            );
-
-            newTransactions.add(
-              TransactionRecord(
-                id: _newId('cap-tx'),
-                type: type,
-                status: 'cleared',
-                source: candidate.source,
-                accountId: account.id,
-                amount: amount,
-                baseAmount: amount.copyWith(
-                  currency: state.preferences.baseCurrency,
-                ),
-                categoryId: category?.id,
-                occurredAt: candidate.createdAt,
-                paymentMethod: candidate.source.toUpperCase(),
-                notes: _blankToNull(candidate.merchant) ?? candidate.rawText,
-              ),
-            );
-
-            preferences = _preferencesRememberingCategory(
-              state.copyWith(preferences: preferences),
-              candidate.merchant,
-              category?.id,
-            );
-
-            return candidate.copyWith(status: 'approved');
-          }()
-        else
-          candidate,
-    ];
-
-    if (newTransactions.isNotEmpty) {
-      await _commit(
-        state.copyWith(
-          preferences: preferences,
-          transactions: [...newTransactions, ...state.transactions],
-          captureCandidates: candidates,
-        ),
-      );
-    }
-
-    return newTransactions;
   }
 
   Future<void> updateCaptureCandidateDetails({
@@ -1777,7 +1747,6 @@ class LedgerController extends StateNotifier<LedgerState> {
     final result = await importSmsMessageDetailed(
       rawText,
       receivedAt: receivedAt,
-      stage: 'manual-sms',
     );
     return result.candidate;
   }
@@ -1810,7 +1779,6 @@ class LedgerController extends StateNotifier<LedgerState> {
     final result = await importNotificationMessageDetailed(
       rawText,
       receivedAt: receivedAt,
-      stage: 'manual-notification',
     );
     return result.candidate;
   }
@@ -2238,7 +2206,7 @@ class LedgerController extends StateNotifier<LedgerState> {
 
   Timer? _autoBackupTimer;
 
-  /// Auto-archives loan/overdraft accounts whose current balance has reached
+  /// Auto-archives loan accounts whose current balance has reached
   /// zero (fully paid off) and pauses their associated scheduled EMIs.
   LedgerState _applyAutoArchiveForPaidOffLoans(LedgerState next) {
     final accounts = [...next.accounts];
@@ -2248,13 +2216,23 @@ class LedgerController extends StateNotifier<LedgerState> {
     for (int i = 0; i < accounts.length; i++) {
       final account = accounts[i];
       if (account.isArchived) continue;
-      if (account.type != 'loan' && account.type != 'overdraft') continue;
+      if (account.type != 'loan') continue;
 
-      // Only auto-archive loans that had a principal (were real loans)
+      // Only auto-archive loans that had a principal or initial negative balance
       final principalMinor =
           account.loanDetails?.principal?.amountMinor.abs() ??
-          account.openingBalance.amountMinor.abs();
+          (account.openingBalance.amountMinor < 0
+              ? -account.openingBalance.amountMinor
+              : 0);
       if (principalMinor <= 0) continue;
+
+      // Ensure the loan actually has recorded activity or was initialized with debt
+      final hasTransactions = next.transactions.any(
+        (tx) => tx.accountId == account.id || tx.counterAccountId == account.id,
+      );
+      if (account.openingBalance.amountMinor >= 0 && !hasTransactions) {
+        continue;
+      }
 
       // Balance >= 0 means the loan has been fully paid off
       final remaining = accountBalance(next, account).amountMinor;
@@ -2779,95 +2757,85 @@ _CategorySuggestion? _suggestCategory(
 
     final keyword =
         keywordSuggestion(
-          RegExp(
-            r'\b(market|supermarket|grocery|groceries|bigbasket|blinkit|instamart|jiomart|dmart|tesco|aldi|lidl|walmart|costco|whole\s*foods|trader\s*joe)\b',
-          ),
+          _groceryKeywordRegex,
           const ['cat-grocery', 'cat-food'],
           const ['grocery', 'groceries', 'food'],
           'Grocery/market keyword match',
         ) ??
         keywordSuggestion(
-          RegExp(
-            r'\b(zomato|swiggy|food\s*delivery|restaurant|cafe|dining|mcdonalds|starbucks|pizza|burger|kfc|dominos|eatery)\b',
-          ),
+          _diningKeywordRegex,
           const ['cat-dining', 'cat-food'],
           const ['dining', 'food'],
           'Food/dining keyword match',
         ) ??
         keywordSuggestion(
-          RegExp(r'\b(uber|ola|rapido|taxi|transit|metro|train|flight)\b'),
+          _transportKeywordRegex,
           const ['cat-transport', 'cat-travel'],
           const ['transport', 'travel'],
           'Transport keyword match',
         ) ??
         keywordSuggestion(
-          RegExp(r'\b(amazon|flipkart|myntra|shopping)\b'),
+          _shoppingKeywordRegex,
           const ['cat-shopping'],
           const ['shopping'],
           'Shopping keyword match',
         ) ??
         keywordSuggestion(
-          RegExp(r'\b(netflix|spotify|prime|hotstar|subscription|movie)\b'),
+          _entertainmentKeywordRegex,
           const ['cat-entertainment'],
           const ['entertainment'],
           'Entertainment keyword match',
         ) ??
         keywordSuggestion(
-          RegExp(r'\b(hospital|pharmacy|clinic|medical|health|doctor)\b'),
+          _healthKeywordRegex,
           const ['cat-health'],
           const ['health', 'medical'],
           'Health keyword match',
         ) ??
         keywordSuggestion(
-          RegExp(r'\b(jio|airtel|vi|recharge|bill|electricity|water|wifi)\b'),
+          _billKeywordRegex,
           const ['cat-bills'],
           const ['bill', 'utility'],
           'Bill/utility keyword match',
         );
     if (keyword != null) return keyword;
-
-    String? guessedKind;
-    if (RegExp(
-      r'\b(zomato|swiggy|food|restaurant|cafe|dining|mcdonalds|starbucks)\b',
-    ).hasMatch(normalized)) {
-      guessedKind = 'food';
-    } else if (RegExp(
-      r'\b(uber|ola|rapido|taxi|transit|metro|train|flight)\b',
-    ).hasMatch(normalized)) {
-      guessedKind = 'transport';
-    } else if (RegExp(
-      r'\b(amazon|flipkart|myntra|shopping)\b',
-    ).hasMatch(normalized)) {
-      guessedKind = 'shopping';
-    } else if (RegExp(
-      r'\b(netflix|spotify|prime|hotstar|subscription|movie)\b',
-    ).hasMatch(normalized)) {
-      guessedKind = 'entertainment';
-    } else if (RegExp(
-      r'\b(hospital|pharmacy|clinic|medical|health|doctor)\b',
-    ).hasMatch(normalized)) {
-      guessedKind = 'health';
-    } else if (RegExp(
-      r'\b(jio|airtel|vi|recharge|bill|electricity|water|wifi)\b',
-    ).hasMatch(normalized)) {
-      guessedKind = 'bill';
-    }
-
-    if (guessedKind != null) {
-      for (final category in active) {
-        if (category.name.toLowerCase().contains(guessedKind)) {
-          return _CategorySuggestion(
-            category: category,
-            confidence: 0.6,
-            reason: 'Legacy keyword match',
-          );
-        }
-      }
-    }
   }
 
   return null;
 }
+
+final RegExp _groceryKeywordRegex = RegExp(
+  r'\b(market|supermarket|grocery|groceries|bigbasket|blinkit|instamart|jiomart|dmart|tesco|aldi|lidl|walmart|costco|whole\s*foods|trader\s*joe)\b',
+);
+final RegExp _diningKeywordRegex = RegExp(
+  r'\b(zomato|swiggy|food|food\s*delivery|restaurant|cafe|dining|mcdonalds|starbucks|pizza|burger|kfc|dominos|eatery)\b',
+);
+final RegExp _transportKeywordRegex = RegExp(
+  r'\b(uber|ola|rapido|taxi|transit|metro|train|flight)\b',
+);
+final RegExp _shoppingKeywordRegex = RegExp(
+  r'\b(amazon|flipkart|myntra|shopping)\b',
+);
+final RegExp _entertainmentKeywordRegex = RegExp(
+  r'\b(netflix|spotify|prime|hotstar|subscription|movie)\b',
+);
+final RegExp _healthKeywordRegex = RegExp(
+  r'\b(hospital|pharmacy|clinic|medical|health|doctor)\b',
+);
+final RegExp _billKeywordRegex = RegExp(
+  r'\b(jio|airtel|vi|recharge|bill|electricity|water|wifi)\b',
+);
+final RegExp _smsTokenCleanupRegex = RegExp(r'[^\w\s@]');
+final RegExp _smsWhitespaceRegex = RegExp(r'\s+');
+final RegExp _nonDigitRegex = RegExp(r'\D');
+final RegExp _cardContextRegex = RegExp(
+  r'\b(card|credit\s*card|debit\s*card)\b',
+  caseSensitive: false,
+);
+final RegExp _bankContextRegex = RegExp(
+  r'\b(a/c|acct|account|savings|checking)\b',
+  caseSensitive: false,
+);
 
 String? _matchAccountToSms(LedgerState state, ParsedTransactionMessage parsed) {
   final activeAccounts = state.accounts.where((a) => !a.isArchived).toList();
@@ -2877,13 +2845,15 @@ String? _matchAccountToSms(LedgerState state, ParsedTransactionMessage parsed) {
 
   // Tokenize the raw SMS into lowercase words for word-level matching.
   final smsTokens = rawTextLower
-      .replaceAll(RegExp(r'[^\w\s@]'), ' ')
-      .split(RegExp(r'\s+'))
+      .replaceAll(_smsTokenCleanupRegex, ' ')
+      .split(_smsWhitespaceRegex)
       .where((t) => t.isNotEmpty)
       .toSet();
 
   // Extract ALL digit fragments from the SMS for exhaustive number matching.
   final allFragments = extractAllNumberFragments(parsed.rawText);
+  final hasCardContext = _cardContextRegex.hasMatch(parsed.rawText);
+  final hasBankContext = _bankContextRegex.hasMatch(parsed.rawText);
 
   Account? bestMatch;
   int highestScore = -1;
@@ -2902,7 +2872,7 @@ String? _matchAccountToSms(LedgerState state, ParsedTransactionMessage parsed) {
       if (account.encryptedDetails != null) {
         final accNum = account.encryptedDetails!['accountNumber'];
         if (accNum != null) {
-          final cleanAccNum = accNum.replaceAll(RegExp(r'\D'), '');
+          final cleanAccNum = accNum.replaceAll(_nonDigitRegex, '');
           if (cleanAccNum.isNotEmpty && cleanAccNum.endsWith(parsed.last4!)) {
             score += 150;
           }
@@ -2926,7 +2896,7 @@ String? _matchAccountToSms(LedgerState state, ParsedTransactionMessage parsed) {
     if (account.encryptedDetails != null) {
       final accNum = account.encryptedDetails!['accountNumber'];
       if (accNum != null) {
-        final cleanAccNum = accNum.replaceAll(RegExp(r'\D'), '');
+        final cleanAccNum = accNum.replaceAll(_nonDigitRegex, '');
         if (cleanAccNum.isNotEmpty) {
           for (final fragment in allFragments) {
             if (fragment.length >= 3 && cleanAccNum.endsWith(fragment)) {
@@ -2953,7 +2923,7 @@ String? _matchAccountToSms(LedgerState state, ParsedTransactionMessage parsed) {
       }
       // Also try word-level institution matching
       final instTokens = instLower
-          .split(RegExp(r'\s+'))
+          .split(_smsWhitespaceRegex)
           .where((t) => t.length > 2)
           .toSet();
       if (instTokens.isNotEmpty &&
@@ -2971,7 +2941,7 @@ String? _matchAccountToSms(LedgerState state, ParsedTransactionMessage parsed) {
       // Word-level name matching: each word of the account name found in
       // the SMS contributes proportionally.
       final nameTokens = nameLower
-          .split(RegExp(r'\s+'))
+          .split(_smsWhitespaceRegex)
           .where((t) => t.length > 2)
           .toList();
       if (nameTokens.isNotEmpty) {
@@ -2990,7 +2960,7 @@ String? _matchAccountToSms(LedgerState state, ParsedTransactionMessage parsed) {
         score += 20;
       } else {
         final groupTokens = groupLower
-            .split(RegExp(r'\s+'))
+            .split(_smsWhitespaceRegex)
             .where((t) => t.length > 2)
             .toSet();
         if (groupTokens.isNotEmpty &&
@@ -3003,19 +2973,13 @@ String? _matchAccountToSms(LedgerState state, ParsedTransactionMessage parsed) {
     // ── 6. Account type contextual match ─────────────────────────────
     // If the SMS explicitly mentions "card" and the account type is "card",
     // or mentions "a/c" / "account" and the type is "bank", boost slightly.
-    if (account.type == 'card' &&
-        RegExp(
-          r'\b(card|credit\s*card|debit\s*card)\b',
-          caseSensitive: false,
-        ).hasMatch(parsed.rawText)) {
+    if ((account.type == 'card' || account.type == 'credit_card') &&
+        hasCardContext) {
       score += 10;
     } else if ((account.type == 'bank' ||
             account.type == 'savings' ||
             account.type == 'checking') &&
-        RegExp(
-          r'\b(a/c|acct|account|savings|checking)\b',
-          caseSensitive: false,
-        ).hasMatch(parsed.rawText)) {
+        hasBankContext) {
       score += 10;
     }
 
@@ -3097,7 +3061,7 @@ extension _FirstOrNull<T> on Iterable<T> {
 void _ignoreLoadState(LedgerLoadState _) {}
 
 String _encodeForBackup(LedgerState state) {
-  return encodeLedgerArchive(state, source: 'flutter-local');
+  return encodeLedgerArchive(state);
 }
 
 enum _CaptureDuplicateKind {

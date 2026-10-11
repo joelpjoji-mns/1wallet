@@ -258,7 +258,6 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     _userDocSubscription = null;
     _cancelTimers();
     state = const CloudSyncState(
-      phase: CloudSyncPhase.disabled,
       disabledReason: 'Sign in with Google to enable sync.',
     );
   }

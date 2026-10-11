@@ -197,7 +197,6 @@ class NotificationService {
         targetDate.month,
         targetDate.day,
         10,
-        0,
       );
       // Construct the day-before date fresh from its own year/month/day
       // components (instead of `dayOf.subtract(Duration(days: 1))`) so DST
@@ -212,7 +211,6 @@ class NotificationService {
         dayBeforeDate.month,
         dayBeforeDate.day,
         10,
-        0,
       );
 
       if (dayBefore.isAfter(now)) {

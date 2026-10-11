@@ -565,7 +565,7 @@ class Account {
 
   String? get displayLast4Label {
     if (displayLast4 == null) return null;
-    if (type == 'card') return 'Card ending in';
+    if (type == 'card' || type == 'credit_card') return 'Card ending in';
     return 'Account ending in';
   }
 
@@ -1062,10 +1062,9 @@ class LedgerState {
     final localTop = localTxs.take(5).toList();
     final incomingTop = incomingTxs.take(5).toList();
 
-    // If local has newer transactions in its top 5, it is safer/newer.
-    for (int i = 0; i < localTop.length; i++) {
-      if (i >= incomingTop.length) break;
-      if (localTop[i].occurredAt.isAfter(incomingTop[i].occurredAt)) {
+    // If local has newer transactions in its top 5 than incoming, local is safer/newer.
+    if (localTop.isNotEmpty && incomingTop.isNotEmpty) {
+      if (localTop.first.occurredAt.isAfter(incomingTop.first.occurredAt)) {
         return false;
       }
     }

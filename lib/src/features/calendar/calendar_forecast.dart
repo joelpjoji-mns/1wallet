@@ -92,6 +92,11 @@ List<TransactionRecord> forecastRecurringTransactions(
         if (displayCount > 200) break; // Display cap, post-horizon only
       }
 
+      if (template.recurrenceFrequency == 'once' ||
+          template.recurrenceFrequency == null) {
+        break;
+      }
+
       cursor = advanceTransactionRecurrence(cursor, template);
       occurrenceIndex++;
     }

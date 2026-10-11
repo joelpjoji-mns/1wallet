@@ -139,6 +139,3 @@ CaptureBlockReason? blockReasonForParsedMessage(
   if (!parsed.hasTriggerWord) return CaptureBlockReason.missingTrigger;
   return CaptureBlockReason.error;
 }
-
-bool parsedMessageIsQueueable(ParsedTransactionMessage parsed) =>
-    !parsed.ignored && parsed.amount != null;

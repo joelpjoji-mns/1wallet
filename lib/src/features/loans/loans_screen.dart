@@ -1002,7 +1002,8 @@ class LoanDetailView extends ConsumerWidget {
                     Builder(
                       builder: (context) {
                         final principal = details.principal!.amountMinor.abs();
-                        final remaining = balance.amountMinor.abs();
+                        final remaining =
+                            balance.amountMinor < 0 ? -balance.amountMinor : 0;
                         final paid = (principal - remaining).clamp(
                           0,
                           principal,
@@ -1072,7 +1073,6 @@ class LoanDetailView extends ConsumerWidget {
                 label: 'Est. Payoff',
                 value: projection.payoffLabel,
                 icon: Icons.timeline_rounded,
-                tone: MetricTone.standard,
               ),
             ),
           ],
@@ -1087,7 +1087,6 @@ class LoanDetailView extends ConsumerWidget {
                     ? '${_formatOptionalDecimal(details.interestRatePercent)}% p.a.'
                     : 'N/A',
                 icon: Icons.percent_rounded,
-                tone: MetricTone.standard,
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
@@ -1098,7 +1097,6 @@ class LoanDetailView extends ConsumerWidget {
                     ? '${details.repaymentCount} mo'
                     : 'N/A',
                 icon: Icons.timelapse_rounded,
-                tone: MetricTone.standard,
               ),
             ),
           ],
@@ -1417,7 +1415,8 @@ class _LoanCompactCard extends StatelessWidget {
                   Builder(
                     builder: (context) {
                       final principal = details.principal!.amountMinor.abs();
-                      final remaining = balance.amountMinor.abs();
+                      final remaining =
+                          balance.amountMinor < 0 ? -balance.amountMinor : 0;
                       final paid = (principal - remaining).clamp(0, principal);
                       final progress = principal > 0
                           ? (paid / principal).clamp(0.0, 1.0)
@@ -1776,8 +1775,6 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                   maxX: _currentMaxX,
                   clipData: const FlClipData.all(),
                   lineTouchData: LineTouchData(
-                    enabled: true,
-                    handleBuiltInTouches: true,
                     touchTooltipData: LineTouchTooltipData(
                       getTooltipColor: (spot) =>
                           Theme.of(context).colorScheme.surfaceContainerHigh,
@@ -1830,11 +1827,9 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                         color: Theme.of(
                           context,
                         ).colorScheme.primary.withValues(alpha: 0.5),
-                        strokeWidth: 2,
                         dashArray: [5, 5],
                         label: VerticalLineLabel(
                           show: true,
-                          alignment: Alignment.bottomRight,
                           padding: const EdgeInsets.only(bottom: 24, left: 4),
                           style: TextStyle(
                             fontSize: 10,
@@ -1857,7 +1852,6 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                           dashArray: [3, 3],
                           label: VerticalLineLabel(
                             show: true,
-                            alignment: Alignment.bottomRight,
                             padding: const EdgeInsets.only(bottom: 4, left: 4),
                             style: TextStyle(
                               fontSize: 10,
@@ -1884,7 +1878,6 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                       belowBarData: BarAreaData(
                         show: true,
                         cutOffY: _currentMinY,
-                        applyCutOffY: false,
                         gradient: LinearGradient(
                           colors: [
                             widget.lineColor.withValues(alpha: 0.5),
@@ -1895,7 +1888,6 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                         ),
                       ),
                       dotData: FlDotData(
-                        show: true,
                         checkToShowDot: (spot, barData) =>
                             widget.payoffDots.containsKey(spot.x),
                         getDotPainter: (spot, percent, barData, index) {
@@ -1968,16 +1960,10 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                         },
                       ),
                     ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
+                    topTitles: const AxisTitles(),
+                    rightTitles: const AxisTitles(),
                   ),
                   gridData: FlGridData(
-                    show: true,
-                    drawVerticalLine: true,
                     verticalInterval: _xInterval,
                     horizontalInterval: yInterval,
                   ),
@@ -2316,15 +2302,10 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
                         },
                       ),
                     ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
+                    topTitles: const AxisTitles(),
+                    rightTitles: const AxisTitles(),
                   ),
                   gridData: FlGridData(
-                    show: true,
                     drawVerticalLine: false,
                     horizontalInterval: yInterval,
                   ),
@@ -2342,8 +2323,6 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
             Expanded(
               child: Slider(
                 value: _zoomPercent,
-                min: 0.0,
-                max: 1.0,
                 onChanged: _onSliderChange,
               ),
             ),
@@ -2529,7 +2508,8 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
 
       final emi = (rawEmi * monthlyMultiplier).round();
       final rate = details.interestRatePercent ?? 0;
-      final remaining = accountBalance(widget.state, loan).amountMinor.abs();
+      final bal = accountBalance(widget.state, loan).amountMinor;
+      final remaining = bal < 0 ? -bal : 0;
       return ActiveLoan(
         account: loan,
         principalMinor: remaining,
@@ -2979,7 +2959,8 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                       : ' · No payoff date (check EMI)';
                   final rawBal = accountBalance(widget.state, loan);
                   final outstandingBal = rawBal.copyWith(
-                    amountMinor: rawBal.amountMinor.abs(),
+                    amountMinor:
+                        rawBal.amountMinor < 0 ? -rawBal.amountMinor : 0,
                   );
                   final balStr = maskMoneyIfPrivate(
                     widget.state,
@@ -3257,7 +3238,8 @@ _LoanProjection _loanProjection(LedgerState state, Account loan) {
     );
   }
 
-  final remaining = accountBalance(state, loan).amountMinor.abs();
+  final bal = accountBalance(state, loan).amountMinor;
+  final remaining = bal < 0 ? -bal : 0;
   final details = _effectiveLoanDetails(state, loan);
   final emiTx = _existingLoanEmi(state, loan.id);
   final rawEmi =

@@ -33,7 +33,6 @@ class UpdatesScreen extends ConsumerWidget {
         ),
       ],
       child: GlassIsolationScope(
-        isolated: true,
         defaultQuality: GlassQuality.standard,
         child: Column(
           children: [

@@ -168,7 +168,6 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
     );
 
     return GlassIsolationScope(
-      isolated: true,
       defaultQuality: GlassQuality.premium,
       child: DefaultTabController(
         length: 2,
@@ -322,7 +321,6 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                         ),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Expanded(
                             child: Column(
@@ -1081,20 +1079,28 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                 widget.plannedId ?? editingTransaction?.originalTransactionId,
           );
 
-      if (plannedTransaction != null &&
-          plannedTransaction.recurrenceFrequency != null &&
-          plannedTransaction.recurrenceFrequency != 'once') {
-        final nextDate = advanceTransactionRecurrence(
-          plannedTransaction.occurredAt,
-          plannedTransaction,
-        );
-        await ref
-            .read(ledgerProvider.notifier)
-            .updateTransactionStatus(
-              widget.plannedId!,
-              'scheduled',
-              occurredAt: nextDate,
-            );
+      if (plannedTransaction != null) {
+        if (plannedTransaction.recurrenceFrequency != null &&
+            plannedTransaction.recurrenceFrequency != 'once') {
+          final nextDate = advanceTransactionRecurrence(
+            plannedTransaction.occurredAt,
+            plannedTransaction,
+          );
+          await ref
+              .read(ledgerProvider.notifier)
+              .updateTransactionStatus(
+                widget.plannedId!,
+                'scheduled',
+                occurredAt: nextDate,
+              );
+        } else {
+          await ref
+              .read(ledgerProvider.notifier)
+              .updateTransactionStatus(
+                widget.plannedId!,
+                'finished',
+              );
+        }
       }
 
       if (widget.captureCandidateId != null) {

@@ -232,7 +232,6 @@ class _MainShellState extends ConsumerState<MainShell>
 
           return Scaffold(
             key: _scaffoldKey,
-            drawerEnableOpenDragGesture: true,
             drawerEdgeDragWidth: 40,
             drawer: AppResponsiveLayout.isDesktop(context)
                 ? null

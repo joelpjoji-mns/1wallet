@@ -241,7 +241,6 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                 HomeBalancePill(
                   label: displayCurrency,
                   icon: Icons.currency_exchange_outlined,
-                  showChevron: false,
                 ),
             ],
           ),
@@ -527,7 +526,7 @@ class _BalanceTrendHomeWidgetState
       widget.state.preferences.homeWidgetFilters,
     );
     newFilters['balanceTrend'] = value;
-    ref.read(ledgerProvider.notifier).updatePreferences(
+    await ref.read(ledgerProvider.notifier).updatePreferences(
           widget.state.preferences.copyWith(homeWidgetFilters: newFilters),
         );
     final prefs = await SharedPreferences.getInstance();
@@ -844,8 +843,6 @@ class _BalanceTrendHomeWidgetState
                     LineChartData(
                       clipData: const FlClipData.all(),
                       gridData: FlGridData(
-                        show: true,
-                        drawVerticalLine: true,
                         horizontalInterval: niceInterval,
                         verticalInterval: niceXInterval,
                         getDrawingHorizontalLine: (value) => FlLine(
@@ -860,13 +857,8 @@ class _BalanceTrendHomeWidgetState
                         ),
                       ),
                       titlesData: FlTitlesData(
-                        show: true,
-                        topTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        rightTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
+                        topTitles: const AxisTitles(),
+                        rightTitles: const AxisTitles(),
                         leftTitles: AxisTitles(
                           sideTitles: SideTitles(
                             showTitles: true,
@@ -955,7 +947,7 @@ class _BalanceTrendHomeWidgetState
                               color: scheme.primary.withAlphaFactor(0.4),
                               strokeWidth: 1.0,
                               dashArray: [4, 4],
-                              label: VerticalLineLabel(show: false),
+                              label: VerticalLineLabel(),
                             ),
                         ],
                       ),
@@ -964,7 +956,6 @@ class _BalanceTrendHomeWidgetState
                         if (pastSpots.length > 1)
                           LineChartBarData(
                             spots: pastSpots,
-                            isCurved: false,
                             curveSmoothness: 0.3,
                             color: scheme.primary,
                             barWidth: 1.2,
@@ -975,7 +966,6 @@ class _BalanceTrendHomeWidgetState
                               offset: const Offset(0, 3),
                             ),
                             dotData: FlDotData(
-                              show: true,
                               checkToShowDot: (spot, barData) =>
                                   spot.x == barData.spots.last.x,
                               getDotPainter: (spot, percent, barData, index) =>
@@ -989,7 +979,6 @@ class _BalanceTrendHomeWidgetState
                             belowBarData: BarAreaData(
                               show: true,
                               cutOffY: minY,
-                              applyCutOffY: false,
                               gradient: LinearGradient(
                                 colors: [
                                   scheme.primary.withAlphaFactor(0.35),
@@ -1004,7 +993,6 @@ class _BalanceTrendHomeWidgetState
                         if (futureSpots.length > 1)
                           LineChartBarData(
                             spots: futureSpots,
-                            isCurved: false,
                             color: scheme.onSurfaceVariant.withAlphaFactor(
                               0.45,
                             ),
@@ -1012,7 +1000,6 @@ class _BalanceTrendHomeWidgetState
                             isStrokeCapRound: true,
                             dashArray: [6, 4],
                             dotData: FlDotData(
-                              show: true,
                               checkToShowDot: (spot, barData) =>
                                   spot.x == barData.spots.last.x,
                               getDotPainter: (spot, percent, barData, index) =>
@@ -1027,7 +1014,6 @@ class _BalanceTrendHomeWidgetState
                             belowBarData: BarAreaData(
                               show: true,
                               cutOffY: minY,
-                              applyCutOffY: false,
                               gradient: LinearGradient(
                                 colors: [
                                   scheme.onSurfaceVariant.withAlphaFactor(0.12),
@@ -1040,7 +1026,6 @@ class _BalanceTrendHomeWidgetState
                           ),
                       ],
                       lineTouchData: LineTouchData(
-                        enabled: true,
                         getTouchedSpotIndicator:
                             (LineChartBarData barData, List<int> spotIndexes) {
                               return spotIndexes.map((index) {
@@ -1686,8 +1671,10 @@ class LoansAndEmisHomeWidget extends ConsumerWidget {
         .toList();
     final remaining = loans.fold<int>(
       0,
-      (sum, account) =>
-          sum + _displayAccountBalanceMinor(state, account, absolute: true),
+      (sum, account) {
+        final bal = _displayAccountBalanceMinor(state, account);
+        return sum + (bal < 0 ? -bal : 0);
+      },
     );
     final monthEnd = DateTime.now().add(const Duration(days: 30));
     final emis = ref
@@ -1816,8 +1803,10 @@ class LoansHomeWidget extends ConsumerWidget {
         .toList();
     final remaining = loans.fold<int>(
       0,
-      (sum, account) =>
-          sum + _displayAccountBalanceMinor(state, account, absolute: true),
+      (sum, account) {
+        final bal = _displayAccountBalanceMinor(state, account);
+        return sum + (bal < 0 ? -bal : 0);
+      },
     );
     final monthEnd = DateTime.now().add(const Duration(days: 30));
     final emis = ref
@@ -1905,36 +1894,30 @@ class CardsHomeWidget extends ConsumerWidget {
     final balances = ref.watch(homeAccountBalanceMapProvider);
     final cards = state.accounts
         .where(
-          (account) => account.type == 'credit_card' && !account.isArchived,
+          (account) =>
+              (account.type == 'credit_card' || account.type == 'card') &&
+              !account.isArchived,
         )
         .toList();
+    int cardDebt(Account card) {
+      final bal = _displayAccountBalanceMinor(
+        state,
+        card,
+        balances: balances,
+      );
+      return bal < 0 ? -bal : 0;
+    }
     final debt = cards.fold<int>(
       0,
-      (sum, account) =>
-          sum +
-          _displayAccountBalanceMinor(
-            state,
-            account,
-            absolute: true,
-            balances: balances,
-          ),
+      (sum, account) => sum + cardDebt(account),
     );
     Account? highest;
+    int highestDebt = 0;
     for (final card in cards) {
-      if (highest == null ||
-          _displayAccountBalanceMinor(
-                state,
-                card,
-                absolute: true,
-                balances: balances,
-              ) >
-              _displayAccountBalanceMinor(
-                state,
-                highest,
-                absolute: true,
-                balances: balances,
-              )) {
+      final d = cardDebt(card);
+      if (d > highestDebt) {
         highest = card;
+        highestDebt = d;
       }
     }
     final payments = ref
@@ -1987,7 +1970,7 @@ class CardsHomeWidget extends ConsumerWidget {
               ),
             ],
           ),
-          if (highest != null) ...[
+          if (highest != null && highestDebt > 0) ...[
             const SizedBox(height: AppSpacing.sm),
             HomeDetailRow(
               icon: Icons.priority_high_rounded,
@@ -1996,16 +1979,9 @@ class CardsHomeWidget extends ConsumerWidget {
               trailing: maskMoneyIfPrivate(
                 state,
                 formatMoney(
-                  _displayMoney(
-                    state,
-                    accountBalanceFromMap(balances, highest),
-                  ).copyWith(
-                    amountMinor: _displayAccountBalanceMinor(
-                      state,
-                      highest,
-                      absolute: true,
-                      balances: balances,
-                    ),
+                  Money(
+                    amountMinor: highestDebt,
+                    currency: state.preferences.displayCurrency,
                   ),
                   state.preferences.locale,
                 ),

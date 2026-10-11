@@ -16,7 +16,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// is migrated to the secure format automatically.
 abstract final class SecureKeyStore {
   static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(),
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
 

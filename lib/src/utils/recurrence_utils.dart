@@ -29,6 +29,7 @@ DateTime advanceRecurrenceCursor({
 }) {
   final freq = frequency.toLowerCase();
   if (interval < 1) interval = 1;
+  if (freq == 'once') return current;
 
   if (freq == 'daily') {
     return DateTime(

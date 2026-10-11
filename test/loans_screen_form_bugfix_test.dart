@@ -7,6 +7,8 @@
 //      tap while the async save was in flight could create two loan
 //      accounts. `_saveLoan` now disables the button / ignores re-entrant
 //      calls via an `_isSaving` flag.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -163,8 +165,8 @@ void main() {
     // the mocked ledger resolves fast enough that the first save fully
     // completes before the second tap is even dispatched.)
     final onPressed = tester.widget<HeaderSaveAction>(saveButton).onPressed;
-    onPressed();
-    onPressed();
+    unawaited(onPressed());
+    unawaited(onPressed());
     await tester.pumpAndSettle();
 
     final loansAfter = container

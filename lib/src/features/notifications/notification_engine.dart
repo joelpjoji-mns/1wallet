@@ -4,40 +4,6 @@ import '../../ledger/ledger_selectors.dart';
 /// Notification channels matching the React Native notification system.
 enum AppNotificationChannel { scheduled }
 
-/// Preferences for the notification system.
-class NotificationPreferences {
-  const NotificationPreferences({
-    this.enabled = true,
-    this.pushEnabled = false,
-    this.quietHours = const QuietHours(),
-    this.channels = const {},
-    this.nativeDeliveredIds = const [],
-  });
-
-  final bool enabled;
-  final bool pushEnabled;
-  final QuietHours quietHours;
-  final Map<AppNotificationChannel, bool> channels;
-  final List<String> nativeDeliveredIds;
-
-  bool channelEnabled(AppNotificationChannel channel) {
-    return channels[channel] ?? true;
-  }
-}
-
-/// Quiet hours configuration.
-class QuietHours {
-  const QuietHours({
-    this.enabled = false,
-    this.start = '22:00',
-    this.end = '07:00',
-  });
-
-  final bool enabled;
-  final String start;
-  final String end;
-}
-
 /// A notification item in the inbox.
 class AppNotification {
   const AppNotification({
@@ -69,38 +35,6 @@ class AppNotification {
   final String? badgeLabel;
   final bool isOverdue;
   final bool isDueSoon;
-}
-
-/// Normalizes notification preferences from raw ledger state.
-NotificationPreferences normalizeNotificationPreferences(
-  Map<String, dynamic>? raw,
-) {
-  if (raw == null) return const NotificationPreferences();
-  return NotificationPreferences(
-    enabled: raw['enabled'] as bool? ?? true,
-    pushEnabled: raw['pushEnabled'] as bool? ?? false,
-    quietHours: QuietHours(
-      enabled:
-          (raw['quietHours'] as Map<String, dynamic>?)?['enabled'] as bool? ??
-          false,
-      start:
-          (raw['quietHours'] as Map<String, dynamic>?)?['start'] as String? ??
-          '22:00',
-      end:
-          (raw['quietHours'] as Map<String, dynamic>?)?['end'] as String? ??
-          '07:00',
-    ),
-    channels: {
-      AppNotificationChannel.scheduled:
-          (raw['channels'] as Map<String, dynamic>?)?['scheduled'] as bool? ??
-          true,
-    },
-    nativeDeliveredIds:
-        ((raw['nativeDeliveredIds'] as List?)
-            ?.map((id) => id.toString())
-            .toList()) ??
-        const [],
-  );
 }
 
 /// Builds the notification inbox from ledger state.

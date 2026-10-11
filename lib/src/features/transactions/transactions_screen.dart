@@ -100,12 +100,27 @@ final _filteredTransactionsProvider = Provider.autoDispose
                   regex.hasMatch(transaction.notes!)) {
                 return true;
               }
+              if (transaction.name != null &&
+                  regex.hasMatch(transaction.name!)) {
+                return true;
+              }
+              if (transaction.locationLabel != null &&
+                  regex.hasMatch(transaction.locationLabel!)) {
+                return true;
+              }
             } else {
               // Fallback if invalid regex
+              final q = query.toLowerCase();
               if (transaction.notes != null &&
-                  transaction.notes!.toLowerCase().contains(
-                    query.toLowerCase(),
-                  )) {
+                  transaction.notes!.toLowerCase().contains(q)) {
+                return true;
+              }
+              if (transaction.name != null &&
+                  transaction.name!.toLowerCase().contains(q)) {
+                return true;
+              }
+              if (transaction.locationLabel != null &&
+                  transaction.locationLabel!.toLowerCase().contains(q)) {
                 return true;
               }
             }
@@ -261,16 +276,51 @@ final _monthlyStatsProvider = Provider.autoDispose
           'MMM yyyy',
           params.locale,
         ).format(t.occurredAt).toUpperCase();
-        final sign =
-            (incomeTypes.contains(t.type) || t.type == 'transferIn') ? 1 : -1;
-        final converted = convertMoneyForDisplay(
-          state,
-          t.amount,
-          params.displayCurrency,
-        );
-        if (converted.currency == params.displayCurrency) {
-          monthlyFlows[monthStr] =
-              (monthlyFlows[monthStr] ?? 0) + (converted.amountMinor * sign);
+
+        int flowMinor = 0;
+        final sourceIncluded = includedAccounts.contains(t.accountId);
+        final counterIncluded = t.counterAccountId != null &&
+            includedAccounts.contains(t.counterAccountId);
+
+        if (t.type == 'transfer') {
+          if (sourceIncluded && !counterIncluded) {
+            final converted = convertMoneyForDisplay(
+              state,
+              t.amount,
+              params.displayCurrency,
+            );
+            flowMinor = -converted.amountMinor;
+          } else if (!sourceIncluded && counterIncluded) {
+            final counterAmt = t.counterAmount ?? t.amount;
+            final converted = convertMoneyForDisplay(
+              state,
+              counterAmt,
+              params.displayCurrency,
+            );
+            flowMinor = converted.amountMinor;
+          }
+        } else if (incomeTypes.contains(t.type)) {
+          if (sourceIncluded) {
+            final converted = convertMoneyForDisplay(
+              state,
+              t.amount,
+              params.displayCurrency,
+            );
+            flowMinor = converted.amountMinor;
+          }
+        } else if (expenseTypes.contains(t.type)) {
+          if (sourceIncluded) {
+            final converted = convertMoneyForDisplay(
+              state,
+              t.amount,
+              params.displayCurrency,
+            );
+            flowMinor = -converted.amountMinor;
+          }
+        }
+
+        if (flowMinor != 0) {
+          monthlyFlows[monthStr] = (monthlyFlows[monthStr] ?? 0) + flowMinor;
         } else {
           monthlyFlows[monthStr] = monthlyFlows[monthStr] ?? 0;
         }
@@ -681,7 +731,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                                   for (final entry in dayGroup.transactions.indexed) ...[
                                     if (entry.$1 > 0) const GlassDivider(),
                                     TransactionRow(
-                                      glass: true,
                                       state: state,
                                       transaction: entry.$2,
                                       selectedAccountId: accountFilter,
@@ -967,7 +1016,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final firstAccountId = selectedList.first.accountId;
     final allSameAccount = selectedList.every((t) => t.accountId == firstAccountId);
     if (!allSameAccount) {
-      showDialog<void>(
+      await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
           title: const Text('Cannot merge'),

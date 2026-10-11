@@ -39,7 +39,6 @@ class ReviewQueueScreen extends ConsumerWidget {
     });
 
     return GlassIsolationScope(
-      isolated: true,
       defaultQuality: GlassQuality.standard,
       child: Scaffold(
         appBar: GlassAppBar(
@@ -161,7 +160,6 @@ class ReviewQueueScreen extends ConsumerWidget {
             children: [
               // ── Header: icon + merchant/date + amount ──────────────────
               Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   IconBubble(
                     icon: candidate.source == 'sms'
@@ -454,7 +452,6 @@ class ReviewQueueScreen extends ConsumerWidget {
                     AppSpacing.sm,
                   ),
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Container(
                         width: 42,
@@ -1019,7 +1016,7 @@ class ReviewQueueScreen extends ConsumerWidget {
     try {
       if (status == 'approved') {
         final router = GoRouter.of(context);
-        router.push('/add?captureCandidateId=$id');
+        await router.push('/add?captureCandidateId=$id');
         return;
       } else {
         await ref

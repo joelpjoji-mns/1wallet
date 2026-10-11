@@ -301,14 +301,13 @@ class _LiveWidgetPreview extends ConsumerWidget {
           PickerOption(
             value: preset,
             title: homeWidgetDateLabel(preset),
-            subtitle: null,
           ),
       ],
     );
     if (next != null && next != datePreset) {
       final filters = Map<String, String>.from(preferences.homeWidgetFilters);
       filters[widgetId.storageKey] = next;
-      ref
+      await ref
           .read(ledgerProvider.notifier)
           .updatePreferences(preferences.copyWith(homeWidgetFilters: filters));
     }

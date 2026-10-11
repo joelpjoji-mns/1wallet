@@ -305,7 +305,7 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
     if (!mounted) return;
     final router = GoRouter.of(context);
     try {
-      router.push('/add?captureCandidateId=${candidate.id}');
+      await router.push('/add?captureCandidateId=${candidate.id}');
     } catch (_) {
       if (!mounted) return;
       _showCaptureMessage('Could not open this capture for confirmation.');

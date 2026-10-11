@@ -216,8 +216,26 @@ int? _parseAmountMinor(String value, String currency) {
 }
 
 // Mirrors minorUnits() in ledger_selectors.dart; kept local so the parser
-// stays free of Flutter/UI imports.
-int _minorDigits(String currency) => currency.toUpperCase() == 'JPY' ? 0 : 2;
+int _minorDigits(String currency) => switch (currency.toUpperCase()) {
+  'JPY' ||
+  'KRW' ||
+  'VND' ||
+  'CLP' ||
+  'ISK' ||
+  'PYG' ||
+  'UGX' ||
+  'RWF' ||
+  'XAF' ||
+  'XOF' ||
+  'XPF' ||
+  'DJF' ||
+  'GNF' ||
+  'KMF' ||
+  'BIF' ||
+  'VUV' => 0,
+  'BHD' || 'KWD' || 'OMR' || 'TND' || 'IQD' || 'JOD' || 'LYD' => 3,
+  _ => 2,
+};
 
 DateTime? _parseDate(String value) {
   if (value.trim().isEmpty) return null;

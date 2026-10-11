@@ -85,7 +85,9 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
 }) {
   int initialNetLiquidBalance = 0;
 
-  final activeLoanAccountIds = activeLoans.map((l) => l.account.id).toSet();
+  final validActiveLoans =
+      activeLoans.where((l) => l.principalMinor > 0).toList();
+  final activeLoanAccountIds = validActiveLoans.map((l) => l.account.id).toSet();
 
   for (final account in state.accounts) {
     if (!account.isArchived && account.includeInReports) {
@@ -231,8 +233,8 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   balanceCurve.addAll(pastCurve.reversed);
 
   // Initialize simulation states
-  final baseLoans = activeLoans.map((l) => _SimulatedLoan(l)).toList();
-  final acceleratedLoans = activeLoans.map((l) => _SimulatedLoan(l)).toList();
+  final baseLoans = validActiveLoans.map((l) => _SimulatedLoan(l)).toList();
+  final acceleratedLoans = validActiveLoans.map((l) => _SimulatedLoan(l)).toList();
 
   // Sort by priority (highest priority first)
   acceleratedLoans.sort((a, b) {
@@ -248,7 +250,7 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   final rawFutureBalances = List<int>.filled(1826, 0);
   int tempBal = initialNetLiquidBalance;
   for (int i = 1; i <= 1825; i++) {
-    tempBal += (futureDeltas[i] ?? 0);
+    tempBal += futureDeltas[i] ?? 0;
     rawFutureBalances[i] = tempBal;
   }
 
@@ -272,8 +274,8 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   for (int i = 1; i <= 1825; i++) {
     final date = startDate.add(Duration(days: i));
 
-    currentFutureLiquid += (futureDeltas[i] ?? 0);
-    baseFutureLiquid += (futureDeltas[i] ?? 0);
+    currentFutureLiquid += futureDeltas[i] ?? 0;
+    baseFutureLiquid += futureDeltas[i] ?? 0;
 
     // --- BASE SCENARIO (No Extra Payments, just standard EMI) ---
     for (final loan in baseLoans) {
@@ -379,6 +381,23 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
     }
 
     balanceCurve.add(ForecastDataPoint(date, prePayoffLiquid.round()));
+  }
+
+  if (validActiveLoans.isNotEmpty) {
+    for (final loan in baseLoans) {
+      if (loan.payoffDate == null) {
+        final expectedMonths =
+            math.max(61, loan.account.loanDetails?.repaymentCount ?? 61);
+        baseMaxMonths = math.max(baseMaxMonths, expectedMonths);
+      }
+    }
+    for (final loan in acceleratedLoans) {
+      if (loan.payoffDate == null) {
+        final expectedMonths =
+            math.max(61, loan.account.loanDetails?.repaymentCount ?? 61);
+        acceleratedMaxMonths = math.max(acceleratedMaxMonths, expectedMonths);
+      }
+    }
   }
 
   int interestSaved = baseTotalInterest - acceleratedTotalInterest;

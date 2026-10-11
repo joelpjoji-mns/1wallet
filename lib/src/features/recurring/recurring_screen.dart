@@ -1447,7 +1447,6 @@ class RecurringDetailView extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       CircleAvatar(
                         radius: 20,
@@ -1732,7 +1731,7 @@ class RecurringDetailView extends ConsumerWidget {
   }
 
   Future<void> _postNow(BuildContext context, WidgetRef ref) async {
-    context.push('/add?plannedId=${transaction.id}');
+    await context.push('/add?plannedId=${transaction.id}');
   }
 
   Future<void> _postpone(BuildContext context, WidgetRef ref) async {

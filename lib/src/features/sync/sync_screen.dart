@@ -329,7 +329,6 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                                   : 'Overwrite cloud with this device',
                             ),
                             AppActionButton(
-                              prominent: false,
                               onPressed: isWorking
                                   ? null
                                   : () => _confirmUseCloudCopy(isCloudOlder: isCloudOlder),
@@ -376,7 +375,6 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                     ),
                     items: const [
                       DropdownMenuItem(
-                        value: null,
                         child: Text('Automatic (On change - Default)'),
                       ),
                       DropdownMenuItem(value: 4, child: Text('Every 4 hours')),

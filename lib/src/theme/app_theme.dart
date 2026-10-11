@@ -48,9 +48,9 @@ abstract final class AppTheme {
       outlineVariant: baseScheme.outlineVariant,
     );
 
-    final textTheme = Typography.material2021(
-      platform: TargetPlatform.android,
-    ).black.apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
+    final textTheme = Typography.material2021()
+        .black
+        .apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
 
     return ThemeData(
       useMaterial3: true,

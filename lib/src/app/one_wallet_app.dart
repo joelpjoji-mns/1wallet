@@ -33,9 +33,9 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     super.initState();
     _listener = AppLifecycleListener(onStateChange: _onStateChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      ref.read(ledgerProvider.notifier).processSpooledSms();
-      ref.read(ledgerProvider.notifier).processSpooledNotifications();
-      ref.read(cloudSyncControllerProvider.notifier).checkAndTriggerSync();
+      await ref.read(ledgerProvider.notifier).processSpooledSms();
+      await ref.read(ledgerProvider.notifier).processSpooledNotifications();
+      await ref.read(cloudSyncControllerProvider.notifier).checkAndTriggerSync();
       final route = await getInitialSmsRoute();
       if (route != null && mounted) {
         _pendingSmsRoute = route;
@@ -95,7 +95,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
       _processingSpooledForRoute = false;
     }
     if (!mounted) return;
-    ref.read(appRouterProvider).push(route);
+    await ref.read(appRouterProvider).push(route);
   }
 
   @override
@@ -191,9 +191,6 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
           resistance: 0.06 - 0.035 * interaction,
         ),
       ),
-      // Keep one predictable quality tier instead of runtime benchmarking
-      // and repeatedly changing the glass implementation during navigation.
-      adaptiveQuality: false,
       brightnessResolver: (context) {
         if (themeState.themeMode == ThemeMode.light) return Brightness.light;
         if (themeState.themeMode == ThemeMode.dark) return Brightness.dark;

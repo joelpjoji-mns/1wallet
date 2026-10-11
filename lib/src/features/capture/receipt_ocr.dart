@@ -175,11 +175,10 @@ Future<ReceiptPhotoFields> extractReceiptFieldsFromPhoto(
   String imagePath,
   ReceiptPhotoOptions options,
 ) async {
+  final textRecognizer = TextRecognizer();
   try {
-    final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
     final inputImage = InputImage.fromFilePath(imagePath);
     final recognizedText = await textRecognizer.processImage(inputImage);
-    await textRecognizer.close();
     return parseReceiptText(recognizedText.text, options);
   } catch (error) {
     return _emptyReceiptFields(
@@ -187,6 +186,8 @@ Future<ReceiptPhotoFields> extractReceiptFieldsFromPhoto(
       options,
       errorMessage: error.toString(),
     );
+  } finally {
+    await textRecognizer.close();
   }
 }
 

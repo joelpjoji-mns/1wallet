@@ -112,7 +112,6 @@ class BottomIslandNavBar extends StatelessWidget {
                         horizontalPadding: hasDownFab ? 6 : 10,
                         verticalPadding: 12,
                         spacing: hasDownFab ? 4 : 6,
-                        showIndicator: true,
                         settings: glassSettings,
                         quality: GlassQuality.standard,
                         indicatorColor: scheme.primary.withAlphaFactor(
