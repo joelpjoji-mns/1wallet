@@ -450,6 +450,11 @@ class _DateBlock {
   final List<String> lines;
 }
 
+bool _blockHasMonetaryAmount(List<String> lines) {
+  final combined = lines.join(' ');
+  return RegExp(r'(?<!\d)([+\-]?(?:\d{1,3}(?:,\d{2,3})*|\d+)\.\d{2})(?!\d)').hasMatch(combined);
+}
+
 List<_DateBlock> _chunkIntoDateBlocks(
   List<String> lines, {
   int? fallbackYear,
@@ -472,6 +477,13 @@ List<_DateBlock> _chunkIntoDateBlocks(
 
       final parsed = _parseAnyDate(dateStr, fallbackYear: fallbackYear, monthFirst: monthFirst);
       if (parsed != null) {
+        // If current block exists and doesn't have any monetary amounts yet,
+        // this subsequent date is almost certainly a Value Date in the same row.
+        if (current != null && !_blockHasMonetaryAmount(current.lines)) {
+          current.lines.add(line);
+          continue;
+        }
+
         if (current != null) blocks.add(current);
         current = _DateBlock(
           dateStr: dateStr,
@@ -490,12 +502,15 @@ List<_DateBlock> _chunkIntoDateBlocks(
 }
 
 bool _isNoiseOrHeaderLine(String line) {
-  if (RegExp(r'\b(?:OPENING|CLOSING)\s+BALANCE\b|\bBROUGHT\s+FORWARD\b|\bB/F\b', caseSensitive: false).hasMatch(line)) {
-    return true;
-  }
+  // Page number footer
   if (RegExp(r'^Page\s+\d+(\s+of\s+\d+)?$', caseSensitive: false).hasMatch(line)) {
     return true;
   }
+  // Standalone summary card lines (like "Opening Balance: $5,000" or "Closing Balance: $4,250")
+  if (RegExp(r'^(?:Opening|Closing)\s+Balance\s*:\s*[$₹€£]?[\d,]+(?:\.\d{2})?', caseSensitive: false).hasMatch(line)) {
+    return true;
+  }
+  // Table headers
   if (RegExp(r'\bDate\b', caseSensitive: false).hasMatch(line) &&
       (RegExp(r'\b(?:Narration|Particulars|Description|Details)\b', caseSensitive: false).hasMatch(line) ||
           RegExp(r'\b(?:Withdrawal|Debit|Deposit|Credit|Balance)\b', caseSensitive: false).hasMatch(line))) {
@@ -682,9 +697,10 @@ String _cleanNotes(String combined, String dateStr, List<_ExtractedAmount> amoun
   for (final a in amounts) {
     text = text.replaceFirst(a.raw, ' ');
   }
+  // Remove remaining dates (like Value Date)
+  text = text.replaceAll(RegExp(r'\b\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}\b'), ' ');
   text = text.replaceAll(RegExp(r'\b(?:CR|DR|Cr|Dr)\b'), ' ');
-  text = text.replaceAll(RegExp(r'\b(?:Chq/Ref\s*No|Value\s*Dt\s*\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4})\b',
-      caseSensitive: false), ' ');
+  text = text.replaceAll(RegExp(r'\b(?:Chq/Ref\s*No|Value\s*Dt)\b', caseSensitive: false), ' ');
   text = text.replaceAll(RegExp(r'\s+'), ' ').trim();
   return text.isEmpty ? 'Transaction' : text;
 }
@@ -709,6 +725,20 @@ List<ParsedWalletCsvRow> _resolveCandidateRows(
 
   for (var i = 0; i < candidates.length; i++) {
     final curr = candidates[i];
+
+    // If this entry is purely an Opening Balance / Brought Forward entry without an actual transaction
+    final isOpeningBalance = RegExp(r'\b(?:OPENING\s+BALANCE|BALANCE\s+B/F|BROUGHT\s+FORWARD|BAL\s+B/F)\b', caseSensitive: false)
+            .hasMatch(curr.notes) ||
+        RegExp(r'\b(?:OPENING\s+BALANCE|BALANCE\s+B/F|BROUGHT\s+FORWARD|BAL\s+B/F)\b', caseSensitive: false)
+            .hasMatch(curr.combinedText);
+
+    if (isOpeningBalance && (curr.amounts.length <= 1 || curr.runningBalance != null)) {
+      if (initialBalance == null && curr.amounts.isNotEmpty) {
+        initialBalance = curr.amounts.last.minor;
+      }
+      continue;
+    }
+
     rowNumber++;
 
     int amountMinor;
@@ -1036,7 +1066,7 @@ String _guessTypeFromNotes(String notes) {
       upper.contains('INTEREST') ||
       upper.contains('REFUND') ||
       upper.contains('CREDITED') ||
-      upper.contains('CASH DEPOSIT') ||
+      upper.contains('DEPOSIT') ||
       upper.contains('PAYROLL') ||
       upper.contains('DIRECT DEP')) {
     return 'income';
