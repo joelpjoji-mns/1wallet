@@ -236,7 +236,7 @@ class _LaunchBackdropState extends State<LaunchBackdrop>
       ),
     );
 
-    return Container(
+    return ColoredBox(
       color: bg,
       child: Stack(
         children: [

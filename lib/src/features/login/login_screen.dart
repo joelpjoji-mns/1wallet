@@ -101,7 +101,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         const SizedBox(height: 80),
                         StaggeredFadeIn(
                           delay: const Duration(milliseconds: 200),
-                          child: Container(
+                          child: DecoratedBox(
                             decoration: BoxDecoration(
                               boxShadow: [
                                 BoxShadow(

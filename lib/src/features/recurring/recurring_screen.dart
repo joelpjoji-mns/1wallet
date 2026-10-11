@@ -193,7 +193,7 @@ class RecurringScreen extends ConsumerWidget {
               child: GlassCard(
                 margin: EdgeInsets.zero,
                 padding: EdgeInsets.zero,
-                shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+                shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
                 quality: GlassQuality.standard,
                 child: Material(
                   color: Colors.transparent,
@@ -442,7 +442,7 @@ class _RecurringCompactCard extends StatelessWidget {
     return GlassCard(
       margin: EdgeInsets.zero,
       padding: EdgeInsets.zero,
-      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+      shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
       quality: GlassQuality.minimal,
       clipBehavior: Clip.antiAlias,
       child: IntrinsicHeight(
@@ -1437,7 +1437,7 @@ class RecurringDetailView extends ConsumerWidget {
         GlassCard(
           margin: EdgeInsets.zero,
           padding: EdgeInsets.zero,
-          shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+          shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
           quality: GlassQuality.standard,
           child: Material(
             color: Colors.transparent,

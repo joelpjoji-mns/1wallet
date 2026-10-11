@@ -36,26 +36,26 @@ void main() {
   });
 
   group('Credit Card Due Date status and notifications', () {
-    final account = Account(
+    const account = Account(
       id: 'card-1',
       name: 'Sapphire Preferred',
       type: 'credit_card',
       currency: 'USD',
-      openingBalance: const Money(amountMinor: 0, currency: 'USD'),
-      creditLimit: const Money(amountMinor: 500000, currency: 'USD'),
+      openingBalance: Money(amountMinor: 0, currency: 'USD'),
+      creditLimit: Money(amountMinor: 500000, currency: 'USD'),
       statementDay: 15,
       dueDay: 5,
       notifyDaysBeforeDue: 3,
     );
 
-    final baseState = LedgerState(
+    const baseState = LedgerState(
       version: 1,
       userId: 'test-user',
       accounts: [account],
       transactions: [],
       categories: [],
       captureCandidates: [],
-      preferences: const LedgerPreferences(
+      preferences: LedgerPreferences(
         baseCurrency: 'USD',
         channelScheduledEnabled: true,
       ),
@@ -109,12 +109,12 @@ void main() {
     });
 
     test('supports statement-only configuration without explicit dueDay', () {
-      final stmtOnlyAccount = Account(
+      const stmtOnlyAccount = Account(
         id: 'card-stmt-only',
         name: 'Statement Card',
         type: 'credit_card',
         currency: 'USD',
-        openingBalance: const Money(amountMinor: -20000, currency: 'USD'),
+        openingBalance: Money(amountMinor: -20000, currency: 'USD'),
         statementDay: 1, // 1st of month
       );
       final state = baseState.copyWith(accounts: [stmtOnlyAccount]);
@@ -135,12 +135,12 @@ void main() {
     });
 
     test('supports due-only configuration without explicit statementDay', () {
-      final dueOnlyAccount = Account(
+      const dueOnlyAccount = Account(
         id: 'card-due-only',
         name: 'Due Only Card',
         type: 'credit_card',
         currency: 'USD',
-        openingBalance: const Money(amountMinor: -15000, currency: 'USD'),
+        openingBalance: Money(amountMinor: -15000, currency: 'USD'),
         dueDay: 15,
         notifyDaysBeforeDue: 5,
       );
@@ -161,7 +161,7 @@ void main() {
 
     test('dismissing card notification excludes it for today', () {
       final now = DateTime(2026, 10, 3);
-      final todayKey = '2026-10-03';
+      const todayKey = '2026-10-03';
       final dismissedId = 'card_due_${account.id}_$todayKey';
 
       final dismissedState = baseState.copyWith(
@@ -178,13 +178,13 @@ void main() {
 
   group('Ledger Codec Account serialization', () {
     test('serializes and deserializes credit card due date fields', () {
-      final account = Account(
+      const account = Account(
         id: 'acc-cc-1',
         name: 'Platinum Card',
         type: 'credit_card',
         currency: 'USD',
-        openingBalance: const Money(amountMinor: -15000, currency: 'USD'),
-        creditLimit: const Money(amountMinor: 1000000, currency: 'USD'),
+        openingBalance: Money(amountMinor: -15000, currency: 'USD'),
+        creditLimit: Money(amountMinor: 1000000, currency: 'USD'),
         statementDay: 20,
         dueDay: 10,
         notifyDaysBeforeDue: 4,

@@ -141,11 +141,11 @@ void main() {
       await pumpAtWidth(
         tester,
         400,
-        RouteScaffold(
+        const RouteScaffold(
           title: 'With drawer',
           hasDrawer: true,
-          drawer: const Drawer(child: Text('drawer content')),
-          child: const Text('body'),
+          drawer: Drawer(child: Text('drawer content')),
+          child: Text('body'),
         ),
       );
 

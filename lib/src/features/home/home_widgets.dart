@@ -34,9 +34,14 @@ final _homeScheduledTransactionsProvider =
 
 final _homeSortedTransactionsProvider =
     Provider.autoDispose<List<TransactionRecord>>((ref) {
-      final state = ref.watch(ledgerProvider);
+      final (transactions, hideSkipped) = ref.watch(
+        ledgerProvider.select(
+          (s) => (s.transactions, s.preferences.hideSkippedInHistory),
+        ),
+      );
+      final state = ref.read(ledgerProvider);
       return sortedTransactions(state, includeScheduled: false).where((t) {
-        if (state.preferences.hideSkippedInHistory && t.status == 'void') {
+        if (hideSkipped && t.status == 'void') {
           return false;
         }
         return true;
@@ -837,7 +842,7 @@ class _BalanceTrendHomeWidgetState
                   child: RepaintBoundary(
                     child: LineChart(
                     LineChartData(
-                      clipData: FlClipData.all(),
+                      clipData: const FlClipData.all(),
                       gridData: FlGridData(
                         show: true,
                         drawVerticalLine: true,
@@ -856,10 +861,10 @@ class _BalanceTrendHomeWidgetState
                       ),
                       titlesData: FlTitlesData(
                         show: true,
-                        topTitles: AxisTitles(
+                        topTitles: const AxisTitles(
                           sideTitles: SideTitles(showTitles: false),
                         ),
-                        rightTitles: AxisTitles(
+                        rightTitles: const AxisTitles(
                           sideTitles: SideTitles(showTitles: false),
                         ),
                         leftTitles: AxisTitles(
@@ -1602,17 +1607,15 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
         ],
         semanticLabel: 'Upcoming payment range',
         onChanged: (value) {
-          if (value != null) {
-            final newFilters = Map<String, String>.from(
-              state.preferences.homeWidgetFilters,
-            );
-            newFilters['upcomingScheduled'] = value;
-            ref
-                .read(ledgerProvider.notifier)
-                .updatePreferences(
-                  state.preferences.copyWith(homeWidgetFilters: newFilters),
-                );
-          }
+          final newFilters = Map<String, String>.from(
+            state.preferences.homeWidgetFilters,
+          );
+          newFilters['upcomingScheduled'] = value;
+          ref
+              .read(ledgerProvider.notifier)
+              .updatePreferences(
+                state.preferences.copyWith(homeWidgetFilters: newFilters),
+              );
         },
       ),
       child: Column(
@@ -2820,7 +2823,7 @@ class DashboardCard extends StatelessWidget {
     return GlassCard(
       margin: EdgeInsets.zero,
       padding: const EdgeInsets.all(AppSpacing.lg),
-      shape: LiquidRoundedSuperellipse(borderRadius: 16),
+      shape: const LiquidRoundedSuperellipse(borderRadius: 16),
       quality: GlassQuality.standard,
       child: inner,
     );

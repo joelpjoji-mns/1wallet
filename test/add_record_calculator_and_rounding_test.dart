@@ -173,12 +173,12 @@ void main() {
     'editing a 3-decimal currency transaction shows "1.5", not "1.50"',
     (tester) async {
       final seed = sampleLedgerState();
-      final kwdAccount = Account(
+      const kwdAccount = Account(
         id: 'acc-kwd',
         name: 'Kuwait Wallet',
         type: 'cash',
         currency: 'KWD',
-        openingBalance: const Money(amountMinor: 0, currency: 'KWD'),
+        openingBalance: Money(amountMinor: 0, currency: 'KWD'),
       );
       final kwdTransaction = TransactionRecord(
         id: 'tx-kwd',

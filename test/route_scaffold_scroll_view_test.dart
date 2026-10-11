@@ -69,10 +69,10 @@ void main() {
     (tester) async {
       await pumpMobile(
         tester,
-        RouteScaffold(
+        const RouteScaffold(
           title: 'Sliver mode',
           scrollView: CustomScrollView(
-            slivers: [SliverToBoxAdapter(child: const Text('sliver content'))],
+            slivers: [SliverToBoxAdapter(child: Text('sliver content'))],
           ),
         ),
       );

@@ -54,6 +54,8 @@ app.*.map.json
 
 # Ignored data directories
 importdata/
+releases/
+*.apk
 
 # Scratch and Generator Files
 scratch_*

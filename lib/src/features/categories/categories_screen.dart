@@ -37,8 +37,30 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       title: 'Categories',
       actions: [
         IconButton(
+          tooltip: 'Add category',
           onPressed: () => _openCategoryEditor(context, state),
           icon: const Icon(Icons.add_rounded),
+        ),
+        PopupMenuButton<String>(
+          tooltip: 'Category options',
+          icon: const Icon(Icons.more_vert_rounded),
+          onSelected: (action) {
+            if (action == 'reset') {
+              _confirmResetDefaults();
+            }
+          },
+          itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: 'reset',
+              child: Row(
+                children: [
+                  Icon(Icons.restart_alt_rounded, size: 20),
+                  SizedBox(width: 12),
+                  Text('Reset to default categories'),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
       child: Column(
@@ -82,6 +104,14 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   meta: '$archivedCount archived',
                   onTap: () => setState(() => _showArchived = !_showArchived),
                 ),
+                const SizedBox(height: AppSpacing.xs),
+                PremiumRow(
+                  icon: Icons.restart_alt_rounded,
+                  title: 'Reset to default categories',
+                  subtitle:
+                      'Restore the standard 100 categories and reset rules',
+                  onTap: _confirmResetDefaults,
+                ),
               ],
             ),
           ),
@@ -115,6 +145,38 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _confirmResetDefaults() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Reset categories?'),
+        content: const Text(
+          'This will reset your categories to the 100 standard built-in categories and subcategories, clear custom category overrides, and reset merchant categorization rules.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Reset to defaults'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await ref.read(ledgerProvider.notifier).resetCategoriesToDefault();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Categories and rules reset to defaults.'),
+        ),
+      );
+    }
   }
 
   Future<void> _openCategoryEditor(
@@ -409,7 +471,7 @@ class _CategoryTreeNode extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
+        DecoratedBox(
           decoration: BoxDecoration(
             color: depth == 0
                 ? scheme.surfaceContainerLow

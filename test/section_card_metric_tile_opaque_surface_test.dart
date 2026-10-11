@@ -10,9 +10,9 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
-            body: SectionCard(title: 'Appearance', child: const Text('Body')),
+            body: SectionCard(title: 'Appearance', child: Text('Body')),
           ),
         ),
       );
@@ -22,12 +22,12 @@ void main() {
 
     testWidgets('SectionCard(glass: false) opts out of glass', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: SectionCard(
               title: 'Appearance',
               glass: false,
-              child: const Text('Body'),
+              child: Text('Body'),
             ),
           ),
         ),
@@ -91,12 +91,12 @@ void main() {
     'nesting refractive metric surfaces',
     (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: SectionCard(
               title: 'Loan control center',
               subtitle: 'Loan count and next scheduled EMI.',
-              child: const Row(
+              child: Row(
                 children: [
                   Expanded(
                     child: MetricTile(

@@ -8,7 +8,6 @@ import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
-import '../../utils/currency_utils.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/privacy_text.dart';
 
@@ -17,8 +16,9 @@ class CardsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(ledgerProvider);
-    final cards = state.accounts
+    final accounts =
+        ref.watch(ledgerProvider.select((state) => state.accounts));
+    final cards = accounts
         .where(
           (account) =>
               !account.isArchived &&
@@ -154,7 +154,7 @@ class _CardAccountTile extends ConsumerWidget {
         'Bill: ${DateFormat('d MMM').format(dueStatus!.statementDate!)}',
     ].whereType<String>().join(' · ');
 
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(16),

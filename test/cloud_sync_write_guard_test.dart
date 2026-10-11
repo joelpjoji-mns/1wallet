@@ -20,7 +20,7 @@ CloudWriteState _expectedStateFromMetadata(CloudSyncMetadata metadata) {
 
 void main() {
   test('CloudSyncMetadata.copyWith can clear the cloud baseline', () {
-    final metadata = CloudSyncMetadata(
+    const metadata = CloudSyncMetadata(
       deviceId: 'device-a',
       lastCloudRevision: 12,
       lastObservedCloudUpdatedAt: '2026-09-25T12:00:00.000Z',
@@ -224,7 +224,7 @@ void main() {
       // show revision 6 and wrongly look like "no conflict", letting the
       // stale ledger be written as revision 7 over the peer's revision-6
       // data).
-      final metadata = CloudSyncMetadata(
+      const metadata = CloudSyncMetadata(
         deviceId: 'device-a',
         lastCloudRevision: 5,
       );

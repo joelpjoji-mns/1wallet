@@ -46,11 +46,13 @@ List<TransactionRecord> forecastRecurringTransactions(
       iterationGuard++;
       if (iterationGuard > 5000) break; // Absolute safety break
       if (template.recurrenceLimit != null &&
-          (pastOccurrences + occurrenceIndex) >= template.recurrenceLimit!)
+          (pastOccurrences + occurrenceIndex) >= template.recurrenceLimit!) {
         break;
+      }
       if (template.recurrenceEndDate != null &&
-          cursor.isAfter(template.recurrenceEndDate!))
+          cursor.isAfter(template.recurrenceEndDate!)) {
         break;
+      }
 
       if (cursor.isAfter(horizonStart) ||
           cursor.isAtSameMomentAs(horizonStart)) {

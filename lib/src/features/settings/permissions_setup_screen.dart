@@ -131,7 +131,7 @@ class _PermissionsSetupScreenState
                     const SizedBox(height: 32),
                     StaggeredFadeIn(
                       delay: const Duration(milliseconds: 200),
-                      child: Container(
+                      child: DecoratedBox(
                         decoration: BoxDecoration(
                           color: scheme.surfaceContainerHigh.withValues(
                             alpha: 0.4,

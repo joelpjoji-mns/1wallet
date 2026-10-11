@@ -1,7 +1,7 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -187,7 +187,7 @@ class _ImportStatementScreenState
         SectionCard(
           title: 'Bank profile',
           child: DropdownButtonFormField<String>(
-            value: _selectedProfile?.id ?? result.profile.id,
+            initialValue: _selectedProfile?.id ?? result.profile.id,
             decoration: const InputDecoration(
               border: OutlineInputBorder(),
               contentPadding: EdgeInsets.symmetric(
@@ -202,19 +202,25 @@ class _ImportStatementScreenState
                   child: Text(profile.name),
                 ),
             ],
-            onChanged: (value) {
+            onChanged: (value) async {
               if (value == null || _rawText == null) return;
               final newProfile = allBankProfiles.firstWhere(
                 (p) => p.id == value,
               );
+              final accName =
+                  _getAccountName(accounts, effectiveAccountId ?? '');
+              final reResult = await compute(
+                _runStatementParser,
+                (
+                  fullText: _rawText!,
+                  profile: newProfile,
+                  accountName: accName,
+                ),
+              );
+              if (!mounted) return;
               setState(() {
                 _selectedProfile = newProfile;
-                _result = parseStatement(
-                  _rawText!,
-                  profile: newProfile,
-                  accountName:
-                      _getAccountName(accounts, effectiveAccountId ?? ''),
-                );
+                _result = reResult;
               });
             },
           ),
@@ -227,7 +233,7 @@ class _ImportStatementScreenState
           SectionCard(
             title: 'Import to account',
             child: DropdownButtonFormField<String>(
-              value: effectiveAccountId,
+              initialValue: effectiveAccountId,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 contentPadding: EdgeInsets.symmetric(
@@ -256,7 +262,7 @@ class _ImportStatementScreenState
           title: 'Transactions preview',
           subtitle: '${result.rows.length} transactions found',
           child: result.rows.isEmpty
-              ? EmptyState(
+              ? const EmptyState(
                   icon: Icons.search_off_outlined,
                   title: 'No transactions found',
                   body:
@@ -424,8 +430,8 @@ class _ImportStatementScreenState
         throw Exception('The selected PDF file is empty.');
       }
 
-      // Extract text from PDF.
-      final rawText = extractAllTextFromPdf(bytes);
+      // Extract text from PDF in a background isolate to keep UI responsive.
+      final rawText = await compute(extractAllTextFromPdf, bytes);
       if (rawText.trim().isEmpty) {
         throw Exception(
           'No readable text found in this PDF. '
@@ -433,14 +439,18 @@ class _ImportStatementScreenState
         );
       }
 
-      // Parse with auto-detected profile.
+      // Parse with auto-detected profile in a background isolate.
       final state = ref.read(ledgerProvider);
       final accounts = state.accounts;
       final accountName = accounts.isNotEmpty ? accounts.first.name : '';
 
-      final parseResult = parseStatement(
-        rawText,
-        accountName: accountName,
+      final parseResult = await compute(
+        _runStatementParser,
+        (
+          fullText: rawText,
+          profile: null,
+          accountName: accountName,
+        ),
       );
 
       setState(() {
@@ -615,4 +625,14 @@ class _TransactionPreviewTile extends StatelessWidget {
         return currency;
     }
   }
+}
+
+StatementParseResult _runStatementParser(
+  ({String fullText, BankProfile? profile, String accountName}) args,
+) {
+  return parseStatement(
+    args.fullText,
+    profile: args.profile,
+    accountName: args.accountName,
+  );
 }

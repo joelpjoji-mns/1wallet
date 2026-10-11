@@ -171,10 +171,12 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   for (final tx in state.transactions) {
     if (tx.status == 'scheduled' ||
         tx.status == 'void' ||
-        tx.status == 'forecast')
+        tx.status == 'forecast') {
       continue;
-    if (tx.occurredAt.isBefore(pastStart) || tx.occurredAt.isAfter(startDate))
+    }
+    if (tx.occurredAt.isBefore(pastStart) || tx.occurredAt.isAfter(startDate)) {
       continue;
+    }
     addDelta(tx, pastDeltas, false);
   }
 
@@ -184,8 +186,9 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
     // Exclude any future transaction that goes directly to our actively simulated loans,
     // so we don't double count the simulator's own EMI payments!
     if (tx.counterAccountId != null &&
-        activeLoanAccountIds.contains(tx.counterAccountId))
+        activeLoanAccountIds.contains(tx.counterAccountId)) {
       continue;
+    }
     if (activeLoanAccountIds.contains(tx.accountId)) continue;
 
     addDelta(tx, futureDeltas, true);
@@ -203,8 +206,9 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
       if (tx.occurredAt.isBefore(futureEnd) ||
           tx.occurredAt.isAtSameMomentAs(futureEnd)) {
         if (tx.counterAccountId != null &&
-            activeLoanAccountIds.contains(tx.counterAccountId))
+            activeLoanAccountIds.contains(tx.counterAccountId)) {
           continue;
+        }
         if (activeLoanAccountIds.contains(tx.accountId)) continue;
 
         addDelta(tx, futureDeltas, true);

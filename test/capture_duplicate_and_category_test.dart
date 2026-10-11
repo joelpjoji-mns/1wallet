@@ -21,7 +21,7 @@ void main() {
     () async {
       final seedState = emptyLedgerState().copyWith(
         accounts: [
-          Account(
+          const Account(
             id: 'acc-chase',
             name: 'Chase Checking',
             type: 'bank',
@@ -31,7 +31,7 @@ void main() {
             color: Colors.blue,
             openingBalance: Money(amountMinor: 500000, currency: 'USD'),
           ),
-          Account(
+          const Account(
             id: 'acc-cash',
             name: 'Cash',
             type: 'cash',
@@ -54,7 +54,7 @@ void main() {
             kind: 'expense',
           ),
         ],
-        preferences: LedgerPreferences(
+        preferences: const LedgerPreferences(
           baseCurrency: 'USD',
           displayCurrency: 'USD',
           enabledCurrencies: ['USD'],

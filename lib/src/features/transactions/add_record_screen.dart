@@ -774,7 +774,12 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
 
   Future<void> _scanReceipt(ImageSource source) async {
     final picker = ImagePicker();
-    final file = await picker.pickImage(source: source);
+    final file = await picker.pickImage(
+      source: source,
+      maxWidth: 1920,
+      maxHeight: 1920,
+      imageQuality: 85,
+    );
     if (file == null) return;
     setState(() => _isScanning = true);
     try {
@@ -1346,7 +1351,7 @@ class _FxAmountCard extends StatelessWidget {
     return GlassCard(
       margin: EdgeInsets.zero,
       padding: EdgeInsets.zero,
-      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+      shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
       quality: GlassQuality.minimal,
       clipBehavior: Clip.antiAlias,
       child: Material(

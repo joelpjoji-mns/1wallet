@@ -76,7 +76,7 @@ class GlassDropdownPill<T> extends StatelessWidget {
         onTap: toggleMenu,
         label: semanticLabel ?? label,
         quality: GlassQuality.standard,
-        shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.pill),
+        shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.pill),
         useOwnLayer: true,
         child: Padding(
           padding: const EdgeInsets.symmetric(
@@ -594,7 +594,7 @@ class AppActionButton extends StatelessWidget {
       onTap: onPressed ?? () {},
       enabled: enabled && onPressed != null,
       height: compact ? 36 : 48,
-      shape: LiquidRoundedRectangle(borderRadius: AppRadii.pill),
+      shape: const LiquidRoundedRectangle(borderRadius: AppRadii.pill),
       useOwnLayer: true,
       quality: GlassQuality.standard,
       style: prominent ? GlassButtonStyle.prominent : GlassButtonStyle.filled,
@@ -683,13 +683,13 @@ class SectionCard extends StatelessWidget {
       return GlassCard(
         margin: EdgeInsets.zero,
         padding: EdgeInsets.zero,
-        shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+        shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
         quality: GlassQuality.standard,
         child: content,
       );
     }
 
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(AppRadii.md),
@@ -783,7 +783,7 @@ class MetricTile extends StatelessWidget {
       return GlassCard(
         margin: EdgeInsets.zero,
         padding: EdgeInsets.zero,
-        shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+        shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
         quality: GlassQuality.standard,
         clipBehavior: Clip.antiAlias,
         child: content,
@@ -1122,7 +1122,7 @@ class PremiumRow extends StatelessWidget {
       return GlassCard(
         margin: EdgeInsets.zero,
         padding: EdgeInsets.zero,
-        shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+        shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
         // GlassQuality.standard is the package's own recommended tier for
         // scrollable list rows (lightweight shader, 5-10x faster than
         // BackdropFilter, "works correctly during scrolling"). Reserve

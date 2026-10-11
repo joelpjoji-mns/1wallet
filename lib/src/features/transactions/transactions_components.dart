@@ -90,7 +90,7 @@ class TransactionCommandStrip extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
         GlassCard(
           padding: const EdgeInsets.all(AppSpacing.sm),
-          shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+          shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
           quality: GlassQuality.standard,
           child: Material(
             color: Colors.transparent,

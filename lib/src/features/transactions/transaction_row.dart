@@ -162,7 +162,7 @@ class TransactionRow extends StatelessWidget {
         child: GlassCard(
           margin: EdgeInsets.zero,
           padding: EdgeInsets.zero,
-          shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+          shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
           quality: GlassQuality.minimal,
           clipBehavior: Clip.antiAlias,
           child: content,

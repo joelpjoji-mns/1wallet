@@ -298,7 +298,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<int?>(
-                          value: _statementDay,
+                          initialValue: _statementDay,
                           isExpanded: true,
                           decoration: const InputDecoration(
                             labelText: 'Bill date',
@@ -328,7 +328,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: DropdownButtonFormField<int?>(
-                          value: _dueDay,
+                          initialValue: _dueDay,
                           isExpanded: true,
                           decoration: const InputDecoration(
                             labelText: 'Due date',
@@ -959,117 +959,6 @@ String _daySuffix(int day) {
   }
 }
 
-class _DaySelectorField extends StatelessWidget {
-  const _DaySelectorField({
-    required this.label,
-    required this.day,
-    required this.icon,
-    required this.onChanged,
-  });
-
-  final String label;
-  final int? day;
-  final IconData icon;
-  final ValueChanged<int?> onChanged;
-
-  String _formatDay(int d) {
-    if (d == 1 || d == 21 || d == 31) return '${d}st';
-    if (d == 2 || d == 22) return '${d}nd';
-    if (d == 3 || d == 23) return '${d}rd';
-    return '${d}th';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final hasValue = day != null;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () async {
-          final picked = await showDayOfMonthPicker(
-            context: context,
-            title: label,
-            initialDay: day,
-          );
-          if (picked != null) {
-            onChanged(picked == 0 ? null : picked);
-          }
-        },
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: 12,
-          ),
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(AppRadii.lg),
-            border: Border.all(
-              color: hasValue
-                  ? scheme.primary.withValues(alpha: 0.6)
-                  : scheme.outlineVariant,
-              width: hasValue ? 1.5 : 1.0,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: hasValue
-                      ? scheme.primary.withValues(alpha: 0.12)
-                      : scheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  icon,
-                  size: 20,
-                  color: hasValue ? scheme.primary : scheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      label,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      hasValue ? '${_formatDay(day!)} day' : 'Select day',
-                      style: TextStyle(
-                        fontWeight: hasValue ? FontWeight.w800 : FontWeight.w600,
-                        color: hasValue ? scheme.onSurface : scheme.outline,
-                        fontSize: 13,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.calendar_month_outlined,
-                size: 16,
-                color: hasValue ? scheme.primary : scheme.outline,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 Future<int?> showDayOfMonthPicker({
   required BuildContext context,
   required String title,
@@ -1155,7 +1044,7 @@ Future<int?> showDayOfMonthPicker({
                           child: Center(
                             child: Text(
                               d,
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
                                 color: Colors.grey,

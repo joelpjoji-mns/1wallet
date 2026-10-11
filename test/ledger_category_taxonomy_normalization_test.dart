@@ -49,10 +49,12 @@
 //    dangling references cleared, without slowing down the default
 //    (`_commit`'s hot-path) behavior for everyone else.
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:one_wallet_flutter/src/data/ledger_codec.dart';
 import 'package:one_wallet_flutter/src/data/ledger_defaults.dart';
 import 'package:one_wallet_flutter/src/data/ledger_models.dart';
+import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
 
 LedgerState _stateWith({
   required List<Category> categories,
@@ -102,6 +104,10 @@ List<Category> _canonicalCategories() {
 }
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   test(
     'normalizing an already-canonical current-version ledger reuses the '
     'same transaction and capture-candidate lists instead of rebuilding '
@@ -202,12 +208,11 @@ void main() {
   );
 
   test(
-    'currentLedgerStateVersion is 17: locks in the one-time bump that '
-    'forces every already-persisted v16 local ledger through exactly one '
-    'more full category-reference scan before settling on the v17 fast '
-    'path',
+    'currentLedgerStateVersion is 18: locks in the one-time bump that '
+    'forces already-persisted local ledgers through a full category scan '
+    'to restore the complete 100-category canonical taxonomy',
     () {
-      expect(currentLedgerStateVersion, 17);
+      expect(currentLedgerStateVersion, 18);
     },
   );
 
@@ -230,13 +235,13 @@ void main() {
 
       final restored = decodeLedgerState(legacyJson);
 
-      expect(restored.version, 17);
+      expect(restored.version, currentLedgerStateVersion);
       expect(restored.transactions.single.categoryId, isNull);
     },
   );
 
   test(
-    'decoding a v17 ledger payload with already-canonical categories is a '
+    'decoding a current-version ledger payload with already-canonical categories is a '
     'true no-op fast path: round-tripping through encode/decode again '
     'reuses the same transaction list',
     () {
@@ -244,11 +249,11 @@ void main() {
         categories: _canonicalCategories(),
         transactions: [_tx('tx-1', categoryId: 'cat-food')],
       );
-      expect(canonicalState.version, 17);
+      expect(canonicalState.version, currentLedgerStateVersion);
 
       final roundTripped = decodeLedgerState(encodeLedgerState(canonicalState));
 
-      expect(roundTripped.version, 17);
+      expect(roundTripped.version, currentLedgerStateVersion);
       expect(roundTripped.transactions.single.categoryId, 'cat-food');
       // A second normalize (as `_commit` does on every edit) must still be
       // the same O(categories) no-op after a real encode/decode round trip,
@@ -326,14 +331,14 @@ void main() {
   );
 
   test(
-    'default categories that are themselves superseded by an alias (e.g. '
-    '"Charges" -> cat-bank-fees) disappear after one normalization pass '
-    'and never reappear, so idRedirect reaches a stable identity mapping',
+    'canonical default categories (e.g. cat-vehicle, cat-sales, cat-charges) '
+    'are preserved and normalization reaches a stable identity mapping',
     () {
+      final defaults = defaultCategories();
       final firstPass = normalizeLedgerState(
-        _stateWith(categories: defaultCategories(), transactions: const []),
+        _stateWith(categories: defaults, transactions: const []),
       );
-      const supersededIds = {
+      const canonicalIds = {
         'cat-sales',
         'cat-cashback',
         'cat-vehicle',
@@ -344,16 +349,17 @@ void main() {
         'cat-movies',
       };
       final firstPassIds = firstPass.categories.map((c) => c.id).toSet();
-      for (final id in supersededIds) {
+      for (final id in canonicalIds) {
         expect(
           firstPassIds.contains(id),
-          isFalse,
-          reason: '$id should have been merged away, not resurrected',
+          isTrue,
+          reason: '$id should be preserved in canonical categories',
         );
       }
+      expect(firstPass.categories.length, defaults.length);
 
-      // A second pass over the now-canonical list must be a complete no-op:
-      // this is what guarantees `_commit`'s hot path can stay O(1).
+      // A second pass over the canonical list must be a complete no-op:
+      // this is what guarantees `_commit`'s hot path stays O(1).
       final secondPass = normalizeLedgerState(firstPass);
       expect(
         secondPass.categories.map((c) => c.id).toSet(),
@@ -364,23 +370,58 @@ void main() {
   );
 
   test(
-    'a transaction referencing a soon-to-be-retired default id (e.g. the '
-    'legacy cat-charges) is redirected to its replacement, not dropped, '
-    'when that legacy ledger is first migrated',
+    'a transaction referencing a legacy category (e.g. Transport) '
+    'is redirected to its canonical replacement when that legacy ledger is migrated',
     () {
       final state = _stateWith(
-        categories: defaultCategories(),
-        transactions: [_tx('tx-1', categoryId: 'cat-charges')],
+        categories: [
+          ...defaultCategories(),
+          const Category(
+            id: 'legacy-transport',
+            name: 'Transport',
+            kind: 'expense',
+          ),
+        ],
+        transactions: [_tx('tx-1', categoryId: 'legacy-transport')],
         version: currentLedgerStateVersion - 1,
       );
 
       final normalized = normalizeLedgerState(state);
 
-      expect(normalized.transactions.single.categoryId, 'cat-bank-fees');
+      expect(normalized.transactions.single.categoryId, 'cat-transit');
       expect(
-        normalized.categories.where((c) => c.id == 'cat-charges'),
+        normalized.categories.where((c) => c.id == 'legacy-transport'),
         isEmpty,
       );
+    },
+  );
+
+  test(
+    'resetCategoriesToDefault restores standard 100 categories and clears merchant rules',
+    () async {
+      final controller = LedgerController(
+        const LedgerRepository(),
+        initialState: _stateWith(
+          categories: [
+            const Category(id: 'custom-foo', name: 'Custom Foo', kind: 'expense'),
+          ],
+          transactions: [_tx('tx-1', categoryId: 'custom-foo')],
+        ).copyWith(
+          preferences: const LedgerPreferences(
+            merchantCategoryRules: {'Merchant': 'custom-foo'},
+          ),
+        ),
+      );
+
+      await controller.resetCategoriesToDefault();
+
+      expect(controller.state.categories.length, defaultCategories().length);
+      expect(
+        controller.state.categories.where((c) => c.id == 'custom-foo'),
+        isEmpty,
+      );
+      expect(controller.state.preferences.merchantCategoryRules, isEmpty);
+      expect(controller.state.transactions.single.categoryId, isNull);
     },
   );
 }

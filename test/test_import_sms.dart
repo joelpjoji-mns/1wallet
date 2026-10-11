@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
@@ -13,9 +14,9 @@ void main() {
     final ledgerNotifier = container.read(ledgerProvider.notifier);
 
     // Wait for init
-    await Future.delayed(Duration(seconds: 1));
+    await Future.delayed(const Duration(seconds: 1));
 
-    final sms = "Paid Rs. 500 at Amazon using card ending 1234. Ref: 123456789";
+    const sms = "Paid Rs. 500 at Amazon using card ending 1234. Ref: 123456789";
 
     final parsed = parseTransactionMessage(sms);
     print("Parsed ignored: ${parsed.ignored}");

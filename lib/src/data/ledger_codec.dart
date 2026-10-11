@@ -5,14 +5,10 @@ import 'package:flutter/material.dart';
 import 'category_taxonomy.dart';
 import 'ledger_models.dart';
 
-// Bumped 16 -> 17 solely to force a one-time full category-taxonomy scan
-// (see `forceFullRedirectScan` below) on every already-persisted v16 local
-// ledger the next time it's decoded. That one-time scan self-heals any
-// dangling category references those ledgers might carry (the same class
-// of bug `forceFullCategoryReferenceScan` lets cloud restore opt into
-// explicitly) before they settle onto the O(categories) fast path forever
-// after, stamped at v17. No other schema change accompanies this bump.
-const currentLedgerStateVersion = 17;
+// Bumped 17 -> 18 to force a one-time category normalization scan on
+// already-persisted v17 ledgers so the complete 100-category canonical
+// taxonomy (Vehicle, Sales, Cashback, Movies, etc.) is restored and healed.
+const currentLedgerStateVersion = 18;
 
 String encodeLedgerState(LedgerState state) {
   return jsonEncode(_ledgerToJson(state));
@@ -115,6 +111,17 @@ LedgerState _migrateLedgerState(
         fromVersion < currentLedgerStateVersion ||
         forceFullCategoryReferenceScan,
   );
+  if (fromVersion < 18) {
+    // Automatically reset categories to only the canonical default taxonomy
+    // and clear merchant category rules so existing ledgers start fresh with
+    // only the standard 100 categories.
+    next = next.copyWith(
+      categories: lifeCategoryTaxonomy(),
+      preferences: next.preferences.copyWith(
+        merchantCategoryRules: const {},
+      ),
+    );
+  }
   return next.copyWith(version: currentLedgerStateVersion);
 }
 
@@ -124,11 +131,7 @@ LedgerState _migrateCategoryTaxonomy(
 }) {
   final defaults = lifeCategoryTaxonomy();
   final defaultsById = {for (final category in defaults) category.id: category};
-  final preferredByName = <String, String>{};
-  for (final category in defaults) {
-    preferredByName[_categoryNameKey(category.name)] = category.id;
-  }
-  preferredByName.addAll(const {
+  final preferredByName = <String, String>{
     'bill': 'cat-bills',
     'bills': 'cat-bills',
     'home': 'cat-bills',
@@ -140,45 +143,47 @@ LedgerState _migrateCategoryTaxonomy(
     'grocery': 'cat-grocery',
     'groceries': 'cat-grocery',
     'food and dining': 'cat-food',
-    'breakfast': 'cat-breakfast',
-    'lunch': 'cat-lunch',
-    'dinner': 'cat-dinner',
-    'food delivery': 'cat-dining',
-    'emi': 'cat-emi',
-    'loan emi': 'cat-emi',
-    'travel': 'cat-travel',
-    'transport': 'cat-transport',
-    'transportation': 'cat-transport',
-    'vehicle': 'cat-transport',
-    'salary': 'cat-salary',
-    'work': 'cat-income',
-    'bonus': 'cat-salary',
-    'reimbursements': 'cat-refunds',
-    'reimbursement': 'cat-refunds',
-    'business income': 'cat-business-income',
-    'sales': 'cat-business-income',
-    'investments income': 'cat-interest-dividends',
-    'interest': 'cat-interest-dividends',
-    'dividend': 'cat-interest-dividends',
-    'capital gains': 'cat-interest-dividends',
-    'money back': 'cat-refunds',
-    'refund': 'cat-refunds',
-    'cashback': 'cat-refunds',
-    'rewards': 'cat-refunds',
-    'income adjustments': 'cat-income',
-    'miscellaneous income': 'cat-income',
-    'uncategorized income': 'cat-income',
     'food': 'cat-food',
     'dining': 'cat-dining',
     'restaurant': 'cat-dining',
     'restaurants': 'cat-dining',
+    'food delivery': 'cat-dining',
+    'breakfast': 'cat-breakfast',
+    'lunch': 'cat-lunch',
+    'dinner': 'cat-dinner',
+    'emi': 'cat-emi',
+    'loan emi': 'cat-emi',
+    'debt payments': 'cat-emi',
+    'interest paid': 'cat-emi',
+    'travel': 'cat-vacations',
+    'transport': 'cat-transit',
+    'transportation': 'cat-transit',
+    'transit': 'cat-transit',
+    'salary': 'cat-salary',
+    'work': 'cat-salary',
+    'bonus': 'cat-salary',
+    'reimbursements': 'cat-refunds',
+    'reimbursement': 'cat-refunds',
+    'money back': 'cat-refunds',
+    'refund': 'cat-refunds',
+    'rewards': 'cat-refunds',
+    'business income': 'cat-business-income',
+    'investments income': 'cat-interest-dividends',
+    'interest': 'cat-interest-dividends',
+    'dividend': 'cat-interest-dividends',
+    'capital gains': 'cat-interest-dividends',
+    'income adjustments': 'cat-income',
+    'miscellaneous income': 'cat-income',
+    'uncategorized income': 'cat-income',
     'shopping': 'cat-shopping',
     'health': 'cat-health',
     'health and wellness': 'cat-health',
     'medical': 'cat-health',
-    'dental': 'cat-doctor',
+    'dental': 'cat-dental-vision',
     'subscription': 'cat-subscriptions',
     'subscriptions': 'cat-subscriptions',
+    'tv and streaming': 'cat-subscriptions',
+    'software': 'cat-subscriptions',
     'investment': 'cat-investments',
     'investments': 'cat-investments',
     'rent': 'cat-rent-mortgage',
@@ -187,14 +192,17 @@ LedgerState _migrateCategoryTaxonomy(
     'home maintenance': 'cat-home-maintenance',
     'internet': 'cat-internet',
     'wifi': 'cat-internet',
+    'internet and phone': 'cat-internet',
     'mobile': 'cat-mobile',
     'phone': 'cat-mobile',
+    'mobile recharge': 'cat-mobile',
     'doctor': 'cat-doctor',
     'pharmacy': 'cat-pharmacy',
     'medicine': 'cat-pharmacy',
     'medicines': 'cat-pharmacy',
     'credit card': 'cat-credit-card-payment',
     'credit card payment': 'cat-credit-card-payment',
+    'credit card bill': 'cat-credit-card-payment',
     'fuel': 'cat-fuel',
     'petrol': 'cat-fuel',
     'diesel': 'cat-fuel',
@@ -205,19 +213,15 @@ LedgerState _migrateCategoryTaxonomy(
     'public transit': 'cat-public-transit',
     'metro': 'cat-public-transit',
     'train': 'cat-public-transit',
-    'parking': 'cat-vehicle-service',
-    'parking and tolls': 'cat-vehicle-service',
-    'tolls': 'cat-vehicle-service',
+    'car wash': 'cat-vehicle-service',
     'vehicle service': 'cat-vehicle-service',
     'vehicle maintenance': 'cat-vehicle-service',
-    'vehicle insurance': 'cat-vehicle-service',
-    'lease and rentals': 'cat-vehicle-service',
-    'car wash': 'cat-vehicle-service',
-    'vehicle costs': 'cat-vehicle-service',
-    'internet and phone': 'cat-internet',
-    'mobile recharge': 'cat-mobile',
-    'tv and streaming': 'cat-subscriptions',
+    'lease and rentals': 'cat-rental-leasing',
+    'vehicle costs': 'cat-vehicle',
     'council tax': 'cat-taxes',
+    'tax': 'cat-taxes',
+    'taxes': 'cat-taxes',
+    'taxes and fees': 'cat-debt',
     'clothes': 'cat-clothing',
     'clothing': 'cat-clothing',
     'electronics': 'cat-electronics',
@@ -226,47 +230,37 @@ LedgerState _migrateCategoryTaxonomy(
     'childcare': 'cat-children',
     'gift': 'cat-gifts',
     'gifts': 'cat-gifts',
-    'gifts and support': 'cat-family',
-    'gifts and giving': 'cat-family',
     'giving': 'cat-family',
+    'gifts and giving': 'cat-family',
+    'gifts and support': 'cat-family',
     'family': 'cat-family',
     'family support': 'cat-family-support',
+    'shared expenses': 'cat-family-support',
     'donations': 'cat-charity',
     'charity': 'cat-charity',
     'community': 'cat-community',
-    'work and business': 'cat-work-business',
+    'work and business': 'cat-business-income',
     'office supplies': 'cat-office-supplies',
-    'software': 'cat-software',
     'professional services': 'cat-professional-services',
-    'business travel': 'cat-business-travel',
+    'business travel': 'cat-vacations',
     'finance and loans': 'cat-debt',
     'charges and fees': 'cat-bank-fees',
-    'credit card bill': 'cat-credit-card-payment',
-    'fines and penalties': 'cat-bank-fees',
-    'debt payments': 'cat-emi',
-    'interest paid': 'cat-loan-interest',
-    'investment fees': 'cat-bank-fees',
-    'shared expenses': 'cat-family-support',
-    'lending': 'cat-debt',
-    'lifestyle': 'cat-entertainment',
-    'movies': 'cat-movies-events',
-    'events': 'cat-movies-events',
-    'entertainment': 'cat-entertainment',
-    'course': 'cat-courses',
-    'courses': 'cat-courses',
-    'books': 'cat-books',
-    'education': 'cat-entertainment',
-    'school fees': 'cat-courses',
-    'savings': 'cat-emergency-fund',
-    'saving': 'cat-emergency-fund',
-    'savings and investing': 'cat-debt',
-    'tax': 'cat-taxes',
-    'taxes': 'cat-taxes',
-    'taxes and fees': 'cat-debt',
+    'fines and penalties': 'cat-fines',
     'bank fee': 'cat-bank-fees',
     'bank fees': 'cat-bank-fees',
     'fees': 'cat-bank-fees',
-    'charges': 'cat-bank-fees',
+    'investment fees': 'cat-bank-fees',
+    'lifestyle': 'cat-entertainment',
+    'events': 'cat-concerts',
+    'entertainment': 'cat-entertainment',
+    'course': 'cat-education',
+    'courses': 'cat-education',
+    'school fees': 'cat-education',
+    'books': 'cat-books',
+    'education': 'cat-education',
+    'savings': 'cat-emergency-fund',
+    'saving': 'cat-emergency-fund',
+    'savings and investing': 'cat-debt',
     'trip food': 'cat-travel-activities',
     'hotels': 'cat-hotels',
     'hotel': 'cat-hotels',
@@ -277,7 +271,12 @@ LedgerState _migrateCategoryTaxonomy(
     'uncategorized imports': 'cat-uncategorized',
     'adjustment': 'cat-uncategorized',
     'cash adjustment': 'cat-uncategorized',
-  });
+  };
+
+  // Canonical default category names ALWAYS take precedence and resolve to their own ID!
+  for (final category in defaults) {
+    preferredByName[_categoryNameKey(category.name)] = category.id;
+  }
 
   final idRedirect = <String, String>{};
   final mergedById = <String, Category>{};

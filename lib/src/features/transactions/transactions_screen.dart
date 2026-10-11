@@ -18,7 +18,12 @@ import 'transaction_row.dart';
 
 final _filteredTransactionsProvider = Provider.autoDispose
     .family<List<TransactionRecord>, _TransactionFilterState>((ref, filter) {
-      final state = ref.watch(ledgerProvider);
+      ref.watch(
+        ledgerProvider.select(
+          (s) => (s.transactions, s.categories, s.preferences.hideSkippedInHistory),
+        ),
+      );
+      final state = ref.read(ledgerProvider);
       final query = filter.query;
       final categoryMatchIds = _selectedCategoryMatchIds(
         state,
@@ -114,7 +119,16 @@ final _transactionsFlowProvider = Provider.autoDispose
       ref,
       filter,
     ) {
-      final state = ref.watch(ledgerProvider);
+      ref.watch(
+        ledgerProvider.select(
+          (s) => (
+            s.preferences.baseCurrency,
+            s.preferences.displayCurrency,
+            s.exchangeRates,
+          ),
+        ),
+      );
+      final state = ref.read(ledgerProvider);
       final transactions = ref.watch(_filteredTransactionsProvider(filter));
       var income = 0;
       var expense = 0;
@@ -159,7 +173,12 @@ final _monthlyStatsProvider = Provider.autoDispose
       ({Map<String, int> monthlyBalances, Map<String, int> monthlyFlows}),
       ({String? accountFilter, String displayCurrency, String locale})
     >((ref, params) {
-      final state = ref.watch(ledgerProvider);
+      ref.watch(
+        ledgerProvider.select(
+          (s) => (s.transactions, s.accounts, s.exchangeRates),
+        ),
+      );
+      final state = ref.read(ledgerProvider);
       final includedAccounts = params.accountFilter != null
           ? {params.accountFilter}
           : {
@@ -770,86 +789,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     await ref.read(ledgerProvider.notifier).setDisplayCurrency(next);
   }
 
-  Future<void> _showTypeFilter(LedgerState state) async {
-    final current = ref.read(transactionsTypeFilterProvider);
-    final next = await showFullScreenPicker<String>(
-      context: context,
-      title: 'Choose type',
-      searchable: false,
-      selectedValue: current,
-      options: const [
-        PickerOption(
-          value: 'all',
-          title: 'All records',
-          icon: Icons.all_inclusive_rounded,
-        ),
-        PickerOption(
-          value: 'income',
-          title: 'Income',
-          icon: Icons.trending_up_rounded,
-        ),
-        PickerOption(
-          value: 'expense',
-          title: 'Expense',
-          icon: Icons.trending_down_rounded,
-        ),
-        PickerOption(
-          value: 'transfer',
-          title: 'Transfer',
-          icon: Icons.swap_horiz_rounded,
-        ),
-      ],
-    );
-    if (next != null) {
-      ref.read(transactionsTypeFilterProvider.notifier).state = next;
-    }
-  }
-
-  Future<void> _showDateFilter() async {
-    final current = ref.read(transactionsDateFilterProvider);
-    final next = await showFullScreenPicker<String>(
-      context: context,
-      title: 'Choose date range',
-      searchable: false,
-      selectedValue: current,
-      options: const [
-        PickerOption(
-          value: 'all',
-          title: 'All time',
-          icon: Icons.all_inclusive_rounded,
-        ),
-        PickerOption(
-          value: 'today',
-          title: 'Today',
-          icon: Icons.today_outlined,
-        ),
-        PickerOption(
-          value: 'this_week',
-          title: 'This week',
-          icon: Icons.calendar_view_week_outlined,
-        ),
-        PickerOption(
-          value: 'this_month',
-          title: 'This month',
-          icon: Icons.calendar_month_outlined,
-        ),
-        PickerOption(
-          value: 'last_30_days',
-          title: 'Last 30 days',
-          icon: Icons.history_rounded,
-        ),
-        PickerOption(
-          value: 'this_year',
-          title: 'This year',
-          icon: Icons.event_note_outlined,
-        ),
-      ],
-    );
-    if (next != null) {
-      ref.read(transactionsDateFilterProvider.notifier).state = next;
-    }
-  }
-
   Future<void> _showAccountFilter(
     LedgerState state,
     String? accountFilter,
@@ -985,41 +924,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       return category?.name ?? '1 category';
     }
     return '$count categories';
-  }
-
-  Future<void> _showStatusFilter() async {
-    final current = ref.read(transactionsStatusFilterProvider);
-    final next = await showFullScreenPicker<String>(
-      context: context,
-      title: 'Choose status',
-      searchable: false,
-      selectedValue: current,
-      options: const [
-        PickerOption(
-          value: 'all',
-          title: 'All statuses',
-          icon: Icons.all_inclusive_rounded,
-        ),
-        PickerOption(
-          value: 'cleared',
-          title: 'Cleared',
-          icon: Icons.check_circle_outline,
-        ),
-        PickerOption(
-          value: 'pending',
-          title: 'Pending',
-          icon: Icons.hourglass_empty_rounded,
-        ),
-        PickerOption(
-          value: 'void',
-          title: 'Skipped / Void',
-          icon: Icons.block_rounded,
-        ),
-      ],
-    );
-    if (next != null) {
-      ref.read(transactionsStatusFilterProvider.notifier).state = next;
-    }
   }
 
   Future<void> _confirmDeleteSelected() async {
@@ -1338,7 +1242,7 @@ class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
       minChildSize: 0.45,
       maxChildSize: 0.94,
       builder: (context, scrollController) {
-        return Container(
+        return DecoratedBox(
           decoration: BoxDecoration(
             color: theme.scaffoldBackgroundColor,
             borderRadius: const BorderRadius.vertical(

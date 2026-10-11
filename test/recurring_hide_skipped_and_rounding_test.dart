@@ -55,12 +55,12 @@ void main() {
     );
     return emptyLedgerState().copyWith(
       accounts: [
-        Account(
+        const Account(
           id: 'acc-1',
           name: 'Main Checking',
           type: 'bank',
           currency: 'USD',
-          openingBalance: const Money(amountMinor: 500000, currency: 'USD'),
+          openingBalance: Money(amountMinor: 500000, currency: 'USD'),
         ),
       ],
       transactions: [plan, skippedInstance],

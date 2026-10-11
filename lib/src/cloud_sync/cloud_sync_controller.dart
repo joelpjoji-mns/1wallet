@@ -530,7 +530,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         }
       }
 
-      final decompressedBytes = GZipDecoder().decodeBytes(compressedBytes);
+      final decompressedBytes = const GZipDecoder().decodeBytes(compressedBytes);
       final jsonPayload = utf8.decode(decompressedBytes);
       final data = jsonDecode(jsonPayload) as Map<String, dynamic>;
 
@@ -896,7 +896,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
       final jsonStr = jsonEncode(encodedData);
       final bytes = utf8.encode(jsonStr);
-      final compressedBytes = GZipEncoder().encode(bytes);
+      final compressedBytes = const GZipEncoder().encode(bytes);
 
       const chunkSize = 900 * 1024; // 900 KB limit for Firestore Blobs
       final chunks = <Uint8List>[];
@@ -1827,5 +1827,5 @@ Map<String, dynamic> _encodeCloudSnapshotData(
 }
 
 List<int> _decodeGzipBytes(List<int> bytes) {
-  return GZipDecoder().decodeBytes(bytes);
+  return const GZipDecoder().decodeBytes(bytes);
 }

@@ -27,56 +27,79 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   var _visibleMonth = DateTime(DateTime.now().year, DateTime.now().month);
   String? _accountFilter;
   String? _categoryFilter;
+  Object? _cachedKey;
+  List<DateTime>? _cachedDays;
+  Map<String, List<TransactionRecord>>? _cachedSummaries;
+  int _cachedIncome = 0;
+  int _cachedExpense = 0;
+  int _cachedNet = 0;
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(ledgerProvider);
-    final days = _calendarDays(_visibleMonth);
-    final horizonStart = DateTime(_visibleMonth.year, _visibleMonth.month);
-    final horizonEnd = DateTime(
-      _visibleMonth.year,
-      _visibleMonth.month + 1,
-      0,
-      23,
-      59,
-      59,
-    );
-    final forecasts = forecastRecurringTransactions(
-      state,
-      horizonStart,
-      horizonEnd,
-    );
-    final summaries = _summariesByDay(state, forecasts);
-    final monthTransactions = days
-        .where((day) => day.month == _visibleMonth.month)
-        .expand((day) => summaries[_key(day)] ?? <TransactionRecord>[])
-        .toList();
-    final baseCurrency = state.preferences.baseCurrency;
-    final income = monthTransactions
-        .where((tx) => incomeTypes.contains(tx.type))
-        .fold<int>(0, (sum, tx) {
-          final converted = convertMoneyForDisplay(
-            state,
-            tx.amount,
-            baseCurrency,
-          );
-          return sum + converted.amountMinor;
-        });
-    final expense = monthTransactions
-        .where((tx) => expenseTypes.contains(tx.type))
-        .fold<int>(0, (sum, tx) {
-          final converted = convertMoneyForDisplay(
-            state,
-            tx.amount,
-            baseCurrency,
-          );
-          return sum + converted.amountMinor;
-        });
+    final key = (state, _visibleMonth, _accountFilter, _categoryFilter);
 
-    final net = _projectedNetThroughMonthEnd(
-      state,
-      through: DateTime(_visibleMonth.year, _visibleMonth.month + 1),
-    );
+    if (_cachedKey != key || _cachedDays == null || _cachedSummaries == null) {
+      final days = _calendarDays(_visibleMonth);
+      final horizonStart = DateTime(_visibleMonth.year, _visibleMonth.month);
+      final horizonEnd = DateTime(
+        _visibleMonth.year,
+        _visibleMonth.month + 1,
+        0,
+        23,
+        59,
+        59,
+      );
+      final forecasts = forecastRecurringTransactions(
+        state,
+        horizonStart,
+        horizonEnd,
+      );
+      final summaries = _summariesByDay(state, forecasts);
+      final monthTransactions = days
+          .where((day) => day.month == _visibleMonth.month)
+          .expand((day) => summaries[_key(day)] ?? <TransactionRecord>[])
+          .toList();
+      final baseCurrency = state.preferences.baseCurrency;
+      final income = monthTransactions
+          .where((tx) => incomeTypes.contains(tx.type))
+          .fold<int>(0, (sum, tx) {
+            final converted = convertMoneyForDisplay(
+              state,
+              tx.amount,
+              baseCurrency,
+            );
+            return sum + converted.amountMinor;
+          });
+      final expense = monthTransactions
+          .where((tx) => expenseTypes.contains(tx.type))
+          .fold<int>(0, (sum, tx) {
+            final converted = convertMoneyForDisplay(
+              state,
+              tx.amount,
+              baseCurrency,
+            );
+            return sum + converted.amountMinor;
+          });
+
+      final net = _projectedNetThroughMonthEnd(
+        state,
+        through: DateTime(_visibleMonth.year, _visibleMonth.month + 1),
+      );
+
+      _cachedKey = key;
+      _cachedDays = days;
+      _cachedSummaries = summaries;
+      _cachedIncome = income;
+      _cachedExpense = expense;
+      _cachedNet = net;
+    }
+
+    final days = _cachedDays!;
+    final summaries = _cachedSummaries!;
+    final income = _cachedIncome;
+    final expense = _cachedExpense;
+    final net = _cachedNet;
 
     final locale = state.preferences.locale.replaceAll('_', '-');
     final selectedAccount = accountById(state, _accountFilter);
@@ -817,7 +840,7 @@ class _CalendarFilterCard extends StatelessWidget {
     return GlassCard(
       margin: EdgeInsets.zero,
       padding: EdgeInsets.zero,
-      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+      shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
       quality: GlassQuality.minimal,
       clipBehavior: Clip.antiAlias,
       child: inner,

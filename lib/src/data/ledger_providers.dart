@@ -1348,6 +1348,25 @@ class LedgerController extends StateNotifier<LedgerState> {
     }
   }
 
+  Future<void> resetCategoriesToDefault({
+    bool resetMerchantRules = true,
+  }) async {
+    final defaults = defaultCategories();
+    var preferences = state.preferences;
+    if (resetMerchantRules) {
+      preferences = preferences.copyWith(merchantCategoryRules: const {});
+    }
+    final normalized = normalizeLedgerState(
+      state.copyWith(
+        categories: defaults,
+        preferences: preferences,
+      ),
+      forceFullCategoryReferenceScan: true,
+    );
+    state = normalized;
+    await _repository.save(normalized);
+  }
+
   Future<void> updateCaptureCandidateStatus(String id, String status) async {
     final candidates = [
       for (final candidate in state.captureCandidates)

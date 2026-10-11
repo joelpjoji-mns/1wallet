@@ -391,8 +391,8 @@ class UpdatesScreen extends ConsumerWidget {
             ),
           if (state.latestRelease != null) const SizedBox(height: AppSpacing.md),
           if (state.latestRelease != null)
-            GlassButton(
-              icon: const Icon(Icons.refresh_rounded),
+            const GlassButton(
+              icon: Icon(Icons.refresh_rounded),
               label: 'Reload App',
               onTap: reloadWebPage,
               

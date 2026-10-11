@@ -445,7 +445,7 @@ class _AddRecordCalcKeyState extends State<AddRecordCalcKey> {
         duration: const Duration(milliseconds: 100),
         scale: _pressed ? 0.90 : 1.0,
         curve: Curves.easeOutQuart,
-        child: Container(
+        child: DecoratedBox(
           decoration: BoxDecoration(
             color: _pressed
                 ? widget.backgroundColor.withAlpha(200)

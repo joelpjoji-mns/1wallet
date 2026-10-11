@@ -50,10 +50,10 @@ void main() {
   });
 
   const testUserId = 'test-user-123';
-  final authenticatedState = AuthState(
+  const authenticatedState = AuthState(
     phase: AuthPhase.signedIn,
     googleSignInAvailable: true,
-    user: const AuthUser(id: testUserId, email: 'user@example.com'),
+    user: AuthUser(id: testUserId, email: 'user@example.com'),
   );
 
   test('startupState routes to home when local ledger has wallet data', () {
@@ -72,7 +72,7 @@ void main() {
           (ref) => _FakeLedgerController(
             emptyLedgerState().copyWith(
               accounts: [
-                Account(
+                const Account(
                   id: 'acc-1',
                   name: 'Checking',
                   type: 'checking',

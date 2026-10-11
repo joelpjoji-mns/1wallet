@@ -109,18 +109,18 @@ class ReviewQueueScreen extends ConsumerWidget {
 
   /// Empty state wrapped in a centred GlassCard for visual polish.
   Widget _buildEmptyState(BuildContext context) {
-    return Center(
+    return const Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl),
         child: GlassCard(
           useOwnLayer: true,
           quality: GlassQuality.premium,
-          padding: const EdgeInsets.symmetric(
+          padding: EdgeInsets.symmetric(
             horizontal: AppSpacing.xl,
             vertical: AppSpacing.xxl,
           ),
           shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.lg),
-          child: const EmptyState(
+          child: EmptyState(
             icon: Icons.done_all_rounded,
             title: 'All caught up',
             body: 'New transactions and alerts will appear here.',

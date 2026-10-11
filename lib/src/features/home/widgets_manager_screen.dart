@@ -253,7 +253,7 @@ class _LiveWidgetPreview extends ConsumerWidget {
         // The actual widget preview
         Opacity(
           opacity: isVisible ? 1.0 : 0.4,
-          child: Container(
+          child: DecoratedBox(
             decoration: BoxDecoration(
               border: Border.all(
                 color: isVisible

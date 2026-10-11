@@ -365,7 +365,12 @@ class _TransactionDetailScreenState
     ImageSource source,
   ) async {
     final picker = ImagePicker();
-    final file = await picker.pickImage(source: source);
+    final file = await picker.pickImage(
+      source: source,
+      maxWidth: 1920,
+      maxHeight: 1920,
+      imageQuality: 85,
+    );
     if (file == null) return;
 
     setState(() => _isAttaching = true);

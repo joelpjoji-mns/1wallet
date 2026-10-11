@@ -610,7 +610,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               child: GlassCard(
                 margin: EdgeInsets.zero,
                 padding: const EdgeInsets.all(4),
-                shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+                shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
                 quality: GlassQuality.standard,
                 child: ListTile(
                   leading: Icon(a.icon, color: a.color),

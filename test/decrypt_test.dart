@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 import 'package:encrypt/encrypt.dart';
 
 void main() {
@@ -5,7 +6,7 @@ void main() {
   final iv = IV.fromLength(16);
   final encrypter = Encrypter(AES(key));
 
-  final encrypted = 't/wzyUFdaf68rvkQi4GpcQ==';
+  const encrypted = 't/wzyUFdaf68rvkQi4GpcQ==';
 
   try {
     final decrypted = encrypter.decrypt64(encrypted, iv: iv);

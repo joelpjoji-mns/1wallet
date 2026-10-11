@@ -1240,11 +1240,37 @@ IconData categoryIcon(Category? category) {
   if (key.contains('internet') || key.contains('mobile')) {
     return Icons.wifi_outlined;
   }
+  if (key.contains('coffee') || key.contains('cafe')) {
+    return Icons.local_cafe_outlined;
+  }
+  if (key.contains('delivery') || key.contains('takeout')) {
+    return Icons.delivery_dining_outlined;
+  }
+  if (key.contains('snack') || key.contains('beverage')) {
+    return Icons.fastfood_outlined;
+  }
   if (key.contains('food') ||
       key.contains('grocer') ||
-      key.contains('dining') ||
-      key.contains('coffee')) {
+      key.contains('dining')) {
     return Icons.restaurant_outlined;
+  }
+  if (key.contains('fastag') || key.contains('toll')) {
+    return Icons.toll_outlined;
+  }
+  if (key.contains('car wash') || key.contains('detailing')) {
+    return Icons.local_car_wash_outlined;
+  }
+  if (key.contains('registration') || key.contains('road tax')) {
+    return Icons.assignment_outlined;
+  }
+  if (key.contains('train') ||
+      key.contains('rail') ||
+      key.contains('metro') ||
+      key.contains('subway')) {
+    return Icons.train_outlined;
+  }
+  if (key.contains('bus') || key.contains('coach')) {
+    return Icons.directions_bus_outlined;
   }
   if (key.contains('transport') ||
       key.contains('fuel') ||
@@ -1253,6 +1279,24 @@ IconData categoryIcon(Category? category) {
     return Icons.directions_car_outlined;
   }
   if (key.contains('transit')) return Icons.directions_bus_outlined;
+  if (key.contains('laundry') || key.contains('dry clean')) {
+    return Icons.local_laundry_service_outlined;
+  }
+  if (key.contains('housekeep') || key.contains('maid')) {
+    return Icons.cleaning_services_outlined;
+  }
+  if (key.contains('hoa') || key.contains('society')) {
+    return Icons.apartment_outlined;
+  }
+  if (key.contains('decor') || key.contains('appliance')) {
+    return Icons.chair_outlined;
+  }
+  if (key.contains('lab test') || key.contains('diagnostic')) {
+    return Icons.biotech_outlined;
+  }
+  if (key.contains('supplement') || key.contains('vitamin')) {
+    return Icons.medication_outlined;
+  }
   if (key.contains('health') ||
       key.contains('doctor') ||
       key.contains('pharmacy')) {
@@ -1260,6 +1304,14 @@ IconData categoryIcon(Category? category) {
   }
   if (key.contains('fitness')) return Icons.fitness_center_rounded;
   if (key.contains('insurance')) return Icons.verified_user_outlined;
+  if (key.contains('sip') ||
+      key.contains('mutual fund') ||
+      key.contains('stock') ||
+      key.contains('equit') ||
+      key.contains('crypto') ||
+      key.contains('capital gain')) {
+    return Icons.trending_up_rounded;
+  }
   if (key.contains('loan') ||
       key.contains('debt') ||
       key.contains('emi') ||
@@ -1274,18 +1326,35 @@ IconData categoryIcon(Category? category) {
   if (key.contains('tax') || key.contains('fee')) {
     return Icons.receipt_long_outlined;
   }
+  if (key.contains('luggage') || key.contains('bag')) {
+    return Icons.luggage_outlined;
+  }
   if (key.contains('shopping') ||
       key.contains('clothing') ||
+      key.contains('footwear') ||
       key.contains('electronics') ||
       key.contains('personal care')) {
     return Icons.shopping_bag_outlined;
+  }
+  if (key.contains('haircut') || key.contains('barber')) {
+    return Icons.content_cut_outlined;
+  }
+  if (key.contains('recreation') || key.contains('outdoor')) {
+    return Icons.park_outlined;
   }
   if (key.contains('family') || key.contains('children')) {
     return Icons.family_restroom_rounded;
   }
   if (key.contains('pet')) return Icons.pets_outlined;
+  if (key.contains('celebration') || key.contains('holiday')) {
+    return Icons.festival_outlined;
+  }
   if (key.contains('gift') || key.contains('charity')) {
     return Icons.card_giftcard_outlined;
+  }
+  if (key.contains('streaming')) return Icons.play_circle_outline_rounded;
+  if (key.contains('cloud') || key.contains('software')) {
+    return Icons.cloud_outlined;
   }
   if (key.contains('lifestyle') ||
       key.contains('movie') ||
@@ -1294,8 +1363,16 @@ IconData categoryIcon(Category? category) {
     return Icons.celebration_outlined;
   }
   if (key.contains('subscription')) return Icons.subscriptions_outlined;
-  if (key.contains('course') || key.contains('book')) {
+  if (key.contains('course') ||
+      key.contains('book') ||
+      key.contains('tutor')) {
     return Icons.school_outlined;
+  }
+  if (key.contains('shipping') || key.contains('courier')) {
+    return Icons.local_shipping_outlined;
+  }
+  if (key.contains('government') || key.contains('legal')) {
+    return Icons.gavel_outlined;
   }
   if (key.contains('travel') ||
       key.contains('flight') ||

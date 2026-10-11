@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 import 'package:flutter_test/flutter_test.dart';
 import 'package:encrypt/encrypt.dart';
 
@@ -7,7 +8,7 @@ void main() {
     final iv = IV.fromLength(16);
     final encrypter = Encrypter(AES(key));
 
-    final text = '1234567890';
+    const text = '1234567890';
     final encrypted = encrypter.encrypt(text, iv: iv).base64;
     print('Encrypted: $encrypted');
 

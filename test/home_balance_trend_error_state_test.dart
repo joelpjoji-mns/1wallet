@@ -116,13 +116,13 @@ Widget _wrap(LedgerState state, {required List<Override> overrides}) {
 }
 
 LedgerState _ledger() {
-  return LedgerState(
+  return const LedgerState(
     version: currentLedgerStateVersion,
     userId: 'test-user',
-    preferences: const LedgerPreferences(),
-    accounts: const [],
-    categories: const [],
-    transactions: const [],
-    captureCandidates: const [],
+    preferences: LedgerPreferences(),
+    accounts: [],
+    categories: [],
+    transactions: [],
+    captureCandidates: [],
   );
 }

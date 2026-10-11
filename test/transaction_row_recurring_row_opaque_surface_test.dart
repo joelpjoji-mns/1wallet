@@ -32,12 +32,12 @@ void main() {
       var tapped = false;
       final state = emptyLedgerState().copyWith(
         accounts: [
-          Account(
+          const Account(
             id: 'acc-cash',
             name: 'Cash Wallet',
             type: 'cash',
             currency: 'USD',
-            openingBalance: const Money(amountMinor: 0, currency: 'USD'),
+            openingBalance: Money(amountMinor: 0, currency: 'USD'),
           ),
         ],
       );
@@ -99,12 +99,12 @@ void main() {
     final now = DateTime.now();
     final state = emptyLedgerState().copyWith(
       accounts: [
-        Account(
+        const Account(
           id: 'acc-bank',
           name: 'HDFC Main',
           type: 'bank',
           currency: 'USD',
-          openingBalance: const Money(amountMinor: 500000, currency: 'USD'),
+          openingBalance: Money(amountMinor: 500000, currency: 'USD'),
         ),
       ],
       transactions: [
@@ -136,7 +136,7 @@ void main() {
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),
           darkTheme: AppTheme.amoled(),
-          home: Scaffold(body: RecurringScreen(mode: 'overview')),
+          home: const Scaffold(body: RecurringScreen(mode: 'overview')),
         ),
       ),
     );

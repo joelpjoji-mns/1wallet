@@ -17,11 +17,11 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(colorScheme: scheme),
-        home: Scaffold(
+        home: const Scaffold(
           body: HomeWidgetCard(
             title: 'Net worth',
             icon: Icons.account_balance_outlined,
-            child: const Text('tile body'),
+            child: Text('tile body'),
           ),
         ),
       ),

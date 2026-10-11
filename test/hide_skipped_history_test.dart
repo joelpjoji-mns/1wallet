@@ -35,8 +35,8 @@ void main() {
         type: 'expense',
         source: 'manual',
         status: 'scheduled',
-        amount: Money(amountMinor: 1599, currency: 'USD'),
-        baseAmount: Money(amountMinor: 1599, currency: 'USD'),
+        amount: const Money(amountMinor: 1599, currency: 'USD'),
+        baseAmount: const Money(amountMinor: 1599, currency: 'USD'),
         occurredAt: now,
         recurrenceFrequency: 'monthly',
       );
@@ -48,15 +48,15 @@ void main() {
         source: 'manual',
         status: 'void',
         notes: 'Skipped',
-        amount: Money(amountMinor: 1599, currency: 'USD'),
-        baseAmount: Money(amountMinor: 1599, currency: 'USD'),
+        amount: const Money(amountMinor: 1599, currency: 'USD'),
+        baseAmount: const Money(amountMinor: 1599, currency: 'USD'),
         occurredAt: now.subtract(const Duration(days: 30)),
         originalTransactionId: 'plan-netflix',
       );
 
       final seedState = emptyLedgerState().copyWith(
         accounts: [
-          Account(
+          const Account(
             id: 'acc-1',
             name: 'Main Checking',
             type: 'bank',

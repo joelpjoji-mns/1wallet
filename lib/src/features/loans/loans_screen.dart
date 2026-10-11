@@ -934,7 +934,6 @@ class LoanDetailView extends ConsumerWidget {
     final details = _effectiveLoanDetails(state, loan);
     final projection = _loanProjection(state, loan);
     final repaymentHistory = _loanHistoryRepayments(state, loan.id);
-    final scheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -942,7 +941,7 @@ class LoanDetailView extends ConsumerWidget {
           key: const ValueKey('loanDetailHeaderCard'),
           margin: EdgeInsets.zero,
           padding: EdgeInsets.zero,
-          shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+          shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
           quality: GlassQuality.standard,
           child: Material(
             color: Colors.transparent,
@@ -1292,7 +1291,7 @@ class _LoanCompactCard extends StatelessWidget {
     return GlassCard(
       margin: EdgeInsets.zero,
       padding: EdgeInsets.zero,
-      shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+      shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
       quality: GlassQuality.minimal,
       clipBehavior: Clip.antiAlias,
       child: Material(
@@ -1732,7 +1731,7 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
   double get _xInterval {
     final range = _currentMaxX - _currentMinX;
     if (range <= 0) return 1;
-    final idealCount = 4.0;
+    const idealCount = 4.0;
     final interval = (range / idealCount).ceilToDouble();
     return interval < 1 ? 1 : interval;
   }
@@ -2157,7 +2156,7 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
 
     setState(() {
       _zoomPercent = val;
-      final minRange = 4.0;
+      const minRange = 4.0;
       final newRange = minRange + (1.0 - val) * (totalRange - minRange);
 
       final center = (_currentMinX + _currentMaxX) / 2;
@@ -2208,7 +2207,7 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
   double get _xInterval {
     final range = _currentMaxX - _currentMinX;
     if (range <= 0) return 1;
-    final idealCount = 4.0;
+    const idealCount = 4.0;
     final interval = (range / idealCount).ceilToDouble();
     return interval < 1 ? 1 : interval;
   }
@@ -2373,6 +2372,10 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
   late List<Account> _priorityLoans;
   Timer? _forecastDebounce;
   Timer? _emergencyDebounce;
+  LoanForecastSimulationResult? _cachedResult;
+  List<FlSpot>? _cachedSpots;
+  Map<double, String>? _cachedPayoffDots;
+  Object? _cachedSimKey;
 
   void _syncPriorityLoans() {
     final prefs = widget.state.preferences;
@@ -2476,8 +2479,9 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
   }
 
   String _allocationHint(double value) {
-    if (value <= 0.0)
+    if (value <= 0.0) {
       return 'Only the scheduled EMI is paid — no early payoff.';
+    }
     if (value < 1.0) {
       return 'Half of your spare cash accelerates the priority loan.';
     }
@@ -2534,14 +2538,86 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
       );
     }).toList();
 
-    final result = simulateForecastPayoffGraph(
-      state: widget.state,
-      activeLoans: activeLoans,
-      emergencySavingMinor: emergencyMinor,
-      extraPaymentAllocationPercent: _debouncedExtraAllocationPercent,
-      loanPriorityIds: _priorityLoans.map((l) => l.id).toList(),
-      payoffDelayDays: widget.state.preferences.loanPayoffDelayDays,
+    final simKey = (
+      widget.state,
+      widget.loans,
+      emergencyMinor,
+      _debouncedExtraAllocationPercent,
+      _priorityLoans,
+      widget.state.preferences.loanPayoffDelayDays,
+      baseMinorsScale,
     );
+
+    if (_cachedSimKey != simKey ||
+        _cachedResult == null ||
+        _cachedSpots == null ||
+        _cachedPayoffDots == null) {
+      final computedResult = simulateForecastPayoffGraph(
+        state: widget.state,
+        activeLoans: activeLoans,
+        emergencySavingMinor: emergencyMinor,
+        extraPaymentAllocationPercent: _debouncedExtraAllocationPercent,
+        loanPriorityIds: _priorityLoans.map((l) => l.id).toList(),
+        payoffDelayDays: widget.state.preferences.loanPayoffDelayDays,
+      );
+
+      final computedSpots = <FlSpot>[];
+      final now = DateTime.now();
+      final todayMillis = DateTime(
+        now.year,
+        now.month,
+        now.day,
+      ).millisecondsSinceEpoch.toDouble();
+
+      for (int i = 0; i < computedResult.balanceCurve.length; i++) {
+        final pt = computedResult.balanceCurve[i];
+        final x = (pt.date.millisecondsSinceEpoch - todayMillis) / 86400000.0;
+        final y = pt.netBalanceMinor / baseMinorsScale;
+        computedSpots.add(FlSpot(x, y));
+      }
+
+      if (computedSpots.isEmpty) {
+        computedSpots.add(const FlSpot(0, 0));
+      }
+
+      final loanNumberMap = <String, int>{};
+      for (int i = 0; i < _priorityLoans.length; i++) {
+        loanNumberMap[_priorityLoans[i].id] = i + 1;
+      }
+
+      final computedPayoffDots = <double, String>{};
+      for (final event in computedResult.payoffEvents) {
+        final eventX =
+            (event.payoffDate.millisecondsSinceEpoch - todayMillis) / 86400000.0;
+        final number = loanNumberMap[event.loan.id]?.toString() ?? '';
+
+        double closestX = 0;
+        double minDiff = double.infinity;
+        for (final spot in computedSpots) {
+          final diff = (spot.x - eventX).abs();
+          if (diff < minDiff) {
+            minDiff = diff;
+            closestX = spot.x;
+          }
+        }
+
+        if (computedPayoffDots.containsKey(closestX)) {
+          computedPayoffDots[closestX] =
+              '${computedPayoffDots[closestX]},$number';
+        } else {
+          computedPayoffDots[closestX] = number;
+        }
+      }
+
+      _cachedSimKey = simKey;
+      _cachedResult = computedResult;
+      _cachedSpots = computedSpots;
+      _cachedPayoffDots = computedPayoffDots;
+    }
+
+    final result = _cachedResult!;
+    final spots = _cachedSpots!;
+    final payoffDots = _cachedPayoffDots!;
 
     final locale = widget.state.preferences.locale;
     final scheme = Theme.of(context).colorScheme;
@@ -2550,58 +2626,10 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
       name: widget.state.preferences.displayCurrency,
     );
     final currencySymbol = currencyFormat.currencySymbol;
-
-    final spots = <FlSpot>[];
-    final now = DateTime.now();
-    final todayMillis = DateTime(
-      now.year,
-      now.month,
-      now.day,
-    ).millisecondsSinceEpoch.toDouble();
-
-    for (int i = 0; i < result.balanceCurve.length; i++) {
-      final pt = result.balanceCurve[i];
-      final x = (pt.date.millisecondsSinceEpoch - todayMillis) / 86400000.0;
-      final y = pt.netBalanceMinor / baseMinorsScale;
-      spots.add(FlSpot(x, y));
-    }
-
-    if (spots.isEmpty) {
-      spots.add(const FlSpot(0, 0));
-    }
-
     final lineChartWidth = math.max(
       MediaQuery.of(context).size.width - 64,
       spots.length * 1.5,
     );
-
-    final loanNumberMap = <String, int>{};
-    for (int i = 0; i < _priorityLoans.length; i++) {
-      loanNumberMap[_priorityLoans[i].id] = i + 1;
-    }
-
-    final payoffDots = <double, String>{};
-    for (final event in result.payoffEvents) {
-      final eventX =
-          (event.payoffDate.millisecondsSinceEpoch - todayMillis) / 86400000.0;
-      final number = loanNumberMap[event.loan.id]?.toString() ?? '';
-
-      double closestX = 0;
-      double minDiff = double.infinity;
-      for (final spot in spots) {
-        final diff = (spot.x - eventX).abs();
-        if (diff < minDiff) {
-          minDiff = diff;
-          closestX = spot.x;
-        }
-      }
-
-      if (payoffDots.containsKey(closestX)) {
-        payoffDots[closestX] = '${payoffDots[closestX]},$number';
-      } else {
-        payoffDots[closestX] = number;
-      }
-    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

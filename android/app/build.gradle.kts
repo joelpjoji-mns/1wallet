@@ -68,6 +68,8 @@ android {
 
     buildTypes {
         release {
+            isMinifyEnabled = true
+            isShrinkResources = true
             // TODO: Add your own signing config for the release build.
             signingConfig = signingConfigs.getByName(
                 if (releaseSigningReady) "oneWalletRelease" else "debug",

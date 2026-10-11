@@ -43,6 +43,11 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
+        <!-- Enable Impeller rendering engine for modern, jank-free 60/120fps hardware-accelerated graphics -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="true" />
+
         <receiver
             android:name=".SmsReceiver"
             android:exported="true">

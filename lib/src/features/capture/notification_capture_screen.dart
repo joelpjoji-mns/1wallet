@@ -467,7 +467,7 @@ class _NotificationCaptureScreenState
           minChildSize: 0.4,
           maxChildSize: 0.92,
           builder: (context, scrollController) {
-            return Container(
+            return DecoratedBox(
               decoration: BoxDecoration(
                 color: theme.scaffoldBackgroundColor,
                 borderRadius: const BorderRadius.vertical(

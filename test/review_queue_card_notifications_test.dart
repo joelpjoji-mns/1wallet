@@ -47,9 +47,9 @@ void main() {
       version: 1,
       userId: 'test-user',
       accounts: [cardAccount],
-      transactions: [],
-      categories: [],
-      captureCandidates: [],
+      transactions: const [],
+      categories: const [],
+      captureCandidates: const [],
       preferences: const LedgerPreferences(
         baseCurrency: 'USD',
         displayCurrency: 'USD',

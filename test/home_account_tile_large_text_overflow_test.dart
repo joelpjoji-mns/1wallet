@@ -60,11 +60,11 @@ void main() {
 }
 
 LedgerState _ledger() {
-  return LedgerState(
+  return const LedgerState(
     version: currentLedgerStateVersion,
     userId: 'test-user',
-    preferences: const LedgerPreferences(baseCurrency: 'INR'),
-    accounts: const [
+    preferences: LedgerPreferences(baseCurrency: 'INR'),
+    accounts: [
       Account(
         id: 'foreign',
         name: 'Foreign Wallet',
@@ -84,8 +84,8 @@ LedgerState _ledger() {
         sortOrder: 2,
       ),
     ],
-    categories: const [],
-    transactions: const [],
-    captureCandidates: const [],
+    categories: [],
+    transactions: [],
+    captureCandidates: [],
   );
 }
