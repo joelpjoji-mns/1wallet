@@ -54,34 +54,33 @@ Uint8List _generatePdfStatement({
 }
 
 void main() {
-  group('Real PDF Generation & Universal Parsing for Indian Banks', () {
-    test('1. State Bank of India (SBI) - Real PDF with multi-line UPI narrations and balance delta', () {
-      final sbiPdf = _generatePdfStatement(
-        title: 'State Bank of India - Account Statement',
-        headerDetails: 'Account Number: 30192837465\nCIF No: 89123456\nCurrency: INR\nPeriod: 01-04-2025 to 30-04-2025',
+  group('Universal PDF Statement Extraction & Parsing', () {
+    test('1. Layout A - Multi-column ledger with multi-line notes and balance delta verification', () {
+      final pdfBytes = _generatePdfStatement(
+        title: 'Account Statement - Transaction Ledger',
+        headerDetails: 'Account Number: 30192837465\nCurrency: INR\nPeriod: 01-04-2025 to 30-04-2025',
         headers: ['Txn Date', 'Description', 'Ref/Cheque No', 'Debit', 'Credit', 'Balance'],
         rows: [
           ['01/04/2025', 'OPENING BALANCE', '', '', '', '50,000.00'],
-          ['03/04/2025', 'TO TRANSFER-UPI/DR/509122345/TEA STALL/PUNB/REF991823', 'UPI991823', '50.00', '', '49,950.00'],
+          ['03/04/2025', 'TO TRANSFER-UPI/DR/509122345/TEA STALL/REF991823', 'UPI991823', '50.00', '', '49,950.00'],
           ['07/04/2025', 'BY TRANSFER-NEFT*INFOSYS LTD*SALARY MARCH 2025', 'NEFT88123', '', '85,000.00', '1,34,950.00'],
           ['12/04/2025', 'TO DEBIT-ATM CASH WDL KORAMANGALA BLR', 'ATM44123', '10,000.00', '', '1,24,950.00'],
-          ['22/04/2025', 'TO TRANSFER-UPI/DR/612981721/AMAZON INDIA/HDFC/ORD9988', 'UPI33441', '2,499.00', '', '1,22,451.00'],
+          ['22/04/2025', 'TO TRANSFER-UPI/DR/612981721/AMAZON INDIA/ORD9988', 'UPI33441', '2,499.00', '', '1,22,451.00'],
         ],
       );
 
-      final extractedText = extractAllTextFromPdf(sbiPdf);
-      final result = parseStatement(extractedText, accountName: 'SBI Savings');
+      final extractedText = extractAllTextFromPdf(pdfBytes);
+      final result = parseStatement(extractedText, accountName: 'Primary Account');
 
-      print('SBI Rows Extracted: ${result.rows.length}');
       expect(result.detectedCurrency, 'INR');
-      expect(result.rows.length, 4); // 4 real transactions (opening balance skipped)
+      expect(result.rows.length, 4); // 4 transactions, opening balance baseline skipped
 
       // Row 1: Tea Stall
       expect(result.rows[0].type, 'expense');
       expect(result.rows[0].amount.amountMinor, 5000);
       expect(result.rows[0].notes, contains('TEA STALL'));
 
-      // Row 2: Infosys Salary
+      // Row 2: Salary
       expect(result.rows[1].type, 'income');
       expect(result.rows[1].amount.amountMinor, 8500000);
       expect(result.rows[1].notes, contains('SALARY MARCH 2025'));
@@ -95,10 +94,10 @@ void main() {
       expect(result.rows[3].amount.amountMinor, 249900);
     });
 
-    test('2. HDFC Bank - Real PDF with DD/MM/YY dates, Value Date, and POS narrations', () {
-      final hdfcPdf = _generatePdfStatement(
-        title: 'HDFC BANK LIMITED - Statement of Account',
-        headerDetails: 'Cust ID: 98765432\nA/c No: 50100234567890\nBranch: KANJURMARG MUMBAI\nCurrency: INR',
+    test('2. Layout B - DD/MM/YY dates with Value Date column and wrapped narrations', () {
+      final pdfBytes = _generatePdfStatement(
+        title: 'Statement of Account',
+        headerDetails: 'Cust ID: 98765432\nA/c No: 50100234567890\nCurrency: INR',
         headers: ['Date', 'Narration', 'Chq/Ref No', 'Value Dt', 'Withdrawal Amt', 'Deposit Amt', 'Closing Balance'],
         rows: [
           ['02/05/25', 'POS 401293XXXXXX9182 DMART RETAIL MUMBAI', 'POS9182', '02/05/25', '1,450.50', '', '28,549.50'],
@@ -108,10 +107,9 @@ void main() {
         ],
       );
 
-      final extractedText = extractAllTextFromPdf(hdfcPdf);
-      final result = parseStatement(extractedText, accountName: 'HDFC Salary');
+      final extractedText = extractAllTextFromPdf(pdfBytes);
+      final result = parseStatement(extractedText, accountName: 'Salary Account');
 
-      print('HDFC Rows Extracted: ${result.rows.length}');
       expect(result.detectedCurrency, 'INR');
       expect(result.rows.length, 4);
 
@@ -132,30 +130,29 @@ void main() {
       expect(result.rows[3].notes, contains('CREDIT INTEREST'));
     });
 
-    test('3. Axis Bank - Password-Protected Real PDF with DD-MM-YYYY dates and DR/CR columns', () {
-      const axisPassword = 'JOEL1508'; // Example Axis password (Name + DDMM)
+    test('3. Layout C - Password-protected PDF with DD-MM-YYYY dates and DR/CR columns', () {
+      const password = 'SECRET_PASS_123';
 
-      final axisPdf = _generatePdfStatement(
-        title: 'AXIS BANK LTD - STATEMENT OF ACCOUNT',
-        password: axisPassword,
-        headerDetails: 'Account No: 918010045678912\nCustomer ID: 77182930\nBranch: INDIRANAGAR BANGALORE\nCurrency: INR',
+      final pdfBytes = _generatePdfStatement(
+        title: 'STATEMENT OF ACCOUNT',
+        password: password,
+        headerDetails: 'Account No: 918010045678912\nCustomer ID: 77182930\nCurrency: INR',
         headers: ['Tran Date', 'CHQNO', 'PARTICULARS', 'DR', 'CR', 'BAL'],
         rows: [
-          ['05-06-2025', '', 'UPI/ZOMATO/ORDER9912/HDFC/REF8812', '450.00', '', '49,550.00'],
+          ['05-06-2025', '', 'UPI/ZOMATO/ORDER9912/REF8812', '450.00', '', '49,550.00'],
           ['12-06-2025', 'CHQ001', 'CLG CHQ DEPOSIT MR SHARMA', '', '25,000.00', '74,550.00'],
           ['18-06-2025', '', 'NETFLIX ENTERTAINMENT SVCS', '649.00', '', '73,901.00'],
-          ['28-06-2025', '', 'ATM CASH WDL INDIRANAGAR', '5,000.00', '', '68,901.00'],
+          ['28-06-2025', '', 'ATM CASH WDL DOWNTOWN', '5,000.00', '', '68,901.00'],
         ],
       );
 
       // Verify that without password it fails to open
-      expect(() => extractAllTextFromPdf(axisPdf), throwsA(anything));
+      expect(() => extractAllTextFromPdf(pdfBytes), throwsA(anything));
 
       // With correct password it extracts and parses seamlessly
-      final extractedText = extractAllTextFromPdf(axisPdf, password: axisPassword);
-      final result = parseStatement(extractedText, accountName: 'Axis Priority');
+      final extractedText = extractAllTextFromPdf(pdfBytes, password: password);
+      final result = parseStatement(extractedText, accountName: 'Checking Account');
 
-      print('Axis Rows Extracted (Unlocked with Password): ${result.rows.length}');
       expect(result.detectedCurrency, 'INR');
       expect(result.rows.length, 4);
 
@@ -174,10 +171,10 @@ void main() {
       expect(result.rows[3].amount.amountMinor, 500000);
     });
 
-    test('4. Kotak Mahindra Bank - Real PDF with DD Mon YYYY dates and DR/CR column', () {
-      final kotakPdf = _generatePdfStatement(
-        title: 'Kotak Mahindra Bank - Account Statement',
-        headerDetails: 'Account Number: 2819203817\nCRN: 55443322\nPeriod: 01 Jan 2025 to 31 Jan 2025\nCurrency: INR',
+    test('4. Layout D - DD Mon YYYY dates with combined Amount and DR/CR flag', () {
+      final pdfBytes = _generatePdfStatement(
+        title: 'Account Statement',
+        headerDetails: 'Account Number: 2819203817\nPeriod: 01 Jan 2025 to 31 Jan 2025\nCurrency: INR',
         headers: ['Date', 'Narration', 'Chq/Ref No', 'Amount', 'Dr/Cr', 'Balance'],
         rows: [
           ['05 Jan 2025', 'AMAZON SELLER SERVICES ORD 123', 'REF1234', '2,199.00', 'DR', '45,801.00'],
@@ -186,10 +183,9 @@ void main() {
         ],
       );
 
-      final extractedText = extractAllTextFromPdf(kotakPdf);
-      final result = parseStatement(extractedText, accountName: 'Kotak 811');
+      final extractedText = extractAllTextFromPdf(pdfBytes);
+      final result = parseStatement(extractedText, accountName: 'Daily Savings');
 
-      print('Kotak Rows Extracted: ${result.rows.length}');
       expect(result.detectedCurrency, 'INR');
       expect(result.rows.length, 3);
 
@@ -203,25 +199,24 @@ void main() {
       expect(result.rows[2].amount.amountMinor, 35000);
     });
 
-    test('5. Punjab National Bank (PNB) - Real PDF with Withdrawal / Deposit columns', () {
-      final pnbPdf = _generatePdfStatement(
-        title: 'Punjab National Bank - Statement of Transactions',
-        headerDetails: 'Account No: 0192000100928371\nBranch: CONNAUGHT PLACE NEW DELHI\nCurrency: INR',
+    test('5. Layout E - Separate Withdrawal / Deposit columns with baseline opening balance', () {
+      final pdfBytes = _generatePdfStatement(
+        title: 'Statement of Transactions',
+        headerDetails: 'Account No: 0192000100928371\nCurrency: INR',
         headers: ['Date', 'Particulars', 'Cheque No', 'Withdrawal (Dr)', 'Deposit (Cr)', 'Balance'],
         rows: [
           ['02-03-2025', 'OPENING BALANCE', '', '', '', '15,000.00'],
           ['04-03-2025', 'UPI/ELECTRICITY BILL/BSES/REF1029', 'UPI1029', '1,850.00', '', '13,150.00'],
-          ['10-03-2025', 'NEFT CR FROM GOVT OF INDIA PENSION', 'NEFT5512', '', '28,000.00', '41,150.00'],
+          ['10-03-2025', 'NEFT CR FROM GOVT PENSION', 'NEFT5512', '', '28,000.00', '41,150.00'],
           ['18-03-2025', 'SELF WITHDRAWAL CHEQUE NO 881920', '881920', '5,000.00', '', '36,150.00'],
         ],
       );
 
-      final extractedText = extractAllTextFromPdf(pnbPdf);
-      final result = parseStatement(extractedText, accountName: 'PNB Savings');
+      final extractedText = extractAllTextFromPdf(pdfBytes);
+      final result = parseStatement(extractedText, accountName: 'Savings Account');
 
-      print('PNB Rows Extracted: ${result.rows.length}');
       expect(result.detectedCurrency, 'INR');
-      expect(result.rows.length, 3); // Opening balance skipped
+      expect(result.rows.length, 3);
 
       expect(result.rows[0].type, 'expense');
       expect(result.rows[0].amount.amountMinor, 185000);
@@ -235,22 +230,21 @@ void main() {
       expect(result.rows[2].amount.amountMinor, 500000);
     });
 
-    test('6. Bank of Baroda (BOB) - Real PDF with multi-page table and cash transactions', () {
-      final bobPdf = _generatePdfStatement(
-        title: 'Bank of Baroda - Account Statement',
-        headerDetails: 'A/c No: 08910100029381\nBranch: ALKAPURI BARODA\nCurrency: INR',
+    test('6. Layout F - Multi-page statement with cash transactions and balance reconciliation', () {
+      final pdfBytes = _generatePdfStatement(
+        title: 'Account Statement',
+        headerDetails: 'A/c No: 08910100029381\nCurrency: INR',
         headers: ['Date', 'Particulars', 'Value Date', 'Withdrawal', 'Deposit', 'Balance'],
         rows: [
           ['10-02-2025', 'CASH DEPOSIT AT BRANCH COUNTER', '10-02-2025', '', '20,000.00', '35,000.00'],
-          ['14-02-2025', 'UPI/GROCERY SUPERMARKET/BARB/REF99', '14-02-2025', '2,400.00', '', '32,600.00'],
+          ['14-02-2025', 'UPI/GROCERY SUPERMARKET/REF99', '14-02-2025', '2,400.00', '', '32,600.00'],
           ['22-02-2025', 'FIXED DEPOSIT INTEREST CREDIT', '22-02-2025', '', '1,850.00', '34,450.00'],
         ],
       );
 
-      final extractedText = extractAllTextFromPdf(bobPdf);
-      final result = parseStatement(extractedText, accountName: 'BOB Current');
+      final extractedText = extractAllTextFromPdf(pdfBytes);
+      final result = parseStatement(extractedText, accountName: 'Current Account');
 
-      print('BOB Rows Extracted: ${result.rows.length}');
       expect(result.detectedCurrency, 'INR');
       expect(result.rows.length, 3);
 

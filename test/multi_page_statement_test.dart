@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:one_wallet_flutter/src/imports/statement_parser.dart';
 
 void main() {
-  test('Test actual 5-page ICICI bank statement provided by user', () {
+  test('parses 5-page real account statement with 72 transactions', () {
     const page1 = '''
 S No. Transaction
 Date Cheque Number Transaction Remarks Withdrawal
@@ -366,13 +366,12 @@ This is a system generated statement. Hence, it does not require any signature.
 ''';
 
     final fullText = [page1, page2, page3, page4, page5].join('\n');
-    final result = parseStatement(fullText, accountName: 'ICICI Savings');
+    final result = parseStatement(fullText, accountName: 'Primary Checking');
 
     print('=== PARSE RESULTS ===');
     print('Total lines: ${result.totalLines}');
     print('Parsed rows: ${result.rows.length}');
     print('Skipped lines: ${result.skippedLines}');
-    print('Detected bank: ${result.bankName}');
     print('Detected currency: ${result.detectedCurrency}');
     print('Strategy used: ${result.strategy.label}');
     print('=====================');

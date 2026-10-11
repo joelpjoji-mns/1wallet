@@ -101,14 +101,14 @@ class _ImportStatementScreenState
         ],
         const SizedBox(height: AppSpacing.lg),
         SectionCard(
-          title: 'Universal bank & card support',
+          title: 'Universal Statement Support',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildFeatureRow(
                 theme,
                 Icons.check_circle_outline,
-                'Multi-strategy parser handles any bank or credit card layout',
+                'Multi-strategy engine adapts to any statement or card layout',
               ),
               const SizedBox(height: AppSpacing.xs),
               _buildFeatureRow(
@@ -165,9 +165,7 @@ class _ImportStatementScreenState
         _selectedAccountId ?? (accounts.isNotEmpty ? accounts.first.id : null);
     final effectiveCurrency = _selectedCurrency ?? result.detectedCurrency;
 
-    final title = result.bankName != null
-        ? '${result.bankName} Statement'
-        : 'Bank Statement';
+    const title = 'Account Statement';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -615,12 +613,11 @@ class _ImportStatementScreenState
                 borderRadius: BorderRadius.circular(6),
               ),
               child: const Text(
-                '💡 Common bank password formats:\n'
-                '• SBI: DOB (DDMMYYYY) + last 5 digits of mobile/A/c\n'
-                '• HDFC: Customer ID (lowercase) or PAN (uppercase)\n'
-                '• ICICI: DOB (DDMM) + last 4 digits of A/c\n'
-                '• Axis: Name (first 4 letters) + last 4 digits of A/c / mobile\n'
-                '• Kotak / PNB / BOB: Account number or DOB',
+                '💡 Common PDF statement password formats:\n'
+                '• Date of Birth (DDMMYYYY or DDMM)\n'
+                '• Customer ID, PAN number, or Account number\n'
+                '• First 4 letters of your name + last 4 digits of phone/account\n'
+                '• Lowercase name + birth year (YYYY)',
                 style: TextStyle(fontSize: 11),
               ),
             ),

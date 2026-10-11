@@ -3,11 +3,11 @@ import 'package:one_wallet_flutter/src/imports/statement_parser.dart';
 
 void main() {
   group('Universal Statement Parser', () {
-    test('parses SBI statement with multi-line UPI narration and balance delta', () {
-      const sbiStatement = '''
-State Bank of India
-Account Statement for A/c No: 12345678901
-Branch: KORAMANGALA, BANGALORE
+    test('parses statement with multi-line narration and balance delta', () {
+      const statement = '''
+Account Statement
+Account Number: 12345678901
+Branch: CENTRAL
 Currency: INR
 Statement Period: 01/04/2025 to 30/04/2025
 
@@ -18,12 +18,12 @@ Txn Date    Narration                             Chq/Ref No    Debit         Cr
 05/04/2025  BY TRANSFER-NEFT*ACME CORP*
             SALARY FOR MARCH 2025                 NEFT88123                   75,000.00     1,24,950.00
 12/04/2025  TO DEBIT-ATM CASH WDL
-            ATM KORAMANGALA BLR                   ATM44123      5,000.00                    1,19,950.00
+            ATM CENTRAL CITY                      ATM44123      5,000.00                    1,19,950.00
 Page 1 of 1
 This is a system generated statement
 ''';
 
-      final result = parseStatement(sbiStatement, accountName: 'SBI Savings');
+      final result = parseStatement(statement, accountName: 'Primary Savings');
 
       expect(result.detectedCurrency, 'INR');
       expect(result.rows.length, 3);
@@ -49,9 +49,9 @@ This is a system generated statement
       expect(row3.occurredAt, DateTime(2025, 4, 12));
     });
 
-    test('parses HDFC statement with DD/MM/YY dates and wrapped POS details', () {
-      const hdfcStatement = '''
-HDFC BANK LIMITED
+    test('parses statement with DD/MM/YY dates and wrapped POS details', () {
+      const statement = '''
+Statement of Account
 Customer ID: 98765432
 Account No: 50100234567890
 From: 01/05/2025 To: 31/05/2025
@@ -65,7 +65,7 @@ Date        Narration                             Chq/Ref No    Value Dt    With
 25/05/25    CREDIT INTEREST CAPITALISED                         25/05/25                  420.00     28,649.50
 ''';
 
-      final result = parseStatement(hdfcStatement, accountName: 'HDFC Main');
+      final result = parseStatement(statement, accountName: 'Main Checking');
 
       expect(result.detectedCurrency, 'INR');
       expect(result.rows.length, 3);
@@ -85,9 +85,9 @@ Date        Narration                             Chq/Ref No    Value Dt    With
       expect(result.rows[2].occurredAt, DateTime(2025, 5, 25));
     });
 
-    test('parses Kotak statement with DD Mon YYYY dates and CR/DR column', () {
-      const kotakStatement = '''
-Kotak Mahindra Bank
+    test('parses statement with DD Mon YYYY dates and CR/DR column', () {
+      const statement = '''
+Account Statement
 Statement Period: 01 Jan 2025 to 31 Jan 2025
 Account No: 1122334455
 
@@ -100,7 +100,7 @@ Date          Description                         Chq/Ref No    Amount          
               INR TRIP 8812                       REF9988       350.00          DR         46,651.00
 ''';
 
-      final result = parseStatement(kotakStatement, accountName: 'Kotak');
+      final result = parseStatement(statement, accountName: 'Personal');
 
       expect(result.detectedCurrency, 'INR');
       expect(result.rows.length, 3);
@@ -120,9 +120,9 @@ Date          Description                         Chq/Ref No    Amount          
       expect(result.rows[2].occurredAt, DateTime(2025, 1, 20));
     });
 
-    test('parses US Chase statement with USD currency and negative amounts', () {
-      const chaseStatement = '''
-JPMorgan Chase Bank, N.A.
+    test('parses statement with USD currency and negative amounts', () {
+      const statement = '''
+Account Statement
 Account Number: ...4321
 Currency: USD
 
@@ -132,7 +132,7 @@ Date        Description                               Amount          Balance
 10/18/2024  TARGET T-1244 BELLEVUE WA                 -82.10          4,913.15
 ''';
 
-      final result = parseStatement(chaseStatement, accountName: 'Chase Checking');
+      final result = parseStatement(statement, accountName: 'USD Checking');
 
       expect(result.detectedCurrency, 'USD');
       expect(result.rows.length, 3);
@@ -154,9 +154,9 @@ Date        Description                               Amount          Balance
       expect(result.rows[2].occurredAt, DateTime(2024, 10, 18));
     });
 
-    test('parses UK Barclays statement with GBP currency (£ symbol)', () {
-      const barclaysStatement = '''
-Barclays Bank UK PLC
+    test('parses statement with GBP currency (£ symbol)', () {
+      const statement = '''
+Account Statement
 Account ending 8912
 Sort Code: 20-00-00
 
@@ -166,7 +166,7 @@ Date        Description                       Money out (£)   Money in (£)    
 15/06/2025  DIVIDEND VANGUARD FTSE                            150.00          1,378.10
 ''';
 
-      final result = parseStatement(barclaysStatement, accountName: 'Barclays');
+      final result = parseStatement(statement, accountName: 'GBP Current');
 
       expect(result.detectedCurrency, 'GBP');
       expect(result.rows.length, 3);
@@ -186,7 +186,7 @@ Date        Description                       Money out (£)   Money in (£)    
 
     test('parses reverse-chronological statement (newest first)', () {
       const reverseStatement = '''
-Universal Bank
+Account Statement
 Account: 99887766
 Currency: EUR
 
@@ -209,7 +209,7 @@ Date        Details                           Amount (€)      Balance (€)
 
     test('ignores messy page headers and footers across multi-page statement', () {
       const multiPageStatement = '''
-Bank of Baroda
+Statement of Account
 Account No: 12340001
 Page 1 of 2
 
@@ -218,7 +218,7 @@ Date          Narration                         Withdrawal      Deposit       Ba
 02-04-2025    UPI/GROCERIES/REF123              250.00                        9,750.00
 Page 1 of 2
 -------------------------------------------------------------
-Bank of Baroda
+Statement of Account
 Account No: 12340001
 Page 2 of 2
 03-04-2025    CASH DEPOSIT BRANCH                               5,000.00      14,750.00
@@ -227,7 +227,7 @@ Page 2 of 2
 End of statement
 ''';
 
-      final result = parseStatement(multiPageStatement, accountName: 'BOB');
+      final result = parseStatement(multiPageStatement, accountName: 'Savings');
 
       expect(result.rows.length, 3);
       expect(result.rows[0].notes, contains('GROCERIES'));
@@ -240,7 +240,7 @@ End of statement
 
     test('Pass 3 self-recovery: parses credit card statement without running balances', () {
       const cardStatement = '''
-HDFC Bank Credit Card Statement
+Credit Card Statement
 Card ending: 9182
 Total Due: INR 22,450.00
 Payment Due Date: 20/07/2025
@@ -251,7 +251,7 @@ Date        Transaction Description           Amount (INR)
 20/06/2025  AMAZON INDIA RETAIL               2,450.00
 ''';
 
-      final result = parseStatement(cardStatement, accountName: 'HDFC Card');
+      final result = parseStatement(cardStatement, accountName: 'Credit Card');
 
       expect(result.detectedCurrency, 'INR');
       expect(result.rows.length, 3);
@@ -260,7 +260,7 @@ Date        Transaction Description           Amount (INR)
       expect(result.rows[0].amount.amountMinor, 64900);
 
       expect(result.rows[1].notes, contains('AUTOPAY PAYMENT'));
-      expect(result.rows[1].type, 'income'); // Payment / credit
+      expect(result.rows[1].type, 'income');
       expect(result.rows[1].amount.amountMinor, 1500000);
 
       expect(result.rows[2].notes, contains('AMAZON'));
@@ -270,7 +270,7 @@ Date        Transaction Description           Amount (INR)
 
     test('Pass 2 self-recovery: parses statements with transaction token prefix before date', () {
       const tokenPrefixStatement = '''
-IndusInd Bank Statement
+Account Statement
 Account: 1092837465
 
 Txn ID      Date        Particulars                   Amount      Dr/Cr
@@ -279,7 +279,7 @@ TXN002      18/04/2025  CLIENT PAYMENT INWARD         12,000.00   CR
 TXN003      25/04/2025  UBER TRIP BLR                 420.00      DR
 ''';
 
-      final result = parseStatement(tokenPrefixStatement, accountName: 'IndusInd');
+      final result = parseStatement(tokenPrefixStatement, accountName: 'Current');
 
       expect(result.rows.length, 3);
       expect(result.rows[0].type, 'expense');
@@ -301,4 +301,3 @@ TXN003      25/04/2025  UBER TRIP BLR                 420.00      DR
     });
   });
 }
-

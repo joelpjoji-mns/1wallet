@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import '../data/ledger_models.dart';
-import 'bank_profiles.dart';
 import 'wallet_csv_parser.dart' show ParsedWalletCsvRow;
 
 /// The strategy that successfully extracted transactions.
@@ -15,22 +14,17 @@ enum ParsingStrategy {
   final String label;
 }
 
-/// Result of parsing a bank or credit card statement.
+/// Result of parsing an account or credit card statement.
 class StatementParseResult {
   const StatementParseResult({
-    required this.profile,
     required this.rows,
     required this.skippedLines,
     required this.totalLines,
     this.detectedCurrency = 'INR',
-    this.bankName,
     this.statementPeriod,
     this.strategy = ParsingStrategy.dateAnchoredLedger,
     this.diagnostics,
   });
-
-  /// The bank profile or generic descriptor.
-  final BankProfile profile;
 
   /// Successfully parsed transaction rows.
   final List<ParsedWalletCsvRow> rows;
@@ -43,9 +37,6 @@ class StatementParseResult {
 
   /// Currency detected from statement text (INR, USD, EUR, GBP, etc.).
   final String detectedCurrency;
-
-  /// Detected bank name, if recognized from the statement.
-  final String? bankName;
 
   /// Detected statement period (e.g. "01/04/2025 to 30/04/2025").
   final String? statementPeriod;
@@ -60,12 +51,11 @@ class StatementParseResult {
   double get confidence => totalLines == 0 ? 0.0 : rows.length / totalLines;
 }
 
-/// Parses raw extracted text from any bank statement into structured rows.
+/// Parses raw extracted text from any statement into structured rows.
 /// Automatically executes a 4-pass self-recovery pipeline to adapt to any
-/// bank or credit card layout without requiring bank-specific profiles.
+/// statement or credit card layout without requiring institution-specific profiles.
 StatementParseResult parseStatement(
   String fullText, {
-  BankProfile? profile,
   String accountName = '',
   String? defaultCurrency,
   bool forceRelaxedMode = false,
@@ -77,22 +67,20 @@ StatementParseResult parseStatement(
       .toList();
 
   if (lines.isEmpty || fullText.trim().length < 20) {
-    final effectiveProfile = profile ?? genericIndianProfile;
     return StatementParseResult(
-      profile: effectiveProfile,
       rows: const [],
       skippedLines: 0,
       totalLines: 0,
-      detectedCurrency: defaultCurrency ?? effectiveProfile.defaultCurrency,
+      detectedCurrency: defaultCurrency ?? 'INR',
       diagnostics: 'The document appears to be empty or contains no readable text. '
           'If this is a scanned paper statement, image-only PDFs require OCR.',
     );
   }
 
-  // 1. Detect Currency, Bank Name, Period, and Fallback Year
+  // 1. Detect Currency, Period, and Fallback Year
   final detectedCurrency = detectCurrency(
     fullText,
-    fallback: defaultCurrency ?? profile?.defaultCurrency ?? 'INR',
+    fallback: defaultCurrency ?? 'INR',
   );
   final fallbackYear = extractFallbackYear(fullText);
   final statementPeriod = extractStatementPeriod(fullText);
@@ -211,22 +199,11 @@ StatementParseResult parseStatement(
     diagnostics = _generateDiagnostics(fullText, lines);
   }
 
-  final effectiveProfile = profile ??
-      BankProfile(
-        id: 'universal',
-        name: 'Bank Statement',
-        country: detectedCurrency == 'INR' ? 'IN' : 'GLOBAL',
-        defaultCurrency: detectedCurrency,
-        rowPattern: RegExp(r''),
-      );
-
   return StatementParseResult(
-    profile: effectiveProfile,
     rows: bestRows,
     skippedLines: skippedCount,
     totalLines: lines.length,
     detectedCurrency: detectedCurrency,
-    bankName: null,
     statementPeriod: statementPeriod,
     strategy: bestStrategy,
     diagnostics: diagnostics,
@@ -234,8 +211,19 @@ StatementParseResult parseStatement(
 }
 
 // ─────────────────────────────────────────────────────────────
-//  Currency & Bank Name Detection
+//  Currency & Amount Parsing
 // ─────────────────────────────────────────────────────────────
+
+/// Parses any formatted monetary amount string (e.g. "1,23,456.78" or "12,345.50" or "45.00")
+/// into integer minor units (e.g. cents/paise).
+int? parseAmountMinor(String? raw) {
+  if (raw == null || raw.trim().isEmpty) return null;
+  final cleaned = raw.replaceAll(RegExp(r'[^0-9.\-]'), '');
+  if (cleaned.isEmpty) return null;
+  final parsed = double.tryParse(cleaned);
+  if (parsed == null) return null;
+  return (parsed * 100).round();
+}
 
 const _validCurrencies = {
   'INR', 'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'SGD', 'AED', 'JPY', 'CHF', 'NZD',
@@ -279,79 +267,6 @@ String detectCurrency(String text, {String fallback = 'INR'}) {
   return best;
 }
 
-String? detectBankName(String text) {
-  final header = text.substring(0, math.min(1000, text.length));
-
-  String? matchBank(String scope) {
-    if (RegExp(r'ICICI\s+Bank', caseSensitive: false).hasMatch(scope)) {
-      return 'ICICI Bank';
-    }
-    if (RegExp(r'State\s+Bank\s+of\s+India|\bSBI\b', caseSensitive: false).hasMatch(scope)) {
-      return 'State Bank of India';
-    }
-    if (RegExp(r'HDFC\s+Bank', caseSensitive: false).hasMatch(scope)) {
-      return 'HDFC Bank';
-    }
-    if (RegExp(r'Axis\s+Bank', caseSensitive: false).hasMatch(scope)) {
-      return 'Axis Bank';
-    }
-    if (RegExp(r'Kotak\s+Mahindra|\bKotak\b', caseSensitive: false).hasMatch(scope)) {
-      return 'Kotak Mahindra Bank';
-    }
-    if (RegExp(r'Punjab\s+National\s+Bank|\bPNB\b', caseSensitive: false).hasMatch(scope)) {
-      return 'Punjab National Bank';
-    }
-    if (RegExp(r'Bank\s+of\s+Baroda|\bBOB\b', caseSensitive: false).hasMatch(scope)) {
-      return 'Bank of Baroda';
-    }
-    if (RegExp(r'Indian\s+Overseas\s+Bank|\bIOB\b', caseSensitive: false).hasMatch(scope)) {
-      return 'Indian Overseas Bank';
-    }
-    if (RegExp(r'Canara\s+Bank', caseSensitive: false).hasMatch(scope)) {
-      return 'Canara Bank';
-    }
-    if (RegExp(r'Union\s+Bank', caseSensitive: false).hasMatch(scope)) {
-      return 'Union Bank of India';
-    }
-    if (RegExp(r'IndusInd\s+Bank', caseSensitive: false).hasMatch(scope)) {
-      return 'IndusInd Bank';
-    }
-    if (RegExp(r'Yes\s+Bank', caseSensitive: false).hasMatch(scope)) {
-      return 'Yes Bank';
-    }
-    if (RegExp(r'IDFC\s+FIRST|IDFC\s+Bank', caseSensitive: false).hasMatch(scope)) {
-      return 'IDFC FIRST Bank';
-    }
-    if (RegExp(r'RBL\s+Bank', caseSensitive: false).hasMatch(scope)) {
-      return 'RBL Bank';
-    }
-    if (RegExp(r'Standard\s+Chartered', caseSensitive: false).hasMatch(scope)) {
-      return 'Standard Chartered';
-    }
-    if (RegExp(r'JPMorgan|Chase\s+Bank|\bChase\b', caseSensitive: false).hasMatch(scope)) {
-      return 'Chase Bank';
-    }
-    if (RegExp(r'Bank\s+of\s+America|\bBofA\b', caseSensitive: false).hasMatch(scope)) {
-      return 'Bank of America';
-    }
-    if (RegExp(r'Barclays', caseSensitive: false).hasMatch(scope)) {
-      return 'Barclays';
-    }
-    if (RegExp(r'HSBC', caseSensitive: false).hasMatch(scope)) {
-      return 'HSBC';
-    }
-    if (RegExp(r'Citibank|\bCiti\b', caseSensitive: false).hasMatch(scope)) {
-      return 'Citibank';
-    }
-    if (RegExp(r'Wells\s+Fargo', caseSensitive: false).hasMatch(scope)) {
-      return 'Wells Fargo';
-    }
-    return null;
-  }
-
-  return matchBank(header) ?? matchBank(text);
-}
-
 int? extractFallbackYear(String text) {
   final head = text.substring(0, math.min(1000, text.length));
   final match = RegExp(
@@ -382,7 +297,7 @@ int? _extractOpeningBalance(List<String> lines) {
     if (RegExp(r'\b(?:OPENING\s+BALANCE|BROUGHT\s+FORWARD|B/F)\b', caseSensitive: false).hasMatch(line)) {
       final matches = RegExp(r'(?<!\d)([+\-]?(?:\d{1,3}(?:,\d{2,3})*|\d+)\.\d{2})(?!\d)').allMatches(line);
       if (matches.isNotEmpty) {
-        final parsed = parseIndianAmount(matches.last.group(1));
+        final parsed = parseAmountMinor(matches.last.group(1));
         if (parsed != null && parsed > 0) return parsed;
       }
     }
@@ -390,7 +305,7 @@ int? _extractOpeningBalance(List<String> lines) {
   return null;
 }
 
-bool _detectMonthFirst(List<String> lines, {String? currency, String? bankName}) {
+bool _detectMonthFirst(List<String> lines, {String? currency}) {
   var sawP1Over12 = false;
   var sawP2Over12 = false;
 
@@ -409,7 +324,7 @@ bool _detectMonthFirst(List<String> lines, {String? currency, String? bankName})
   if (sawP2Over12) return true; // Proves MM/DD/YYYY
   if (sawP1Over12) return false; // Proves DD/MM/YYYY
 
-  if (currency == 'USD' || bankName == 'Chase Bank' || bankName == 'Bank of America' || bankName == 'Wells Fargo') {
+  if (currency == 'USD') {
     return true;
   }
   return false;
@@ -657,7 +572,7 @@ _ParsedBlockCandidate? _parseBlockCandidate(
   final extracted = <_ExtractedAmount>[];
   for (final m in amountMatches) {
     final raw = m.group(1)!;
-    final parsed = parseIndianAmount(raw);
+    final parsed = parseAmountMinor(raw);
     if (parsed != null && parsed != 0) {
       extracted.add(
         _ExtractedAmount(
@@ -877,7 +792,7 @@ List<ParsedWalletCsvRow> _parseViaLooseDateScanner(
     final amounts = <_ExtractedAmount>[];
     for (final m in amountMatches) {
       final raw = m.group(1)!;
-      final parsed = parseIndianAmount(raw);
+      final parsed = parseAmountMinor(raw);
       if (parsed != null && parsed != 0) {
         amounts.add(_ExtractedAmount(raw: raw, minor: parsed.abs(), isNegative: parsed < 0 || raw.startsWith('-')));
       }
@@ -946,7 +861,7 @@ List<ParsedWalletCsvRow> _parseViaCreditCardScanner(
     if (amountMatches.isEmpty) continue;
 
     final rawAmount = amountMatches.first.group(1)!;
-    final parsed = parseIndianAmount(rawAmount);
+    final parsed = parseAmountMinor(rawAmount);
     if (parsed == null || parsed == 0) continue;
 
     rowNumber++;
@@ -1006,7 +921,7 @@ List<ParsedWalletCsvRow> _parseViaTabularDelimiter(
 
       final amtMatch = RegExp(r'(?<!\d)([+\-]?(?:\d{1,3}(?:,\d{2,3})*|\d+)\.\d{2})(?!\d)').firstMatch(part);
       if (amtMatch != null && amountMinor == null) {
-        final p = parseIndianAmount(amtMatch.group(1)!);
+        final p = parseAmountMinor(amtMatch.group(1)!);
         if (p != null && p != 0) {
           amountMinor = p.abs();
           if (p < 0 || part.toUpperCase().contains('CR')) {
