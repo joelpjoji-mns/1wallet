@@ -244,11 +244,6 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
-  void clearError() {
-    if (state.errorMessage == null) return;
-    state = state.copyWith(errorMessage: null);
-  }
-
   @override
   void dispose() {
     _subscription?.cancel();

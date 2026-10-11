@@ -273,5 +273,213 @@ void main() {
       expect(res.rows.first.occurredAt?.month, equals(9));
       expect(res.rows.first.occurredAt?.day, equals(15));
     });
+
+    test('11. cashDestinationTransferMoney accurately returns counterAmount for cross-currency transfers', () {
+      const cashEur = Account(
+        id: 'acc-cash-eur',
+        name: 'EUR Cash',
+        type: 'cash',
+        currency: 'EUR',
+        openingBalance: Money(amountMinor: 0, currency: 'EUR'),
+      );
+      final tx = TransactionRecord(
+        id: 't-cross',
+        type: 'transfer',
+        status: 'cleared',
+        source: 'manual',
+        accountId: 'acc-bank-usd',
+        counterAccountId: 'acc-cash-eur',
+        amount: const Money(amountMinor: 10000, currency: 'USD'),
+        counterAmount: const Money(amountMinor: 9200, currency: 'EUR'),
+        baseAmount: const Money(amountMinor: 10000, currency: 'USD'),
+        occurredAt: DateTime(2025),
+      );
+
+      final result = cashDestinationTransferMoney(tx, cashEur);
+      expect(result.currency, equals('EUR'));
+      expect(result.amountMinor, equals(9200));
+    });
+
+    test('12. rateBetween triangulates cross-currency rates via baseCurrency', () {
+      final state = emptyLedgerState().copyWith(
+        preferences: emptyLedgerState().preferences.copyWith(
+          baseCurrency: 'USD',
+          displayCurrency: 'USD',
+        ),
+        exchangeRates: [
+          ExchangeRateRecord(
+            base: 'USD',
+            quote: 'EUR',
+            rate: 0.92,
+            asOfDate: DateTime(2025),
+          ),
+          ExchangeRateRecord(
+            base: 'USD',
+            quote: 'GBP',
+            rate: 0.79,
+            asOfDate: DateTime(2025),
+          ),
+        ],
+      );
+
+      // EUR to GBP has no direct quote, but triangulates EUR -> USD -> GBP
+      // 1 EUR = (1 / 0.92) USD = 1.08695 USD
+      // 1.08695 USD * 0.79 GBP = 0.85869 GBP
+      final rate = rateBetween(state, 'EUR', 'GBP');
+      expect(rate, isNotNull);
+      expect(rate!, closeTo(0.79 / 0.92, 0.001));
+    });
+
+    test('13. netWorth properly classifies positive overdraft balances as assets and negative balances as liabilities', () {
+      const overdraftChecking = Account(
+        id: 'acc-od',
+        name: 'Checking with Overdraft',
+        type: 'overdraft',
+        currency: 'USD',
+        openingBalance: Money(amountMinor: 200000, currency: 'USD'),
+      );
+      const overdrawnAccount = Account(
+        id: 'acc-reg',
+        name: 'Overdrawn Checking',
+        type: 'checking',
+        currency: 'USD',
+        openingBalance: Money(amountMinor: -50000, currency: 'USD'),
+      );
+      final state = emptyLedgerState().copyWith(
+        accounts: const [overdraftChecking, overdrawnAccount],
+      );
+
+      final worth = netWorth(state);
+      // Positive $2,000 in overdraft checking is an asset
+      expect(worth.assets.amountMinor, equals(200000));
+      // Negative $500 in regular checking is a liability
+      expect(worth.liabilities.amountMinor, equals(-50000));
+      expect(worth.total.amountMinor, equals(150000));
+    });
+
+    test('14. creditCardDueStatus flags past unpaid statement as overdue when dueDay is null', () {
+      const card = Account(
+        id: 'acc-card',
+        name: 'Credit Card',
+        type: 'credit_card',
+        currency: 'USD',
+        openingBalance: Money(amountMinor: -50000, currency: 'USD'),
+        statementDay: 15,
+        lastPaidBillMonth: null, // Unpaid
+      );
+      final state = emptyLedgerState().copyWith(
+        accounts: const [card],
+      );
+
+      // On Oct 10, before Oct 15 statement: the active statement was Sep 15, due Oct 5
+      final today = DateTime(2026, 10, 10);
+      final status = creditCardDueStatus(state, card, now: today);
+
+      expect(status, isNotNull);
+      expect(status!.statementDate, equals(DateTime(2026, 9, 15)));
+      expect(status.dueDate, equals(DateTime(2026, 10, 5)));
+      expect(status.isOverdue, isTrue);
+    });
+
+    test('15. upsertTransaction preserves existing transaction name when not explicitly provided', () async {
+      const account = Account(
+        id: 'acc-1',
+        name: 'Checking',
+        type: 'checking',
+        currency: 'USD',
+        openingBalance: Money(amountMinor: 0, currency: 'USD'),
+      );
+      final tx = TransactionRecord(
+        id: 'tx-1',
+        type: 'expense',
+        status: 'cleared',
+        source: 'manual',
+        accountId: 'acc-1',
+        amount: const Money(amountMinor: 1500, currency: 'USD'),
+        baseAmount: const Money(amountMinor: 1500, currency: 'USD'),
+        name: 'Starbucks Coffee',
+        occurredAt: DateTime(2025),
+      );
+      final initial = emptyLedgerState().copyWith(
+        accounts: const [account],
+        transactions: [tx],
+      );
+      final controller = LedgerController(const _FakeLedgerRepo(), initialState: initial);
+      addTearDown(controller.dispose);
+
+      // Edit category/notes without passing name
+      await controller.upsertTransaction(
+        id: 'tx-1',
+        type: 'expense',
+        accountId: 'acc-1',
+        amountMinor: 1500,
+        notes: 'Updated note',
+      );
+
+      final updated = controller.state.transactions.firstWhere((t) => t.id == 'tx-1');
+      expect(updated.name, equals('Starbucks Coffee'));
+      expect(updated.notes, equals('Updated note'));
+    });
+
+    test('16. approveCaptureCandidate converts foreign currency, sets originalAmount, and assigns merchant name', () async {
+      const account = Account(
+        id: 'acc-eur',
+        name: 'Euro Account',
+        type: 'bank',
+        currency: 'EUR',
+        openingBalance: Money(amountMinor: 0, currency: 'EUR'),
+      );
+      final candidate = CaptureCandidate(
+        id: 'cap-1',
+        source: 'sms',
+        status: 'pending',
+        createdAt: DateTime(2025, 5, 10),
+        merchant: 'Uber Rides',
+        parsedAmount: const Money(amountMinor: 2000, currency: 'USD'),
+        suggestedAccountId: 'acc-eur',
+        transactionType: 'expense',
+      );
+      final initial = emptyLedgerState().copyWith(
+        preferences: emptyLedgerState().preferences.copyWith(
+          baseCurrency: 'USD',
+          displayCurrency: 'EUR',
+        ),
+        accounts: const [account],
+        captureCandidates: [candidate],
+        exchangeRates: [
+          ExchangeRateRecord(
+            base: 'USD',
+            quote: 'EUR',
+            rate: 0.90,
+            asOfDate: DateTime(2025),
+          ),
+        ],
+      );
+      final controller = LedgerController(const _FakeLedgerRepo(), initialState: initial);
+      addTearDown(controller.dispose);
+
+      final createdTx = await controller.approveCaptureCandidate('cap-1');
+      expect(createdTx.name, equals('Uber Rides'));
+      expect(createdTx.amount.currency, equals('EUR'));
+      expect(createdTx.amount.amountMinor, equals(1800)); // 20.00 USD * 0.90 = 18.00 EUR
+      expect(createdTx.originalAmount?.currency, equals('USD'));
+      expect(createdTx.originalAmount?.amountMinor, equals(2000));
+    });
+
+    test('17. removeEnabledCurrency resets displayCurrency to baseCurrency when display currency is removed', () async {
+      final initial = emptyLedgerState().copyWith(
+        preferences: emptyLedgerState().preferences.copyWith(
+          baseCurrency: 'USD',
+          displayCurrency: 'EUR',
+          enabledCurrencies: ['EUR', 'GBP'],
+        ),
+      );
+      final controller = LedgerController(const _FakeLedgerRepo(), initialState: initial);
+      addTearDown(controller.dispose);
+
+      await controller.removeEnabledCurrency('EUR');
+      expect(controller.state.preferences.displayCurrency, equals('USD'));
+      expect(controller.state.preferences.enabledCurrencies.contains('EUR'), isFalse);
+    });
   });
 }

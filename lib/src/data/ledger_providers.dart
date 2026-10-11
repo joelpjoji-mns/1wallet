@@ -890,7 +890,7 @@ class LedgerController extends StateNotifier<LedgerState> {
           : categoryId,
       locationLabel: _blankToNull(locationLabel) ?? existing?.locationLabel,
       paymentMethod: _blankToNull(paymentMethod) ?? existing?.paymentMethod,
-      name: _blankToNull(name),
+      name: _blankToNull(name) ?? existing?.name,
       notes: _blankToNull(notes),
       importBatchId: existing?.importBatchId,
       occurredAt: occurredAt ?? existing?.occurredAt ?? DateTime.now(),
@@ -1453,7 +1453,25 @@ class LedgerController extends StateNotifier<LedgerState> {
     final category =
         categoryById(state, candidate.suggestedCategoryId) ??
         _matchCategory(state, candidate.merchant, type);
-    final amount = candidate.parsedAmount!.copyWith(currency: account.currency);
+    Money amount;
+    Money? originalAmount;
+    final parsedCurrency = candidate.parsedAmount!.currency.toUpperCase();
+    final accountCurrency = account.currency.toUpperCase();
+    if (parsedCurrency != accountCurrency) {
+      originalAmount = candidate.parsedAmount!;
+      amount = convertMoneyForDisplay(
+        state,
+        candidate.parsedAmount!,
+        account.currency,
+      );
+    } else {
+      amount = candidate.parsedAmount!;
+    }
+    final baseAmount = convertMoneyForDisplay(
+      state,
+      amount,
+      state.preferences.baseCurrency,
+    );
     final transaction = TransactionRecord(
       id: _newId('cap-tx'),
       type: type,
@@ -1461,8 +1479,10 @@ class LedgerController extends StateNotifier<LedgerState> {
       source: candidate.source,
       accountId: account.id,
       amount: amount,
-      baseAmount: amount.copyWith(currency: state.preferences.baseCurrency),
+      baseAmount: baseAmount,
+      originalAmount: originalAmount,
       categoryId: category?.id,
+      name: _blankToNull(candidate.merchant),
       occurredAt: candidate.createdAt,
       paymentMethod: candidate.source.toUpperCase(),
       notes: _blankToNull(candidate.merchant) ?? candidate.rawText,
@@ -1605,10 +1625,16 @@ class LedgerController extends StateNotifier<LedgerState> {
         if (c.merchant != null && parsed.merchant != null) {
           final cMerch = c.merchant!.trim().toLowerCase();
           final pMerch = parsed.merchant!.trim().toLowerCase();
-          if (cMerch == pMerch ||
-              (cMerch.length > 3 && pMerch.contains(cMerch)) ||
-              (pMerch.length > 3 && cMerch.contains(pMerch))) {
-            return true;
+          if (cMerch.isNotEmpty && pMerch.isNotEmpty) {
+            final isSimilar = cMerch == pMerch ||
+                (cMerch.length > 3 && pMerch.contains(cMerch)) ||
+                (pMerch.length > 3 && cMerch.contains(pMerch));
+            if (isSimilar) {
+              return true;
+            } else {
+              // Known different merchants: not a duplicate
+              return false;
+            }
           }
         }
 
@@ -1693,10 +1719,16 @@ class LedgerController extends StateNotifier<LedgerState> {
       if (parsed.merchant != null && tx.name != null) {
         final txName = tx.name!.trim().toLowerCase();
         final smsMerchant = parsed.merchant!.trim().toLowerCase();
-        if (txName == smsMerchant ||
-            (txName.length > 3 && smsMerchant.contains(txName)) ||
-            (smsMerchant.length > 3 && txName.contains(smsMerchant))) {
-          return tx;
+        if (txName.isNotEmpty && smsMerchant.isNotEmpty) {
+          final isSimilar = txName == smsMerchant ||
+              (txName.length > 3 && smsMerchant.contains(txName)) ||
+              (smsMerchant.length > 3 && txName.contains(smsMerchant));
+          if (isSimilar) {
+            return tx;
+          } else {
+            // Clearly different merchants: not a duplicate
+            continue;
+          }
         }
       }
 
@@ -1770,17 +1802,6 @@ class LedgerController extends StateNotifier<LedgerState> {
       notificationShown: notificationShown,
       forceQueue: forceQueue,
     );
-  }
-
-  Future<CaptureCandidate?> importNotificationMessage(
-    String rawText, {
-    DateTime? receivedAt,
-  }) async {
-    final result = await importNotificationMessageDetailed(
-      rawText,
-      receivedAt: receivedAt,
-    );
-    return result.candidate;
   }
 
   Future<CaptureImportResult> importNotificationMessageDetailed(
@@ -2160,9 +2181,17 @@ class LedgerController extends StateNotifier<LedgerState> {
               r.quote.toUpperCase() != normalized,
         )
         .toList();
+    final isDisplay =
+        normalized == state.preferences.displayCurrency.toUpperCase();
+    final displayCurrency = isDisplay
+        ? state.preferences.baseCurrency
+        : state.preferences.displayCurrency;
     await _commit(
       state.copyWith(
-        preferences: state.preferences.copyWith(enabledCurrencies: enabled),
+        preferences: state.preferences.copyWith(
+          enabledCurrencies: enabled,
+          displayCurrency: displayCurrency,
+        ),
         exchangeRates: newRates,
       ),
     );

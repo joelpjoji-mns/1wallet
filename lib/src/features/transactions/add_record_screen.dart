@@ -1074,6 +1074,9 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
             paymentMethod: _paymentMethodController.text.trim().isEmpty
                 ? null
                 : _paymentMethodController.text.trim(),
+            name: (captureCandidate?.merchant?.trim().isNotEmpty ?? false)
+                ? captureCandidate!.merchant!.trim()
+                : editingTransaction?.name,
             occurredAt: _occurredAt,
             originalTransactionId:
                 widget.plannedId ?? editingTransaction?.originalTransactionId,

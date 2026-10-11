@@ -196,10 +196,44 @@ List<Money> balanceBreakdownByCurrency(LedgerState state, {String? accountId}) {
       : state.accounts.where(
           (account) => !account.isArchived && account.includeInTotals,
         );
+  final accountMap = <String, Account>{};
   final totals = <String, int>{};
   for (final account in accounts) {
-    for (final money in _accountCurrencyNet(state, account)) {
-      _addMoney(totals, money);
+    accountMap[account.id] = account;
+    _addMoney(
+      totals,
+      account.openingBalance.copyWith(currency: account.currency),
+    );
+  }
+
+  if (accountMap.isNotEmpty) {
+    for (final transaction in state.transactions) {
+      if (transaction.status == 'scheduled' ||
+          transaction.status == 'paused' ||
+          transaction.status == 'void') {
+        continue;
+      }
+
+      final sourceAccount = accountMap[transaction.accountId];
+      if (sourceAccount != null) {
+        final delta = sourceDelta(transaction);
+        if (delta != 0) {
+          final money = _sourceCurrencyMoney(transaction, sourceAccount);
+          _addSignedMoney(totals, money, delta);
+        }
+      }
+
+      final counterAccountId = transaction.counterAccountId;
+      if (counterAccountId != null) {
+        final counterAccount = accountMap[counterAccountId];
+        if (counterAccount != null) {
+          final delta = counterDelta(transaction);
+          if (delta != 0) {
+            final money = _counterCurrencyMoney(transaction, counterAccount);
+            _addSignedMoney(totals, money, delta);
+          }
+        }
+      }
     }
   }
 
@@ -220,42 +254,6 @@ List<Money> balanceBreakdownByCurrency(LedgerState state, {String? accountId}) {
         : amountCompare;
   });
   return items;
-}
-
-List<Money> _accountCurrencyNet(LedgerState state, Account account) {
-  final totals = <String, int>{};
-  _addMoney(
-    totals,
-    account.openingBalance.copyWith(currency: account.currency),
-  );
-
-  for (final transaction in state.transactions) {
-    if (transaction.status == 'scheduled' ||
-        transaction.status == 'paused' ||
-        transaction.status == 'void') {
-      continue;
-    }
-
-    if (transaction.accountId == account.id) {
-      final delta = sourceDelta(transaction);
-      if (delta != 0) {
-        final money = _sourceCurrencyMoney(transaction, account);
-        _addSignedMoney(totals, money, delta);
-      }
-    }
-
-    if (transaction.counterAccountId == account.id) {
-      final delta = counterDelta(transaction);
-      if (delta != 0) {
-        final money = _counterCurrencyMoney(transaction, account);
-        _addSignedMoney(totals, money, delta);
-      }
-    }
-  }
-
-  return totals.entries
-      .map((entry) => Money(amountMinor: entry.value, currency: entry.key))
-      .toList();
 }
 
 Money _sourceCurrencyMoney(TransactionRecord transaction, Account account) {
@@ -406,20 +404,23 @@ ExchangeRateRecord? _latestExchangeRate(
   String base,
   String quote,
 ) {
-  final matches = state.exchangeRates
-      .where(
-        (rate) =>
-            rate.base.toUpperCase() == base.toUpperCase() &&
-            rate.quote.toUpperCase() == quote.toUpperCase() &&
-            rate.rate > 0,
-      )
-      .toList();
-  matches.sort((left, right) {
-    final leftDate = left.updatedAt ?? left.asOfDate;
-    final rightDate = right.updatedAt ?? right.asOfDate;
-    return rightDate.compareTo(leftDate);
-  });
-  return matches.isEmpty ? null : matches.first;
+  final targetBase = base.toUpperCase();
+  final targetQuote = quote.toUpperCase();
+  ExchangeRateRecord? latest;
+  DateTime? latestDate;
+  for (final rate in state.exchangeRates) {
+    if (rate.rate <= 0 ||
+        rate.base.toUpperCase() != targetBase ||
+        rate.quote.toUpperCase() != targetQuote) {
+      continue;
+    }
+    final rateDate = rate.updatedAt ?? rate.asOfDate;
+    if (latest == null || rateDate.isAfter(latestDate!)) {
+      latest = rate;
+      latestDate = rateDate;
+    }
+  }
+  return latest;
 }
 
 _RateSnapshot? _inferredRateBetween(

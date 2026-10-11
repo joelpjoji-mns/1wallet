@@ -1355,6 +1355,21 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
         finalAmountMinor = converted.amountMinor;
       }
 
+      int? counterAmountMinor;
+      if (_needsCounterAccount && _counterAccountId != null) {
+        final counterAccount = accountById(state, _counterAccountId);
+        if (counterAccount != null &&
+            counterAccount.currency.toUpperCase() !=
+                account.currency.toUpperCase()) {
+          final converted = convertMoneyForDisplay(
+            state,
+            Money(amountMinor: finalAmountMinor, currency: account.currency),
+            counterAccount.currency,
+          );
+          counterAmountMinor = converted.amountMinor;
+        }
+      }
+
       await ref
           .read(ledgerProvider.notifier)
           .upsertTransaction(
@@ -1362,6 +1377,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
             type: _type,
             accountId: account.id,
             counterAccountId: _needsCounterAccount ? _counterAccountId : null,
+            counterAmountMinor: counterAmountMinor,
             categoryId: _type == 'loan_repayment'
                 ? 'cat-emi'
                 : (_needsCounterAccount ? null : _categoryId),
@@ -1789,11 +1805,19 @@ class RecurringDetailView extends ConsumerWidget {
       counterAmountMinor: transaction.counterAmount?.amountMinor,
     );
 
-    await notifier.updateTransactionStatus(
-      transaction.id,
-      'scheduled',
-      occurredAt: nextDate,
-    );
+    final freq = transaction.recurrenceFrequency;
+    if (freq == 'once' || freq == null) {
+      await notifier.updateTransactionStatus(
+        transaction.id,
+        'finished',
+      );
+    } else {
+      await notifier.updateTransactionStatus(
+        transaction.id,
+        'scheduled',
+        occurredAt: nextDate,
+      );
+    }
     if (!context.mounted) return;
     _showRouteMessage(context, 'Scheduled record skipped.');
     if (context.canPop()) {
@@ -1823,11 +1847,20 @@ class RecurringDetailView extends ConsumerWidget {
     final notifier = ref.read(ledgerProvider.notifier);
 
     // Advance the date until it is today or later
-    var iterations = 0;
-    while (nextDate.isBefore(today)) {
-      nextDate = advanceTransactionRecurrence(nextDate, transaction);
-      iterations++;
-      if (iterations > 5000) break; // Safety guard against runaway loops
+    final freq = transaction.recurrenceFrequency;
+    if (freq == 'once' || freq == null) {
+      if (nextDate.isBefore(today)) {
+        nextDate = today;
+      }
+    } else {
+      var iterations = 0;
+      while (nextDate.isBefore(today)) {
+        final advanced = advanceTransactionRecurrence(nextDate, transaction);
+        if (advanced == nextDate) break;
+        nextDate = advanced;
+        iterations++;
+        if (iterations > 500) break; // Safety guard against runaway loops
+      }
     }
 
     await notifier.updateTransactionStatus(

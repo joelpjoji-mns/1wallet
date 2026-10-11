@@ -43,7 +43,13 @@ class TransactionRow extends StatelessWidget {
     final amount = _primaryAmount();
     final secondaryTexts = _secondaryAmounts(amount);
     final title = _title(category, account, counter);
-    final details = transaction.notes?.trim() ?? '';
+    final rawNotes = transaction.notes?.trim() ?? '';
+    final merchantName = transaction.name?.trim() ?? '';
+    final details = merchantName.isNotEmpty && merchantName != title
+        ? (rawNotes.isNotEmpty && rawNotes != merchantName
+            ? '$merchantName · $rawNotes'
+            : merchantName)
+        : rawNotes;
 
     Widget content = Material(
       color: Colors.transparent,

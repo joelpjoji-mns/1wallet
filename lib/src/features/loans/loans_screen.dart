@@ -636,7 +636,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
     final key = loan?.id ?? '__new__';
     if (_loadedAccountId == key) return;
     _loadedAccountId = key;
-    final details = loan == null ? null : _effectiveLoanDetails(state, loan);
+    final details = loan == null ? null : effectiveLoanDetails(state, loan);
     _currency = loan?.currency ?? state.preferences.baseCurrency;
     _loanKind = loan?.type ?? 'loan';
     _nameController.text = loan?.name ?? '';
@@ -653,7 +653,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
     _currentBalanceController.text = balance == null
         ? ''
         : _formatAmountInput(balance.amountMinor.abs(), _currency);
-    final existingEmi = _existingLoanEmi(state, loan?.id);
+    final existingEmi = existingLoanEmi(state, loan?.id);
     final repaymentAmount = details?.repaymentAmount;
     _emiController.text = repaymentAmount == null && existingEmi == null
         ? ''
@@ -661,14 +661,8 @@ class _LoanFormState extends ConsumerState<LoanForm> {
             (existingEmi?.amount ?? repaymentAmount!).amountMinor.abs(),
             _currency,
           );
-    _rateController.text = _formatOptionalDecimal(
-      details?.interestRatePercent ?? _doubleTagValue(loan?.groupName, 'rate'),
-    );
-    _tenureController.text =
-        (details?.repaymentCount ??
-                _intTagValue(loan?.groupName, 'tenure') ??
-                '')
-            .toString();
+    _rateController.text = _formatOptionalDecimal(details?.interestRatePercent);
+    _tenureController.text = (details?.repaymentCount ?? '').toString();
     _sourceAccountId =
         details?.repaymentSourceAccountId ??
         existingEmi?.accountId ??
@@ -868,7 +862,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
           );
       if (emiMinor > 0 && sourceAccount != null) {
         final latestState = ref.read(ledgerProvider);
-        final existingEmi = _existingLoanEmi(latestState, loan.id);
+        final existingEmi = existingLoanEmi(latestState, loan.id);
         await ref
             .read(ledgerProvider.notifier)
             .upsertTransaction(
@@ -895,7 +889,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
             );
       } else {
         final latestState = ref.read(ledgerProvider);
-        final existingEmi = _existingLoanEmi(latestState, loan.id);
+        final existingEmi = existingLoanEmi(latestState, loan.id);
         if (existingEmi != null) {
           await ref
               .read(ledgerProvider.notifier)
@@ -930,9 +924,9 @@ class LoanDetailView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(ledgerProvider);
     final balance = accountBalance(state, loan);
-    final nextEmi = _existingLoanEmi(state, loan.id);
-    final details = _effectiveLoanDetails(state, loan);
-    final projection = _loanProjection(state, loan);
+    final nextEmi = existingLoanEmi(state, loan.id);
+    final details = effectiveLoanDetails(state, loan);
+    final projection = loanProjection(state, loan);
     final repaymentHistory = _loanHistoryRepayments(state, loan.id);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1253,10 +1247,10 @@ class _LoanCompactCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final balance = accountBalance(state, loan);
-    final details = _effectiveLoanDetails(state, loan);
-    final projection = _loanProjection(state, loan);
+    final details = effectiveLoanDetails(state, loan);
+    final projection = loanProjection(state, loan);
     final repayments = _postedLoanRepayments(state, loan.id);
-    final nextEmi = _existingLoanEmi(state, loan.id);
+    final nextEmi = existingLoanEmi(state, loan.id);
     final scheduleDate = nextEmi?.occurredAt ?? details.repaymentStartsOn;
     final status = _scheduleStatus(
       context,
@@ -2485,8 +2479,8 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
     ).abs();
 
     final activeLoans = widget.loans.map((loan) {
-      final details = _effectiveLoanDetails(widget.state, loan);
-      final emiTx = _existingLoanEmi(widget.state, loan.id);
+      final details = effectiveLoanDetails(widget.state, loan);
+      final emiTx = existingLoanEmi(widget.state, loan.id);
       final rawEmi =
           details.repaymentAmount?.amountMinor.abs() ??
           emiTx?.amount.amountMinor.abs() ??
@@ -3007,20 +3001,6 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
   }
 }
 
-TransactionRecord? _existingLoanEmi(LedgerState state, String? loanId) {
-  if (loanId == null) return null;
-  final matches =
-      scheduledTransactions(state)
-          .where(
-            (transaction) =>
-                transaction.type == 'loan_repayment' &&
-                transaction.counterAccountId == loanId,
-          )
-          .toList()
-        ..sort((left, right) => left.occurredAt.compareTo(right.occurredAt));
-  return matches.isEmpty ? null : matches.first;
-}
-
 List<TransactionRecord> _postedLoanRepayments(
   LedgerState state,
   String loanId,
@@ -3127,29 +3107,6 @@ String _formatSignedMoney(
   return '$sign${formatMoney(money.copyWith(amountMinor: money.amountMinor.abs()), locale)}';
 }
 
-AccountLoanDetails _effectiveLoanDetails(LedgerState state, Account loan) {
-  final fallbackPrincipal = Money(
-    amountMinor: loan.openingBalance.amountMinor.abs(),
-    currency: loan.currency,
-  );
-  final existing = loan.loanDetails;
-  if (existing != null) {
-    return existing.copyWith(
-      principal: existing.principal ?? fallbackPrincipal,
-    );
-  }
-  final existingEmi = _existingLoanEmi(state, loan.id);
-  return AccountLoanDetails(
-    loanKind: loan.type,
-    principal: fallbackPrincipal,
-    repaymentAmount: existingEmi?.amount.copyWith(currency: loan.currency),
-    interestRatePercent: _doubleTagValue(loan.groupName, 'rate'),
-    repaymentCount: _intTagValue(loan.groupName, 'tenure'),
-    repaymentStartsOn: existingEmi?.occurredAt,
-    repaymentSourceAccountId: existingEmi?.accountId,
-  );
-}
-
 String _nextEmiLabel(
   LedgerState state,
   AccountLoanDetails details,
@@ -3166,29 +3123,6 @@ String _nextEmiLabel(
   return parts.join(' · ');
 }
 
-String? _tagValue(String? source, String key) {
-  if (source == null || source.trim().isEmpty) return null;
-  for (final part in source.split('|')) {
-    final separator = part.indexOf(':');
-    if (separator <= 0) continue;
-    final itemKey = part.substring(0, separator).trim();
-    if (itemKey != key) continue;
-    final value = part.substring(separator + 1).trim();
-    return value.isEmpty ? null : value;
-  }
-  return null;
-}
-
-double? _doubleTagValue(String? source, String key) {
-  final value = _tagValue(source, key);
-  return value == null ? null : double.tryParse(value);
-}
-
-int? _intTagValue(String? source, String key) {
-  final value = _tagValue(source, key);
-  return value == null ? null : int.tryParse(value);
-}
-
 double? _optionalDouble(String value) {
   final trimmed = value.trim();
   if (trimmed.isEmpty) return null;
@@ -3201,13 +3135,17 @@ int? _optionalInt(String value) {
   return int.tryParse(trimmed);
 }
 
+final _trailingZerosRegex = RegExp(r'0+$');
+final _trailingDotRegex = RegExp(r'\.$');
+final _nonNumericDotRegex = RegExp(r'[^0-9.]');
+
 String _formatOptionalDecimal(double? value) {
   if (value == null) return '';
   if (value == value.roundToDouble()) return value.round().toString();
   return value
       .toStringAsFixed(2)
-      .replaceFirst(RegExp(r'0+$'), '')
-      .replaceFirst(RegExp(r'\.$'), '');
+      .replaceFirst(_trailingZerosRegex, '')
+      .replaceFirst(_trailingDotRegex, '');
 }
 
 String? _nonLoanGroupName(String? value) {
@@ -3229,117 +3167,6 @@ String? _firstCategoryId(LedgerState state, {String? preferred}) {
   return firstActiveCategory(state, preferred: preferred)?.id;
 }
 
-_LoanProjection _loanProjection(LedgerState state, Account loan) {
-  if (isPastLoan(state, loan)) {
-    return const _LoanProjection(
-      monthlyEmi: 0,
-      monthsRemaining: 0,
-      estimatedInterestMinor: 0,
-    );
-  }
-
-  final bal = accountBalance(state, loan).amountMinor;
-  final remaining = bal < 0 ? -bal : 0;
-  final details = _effectiveLoanDetails(state, loan);
-  final emiTx = _existingLoanEmi(state, loan.id);
-  final rawEmi =
-      details.repaymentAmount?.amountMinor.abs() ??
-      emiTx?.amount.amountMinor.abs() ??
-      0;
-  final frequency = emiTx?.recurrenceFrequency ?? details.recurrenceFrequency;
-  final interval = emiTx?.recurrenceInterval ?? details.recurrenceInterval;
-
-  double monthlyMultiplier = 1.0;
-  if (frequency == 'yearly') {
-    monthlyMultiplier = 1 / 12;
-  } else if (frequency == 'weekly') {
-    monthlyMultiplier = 52 / 12;
-  } else if (frequency == 'daily') {
-    monthlyMultiplier = 365 / 12;
-  }
-  final effectiveInterval = interval > 0 ? interval : 1;
-  monthlyMultiplier = monthlyMultiplier / effectiveInterval;
-
-  final emi = (rawEmi * monthlyMultiplier).round();
-  final rate = details.interestRatePercent ?? 0;
-  if (emi <= 0) {
-    return const _LoanProjection(
-      monthlyEmi: 0,
-      monthsRemaining: null,
-      estimatedInterestMinor: 0,
-    );
-  }
-  final forecast = _simulateLoanForecast(
-    principalMinor: remaining,
-    monthlyEmiMinor: emi,
-    annualRatePercent: rate,
-  );
-  return _LoanProjection(
-    monthlyEmi: emi,
-    monthsRemaining: forecast.monthsRemaining,
-    estimatedInterestMinor: forecast.totalInterestMinor,
-  );
-}
-
-({int? monthsRemaining, int totalInterestMinor, int remainingMinor})
-_simulateLoanForecast({
-  required int principalMinor,
-  required int monthlyEmiMinor,
-  required double annualRatePercent,
-  int maxMonths = 1200,
-}) {
-  var balance = principalMinor;
-  var interest = 0;
-  var months = 0;
-  final monthlyRate = annualRatePercent <= 0 ? 0 : annualRatePercent / 100 / 12;
-  while (balance > 0 && months < maxMonths) {
-    final interestMinor = (balance * monthlyRate).round();
-    final principalPaid = (monthlyEmiMinor - interestMinor)
-        .clamp(0, balance)
-        .toInt();
-    if (principalPaid <= 0) break;
-    balance -= principalPaid;
-    interest += interestMinor;
-    months++;
-  }
-  return (
-    monthsRemaining: balance <= 0 ? months : null,
-    totalInterestMinor: interest,
-    remainingMinor: balance,
-  );
-}
-
-class _LoanProjection {
-  const _LoanProjection({
-    required this.monthlyEmi,
-    required this.monthsRemaining,
-    required this.estimatedInterestMinor,
-  });
-
-  final int monthlyEmi;
-  final int? monthsRemaining;
-  final int estimatedInterestMinor;
-
-  String get payoffLabel {
-    final months = monthsRemaining;
-    if (months == null) {
-      if (monthlyEmi > 0) return 'EMI too low to cover interest';
-      return 'Add an EMI to estimate payoff';
-    }
-    if (months == 0) return 'Paid off';
-    final years = months ~/ 12;
-    final extraMonths = months % 12;
-    final monthsLabel = months == 1 ? '1 month' : '$months months';
-    final yearsLabel = years == 1 ? '1 year' : '$years years';
-    final extraMonthsLabel = extraMonths == 1
-        ? '1 month'
-        : '$extraMonths months';
-    if (years == 0) return '$monthsLabel remaining';
-    if (extraMonths == 0) return '$yearsLabel remaining';
-    return '$yearsLabel $extraMonthsLabel remaining';
-  }
-}
-
 String _formatAmountInput(int amountMinor, String currency) {
   if (amountMinor == 0) return '';
   final minors = math.pow(10, minorUnits(currency)).toInt();
@@ -3350,7 +3177,7 @@ String _formatAmountInput(int amountMinor, String currency) {
 }
 
 int _amountMinorFromInput(String value, String currency) {
-  final clean = value.replaceAll(RegExp(r'[^0-9.]'), '');
+  final clean = value.replaceAll(_nonNumericDotRegex, '');
   if (clean.isEmpty) return 0;
   final parts = clean.split('.');
   final integer = int.tryParse(parts[0]) ?? 0;

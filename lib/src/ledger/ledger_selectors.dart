@@ -85,16 +85,6 @@ List<TransactionRecord> sortedTransactions(
   return items;
 }
 
-List<TransactionRecord> transactionsForAccount(
-  LedgerState state,
-  String accountId,
-) {
-  return sortedTransactions(state).where((transaction) {
-    return transaction.accountId == accountId ||
-        transaction.counterAccountId == accountId;
-  }).toList();
-}
-
 final _accountBalanceMapExpando = Expando<Map<String, Money>>();
 
 Map<String, Money> accountBalanceMap(LedgerState state) {
@@ -187,13 +177,7 @@ Money cashDestinationTransferMoney(
   TransactionRecord transaction,
   Account cashAccount,
 ) {
-  if (transaction.counterAmount == null) return transaction.amount;
-  final cashCurrency = cashAccount.currency.toUpperCase();
-  final sourceCurrency = transaction.amount.currency.toUpperCase();
-  final counterCurrency = transaction.counterAmount!.currency.toUpperCase();
-  return counterCurrency == cashCurrency && sourceCurrency != cashCurrency
-      ? transaction.amount
-      : transaction.counterAmount!;
+  return transaction.counterAmount ?? transaction.amount;
 }
 
 List<Money> cashCurrencyBalancesForAccount(LedgerState state, Account account) {
@@ -283,6 +267,15 @@ double? rateBetween(LedgerState state, String from, String to) {
   if (direct != null) return direct.rate;
   final inverse = latestExchangeRate(state, target, source);
   if (inverse != null && inverse.rate > 0) return 1 / inverse.rate;
+
+  final base = state.preferences.baseCurrency.toUpperCase();
+  if (source != base && target != base) {
+    final r1 = rateBetween(state, source, base);
+    final r2 = rateBetween(state, base, target);
+    if (r1 != null && r2 != null && r1 > 0 && r2 > 0) {
+      return r1 * r2;
+    }
+  }
 
   return _inferredRateBetween(state, source, target);
 }
@@ -374,7 +367,7 @@ Money totalBalance(
       accountBalanceFromMap(balances, account),
       state.preferences.displayCurrency,
     ).amountMinor;
-    if (isLiabilityAccount(account)) {
+    if (balance < 0) {
       liabilities += balance;
     } else {
       assets += balance;
@@ -385,248 +378,6 @@ Money totalBalance(
     total: Money(amountMinor: assets + liabilities, currency: currency),
     assets: Money(amountMinor: assets, currency: currency),
     liabilities: Money(amountMinor: liabilities, currency: currency),
-  );
-}
-
-// ── Dashboard analytics selectors (used by the dynamic home widgets) ──
-
-int _flowInRange(
-  LedgerState state,
-  DateTime start,
-  DateTime end, {
-  required bool income,
-}) {
-  final types = income ? incomeTypes : expenseTypes;
-  final displayCurrency = state.preferences.displayCurrency;
-  var total = 0;
-  for (final transaction in state.transactions) {
-    if (transaction.status == 'scheduled' ||
-        transaction.status == 'paused' ||
-        transaction.status == 'void') {
-      continue;
-    }
-    if (transaction.isExcludedFromReports) continue;
-    if (isHiddenInterest(state, transaction)) continue;
-    if (!types.contains(transaction.type)) continue;
-    if (transaction.occurredAt.isBefore(start) ||
-        !transaction.occurredAt.isBefore(end)) {
-      continue;
-    }
-    final converted = convertMoneyForDisplay(
-      state,
-      transaction.amount,
-      displayCurrency,
-    );
-    if (converted.currency.toUpperCase() != displayCurrency.toUpperCase()) {
-      continue;
-    }
-    total += converted.amountMinor;
-  }
-  return total;
-}
-
-/// Income, expense, net and savings rate for the current calendar month.
-({
-  int incomeMinor,
-  int expenseMinor,
-  int netMinor,
-  double savingsRate,
-  String currency,
-})
-cashFlowThisMonth(LedgerState state) {
-  final now = DateTime.now();
-  final start = DateTime(now.year, now.month);
-  final end = DateTime(now.year, now.month + 1);
-  final incomeMinor = _flowInRange(state, start, end, income: true);
-  final expenseMinor = _flowInRange(state, start, end, income: false);
-  final netMinor = incomeMinor - expenseMinor;
-  final savingsRate = incomeMinor > 0 ? netMinor / incomeMinor : 0.0;
-  return (
-    incomeMinor: incomeMinor,
-    expenseMinor: expenseMinor,
-    netMinor: netMinor,
-    savingsRate: savingsRate,
-    currency: state.preferences.displayCurrency,
-  );
-}
-
-/// This month vs the previous month's total spending.
-({int thisMonthMinor, int lastMonthMinor, double? changeRatio, String currency})
-monthlySpendingComparison(LedgerState state) {
-  final now = DateTime.now();
-  final thisStart = DateTime(now.year, now.month);
-  final thisEnd = DateTime(now.year, now.month + 1);
-  final lastStart = DateTime(now.year, now.month - 1);
-  final thisMonthMinor = _flowInRange(state, thisStart, thisEnd, income: false);
-  final lastMonthMinor = _flowInRange(
-    state,
-    lastStart,
-    thisStart,
-    income: false,
-  );
-  final changeRatio = lastMonthMinor > 0
-      ? (thisMonthMinor - lastMonthMinor) / lastMonthMinor
-      : null;
-  return (
-    thisMonthMinor: thisMonthMinor,
-    lastMonthMinor: lastMonthMinor,
-    changeRatio: changeRatio,
-    currency: state.preferences.displayCurrency,
-  );
-}
-
-/// Daily total expense (display currency) for the last [days] days, oldest
-/// first — used to render a spending heatmap.
-List<({DateTime date, int spentMinor})> dailySpendingSeries(
-  LedgerState state, {
-  int days = 91,
-}) {
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  final start = today.subtract(Duration(days: days - 1));
-  final buckets = <DateTime, int>{
-    for (var i = 0; i < days; i++)
-      today.subtract(Duration(days: days - 1 - i)): 0,
-  };
-  final displayCurrency = state.preferences.displayCurrency;
-  for (final transaction in state.transactions) {
-    if (transaction.status == 'scheduled' ||
-        transaction.status == 'paused' ||
-        transaction.status == 'void') {
-      continue;
-    }
-    if (transaction.isExcludedFromReports) continue;
-    if (isHiddenInterest(state, transaction)) continue;
-    if (!expenseTypes.contains(transaction.type)) continue;
-    final occurred = DateTime(
-      transaction.occurredAt.year,
-      transaction.occurredAt.month,
-      transaction.occurredAt.day,
-    );
-    if (occurred.isBefore(start) || occurred.isAfter(today)) continue;
-    final converted = convertMoneyForDisplay(
-      state,
-      transaction.amount,
-      displayCurrency,
-    );
-    if (converted.currency.toUpperCase() != displayCurrency.toUpperCase()) {
-      continue;
-    }
-    buckets[occurred] = (buckets[occurred] ?? 0) + converted.amountMinor;
-  }
-  final entries = buckets.entries.toList()
-    ..sort((left, right) => left.key.compareTo(right.key));
-  return [
-    for (final entry in entries) (date: entry.key, spentMinor: entry.value),
-  ];
-}
-
-/// A composite 0–100 financial-health score with its component signals.
-({
-  int score,
-  String grade,
-  double savingsRate,
-  double emergencyMonths,
-  double debtRatio,
-})
-financialHealthScore(LedgerState state) {
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  final start90 = today.subtract(const Duration(days: 90));
-  final rangeEnd = today.add(const Duration(days: 1));
-  final income90 = _flowInRange(state, start90, rangeEnd, income: true);
-  final expense90 = _flowInRange(state, start90, rangeEnd, income: false);
-  final savingsRate = income90 > 0 ? (income90 - expense90) / income90 : 0.0;
-  final avgMonthlyExpense = expense90 / 3.0;
-
-  final balances = accountBalanceMap(state);
-  var emergencyMinor = 0;
-  for (final account in state.accounts) {
-    if (account.isArchived) continue;
-    if (account.type == 'emergency' ||
-        account.type == 'savings' ||
-        account.name.toLowerCase().contains('emergency') ||
-        account.name.toLowerCase().contains('saving')) {
-      emergencyMinor += convertMoneyForDisplay(
-        state,
-        accountBalanceFromMap(balances, account),
-        state.preferences.displayCurrency,
-      ).amountMinor;
-    }
-  }
-  final emergencyMonths = avgMonthlyExpense > 0
-      ? emergencyMinor / avgMonthlyExpense
-      : (emergencyMinor > 0 ? 3.0 : 0.0);
-
-  final worth = netWorth(state);
-  final assets = worth.assets.amountMinor;
-  final liabilities = worth.liabilities.amountMinor.abs();
-  final debtRatio = assets > 0
-      ? liabilities / assets
-      : (liabilities > 0 ? 1.0 : 0.0);
-
-  final savingsScore = (savingsRate.clamp(0.0, 0.2) / 0.2) * 35;
-  final emergencyScore = (emergencyMonths.clamp(0.0, 3.0) / 3.0) * 35;
-  final debtScore = (1 - debtRatio.clamp(0.0, 1.0)) * 30;
-  final score = (savingsScore + emergencyScore + debtScore).round().clamp(
-    0,
-    100,
-  );
-  final grade = score >= 80
-      ? 'Excellent'
-      : score >= 60
-      ? 'Good'
-      : score >= 40
-      ? 'Fair'
-      : 'Needs work';
-  return (
-    score: score,
-    grade: grade,
-    savingsRate: savingsRate,
-    emergencyMonths: emergencyMonths,
-    debtRatio: debtRatio,
-  );
-}
-
-({Money income, Money expense}) flowForCurrentMonth(LedgerState state) {
-  final now = DateTime.now();
-  final start = DateTime(now.year, now.month);
-  final end = DateTime(now.year, now.month + 1);
-  final displayCurrency = state.preferences.displayCurrency;
-  var income = 0;
-  var expense = 0;
-  for (final transaction in state.transactions) {
-    if (transaction.status == 'scheduled' ||
-        transaction.status == 'paused' ||
-        transaction.status == 'void') {
-      continue;
-    }
-    if (transaction.isExcludedFromReports) continue;
-    if (isHiddenInterest(state, transaction)) continue;
-    if (transaction.occurredAt.isBefore(start) ||
-        !transaction.occurredAt.isBefore(end)) {
-      continue;
-    }
-    if (incomeTypes.contains(transaction.type)) {
-      final converted = convertMoneyForDisplay(
-        state,
-        transaction.amount,
-        displayCurrency,
-      );
-      income += converted.amountMinor;
-    }
-    if (expenseTypes.contains(transaction.type)) {
-      final converted = convertMoneyForDisplay(
-        state,
-        transaction.amount,
-        displayCurrency,
-      );
-      expense += converted.amountMinor;
-    }
-  }
-  return (
-    income: Money(amountMinor: income, currency: displayCurrency),
-    expense: Money(amountMinor: expense, currency: displayCurrency),
   );
 }
 
@@ -782,20 +533,27 @@ financialHealthScore(LedgerState state) {
   );
 }
 
+final _scheduledTransactionsExpando = Expando<List<TransactionRecord>>();
+
 List<TransactionRecord> scheduledTransactions(LedgerState state) {
-  final items = sortedTransactions(state).where((transaction) {
+  final cached = _scheduledTransactionsExpando[state];
+  if (cached != null) return cached;
+
+  final items = <TransactionRecord>[];
+  for (final transaction in state.transactions) {
     if (transaction.status != 'scheduled' && transaction.status != 'paused') {
-      return false;
+      continue;
     }
     if (transaction.type == 'loan_repayment') {
       final counterAccount = accountById(state, transaction.counterAccountId);
       if (counterAccount != null && isPastLoan(state, counterAccount)) {
-        return false;
+        continue;
       }
     }
-    return true;
-  }).toList();
+    items.add(transaction);
+  }
   items.sort((left, right) => left.occurredAt.compareTo(right.occurredAt));
+  _scheduledTransactionsExpando[state] = items;
   return items;
 }
 
@@ -811,25 +569,44 @@ bool isPastLoan(LedgerState state, Account loan) {
   return false;
 }
 
+final _categoryByIdMapExpando = Expando<Map<String, Category>>();
+final _accountByIdMapExpando = Expando<Map<String, Account>>();
+
+Map<String, Category> _categoryByIdMap(LedgerState state) {
+  final cached = _categoryByIdMapExpando[state];
+  if (cached != null) return cached;
+  final map = <String, Category>{};
+  for (final category in state.categories) {
+    map.putIfAbsent(category.id, () => category);
+  }
+  _categoryByIdMapExpando[state] = map;
+  return map;
+}
+
+Map<String, Account> _accountByIdMap(LedgerState state) {
+  final cached = _accountByIdMapExpando[state];
+  if (cached != null) return cached;
+  final map = <String, Account>{};
+  for (final account in state.accounts) {
+    map.putIfAbsent(account.id, () => account);
+  }
+  _accountByIdMapExpando[state] = map;
+  return map;
+}
+
 Category? categoryById(LedgerState state, String? id) {
   if (id == null) return null;
-  for (final category in state.categories) {
-    if (category.id == id) return category;
-  }
-  return null;
+  return _categoryByIdMap(state)[id];
 }
 
 Account? accountById(LedgerState state, String? id) {
   if (id == null) return null;
-  for (final account in state.accounts) {
-    if (account.id == id) return account;
-  }
-  return null;
+  return _accountByIdMap(state)[id];
 }
 
 String categoryPath(LedgerState state, Category? category) {
   if (category == null) return '';
-  final byId = {for (final item in state.categories) item.id: item};
+  final byId = _categoryByIdMap(state);
   final names = <String>[];
   Category? current = category;
   final seen = <String>{};
@@ -854,34 +631,69 @@ int compareCategoriesByUsage(LedgerState state, Category left, Category right) {
   return usageCompare != 0 ? usageCompare : compareCategories(left, right);
 }
 
+final _directCategoryUsageExpando = Expando<Map<String, int>>();
+final _descendantCategoryUsageExpando = Expando<Map<String, int>>();
+
+Map<String, int> _directCategoryUsageMap(LedgerState state) {
+  final cached = _directCategoryUsageExpando[state];
+  if (cached != null) return cached;
+  final counts = <String, int>{};
+  for (final transaction in state.transactions) {
+    if (transaction.status == 'void') continue;
+    final categoryId = transaction.categoryId;
+    if (categoryId != null) {
+      counts[categoryId] = (counts[categoryId] ?? 0) + 1;
+    }
+  }
+  _directCategoryUsageExpando[state] = counts;
+  return counts;
+}
+
+Map<String, int> _descendantCategoryUsageMap(LedgerState state) {
+  final cached = _descendantCategoryUsageExpando[state];
+  if (cached != null) return cached;
+  final direct = _directCategoryUsageMap(state);
+  final childrenByParent = <String, List<String>>{};
+  for (final cat in state.categories) {
+    final parentId = cat.parentId;
+    if (parentId != null) {
+      (childrenByParent[parentId] ??= <String>[]).add(cat.id);
+    }
+  }
+  final totals = <String, int>{};
+  for (final cat in state.categories) {
+    final visited = <String>{cat.id};
+    final stack = <String>[cat.id];
+    var sum = 0;
+    while (stack.isNotEmpty) {
+      final currentId = stack.removeLast();
+      sum += direct[currentId] ?? 0;
+      final children = childrenByParent[currentId];
+      if (children != null) {
+        for (final childId in children) {
+          if (visited.add(childId)) {
+            stack.add(childId);
+          }
+        }
+      }
+    }
+    totals[cat.id] = sum;
+  }
+  _descendantCategoryUsageExpando[state] = totals;
+  return totals;
+}
+
 int categoryUsageCount(
   LedgerState state,
   Category category, {
   bool includeDescendants = false,
 }) {
-  final categoryIds = <String>{category.id};
-  if (includeDescendants) {
-    void collectChildren(String parentId) {
-      for (final child in state.categories) {
-        if (child.parentId != parentId || categoryIds.contains(child.id)) {
-          continue;
-        }
-        categoryIds.add(child.id);
-        collectChildren(child.id);
-      }
-    }
-
-    collectChildren(category.id);
+  if (!includeDescendants) {
+    return _directCategoryUsageMap(state)[category.id] ?? 0;
   }
-  return state.transactions.where((transaction) {
-    if (transaction.status == 'void') return false;
-    final categoryId = transaction.categoryId;
-    return categoryId != null && categoryIds.contains(categoryId);
-  }).length;
-}
-
-List<Category> sortedCategories(Iterable<Category> categories) {
-  return categories.toList()..sort(compareCategories);
+  final totals = _descendantCategoryUsageMap(state);
+  return totals[category.id] ??
+      (_directCategoryUsageMap(state)[category.id] ?? 0);
 }
 
 List<Category> sortedCategoriesByUsage(
@@ -1444,6 +1256,11 @@ AccountLoanDetails effectiveLoanDetails(LedgerState state, Account loan) {
   if (existing != null) {
     return existing.copyWith(
       principal: existing.principal ?? fallbackPrincipal,
+      interestRatePercent:
+          existing.interestRatePercent ??
+          _doubleTagValue(loan.groupName, 'rate'),
+      repaymentCount:
+          existing.repaymentCount ?? _intTagValue(loan.groupName, 'tenure'),
     );
   }
   final existingEmi = existingLoanEmi(state, loan.id);
@@ -1474,7 +1291,16 @@ TransactionRecord? existingLoanEmi(LedgerState state, String? loanId) {
 }
 
 LoanProjection loanProjection(LedgerState state, Account loan) {
-  final remaining = accountBalance(state, loan).amountMinor.abs();
+  if (isPastLoan(state, loan)) {
+    return const LoanProjection(
+      monthlyEmi: 0,
+      monthsRemaining: 0,
+      estimatedInterestMinor: 0,
+    );
+  }
+
+  final bal = accountBalance(state, loan).amountMinor;
+  final remaining = bal < 0 ? -bal : 0;
   final details = effectiveLoanDetails(state, loan);
   final emiTx = existingLoanEmi(state, loan.id);
   final rawEmi =
@@ -1571,9 +1397,14 @@ class LoanProjection {
     if (months == 0) return 'Paid off';
     final years = months ~/ 12;
     final extraMonths = months % 12;
-    if (years == 0) return '$months months remaining';
-    if (extraMonths == 0) return '$years years remaining';
-    return '$years years $extraMonths months remaining';
+    final monthsLabel = months == 1 ? '1 month' : '$months months';
+    final yearsLabel = years == 1 ? '1 year' : '$years years';
+    final extraMonthsLabel = extraMonths == 1
+        ? '1 month'
+        : '$extraMonths months';
+    if (years == 0) return '$monthsLabel remaining';
+    if (extraMonths == 0) return '$yearsLabel remaining';
+    return '$yearsLabel $extraMonthsLabel remaining';
   }
 }
 
@@ -1719,7 +1550,29 @@ CreditCardDueStatus? creditCardDueStatus(
         '${thisMonthStmtDate.year}-${thisMonthStmtDate.month.toString().padLeft(2, '0')}';
     final thisMonthPaid = account.lastPaidBillMonth == thisMonthCycleKey;
 
-    if (thisMonthPaid && today.isAfter(thisMonthStmtDate)) {
+    if (today.isBefore(thisMonthStmtDate)) {
+      // The statement for this month has not been generated yet.
+      // Check the previous month's statement cycle first.
+      final lastMonth = DateTime(current.year, current.month - 1);
+      final maxStmtDayLastMonth =
+          DateTime(lastMonth.year, lastMonth.month + 1, 0).day;
+      final lastMonthStmtDate = DateTime(
+        lastMonth.year,
+        lastMonth.month,
+        statementDay.clamp(1, maxStmtDayLastMonth),
+      );
+      final lastMonthCycleKey =
+          '${lastMonthStmtDate.year}-${lastMonthStmtDate.month.toString().padLeft(2, '0')}';
+      final lastMonthPaid = account.lastPaidBillMonth == lastMonthCycleKey;
+
+      if (!lastMonthPaid) {
+        // Last month's statement bill is still unpaid (may be overdue or due soon)
+        statementDate = lastMonthStmtDate;
+      } else {
+        // Last month was paid; focus on the upcoming statement this month
+        statementDate = thisMonthStmtDate;
+      }
+    } else if (thisMonthPaid && today.isAfter(thisMonthStmtDate)) {
       final nextMonth = DateTime(current.year, current.month + 1);
       final maxStmtDayNextMonth =
           DateTime(nextMonth.year, nextMonth.month + 1, 0).day;

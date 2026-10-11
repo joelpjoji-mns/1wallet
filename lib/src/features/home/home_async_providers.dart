@@ -33,20 +33,6 @@ final homeFlowForPeriodProvider = Provider.family
       );
     });
 
-final homeCurrencySnapshotProvider =
-    Provider.autoDispose<CurrencyConversionSnapshot?>((ref) {
-      final state = ref.watch(ledgerProvider);
-      return currencyConversionSnapshot(state);
-    });
-
-final homeNetWorthProvider =
-    Provider.autoDispose<({Money total, Money assets, Money liabilities})>((
-      ref,
-    ) {
-      final state = ref.watch(ledgerProvider);
-      return netWorth(state);
-    });
-
 final homeBalanceTrendProvider = FutureProvider.family
     .autoDispose<List<BalanceTrendPoint>, ({DateTime? start, DateTime? end})>((
       ref,

@@ -1491,20 +1491,6 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     };
   }
 
-  Future<void> prepareForLocalClear() async {
-    _localClearInProgress = true;
-    _cancelTimers();
-    final user = _ref.read(authControllerProvider).user;
-    if (user == null) return;
-    if (state.pendingUpload) {
-      await uploadSnapshot(reason: 'auto');
-    }
-  }
-
-  void resumeAfterLocalClear() {
-    _localClearInProgress = false;
-  }
-
   Future<void> deleteAllCloudData({required String userId}) async {
     _localClearInProgress = true;
     _cancelTimers();

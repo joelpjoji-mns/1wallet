@@ -656,7 +656,8 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
       if (nVal != null) notifyDays = nVal.clamp(1, 30);
     }
     final openingBalanceText = _openingBalanceController.text.trim();
-    final openingBalanceIsNegative = openingBalanceText.startsWith('-');
+    final openingBalanceIsNegative =
+        openingBalanceText.contains('-') || openingBalanceText.contains('(');
     final openingBalanceDigits = openingBalanceText.replaceAll(
       RegExp(r'[^0-9.]'),
       '',
