@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../auth/auth_controller.dart';
 import '../capture/capture_pipeline.dart';
 import '../capture/message_parser.dart';
 import '../features/capture/capture_diagnostics.dart';
@@ -15,6 +16,7 @@ import '../features/capture/sms_spooler.dart';
 import '../features/capture/notification_spooler.dart';
 import '../imports/wallet_csv_parser.dart';
 import '../ledger/ledger_selectors.dart';
+import '../theme/theme_controller.dart';
 import '../utils/recurrence_utils.dart';
 import 'ledger_archive.dart';
 import 'ledger_codec.dart';
@@ -22,24 +24,220 @@ import 'ledger_defaults.dart';
 import 'ledger_models.dart';
 
 const _ledgerStorageKey = 'one_wallet_flutter.ledger.v1';
+const _lastActiveUserIdKey = 'last_active_user_id';
+
+@immutable
+class LedgerUserIdentity {
+  const LedgerUserIdentity({
+    required this.userId,
+    this.displayName,
+    this.email,
+  });
+
+  final String userId;
+  final String? displayName;
+  final String? email;
+
+  bool get isAuthenticated =>
+      userId.trim().isNotEmpty && userId.trim() != 'local-user';
+}
+
+/// Sanitizes a name, email, or userId segment for safe cross-platform filenames.
+String sanitizeBackupFileSegment(String input) {
+  return input
+      .trim()
+      .replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1F]'), '')
+      .replaceAll(RegExp(r'\s+'), '_')
+      .replaceAll(RegExp(r'_+'), '_')
+      .replaceAll(RegExp(r'^[\._-]+|[\._-]+$'), '');
+}
+
+/// Builds a human-readable, per-user filename suffix (using full name and/or
+/// email address) to place right before the `.onewallet` extension so local
+/// backups from different accounts never overwrite or bleed into each other.
+String buildUserBackupFileSuffix({
+  String? displayName,
+  String? email,
+  String? userId,
+}) {
+  final cleanName = displayName != null
+      ? sanitizeBackupFileSegment(displayName)
+      : '';
+  final rawEmail = email?.trim() ?? '';
+  final isPlaceholderEmail =
+      rawEmail.toLowerCase() == 'google account' || rawEmail.isEmpty;
+  final cleanEmail = isPlaceholderEmail
+      ? ''
+      : sanitizeBackupFileSegment(rawEmail);
+
+  if (cleanName.isNotEmpty && cleanEmail.isNotEmpty) {
+    if (cleanName.toLowerCase() == cleanEmail.toLowerCase()) {
+      return cleanEmail;
+    }
+    return '${cleanName}_$cleanEmail';
+  }
+  if (cleanEmail.isNotEmpty) {
+    return cleanEmail;
+  }
+  if (cleanName.isNotEmpty) {
+    return cleanName;
+  }
+  final cleanId = userId != null && userId.trim() != 'local-user'
+      ? sanitizeBackupFileSegment(userId)
+      : '';
+  return cleanId;
+}
+
+/// Returns all valid filename suffixes for a user in priority order so backups
+/// remain discoverable even if displayName was later added or updated.
+List<String> buildCandidateUserBackupSuffixes({
+  String? displayName,
+  String? email,
+  String? userId,
+}) {
+  final suffixes = <String>[];
+  void addIfNonEmpty(String value) {
+    if (value.isNotEmpty && !suffixes.contains(value)) {
+      suffixes.add(value);
+    }
+  }
+
+  final primary = buildUserBackupFileSuffix(
+    displayName: displayName,
+    email: email,
+    userId: userId,
+  );
+  addIfNonEmpty(primary);
+
+  final rawEmail = email?.trim() ?? '';
+  if (rawEmail.isNotEmpty && rawEmail.toLowerCase() != 'google account') {
+    addIfNonEmpty(sanitizeBackupFileSegment(rawEmail));
+  }
+  if (displayName != null && displayName.trim().isNotEmpty) {
+    addIfNonEmpty(sanitizeBackupFileSegment(displayName));
+  }
+  if (userId != null &&
+      userId.trim().isNotEmpty &&
+      userId.trim() != 'local-user') {
+    addIfNonEmpty(sanitizeBackupFileSegment(userId));
+  }
+  return suffixes;
+}
+
+String buildAutoBackupFileName({String? suffix, String variant = ''}) {
+  final variantPart = variant.trim().isEmpty ? '' : '_${variant.trim()}';
+  final suffixPart = (suffix != null && suffix.trim().isNotEmpty)
+      ? '_${suffix.trim()}'
+      : '';
+  return '1wallet_auto_backup$variantPart$suffixPart.onewallet';
+}
+
+String buildManualBackupFileName({
+  String? displayName,
+  String? email,
+  String? userId,
+}) {
+  final suffix = buildUserBackupFileSuffix(
+    displayName: displayName,
+    email: email,
+    userId: userId,
+  );
+  if (suffix.isEmpty) {
+    return '1wallet_backup.onewallet';
+  }
+  return '1wallet_backup_$suffix.onewallet';
+}
 
 final ledgerRepositoryProvider = Provider<LedgerRepository>((ref) {
   return const LedgerRepository();
 });
 
 final ledgerLoadStateProvider = StateProvider<LedgerLoadState>((ref) {
+  SharedPreferences? prefs;
+  try {
+    prefs = ref.watch(sharedPreferencesProvider);
+  } catch (_) {}
+  if (prefs != null) {
+    final payload = prefs.getString(_ledgerStorageKey);
+    return LedgerLoadState.ready(
+      hasPersistedLedger: payload != null && payload.trim().isNotEmpty,
+    );
+  }
   return const LedgerLoadState.loading();
 });
 
 final ledgerProvider = StateNotifierProvider<LedgerController, LedgerState>((
   ref,
 ) {
-  return LedgerController(
-    ref.watch(ledgerRepositoryProvider),
+  final initialAuthUser = ref.read(authControllerProvider).user;
+  final initialIdentity = initialAuthUser == null
+      ? null
+      : LedgerUserIdentity(
+          userId: initialAuthUser.id,
+          displayName: initialAuthUser.displayName,
+          email: initialAuthUser.email,
+        );
+  final repository = ref.watch(ledgerRepositoryProvider);
+  SharedPreferences? syncPrefs;
+  try {
+    syncPrefs = ref.read(sharedPreferencesProvider);
+  } catch (_) {}
+
+  LedgerState? syncRestored;
+  bool preloadedFromPrefs = false;
+  if (syncPrefs != null) {
+    final candidate = repository.loadSync(syncPrefs);
+    if (candidate != null) {
+      final storedOwnerId = syncPrefs.getString(_lastActiveUserIdKey);
+      final isForeign =
+          initialIdentity != null &&
+          initialIdentity.isAuthenticated &&
+          ((candidate.userId.isNotEmpty &&
+                  candidate.userId != 'local-user' &&
+                  candidate.userId != initialIdentity.userId) ||
+              (storedOwnerId != null &&
+                  storedOwnerId.isNotEmpty &&
+                  storedOwnerId != 'local-user' &&
+                  storedOwnerId != initialIdentity.userId));
+      if (!isForeign) {
+        syncRestored =
+            (initialIdentity != null &&
+                initialIdentity.isAuthenticated &&
+                (candidate.userId.isEmpty || candidate.userId == 'local-user'))
+            ? candidate.copyWith(userId: initialIdentity.userId)
+            : candidate;
+        preloadedFromPrefs = true;
+      }
+    }
+  }
+
+  final controller = LedgerController(
+    repository,
     setLoadState: (next) =>
         ref.read(ledgerLoadStateProvider.notifier).state = next,
-    initialState: emptyLedgerState(),
+    initialState:
+        syncRestored ??
+        emptyLedgerState(userId: initialAuthUser?.id ?? 'local-user'),
+    initialUser: initialIdentity,
+    preloadedFromPrefs: preloadedFromPrefs,
   );
+  ref.listen<AuthState>(authControllerProvider, (previous, next) {
+    final nextUser = next.user;
+    if (nextUser != null) {
+      unawaited(
+        controller.setActiveUser(
+          LedgerUserIdentity(
+            userId: nextUser.id,
+            displayName: nextUser.displayName,
+            email: nextUser.email,
+          ),
+        ),
+      );
+    } else if (previous?.user != null) {
+      unawaited(controller.clearSessionOnSignOut());
+    }
+  });
+  return controller;
 });
 
 class LedgerLoadState {
@@ -66,14 +264,31 @@ class LedgerLoadState {
 class LedgerRepository {
   const LedgerRepository();
 
+  static File? _cachedLocalLedgerFile;
+
   static Future<File?> _getLocalLedgerFile() async {
     if (foundation.kIsWeb) return null;
+    if (_cachedLocalLedgerFile != null) return _cachedLocalLedgerFile;
     try {
       final dir = await getApplicationDocumentsDirectory();
-      return File('${dir.path}/1wallet_ledger_state.json');
+      final file = File('${dir.path}/1wallet_ledger_state.json');
+      _cachedLocalLedgerFile = file;
+      return file;
     } catch (_) {
       return null;
     }
+  }
+
+  LedgerState? loadSync(SharedPreferences preferences) {
+    final payload = preferences.getString(_ledgerStorageKey);
+    if (payload != null && payload.trim().isNotEmpty) {
+      try {
+        return decodeLedgerState(payload);
+      } catch (e) {
+        debugPrint('Failed to decode ledger synchronously: $e');
+      }
+    }
+    return null;
   }
 
   Future<LedgerState?> load() async {
@@ -82,7 +297,7 @@ class LedgerRepository {
     LedgerState? fallback;
     if (payload != null && payload.trim().isNotEmpty) {
       try {
-        final decoded = await foundation.compute(decodeLedgerState, payload);
+        final decoded = decodeLedgerState(payload);
         if (_hasWalletData(decoded)) {
           return decoded;
         }
@@ -98,7 +313,7 @@ class LedgerRepository {
       try {
         final content = await file.readAsString();
         if (content.trim().isNotEmpty) {
-          final decoded = await foundation.compute(decodeLedgerState, content);
+          final decoded = decodeLedgerState(content);
           if (_hasWalletData(decoded)) {
             // Restore SharedPreferences from file cache
             await preferences.setString(_ledgerStorageKey, content);
@@ -312,14 +527,30 @@ class LedgerController extends StateNotifier<LedgerState> {
     this._repository, {
     void Function(LedgerLoadState)? setLoadState,
     LedgerState? initialState,
+    LedgerUserIdentity? initialUser,
+    this.preloadedFromPrefs = false,
   }) : _setLoadState = setLoadState ?? _ignoreLoadState,
-       super(initialState ?? emptyLedgerState()) {
+       _activeUser = initialUser,
+       super(initialState ?? emptyLedgerState(userId: initialUser?.userId ?? 'local-user')) {
     unawaited(_loadPersistedLedger());
   }
 
   final LedgerRepository _repository;
   final void Function(LedgerLoadState) _setLoadState;
+  LedgerUserIdentity? _activeUser;
+  final bool preloadedFromPrefs;
+  int _sessionEpoch = 0;
   Timer? _spoolPollTimer;
+
+  LedgerUserIdentity? get activeUser => _activeUser;
+
+  String defaultManualBackupFileName() {
+    return buildManualBackupFileName(
+      displayName: _activeUser?.displayName,
+      email: _activeUser?.email,
+      userId: _activeUser?.userId ?? state.userId,
+    );
+  }
 
   @override
   void dispose() {
@@ -330,59 +561,75 @@ class LedgerController extends StateNotifier<LedgerState> {
   }
 
   Future<void> _loadPersistedLedger() async {
+    final loadEpoch = _sessionEpoch;
     try {
-      final restored = await _repository.load();
-      if (!mounted) return;
-      if (restored != null) {
-        final fixed = await foundation.compute(
-          fixStaleScheduledTransactions,
-          restored,
+      if (preloadedFromPrefs) {
+        _setLoadState(
+          LedgerLoadState.ready(hasPersistedLedger: _hasWalletData(state)),
         );
-        state = fixed;
-        unawaited(_repository.save(fixed));
-        unawaited(SmsSpooler.updateTriggerWords(fixed));
-        unawaited(NotificationSpooler.updateTriggerWords(fixed));
-      } else {
-        // Self-healing: if SharedPreferences was cleared or empty, attempt recovery from auto-backup files!
-        final backupFile = await getLatestAutoBackupFile();
-        if (backupFile != null && await backupFile.exists()) {
-          try {
-            final content = await backupFile.readAsString();
-            final recovered = decodeLedgerArchive(content);
-            if (_hasWalletData(recovered)) {
-              final fixed = await foundation.compute(
-                fixStaleScheduledTransactions,
-                recovered,
-              );
-              state = fixed;
-              unawaited(_repository.save(fixed));
-              unawaited(SmsSpooler.updateTriggerWords(fixed));
-              unawaited(NotificationSpooler.updateTriggerWords(fixed));
-              debugPrint('Successfully self-healed and restored wallet from auto-backup: ${backupFile.path}');
-            } else if (!_hasWalletData(state)) {
-              state = emptyLedgerState();
-            }
-          } catch (e) {
-            debugPrint('Failed to recover from auto-backup file: $e');
-            if (!_hasWalletData(state)) {
-              state = emptyLedgerState();
-            }
-          }
-        } else if (!_hasWalletData(state)) {
-          state = emptyLedgerState();
-        }
+        unawaited(_runBackgroundStartupMaintenance(state, loadEpoch));
+        return;
       }
-      _setLoadState(
-        LedgerLoadState.ready(hasPersistedLedger: _hasWalletData(state)),
-      );
-      unawaited(processSpooledSms());
-      unawaited(processSpooledNotifications());
 
-      // Start active foreground polling only if auto-capture is enabled
-      _syncSpoolPolling();
+      final restored = await _repository.load();
+      if (!mounted || loadEpoch != _sessionEpoch) return;
+      if (restored != null) {
+        final prefs = await SharedPreferences.getInstance();
+        if (!mounted || loadEpoch != _sessionEpoch) return;
+        final storedOwnerId = prefs.getString(_lastActiveUserIdKey);
+        final active = _activeUser;
+        final isForeignLedger =
+            active != null &&
+            active.isAuthenticated &&
+            ((restored.userId.isNotEmpty &&
+                    restored.userId != 'local-user' &&
+                    restored.userId != active.userId) ||
+                (storedOwnerId != null &&
+                    storedOwnerId.isNotEmpty &&
+                    storedOwnerId != 'local-user' &&
+                    storedOwnerId != active.userId));
+
+        if (isForeignLedger) {
+          await _repository.clear();
+          await prefs.remove('has_unsynced_changes');
+          await prefs.remove('last_local_modified_at');
+          await prefs.setString(_lastActiveUserIdKey, active.userId);
+          if (!mounted || loadEpoch != _sessionEpoch) return;
+          state = emptyLedgerState(userId: active.userId);
+          _setLoadState(
+            const LedgerLoadState.ready(hasPersistedLedger: false),
+          );
+        } else {
+          final stamped =
+              (active != null &&
+                  active.isAuthenticated &&
+                  (restored.userId.isEmpty || restored.userId == 'local-user'))
+              ? restored.copyWith(userId: active.userId)
+              : restored;
+          state = stamped;
+          if (active != null && active.isAuthenticated) {
+            unawaited(prefs.setString(_lastActiveUserIdKey, active.userId));
+          }
+          if (stamped.userId != restored.userId) {
+            unawaited(_repository.save(stamped));
+          }
+          _setLoadState(
+            LedgerLoadState.ready(hasPersistedLedger: _hasWalletData(state)),
+          );
+          unawaited(_runBackgroundStartupMaintenance(stamped, loadEpoch));
+        }
+      } else {
+        if (!_hasWalletData(state)) {
+          state = emptyLedgerState(userId: _activeUser?.userId ?? 'local-user');
+        }
+        _setLoadState(
+          LedgerLoadState.ready(hasPersistedLedger: _hasWalletData(state)),
+        );
+        unawaited(_runBackgroundStartupMaintenance(state, loadEpoch));
+      }
     } catch (error) {
-      if (!mounted) return;
-      // Also try backup recovery on error
+      if (!mounted || loadEpoch != _sessionEpoch) return;
+      // Also try user-scoped backup recovery on error
       try {
         final backupFile = await getLatestAutoBackupFile();
         if (backupFile != null && await backupFile.exists()) {
@@ -404,17 +651,150 @@ class LedgerController extends StateNotifier<LedgerState> {
     }
   }
 
+  Future<void> _runBackgroundStartupMaintenance(
+    LedgerState baseState,
+    int loadEpoch,
+  ) async {
+    await null;
+    if (!mounted || loadEpoch != _sessionEpoch) return;
+
+    if (baseState.transactions.isNotEmpty) {
+      final fixed = fixStaleScheduledTransactions(baseState);
+      if (!mounted || loadEpoch != _sessionEpoch) return;
+      if (!identical(fixed, baseState)) {
+        state = fixed;
+        unawaited(_repository.save(fixed));
+      }
+    }
+
+    if (_hasWalletData(state)) {
+      unawaited(SmsSpooler.updateTriggerWords(state));
+      unawaited(NotificationSpooler.updateTriggerWords(state));
+    }
+    unawaited(processSpooledSms());
+    unawaited(processSpooledNotifications());
+    _syncSpoolPolling();
+  }
+
+  Future<void> setActiveUser(LedgerUserIdentity user) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+
+    if (_activeUser?.userId == user.userId) {
+      _activeUser = user;
+      await prefs.setString(_lastActiveUserIdKey, user.userId);
+      if (user.isAuthenticated &&
+          (state.userId.isEmpty || state.userId == 'local-user')) {
+        state = state.copyWith(userId: user.userId);
+      }
+      return;
+    }
+
+    final previousOwnerId =
+        _activeUser?.userId ?? prefs.getString(_lastActiveUserIdKey);
+    final hasForeignLedger =
+        user.isAuthenticated &&
+        ((state.userId.isNotEmpty &&
+                state.userId != 'local-user' &&
+                state.userId != user.userId) ||
+            (previousOwnerId != null &&
+                previousOwnerId.isNotEmpty &&
+                previousOwnerId != 'local-user' &&
+                previousOwnerId != user.userId));
+
+    if (hasForeignLedger) {
+      final prevUser = _activeUser;
+      final prevState = state;
+      if (prevUser != null &&
+          prevUser.isAuthenticated &&
+          _hasWalletData(prevState) &&
+          prevState.userId == prevUser.userId &&
+          !LedgerProvidersConfig.disableAutoBackup) {
+        await _performAutoBackup(prevState, userOverride: prevUser);
+      }
+      _sessionEpoch++;
+      _spoolPollTimer?.cancel();
+      _spoolPollTimer = null;
+      _prefsSaveTimer?.cancel();
+      _prefsSaveTimer = null;
+      _autoBackupTimer?.cancel();
+      _autoBackupTimer = null;
+      _activeUser = user;
+      state = emptyLedgerState(userId: user.userId);
+      await _repository.clear();
+      await prefs.remove('has_unsynced_changes');
+      await prefs.remove('last_local_modified_at');
+      await prefs.setString(_lastActiveUserIdKey, user.userId);
+      _setLoadState(const LedgerLoadState.ready(hasPersistedLedger: false));
+      return;
+    }
+
+    _activeUser = user;
+    if (user.isAuthenticated) {
+      await prefs.setString(_lastActiveUserIdKey, user.userId);
+      if (state.userId.isEmpty || state.userId == 'local-user') {
+        state = state.copyWith(userId: user.userId);
+        if (_hasWalletData(state)) {
+          unawaited(_repository.save(state));
+        }
+      }
+    }
+  }
+
+  Future<void> flushAutoBackupBeforeSignOut() async {
+    _autoBackupTimer?.cancel();
+    _autoBackupTimer = null;
+    if (!LedgerProvidersConfig.disableAutoBackup && _hasWalletData(state)) {
+      await _performAutoBackup(state, userOverride: _activeUser);
+    }
+  }
+
+  Future<void> clearSessionOnSignOut() async {
+    _sessionEpoch++;
+    _spoolPollTimer?.cancel();
+    _spoolPollTimer = null;
+    _prefsSaveTimer?.cancel();
+    _prefsSaveTimer = null;
+    final previousUser = _activeUser;
+    final previousState = state;
+    if (_autoBackupTimer != null &&
+        !LedgerProvidersConfig.disableAutoBackup &&
+        _hasWalletData(previousState)) {
+      _autoBackupTimer?.cancel();
+      _autoBackupTimer = null;
+      await _performAutoBackup(previousState, userOverride: previousUser);
+    } else {
+      _autoBackupTimer?.cancel();
+      _autoBackupTimer = null;
+    }
+    _activeUser = null;
+    state = emptyLedgerState();
+    await _repository.clear();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('has_unsynced_changes');
+    await prefs.remove('last_local_modified_at');
+    await prefs.remove(_lastActiveUserIdKey);
+    _setLoadState(const LedgerLoadState.ready(hasPersistedLedger: false));
+  }
+
   Future<void> clearLocalWallet({String userId = 'local-user'}) async {
-    final next = emptyLedgerState(userId: userId);
+    _sessionEpoch++;
+    final effectiveUserId =
+        userId == 'local-user' && (_activeUser?.isAuthenticated ?? false)
+        ? _activeUser!.userId
+        : userId;
+    final next = emptyLedgerState(userId: effectiveUserId);
     state = next;
     await _repository.clear();
   }
 
   Future<void> purgeAllLocalData() async {
+    _sessionEpoch++;
     _spoolPollTimer?.cancel();
     _prefsSaveTimer?.cancel();
     _autoBackupTimer?.cancel();
-    await deleteAllAutoBackupFiles();
+    await deleteAllAutoBackupFiles(userOverride: _activeUser);
+    _activeUser = null;
     await _repository.clear();
     state = emptyLedgerState();
     _setLoadState(const LedgerLoadState.ready(hasPersistedLedger: false));
@@ -439,6 +819,11 @@ class LedgerController extends StateNotifier<LedgerState> {
     _spoolPollTimer?.cancel();
     _spoolPollTimer = null;
     if (_isSpoolPollingPaused || !mounted) return;
+    if (foundation.kIsWeb ||
+        !Platform.isAndroid ||
+        Platform.environment.containsKey('FLUTTER_TEST')) {
+      return;
+    }
 
     final smsEnabled = state.preferences.smsCaptureEnabled;
     final notifEnabled = state.preferences.notificationCaptureEnabled;
@@ -610,6 +995,18 @@ class LedgerController extends StateNotifier<LedgerState> {
 
   Future<void> importArchive(String archiveSource, {bool force = false}) async {
     final incoming = decodeLedgerArchive(archiveSource);
+    final active = _activeUser;
+    if (!force &&
+        active != null &&
+        active.isAuthenticated &&
+        incoming.userId.isNotEmpty &&
+        incoming.userId != 'local-user' &&
+        incoming.userId != active.userId) {
+      throw Exception(
+        'Restore rejected: This backup belongs to a different account. '
+        'Restoring it will replace this account\'s wallet data.',
+      );
+    }
     if (!force && !LedgerState.isIncomingLedgerSafer(state, incoming)) {
       throw Exception(
         'Restore rejected: Your current local data is newer or has more '
@@ -617,7 +1014,10 @@ class LedgerController extends StateNotifier<LedgerState> {
         'This prevents accidental data loss.',
       );
     }
-    await _commit(incoming);
+    final stamped = (active != null && active.isAuthenticated)
+        ? incoming.copyWith(userId: active.userId)
+        : incoming;
+    await _commit(stamped);
   }
 
   bool _isRestoring = false;
@@ -693,7 +1093,16 @@ class LedgerController extends StateNotifier<LedgerState> {
   Timer? _prefsSaveTimer;
 
   Future<void> updatePreferences(LedgerPreferences preferences) async {
-    state = state.copyWith(preferences: preferences);
+    final active = _activeUser;
+    state = state.copyWith(
+      userId:
+          (active != null &&
+              active.isAuthenticated &&
+              (state.userId.isEmpty || state.userId == 'local-user'))
+          ? active.userId
+          : state.userId,
+      preferences: preferences,
+    );
     unawaited(SmsSpooler.updateTriggerWords(state));
     unawaited(NotificationSpooler.updateTriggerWords(state));
 
@@ -2238,6 +2647,9 @@ class LedgerController extends StateNotifier<LedgerState> {
   /// Auto-archives loan accounts whose current balance has reached
   /// zero (fully paid off) and pauses their associated scheduled EMIs.
   LedgerState _applyAutoArchiveForPaidOffLoans(LedgerState next) {
+    if (!next.accounts.any((a) => !a.isArchived && a.type == 'loan')) {
+      return next;
+    }
     final accounts = [...next.accounts];
     var transactions = next.transactions;
     bool changed = false;
@@ -2286,9 +2698,17 @@ class LedgerController extends StateNotifier<LedgerState> {
   }
 
   Future<void> _commit(LedgerState next) async {
+    final active = _activeUser;
+    final withOwner =
+        (active != null &&
+            active.isAuthenticated &&
+            (next.userId.isEmpty || next.userId == 'local-user'))
+        ? next.copyWith(userId: active.userId)
+        : next;
+
     // Auto-archive any loan accounts that have been fully paid off before
     // normalizing, so the rest of the system sees them as archived immediately.
-    final withAutoArchived = _applyAutoArchiveForPaidOffLoans(next);
+    final withAutoArchived = _applyAutoArchiveForPaidOffLoans(withOwner);
 
     // Skip the expensive category taxonomy rebuild once the ledger is
     // already on the current version: every path that can hand us an
@@ -2323,6 +2743,9 @@ class LedgerController extends StateNotifier<LedgerState> {
         'last_local_modified_at',
         DateTime.now().toUtc().toIso8601String(),
       );
+      if (active != null && active.isAuthenticated) {
+        await prefs.setString(_lastActiveUserIdKey, active.userId);
+      }
     }
 
     final prevPrefs = state.preferences;
@@ -2347,16 +2770,26 @@ class LedgerController extends StateNotifier<LedgerState> {
     if (!_isRestoring) {
       _autoBackupTimer?.cancel();
       if (!LedgerProvidersConfig.disableAutoBackup) {
+        final backupUser = _activeUser;
         _autoBackupTimer = Timer(const Duration(seconds: 3), () {
-          unawaited(_performAutoBackup(normalized));
+          unawaited(_performAutoBackup(normalized, userOverride: backupUser));
         });
       }
     }
   }
 
-  Future<void> _performAutoBackup(LedgerState ledger) async {
+  Future<void> _performAutoBackup(
+    LedgerState ledger, {
+    LedgerUserIdentity? userOverride,
+  }) async {
     if (foundation.kIsWeb) return;
     try {
+      final user = userOverride ?? _activeUser;
+      final suffix = buildUserBackupFileSuffix(
+        displayName: user?.displayName,
+        email: user?.email,
+        userId: user?.userId ?? ledger.userId,
+      );
       final archive = await foundation.compute(_encodeForBackup, ledger);
 
       // 1. App documents directory -> 1Wallet subfolder
@@ -2365,6 +2798,7 @@ class LedgerController extends StateNotifier<LedgerState> {
         Directory('${docsDir.path}/1Wallet'),
         archive,
         ledger,
+        suffix: suffix,
       );
 
       // 2. App external storage directory -> 1Wallet subfolder (Android only)
@@ -2375,6 +2809,7 @@ class LedgerController extends StateNotifier<LedgerState> {
             Directory('${extDir.path}/1Wallet'),
             archive,
             ledger,
+            suffix: suffix,
           );
         }
 
@@ -2386,6 +2821,7 @@ class LedgerController extends StateNotifier<LedgerState> {
               Directory('${downloadDir.path}/1Wallet'),
               archive,
               ledger,
+              suffix: suffix,
             );
           }
         } catch (_) {}
@@ -2398,6 +2834,7 @@ class LedgerController extends StateNotifier<LedgerState> {
               Directory('${documentsDir.path}/1Wallet'),
               archive,
               ledger,
+              suffix: suffix,
             );
           }
         } catch (_) {}
@@ -2410,20 +2847,33 @@ class LedgerController extends StateNotifier<LedgerState> {
   Future<void> _writeAutoBackupToDirectory(
     Directory dir,
     String archive,
-    LedgerState ledger,
-  ) async {
+    LedgerState ledger, {
+    String? suffix,
+  }) async {
     await dir.create(recursive: true);
-    final mainFile = File('${dir.path}/1wallet_auto_backup.onewallet');
-    final prevFile = File('${dir.path}/1wallet_auto_backup_previous.onewallet');
-    final safetyFile = File('${dir.path}/1wallet_auto_backup_safety.onewallet');
+    final mainName = buildAutoBackupFileName(suffix: suffix);
+    final prevName = buildAutoBackupFileName(
+      suffix: suffix,
+      variant: 'previous',
+    );
+    final safetyName = buildAutoBackupFileName(
+      suffix: suffix,
+      variant: 'safety',
+    );
+    final mainFile = File('${dir.path}/$mainName');
+    final prevFile = File('${dir.path}/$prevName');
+    final safetyFile = File('${dir.path}/$safetyName');
 
     if (await mainFile.exists()) {
       try {
         final existingContent = await mainFile.readAsString();
-        final existingLedger = decodeLedgerArchive(existingContent);
+        final isSafer = await foundation.compute(
+          _isIncomingBackupSafer,
+          (existingContent, ledger),
+        );
         // If the existing backup has more transactions or newer records than the current ledger,
         // protect it from being lost by saving it as a safety backup!
-        if (!LedgerState.isIncomingLedgerSafer(existingLedger, ledger)) {
+        if (!isSafer) {
           await mainFile.copy(safetyFile.path);
         } else {
           await mainFile.copy(prevFile.path);
@@ -2437,72 +2887,155 @@ class LedgerController extends StateNotifier<LedgerState> {
     await mainFile.writeAsString(archive);
   }
 
-  Future<File?> getLatestAutoBackupFile() async {
-    if (foundation.kIsWeb) return null;
-    final candidates = <File>[];
+  @foundation.visibleForTesting
+  Future<void> writeAutoBackupToDirectoryForTesting(
+    Directory dir,
+    LedgerState ledger, {
+    LedgerUserIdentity? userOverride,
+  }) async {
+    final user = userOverride ?? _activeUser;
+    final suffix = buildUserBackupFileSuffix(
+      displayName: user?.displayName,
+      email: user?.email,
+      userId: user?.userId ?? ledger.userId,
+    );
+    final archive = _encodeForBackup(ledger);
+    await _writeAutoBackupToDirectory(dir, archive, ledger, suffix: suffix);
+  }
+
+  Future<List<String>> _autoBackupSearchDirectories({
+    Duration? timeout,
+  }) async {
+    final dirs = <String>[];
     try {
-      final docsDir = await getApplicationDocumentsDirectory();
-      for (final sub in ['${docsDir.path}/1Wallet', docsDir.path]) {
-        candidates.add(File('$sub/1wallet_auto_backup.onewallet'));
-        candidates.add(File('$sub/1wallet_auto_backup_safety.onewallet'));
-        candidates.add(File('$sub/1wallet_auto_backup_previous.onewallet'));
-      }
+      final docsFuture = getApplicationDocumentsDirectory();
+      final docsDir = timeout != null
+          ? await docsFuture.timeout(timeout)
+          : await docsFuture;
+      dirs.add('${docsDir.path}/1Wallet');
+      dirs.add(docsDir.path);
 
       if (Platform.isAndroid) {
-        final extDir = await getExternalStorageDirectory();
+        final extFuture = getExternalStorageDirectory();
+        final extDir = timeout != null
+            ? await extFuture.timeout(timeout)
+            : await extFuture;
         if (extDir != null) {
-          for (final sub in ['${extDir.path}/1Wallet', extDir.path]) {
-            candidates.add(File('$sub/1wallet_auto_backup.onewallet'));
-            candidates.add(File('$sub/1wallet_auto_backup_safety.onewallet'));
-            candidates.add(File('$sub/1wallet_auto_backup_previous.onewallet'));
-          }
+          dirs.add('${extDir.path}/1Wallet');
+          dirs.add(extDir.path);
         }
-        for (final base in [
+        dirs.addAll(const [
           '/storage/emulated/0/Download/1Wallet',
           '/storage/emulated/0/Download',
           '/storage/emulated/0/Documents/1Wallet',
           '/storage/emulated/0/Documents',
-        ]) {
-          candidates.add(File('$base/1wallet_auto_backup.onewallet'));
-          candidates.add(File('$base/1wallet_auto_backup_safety.onewallet'));
-          candidates.add(File('$base/1wallet_auto_backup_previous.onewallet'));
-        }
+        ]);
       }
     } catch (_) {}
+    return dirs;
+  }
+
+  Future<File?> getLatestAutoBackupFile({
+    LedgerUserIdentity? userOverride,
+    List<String>? searchDirectoriesOverride,
+  }) async {
+    if (foundation.kIsWeb && searchDirectoriesOverride == null) return null;
+    final user = userOverride ?? _activeUser;
+    final isAuthenticatedUser = user != null && user.isAuthenticated;
+    final suffixes = isAuthenticatedUser
+        ? buildCandidateUserBackupSuffixes(
+            displayName: user.displayName,
+            email: user.email,
+            userId: user.userId,
+          )
+        : const <String>[];
+
+    final searchDirs =
+        searchDirectoriesOverride ?? await _autoBackupSearchDirectories();
+
+    final candidates = <({File file, bool isLegacyUnsuffixed})>[];
+    for (final sub in searchDirs) {
+      for (final suffix in suffixes) {
+        for (final variant in const ['', 'safety', 'previous']) {
+          final fileName = buildAutoBackupFileName(
+            suffix: suffix,
+            variant: variant,
+          );
+          candidates.add((
+            file: File('$sub/$fileName'),
+            isLegacyUnsuffixed: false,
+          ));
+        }
+      }
+      // Also check legacy unsuffixed files, which will only be accepted if
+      // their internal userId matches the active user (or 'local-user' when
+      // unauthenticated).
+      for (final variant in const ['', 'safety', 'previous']) {
+        final fileName = buildAutoBackupFileName(variant: variant);
+        candidates.add((
+          file: File('$sub/$fileName'),
+          isLegacyUnsuffixed: true,
+        ));
+      }
+    }
 
     File? bestFile;
     LedgerState? bestState;
     DateTime? newestTime;
 
-    for (final file in candidates) {
+    for (final candidate in candidates) {
+      final file = candidate.file;
       try {
         if (await file.exists()) {
           final stat = await file.stat();
-          LedgerState? state;
+          LedgerState? decodedState;
           try {
             final content = await file.readAsString();
-            state = decodeLedgerArchive(content);
-          } catch (_) {}
+            decodedState = decodeLedgerArchive(content);
+          } catch (_) {
+            continue;
+          }
+
+          // Enforce strict per-account ownership so another user's local backup
+          // file is never selected or restored into the current account.
+          if (isAuthenticatedUser) {
+            if (candidate.isLegacyUnsuffixed) {
+              // Legacy unsuffixed files must explicitly match this user's UID.
+              if (decodedState.userId != user.userId) {
+                continue;
+              }
+            } else {
+              // Named files must not belong to a different authenticated UID.
+              if (decodedState.userId.isNotEmpty &&
+                  decodedState.userId != 'local-user' &&
+                  decodedState.userId != user.userId) {
+                continue;
+              }
+            }
+          } else {
+            // Unauthenticated / local session: ignore files owned by a specific cloud UID.
+            if (decodedState.userId.isNotEmpty &&
+                decodedState.userId != 'local-user') {
+              continue;
+            }
+          }
 
           if (bestFile == null) {
             bestFile = file;
-            bestState = state;
+            bestState = decodedState;
             newestTime = stat.modified;
-          } else if (state != null && bestState != null) {
+          } else if (bestState != null) {
             // Prefer the backup with safer / more transactions and newer records
-            if (LedgerState.isIncomingLedgerSafer(bestState, state) &&
-                !LedgerState.isIncomingLedgerSafer(state, bestState)) {
+            if (LedgerState.isIncomingLedgerSafer(bestState, decodedState) &&
+                !LedgerState.isIncomingLedgerSafer(decodedState, bestState)) {
               bestFile = file;
-              bestState = state;
+              bestState = decodedState;
               newestTime = stat.modified;
             } else if (newestTime == null || stat.modified.isAfter(newestTime)) {
               bestFile = file;
-              bestState = state;
+              bestState = decodedState;
               newestTime = stat.modified;
             }
-          } else if (newestTime == null || stat.modified.isAfter(newestTime)) {
-            bestFile = file;
-            newestTime = stat.modified;
           }
         }
       } catch (_) {}
@@ -2515,44 +3048,65 @@ class LedgerController extends StateNotifier<LedgerState> {
     await importArchive(content, force: force);
   }
 
-  Future<void> deleteAllAutoBackupFiles() async {
-    if (foundation.kIsWeb) return;
-    final candidates = <File>[];
-    try {
-      final docsDir = await getApplicationDocumentsDirectory()
-          .timeout(const Duration(milliseconds: 500));
-      for (final sub in ['${docsDir.path}/1Wallet', docsDir.path]) {
-        candidates.add(File('$sub/1wallet_auto_backup.onewallet'));
-        candidates.add(File('$sub/1wallet_auto_backup_safety.onewallet'));
-        candidates.add(File('$sub/1wallet_auto_backup_previous.onewallet'));
-      }
+  Future<void> deleteAllAutoBackupFiles({
+    LedgerUserIdentity? userOverride,
+    List<String>? searchDirectoriesOverride,
+  }) async {
+    if (foundation.kIsWeb && searchDirectoriesOverride == null) return;
+    final user = userOverride ?? _activeUser;
+    final isAuthenticatedUser = user != null && user.isAuthenticated;
+    final suffixes = isAuthenticatedUser
+        ? buildCandidateUserBackupSuffixes(
+            displayName: user.displayName,
+            email: user.email,
+            userId: user.userId,
+          )
+        : const <String>[];
 
-      if (Platform.isAndroid) {
-        final extDir = await getExternalStorageDirectory()
-            .timeout(const Duration(milliseconds: 500));
-        if (extDir != null) {
-          for (final sub in ['${extDir.path}/1Wallet', extDir.path]) {
-            candidates.add(File('$sub/1wallet_auto_backup.onewallet'));
-            candidates.add(File('$sub/1wallet_auto_backup_safety.onewallet'));
-            candidates.add(File('$sub/1wallet_auto_backup_previous.onewallet'));
-          }
-        }
-        for (final base in [
-          '/storage/emulated/0/Download/1Wallet',
-          '/storage/emulated/0/Download',
-          '/storage/emulated/0/Documents/1Wallet',
-          '/storage/emulated/0/Documents',
-        ]) {
-          candidates.add(File('$base/1wallet_auto_backup.onewallet'));
-          candidates.add(File('$base/1wallet_auto_backup_safety.onewallet'));
-          candidates.add(File('$base/1wallet_auto_backup_previous.onewallet'));
+    final searchDirs =
+        searchDirectoriesOverride ??
+        await _autoBackupSearchDirectories(
+          timeout: const Duration(milliseconds: 500),
+        );
+
+    final candidates = <({File file, bool isLegacyUnsuffixed})>[];
+    for (final sub in searchDirs) {
+      for (final suffix in suffixes) {
+        for (final variant in const ['', 'safety', 'previous']) {
+          final fileName = buildAutoBackupFileName(
+            suffix: suffix,
+            variant: variant,
+          );
+          candidates.add((
+            file: File('$sub/$fileName'),
+            isLegacyUnsuffixed: false,
+          ));
         }
       }
-    } catch (_) {}
+      for (final variant in const ['', 'safety', 'previous']) {
+        final fileName = buildAutoBackupFileName(variant: variant);
+        candidates.add((
+          file: File('$sub/$fileName'),
+          isLegacyUnsuffixed: true,
+        ));
+      }
+    }
 
-    for (final file in candidates) {
+    for (final candidate in candidates) {
+      final file = candidate.file;
       try {
         if (await file.exists()) {
+          if (candidate.isLegacyUnsuffixed && isAuthenticatedUser) {
+            try {
+              final content = await file.readAsString();
+              final decoded = decodeLedgerArchive(content);
+              if (decoded.userId.isNotEmpty &&
+                  decoded.userId != 'local-user' &&
+                  decoded.userId != user.userId) {
+                continue;
+              }
+            } catch (_) {}
+          }
           await file.delete();
         }
       } catch (e) {
@@ -3091,6 +3645,11 @@ void _ignoreLoadState(LedgerLoadState _) {}
 
 String _encodeForBackup(LedgerState state) {
   return encodeLedgerArchive(state);
+}
+
+bool _isIncomingBackupSafer((String, LedgerState) args) {
+  final existingLedger = decodeLedgerArchive(args.$1);
+  return LedgerState.isIncomingLedgerSafer(existingLedger, args.$2);
 }
 
 enum _CaptureDuplicateKind {

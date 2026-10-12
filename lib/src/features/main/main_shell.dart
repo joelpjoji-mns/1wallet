@@ -20,7 +20,9 @@ import '../calendar/calendar_screen.dart';
 import '../home/home_screen.dart'
     show HomeScreen, homeSelectedAccountProvider, homeWidgetReorderModeProvider;
 import '../notifications/notification_engine.dart';
+import '../onboarding/onboarding_controller.dart';
 import '../../services/notification_service.dart';
+import '../settings/permission_setup_controller.dart';
 import '../transactions/transactions_screen.dart';
 import '../updates/app_update_provider.dart';
 import '../../widgets/app_kit.dart';
@@ -82,11 +84,38 @@ class _MainShellState extends ConsumerState<MainShell>
     );
   }
 
+  bool _shouldSyncScheduledNotifications(
+    LedgerState? previous,
+    LedgerState next,
+  ) {
+    if (previous == null) return true;
+    final prevPrefs = previous.preferences;
+    final nextPrefs = next.preferences;
+    if (prevPrefs.deviceNotificationsEnabled !=
+            nextPrefs.deviceNotificationsEnabled ||
+        prevPrefs.channelScheduledEnabled !=
+            nextPrefs.channelScheduledEnabled ||
+        prevPrefs.privacyModeEnabled != nextPrefs.privacyModeEnabled ||
+        prevPrefs.locale != nextPrefs.locale) {
+      return true;
+    }
+    if (identical(previous.transactions, next.transactions)) {
+      return false;
+    }
+    final prevScheduled = scheduledTransactions(previous);
+    final nextScheduled = scheduledTransactions(next);
+    if (prevScheduled.length != nextScheduled.length) return true;
+    for (var i = 0; i < prevScheduled.length; i++) {
+      if (!identical(prevScheduled[i], nextScheduled[i])) return true;
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen<LedgerState>(ledgerProvider, (previous, next) {
       NotificationService.checkAndShowAlerts(next);
-      if (!identical(previous?.transactions, next.transactions)) {
+      if (_shouldSyncScheduledNotifications(previous, next)) {
         NotificationService.syncScheduledNotifications(next);
       }
     });
@@ -554,6 +583,23 @@ class AppMainDrawer extends ConsumerWidget {
                             accentColor: scheme.error,
                             onTapOverride: () async {
                               Navigator.of(context).pop();
+                              await ref
+                                  .read(ledgerProvider.notifier)
+                                  .flushAutoBackupBeforeSignOut();
+                              await ref
+                                  .read(cloudSyncControllerProvider.notifier)
+                                  .handleSignOut();
+                              await ref
+                                  .read(ledgerProvider.notifier)
+                                  .clearSessionOnSignOut();
+                              ref
+                                  .read(onboardingControllerProvider.notifier)
+                                  .clear();
+                              ref
+                                  .read(
+                                    permissionSetupControllerProvider.notifier,
+                                  )
+                                  .clear();
                               await ref
                                   .read(authControllerProvider.notifier)
                                   .signOut();

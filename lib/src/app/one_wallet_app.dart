@@ -33,9 +33,6 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     super.initState();
     _listener = AppLifecycleListener(onStateChange: _onStateChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await ref.read(ledgerProvider.notifier).processSpooledSms();
-      await ref.read(ledgerProvider.notifier).processSpooledNotifications();
-      await ref.read(cloudSyncControllerProvider.notifier).checkAndTriggerSync();
       final route = await getInitialSmsRoute();
       if (route != null && mounted) {
         _pendingSmsRoute = route;
@@ -47,6 +44,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
           _tryPushPendingRoute();
         }
       });
+      await ref.read(cloudSyncControllerProvider.notifier).checkAndTriggerSync();
     });
     listenForSmsRoute((route) {
       if (mounted) {

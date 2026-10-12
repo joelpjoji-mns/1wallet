@@ -29,6 +29,16 @@ final _filteredTransactionsProvider = Provider.autoDispose
         state,
         filter.categoryFilters,
       );
+      final now = DateTime.now();
+      RegExp? regex;
+      var queryLower = '';
+      if (query.isNotEmpty) {
+        try {
+          regex = RegExp(query, caseSensitive: false);
+        } catch (_) {
+          queryLower = query.toLowerCase();
+        }
+      }
       return sortedTransactions(state, includeScheduled: false)
           .where((transaction) {
             if (state.preferences.hideSkippedInHistory &&
@@ -65,6 +75,7 @@ final _filteredTransactionsProvider = Provider.autoDispose
             if (!_matchesDateFilter(
               transaction.occurredAt,
               filter.dateFilter,
+              now: now,
             )) {
               return false;
             }
@@ -90,11 +101,6 @@ final _filteredTransactionsProvider = Provider.autoDispose
             }
             if (query.isEmpty) return true;
 
-            RegExp? regex;
-            try {
-              regex = RegExp(query, caseSensitive: false);
-            } catch (_) {}
-
             if (regex != null) {
               if (transaction.notes != null &&
                   regex.hasMatch(transaction.notes!)) {
@@ -110,17 +116,18 @@ final _filteredTransactionsProvider = Provider.autoDispose
               }
             } else {
               // Fallback if invalid regex
-              final q = query.toLowerCase();
               if (transaction.notes != null &&
-                  transaction.notes!.toLowerCase().contains(q)) {
+                  transaction.notes!.toLowerCase().contains(queryLower)) {
                 return true;
               }
               if (transaction.name != null &&
-                  transaction.name!.toLowerCase().contains(q)) {
+                  transaction.name!.toLowerCase().contains(queryLower)) {
                 return true;
               }
               if (transaction.locationLabel != null &&
-                  transaction.locationLabel!.toLowerCase().contains(q)) {
+                  transaction.locationLabel!.toLowerCase().contains(
+                    queryLower,
+                  )) {
                 return true;
               }
             }
@@ -216,18 +223,22 @@ final _monthlyStatsProvider = Provider.autoDispose
           });
 
       final monthlyBalances = <String, int>{};
+      final monthlyFlows = <String, int>{};
+      final monthFormat = DateFormat('MMM yyyy', params.locale);
       final fullLedger = sortedTransactions(
         state,
         includeScheduled: false,
       ).reversed;
 
       for (final t in fullLedger) {
-        final monthStr = DateFormat(
-          'MMM yyyy',
-          params.locale,
-        ).format(t.occurredAt).toUpperCase();
+        final monthStr = monthFormat.format(t.occurredAt).toUpperCase();
+        final sourceIncluded = includedAccounts.contains(t.accountId);
+        final counterIncluded =
+            t.counterAccountId != null &&
+            includedAccounts.contains(t.counterAccountId);
+
         var delta = 0;
-        if (includedAccounts.contains(t.accountId)) {
+        if (sourceIncluded) {
           final sourceConverted = convertMoneyForDisplay(
             state,
             Money(
@@ -240,8 +251,7 @@ final _monthlyStatsProvider = Provider.autoDispose
             delta += sourceConverted.amountMinor;
           }
         }
-        if (t.counterAccountId != null &&
-            includedAccounts.contains(t.counterAccountId)) {
+        if (counterIncluded) {
           final counterConverted = convertMoneyForDisplay(
             state,
             Money(
@@ -256,32 +266,16 @@ final _monthlyStatsProvider = Provider.autoDispose
         }
         running += delta;
         monthlyBalances[monthStr] = running;
-      }
 
-      final monthlyFlows = <String, int>{};
-      for (final t in fullLedger) {
         if (t.status == 'scheduled' ||
             t.status == 'paused' ||
             t.status == 'void') {
           continue;
         }
         if (t.isExcludedFromReports) continue;
-        if (!includedAccounts.contains(t.accountId) &&
-            (t.counterAccountId == null ||
-                !includedAccounts.contains(t.counterAccountId))) {
-          continue;
-        }
-
-        final monthStr = DateFormat(
-          'MMM yyyy',
-          params.locale,
-        ).format(t.occurredAt).toUpperCase();
+        if (!sourceIncluded && !counterIncluded) continue;
 
         int flowMinor = 0;
-        final sourceIncluded = includedAccounts.contains(t.accountId);
-        final counterIncluded = t.counterAccountId != null &&
-            includedAccounts.contains(t.counterAccountId);
-
         if (t.type == 'transfer') {
           if (sourceIncluded && !counterIncluded) {
             final converted = convertMoneyForDisplay(
@@ -586,11 +580,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         }
                       }
 
+                      final monthFormat = DateFormat('MMM yyyy', locale);
+                      final dayFormat = DateFormat('EEE, d MMM', locale);
+
                       for (final t in transactions) {
-                        final monthStr = DateFormat(
-                          'MMM yyyy',
-                          locale,
-                        ).format(t.occurredAt).toUpperCase();
+                        final monthStr = monthFormat
+                            .format(t.occurredAt)
+                            .toUpperCase();
 
                         final isNewMonth = currentMonth != monthStr;
                         if (isNewMonth) {
@@ -636,10 +632,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                           } else if (day == yesterday) {
                             currentDayLabel = 'Yesterday';
                           } else {
-                            currentDayLabel = DateFormat(
-                              'EEE, d MMM',
-                              locale,
-                            ).format(day);
+                            currentDayLabel = dayFormat.format(day);
                           }
                         }
 
@@ -1165,27 +1158,38 @@ Set<String> _selectedCategoryMatchIds(
   return ids;
 }
 
-bool _matchesDateFilter(DateTime date, String dateFilter) {
-  final now = DateTime.now();
+bool _matchesDateFilter(
+  DateTime date,
+  String dateFilter, {
+  DateTime? now,
+}) {
+  if (dateFilter == 'all') return true;
+  final current = now ?? DateTime.now();
   final day = DateTime(date.year, date.month, date.day);
   return switch (dateFilter) {
     'today' =>
-      date.year == now.year && date.month == now.month && date.day == now.day,
+      date.year == current.year &&
+          date.month == current.month &&
+          date.day == current.day,
     'this_week' => () {
-      final diff = now.weekday - 1; // 0 for Monday
+      final diff = current.weekday - 1; // 0 for Monday
       final start = DateTime(
-        now.year,
-        now.month,
-        now.day,
+        current.year,
+        current.month,
+        current.day,
       ).subtract(Duration(days: diff));
       final end = start.add(const Duration(days: 7));
       return !date.isBefore(start) && date.isBefore(end);
     }(),
-    'this_month' => date.year == now.year && date.month == now.month,
+    'this_month' => date.year == current.year && date.month == current.month,
     'last_30_days' => !day.isBefore(
-      DateTime(now.year, now.month, now.day).subtract(const Duration(days: 30)),
+      DateTime(
+        current.year,
+        current.month,
+        current.day,
+      ).subtract(const Duration(days: 30)),
     ),
-    'this_year' => date.year == now.year,
+    'this_year' => date.year == current.year,
     _ => true,
   };
 }

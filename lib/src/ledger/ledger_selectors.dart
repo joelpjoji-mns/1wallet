@@ -258,26 +258,43 @@ Money convertMoneyForDisplay(
   return Money(amountMinor: convertedMinor, currency: target);
 }
 
+final _rateBetweenCacheExpando = Expando<Map<String, double?>>();
+
 double? rateBetween(LedgerState state, String from, String to) {
   final source = from.toUpperCase();
   final target = to.toUpperCase();
   if (source == target) return 1;
 
+  final cache = _rateBetweenCacheExpando[state] ??= <String, double?>{};
+  final cacheKey = '$source|$target';
+  if (cache.containsKey(cacheKey)) return cache[cacheKey];
+
   final direct = latestExchangeRate(state, source, target);
-  if (direct != null) return direct.rate;
+  if (direct != null) {
+    cache[cacheKey] = direct.rate;
+    return direct.rate;
+  }
   final inverse = latestExchangeRate(state, target, source);
-  if (inverse != null && inverse.rate > 0) return 1 / inverse.rate;
+  if (inverse != null && inverse.rate > 0) {
+    final result = 1 / inverse.rate;
+    cache[cacheKey] = result;
+    return result;
+  }
 
   final base = state.preferences.baseCurrency.toUpperCase();
   if (source != base && target != base) {
     final r1 = rateBetween(state, source, base);
     final r2 = rateBetween(state, base, target);
     if (r1 != null && r2 != null && r1 > 0 && r2 > 0) {
-      return r1 * r2;
+      final result = r1 * r2;
+      cache[cacheKey] = result;
+      return result;
     }
   }
 
-  return _inferredRateBetween(state, source, target);
+  final inferred = _inferredRateBetween(state, source, target);
+  cache[cacheKey] = inferred;
+  return inferred;
 }
 
 ExchangeRateRecord? latestExchangeRate(
@@ -604,8 +621,14 @@ Account? accountById(LedgerState state, String? id) {
   return _accountByIdMap(state)[id];
 }
 
+final _categoryPathCacheExpando = Expando<Map<String, String>>();
+
 String categoryPath(LedgerState state, Category? category) {
   if (category == null) return '';
+  final cache = _categoryPathCacheExpando[state] ??= <String, String>{};
+  final cached = cache[category.id];
+  if (cached != null) return cached;
+
   final byId = _categoryByIdMap(state);
   final names = <String>[];
   Category? current = category;
@@ -614,7 +637,9 @@ String categoryPath(LedgerState state, Category? category) {
     names.insert(0, current.name);
     current = byId[current.parentId];
   }
-  return names.join(' > ');
+  final path = names.join(' > ');
+  cache[category.id] = path;
+  return path;
 }
 
 int compareCategories(Category left, Category right) {
@@ -801,12 +826,34 @@ List<String> availableCurrencies(LedgerState state) {
   return items;
 }
 
+final _currencyFormatCache = <String, NumberFormat>{};
+final _dateFormatCache = <String, DateFormat>{};
+
+NumberFormat _cachedSimpleCurrencyFormat(String normalizedLocale, String currency) {
+  final key = '$normalizedLocale|$currency';
+  return _currencyFormatCache.putIfAbsent(
+    key,
+    () => NumberFormat.simpleCurrency(locale: normalizedLocale, name: currency),
+  );
+}
+
+DateFormat _cachedDateFormat(String pattern, [String? normalizedLocale]) {
+  final key = normalizedLocale == null ? pattern : '$pattern|$normalizedLocale';
+  return _dateFormatCache.putIfAbsent(
+    key,
+    () => normalizedLocale == null
+        ? DateFormat(pattern)
+        : DateFormat(pattern, normalizedLocale),
+  );
+}
+
 String formatMoney(Money money, String locale) {
   final amount = money.amountMinor / math.pow(10, minorUnits(money.currency));
+  final normalizedLocale = locale.replaceAll('_', '-');
   try {
-    return NumberFormat.simpleCurrency(
-      locale: locale.replaceAll('_', '-'),
-      name: money.currency,
+    return _cachedSimpleCurrencyFormat(
+      normalizedLocale,
+      money.currency,
     ).format(amount);
   } catch (_) {
     return '${money.currency} ${amount.toStringAsFixed(minorUnits(money.currency))}';
@@ -817,10 +864,16 @@ String formatCompactMoney(Money money, String locale) {
   final amount =
       money.amountMinor.abs() / math.pow(10, minorUnits(money.currency));
   final sign = money.amountMinor < 0 ? '-' : '';
-  final symbol = NumberFormat.simpleCurrency(
-    locale: locale.replaceAll('_', '-'),
-    name: money.currency,
-  ).currencySymbol;
+  final normalizedLocale = locale.replaceAll('_', '-');
+  String symbol;
+  try {
+    symbol = _cachedSimpleCurrencyFormat(
+      normalizedLocale,
+      money.currency,
+    ).currencySymbol;
+  } catch (_) {
+    symbol = money.currency;
+  }
   // Indian (lakh/crore) grouping only for INR; Western (M/B) for everything else.
   if (money.currency.toUpperCase() == 'INR') {
     if (amount >= 10000000) {
@@ -856,9 +909,9 @@ String formatLedgerDate(DateTime date, String locale) {
   final normalizedLocale = locale.replaceAll('_', '-');
   final formatStr = date.year == now.year ? 'MMMM d' : 'MMMM d, yyyy';
   try {
-    return DateFormat(formatStr, normalizedLocale).format(date);
+    return _cachedDateFormat(formatStr, normalizedLocale).format(date);
   } catch (_) {
-    return DateFormat(formatStr).format(date);
+    return _cachedDateFormat(formatStr).format(date);
   }
 }
 
@@ -1018,7 +1071,18 @@ IconData accountIcon(Account account) {
   };
 }
 
+final _categoryIconExpando = Expando<IconData>();
+
 IconData categoryIcon(Category? category) {
+  if (category == null) return Icons.folder_outlined;
+  final cached = _categoryIconExpando[category];
+  if (cached != null) return cached;
+  final resolved = _resolveCategoryIcon(category);
+  _categoryIconExpando[category] = resolved;
+  return resolved;
+}
+
+IconData _resolveCategoryIcon(Category? category) {
   final key = _categoryIconKey(category);
   if (key.contains('income') || key.contains('salary')) {
     return Icons.payments_outlined;

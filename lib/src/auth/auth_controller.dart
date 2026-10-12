@@ -88,6 +88,15 @@ class AuthController extends StateNotifier<AuthState> {
       return;
     }
 
+    final initialUser = _repository.currentUser;
+    if (initialUser != null) {
+      state = AuthState(
+        phase: AuthPhase.signedIn,
+        user: initialUser,
+        googleSignInAvailable: true,
+      );
+    }
+
     _subscription = _repository.authStateChanges.listen(
       (user) {
         state = state.copyWith(
@@ -262,6 +271,17 @@ class AuthRepository {
       );
     }
     return const AuthAvailability.available();
+  }
+
+  AuthUser? get currentUser {
+    try {
+      if (Firebase.apps.isEmpty) return null;
+      return AuthUser.fromFirebaseUser(
+        firebase_auth.FirebaseAuth.instance.currentUser,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   Stream<AuthUser?> get authStateChanges => firebase_auth.FirebaseAuth.instance

@@ -2729,8 +2729,14 @@ List<_CategoryTotal> _categoryTotals(
   return items;
 }
 
+final Map<String, DateFormat> _shortDateFormatCache = <String, DateFormat>{};
+
 String _shortDate(DateTime date, String locale) {
-  return DateFormat('d MMM', locale).format(date);
+  final formatter = _shortDateFormatCache.putIfAbsent(
+    locale,
+    () => DateFormat('d MMM', locale),
+  );
+  return formatter.format(date);
 }
 
 class _AccountGroupSummary {

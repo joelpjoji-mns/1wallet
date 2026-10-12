@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -13,11 +14,31 @@ import '../features/capture/notification_apps_screen.dart';
 import '../startup/startup_state.dart';
 import '../widgets/app_glass_page.dart';
 
+class _RouterRefreshNotifier extends ChangeNotifier {
+  void notify() => notifyListeners();
+}
+
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final startup = ref.watch(startupStateProvider);
-  return GoRouter(
-    initialLocation: '/launch',
+  final refreshNotifier = _RouterRefreshNotifier();
+  ref.listen<StartupState>(startupStateProvider, (_, _) {
+    refreshNotifier.notify();
+  });
+  final initialStartup = ref.read(startupStateProvider);
+  final initialLocation =
+      (initialStartup.isPending || initialStartup.isRecoverableError)
+      ? '/launch'
+      : switch (initialStartup.destination) {
+          StartupDestination.login => '/login',
+          StartupDestination.permissions => '/permissions-setup',
+          StartupDestination.onboarding => '/onboarding',
+          StartupDestination.home => '/',
+          StartupDestination.launch => '/launch',
+        };
+  final router = GoRouter(
+    initialLocation: initialLocation,
+    refreshListenable: refreshNotifier,
     redirect: (context, state) {
+      final startup = ref.read(startupStateProvider);
       final location = state.matchedLocation;
       final isLaunch = location == '/launch';
       final isLogin = location == '/login' || location == '/signup';
@@ -308,4 +329,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+  ref.onDispose(() {
+    refreshNotifier.dispose();
+    router.dispose();
+  });
+  return router;
 });

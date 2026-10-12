@@ -18,365 +18,31 @@ LedgerState normalizeLedgerState(
   LedgerState state, {
   bool forceFullCategoryReferenceScan = false,
 }) {
-  return _migrateLedgerState(
-    state,
-    fromVersion: state.version,
-    forceFullCategoryReferenceScan: forceFullCategoryReferenceScan,
-  );
-}
-
-LedgerState decodeLedgerState(String source) {
-  final decoded = jsonDecode(source);
-  if (decoded is! Map<String, dynamic>) {
-    throw const FormatException('Ledger archive root must be a JSON object.');
-  }
-  return _ledgerFromJson(decoded);
-}
-
-Map<String, Object?> _ledgerToJson(LedgerState state) {
-  return {
-    'version': state.version,
-    'userId': state.userId,
-    'preferences': _preferencesToJson(state.preferences),
-    'accounts': state.accounts.map(_accountToJson).toList(),
-    'categories': state.categories.map(_categoryToJson).toList(),
-    'transactions': state.transactions.map(_transactionToJson).toList(),
-    'captureCandidates': state.captureCandidates
-        .map(_captureCandidateToJson)
-        .toList(),
-    'importBatches': state.importBatches.map(_importBatchToJson).toList(),
-    'exchangeRates': state.exchangeRates.map(_exchangeRateToJson).toList(),
-  };
-}
-
-LedgerState _ledgerFromJson(Map<String, dynamic> json) {
-  final version = _int(json['version']);
-  final ledger = LedgerState(
-    version: version,
-    userId: _string(json['userId'], fallback: 'local-user'),
-    preferences: _preferencesFromJson(_map(json['preferences'])),
-    accounts: _list(json['accounts']).map(_accountFromJson).toList(),
-    categories: _list(json['categories']).map(_categoryFromJson).toList(),
-    transactions: _list(
-      json['transactions'],
-    ).map(_transactionFromJson).toList(),
-    captureCandidates: _list(
-      json['captureCandidates'],
-    ).map(_captureCandidateFromJson).toList(),
-    importBatches: _list(
-      json['importBatches'],
-    ).map(_importBatchFromJson).toList(),
-    exchangeRates: _list(
-      json['exchangeRates'],
-    ).map(_exchangeRateFromJson).toList(),
-  );
-  return _migrateLedgerState(ledger, fromVersion: version);
-}
-
-LedgerState _migrateLedgerState(
-  LedgerState state, {
-  required int fromVersion,
-  bool forceFullCategoryReferenceScan = false,
-}) {
-  var next = state;
-  if (fromVersion < 15) {
-    final categoryIds = {for (final category in next.categories) category.id};
-    final categories = [
-      for (final category in next.categories)
-        if (category.id == 'cat-grocery' &&
-            category.parentId == null &&
-            categoryIds.contains('cat-food'))
-          category.copyWith(parentId: 'cat-food')
-        else if (category.id == 'cat-emi' &&
-            category.parentId == null &&
-            categoryIds.contains('cat-bills'))
-          category.copyWith(parentId: 'cat-bills')
-        else
-          category,
-    ];
-    next = next.copyWith(categories: categories);
-  }
-  next = _migrateCategoryTaxonomy(
-    next,
-    // Only a genuinely legacy/foreign ledger (not yet at the current
-    // version) can contain dangling category references that need a full
-    // O(n) scan to find and clear — see the comment on
-    // `forceFullRedirectScan` inside `_migrateCategoryTaxonomy`. Trusted
-    // callers that construct a `LedgerState` from raw foreign data while
-    // stamping it at `currentLedgerStateVersion` (so the version check
-    // alone can't detect it needs migrating — e.g. cloud restore data
-    // built via `emptyLedgerState(...).copyWith(...)`) can opt into the
-    // same full scan explicitly via `forceFullCategoryReferenceScan`.
-    forceFullRedirectScan:
-        fromVersion < currentLedgerStateVersion ||
-        forceFullCategoryReferenceScan,
-  );
-  if (fromVersion < 18) {
-    // Automatically reset categories to only the canonical default taxonomy
-    // and clear merchant category rules so existing ledgers start fresh with
-    // only the standard 100 categories.
-    next = next.copyWith(
-      categories: lifeCategoryTaxonomy(),
-      preferences: next.preferences.copyWith(
-        merchantCategoryRules: const {},
-      ),
-    );
-  }
-  return next.copyWith(version: currentLedgerStateVersion);
-}
-
-LedgerState _migrateCategoryTaxonomy(
-  LedgerState state, {
-  required bool forceFullRedirectScan,
-}) {
-  final defaults = lifeCategoryTaxonomy();
-  final defaultsById = {for (final category in defaults) category.id: category};
-  final preferredByName = <String, String>{
-    'bill': 'cat-bills',
-    'bills': 'cat-bills',
-    'home': 'cat-bills',
-    'housing': 'cat-bills',
-    'home and bills': 'cat-bills',
-    'utility': 'cat-bills',
-    'utilities': 'cat-bills',
-    'bills and utilities': 'cat-bills',
-    'grocery': 'cat-grocery',
-    'groceries': 'cat-grocery',
-    'food and dining': 'cat-food',
-    'food': 'cat-food',
-    'dining': 'cat-dining',
-    'restaurant': 'cat-dining',
-    'restaurants': 'cat-dining',
-    'food delivery': 'cat-dining',
-    'breakfast': 'cat-breakfast',
-    'lunch': 'cat-lunch',
-    'dinner': 'cat-dinner',
-    'emi': 'cat-emi',
-    'loan emi': 'cat-emi',
-    'debt payments': 'cat-emi',
-    'interest paid': 'cat-emi',
-    'travel': 'cat-vacations',
-    'transport': 'cat-transit',
-    'transportation': 'cat-transit',
-    'transit': 'cat-transit',
-    'salary': 'cat-salary',
-    'work': 'cat-salary',
-    'bonus': 'cat-salary',
-    'reimbursements': 'cat-refunds',
-    'reimbursement': 'cat-refunds',
-    'money back': 'cat-refunds',
-    'refund': 'cat-refunds',
-    'rewards': 'cat-refunds',
-    'business income': 'cat-business-income',
-    'investments income': 'cat-interest-dividends',
-    'interest': 'cat-interest-dividends',
-    'dividend': 'cat-interest-dividends',
-    'capital gains': 'cat-interest-dividends',
-    'income adjustments': 'cat-income',
-    'miscellaneous income': 'cat-income',
-    'uncategorized income': 'cat-income',
-    'shopping': 'cat-shopping',
-    'health': 'cat-health',
-    'health and wellness': 'cat-health',
-    'medical': 'cat-health',
-    'dental': 'cat-dental-vision',
-    'subscription': 'cat-subscriptions',
-    'subscriptions': 'cat-subscriptions',
-    'tv and streaming': 'cat-subscriptions',
-    'software': 'cat-subscriptions',
-    'investment': 'cat-investments',
-    'investments': 'cat-investments',
-    'rent': 'cat-rent-mortgage',
-    'mortgage': 'cat-rent-mortgage',
-    'maintenance': 'cat-home-maintenance',
-    'home maintenance': 'cat-home-maintenance',
-    'internet': 'cat-internet',
-    'wifi': 'cat-internet',
-    'internet and phone': 'cat-internet',
-    'mobile': 'cat-mobile',
-    'phone': 'cat-mobile',
-    'mobile recharge': 'cat-mobile',
-    'doctor': 'cat-doctor',
-    'pharmacy': 'cat-pharmacy',
-    'medicine': 'cat-pharmacy',
-    'medicines': 'cat-pharmacy',
-    'credit card': 'cat-credit-card-payment',
-    'credit card payment': 'cat-credit-card-payment',
-    'credit card bill': 'cat-credit-card-payment',
-    'fuel': 'cat-fuel',
-    'petrol': 'cat-fuel',
-    'diesel': 'cat-fuel',
-    'taxi': 'cat-taxi-rides',
-    'cab': 'cat-taxi-rides',
-    'uber': 'cat-taxi-rides',
-    'ola': 'cat-taxi-rides',
-    'public transit': 'cat-public-transit',
-    'metro': 'cat-public-transit',
-    'train': 'cat-public-transit',
-    'car wash': 'cat-vehicle-service',
-    'vehicle service': 'cat-vehicle-service',
-    'vehicle maintenance': 'cat-vehicle-service',
-    'lease and rentals': 'cat-rental-leasing',
-    'vehicle costs': 'cat-vehicle',
-    'council tax': 'cat-taxes',
-    'tax': 'cat-taxes',
-    'taxes': 'cat-taxes',
-    'taxes and fees': 'cat-debt',
-    'clothes': 'cat-clothing',
-    'clothing': 'cat-clothing',
-    'electronics': 'cat-electronics',
-    'personal care': 'cat-personal-care',
-    'personal and care': 'cat-personal-care',
-    'childcare': 'cat-children',
-    'gift': 'cat-gifts',
-    'gifts': 'cat-gifts',
-    'giving': 'cat-family',
-    'gifts and giving': 'cat-family',
-    'gifts and support': 'cat-family',
-    'family': 'cat-family',
-    'family support': 'cat-family-support',
-    'shared expenses': 'cat-family-support',
-    'donations': 'cat-charity',
-    'charity': 'cat-charity',
-    'community': 'cat-community',
-    'work and business': 'cat-business-income',
-    'office supplies': 'cat-office-supplies',
-    'professional services': 'cat-professional-services',
-    'business travel': 'cat-vacations',
-    'finance and loans': 'cat-debt',
-    'charges and fees': 'cat-bank-fees',
-    'fines and penalties': 'cat-fines',
-    'bank fee': 'cat-bank-fees',
-    'bank fees': 'cat-bank-fees',
-    'fees': 'cat-bank-fees',
-    'investment fees': 'cat-bank-fees',
-    'lifestyle': 'cat-entertainment',
-    'events': 'cat-concerts',
-    'entertainment': 'cat-entertainment',
-    'course': 'cat-education',
-    'courses': 'cat-education',
-    'school fees': 'cat-education',
-    'books': 'cat-books',
-    'education': 'cat-education',
-    'savings': 'cat-emergency-fund',
-    'saving': 'cat-emergency-fund',
-    'savings and investing': 'cat-debt',
-    'trip food': 'cat-travel-activities',
-    'hotels': 'cat-hotels',
-    'hotel': 'cat-hotels',
-    'stay': 'cat-hotels',
-    'misc': 'cat-misc',
-    'miscellaneous': 'cat-misc',
-    'uncategorized': 'cat-uncategorized',
-    'uncategorized imports': 'cat-uncategorized',
-    'adjustment': 'cat-uncategorized',
-    'cash adjustment': 'cat-uncategorized',
-  };
-
-  // Canonical default category names ALWAYS take precedence and resolve to their own ID!
-  for (final category in defaults) {
-    preferredByName[_categoryNameKey(category.name)] = category.id;
-  }
-
-  final idRedirect = <String, String>{};
-  final mergedById = <String, Category>{};
-  final customIdByName = <String, String>{};
-
-  for (final category in state.categories) {
-    final nameKey = _categoryNameKey(category.name);
-    final preferredId = preferredByName[nameKey];
-    final customId = preferredId == null
-        ? customIdByName.putIfAbsent(nameKey, () => category.id)
-        : null;
-    final targetId = preferredId ?? customId ?? category.id;
-    idRedirect[category.id] = targetId;
-    final defaultCategory = defaultsById[targetId];
-    final current = mergedById[targetId];
-    final normalized =
-        defaultCategory ??
-        Category(
-          id: targetId,
-          name: _crispCategoryName(category.name),
-          kind: category.kind,
-          color: category.color,
-          parentId: _blankCategoryParent(category.parentId),
-          isArchived: category.isArchived,
-          sortOrder: category.sortOrder,
-        );
-    mergedById[targetId] = current == null
-        ? normalized
-        : current.copyWith(
-            isArchived: current.isArchived && category.isArchived,
-          );
-  }
-
-  for (final category in defaults) {
-    // A handful of defaults are themselves superseded by an alias entry
-    // above (e.g. `cat-charges`'s own name "Charges" is redirected to
-    // `cat-bank-fees` by the `preferredByName` alias table, same for
-    // `cat-sales`, `cat-cashback`, `cat-vehicle`, etc.). Unconditionally
-    // re-adding every default here would resurrect those retired ids on
-    // every single pass — even once every category/transaction that used
-    // to reference them has already been redirected to their replacement —
-    // permanently duplicating categories in the picker AND making
-    // `idRedirect` non-identity forever, which would force the expensive
-    // per-record rewrite below on *every* commit, forever (defeating the
-    // whole point of only doing that work when a merge actually happens).
-    // Skip re-adding a default whose own name no longer maps back to
-    // itself; it stays reachable via `defaultsById` for redirect-target
-    // lookups above, it just never reappears as a standalone category.
-    if (preferredByName[_categoryNameKey(category.name)] != category.id) {
-      continue;
+  final categories = state.categories.isEmpty
+      ? lifeCategoryTaxonomy()
+      : state.categories;
+  if (!forceFullCategoryReferenceScan) {
+    if (state.version == currentLedgerStateVersion &&
+        identical(categories, state.categories)) {
+      return state;
     }
-    mergedById[category.id] = category.copyWith(
-      isArchived: mergedById[category.id]?.isArchived ?? false,
+    return state.copyWith(
+      version: currentLedgerStateVersion,
+      categories: categories,
     );
   }
 
-  final validIds = mergedById.keys.toSet();
-  final normalizedCategories = mergedById.values.map((category) {
-    final redirectedParentId =
-        idRedirect[category.parentId] ?? category.parentId;
-    final parentId =
-        redirectedParentId != null && validIds.contains(redirectedParentId)
-        ? redirectedParentId
-        : defaultsById[category.id]?.parentId;
-    final defaultCategory = defaultsById[category.id];
-    if (defaultCategory != null) {
-      return defaultCategory.copyWith(isArchived: category.isArchived);
-    }
-    return Category(
-      id: category.id,
-      name: category.name,
-      kind: category.kind,
-      color: category.color,
-      parentId: parentId == category.id ? null : parentId,
-      isArchived: category.isArchived,
-      sortOrder: category.sortOrder,
-    );
-  }).toList()..sort(_compareCategoryForMigration);
-
-  String? redirectCategoryId(String? id) {
+  final validIds = {for (final category in categories) category.id};
+  String? validCategoryId(String? id) {
     if (id == null) return null;
-    return idRedirect[id] ?? (validIds.contains(id) ? id : null);
+    return validIds.contains(id) ? id : null;
   }
 
-  // `TransactionRecord.copyWith`/`CaptureCandidate.copyWith`/
-  // `FutureGenerationRule.copyWith` all use the common `field ?? this.field`
-  // idiom, which cannot express "clear this nullable field to null" — passing
-  // `null` is indistinguishable from "leave unchanged" and silently keeps the
-  // old value. That matters here: `redirectCategoryId` returns `null` for a
-  // categoryId that refers to a category no longer present (a dangling
-  // reference), and that must actually clear the field, not preserve the
-  // orphaned id. So when the redirect result is `null` (and there was a
-  // previous value to clear), rebuild the record directly instead of going
-  // through `copyWith`.
-  TransactionRecord withRedirectedTransactionCategory(
+  TransactionRecord withValidatedTransactionCategory(
     TransactionRecord transaction,
   ) {
-    final next = redirectCategoryId(transaction.categoryId);
+    final next = validCategoryId(transaction.categoryId);
     if (next == transaction.categoryId) return transaction;
-    if (next != null) return transaction.copyWith(categoryId: next);
     return TransactionRecord(
       id: transaction.id,
       type: transaction.type,
@@ -413,10 +79,9 @@ LedgerState _migrateCategoryTaxonomy(
     );
   }
 
-  CaptureCandidate withRedirectedCandidateCategory(CaptureCandidate candidate) {
-    final next = redirectCategoryId(candidate.suggestedCategoryId);
+  CaptureCandidate withValidatedCandidateCategory(CaptureCandidate candidate) {
+    final next = validCategoryId(candidate.suggestedCategoryId);
     if (next == candidate.suggestedCategoryId) return candidate;
-    if (next != null) return candidate.copyWith(suggestedCategoryId: next);
     return CaptureCandidate(
       id: candidate.id,
       source: candidate.source,
@@ -432,10 +97,9 @@ LedgerState _migrateCategoryTaxonomy(
     );
   }
 
-  FutureGenerationRule withRedirectedRuleCategory(FutureGenerationRule rule) {
-    final next = redirectCategoryId(rule.categoryId);
+  FutureGenerationRule withValidatedRuleCategory(FutureGenerationRule rule) {
+    final next = validCategoryId(rule.categoryId);
     if (next == rule.categoryId) return rule;
-    if (next != null) return rule.copyWith(categoryId: next);
     return FutureGenerationRule(
       id: rule.id,
       name: rule.name,
@@ -463,93 +127,81 @@ LedgerState _migrateCategoryTaxonomy(
     );
   }
 
-  // Rewriting every transaction/capture-candidate/rule is O(ledger size),
-  // which matters because this runs on every `_commit` (i.e. every user
-  // edit), not just on load/import/restore. Even just *checking* whether a
-  // rewrite is needed by scanning every record (e.g. collecting the set of
-  // referenced category ids) is still O(ledger size) — on a large ledger
-  // that check alone reintroduces the same per-edit cost we're trying to
-  // avoid. So the "do we need to touch records at all?" decision must stay
-  // O(categories), never O(transactions):
-  //
-  //  - `categoryMergeHappened` (O(categories)): true when the pass above
-  //    actually redirected some category id to a different canonical id
-  //    (a real name-collision merge, e.g. from `upsertCategory`). Any record
-  //    referencing the old id must follow the redirect.
-  //  - `forceFullRedirectScan`: true only when migrating a genuinely legacy
-  //    ledger (`fromVersion < currentLedgerStateVersion`, e.g. loading an
-  //    old archive/JSON payload) — the one place a full O(n) scan is
-  //    unavoidable, since only then can records reference category ids that
-  //    were never in this category list at all (dangling references, which
-  //    `redirectCategoryId` clears to null). `_commit` always calls this
-  //    with a ledger already at `currentLedgerStateVersion`, so that hot
-  //    path never pays this scan.
-  final categoryMergeHappened = idRedirect.entries.any(
-    (entry) => entry.key != entry.value,
-  );
-  final needsCategoryRedirect = categoryMergeHappened || forceFullRedirectScan;
-
-  final transactions = needsCategoryRedirect
-      ? [
-          for (final transaction in state.transactions)
-            withRedirectedTransactionCategory(transaction),
-        ]
-      : state.transactions;
-
-  final captureCandidates = needsCategoryRedirect
-      ? [
-          for (final candidate in state.captureCandidates)
-            withRedirectedCandidateCategory(candidate),
-        ]
-      : state.captureCandidates;
-
-  final preferences =
-      !needsCategoryRedirect || state.preferences.futureGenerationRules == null
+  final transactions = [
+    for (final transaction in state.transactions)
+      withValidatedTransactionCategory(transaction),
+  ];
+  final captureCandidates = [
+    for (final candidate in state.captureCandidates)
+      withValidatedCandidateCategory(candidate),
+  ];
+  final preferences = state.preferences.futureGenerationRules == null
       ? state.preferences
       : state.preferences.copyWith(
           futureGenerationRules: [
             for (final rule in state.preferences.futureGenerationRules!)
-              withRedirectedRuleCategory(rule),
+              withValidatedRuleCategory(rule),
           ],
         );
 
   return state.copyWith(
-    categories: normalizedCategories,
+    version: currentLedgerStateVersion,
+    categories: categories,
     transactions: transactions,
     captureCandidates: captureCandidates,
     preferences: preferences,
   );
 }
 
-final RegExp _nonAlphaNumRegex = RegExp(r'[^a-z0-9]+');
-final RegExp _multiWhitespaceRegex = RegExp(r'\s+');
-
-String _categoryNameKey(String name) {
-  return name
-      .trim()
-      .toLowerCase()
-      .replaceAll('&', 'and')
-      .replaceAll(_nonAlphaNumRegex, ' ')
-      .trim()
-      .replaceAll(_multiWhitespaceRegex, ' ');
+LedgerState decodeLedgerState(String source) {
+  final decoded = jsonDecode(source);
+  if (decoded is! Map<String, dynamic>) {
+    throw const FormatException('Ledger archive root must be a JSON object.');
+  }
+  return _ledgerFromJson(decoded);
 }
 
-String _crispCategoryName(String name) {
-  final normalized = name.trim().replaceAll(_multiWhitespaceRegex, ' ');
-  if (normalized.isEmpty) return 'Miscellaneous';
-  return normalized[0].toUpperCase() + normalized.substring(1);
+Map<String, Object?> _ledgerToJson(LedgerState state) {
+  return {
+    'version': state.version,
+    'userId': state.userId,
+    'preferences': _preferencesToJson(state.preferences),
+    'accounts': state.accounts.map(_accountToJson).toList(),
+    'categories': state.categories.map(_categoryToJson).toList(),
+    'transactions': state.transactions.map(_transactionToJson).toList(),
+    'captureCandidates': state.captureCandidates
+        .map(_captureCandidateToJson)
+        .toList(),
+    'importBatches': state.importBatches.map(_importBatchToJson).toList(),
+    'exchangeRates': state.exchangeRates.map(_exchangeRateToJson).toList(),
+  };
 }
 
-String? _blankCategoryParent(String? parentId) {
-  final value = parentId?.trim();
-  return value == null || value.isEmpty ? null : value;
-}
-
-int _compareCategoryForMigration(Category left, Category right) {
-  final orderCompare = left.sortOrder.compareTo(right.sortOrder);
-  return orderCompare != 0
-      ? orderCompare
-      : left.name.toLowerCase().compareTo(right.name.toLowerCase());
+LedgerState _ledgerFromJson(Map<String, dynamic> json) {
+  final decodedCategories = _list(
+    json['categories'],
+  ).map(_categoryFromJson).toList();
+  return LedgerState(
+    version: currentLedgerStateVersion,
+    userId: _string(json['userId'], fallback: 'local-user'),
+    preferences: _preferencesFromJson(_map(json['preferences'])),
+    accounts: _list(json['accounts']).map(_accountFromJson).toList(),
+    categories: decodedCategories.isEmpty
+        ? lifeCategoryTaxonomy()
+        : decodedCategories,
+    transactions: _list(
+      json['transactions'],
+    ).map(_transactionFromJson).toList(),
+    captureCandidates: _list(
+      json['captureCandidates'],
+    ).map(_captureCandidateFromJson).toList(),
+    importBatches: _list(
+      json['importBatches'],
+    ).map(_importBatchFromJson).toList(),
+    exchangeRates: _list(
+      json['exchangeRates'],
+    ).map(_exchangeRateFromJson).toList(),
+  );
 }
 
 Map<String, Object?> _moneyToJson(Money money) {

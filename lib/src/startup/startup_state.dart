@@ -12,13 +12,19 @@ import '../theme/theme_controller.dart';
 final startupStateProvider = Provider<StartupState>((ref) {
   final auth = ref.watch(authControllerProvider);
   final ledgerLoad = ref.watch(ledgerLoadStateProvider);
-  final ledger = ref.watch(ledgerProvider);
+  final ledgerSummary = ref.watch(
+    ledgerProvider.select(
+      (s) => (userId: s.userId, hasWalletData: _hasWalletData(s)),
+    ),
+  );
   final onboarding = ref.watch(onboardingControllerProvider);
   final permissionSetup = ref.watch(permissionSetupControllerProvider);
-  final theme = ref.watch(themeControllerProvider);
+  final isThemeLoaded = ref.watch(
+    themeControllerProvider.select((s) => s.isLoaded),
+  );
   final cloudSync = ref.watch(cloudSyncControllerProvider);
 
-  if (!theme.isLoaded || auth.phase == AuthPhase.initializing) {
+  if (!isThemeLoaded || auth.phase == AuthPhase.initializing) {
     return const StartupState.pending(
       stage: StartupStage.session,
       message: 'Checking your secure session',
@@ -48,7 +54,9 @@ final startupStateProvider = Provider<StartupState>((ref) {
     );
   }
 
-  final hasWalletData = _hasWalletData(ledger);
+  final hasWalletData =
+      (ledgerSummary.userId == userId || ledgerSummary.userId == 'local-user') &&
+      ledgerSummary.hasWalletData;
 
   if (permissionSetup.userId != userId && !permissionSetup.isLoading) {
     Future.microtask(() {
@@ -198,11 +206,13 @@ class StartupState {
     required StartupDestination destination,
     String? message,
   }) : this._(
-         stage: StartupStage.ready,
+         stage: stageReady,
          destination: destination,
          isPending: false,
          message: message,
        );
+
+  static const StartupStage stageReady = StartupStage.ready;
 
   const StartupState.recoverableError({
     required String title,
@@ -223,4 +233,28 @@ class StartupState {
   final String? message;
   final bool isRecoverableError;
   final double? progress;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is StartupState &&
+        other.stage == stage &&
+        other.destination == destination &&
+        other.isPending == isPending &&
+        other.title == title &&
+        other.message == message &&
+        other.isRecoverableError == isRecoverableError &&
+        other.progress == progress;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    stage,
+    destination,
+    isPending,
+    title,
+    message,
+    isRecoverableError,
+    progress,
+  );
 }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../auth/auth_controller.dart';
+import '../../cloud_sync/cloud_sync_controller.dart';
 import '../../data/ledger_providers.dart';
 import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
@@ -11,7 +12,9 @@ import '../../theme/theme_controller.dart';
 import '../../security/app_lock.dart';
 import '../common/full_screen_picker.dart';
 import '../common/route_scaffold.dart';
+import '../onboarding/onboarding_controller.dart';
 import 'account_deletion_controller.dart';
+import 'permission_setup_controller.dart';
 import 'settings_components.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -488,6 +491,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _signOut(WidgetRef ref) async {
+    await ref.read(ledgerProvider.notifier).flushAutoBackupBeforeSignOut();
+    await ref.read(cloudSyncControllerProvider.notifier).handleSignOut();
+    await ref.read(ledgerProvider.notifier).clearSessionOnSignOut();
+    ref.read(onboardingControllerProvider.notifier).clear();
+    ref.read(permissionSetupControllerProvider.notifier).clear();
     await ref.read(authControllerProvider.notifier).signOut();
     if (!mounted) return;
     context.go('/login');

@@ -37,19 +37,33 @@ class AppNotification {
   final bool isDueSoon;
 }
 
+final Expando<Map<String, List<AppNotification>>> _inboxCacheExpando =
+    Expando<Map<String, List<AppNotification>>>('buildNotificationInboxCache');
+
 /// Builds the notification inbox from ledger state.
 ///
 /// - Overdue scheduled payments
 List<AppNotification> buildNotificationInbox(LedgerState state, {DateTime? now}) {
-  final notifications = <AppNotification>[];
-  final currentTime = now ?? DateTime.now();
-
   // The master "Notification inbox" toggle disables the in-app inbox
   // entirely (native/device alerts are gated separately in
   // NotificationService using deviceNotificationsEnabled).
   if (!state.preferences.notificationInboxEnabled) {
     return const [];
   }
+
+  final currentTime = now ?? DateTime.now();
+  final todayKey =
+      '${currentTime.year}-${currentTime.month.toString().padLeft(2, '0')}-${currentTime.day.toString().padLeft(2, '0')}';
+
+  if (now == null) {
+    final cachedByDay = _inboxCacheExpando[state];
+    final cached = cachedByDay?[todayKey];
+    if (cached != null) {
+      return cached;
+    }
+  }
+
+  final notifications = <AppNotification>[];
 
   // Scheduled payment notifications
   if (state.preferences.channelScheduledEnabled) {
@@ -123,9 +137,6 @@ List<AppNotification> buildNotificationInbox(LedgerState state, {DateTime? now})
       convertMoneyForDisplay(state, absBalance),
       state.preferences.locale,
     );
-
-    final todayKey =
-        '${currentTime.year}-${currentTime.month.toString().padLeft(2, '0')}-${currentTime.day.toString().padLeft(2, '0')}';
 
     if (status.isOverdue) {
       final when = status.daysUntilDue == -1
@@ -223,7 +234,11 @@ List<AppNotification> buildNotificationInbox(LedgerState state, {DateTime? now})
       .toList();
 
   filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-  return filtered;
+  final result = List<AppNotification>.unmodifiable(filtered);
+  if (now == null) {
+    _inboxCacheExpando[state] = {todayKey: result};
+  }
+  return result;
 }
 
 /// Count of unread notifications.

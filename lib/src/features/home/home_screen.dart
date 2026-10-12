@@ -68,7 +68,16 @@ class HomeScreen extends ConsumerWidget {
     final user = ref.watch(_homeAuthUserProvider);
     final reorderMode = ref.watch(homeWidgetReorderModeProvider);
 
-    final sync = ref.watch(cloudSyncControllerProvider);
+    final sync = ref.watch(
+      cloudSyncControllerProvider.select(
+        (s) => (
+          phase: s.phase,
+          progressMessage: s.progressMessage,
+          progress: s.progress,
+          error: s.error,
+        ),
+      ),
+    );
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 

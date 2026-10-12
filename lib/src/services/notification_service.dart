@@ -176,6 +176,10 @@ class NotificationService {
     final scheduled = scheduledTransactions(
       state,
     ).where((t) => t.status != 'paused').toList();
+    if (scheduled.isEmpty) return;
+
+    await requestPermissions();
+    final accentColor = await _notificationAccentColor();
 
     int idCounter = 1000;
     final now = DateTime.now();
@@ -225,6 +229,7 @@ class NotificationService {
           ),
           scheduledDate: dayBefore,
           route: '/recurring/${transaction.id}',
+          accentColor: accentColor,
         );
       } else if (isTodayOrTomorrow) {
         // The 10:00 reminder time already passed, but the event is still
@@ -241,6 +246,7 @@ class NotificationService {
           ),
           scheduledDate: now.add(const Duration(seconds: 5)),
           route: '/recurring/${transaction.id}',
+          accentColor: accentColor,
         );
       }
 
@@ -256,6 +262,7 @@ class NotificationService {
           ),
           scheduledDate: dayOf,
           route: '/recurring/${transaction.id}',
+          accentColor: accentColor,
         );
       } else if (isTodayOrTomorrow) {
         // Same fallback for the "due today" reminder when 10:00 has passed.
@@ -270,6 +277,7 @@ class NotificationService {
           ),
           scheduledDate: now.add(const Duration(seconds: 5)),
           route: '/recurring/${transaction.id}',
+          accentColor: accentColor,
         );
       }
     }
@@ -303,8 +311,9 @@ class NotificationService {
     required String body,
     required DateTime scheduledDate,
     required String route,
+    Color? accentColor,
   }) async {
-    await requestPermissions();
+    final resolvedAccent = accentColor ?? await _notificationAccentColor();
 
     final androidDetails = AndroidNotificationDetails(
       'scheduled_alerts',
@@ -312,7 +321,7 @@ class NotificationService {
       channelDescription: 'Notifications for upcoming payments',
       importance: Importance.high,
       priority: Priority.high,
-      color: await _notificationAccentColor(),
+      color: resolvedAccent,
     );
     const darwinDetails = DarwinNotificationDetails(
       presentAlert: true,

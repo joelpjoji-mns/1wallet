@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -19,7 +21,7 @@ Future<void> main() async {
   final glassWarmup = LiquidGlassWidgets.initialize();
   final sharedPreferencesWarmup = SharedPreferences.getInstance();
   final dateFormattingWarmup = initializeDateFormatting();
-  final notificationWarmup = NotificationService.initialize();
+  unawaited(NotificationService.initialize());
   await FirebaseEnv.load();
   FirebaseEnv.assertProductionReady();
   final firebaseOptions = FirebaseEnv.firebaseOptions;
@@ -36,13 +38,8 @@ Future<void> main() async {
       );
     }
   }
-  await Future.wait([
-    sharedPreferencesWarmup,
-    dateFormattingWarmup,
-    notificationWarmup,
-    glassWarmup,
-  ]);
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = await sharedPreferencesWarmup;
+  await Future.wait([dateFormattingWarmup, glassWarmup]);
   runApp(
     ProviderScope(
       overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],

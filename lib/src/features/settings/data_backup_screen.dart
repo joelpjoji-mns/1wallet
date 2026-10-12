@@ -97,13 +97,20 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
     } catch (e) {
       if (!mounted) return;
       if (e.toString().contains('Restore rejected')) {
+        final isDifferentAccount = e.toString().contains('different account');
         final confirmForce = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Warning: Older Backup'),
-            content: const Text(
-              'Your current local data is newer or has more transactions than this auto-backup. '
-              'Are you sure you want to overwrite your current data?',
+            title: Text(
+              isDifferentAccount
+                  ? 'Warning: Different Account Backup'
+                  : 'Warning: Older Backup',
+            ),
+            content: Text(
+              isDifferentAccount
+                  ? 'This backup belongs to a different user account. Restoring it will replace your current wallet and sync that data into your signed-in account. Are you sure?'
+                  : 'Your current local data is newer or has more transactions than this auto-backup. '
+                        'Are you sure you want to overwrite your current data?',
             ),
             actions: [
               TextButton(
@@ -260,12 +267,14 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
   Future<void> _generateAndSaveArchive() async {
     if (_busy) return;
     setState(() => _busy = true);
-    final archive = ref.read(ledgerProvider.notifier).exportArchive();
+    final notifier = ref.read(ledgerProvider.notifier);
+    final archive = notifier.exportArchive();
+    final defaultFileName = notifier.defaultManualBackupFileName();
 
     try {
       final outputFile = await FilePicker.saveFile(
         dialogTitle: 'Save 1Wallet Backup',
-        fileName: '1wallet_backup.onewallet',
+        fileName: defaultFileName,
         type: FileType.custom,
         allowedExtensions: ['onewallet', 'json'],
         bytes: Uint8List.fromList(utf8.encode(archive)),
@@ -318,13 +327,20 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
     } catch (error) {
       if (!mounted) return;
       if (error.toString().contains('Restore rejected')) {
+        final isDifferentAccount = error.toString().contains('different account');
         final confirm = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Warning: Older Backup'),
-            content: const Text(
-              'Your current local data is newer or has more transactions than this backup. '
-              'Are you sure you want to overwrite your current data?',
+            title: Text(
+              isDifferentAccount
+                  ? 'Warning: Different Account Backup'
+                  : 'Warning: Older Backup',
+            ),
+            content: Text(
+              isDifferentAccount
+                  ? 'This backup belongs to a different user account. Restoring it will replace your current wallet and sync that data into your signed-in account. Are you sure?'
+                  : 'Your current local data is newer or has more transactions than this backup. '
+                        'Are you sure you want to overwrite your current data?',
             ),
             actions: [
               TextButton(

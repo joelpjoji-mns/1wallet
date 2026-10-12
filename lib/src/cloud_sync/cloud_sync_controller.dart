@@ -217,7 +217,11 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         }
         _bootstrap(next.user!.id);
       } else {
-        _disableSync();
+        if (previous?.user != null) {
+          unawaited(handleSignOut());
+        } else {
+          _disableSync();
+        }
       }
     });
 
@@ -250,6 +254,24 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       }
     } else {
       _disableSync();
+    }
+  }
+
+  Future<void> handleSignOut() async {
+    _localClearInProgress = true;
+    try {
+      await _userDocSubscription?.cancel();
+      _userDocSubscription = null;
+      _cancelTimers();
+      _uploadFailureCount = 0;
+      _uploadCircuitOpenUntil = 0;
+      await CloudSyncMetadata.clear();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('has_unsynced_changes');
+      await prefs.remove('last_local_modified_at');
+      _disableSync();
+    } finally {
+      _localClearInProgress = false;
     }
   }
 
@@ -577,7 +599,30 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       _userDocSubscription = null;
 
       var metadata = await CloudSyncMetadata.load();
-      if (metadata.userId != userId) {
+      final initialLedger = _ref.read(ledgerProvider);
+      final hasDifferentPreviousUser =
+          (metadata.userId != null && metadata.userId != userId) ||
+          (initialLedger.userId != 'local-user' &&
+              initialLedger.userId != userId);
+      if (hasDifferentPreviousUser) {
+        debugPrint(
+          'CloudSync _bootstrap: switching from previous user (${metadata.userId ?? initialLedger.userId}) to $userId. Resetting local session and sync metadata.',
+        );
+        _localClearInProgress = true;
+        try {
+          await _ledger.clearLocalWallet(userId: userId);
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('has_unsynced_changes');
+          await prefs.remove('last_local_modified_at');
+        } finally {
+          _localClearInProgress = false;
+        }
+        metadata = CloudSyncMetadata(
+          deviceId: metadata.deviceId,
+          userId: userId,
+        );
+        await metadata.save();
+      } else if (metadata.userId != userId) {
         metadata = metadata.copyWith(userId: userId);
         await metadata.save();
       }
@@ -662,93 +707,6 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           await _restoreFromCloud(userId, metadata);
         }
 
-        // Migrate rules from preferences to transactions if needed
-        final currentLedger = _ref.read(ledgerProvider);
-
-        final existingRuleIds = currentLedger.transactions
-            .map((t) => t.id)
-            .toSet();
-        final rulesToConvert = <FutureGenerationRule>[];
-
-        // 1. Check if we already have rules in current preferences
-        if (currentLedger.preferences.futureGenerationRules != null) {
-          for (final rule in currentLedger.preferences.futureGenerationRules!) {
-            if (!existingRuleIds.contains(rule.id)) {
-              rulesToConvert.add(rule);
-            }
-          }
-        }
-
-        if (rulesToConvert.isNotEmpty) {
-          final newTransactions = <TransactionRecord>[];
-          for (final rule in rulesToConvert) {
-            newTransactions.add(
-              TransactionRecord(
-                id: rule.id,
-                type: rule.type,
-                status: 'scheduled',
-                source: 'recurring',
-                accountId: rule.accountId,
-                counterAccountId: rule.counterAccountId,
-                amount: Money(
-                  amountMinor: rule.amountMinor,
-                  currency: rule.currency,
-                ),
-                baseAmount: Money(
-                  amountMinor: rule.amountMinor,
-                  currency: rule.currency,
-                ),
-                occurredAt: rule.startsOn,
-                categoryId: rule.categoryId,
-                recurrenceFrequency: rule.frequency,
-                notes: rule.name,
-                paymentMethod: rule.paymentMethod,
-              ),
-            );
-          }
-
-          final mergedPreferences = currentLedger.preferences.copyWith(
-            futureGenerationRules: rulesToConvert.toList(),
-          );
-
-          // Fix any already-migrated rules that accidentally got 'planned' status
-          final updatedTransactions = currentLedger.transactions.map((t) {
-            if (t.status == 'planned') {
-              return t.copyWith(status: 'scheduled');
-            }
-            return t;
-          }).toList();
-
-          final mergedTransactions = [
-            ...updatedTransactions,
-            ...newTransactions,
-          ];
-          await _ledger.restoreLedgerState(
-            currentLedger.copyWith(
-              preferences: mergedPreferences,
-              transactions: mergedTransactions,
-            ),
-          );
-          await uploadSnapshot(reason: 'migration_rules');
-        } else {
-          // If no new rules to convert, just check if we need to fix statuses
-          final hasPlannedStatus = currentLedger.transactions.any(
-            (t) => t.status == 'planned',
-          );
-          if (hasPlannedStatus) {
-            final updatedTransactions = currentLedger.transactions.map((t) {
-              if (t.status == 'planned') {
-                return t.copyWith(status: 'scheduled');
-              }
-              return t;
-            }).toList();
-            await _ledger.restoreLedgerState(
-              currentLedger.copyWith(transactions: updatedTransactions),
-            );
-            await uploadSnapshot(reason: 'migration_fix_status');
-          }
-        }
-
         if (!shouldPull && hasUnsyncedChanges) {
           state = state.copyWith(
             phase: CloudSyncPhase.idle,
@@ -759,7 +717,9 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         // No cloud wallet data of any kind (neither the modern chunked
         // backup nor the legacy per-document collections) — a genuinely
         // fresh account.
-        if (_walletHasUserData(_ref.read(ledgerProvider))) {
+        final localNow = _ref.read(ledgerProvider);
+        if (_walletHasUserData(localNow) &&
+            (localNow.userId == userId || localNow.userId == 'local-user')) {
           // No cloud data, but we have local data. Push local to cloud.
           await uploadSnapshot(reason: 'seed');
         } else {
@@ -1454,16 +1414,28 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     }
 
     // Tier 3: If both chunked and legacy collections have 0 accounts/txns,
-    // check if the local device has an auto-backup file!
+    // check if the local device has an auto-backup file belonging to this user!
     try {
-      final autoBackupFile = await _ledger.getLatestAutoBackupFile();
+      final authUser = _ref.read(authControllerProvider).user;
+      final userIdentity = (authUser != null && authUser.id == userId)
+          ? LedgerUserIdentity(
+              userId: authUser.id,
+              email: authUser.email,
+              displayName: authUser.displayName,
+            )
+          : LedgerUserIdentity(userId: userId, email: '');
+      final autoBackupFile = await _ledger.getLatestAutoBackupFile(
+        userOverride: userIdentity,
+      );
       if (autoBackupFile != null && await autoBackupFile.exists()) {
         debugPrint(
           'CloudSync _fetchCloudRestoreData: checking local auto-backup file: ${autoBackupFile.path}',
         );
         final content = await autoBackupFile.readAsString();
         final localState = decodeLedgerArchive(content);
-        if (localState.accounts.isNotEmpty || localState.transactions.isNotEmpty) {
+        if (localState.userId == userId &&
+            (localState.accounts.isNotEmpty ||
+                localState.transactions.isNotEmpty)) {
           debugPrint(
             'CloudSync _fetchCloudRestoreData: recovered ${localState.accounts.length} accounts and ${localState.transactions.length} transactions from auto-backup!',
           );
@@ -1559,7 +1531,9 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       await CloudSyncMetadata.clear();
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('has_unsynced_changes');
+      await prefs.remove('last_local_modified_at');
       _disableSync();
+      _localClearInProgress = false;
     }
   }
 
