@@ -947,165 +947,219 @@ Future<int?> showDayOfMonthPicker({
   required String title,
   int? initialDay,
 }) async {
+  final theme = Theme.of(context);
+  final scheme = theme.colorScheme;
+  final isAmoled =
+      theme.scaffoldBackgroundColor == AppColors.amoledBackground;
+  final isDesktop = AppResponsiveLayout.isDesktop(context);
+
+  Widget buildPickerContent(BuildContext pickerContext) {
+    final inner = Padding(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: scheme.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.calendar_month_rounded,
+                  color: scheme.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      'Choose day of each month (1 - 31)',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              if (initialDay != null)
+                TextButton.icon(
+                  onPressed: () => Navigator.of(pickerContext).pop(0),
+                  icon: const Icon(Icons.clear_rounded, size: 16),
+                  label: const Text('Clear'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: scheme.error,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                ),
+              if (isDesktop) ...[
+                const SizedBox(width: AppSpacing.xs),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded),
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Close',
+                  onPressed: () => Navigator.of(pickerContext).pop(),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          // Weekday header
+          Row(
+            children: [
+              for (final d in ['S', 'M', 'T', 'W', 'T', 'F', 'S'])
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      d,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate:
+                const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+            ),
+            itemCount: 31,
+            itemBuilder: (context, index) {
+              final day = index + 1;
+              final isSelected = day == initialDay;
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => Navigator.of(pickerContext).pop(day),
+                  borderRadius: BorderRadius.circular(12),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? scheme.primary
+                          : (isAmoled
+                              ? AppColors.amoledBackground
+                              : scheme.surfaceContainerHighest
+                                  .withValues(alpha: 0.5)),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected
+                            ? scheme.primary
+                            : (isAmoled
+                                ? Colors.white.withAlpha(24)
+                                : scheme.outlineVariant
+                                    .withValues(alpha: 0.5)),
+                        width: isSelected ? 2.0 : 1.0,
+                      ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: scheme.primary
+                                    .withValues(alpha: 0.35),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '$day',
+                      style: TextStyle(
+                        fontWeight: isSelected
+                            ? FontWeight.w900
+                            : FontWeight.w600,
+                        color: isSelected
+                            ? scheme.onPrimary
+                            : scheme.onSurface,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+
+    if (isAmoled) {
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.amoledBackground,
+          borderRadius: BorderRadius.circular(AppRadii.xl),
+          border: Border.all(
+            color: Colors.white.withAlpha(24),
+            width: 0.8,
+          ),
+        ),
+        child: inner,
+      );
+    }
+
+    return GlassCard(
+      useOwnLayer: true,
+      quality: GlassQuality.standard,
+      shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.xl),
+      child: inner,
+    );
+  }
+
+  if (isDesktop) {
+    return showDialog<int?>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.all(AppSpacing.lg),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: buildPickerContent(dialogContext),
+        ),
+      ),
+    );
+  }
+
   return showModalBottomSheet<int?>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     elevation: 0,
-    builder: (context) {
-      final theme = Theme.of(context);
-      final scheme = theme.colorScheme;
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            AppSpacing.md,
-            AppSpacing.md,
-            AppSpacing.lg,
-          ),
-          child: GlassCard(
-            quality: GlassQuality.premium,
-            shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.xl),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: scheme.primary.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          Icons.calendar_month_rounded,
-                          color: scheme.primary,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            Text(
-                              'Choose day of each month (1 - 31)',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: scheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (initialDay != null)
-                        TextButton.icon(
-                          onPressed: () => Navigator.of(context).pop(0),
-                          icon: const Icon(Icons.clear_rounded, size: 16),
-                          label: const Text('Clear'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: scheme.error,
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  // Weekday header
-                  Row(
-                    children: [
-                      for (final d in ['S', 'M', 'T', 'W', 'T', 'F', 'S'])
-                        Expanded(
-                          child: Center(
-                            child: Text(
-                              d,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 7,
-                      mainAxisSpacing: 8,
-                      crossAxisSpacing: 8,
-                    ),
-                    itemCount: 31,
-                    itemBuilder: (context, index) {
-                      final day = index + 1;
-                      final isSelected = day == initialDay;
-                      return Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () => Navigator.of(context).pop(day),
-                          borderRadius: BorderRadius.circular(12),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 150),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? scheme.primary
-                                  : scheme.surfaceContainerHighest
-                                      .withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: isSelected
-                                    ? scheme.primary
-                                    : scheme.outlineVariant
-                                        .withValues(alpha: 0.5),
-                                width: isSelected ? 2.0 : 1.0,
-                              ),
-                              boxShadow: isSelected
-                                  ? [
-                                      BoxShadow(
-                                        color: scheme.primary
-                                            .withValues(alpha: 0.35),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              '$day',
-                              style: TextStyle(
-                                fontWeight: isSelected
-                                    ? FontWeight.w900
-                                    : FontWeight.w600,
-                                color: isSelected
-                                    ? scheme.onPrimary
-                                    : scheme.onSurface,
-                                fontSize: 15,
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
+    constraints: const BoxConstraints(maxWidth: 460),
+    builder: (sheetContext) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.lg,
         ),
-      );
-    },
+        child: buildPickerContent(sheetContext),
+      ),
+    ),
   );
 }

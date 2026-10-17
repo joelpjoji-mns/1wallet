@@ -1046,6 +1046,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      constraints: const BoxConstraints(maxWidth: 640),
       builder: (sheetContext) => _MergeTransactionsSheet(
         state: state,
         selectedTransactions: selectedList,

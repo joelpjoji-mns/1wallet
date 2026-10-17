@@ -453,6 +453,7 @@ class _NotificationCaptureScreenState
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      constraints: const BoxConstraints(maxWidth: 640),
       builder: (sheetContext) {
         final state = ref.watch(ledgerProvider);
         final theme = Theme.of(sheetContext);

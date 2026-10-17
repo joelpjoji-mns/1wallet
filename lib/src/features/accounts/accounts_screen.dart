@@ -243,19 +243,18 @@ class _CurrencySummaryHeader extends StatelessWidget {
         return b.value.abs().compareTo(a.value.abs());
       });
 
-    return GlassCard(
-      margin: EdgeInsets.zero,
-      padding: EdgeInsets.zero,
-      shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-      quality: GlassQuality.minimal,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+    final theme = Theme.of(context);
+    final isAmoled =
+        theme.scaffoldBackgroundColor == AppColors.amoledBackground;
+
+    final inner = Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
             for (final entry in currencyEntries)
               Padding(
                 padding: const EdgeInsets.only(bottom: 2),
@@ -292,7 +291,28 @@ class _CurrencySummaryHeader extends StatelessWidget {
               ),
           ],
         ),
-      ),
+      );
+
+    if (isAmoled) {
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.amoledBackground,
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          border: Border.all(
+            color: Colors.white.withAlpha(24),
+            width: 0.8,
+          ),
+        ),
+        child: inner,
+      );
+    }
+
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      padding: EdgeInsets.zero,
+      shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+      quality: GlassQuality.minimal,
+      child: inner,
     );
   }
 }

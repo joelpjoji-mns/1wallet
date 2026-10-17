@@ -108,22 +108,51 @@ class ReviewQueueScreen extends ConsumerWidget {
 
   /// Empty state wrapped in a centred GlassCard for visual polish.
   Widget _buildEmptyState(BuildContext context) {
+    final theme = Theme.of(context);
+    final isAmoled =
+        theme.scaffoldBackgroundColor == AppColors.amoledBackground;
+
+    const content = EmptyState(
+      icon: Icons.done_all_rounded,
+      title: 'All caught up',
+      body: 'New transactions and alerts will appear here.',
+    );
+
+    if (isAmoled) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl,
+              vertical: AppSpacing.xxl,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.amoledBackground,
+              borderRadius: BorderRadius.circular(AppRadii.lg),
+              border: Border.all(
+                color: Colors.white.withAlpha(24),
+                width: 0.8,
+              ),
+            ),
+            child: content,
+          ),
+        ),
+      );
+    }
+
     return const Center(
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl),
         child: GlassCard(
           useOwnLayer: true,
-          quality: GlassQuality.premium,
+          quality: GlassQuality.standard,
           padding: EdgeInsets.symmetric(
             horizontal: AppSpacing.xl,
             vertical: AppSpacing.xxl,
           ),
           shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.lg),
-          child: EmptyState(
-            icon: Icons.done_all_rounded,
-            title: 'All caught up',
-            body: 'New transactions and alerts will appear here.',
-          ),
+          child: content,
         ),
       ),
     );

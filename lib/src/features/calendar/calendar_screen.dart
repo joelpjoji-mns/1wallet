@@ -565,102 +565,153 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       state.preferences.locale,
     );
 
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      isScrollControlled: true,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: GlassCard(
-            quality: GlassQuality.premium,
-            shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.lg),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        DateFormat.yMMMMd(
-                          state.preferences.locale.replaceAll('_', '-'),
-                        ).format(date),
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const Spacer(),
-                      PrivacyText(
-                        balanceDisplay,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: balanceMinor < 0
-                                  ? Theme.of(context).colorScheme.error
-                                  : Theme.of(context).colorScheme.primary,
-                            ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  if (records.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.xxl,
-                      ),
-                      child: Center(
-                        child: Text(
-                          'No records on this day',
-                          style: TextStyle(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 280),
-                      child: AppTopFadeMask(
-                        child: ListView.separated(
-                          shrinkWrap: true,
-                          itemCount: records.length,
-                          separatorBuilder: (context, index) =>
-                              const SizedBox(height: AppSpacing.sm),
-                          itemBuilder: (context, index) {
-                            final transaction = records[index];
-                            return TransactionRow(
-                              state: state,
-                              transaction: transaction,
-                              onTap: () {
-                                if (transaction.status == 'forecast') {
-                                  final templateId =
-                                      transaction.originalTransactionId;
-                                  if (templateId != null) {
-                                    context.push('/recurring/$templateId/edit');
-                                  }
-                                } else {
-                                  context.push('/transaction/${transaction.id}');
-                                }
-                              },
-                            );
-                          },
-                        ),
-                      ),
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isAmoled =
+        theme.scaffoldBackgroundColor == AppColors.amoledBackground;
+    final isDesktop = AppResponsiveLayout.isDesktop(context);
+
+    Widget buildCardContent(BuildContext modalContext) {
+      final inner = Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    DateFormat.yMMMMd(
+                      state.preferences.locale.replaceAll('_', '-'),
+                    ).format(date),
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
                     ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                PrivacyText(
+                  balanceDisplay,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: balanceMinor < 0
+                        ? scheme.error
+                        : scheme.primary,
+                  ),
+                ),
+                if (isDesktop) ...[
+                  const SizedBox(width: AppSpacing.xs),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.of(modalContext).pop(),
+                  ),
                 ],
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            if (records.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: AppSpacing.xxl,
+                ),
+                child: Center(
+                  child: Text(
+                    'No records on this day',
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              )
+            else
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 280),
+                child: AppTopFadeMask(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: records.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: AppSpacing.sm),
+                    itemBuilder: (context, index) {
+                      final transaction = records[index];
+                      return TransactionRow(
+                        state: state,
+                        transaction: transaction,
+                        glass: false,
+                        onTap: () {
+                          if (transaction.status == 'forecast') {
+                            final templateId =
+                                transaction.originalTransactionId;
+                            if (templateId != null) {
+                              context.push('/recurring/$templateId/edit');
+                            }
+                          } else {
+                            context.push('/transaction/${transaction.id}');
+                          }
+                        },
+                      );
+                    },
+                  ),
+                ),
               ),
+          ],
+        ),
+      );
+
+      if (isAmoled) {
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            color: AppColors.amoledBackground,
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(
+              color: Colors.white.withAlpha(24),
+              width: 0.8,
             ),
           ),
+          child: inner,
+        );
+      }
+
+      return GlassCard(
+        useOwnLayer: true,
+        quality: GlassQuality.standard,
+        shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.lg),
+        child: inner,
+      );
+    }
+
+    if (isDesktop) {
+      showDialog<void>(
+        context: context,
+        builder: (dialogContext) => Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding: const EdgeInsets.all(AppSpacing.lg),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: buildCardContent(dialogContext),
+          ),
         ),
-      ),
-    );
+      );
+    } else {
+      showModalBottomSheet<void>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        isScrollControlled: true,
+        constraints: const BoxConstraints(maxWidth: 540),
+        builder: (sheetContext) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: buildCardContent(sheetContext),
+          ),
+        ),
+      );
+    }
   }
 }
 
