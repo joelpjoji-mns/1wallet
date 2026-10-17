@@ -59,7 +59,7 @@ void main() {
 
     final prefs = await SharedPreferences.getInstance();
     final container = ProviderContainer(
-      overrides: authenticatedSampleOverrides(prefs: prefs),
+      overrides: authenticatedSampleOverrides(ledger: seedState, prefs: prefs),
     );
     addTearDown(container.dispose);
     await container.read(ledgerProvider.notifier).restoreLedgerState(seedState);

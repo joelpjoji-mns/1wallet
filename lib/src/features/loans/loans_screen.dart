@@ -2611,7 +2611,12 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
         if (result.impact.interestSavedMinor > 0 ||
             result.impact.monthsSaved > 0)
           Container(
-            margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+            margin: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              0,
+              AppSpacing.md,
+              AppSpacing.lg,
+            ),
             padding: const EdgeInsets.all(AppSpacing.lg),
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -2635,11 +2640,13 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                   children: [
                     const Icon(Icons.bolt, color: Colors.white, size: 28),
                     const SizedBox(width: 8),
-                    Text(
-                      'Accelerated Impact',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Text(
+                        'Accelerated Impact',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -2750,6 +2757,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   DropdownButtonFormField<int>(
+                    isExpanded: true,
                     initialValue:
                         const [
                           0,

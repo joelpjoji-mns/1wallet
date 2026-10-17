@@ -29,11 +29,16 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
 
     // Initialize or update _order
     _order ??= [];
-    final currentIds = state.accounts.map((a) => a.id).toSet();
+    final currentIds = state.accounts
+        .where((a) => !a.isDeleted)
+        .map((a) => a.id)
+        .toSet();
     _order!.removeWhere((id) => !currentIds.contains(id));
     final existingIds = _order!.toSet();
 
-    final sortedAccounts = state.accounts.toList()
+    final sortedAccounts = state.accounts
+        .where((a) => !a.isDeleted)
+        .toList()
       ..sort((left, right) => left.sortOrder.compareTo(right.sortOrder));
     for (final acc in sortedAccounts) {
       if (!existingIds.contains(acc.id)) {
@@ -169,6 +174,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
     final order = _order ?? const <String>[];
     final byId = {for (final account in state.accounts) account.id: account};
     return order.map((id) => byId[id]).whereType<Account>().where((account) {
+      if (account.isDeleted) return false;
       if (!state.preferences.showArchivedAccounts && account.isArchived) {
         return false;
       }

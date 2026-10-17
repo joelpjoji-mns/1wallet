@@ -712,17 +712,43 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
   }
 
   Future<void> _confirmDeleteAccount(LedgerState state, Account account) async {
+    // 1. Check if the account is currently tied to any active plans / scheduled transactions
+    final activePlans = state.transactions.where(
+      (transaction) =>
+          (transaction.accountId == account.id ||
+              transaction.counterAccountId == account.id) &&
+          (transaction.status == 'scheduled' || transaction.status == 'paused'),
+    ).toList();
+
+    if (activePlans.isNotEmpty) {
+      final planCount = activePlans.length;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Cannot delete account'),
+          content: Text(
+            '“${account.name}” is currently linked to $planCount planned payment${planCount == 1 ? '' : 's'}.\n\nPlease edit or delete those planned payments first before deleting this account.',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     final hasLinkedTransactions = _accountHasLinkedTransactions(state, account);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(
-          hasLinkedTransactions ? 'Archive account?' : 'Delete account?',
-        ),
+        title: const Text('Delete account?'),
         content: Text(
           hasLinkedTransactions
-              ? '“${account.name}” has linked records, so it will be archived instead of permanently deleted. This change will sync with your wallet.'
-              : 'This permanently removes “${account.name}” from your wallet. This deletion will sync with your wallet.',
+              ? 'This will delete “${account.name}” from your active accounts. All previous transactions under this account will remain safely preserved in your history.'
+              : 'This permanently removes “${account.name}” from your wallet.',
         ),
         actions: [
           TextButton(
@@ -731,7 +757,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
           ),
           FilledButton.tonal(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(hasLinkedTransactions ? 'Archive' : 'Delete'),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -743,7 +769,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
       if (!mounted) return;
       _showAccountMessage(
         hasLinkedTransactions
-            ? 'Account archived. Sync will update shortly.'
+            ? 'Account deleted. Historical transactions preserved.'
             : 'Account deleted. Sync will update shortly.',
       );
       if (context.canPop()) {

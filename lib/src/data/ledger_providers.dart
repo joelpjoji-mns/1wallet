@@ -1683,7 +1683,7 @@ class LedgerController extends StateNotifier<LedgerState> {
           transaction.accountId == id || transaction.counterAccountId == id,
     );
 
-    // Pause any active scheduled transactions connected to this account
+    // Cancel or pause any active scheduled transactions connected to this account
     final transactions = state.transactions.map((transaction) {
       if ((transaction.accountId == id || transaction.counterAccountId == id) &&
           transaction.status == 'scheduled') {
@@ -1693,9 +1693,21 @@ class LedgerController extends StateNotifier<LedgerState> {
     }).toList();
 
     if (isUsed) {
+      // Mark as deleted so it is completely removed from all active and archived
+      // account screens, but retain its historical snapshot (isDeleted = true, isArchived = true)
+      // so older posted transactions keep their full account context and names.
       final accounts = [
         for (final account in state.accounts)
-          account.id == id ? account.copyWith(isArchived: true) : account,
+          account.id == id
+              ? account.copyWith(
+                  isDeleted: true,
+                  isArchived: true,
+                  includeInTotals: false,
+                  includeInReports: false,
+                  includeInNetWorth: false,
+                  showOnHome: false,
+                )
+              : account,
       ];
       await _commit(
         state.copyWith(accounts: accounts, transactions: transactions),

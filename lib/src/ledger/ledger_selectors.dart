@@ -357,10 +357,10 @@ Money totalBalance(
   final balances = accountBalanceMap(state);
   final accounts = accountId != null
       ? (accountId == 'cash_group'
-            ? state.accounts.where((a) => a.type == 'cash' && !a.isArchived)
-            : state.accounts.where((a) => a.id == accountId))
+            ? state.accounts.where((a) => a.type == 'cash' && !a.isArchived && !a.isDeleted)
+            : state.accounts.where((a) => a.id == accountId && !a.isDeleted))
       : state.accounts.where(
-          (account) => !account.isArchived && account.includeInTotals,
+          (account) => !account.isArchived && !account.isDeleted && account.includeInTotals,
         );
   final total = accounts.fold<int>(0, (sum, account) {
     final converted = convertMoneyForDisplay(
@@ -378,7 +378,7 @@ Money totalBalance(
   var liabilities = 0;
   final balances = accountBalanceMap(state);
   for (final account in state.accounts) {
-    if (account.isArchived || !account.includeInNetWorth) continue;
+    if (account.isArchived || account.isDeleted || !account.includeInNetWorth) continue;
     final balance = convertMoneyForDisplay(
       state,
       accountBalanceFromMap(balances, account),

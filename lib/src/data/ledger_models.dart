@@ -529,6 +529,7 @@ class Account {
     this.includeInNetWorth = true,
     this.showOnHome = true,
     this.isArchived = false,
+    this.isDeleted = false,
     this.sortOrder = 0,
     this.creditLimit,
     this.statementDay,
@@ -554,6 +555,7 @@ class Account {
   final bool includeInNetWorth;
   final bool showOnHome;
   final bool isArchived;
+  final bool isDeleted;
   final int sortOrder;
   final Money? creditLimit;
   final int? statementDay;
@@ -587,6 +589,7 @@ class Account {
     bool? includeInNetWorth,
     bool? showOnHome,
     bool? isArchived,
+    bool? isDeleted,
     int? sortOrder,
     Money? creditLimit,
     int? statementDay,
@@ -612,6 +615,7 @@ class Account {
       includeInNetWorth: includeInNetWorth ?? this.includeInNetWorth,
       showOnHome: showOnHome ?? this.showOnHome,
       isArchived: isArchived ?? this.isArchived,
+      isDeleted: isDeleted ?? this.isDeleted,
       sortOrder: sortOrder ?? this.sortOrder,
       creditLimit: creditLimit ?? this.creditLimit,
       statementDay: statementDay ?? this.statementDay,

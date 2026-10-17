@@ -493,34 +493,45 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Filtered Total',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  Flexible(
+                    child: Text(
+                      'Filtered Total',
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
-                  Row(
-                    children: [
-                      if (flow.income.amountMinor > 0)
-                        Text(
-                          '+${formatMoney(flow.income, state.preferences.locale)}',
-                          style: TextStyle(
-                            color: positiveTone(context),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      if (flow.income.amountMinor > 0 &&
-                          flow.expense.amountMinor > 0)
-                        const SizedBox(width: AppSpacing.md),
-                      if (flow.expense.amountMinor > 0)
-                        Text(
-                          '-${formatMoney(flow.expense, state.preferences.locale)}',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                    ],
+                  const SizedBox(width: AppSpacing.sm),
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (flow.income.amountMinor > 0)
+                            Text(
+                              '+${formatMoney(flow.income, state.preferences.locale)}',
+                              style: TextStyle(
+                                color: positiveTone(context),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          if (flow.income.amountMinor > 0 &&
+                              flow.expense.amountMinor > 0)
+                            const SizedBox(width: AppSpacing.md),
+                          if (flow.expense.amountMinor > 0)
+                            Text(
+                              '-${formatMoney(flow.expense, state.preferences.locale)}',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),

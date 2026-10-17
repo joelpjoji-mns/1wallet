@@ -538,6 +538,7 @@ Map<String, Object?> _accountToJson(Account account) {
     'includeInNetWorth': account.includeInNetWorth,
     'showOnHome': account.showOnHome,
     'isArchived': account.isArchived,
+    'isDeleted': account.isDeleted,
     'sortOrder': account.sortOrder,
     'creditLimit': account.creditLimit == null
         ? null
@@ -597,6 +598,7 @@ Account _accountFromJson(Map<String, dynamic> json) {
     includeInNetWorth: _bool(json['includeInNetWorth'], fallback: true),
     showOnHome: _bool(json['showOnHome'], fallback: true),
     isArchived: _bool(json['isArchived']),
+    isDeleted: _bool(json['isDeleted']),
     sortOrder: _int(json['sortOrder']),
     creditLimit: json['creditLimit'] == null
         ? null
