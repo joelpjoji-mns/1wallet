@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
+import 'package:one_wallet_flutter/src/design/tokens.dart';
 import 'package:one_wallet_flutter/src/features/home/home_async_providers.dart';
 import 'package:one_wallet_flutter/src/features/home/home_screen.dart';
 import 'package:one_wallet_flutter/src/features/home/home_widgets.dart';
@@ -77,4 +79,85 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'BalanceHomeWidget animates number when switching currency and updates symbol',
+    (WidgetTester tester) async {
+      final baseState = sampleLedgerState();
+      const accountEur = Account(
+        id: 'acc-eur',
+        name: 'Euro Savings',
+        type: 'bank',
+        currency: 'EUR',
+        openingBalance: Money(amountMinor: 500000, currency: 'EUR'),
+        color: AppColors.secondary,
+        sortOrder: 10,
+      );
+      final state = baseState.copyWith(
+        accounts: [...baseState.accounts, accountEur],
+        preferences: baseState.preferences.copyWith(
+          displayCurrency: 'INR',
+        ),
+      );
+      final container = ProviderContainer(
+        overrides: authenticatedSampleOverrides(ledger: state),
+      );
+      addTearDown(container.dispose);
+      await container.read(ledgerProvider.notifier).restoreLedgerState(state);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: BalanceHomeWidget(
+                state: state,
+                onTabSelected: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final initialTotal = container.read(homeTotalBalanceProvider((
+        accountId: null,
+        targetCurrency: 'INR',
+      )));
+      expect(
+        find.text(formatMoney(initialTotal, state.preferences.locale)),
+        findsOneWidget,
+      );
+
+      // Switch selected account to EUR account (triggers currency change from INR to EUR)
+      container.read(homeSelectedAccountProvider.notifier).state =
+          accountEur.id;
+
+      // Pump frame: animation starts
+      await tester.pump();
+
+      final targetEurTotal = container.read(homeTotalBalanceProvider((
+        accountId: accountEur.id,
+        targetCurrency: 'EUR',
+      )));
+
+      // Mid-animation frame at 300ms: has not yet reached targetEurTotal
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(
+        find.text(formatMoney(targetEurTotal, state.preferences.locale)),
+        findsNothing,
+      );
+      // But the symbol has immediately switched to EUR
+      expect(find.textContaining('€'), findsWidgets);
+
+      // Settle animation at 600ms: targetEurTotal is reached
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(formatMoney(targetEurTotal, state.preferences.locale)),
+        findsOneWidget,
+      );
+    },
+  );
 }

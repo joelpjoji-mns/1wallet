@@ -246,7 +246,6 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
           ),
           const SizedBox(height: 2),
           TweenAnimationBuilder<double>(
-            key: ValueKey(total.currency),
             duration: const Duration(milliseconds: 600),
             curve: Curves.easeOutCubic,
             tween: Tween<double>(
