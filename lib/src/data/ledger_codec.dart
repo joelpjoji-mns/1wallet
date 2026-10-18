@@ -524,6 +524,7 @@ Map<String, Object?> _accountToJson(Account account) {
     'type': account.type,
     'currency': account.currency,
     'openingBalance': _moneyToJson(account.openingBalance),
+    'openingBalances': account.openingBalances.map(_moneyToJson).toList(),
     'color': account.color?.toARGB32(),
     'institution': account.institution,
     'groupName': account.groupName,
@@ -584,6 +585,16 @@ Account _accountFromJson(Map<String, dynamic> json) {
       json['openingBalance'],
       fallback: Money(amountMinor: 0, currency: currency),
     ),
+    openingBalances: (json['openingBalances'] as List<dynamic>?)
+            ?.whereType<Map<String, dynamic>>()
+            .map(
+              (m) => _moneyFromJson(
+                m,
+                fallback: Money(amountMinor: 0, currency: currency),
+              ),
+            )
+            .toList() ??
+        const [],
     color: _color(json['color']),
     institution: _nullableString(json['institution']),
     groupName: _nullableString(json['groupName']),

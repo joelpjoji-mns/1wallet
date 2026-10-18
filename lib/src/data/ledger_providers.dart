@@ -1589,8 +1589,9 @@ class LedgerController extends StateNotifier<LedgerState> {
     String? id,
     required String name,
     required String type,
-    required String currency,
+    String currency = kDefaultCurrency,
     int? openingBalanceMinor,
+    List<Money>? openingBalances,
     Color? color,
     String? institution,
     String? groupName,
@@ -1610,15 +1611,42 @@ class LedgerController extends StateNotifier<LedgerState> {
     bool isArchived = false,
   }) async {
     final existing = accountById(state, id);
+    final isCash = type == 'cash';
+    final resolvedOpeningBalances =
+        openingBalances ?? existing?.openingBalances ?? const [];
+    final effectiveCurrency = isCash
+        ? (resolvedOpeningBalances.isNotEmpty
+            ? resolvedOpeningBalances.first.currency
+            : (currency.isNotEmpty
+                ? currency
+                : existing?.currency ?? state.preferences.baseCurrency))
+        : (currency.isNotEmpty
+            ? currency
+            : existing?.currency ?? state.preferences.baseCurrency);
+    final effectiveOpeningBalance = isCash
+        ? (resolvedOpeningBalances.isNotEmpty
+            ? resolvedOpeningBalances.first
+            : (openingBalanceMinor == null
+                ? existing?.openingBalance ??
+                    Money(amountMinor: 0, currency: effectiveCurrency)
+                : Money(
+                    amountMinor: openingBalanceMinor,
+                    currency: effectiveCurrency,
+                  )))
+        : (openingBalanceMinor == null
+            ? existing?.openingBalance ??
+                Money(amountMinor: 0, currency: effectiveCurrency)
+            : Money(
+                amountMinor: openingBalanceMinor,
+                currency: effectiveCurrency,
+              ));
     final account = Account(
       id: existing?.id ?? id ?? _newId('acc'),
       name: name.trim().isEmpty ? 'New account' : name.trim(),
       type: type,
-      currency: currency,
-      openingBalance: openingBalanceMinor == null
-          ? existing?.openingBalance ??
-                Money(amountMinor: 0, currency: currency)
-          : Money(amountMinor: openingBalanceMinor, currency: currency),
+      currency: effectiveCurrency,
+      openingBalance: effectiveOpeningBalance,
+      openingBalances: resolvedOpeningBalances,
       color: color ?? existing?.color,
       institution: _blankToNull(institution),
       groupName: _blankToNull(groupName),

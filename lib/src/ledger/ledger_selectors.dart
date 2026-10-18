@@ -121,6 +121,21 @@ Map<String, Money> accountBalanceMap(LedgerState state) {
     }
   }
 
+  for (final account in state.accounts) {
+    if (account.type == 'cash') {
+      final cashBalances = cashCurrencyBalancesForAccount(state, account);
+      var totalConvertedMinor = 0;
+      for (final b in cashBalances) {
+        final converted = convertMoneyForDisplay(state, b, account.currency);
+        totalConvertedMinor += converted.amountMinor;
+      }
+      balances[account.id] = Money(
+        amountMinor: totalConvertedMinor,
+        currency: account.currency,
+      );
+    }
+  }
+
   _accountBalanceMapExpando[state] = balances;
   return balances;
 }
@@ -135,6 +150,15 @@ Money accountBalance(LedgerState state, Account account) {
   // in list builds stay O(1) instead of O(transactions) each.
   final cached = accountBalanceMap(state)[account.id];
   if (cached != null) return cached;
+  if (account.type == 'cash') {
+    final cashBalances = cashCurrencyBalancesForAccount(state, account);
+    var totalConvertedMinor = 0;
+    for (final b in cashBalances) {
+      final converted = convertMoneyForDisplay(state, b, account.currency);
+      totalConvertedMinor += converted.amountMinor;
+    }
+    return Money(amountMinor: totalConvertedMinor, currency: account.currency);
+  }
   var amountMinor = account.openingBalance.amountMinor;
   for (final transaction in state.transactions) {
     if (transaction.status == 'scheduled' ||
@@ -195,7 +219,14 @@ List<Money> cashCurrencyBalancesForAccount(LedgerState state, Account account) {
     );
   }
 
-  addMoney(account.openingBalance, 1);
+  for (final opening in account.effectiveOpeningBalances) {
+    final currency = opening.currency.toUpperCase();
+    balancesByCurrency.putIfAbsent(
+      currency,
+      () => Money(amountMinor: 0, currency: currency),
+    );
+    addMoney(opening, 1);
+  }
 
   for (final transaction in state.transactions) {
     if (transaction.status == 'scheduled' ||
@@ -225,7 +256,13 @@ List<Money> cashCurrencyBalancesForAccount(LedgerState state, Account account) {
   }
 
   final balances = balancesByCurrency.values
-      .where((m) => m.amountMinor != 0)
+      .where(
+        (m) =>
+            m.amountMinor != 0 ||
+            account.effectiveOpeningBalances.any(
+              (o) => o.currency.toUpperCase() == m.currency.toUpperCase(),
+            ),
+      )
       .toList();
   balances.sort((left, right) {
     final accountCurrency = account.currency.toUpperCase();

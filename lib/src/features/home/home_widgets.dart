@@ -245,15 +245,29 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
             ],
           ),
           const SizedBox(height: 2),
-          PrivacyText(
-            formatMoney(total, widget.state.preferences.locale),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-              fontSize: 40,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -1.2,
+          TweenAnimationBuilder<double>(
+            key: ValueKey(total.currency),
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOutCubic,
+            tween: Tween<double>(
+              begin: total.amountMinor.toDouble(),
+              end: total.amountMinor.toDouble(),
             ),
+            builder: (context, amountMinor, child) {
+              return PrivacyText(
+                formatMoney(
+                  total.copyWith(amountMinor: amountMinor.round()),
+                  widget.state.preferences.locale,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                  fontSize: 40,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -1.2,
+                ),
+              );
+            },
           ),
 
           const SizedBox(height: AppSpacing.xs),

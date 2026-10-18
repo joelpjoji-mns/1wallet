@@ -338,8 +338,37 @@ class _AccountRow extends StatelessWidget {
       balance,
       displayCurrency,
     );
+    final isCash = account.type == 'cash';
+    final cashBreakdown =
+        isCash ? cashCurrencyBalancesForAccount(state, account) : <Money>[];
     final isDifferentCurrency =
         account.currency.toUpperCase() != displayCurrency.toUpperCase();
+
+    final String metaText;
+    final String? metaSubtitleText;
+    if (isCash && cashBreakdown.isNotEmpty) {
+      metaText = maskMoneyIfPrivate(
+        state,
+        formatMoney(displayBalance, state.preferences.locale),
+      );
+      metaSubtitleText = maskMoneyIfPrivate(
+        state,
+        cashBreakdown
+            .map((m) => formatMoney(m, state.preferences.locale))
+            .join(' · '),
+      );
+    } else {
+      metaText = maskMoneyIfPrivate(
+        state,
+        formatMoney(balance, state.preferences.locale),
+      );
+      metaSubtitleText = isDifferentCurrency
+          ? maskMoneyIfPrivate(
+              state,
+              formatMoney(displayBalance, state.preferences.locale),
+            )
+          : null;
+    }
 
     return PremiumRow(
       icon: accountIcon(account),
@@ -348,20 +377,12 @@ class _AccountRow extends StatelessWidget {
         accountTypeLabel(account.type),
         if (account.displayLast4 != null)
           '${account.displayLast4Label} •••• ${account.displayLast4}',
-        account.currency,
+        if (!isCash) account.currency else 'Multi-currency',
         account.institution,
         account.groupName,
       ].whereType<String>().join(' · '),
-      meta: maskMoneyIfPrivate(
-        state,
-        formatMoney(balance, state.preferences.locale),
-      ),
-      metaSubtitle: isDifferentCurrency
-          ? maskMoneyIfPrivate(
-              state,
-              formatMoney(displayBalance, state.preferences.locale),
-            )
-          : null,
+      meta: metaText,
+      metaSubtitle: metaSubtitleText,
       iconColor: accountDisplayColor(account),
       onTap: () => context.push('/account/${account.id}'),
     );

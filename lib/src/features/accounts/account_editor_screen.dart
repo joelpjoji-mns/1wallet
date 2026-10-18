@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
@@ -37,12 +38,21 @@ class AccountEditorScreen extends ConsumerStatefulWidget {
       _AccountEditorScreenState();
 }
 
+class _CashOpeningDraft {
+  _CashOpeningDraft({required this.currency, required String amount})
+      : controller = TextEditingController(text: amount);
+
+  String currency;
+  final TextEditingController controller;
+}
+
 class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
   final _nameController = TextEditingController();
   final _institutionController = TextEditingController();
   final _creditLimitController = TextEditingController();
   final _openingBalanceController = TextEditingController();
   final _notifyDaysController = TextEditingController();
+  final List<_CashOpeningDraft> _cashOpenings = [];
   int? _statementDay;
   int? _dueDay;
   String? _loadedAccountId;
@@ -69,6 +79,9 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     _creditLimitController.dispose();
     _openingBalanceController.dispose();
     _notifyDaysController.dispose();
+    for (final draft in _cashOpenings) {
+      draft.controller.dispose();
+    }
     super.dispose();
   }
 
@@ -76,7 +89,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(ledgerProvider);
     final account = accountById(state, widget.accountId);
-    _syncForm(account);
+    _syncForm(state, account);
     final isNew = account == null;
     final selectedColor =
         _selectedColor ??
@@ -86,8 +99,10 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
         ? Theme.of(context).colorScheme.onSurface
         : Theme.of(context).colorScheme.surface;
 
-    final isCardType =
-        _selectedType == 'card' || _selectedType == 'credit_card';
+    final currentType =
+        _selectedType ?? account?.type ?? widget.initialType ?? 'bank';
+    final isCash = currentType == 'cash';
+    final isCardType = currentType == 'card' || currentType == 'credit_card';
 
     return RouteScaffold(
       title: isNew ? 'New account' : account.name,
@@ -206,46 +221,123 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                     Expanded(
                       child: _DetailField(
                         icon: Icons.category_outlined,
-                        label: accountTypeLabel(
-                          _selectedType ?? account?.type ?? 'bank',
-                        ),
+                        label: accountTypeLabel(currentType),
                         onTap: () => _chooseAccountType(context),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: _DetailField(
-                        icon: Icons.currency_exchange_outlined,
-                        label: getCurrencyInfo(
-                          _selectedCurrency ??
-                              account?.currency ??
-                              state.preferences.baseCurrency,
-                        ).shortName,
-                        onTap: () => _chooseCurrency(context, state),
+                    if (isCash)
+                      const Expanded(
+                        child: _DetailField(
+                          icon: Icons.all_inclusive_rounded,
+                          label: 'Multi-currency',
+                          onTap: null,
+                        ),
+                      )
+                    else
+                      Expanded(
+                        child: _DetailField(
+                          icon: Icons.currency_exchange_outlined,
+                          label: getCurrencyInfo(
+                            _selectedCurrency ??
+                                account?.currency ??
+                                state.preferences.baseCurrency,
+                          ).shortName,
+                          onTap: () => _chooseCurrency(context, state),
+                        ),
                       ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.md),
-                TextFormField(
-                  controller: _openingBalanceController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                    signed: true,
+                if (isCash)
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(AppRadii.lg),
+                      border: Border.all(
+                        color: Theme.of(context)
+                            .dividerColor
+                            .withValues(alpha: 0.15),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Opening balances',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleSmall
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Initial cash in each currency you hold',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                          fontSize: 12,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            TextButton.icon(
+                              onPressed: () => _addCashCurrency(context, state),
+                              icon: const Icon(Icons.add_rounded, size: 18),
+                              label: const Text('Add currency'),
+                              style: TextButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.sm,
+                                  vertical: AppSpacing.xs,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        for (var i = 0; i < _cashOpenings.length; i++) ...[
+                          if (i > 0) const SizedBox(height: AppSpacing.xs),
+                          _buildCashOpeningRow(context, state, i),
+                        ],
+                      ],
+                    ),
+                  )
+                else
+                  TextFormField(
+                    controller: _openingBalanceController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                      signed: true,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.\-]')),
+                    ],
+                    decoration: const InputDecoration(
+                      labelText: 'Opening balance',
+                      prefixIcon: Icon(Icons.savings_outlined),
+                      helperText:
+                          'Use a negative amount if this account already '
+                          'carries a balance you owe (e.g. credit card or '
+                          'loan debt).',
+                      helperMaxLines: 2,
+                    ),
                   ),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.\-]')),
-                  ],
-                  decoration: const InputDecoration(
-                    labelText: 'Opening balance',
-                    prefixIcon: Icon(Icons.savings_outlined),
-                    helperText:
-                        'Use a negative amount if this account already '
-                        'carries a balance you owe (e.g. credit card or '
-                        'loan debt).',
-                    helperMaxLines: 2,
-                  ),
-                ),
                 const SizedBox(height: AppSpacing.md),
                 Row(
                   children: [
@@ -571,7 +663,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     }
   }
 
-  void _syncForm(Account? account) {
+  void _syncForm(LedgerState state, Account? account) {
     final key = account?.id ?? '__new__';
     if (_loadedAccountId == key) return;
     _loadedAccountId = key;
@@ -605,6 +697,27 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     } else {
       _openingBalanceController.text = '';
     }
+
+    for (final draft in _cashOpenings) {
+      draft.controller.dispose();
+    }
+    _cashOpenings.clear();
+    final baseCurr = account?.currency ?? state.preferences.baseCurrency;
+    if (account != null && account.effectiveOpeningBalances.isNotEmpty) {
+      for (final op in account.effectiveOpeningBalances) {
+        final amt = op.amountMinor / math.pow(10, minorUnits(op.currency));
+        final text =
+            amt == 0 ? '' : amt.toStringAsFixed(minorUnits(op.currency));
+        _cashOpenings.add(_CashOpeningDraft(currency: op.currency, amount: text));
+      }
+    }
+    if (_cashOpenings.isEmpty) {
+      _cashOpenings.add(_CashOpeningDraft(
+        currency: baseCurr,
+        amount: '',
+      ));
+    }
+
     _includeInTotals = account?.includeInTotals ?? true;
     _includeInReports = account?.includeInReports ?? true;
     _includeInNetWorth = account?.includeInNetWorth ?? true;
@@ -628,12 +741,57 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
       _showAccountMessage('Enter an account name before saving.');
       return;
     }
-    final currency =
+    final type = _selectedType ?? account?.type ?? 'bank';
+    final isCashType = type == 'cash';
+    final isCardType = type == 'card' || type == 'credit_card';
+
+    List<Money>? openingBalancesList;
+    int openingBalanceMinor = 0;
+    String currency =
         _selectedCurrency ??
         account?.currency ??
         state.preferences.baseCurrency;
-    final isCardType =
-        _selectedType == 'card' || _selectedType == 'credit_card';
+
+    if (isCashType) {
+      openingBalancesList = <Money>[];
+      for (final entry in _cashOpenings) {
+        final text = entry.controller.text.trim();
+        if (text.isEmpty) continue;
+        final isNeg = text.contains('-') || text.contains('(');
+        final digits = text.replaceAll(RegExp(r'[^0-9.]'), '');
+        final mag = double.tryParse(digits) ?? 0;
+        if (mag == 0 && !text.contains('0')) continue;
+        final minor =
+            ((isNeg ? -1 : 1) * mag * math.pow(10, minorUnits(entry.currency)))
+                .round();
+        openingBalancesList.add(
+          Money(amountMinor: minor, currency: entry.currency),
+        );
+      }
+      if (openingBalancesList.isNotEmpty) {
+        currency = openingBalancesList.first.currency;
+        openingBalanceMinor = openingBalancesList.first.amountMinor;
+      } else {
+        currency = account?.currency ?? state.preferences.baseCurrency;
+        openingBalanceMinor = 0;
+      }
+    } else {
+      final openingBalanceText = _openingBalanceController.text.trim();
+      final openingBalanceIsNegative =
+          openingBalanceText.contains('-') || openingBalanceText.contains('(');
+      final openingBalanceDigits = openingBalanceText.replaceAll(
+        RegExp(r'[^0-9.]'),
+        '',
+      );
+      final openingBalanceMagnitude =
+          double.tryParse(openingBalanceDigits) ?? 0;
+      openingBalanceMinor =
+          ((openingBalanceIsNegative ? -1 : 1) *
+                  openingBalanceMagnitude *
+                  math.pow(10, minorUnits(currency)))
+              .round();
+    }
+
     Money? parsedCreditLimit;
     int? statementDay;
     int? dueDay;
@@ -655,19 +813,6 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
       final nVal = int.tryParse(_notifyDaysController.text.trim());
       if (nVal != null) notifyDays = nVal.clamp(1, 30);
     }
-    final openingBalanceText = _openingBalanceController.text.trim();
-    final openingBalanceIsNegative =
-        openingBalanceText.contains('-') || openingBalanceText.contains('(');
-    final openingBalanceDigits = openingBalanceText.replaceAll(
-      RegExp(r'[^0-9.]'),
-      '',
-    );
-    final openingBalanceMagnitude = double.tryParse(openingBalanceDigits) ?? 0;
-    final openingBalanceMinor =
-        ((openingBalanceIsNegative ? -1 : 1) *
-                openingBalanceMagnitude *
-                math.pow(10, minorUnits(currency)))
-            .round();
 
     setState(() => _isSaving = true);
     try {
@@ -676,9 +821,10 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
           .upsertAccount(
             id: account?.id,
             name: name,
-            type: _selectedType ?? account?.type ?? 'bank',
+            type: type,
             currency: currency,
             openingBalanceMinor: openingBalanceMinor,
+            openingBalances: openingBalancesList,
             color: _selectedColor,
             institution: _institutionController.text,
             cardLast4: account?.cardLast4,
@@ -824,8 +970,152 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
       ],
     );
     if (next != null) {
-      setState(() => _selectedType = next);
+      setState(() {
+        _selectedType = next;
+        if (next == 'cash') {
+          if (_cashOpenings.isEmpty) {
+            _cashOpenings.add(_CashOpeningDraft(
+              currency: _selectedCurrency ?? 'USD',
+              amount: _openingBalanceController.text.trim(),
+            ));
+          }
+        } else {
+          if (_cashOpenings.isNotEmpty) {
+            _selectedCurrency = _cashOpenings.first.currency;
+            if (_cashOpenings.first.controller.text.trim().isNotEmpty) {
+              _openingBalanceController.text =
+                  _cashOpenings.first.controller.text.trim();
+            }
+          }
+        }
+      });
     }
+  }
+
+  Future<void> _addCashCurrency(BuildContext context, LedgerState state) async {
+    final next = await showCurrencyPicker(
+      context: context,
+      state: state,
+      selectedValue: state.preferences.baseCurrency,
+    );
+    if (next != null) {
+      if (_cashOpenings.any((e) => e.currency == next)) {
+        _showAccountMessage('$next is already in the list.');
+        return;
+      }
+      setState(() {
+        _cashOpenings.add(_CashOpeningDraft(currency: next, amount: ''));
+      });
+    }
+  }
+
+  Widget _buildCashOpeningRow(
+    BuildContext context,
+    LedgerState state,
+    int index,
+  ) {
+    final entry = _cashOpenings[index];
+    final currencyInfo = getCurrencyInfo(entry.currency);
+    final symbol =
+        NumberFormat.simpleCurrency(name: entry.currency).currencySymbol;
+
+    return Row(
+      children: [
+        InkWell(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          onTap: () async {
+            final next = await showCurrencyPicker(
+              context: context,
+              state: state,
+              selectedValue: entry.currency,
+            );
+            if (next != null && next != entry.currency) {
+              if (_cashOpenings.any((e) => e.currency == next)) {
+                _showAccountMessage('$next is already in the list.');
+                return;
+              }
+              setState(() => entry.currency = next);
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: Theme.of(context)
+                  .colorScheme
+                  .surfaceContainerHighest
+                  .withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              border: Border.all(
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (currencyInfo.flag.isNotEmpty) ...[
+                  Text(currencyInfo.flag, style: const TextStyle(fontSize: 16)),
+                  const SizedBox(width: AppSpacing.xs),
+                ] else ...[
+                  Icon(
+                    Icons.currency_exchange_outlined,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                ],
+                Text(
+                  entry.currency,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.arrow_drop_down, size: 16),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: TextFormField(
+            controller: entry.controller,
+            keyboardType: const TextInputType.numberWithOptions(
+              decimal: true,
+              signed: true,
+            ),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9.\-]')),
+            ],
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: '0.00',
+              prefixText: '$symbol ',
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.sm,
+              ),
+            ),
+          ),
+        ),
+        if (_cashOpenings.length > 1) ...[
+          const SizedBox(width: AppSpacing.xs),
+          IconButton(
+            icon: const Icon(Icons.remove_circle_outline, size: 20),
+            color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
+            tooltip: 'Remove ${entry.currency}',
+            onPressed: () {
+              setState(() {
+                final removed = _cashOpenings.removeAt(index);
+                removed.controller.dispose();
+              });
+            },
+          ),
+        ],
+      ],
+    );
   }
 
   Future<void> _chooseCurrency(BuildContext context, LedgerState state) async {

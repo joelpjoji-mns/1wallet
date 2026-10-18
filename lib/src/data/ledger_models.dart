@@ -517,6 +517,7 @@ class Account {
     required this.type,
     required this.currency,
     required this.openingBalance,
+    this.openingBalances = const [],
     this.color,
     this.institution,
     this.groupName,
@@ -543,6 +544,7 @@ class Account {
   final String type;
   final String currency;
   final Money openingBalance;
+  final List<Money> openingBalances;
   final Color? color;
   final String? institution;
   final String? groupName;
@@ -563,6 +565,12 @@ class Account {
   final int? notifyDaysBeforeDue;
   final String? lastPaidBillMonth;
 
+  List<Money> get effectiveOpeningBalances {
+    if (openingBalances.isNotEmpty) return openingBalances;
+    if (openingBalance.amountMinor != 0) return [openingBalance];
+    return const [];
+  }
+
   String? get displayLast4 => cardLast4 ?? accountLast4;
 
   String? get displayLast4Label {
@@ -577,6 +585,7 @@ class Account {
     String? type,
     String? currency,
     Money? openingBalance,
+    List<Money>? openingBalances,
     Color? color,
     String? institution,
     String? groupName,
@@ -603,6 +612,7 @@ class Account {
       type: type ?? this.type,
       currency: currency ?? this.currency,
       openingBalance: openingBalance ?? this.openingBalance,
+      openingBalances: openingBalances ?? this.openingBalances,
       color: color ?? this.color,
       institution: institution ?? this.institution,
       groupName: groupName ?? this.groupName,
