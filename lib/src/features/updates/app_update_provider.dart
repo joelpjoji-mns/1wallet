@@ -143,10 +143,157 @@ class AppUpdateRelease {
 
 enum UpdateStatus { idle, checking, downloading, downloaded, installing, error }
 
+final List<AppUpdateRelease> kBuiltInReleaseHistory = [
+  AppUpdateRelease(
+    id: '2.1.106',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '2.1.106',
+    versionCode: 201106,
+    runtimeVersion: '2.1.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 200000,
+    publishedAt: '2026-10-25T12:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Standardized date filters across home screen tiles: `This week`, `This month`, `30 days`, `6 months`, `1 year`',
+        'Top-left tile icons are now interactive shortcuts to respective management and history screens',
+        'Multi-tag filtering support and unified search in transaction history',
+      ],
+      bugFixes: const [
+        'Fixed card statement confirm-paid payment cycles and notifications',
+        'Suppressed floating snackbar and notification overlay popups',
+        'Fixed transaction account selector to avoid unintended default selection',
+      ],
+      notes: const [
+        'Morphe Manager-inspired update screen with full timeline changelog, version transition, and progress ring',
+        'Full-width action buttons and pull-to-refresh changelog timeline',
+      ],
+    ),
+    apk: ApkMetadata(
+      downloadUrl: '',
+      fileName: 'app-release.apk',
+      sizeBytes: 58 * 1024 * 1024,
+      sha256: '',
+      architecture: 'arm64-v8a',
+    ),
+  ),
+  AppUpdateRelease(
+    id: '2.1.105',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '2.1.105',
+    versionCode: 201105,
+    runtimeVersion: '2.1.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 200000,
+    publishedAt: '2026-10-20T10:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Multi-currency cash account opening balances support',
+        'Smooth number transitions and animated home net balance counter',
+      ],
+      bugFixes: const [
+        'Fixed balance display glitch during rapid currency switching',
+      ],
+      notes: const [
+        'Safety guard blocking account deletion when linked to active recurring plans',
+        'Preserved historical transactions upon cash account deletion',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '2.1.102',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '2.1.102',
+    versionCode: 201102,
+    runtimeVersion: '2.1.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 200000,
+    publishedAt: '2026-10-14T08:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Universal bank-agnostic PDF statement parser with auto-recovery and password detection',
+        'Value Date and opening balance delta tracking for PDF imports',
+      ],
+      bugFixes: const [
+        'Fixed calendar day selection and modal sheet clipping on AMOLED and desktop layouts',
+      ],
+      notes: const [
+        'Isolated user backup sessions and instant startup performance enhancements',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '2.1.100',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '2.1.100',
+    versionCode: 201100,
+    runtimeVersion: '2.1.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 200000,
+    publishedAt: '2026-10-01T15:30:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Liquid Glass UI framework with minimal, standard, and crystal refractive modes',
+        'Comprehensive multi-account grid with live balances and quick transfers',
+      ],
+      bugFixes: const [
+        'Optimized regular expressions and memoized selectors to eliminate UI thread lag',
+      ],
+      notes: const [
+        'Added over 380 unit and widget integration tests',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '2.0.0',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '2.0.0',
+    versionCode: 200000,
+    runtimeVersion: '2.0.0',
+    releaseType: 'major',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 100000,
+    publishedAt: '2026-09-01T12:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Complete rewrite with Flutter 3, Material You, and Riverpod architecture',
+        'Automated SMS and notification transaction capture engine',
+        'Credit cards and Loan EMI tracking modules',
+      ],
+      bugFixes: const [
+        'Fixed background notification sync and permission handling',
+      ],
+      notes: const [
+        'Initial 2.0 release with biometric app lock and encrypted local storage',
+      ],
+    ),
+  ),
+];
+
 class AppUpdateState {
   final UpdateStatus status;
   final AppUpdateRelease? latestRelease;
   final AppUpdateRelease? currentRelease;
+  final List<AppUpdateRelease> allReleases;
   final String currentVersionName;
   final int currentVersionCode;
   final double progress;
@@ -159,6 +306,7 @@ class AppUpdateState {
     this.status = UpdateStatus.idle,
     this.latestRelease,
     this.currentRelease,
+    this.allReleases = const [],
     this.currentVersionName = '',
     this.currentVersionCode = 0,
     this.progress = 0.0,
@@ -172,6 +320,7 @@ class AppUpdateState {
     UpdateStatus? status,
     AppUpdateRelease? latestRelease,
     AppUpdateRelease? currentRelease,
+    List<AppUpdateRelease>? allReleases,
     String? currentVersionName,
     int? currentVersionCode,
     double? progress,
@@ -192,6 +341,7 @@ class AppUpdateState {
       currentRelease: clearCurrentRelease
           ? null
           : currentRelease ?? this.currentRelease,
+      allReleases: allReleases ?? this.allReleases,
       currentVersionName: currentVersionName ?? this.currentVersionName,
       currentVersionCode: currentVersionCode ?? this.currentVersionCode,
       progress: progress ?? this.progress,
@@ -239,6 +389,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
 
   Future<void> _init() async {
     await _clearOldUpdates();
+    state = state.copyWith(allReleases: kBuiltInReleaseHistory);
     try {
       if (Firebase.apps.isEmpty) return;
     } catch (_) {
@@ -272,6 +423,22 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
 
       final currentRelease = await _releaseForVersionCode(currentVersionCode);
 
+      List<AppUpdateRelease> fetchedReleases = [];
+      try {
+        final querySnap = await _firestore
+            .collection('appUpdates/android/releases')
+            .orderBy('versionCode', descending: true)
+            .limit(20)
+            .get();
+        if (querySnap.docs.isNotEmpty) {
+          fetchedReleases = querySnap.docs
+              .map((doc) => AppUpdateRelease.fromFirestore(doc))
+              .toList();
+        }
+      } catch (_) {}
+
+      final allReleases = _mergeReleases(fetchedReleases, kBuiltInReleaseHistory);
+
       final channelDoc = await _firestore
           .collection('appUpdates/android/channels')
           .doc('stable')
@@ -281,6 +448,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
         state = state.copyWith(
           status: UpdateStatus.idle,
           currentRelease: currentRelease,
+          allReleases: allReleases,
           clearCurrentRelease: currentRelease == null,
           clearLatestRelease: true,
         );
@@ -297,6 +465,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
         state = state.copyWith(
           status: UpdateStatus.idle,
           currentRelease: currentRelease,
+          allReleases: allReleases,
           clearCurrentRelease: currentRelease == null,
           clearLatestRelease: true,
         );
@@ -314,6 +483,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
             status: UpdateStatus.idle,
             latestRelease: release,
             currentRelease: currentRelease,
+            allReleases: allReleases,
             clearCurrentRelease: currentRelease == null,
           );
 
@@ -334,6 +504,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
       state = state.copyWith(
         status: UpdateStatus.idle,
         currentRelease: currentRelease,
+        allReleases: allReleases,
         clearCurrentRelease: currentRelease == null,
         clearLatestRelease: true,
       );
@@ -341,8 +512,29 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
       final message = e is FirebaseException && e.code == 'permission-denied'
           ? 'Update metadata is not available yet. Please try again later.'
           : 'Failed to check for updates: $e';
-      state = state.copyWith(status: UpdateStatus.error, errorMessage: message);
+      state = state.copyWith(
+        status: UpdateStatus.error,
+        errorMessage: message,
+        allReleases: state.allReleases.isNotEmpty
+            ? state.allReleases
+            : kBuiltInReleaseHistory,
+      );
     }
+  }
+
+  static List<AppUpdateRelease> _mergeReleases(
+    List<AppUpdateRelease> primary,
+    List<AppUpdateRelease> secondary,
+  ) {
+    final seen = <String>{};
+    final result = <AppUpdateRelease>[];
+    for (final r in primary) {
+      if (seen.add(r.versionName)) result.add(r);
+    }
+    for (final r in secondary) {
+      if (seen.add(r.versionName)) result.add(r);
+    }
+    return result;
   }
 
   Future<AppUpdateRelease?> _releaseForVersionCode(

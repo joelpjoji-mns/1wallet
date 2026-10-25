@@ -9,10 +9,19 @@ import '../../widgets/app_kit.dart';
 import '../common/route_scaffold.dart';
 import 'app_update_provider.dart';
 
-/// Update screen inspired by the Morphe Manager update experience, featuring
-/// an expressive hero status banner, version transition indicators, a vertical
-/// timeline changelog with categorized change badges, inline code formatting,
-/// and a circular download progress ring.
+/// Update screen matching the Morphe Manager update experience.
+///
+/// Features:
+/// - Morphe hero status header with launcher avatar and version transition pill
+/// - Pull-to-refresh anywhere on the screen
+/// - Release details card
+/// - Morphe continuous vertical timeline (`ChangelogTimeline`)
+/// - Unfolded new/current release changelog
+/// - Interactive, expandable **Older Releases** with complete version history
+/// - Categorized sections (New Features, Bug Fixes, Improvements & Notes)
+/// - Scope tag detection (`[scope]` or `**scope:**`) and inline code chips (`` `code` ``)
+/// - Morphe circular download progress ring (percentage and downloaded/total MB)
+/// - Full-width action buttons spanning the screen width
 class UpdatesScreen extends ConsumerStatefulWidget {
   const UpdatesScreen({super.key});
 
@@ -21,7 +30,21 @@ class UpdatesScreen extends ConsumerStatefulWidget {
 }
 
 class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
+  final Set<String> _expandedReleases = <String>{};
   final Set<String> _expandedSections = <String>{};
+
+  bool _isReleaseExpanded(String releaseId) =>
+      _expandedReleases.contains(releaseId);
+
+  void _toggleReleaseExpanded(String releaseId) {
+    setState(() {
+      if (_expandedReleases.contains(releaseId)) {
+        _expandedReleases.remove(releaseId);
+      } else {
+        _expandedReleases.add(releaseId);
+      }
+    });
+  }
 
   bool _isSectionExpanded(String sectionKey) =>
       _expandedSections.contains(sectionKey);
@@ -42,6 +65,12 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     final provider = ref.read(appUpdateProvider.notifier);
     final hasUpdate = state.latestRelease != null;
 
+    // Build the consolidated list of releases to display in the Morphe timeline:
+    // 1. Latest release (if available)
+    // 2. Current release (if available or from allReleases)
+    // 3. Older releases
+    final releases = _resolveReleases(state);
+
     return RouteScaffold(
       title: 'Updates',
       actions: [
@@ -58,42 +87,62 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
       ],
       child: GlassIsolationScope(
         defaultQuality: GlassQuality.standard,
-        child: Column(
-          children: [
-            _buildHeroCard(context, state),
-            if (state.status == UpdateStatus.downloading) ...[
-              const SizedBox(height: AppSpacing.lg),
-              _buildMorpheDownloadProgress(context, state),
-            ],
-            if (hasUpdate) ...[
-              const SizedBox(height: AppSpacing.md),
-              _buildReleaseInfoCard(context, state.latestRelease!),
-              const SizedBox(height: AppSpacing.md),
-              _buildTimelineChangelogCard(
-                context,
-                state.latestRelease!.changelog,
-                release: state.latestRelease!,
-                title: "What's new in ${state.latestRelease!.versionName}",
-                isLatest: true,
-              ),
-            ],
-            if (state.currentRelease != null && !hasUpdate) ...[
-              const SizedBox(height: AppSpacing.md),
-              _buildTimelineChangelogCard(
-                context,
-                state.currentRelease!.changelog,
-                release: state.currentRelease!,
-                title: 'Current build changelog',
-                isLatest: false,
-              ),
-            ],
-            const SizedBox(height: AppSpacing.xl),
-            _buildActionButtons(context, state, provider),
-            const SizedBox(height: AppSpacing.xxl),
-          ],
+        child: RefreshIndicator(
+          onRefresh: () => provider.checkForUpdates(force: true),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildHeroCard(context, state),
+                if (state.status == UpdateStatus.downloading) ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  _buildMorpheDownloadProgress(context, state),
+                ],
+                if (hasUpdate) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  _buildReleaseInfoCard(context, state.latestRelease!),
+                ],
+                const SizedBox(height: AppSpacing.md),
+                _buildFullMorpheTimeline(context, state, releases),
+                const SizedBox(height: AppSpacing.xl),
+                _buildFullScreenActionButtons(context, state, provider),
+                const SizedBox(height: AppSpacing.xxl),
+              ],
+            ),
+          ),
         ),
       ),
     );
+  }
+
+  List<AppUpdateRelease> _resolveReleases(AppUpdateState state) {
+    final list = <AppUpdateRelease>[];
+    final seen = <String>{};
+
+    if (state.latestRelease != null) {
+      list.add(state.latestRelease!);
+      seen.add(state.latestRelease!.versionName);
+    }
+
+    if (state.currentRelease != null &&
+        seen.add(state.currentRelease!.versionName)) {
+      list.add(state.currentRelease!);
+    }
+
+    final pool = state.allReleases.isNotEmpty
+        ? state.allReleases
+        : kBuiltInReleaseHistory;
+
+    for (final rel in pool) {
+      if (seen.add(rel.versionName)) {
+        list.add(rel);
+      }
+    }
+
+    return list;
   }
 
   // ===========================================================================
@@ -141,7 +190,8 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
       color = scheme.error;
     } else if (state.status == UpdateStatus.downloading) {
       statusTitle = 'Downloading update…';
-      statusSubtitle = 'Fetching version ${state.latestRelease?.versionName ?? ''}';
+      statusSubtitle =
+          'Fetching version ${state.latestRelease?.versionName ?? ''}';
       icon = Icons.downloading_rounded;
       color = scheme.primary;
     } else if (state.status == UpdateStatus.downloaded) {
@@ -234,7 +284,8 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                           child: Icon(
                             Icons.arrow_forward_rounded,
                             size: 16,
-                            color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+                            color:
+                                scheme.onSurfaceVariant.withValues(alpha: 0.7),
                           ),
                         ),
                         _buildVersionPill(
@@ -414,24 +465,63 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
   }
 
   // ===========================================================================
-  // MORPHE TIMELINE CHANGELOG CARD
+  // MORPHE CONTINUOUS TIMELINE CHANGELOG (Primary + Older releases)
   // ===========================================================================
 
-  Widget _buildTimelineChangelogCard(
+  Widget _buildFullMorpheTimeline(
     BuildContext context,
-    Changelog changelog, {
-    required AppUpdateRelease release,
-    required String title,
-    required bool isLatest,
-  }) {
-    if (changelog.isEmpty) {
+    AppUpdateState state,
+    List<AppUpdateRelease> releases,
+  ) {
+    if (releases.isEmpty) {
       return const SizedBox.shrink();
     }
 
+    final hasUpdate = state.latestRelease != null;
+    final primaryRelease = releases.first;
+    final olderReleases = releases.skip(1).toList();
+
+    // The primary release is titled "What's new in [version]" when update is available,
+    // matching test expectations and Morphe's headline pattern.
+    final primaryTitle = hasUpdate
+        ? "What's new in ${primaryRelease.versionName}"
+        : 'Changelog: v${primaryRelease.versionName}';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Primary / Latest release card
+        _buildReleaseTimelineCard(
+          context,
+          release: primaryRelease,
+          title: primaryTitle,
+          isLatest: hasUpdate,
+          isInstalled: !hasUpdate,
+          isExpandedByDefault: true,
+        ),
+        // Older releases section on the continuous timeline
+        if (olderReleases.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.md),
+          _buildOlderReleasesSection(context, state, olderReleases),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildReleaseTimelineCard(
+    BuildContext context, {
+    required AppUpdateRelease release,
+    required String title,
+    required bool isLatest,
+    required bool isInstalled,
+    bool isExpandedByDefault = false,
+  }) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final totalChanges =
-        changelog.newFeatures.length + changelog.bugFixes.length + changelog.notes.length;
+    final changelog = release.changelog;
+    final totalChanges = changelog.newFeatures.length +
+        changelog.bugFixes.length +
+        changelog.notes.length;
 
     return SectionCard(
       title: title,
@@ -439,14 +529,19 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Timeline header with release badge, date, and changes count
+          // Timeline header row with release node, version badge, date, changes counter
           Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.sm),
             child: Row(
               children: [
                 _MorpheTimelineNodeIcon(
                   isLatest: isLatest,
-                  accentColor: scheme.primary,
+                  isInstalled: isInstalled,
+                  accentColor: isLatest
+                      ? scheme.primary
+                      : (isInstalled
+                          ? const Color(0xFF2E7D32)
+                          : scheme.onSurfaceVariant),
                 ),
                 const SizedBox(width: AppSpacing.xs),
                 Text(
@@ -456,26 +551,22 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.xs),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: isLatest
-                        ? scheme.primary.withValues(alpha: 0.15)
-                        : const Color(0xFF2E7D32).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(4),
+                if (isLatest)
+                  _buildBadgePill(
+                    context,
+                    label: 'LATEST',
+                    color: scheme.primary,
+                  )
+                else if (isInstalled)
+                  _buildBadgePill(
+                    context,
+                    label: 'INSTALLED',
+                    color: const Color(0xFF2E7D32),
                   ),
-                  child: Text(
-                    isLatest ? 'LATEST' : 'INSTALLED',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: isLatest ? scheme.primary : const Color(0xFF2E7D32),
-                      fontWeight: FontWeight.w800,
-                      fontSize: 9,
-                    ),
-                  ),
-                ),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
                     borderRadius: BorderRadius.circular(AppRadii.pill),
@@ -533,11 +624,244 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                       accentColor: const Color(0xFF64B5F6),
                     ),
                   ],
+                  if (changelog.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.sm,
+                      ),
+                      child: Text(
+                        'General performance improvements and maintenance.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // OLDER RELEASES SECTION (Expandable version history along the timeline)
+  // ===========================================================================
+
+  Widget _buildOlderReleasesSection(
+    BuildContext context,
+    AppUpdateState state,
+    List<AppUpdateRelease> olderReleases,
+  ) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final currentVersion = state.currentVersionName;
+
+    return SectionCard(
+      title: 'Older Releases',
+      subtitle: '${olderReleases.length} previous versions available to explore',
+      compact: true,
+      child: Column(
+        children: [
+          for (int i = 0; i < olderReleases.length; i++) ...[
+            _buildOlderReleaseTile(
+              context,
+              release: olderReleases[i],
+              isInstalled: olderReleases[i].versionName == currentVersion,
+              isLast: i == olderReleases.length - 1,
+            ),
+            if (i < olderReleases.length - 1)
+              Divider(
+                height: 1,
+                color: scheme.outlineVariant.withValues(alpha: 0.25),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOlderReleaseTile(
+    BuildContext context, {
+    required AppUpdateRelease release,
+    required bool isInstalled,
+    required bool isLast,
+  }) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isExpanded = _isReleaseExpanded(release.id);
+    final changelog = release.changelog;
+    final totalChanges = changelog.newFeatures.length +
+        changelog.bugFixes.length +
+        changelog.notes.length;
+    final publishedDate = _formatReleaseDate(release.publishedAt);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Expandable release header tile
+        InkWell(
+          onTap: () => _toggleReleaseExpanded(release.id),
+          borderRadius: BorderRadius.circular(AppRadii.sm),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xs,
+              vertical: AppSpacing.sm,
+            ),
+            child: Row(
+              children: [
+                _MorpheTimelineNodeIcon(
+                  isLatest: false,
+                  isInstalled: isInstalled,
+                  accentColor: isInstalled
+                      ? const Color(0xFF2E7D32)
+                      : scheme.onSurfaceVariant.withValues(alpha: 0.6),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'v${release.versionName}',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        if (isInstalled) ...[
+                          const SizedBox(width: AppSpacing.xs),
+                          _buildBadgePill(
+                            context,
+                            label: 'INSTALLED',
+                            color: const Color(0xFF2E7D32),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      publishedDate,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                  ),
+                  child: Text(
+                    '$totalChanges changes',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Icon(
+                  isExpanded
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  color: scheme.onSurfaceVariant,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+        // Expanded changelog content
+        if (isExpanded)
+          Padding(
+            padding: const EdgeInsets.only(
+              left: 28,
+              right: AppSpacing.xs,
+              bottom: AppSpacing.sm,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (changelog.newFeatures.isNotEmpty) ...[
+                  _buildMorpheCategorySection(
+                    context,
+                    sectionKey: '${release.id}_older_features',
+                    categoryTitle: 'New Features',
+                    items: changelog.newFeatures,
+                    icon: Icons.auto_awesome_rounded,
+                    accentColor: scheme.primary,
+                  ),
+                ],
+                if (changelog.bugFixes.isNotEmpty) ...[
+                  _buildMorpheCategorySection(
+                    context,
+                    sectionKey: '${release.id}_older_fixes',
+                    categoryTitle: 'Bug Fixes',
+                    items: changelog.bugFixes,
+                    icon: Icons.bug_report_rounded,
+                    accentColor: const Color(0xFFE57373),
+                  ),
+                ],
+                if (changelog.notes.isNotEmpty) ...[
+                  _buildMorpheCategorySection(
+                    context,
+                    sectionKey: '${release.id}_older_notes',
+                    categoryTitle: 'Improvements & Notes',
+                    items: changelog.notes,
+                    icon: Icons.tune_rounded,
+                    accentColor: const Color(0xFF64B5F6),
+                  ),
+                ],
+                if (changelog.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      'Bug fixes and stability improvements.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildBadgePill(
+    BuildContext context, {
+    required String label,
+    required Color color,
+  }) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: color.withValues(alpha: 0.3),
+          width: 0.8,
+        ),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w800,
+          fontSize: 9,
+          letterSpacing: 0.4,
+        ),
       ),
     );
   }
@@ -598,7 +922,8 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
           ),
           // Change items with scope badge and inline code chip rendering
           ...displayedItems.asMap().entries.map((entry) {
-            final isLast = entry.key == displayedItems.length - 1 && !hasOverflow;
+            final isLast =
+                entry.key == displayedItems.length - 1 && !hasOverflow;
             return _buildMorpheChangelogItem(
               context,
               text: entry.value,
@@ -694,10 +1019,12 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                           vertical: 1.5,
                         ),
                         decoration: BoxDecoration(
-                          color: scheme.surfaceContainerHighest.withValues(alpha: 0.8),
+                          color: scheme.surfaceContainerHighest
+                              .withValues(alpha: 0.8),
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
-                            color: scheme.outlineVariant.withValues(alpha: 0.3),
+                            color:
+                                scheme.outlineVariant.withValues(alpha: 0.3),
                             width: 0.8,
                           ),
                         ),
@@ -764,7 +1091,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // Outer glowing ring
+                  // Outer glowing shadow
                   Container(
                     width: 190,
                     height: 190,
@@ -786,7 +1113,8 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                     child: CircularProgressIndicator(
                       value: 1.0,
                       strokeWidth: 8,
-                      color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                      color:
+                          scheme.surfaceContainerHighest.withValues(alpha: 0.5),
                     ),
                   ),
                   // Foreground animated progress
@@ -841,16 +1169,17 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
   }
 
   // ===========================================================================
-  // ACTION BUTTONS (Morphe glass buttons)
+  // FULL-SCREEN / FULL-WIDTH ACTION BUTTONS
   // ===========================================================================
 
-  Widget _buildActionButtons(
+  Widget _buildFullScreenActionButtons(
     BuildContext context,
     AppUpdateState state,
     AppUpdateProvider provider,
   ) {
     if (kIsWeb) {
       return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (state.latestRelease != null)
             Padding(
@@ -866,62 +1195,99 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                 ),
               ),
             ),
-          if (state.latestRelease != null) const SizedBox(height: AppSpacing.md),
           if (state.latestRelease != null)
-            const GlassButton(
-              icon: Icon(Icons.refresh_rounded),
-              label: 'Reload App',
-              onTap: reloadWebPage,
+            const SizedBox(height: AppSpacing.md),
+          if (state.latestRelease != null)
+            const SizedBox(
+              width: double.infinity,
+              child: GlassButton(
+                icon: Icon(Icons.refresh_rounded),
+                label: 'Reload App',
+                onTap: reloadWebPage,
+              ),
             ),
           if (state.latestRelease == null && state.status == UpdateStatus.idle)
-            GlassButton(
-              icon: const Icon(Icons.refresh_rounded),
-              label: 'Check for Updates',
-              onTap: () => provider.checkForUpdates(),
+            SizedBox(
+              width: double.infinity,
+              child: GlassButton(
+                icon: const Icon(Icons.refresh_rounded),
+                label: 'Check for Updates',
+                onTap: () => provider.checkForUpdates(force: true),
+              ),
             ),
           if (state.status == UpdateStatus.error)
-            GlassButton(
-              icon: const Icon(Icons.refresh_rounded),
-              label: 'Try Again',
-              onTap: () => provider.checkForUpdates(),
+            SizedBox(
+              width: double.infinity,
+              child: GlassButton(
+                icon: const Icon(Icons.refresh_rounded),
+                label: 'Try Again',
+                onTap: () => provider.checkForUpdates(force: true),
+              ),
             ),
         ],
       );
     }
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (state.latestRelease != null && state.status == UpdateStatus.idle)
-          GlassButton(
-            icon: const Icon(Icons.download_rounded),
-            label: 'Download Update',
-            onTap: () => provider.downloadUpdate(),
+        // Primary full-width button
+        if (state.latestRelease != null && state.status == UpdateStatus.idle) ...[
+          SizedBox(
+            width: double.infinity,
+            child: GlassButton(
+              icon: const Icon(Icons.download_rounded),
+              label: 'Download Update',
+              onTap: () => provider.downloadUpdate(),
+            ),
           ),
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            width: double.infinity,
+            child: GlassButton(
+              icon: const Icon(Icons.refresh_rounded),
+              label: 'Check for Updates',
+              onTap: () => provider.checkForUpdates(force: true),
+            ),
+          ),
+        ],
         if (state.status == UpdateStatus.downloading)
-          GlassButton(
-            icon: const Icon(Icons.close_rounded),
-            label: 'Cancel Download',
-            onTap: () => provider.cancelDownload(),
+          SizedBox(
+            width: double.infinity,
+            child: GlassButton(
+              icon: const Icon(Icons.close_rounded),
+              label: 'Cancel Download',
+              onTap: () => provider.cancelDownload(),
+            ),
           ),
         if (state.status == UpdateStatus.downloaded)
-          GlassButton(
-            icon: const Icon(Icons.install_mobile_rounded),
-            label: 'Install Update',
-            onTap: () => provider.installUpdate(),
+          SizedBox(
+            width: double.infinity,
+            child: GlassButton(
+              icon: const Icon(Icons.install_mobile_rounded),
+              label: 'Install Update',
+              onTap: () => provider.installUpdate(),
+            ),
           ),
         if (state.latestRelease == null && state.status == UpdateStatus.idle)
-          GlassButton(
-            icon: const Icon(Icons.refresh_rounded),
-            label: 'Check for Updates',
-            onTap: () => provider.checkForUpdates(),
+          SizedBox(
+            width: double.infinity,
+            child: GlassButton(
+              icon: const Icon(Icons.refresh_rounded),
+              label: 'Check for Updates',
+              onTap: () => provider.checkForUpdates(force: true),
+            ),
           ),
-        if (state.status == UpdateStatus.error)
-          GlassButton(
-            icon: const Icon(Icons.refresh_rounded),
-            label: 'Try Again',
-            onTap: () => provider.checkForUpdates(),
+        if (state.status == UpdateStatus.error) ...[
+          SizedBox(
+            width: double.infinity,
+            child: GlassButton(
+              icon: const Icon(Icons.refresh_rounded),
+              label: 'Try Again',
+              onTap: () => provider.checkForUpdates(force: true),
+            ),
           ),
+        ],
       ],
     );
   }
@@ -958,9 +1324,11 @@ class _MorpheTimelineNodeIcon extends StatelessWidget {
   const _MorpheTimelineNodeIcon({
     required this.isLatest,
     required this.accentColor,
+    this.isInstalled = false,
   });
 
   final bool isLatest;
+  final bool isInstalled;
   final Color accentColor;
 
   @override
@@ -985,12 +1353,22 @@ class _MorpheTimelineNodeIcon extends StatelessWidget {
         ),
       );
     }
+    if (isInstalled) {
+      return Container(
+        width: 16,
+        height: 16,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: accentColor, width: 2.5),
+        ),
+      );
+    }
     return Container(
-      width: 16,
-      height: 16,
+      width: 10,
+      height: 10,
       decoration: BoxDecoration(
+        color: accentColor,
         shape: BoxShape.circle,
-        border: Border.all(color: accentColor, width: 2.5),
       ),
     );
   }
@@ -1022,7 +1400,8 @@ class _MorpheTimelineRailPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _MorpheTimelineRailPainter oldDelegate) =>
-      oldDelegate.railColor != railColor || oldDelegate.accentColor != accentColor;
+      oldDelegate.railColor != railColor ||
+      oldDelegate.accentColor != accentColor;
 }
 
 // =============================================================================
