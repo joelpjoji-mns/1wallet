@@ -304,6 +304,23 @@ class _TransactionDetailScreenState
               ],
             ),
           ),
+          if (transaction.tags.isNotEmpty) ...[
+            const Gap(AppSpacing.lg),
+            SectionCard(
+              title: 'Tags',
+              child: Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: [
+                  for (final tag in transaction.tags)
+                    Chip(
+                      label: Text('#$tag'),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                ],
+              ),
+            ),
+          ],
           const Gap(AppSpacing.lg),
           SectionCard(
             title: 'Receipts',

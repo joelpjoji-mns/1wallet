@@ -57,6 +57,9 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
   String? _loadedTransactionId;
   final _notesController = TextEditingController();
   final _notesFocusNode = FocusNode();
+  final _tags = <String>[];
+  final _tagInputController = TextEditingController();
+  final _tagFocusNode = FocusNode();
   final _locationController = TextEditingController();
   final _paymentMethodController = TextEditingController();
   final _localAmountController = TextEditingController();
@@ -79,6 +82,8 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
   void dispose() {
     _notesController.dispose();
     _notesFocusNode.dispose();
+    _tagInputController.dispose();
+    _tagFocusNode.dispose();
     _locationController.dispose();
     _paymentMethodController.dispose();
     _localAmountController.dispose();
@@ -112,6 +117,12 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(ledgerProvider);
     final uniqueNotes = _recentNotes(state.transactions);
+    final allTags = state.transactions
+        .expand((t) => t.tags)
+        .where((t) => t.trim().isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
     final editingTransaction = widget.transactionId == null
         ? null
         : state.transactions.firstWhereOrNull(
@@ -133,7 +144,6 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       captureCandidate,
       state,
     );
-    _syncCreateDraftAccount(state, editingTransaction ?? plannedTransaction);
     _syncInitialPaymentMethod(
       state,
       editingTransaction ?? plannedTransaction ?? captureCandidate,
@@ -487,14 +497,18 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                           optionsBuilder: (textEditingValue) {
                             final query = textEditingValue.text.trim();
                             if (query.isEmpty) {
-                              return const Iterable<String>.empty();
+                              return uniqueNotes.take(8);
                             }
                             final lowerQuery = query.toLowerCase();
-                            return uniqueNotes.where((note) {
-                              final lowerNote = note.toLowerCase();
-                              return lowerNote != lowerQuery &&
-                                  lowerNote.startsWith(lowerQuery);
-                            });
+                            final matches = uniqueNotes
+                                .where((note) => note.toLowerCase().contains(lowerQuery))
+                                .toList();
+                            final exactMatch = uniqueNotes
+                                .any((note) => note.toLowerCase() == lowerQuery);
+                            if (!exactMatch && query.isNotEmpty) {
+                              matches.insert(0, '__create__:$query');
+                            }
+                            return matches;
                           },
                           fieldViewBuilder:
                               (
@@ -506,12 +520,37 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                 return TextFormField(
                                   controller: textEditingController,
                                   focusNode: focusNode,
-                                  maxLines: 2,
+                                  minLines: 1,
+                                  maxLines: 3,
                                   decoration: InputDecoration(
                                     labelText: 'Notes',
                                     prefixIcon: const Icon(
                                       Icons.notes_outlined,
                                     ),
+                                    suffixIcon: uniqueNotes.isNotEmpty
+                                        ? PopupMenuButton<String>(
+                                            icon: const Icon(Icons.arrow_drop_down),
+                                            tooltip: 'Recent notes',
+                                            onSelected: (val) {
+                                              textEditingController.text = val;
+                                              textEditingController.selection =
+                                                  TextSelection.collapsed(
+                                                    offset: val.length,
+                                                  );
+                                            },
+                                            itemBuilder: (context) => [
+                                              for (final note in uniqueNotes.take(12))
+                                                PopupMenuItem(
+                                                  value: note,
+                                                  child: Text(
+                                                    note,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                            ],
+                                          )
+                                        : null,
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(
                                         AppRadii.md,
@@ -543,8 +582,164 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                       itemCount: optionsList.length,
                                       itemBuilder: (context, index) {
                                         final option = optionsList[index];
+                                        if (option.startsWith('__create__:')) {
+                                          final createVal = option.substring('__create__:'.length);
+                                          return ListTile(
+                                            dense: true,
+                                            leading: const Icon(Icons.add_rounded),
+                                            title: Text('Create "$createVal"'),
+                                            onTap: () => onSelected(createVal),
+                                          );
+                                        }
                                         return ListTile(
+                                          dense: true,
+                                          leading: const Icon(Icons.history_rounded, size: 18),
                                           title: Text(option),
+                                          onTap: () => onSelected(option),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        if (_tags.isNotEmpty) ...[
+                          Wrap(
+                            spacing: AppSpacing.xs,
+                            runSpacing: AppSpacing.xs,
+                            children: [
+                              for (final tag in _tags)
+                                InputChip(
+                                  label: Text('#$tag'),
+                                  onDeleted: () => setState(() => _tags.remove(tag)),
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                        ],
+                        RawAutocomplete<String>(
+                          textEditingController: _tagInputController,
+                          focusNode: _tagFocusNode,
+                          optionsViewOpenDirection: OptionsViewOpenDirection.up,
+                          optionsBuilder: (textEditingValue) {
+                            final query = textEditingValue.text.trim();
+                            final lowerQuery = query.toLowerCase();
+                            final unselected = allTags.where((t) => !_tags.contains(t)).toList();
+                            if (query.isEmpty) {
+                              return unselected.take(8);
+                            }
+                            final matches = unselected
+                                .where((t) => t.toLowerCase().contains(lowerQuery))
+                                .toList();
+                            final exactMatch = allTags
+                                .any((t) => t.toLowerCase() == lowerQuery);
+                            if (!exactMatch && query.isNotEmpty) {
+                              matches.insert(0, '__create__:$query');
+                            }
+                            return matches;
+                          },
+                          onSelected: (option) {
+                            final val = option.startsWith('__create__:')
+                                ? option.substring('__create__:'.length).trim()
+                                : option.trim();
+                            if (val.isNotEmpty && !_tags.contains(val)) {
+                              setState(() {
+                                _tags.add(val);
+                                _tagInputController.clear();
+                              });
+                            }
+                          },
+                          fieldViewBuilder:
+                              (
+                                context,
+                                textEditingController,
+                                focusNode,
+                                onFieldSubmitted,
+                              ) {
+                                return TextField(
+                                  controller: textEditingController,
+                                  focusNode: focusNode,
+                                  decoration: InputDecoration(
+                                    labelText: 'Tags / Labels',
+                                    hintText: 'Add a tag (e.g. Work, Vacation)',
+                                    prefixIcon: const Icon(
+                                      Icons.label_outline,
+                                    ),
+                                    suffixIcon: allTags.isNotEmpty
+                                        ? PopupMenuButton<String>(
+                                            icon: const Icon(Icons.arrow_drop_down),
+                                            tooltip: 'Available tags',
+                                            onSelected: (val) {
+                                              if (!_tags.contains(val)) {
+                                                setState(() => _tags.add(val));
+                                              }
+                                            },
+                                            itemBuilder: (context) => [
+                                              for (final tag in allTags.where((t) => !_tags.contains(t)))
+                                                PopupMenuItem(
+                                                  value: tag,
+                                                  child: Text('#$tag'),
+                                                ),
+                                            ],
+                                          )
+                                        : null,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        AppRadii.md,
+                                      ),
+                                    ),
+                                  ),
+                                  onSubmitted: (value) {
+                                    final val = value.trim();
+                                    if (val.isNotEmpty && !_tags.contains(val)) {
+                                      setState(() {
+                                        _tags.add(val);
+                                        textEditingController.clear();
+                                      });
+                                    }
+                                  },
+                                );
+                              },
+                          optionsViewBuilder: (context, onSelected, options) {
+                            final optionsList = options.toList();
+                            return Align(
+                              alignment: Alignment.bottomLeft,
+                              child: Material(
+                                elevation: 4,
+                                borderRadius: BorderRadius.circular(
+                                  AppRadii.md,
+                                ),
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxHeight: 180,
+                                  ),
+                                  child: SizedBox(
+                                    width:
+                                        MediaQuery.of(context).size.width -
+                                        (AppSpacing.md * 2),
+                                    child: ListView.builder(
+                                      padding: EdgeInsets.zero,
+                                      shrinkWrap: true,
+                                      itemCount: optionsList.length,
+                                      itemBuilder: (context, index) {
+                                        final option = optionsList[index];
+                                        if (option.startsWith('__create__:')) {
+                                          final createVal = option.substring('__create__:'.length);
+                                          return ListTile(
+                                            dense: true,
+                                            leading: const Icon(Icons.add_rounded),
+                                            title: Text('Create "$createVal"'),
+                                            onTap: () => onSelected(createVal),
+                                          );
+                                        }
+                                        return ListTile(
+                                          dense: true,
+                                          leading: const Icon(Icons.label_outline, size: 18),
+                                          title: Text('#$option'),
                                           onTap: () => onSelected(option),
                                         );
                                       },
@@ -1068,6 +1263,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
             notes: _notesController.text.trim().isEmpty
                 ? null
                 : _notesController.text.trim(),
+            tags: _tags,
             locationLabel: _locationController.text.trim().isEmpty
                 ? null
                 : _locationController.text.trim(),
@@ -1163,10 +1359,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
 
     if (hasCapture && candidate != null) {
       _type = candidate.transactionType == 'income' ? 'income' : 'expense';
-      _accountId =
-          candidate.suggestedAccountId ??
-          accountById(state, _accountId)?.id ??
-          state.accounts.firstWhereOrNull((a) => !a.isArchived)?.id;
+      _accountId = candidate.suggestedAccountId ?? widget.initialAccountId;
       _categoryId = candidate.suggestedCategoryId;
       _notesController.text = candidate.merchant ?? candidate.rawText ?? '';
       _locationController.text = '';
@@ -1187,6 +1380,9 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       _counterAccountId = source.counterAccountId;
       _categoryId = source.categoryId;
       _notesController.text = source.notes ?? '';
+      _tags
+        ..clear()
+        ..addAll(source.tags);
       _locationController.text = source.locationLabel ?? '';
       _paymentMethodController.text = source.paymentMethod ?? '';
       _transactionCurrency =
@@ -1198,11 +1394,6 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       _occurredAt = source.occurredAt;
       _status = (tx == null && planned != null) ? 'cleared' : source.status;
     }
-  }
-
-  void _syncCreateDraftAccount(LedgerState state, TransactionRecord? source) {
-    if (source != null || _accountId != null) return;
-    _accountId = state.accounts.firstOrNull?.id;
   }
 
   void _clearInvalidCategory(LedgerState state, TransactionRecord? source) {

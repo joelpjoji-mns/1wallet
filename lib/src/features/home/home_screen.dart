@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../cloud_sync/cloud_sync_controller.dart';
 
 import '../../auth/auth_controller.dart';
 import '../../data/ledger_models.dart';
@@ -68,127 +67,6 @@ class HomeScreen extends ConsumerWidget {
     final user = ref.watch(_homeAuthUserProvider);
     final reorderMode = ref.watch(homeWidgetReorderModeProvider);
 
-    final sync = ref.watch(
-      cloudSyncControllerProvider.select(
-        (s) => (
-          phase: s.phase,
-          progressMessage: s.progressMessage,
-          progress: s.progress,
-          error: s.error,
-        ),
-      ),
-    );
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    Widget? syncIndicator;
-    if (sync.phase == CloudSyncPhase.checking ||
-        sync.phase == CloudSyncPhase.restoring ||
-        sync.phase == CloudSyncPhase.uploading) {
-      final message =
-          sync.progressMessage ??
-          (sync.phase == CloudSyncPhase.checking
-              ? 'Checking cloud updates…'
-              : (sync.phase == CloudSyncPhase.restoring
-                    ? 'Downloading latest database…'
-                    : 'Uploading latest changes…'));
-      syncIndicator = Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: scheme.primaryContainer.withValues(alpha: 0.35),
-          border: Border(
-            bottom: BorderSide(
-              color: scheme.primary.withValues(alpha: 0.15),
-            ),
-          ),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 12,
-              height: 12,
-              child: CircularProgressIndicator(
-                strokeWidth: 1.5,
-                color: scheme.primary,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                message,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: scheme.onPrimaryContainer,
-                ),
-              ),
-            ),
-            if (sync.progress != null) ...[
-              const SizedBox(width: 8),
-              Text(
-                '${(sync.progress! * 100).round()}%',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: scheme.primary,
-                ),
-              ),
-            ],
-          ],
-        ),
-      );
-    } else if (sync.phase == CloudSyncPhase.error) {
-      syncIndicator = Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: scheme.errorContainer,
-          border: Border(
-            bottom: BorderSide(
-              color: scheme.error.withValues(alpha: 0.3),
-            ),
-          ),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-        child: Row(
-          children: [
-            Icon(Icons.error_outline, size: 16, color: scheme.onErrorContainer),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                sync.error ?? 'Sync failed',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: scheme.onErrorContainer,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                ref
-                    .read(cloudSyncControllerProvider.notifier)
-                    .fullSync(reason: 'user_retry');
-              },
-              style: TextButton.styleFrom(
-                padding: EdgeInsets.zero,
-                minimumSize: const Size(40, 24),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: Text(
-                'Retry',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: scheme.onErrorContainer,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return AppScreen(
       title: '1Wallet',
       onMenuPressed: onMenuPressed,
@@ -240,7 +118,6 @@ class HomeScreen extends ConsumerWidget {
       maxWidth: 1400,
       child: Column(
         children: [
-          ?syncIndicator,
           Expanded(
             child: AppTopFadeMask(
               child: _HomeDashboardList(

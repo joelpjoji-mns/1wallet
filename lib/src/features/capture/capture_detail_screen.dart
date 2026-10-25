@@ -199,10 +199,7 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
           );
     _merchantController.text = candidate.merchant ?? '';
     _type = candidate.transactionType == 'income' ? 'income' : 'expense';
-    _accountId =
-        candidate.suggestedAccountId ??
-        state.accounts.firstWhereOrNull((account) => !account.isArchived)?.id ??
-        state.accounts.firstOrNull?.id;
+    _accountId = candidate.suggestedAccountId;
     _categoryId =
         candidate.suggestedCategoryId ?? firstActiveCategory(state)?.id;
   }

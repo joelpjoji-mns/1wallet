@@ -200,7 +200,26 @@ const List<String> kDefaultSmsIgnoreWords = [
   'login code',
   'do not share',
   'e-statement',
+  'e-bill',
   'statement is ready',
+  'bill ready',
+  'statement ready',
+  'bill is ready',
+  'bill generated',
+  'statement generated',
+  'bill is generated',
+  'statement is generated',
+  'bill has been generated',
+  'statement has been generated',
+  'bill has generated',
+  'statement has generated',
+  'total amount due',
+  'minimum amount due',
+  'total due',
+  'min due',
+  'payment due',
+  'bill due',
+  'amount due',
   'will be debited',
   'will be deducted',
   'requested',
@@ -605,6 +624,7 @@ class Account {
     int? dueDay,
     int? notifyDaysBeforeDue,
     String? lastPaidBillMonth,
+    bool clearLastPaidBillMonth = false,
   }) {
     return Account(
       id: id ?? this.id,
@@ -631,7 +651,9 @@ class Account {
       statementDay: statementDay ?? this.statementDay,
       dueDay: dueDay ?? this.dueDay,
       notifyDaysBeforeDue: notifyDaysBeforeDue ?? this.notifyDaysBeforeDue,
-      lastPaidBillMonth: lastPaidBillMonth ?? this.lastPaidBillMonth,
+      lastPaidBillMonth: clearLastPaidBillMonth
+          ? null
+          : (lastPaidBillMonth ?? this.lastPaidBillMonth),
     );
   }
 }
@@ -739,6 +761,7 @@ class TransactionRecord {
     this.recurrenceEndDate,
     this.recurrenceLimit,
     this.attachments = const [],
+    this.tags = const [],
     this.isReimbursable = false,
     this.isTaxDeductible = false,
     this.isExcludedFromReports = false,
@@ -774,6 +797,7 @@ class TransactionRecord {
   final DateTime? recurrenceEndDate;
   final int? recurrenceLimit;
   final List<TransactionAttachment> attachments;
+  final List<String> tags;
   final bool isReimbursable;
   final bool isTaxDeductible;
   final bool isExcludedFromReports;
@@ -809,6 +833,7 @@ class TransactionRecord {
     DateTime? recurrenceEndDate,
     int? recurrenceLimit,
     List<TransactionAttachment>? attachments,
+    List<String>? tags,
     bool? isReimbursable,
     bool? isTaxDeductible,
     bool? isExcludedFromReports,
@@ -845,6 +870,7 @@ class TransactionRecord {
       recurrenceEndDate: recurrenceEndDate ?? this.recurrenceEndDate,
       recurrenceLimit: recurrenceLimit ?? this.recurrenceLimit,
       attachments: attachments ?? this.attachments,
+      tags: tags ?? this.tags,
       isReimbursable: isReimbursable ?? this.isReimbursable,
       isTaxDeductible: isTaxDeductible ?? this.isTaxDeductible,
       isExcludedFromReports:

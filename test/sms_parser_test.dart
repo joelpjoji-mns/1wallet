@@ -70,6 +70,23 @@ void main() {
       expect(parsed.ignored, isTrue);
     });
 
+    test('ignores credit card bill generated SMS with amount', () {
+      final parsed = parseTransactionMessage(
+        'Dear Customer, your credit card bill generated for card ending 1234. Total amount due is Rs. 15,420 payable by 15-Nov.',
+        fallbackCurrency: 'INR',
+      );
+      expect(parsed.ignored, isTrue);
+      expect(parsed.matchedIgnoreWord, isNotNull);
+    });
+
+    test('ignores statement generated and amount due notices', () {
+      final parsed = parseTransactionMessage(
+        'Monthly statement generated for your card XX5678. Minimum amount due: INR 1,200.',
+        fallbackCurrency: 'INR',
+      );
+      expect(parsed.ignored, isTrue);
+    });
+
     test('respects custom trigger and ignore lists', () {
       final accepted = parseTransactionMessage(
         'promo code redeemed Rs.100',

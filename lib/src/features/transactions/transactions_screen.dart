@@ -31,13 +31,10 @@ final _filteredTransactionsProvider = Provider.autoDispose
       );
       final now = DateTime.now();
       RegExp? regex;
-      var queryLower = '';
       if (query.isNotEmpty) {
         try {
           regex = RegExp(query, caseSensitive: false);
-        } catch (_) {
-          queryLower = query.toLowerCase();
-        }
+        } catch (_) {}
       }
       return sortedTransactions(state, includeScheduled: false)
           .where((transaction) {
@@ -99,7 +96,39 @@ final _filteredTransactionsProvider = Provider.autoDispose
                 return false;
               }
             }
+            if (filter.tagFilter != 'all') {
+              if (!transaction.tags.contains(filter.tagFilter)) {
+                return false;
+              }
+            }
             if (query.isEmpty) return true;
+
+            final queryNorm = query.toLowerCase().trim();
+            final queryTokens = queryNorm
+                .split(RegExp(r'\s+'))
+                .where((t) => t.isNotEmpty)
+                .toList();
+
+            final notes = transaction.notes?.toLowerCase() ?? '';
+            final name = transaction.name?.toLowerCase() ?? '';
+            final location = transaction.locationLabel?.toLowerCase() ?? '';
+            final payment = transaction.paymentMethod?.toLowerCase() ?? '';
+            final tags = transaction.tags.map((t) => t.toLowerCase()).join(' ');
+            final cat = transaction.categoryId != null
+                ? categoryById(state, transaction.categoryId)?.name.toLowerCase() ?? ''
+                : '';
+            final acc = accountById(state, transaction.accountId)?.name.toLowerCase() ?? '';
+            final counterAcc = transaction.counterAccountId != null
+                ? accountById(state, transaction.counterAccountId)?.name.toLowerCase() ?? ''
+                : '';
+            final amountStr = formatMoney(transaction.amount, state.preferences.locale).toLowerCase();
+            final rawAmount = (transaction.amount.amountMinor / 100).toString();
+
+            final combined =
+                '$notes $name $location $payment $tags $cat $acc $counterAcc $amountStr $rawAmount';
+
+            final allTokensMatch = queryTokens.every((token) => combined.contains(token));
+            if (allTokensMatch) return true;
 
             if (regex != null) {
               if (transaction.notes != null &&
@@ -112,22 +141,6 @@ final _filteredTransactionsProvider = Provider.autoDispose
               }
               if (transaction.locationLabel != null &&
                   regex.hasMatch(transaction.locationLabel!)) {
-                return true;
-              }
-            } else {
-              // Fallback if invalid regex
-              if (transaction.notes != null &&
-                  transaction.notes!.toLowerCase().contains(queryLower)) {
-                return true;
-              }
-              if (transaction.name != null &&
-                  transaction.name!.toLowerCase().contains(queryLower)) {
-                return true;
-              }
-              if (transaction.locationLabel != null &&
-                  transaction.locationLabel!.toLowerCase().contains(
-                    queryLower,
-                  )) {
                 return true;
               }
             }
@@ -333,6 +346,7 @@ final transactionsDateFilterProvider = StateProvider<String>(
 final transactionsStatusFilterProvider = StateProvider<String>((ref) => 'all');
 final transactionsCategoryFilterProvider =
     StateProvider<Set<String>>((ref) => <String>{});
+final transactionsTagFilterProvider = StateProvider<String>((ref) => 'all');
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({required this.onMenuPressed, super.key});
@@ -358,6 +372,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final typeFilter = ref.watch(transactionsTypeFilterProvider);
     final dateFilter = ref.watch(transactionsDateFilterProvider);
     final statusFilter = ref.watch(transactionsStatusFilterProvider);
+    final tagFilter = ref.watch(transactionsTagFilterProvider);
     final globalCategoryFilter = ref.watch(transactionsCategoryFilterProvider);
     final effectiveCategoryFilters = globalCategoryFilter.isNotEmpty
         ? globalCategoryFilter
@@ -370,10 +385,17 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       categoryFilterIds: effectiveCategoryFilters,
       includeUncategorizedCategory: _includeUncategorizedCategory,
       accountFilter: accountFilter,
+      tagFilter: tagFilter,
     );
     final transactions = ref.watch(_filteredTransactionsProvider(filterState));
     final flow = ref.watch(_transactionsFlowProvider(filterState));
     final hasActiveFilters = _hasActiveFilters(accountFilter);
+    final allLedgerTags = state.transactions
+        .expand((t) => t.tags)
+        .where((t) => t.trim().isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
 
     return AppScreen(
       title: _selectedTransactionIds.isNotEmpty
@@ -448,6 +470,16 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             ],
             statusLabel: _statusFilterLabel(statusFilter),
             statusValue: statusFilter,
+            tagLabel: tagFilter == 'all' ? 'All tags' : '#$tagFilter',
+            tagValue: tagFilter,
+            tagActive: tagFilter != 'all',
+            tagOptions: [
+              const GlassDropdownOption('all', 'All tags'),
+              for (final tag in allLedgerTags)
+                GlassDropdownOption(tag, '#$tag', icon: Icons.label_outline),
+            ],
+            onTagSelected: (value) =>
+                ref.read(transactionsTagFilterProvider.notifier).state = value,
             typeActive: typeFilter != 'all',
             dateActive: dateFilter != _defaultDateFilter,
             accountActive: accountFilter != null,
@@ -564,6 +596,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       final monthlyBalances = stats.monthlyBalances;
                       final monthlyFlows = stats.monthlyFlows;
 
+                      final filteredMonthlyFlows = <String, int>{};
+                      final filteredMonthlyCounts = <String, int>{};
+                      final includedAccounts = accountFilter != null
+                          ? {accountFilter}
+                          : {
+                              for (final a in state.accounts)
+                                if (!a.isArchived && a.includeInTotals) a.id,
+                            };
+
                       final entries = <_HistoryEntry>[];
                       String? currentMonth;
                       DateTime? currentDay;
@@ -574,6 +615,66 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         '_',
                         '-',
                       );
+
+                      final monthFormat = DateFormat('MMM yyyy', locale);
+                      final dayFormat = DateFormat('EEE, d MMM', locale);
+
+                      for (final t in transactions) {
+                        final mStr = monthFormat.format(t.occurredAt).toUpperCase();
+                        filteredMonthlyCounts[mStr] = (filteredMonthlyCounts[mStr] ?? 0) + 1;
+
+                        if (t.status == 'scheduled' ||
+                            t.status == 'paused' ||
+                            t.status == 'void' ||
+                            t.isExcludedFromReports) {
+                          continue;
+                        }
+
+                        final sourceIncluded = includedAccounts.contains(t.accountId);
+                        final counterIncluded = t.counterAccountId != null &&
+                            includedAccounts.contains(t.counterAccountId);
+                        if (!sourceIncluded && !counterIncluded) continue;
+
+                        int flowMinor = 0;
+                        if (t.type == 'transfer') {
+                          if (sourceIncluded && !counterIncluded) {
+                            final converted = convertMoneyForDisplay(
+                              state,
+                              t.amount,
+                              state.preferences.displayCurrency,
+                            );
+                            flowMinor = -converted.amountMinor;
+                          } else if (!sourceIncluded && counterIncluded) {
+                            final counterAmt = t.counterAmount ?? t.amount;
+                            final converted = convertMoneyForDisplay(
+                              state,
+                              counterAmt,
+                              state.preferences.displayCurrency,
+                            );
+                            flowMinor = converted.amountMinor;
+                          }
+                        } else if (incomeTypes.contains(t.type)) {
+                          if (sourceIncluded) {
+                            final converted = convertMoneyForDisplay(
+                              state,
+                              t.amount,
+                              state.preferences.displayCurrency,
+                            );
+                            flowMinor = converted.amountMinor;
+                          }
+                        } else if (expenseTypes.contains(t.type)) {
+                          if (sourceIncluded) {
+                            final converted = convertMoneyForDisplay(
+                              state,
+                              t.amount,
+                              state.preferences.displayCurrency,
+                            );
+                            flowMinor = -converted.amountMinor;
+                          }
+                        }
+                        filteredMonthlyFlows[mStr] =
+                            (filteredMonthlyFlows[mStr] ?? 0) + flowMinor;
+                      }
 
                       String? currentDayLabel;
                       List<TransactionRecord> currentDayTransactions = [];
@@ -591,9 +692,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         }
                       }
 
-                      final monthFormat = DateFormat('MMM yyyy', locale);
-                      final dayFormat = DateFormat('EEE, d MMM', locale);
-
                       for (final t in transactions) {
                         final monthStr = monthFormat
                             .format(t.occurredAt)
@@ -604,20 +702,29 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                           flushDay();
                           currentMonth = monthStr;
 
-                          final balanceStr = formatMoney(
+                          final int effectiveFlowMinor = hasActiveFilters
+                              ? (filteredMonthlyFlows[monthStr] ?? 0)
+                              : (monthlyFlows[monthStr] ?? 0);
+                          final formattedFlow = formatMoney(
                             Money(
-                              amountMinor: monthlyBalances[monthStr] ?? 0,
+                              amountMinor: effectiveFlowMinor,
                               currency: state.preferences.displayCurrency,
                             ),
                             state.preferences.locale,
                           );
-                          final flowStr = formatMoney(
-                            Money(
-                              amountMinor: monthlyFlows[monthStr] ?? 0,
-                              currency: state.preferences.displayCurrency,
-                            ),
-                            state.preferences.locale,
-                          );
+                          final flowStr = (hasActiveFilters && effectiveFlowMinor > 0)
+                              ? '+$formattedFlow'
+                              : formattedFlow;
+
+                          final balanceStr = hasActiveFilters
+                              ? '${filteredMonthlyCounts[monthStr] ?? 0} record${(filteredMonthlyCounts[monthStr] ?? 0) == 1 ? '' : 's'}'
+                              : formatMoney(
+                                  Money(
+                                    amountMinor: monthlyBalances[monthStr] ?? 0,
+                                    currency: state.preferences.displayCurrency,
+                                  ),
+                                  state.preferences.locale,
+                                );
 
                           entries.add(
                             _MonthHeaderEntry(
@@ -625,6 +732,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                               balanceStr: balanceStr,
                               flowStr: flowStr,
                               isFirst: entries.isEmpty,
+                              isFiltered: hasActiveFilters,
                             ),
                           );
                         }
@@ -688,7 +796,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                                     children: [
                                       Expanded(
                                         child: PrivacyText(
-                                          'Balance ${item.balanceStr}',
+                                          item.isFiltered
+                                              ? item.balanceStr
+                                              : 'Balance ${item.balanceStr}',
                                           style: Theme.of(context)
                                               .textTheme
                                               .bodySmall
@@ -796,10 +906,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final typeFilter = ref.read(transactionsTypeFilterProvider);
     final dateFilter = ref.read(transactionsDateFilterProvider);
     final statusFilter = ref.read(transactionsStatusFilterProvider);
+    final tagFilter = ref.read(transactionsTagFilterProvider);
     return _query.trim().isNotEmpty ||
         typeFilter != 'all' ||
         dateFilter != _defaultDateFilter ||
         statusFilter != 'all' ||
+        tagFilter != 'all' ||
         accountFilter != null ||
         _categoryFilters.isNotEmpty ||
         ref.read(transactionsCategoryFilterProvider).isNotEmpty ||
@@ -817,6 +929,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     ref.read(transactionsDateFilterProvider.notifier).state =
         _defaultDateFilter;
     ref.read(transactionsStatusFilterProvider.notifier).state = 'all';
+    ref.read(transactionsTagFilterProvider.notifier).state = 'all';
     ref.read(homeSelectedAccountProvider.notifier).state = null;
   }
 
@@ -1112,6 +1225,7 @@ class _TransactionFilterState {
     required Set<String> categoryFilterIds,
     required this.includeUncategorizedCategory,
     required this.accountFilter,
+    this.tagFilter = 'all',
   }) : query = query.trim().toLowerCase(),
        categoryFilterIds = (categoryFilterIds.toList()..sort()).join('|');
 
@@ -1122,6 +1236,7 @@ class _TransactionFilterState {
   final String categoryFilterIds;
   final bool includeUncategorizedCategory;
   final String? accountFilter;
+  final String tagFilter;
 
   List<String> get categoryFilters => categoryFilterIds.isEmpty
       ? const <String>[]
@@ -1137,7 +1252,8 @@ class _TransactionFilterState {
         other.statusFilter == statusFilter &&
         other.categoryFilterIds == categoryFilterIds &&
         other.includeUncategorizedCategory == includeUncategorizedCategory &&
-        other.accountFilter == accountFilter;
+        other.accountFilter == accountFilter &&
+        other.tagFilter == tagFilter;
   }
 
   @override
@@ -1149,6 +1265,7 @@ class _TransactionFilterState {
     categoryFilterIds,
     includeUncategorizedCategory,
     accountFilter,
+    tagFilter,
   );
 }
 
@@ -1661,12 +1778,14 @@ class _MonthHeaderEntry extends _HistoryEntry {
     required this.balanceStr,
     required this.flowStr,
     required this.isFirst,
+    this.isFiltered = false,
   });
 
   final String monthStr;
   final String balanceStr;
   final String flowStr;
   final bool isFirst;
+  final bool isFiltered;
 }
 
 class _DayGroupEntry extends _HistoryEntry {

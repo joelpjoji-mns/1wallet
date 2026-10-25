@@ -108,6 +108,35 @@ void main() {
       expect(creditCardsDueSoonCount(state, now: now), 0);
     });
 
+    test('is marked paid after due date has passed in same month without resetting', () {
+      // Due date was Oct 5, today is Oct 25.
+      final paidAccount = account.copyWith(lastPaidBillMonth: '2026-10');
+      final state = baseState.copyWith(accounts: [paidAccount]);
+
+      final now = DateTime(2026, 10, 25);
+      final status = creditCardDueStatus(state, paidAccount, now: now);
+
+      expect(status, isNotNull);
+      expect(status!.isPaid, isTrue);
+      expect(status.isOverdue, isFalse);
+      expect(status.isDueSoon, isFalse);
+      expect(status.isStatementGenerated, isFalse);
+      expect(status.cycleKey, '2026-10');
+
+      expect(creditCardsDueSoonCount(state, now: now), 0);
+      final notifications = buildNotificationInbox(state, now: now);
+      expect(notifications.any((n) => n.id.startsWith('card_')), isFalse);
+    });
+
+    test('unmarking card bill paid clears lastPaidBillMonth', () {
+      final paidAccount = account.copyWith(lastPaidBillMonth: '2026-10');
+      final unmarked = paidAccount.copyWith(
+        lastPaidBillMonth: null,
+        clearLastPaidBillMonth: true,
+      );
+      expect(unmarked.lastPaidBillMonth, isNull);
+    });
+
     test('supports statement-only configuration without explicit dueDay', () {
       const stmtOnlyAccount = Account(
         id: 'card-stmt-only',

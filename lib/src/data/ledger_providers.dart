@@ -1150,6 +1150,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     String? paymentMethod,
     String? name,
     String? notes,
+    List<String>? tags,
     DateTime? occurredAt,
   }) async {
     await upsertTransaction(
@@ -1183,6 +1184,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     String? locationLabel,
     String? name,
     String? notes,
+    List<String>? tags,
     DateTime? occurredAt,
     String? recurrenceFrequency,
     int? recurrenceInterval,
@@ -1317,6 +1319,7 @@ class LedgerController extends StateNotifier<LedgerState> {
           ? null
           : (recurrenceLimit ?? existing?.recurrenceLimit),
       attachments: existing?.attachments ?? const [],
+      tags: tags ?? existing?.tags ?? const [],
       isReimbursable: existing?.isReimbursable ?? false,
       isTaxDeductible: existing?.isTaxDeductible ?? false,
       isExcludedFromReports:
@@ -1385,6 +1388,7 @@ class LedgerController extends StateNotifier<LedgerState> {
       paymentMethod: existing.paymentMethod,
       name: existing.name,
       notes: existing.notes,
+      tags: existing.tags,
       occurredAt: occurredAt ?? existing.occurredAt,
       recurrenceFrequency: existing.recurrenceFrequency,
       isExcludedFromReports: existing.isExcludedFromReports,
@@ -1697,7 +1701,10 @@ class LedgerController extends StateNotifier<LedgerState> {
   Future<void> markCardBillPaid(String accountId, String? cycleMonth) async {
     final account = accountById(state, accountId);
     if (account == null) return;
-    final updated = account.copyWith(lastPaidBillMonth: cycleMonth);
+    final updated = account.copyWith(
+      lastPaidBillMonth: cycleMonth,
+      clearLastPaidBillMonth: cycleMonth == null,
+    );
     final accounts = [
       for (final a in state.accounts)
         a.id == accountId ? updated : a,
@@ -2412,12 +2419,7 @@ class LedgerController extends StateNotifier<LedgerState> {
       parsedAmount: parsed.amount,
       merchant: parsed.merchant,
       transactionType: type,
-      suggestedAccountId:
-          matchedAccountId ??
-          state.accounts
-              .where((account) => !account.isArchived)
-              .firstOrNull
-              ?.id,
+      suggestedAccountId: matchedAccountId,
       suggestedCategoryId: category?.category.id,
       suggestedCategoryConfidence: category?.confidence,
       suggestedCategoryReason: category?.reason,

@@ -1605,26 +1605,9 @@ CreditCardDueStatus? creditCardDueStatus(
 
     final thisMonthCycleKey =
         '${thisMonthDueDate.year}-${thisMonthDueDate.month.toString().padLeft(2, '0')}';
-    final thisMonthPaid = account.lastPaidBillMonth == thisMonthCycleKey;
 
-    if (thisMonthPaid && today.isAfter(thisMonthDueDate)) {
-      // This month's bill was already paid and its due date has passed.
-      // Advance to next month's cycle.
-      final nextMonth = DateTime(current.year, current.month + 1);
-      final maxDayNextMonth =
-          DateTime(nextMonth.year, nextMonth.month + 1, 0).day;
-      targetDueDate = DateTime(
-        nextMonth.year,
-        nextMonth.month,
-        dueDay.clamp(1, maxDayNextMonth),
-      );
-    } else {
-      // Focus on this month's due date (whether paid, upcoming, or overdue)
-      targetDueDate = thisMonthDueDate;
-    }
-
-    cycleKey =
-        '${targetDueDate.year}-${targetDueDate.month.toString().padLeft(2, '0')}';
+    targetDueDate = thisMonthDueDate;
+    cycleKey = thisMonthCycleKey;
 
     if (statementDay != null) {
       final stmtMonth = statementDay > dueDay
@@ -1651,7 +1634,9 @@ CreditCardDueStatus? creditCardDueStatus(
         '${thisMonthStmtDate.year}-${thisMonthStmtDate.month.toString().padLeft(2, '0')}';
     final thisMonthPaid = account.lastPaidBillMonth == thisMonthCycleKey;
 
-    if (today.isBefore(thisMonthStmtDate)) {
+    if (thisMonthPaid) {
+      statementDate = thisMonthStmtDate;
+    } else if (today.isBefore(thisMonthStmtDate)) {
       // The statement for this month has not been generated yet.
       // Check the previous month's statement cycle first.
       final lastMonth = DateTime(current.year, current.month - 1);
@@ -1673,15 +1658,6 @@ CreditCardDueStatus? creditCardDueStatus(
         // Last month was paid; focus on the upcoming statement this month
         statementDate = thisMonthStmtDate;
       }
-    } else if (thisMonthPaid && today.isAfter(thisMonthStmtDate)) {
-      final nextMonth = DateTime(current.year, current.month + 1);
-      final maxStmtDayNextMonth =
-          DateTime(nextMonth.year, nextMonth.month + 1, 0).day;
-      statementDate = DateTime(
-        nextMonth.year,
-        nextMonth.month,
-        statementDay.clamp(1, maxStmtDayNextMonth),
-      );
     } else {
       statementDate = thisMonthStmtDate;
     }

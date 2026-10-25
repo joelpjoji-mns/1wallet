@@ -69,6 +69,7 @@ LedgerState normalizeLedgerState(
       recurrenceEndDate: transaction.recurrenceEndDate,
       recurrenceLimit: transaction.recurrenceLimit,
       attachments: transaction.attachments,
+      tags: transaction.tags,
       isReimbursable: transaction.isReimbursable,
       isTaxDeductible: transaction.isTaxDeductible,
       isExcludedFromReports: transaction.isExcludedFromReports,
@@ -721,6 +722,7 @@ Map<String, Object?> _transactionToJson(TransactionRecord transaction) {
     'attachments': transaction.attachments
         .map(_transactionAttachmentToJson)
         .toList(),
+    'tags': transaction.tags,
     'isReimbursable': transaction.isReimbursable,
     'isTaxDeductible': transaction.isTaxDeductible,
     'isExcludedFromReports': transaction.isExcludedFromReports,
@@ -770,6 +772,7 @@ TransactionRecord _transactionFromJson(Map<String, dynamic> json) {
     attachments: _list(
       json['attachments'],
     ).map(_transactionAttachmentFromJson).toList(),
+    tags: _nullableStringList(json['tags']) ?? const [],
     isReimbursable: _bool(json['isReimbursable']),
     isTaxDeductible: _bool(json['isTaxDeductible']),
     isExcludedFromReports: _bool(json['isExcludedFromReports']),

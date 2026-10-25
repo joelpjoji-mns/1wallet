@@ -119,6 +119,20 @@ class TransactionRow extends StatelessWidget {
                             fontStyle: FontStyle.italic,
                           ),
                         ),
+                      if (transaction.tags.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            transaction.tags.map((t) => '#$t').join(' '),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),

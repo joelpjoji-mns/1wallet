@@ -50,6 +50,32 @@ class SmsReceiver : BroadcastReceiver() {
         val triggers = loadWords(prefs, "flutter.one_wallet_flutter.sms_trigger_words")
         val ignores = loadWords(prefs, "flutter.one_wallet_flutter.sms_ignore_words")
         val lowerBody = body.lowercase()
+
+        val builtInBillIgnores = listOf(
+            "bill generated", "statement generated", "bill is generated", "statement is generated",
+            "bill has been generated", "statement has been generated", "bill has generated",
+            "statement has generated", "statement ready", "bill ready", "bill is ready",
+            "statement is ready", "total amount due", "minimum amount due", "total due",
+            "min due", "payment due", "bill due", "amount due", "e-statement", "e-bill"
+        )
+        val matchedBillNotice = findMatchingWord(lowerBody, builtInBillIgnores)
+        if (matchedBillNotice != null) {
+            val amount = extractAmount(body)
+            val notificationShown = showBillStatementNotification(context, amount, extractLast4(body))
+            appendDiagnostic(
+                context,
+                source = "sms",
+                stage = "native-sms",
+                decision = "bill-statement-notice",
+                reason = "detected card bill/statement notice instead of transaction",
+                rawText = body,
+                amount = amount,
+                matchedIgnoreWord = matchedBillNotice,
+                notificationShown = notificationShown
+            )
+            return
+        }
+
         val amount = extractAmount(body)
         val matchedTrigger = findMatchingWord(lowerBody, triggers)
         val matchedIgnore = findMatchingWord(lowerBody, ignores)
@@ -202,49 +228,14 @@ class SmsReceiver : BroadcastReceiver() {
         return saved
     }
 
+    private fun showBillStatementNotification(context: Context, amount: String?, last4: String?): Boolean {
+        // Disabled per user preference: no native Android stock notifications or overlays
+        return false
+    }
+
     private fun showNotification(context: Context, amount: String?, last4: String?): Boolean {
-        return try {
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channelId = "one_wallet_capture"
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, "Transaction Capture", NotificationManager.IMPORTANCE_DEFAULT)
-            notificationManager.createNotificationChannel(channel)
-        }
-
-        val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-        launchIntent?.putExtra("flutter_route", "/review")
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            0,
-            launchIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Notification.Builder(context, channelId)
-        } else {
-            Notification.Builder(context)
-        }
-
-        val title = if (amount != null) "Transaction detected: $amount" else "Transaction detected"
-        val text = if (last4 != null) {
-            "Account \u2022\u2022$last4 \u00b7 Tap to review and save."
-        } else {
-            "Tap to review and save."
-        }
-
-        builder.setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(title)
-            .setContentText(text)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-
-        notificationManager.notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), builder.build())
-            true
-        } catch (e: Exception) {
-            false
-        }
+        // Disabled per user preference: no native Android stock notifications or overlays
+        return false
     }
 
     private fun nativeIgnoreReason(amount: String?, matchedTrigger: String?, matchedIgnore: String?): String {
