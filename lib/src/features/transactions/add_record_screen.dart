@@ -497,18 +497,12 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                           optionsBuilder: (textEditingValue) {
                             final query = textEditingValue.text.trim();
                             if (query.isEmpty) {
-                              return uniqueNotes.take(8);
+                              return const Iterable<String>.empty();
                             }
                             final lowerQuery = query.toLowerCase();
-                            final matches = uniqueNotes
+                            return uniqueNotes
                                 .where((note) => note.toLowerCase().contains(lowerQuery))
-                                .toList();
-                            final exactMatch = uniqueNotes
-                                .any((note) => note.toLowerCase() == lowerQuery);
-                            if (!exactMatch && query.isNotEmpty) {
-                              matches.insert(0, '__create__:$query');
-                            }
-                            return matches;
+                                .take(8);
                           },
                           fieldViewBuilder:
                               (
@@ -527,30 +521,6 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                     prefixIcon: const Icon(
                                       Icons.notes_outlined,
                                     ),
-                                    suffixIcon: uniqueNotes.isNotEmpty
-                                        ? PopupMenuButton<String>(
-                                            icon: const Icon(Icons.arrow_drop_down),
-                                            tooltip: 'Recent notes',
-                                            onSelected: (val) {
-                                              textEditingController.text = val;
-                                              textEditingController.selection =
-                                                  TextSelection.collapsed(
-                                                    offset: val.length,
-                                                  );
-                                            },
-                                            itemBuilder: (context) => [
-                                              for (final note in uniqueNotes.take(12))
-                                                PopupMenuItem(
-                                                  value: note,
-                                                  child: Text(
-                                                    note,
-                                                    maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                            ],
-                                          )
-                                        : null,
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(
                                         AppRadii.md,
@@ -561,6 +531,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                               },
                           optionsViewBuilder: (context, onSelected, options) {
                             final optionsList = options.toList();
+                            if (optionsList.isEmpty) return const SizedBox.shrink();
                             return Align(
                               alignment: Alignment.bottomLeft,
                               child: Material(
@@ -582,15 +553,6 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                       itemCount: optionsList.length,
                                       itemBuilder: (context, index) {
                                         final option = optionsList[index];
-                                        if (option.startsWith('__create__:')) {
-                                          final createVal = option.substring('__create__:'.length);
-                                          return ListTile(
-                                            dense: true,
-                                            leading: const Icon(Icons.add_rounded),
-                                            title: Text('Create "$createVal"'),
-                                            onTap: () => onSelected(createVal),
-                                          );
-                                        }
                                         return ListTile(
                                           dense: true,
                                           leading: const Icon(Icons.history_rounded, size: 18),
@@ -613,7 +575,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                             children: [
                               for (final tag in _tags)
                                 InputChip(
-                                  label: Text('#$tag'),
+                                  label: Text(tag),
                                   onDeleted: () => setState(() => _tags.remove(tag)),
                                   visualDensity: VisualDensity.compact,
                                 ),
@@ -630,7 +592,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                             final lowerQuery = query.toLowerCase();
                             final unselected = allTags.where((t) => !_tags.contains(t)).toList();
                             if (query.isEmpty) {
-                              return unselected.take(8);
+                              return const Iterable<String>.empty();
                             }
                             final matches = unselected
                                 .where((t) => t.toLowerCase().contains(lowerQuery))
@@ -640,7 +602,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                             if (!exactMatch && query.isNotEmpty) {
                               matches.insert(0, '__create__:$query');
                             }
-                            return matches;
+                            return matches.take(8);
                           },
                           onSelected: (option) {
                             final val = option.startsWith('__create__:')
@@ -669,24 +631,6 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                     prefixIcon: const Icon(
                                       Icons.label_outline,
                                     ),
-                                    suffixIcon: allTags.isNotEmpty
-                                        ? PopupMenuButton<String>(
-                                            icon: const Icon(Icons.arrow_drop_down),
-                                            tooltip: 'Available tags',
-                                            onSelected: (val) {
-                                              if (!_tags.contains(val)) {
-                                                setState(() => _tags.add(val));
-                                              }
-                                            },
-                                            itemBuilder: (context) => [
-                                              for (final tag in allTags.where((t) => !_tags.contains(t)))
-                                                PopupMenuItem(
-                                                  value: tag,
-                                                  child: Text('#$tag'),
-                                                ),
-                                            ],
-                                          )
-                                        : null,
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(
                                         AppRadii.md,

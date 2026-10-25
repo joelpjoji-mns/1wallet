@@ -470,13 +470,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             ],
             statusLabel: _statusFilterLabel(statusFilter),
             statusValue: statusFilter,
-            tagLabel: tagFilter == 'all' ? 'All tags' : '#$tagFilter',
+            tagLabel: tagFilter == 'all' ? 'All tags' : tagFilter,
             tagValue: tagFilter,
             tagActive: tagFilter != 'all',
             tagOptions: [
               const GlassDropdownOption('all', 'All tags'),
               for (final tag in allLedgerTags)
-                GlassDropdownOption(tag, '#$tag', icon: Icons.label_outline),
+                GlassDropdownOption(tag, tag, icon: Icons.label_outline),
             ],
             onTagSelected: (value) =>
                 ref.read(transactionsTagFilterProvider.notifier).state = value,

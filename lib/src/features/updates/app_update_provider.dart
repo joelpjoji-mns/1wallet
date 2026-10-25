@@ -635,6 +635,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
         status: UpdateStatus.downloaded,
         downloadedApkPath: savePath,
       );
+      await installUpdate();
     } catch (e) {
       if (e is DioException && CancelToken.isCancel(e)) {
         state = state.copyWith(

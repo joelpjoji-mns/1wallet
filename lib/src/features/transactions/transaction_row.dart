@@ -123,7 +123,7 @@ class TransactionRow extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.only(top: 2),
                           child: Text(
-                            transaction.tags.map((t) => '#$t').join(' '),
+                            transaction.tags.join(' · '),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(

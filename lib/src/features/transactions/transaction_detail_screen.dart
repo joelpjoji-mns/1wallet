@@ -314,7 +314,7 @@ class _TransactionDetailScreenState
                 children: [
                   for (final tag in transaction.tags)
                     Chip(
-                      label: Text('#$tag'),
+                      label: Text(tag),
                       visualDensity: VisualDensity.compact,
                     ),
                 ],

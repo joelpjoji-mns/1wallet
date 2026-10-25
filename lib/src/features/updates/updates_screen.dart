@@ -12,16 +12,16 @@ import 'app_update_provider.dart';
 /// Update screen matching the Morphe Manager update experience.
 ///
 /// Features:
-/// - Morphe hero status header with launcher avatar and version transition pill
-/// - Pull-to-refresh anywhere on the screen
-/// - Release details card
-/// - Morphe continuous vertical timeline (`ChangelogTimeline`)
-/// - Unfolded new/current release changelog
-/// - Interactive, expandable **Older Releases** with complete version history
+/// - Prominent Morphe hero status header with launcher avatar, version transition pill,
+///   and full-width update action button right on top
+/// - Scrollable changelogs with release details and older releases history
+/// - Dedicated download progress screen with 220px animated circular ring
+/// - Automatic installation prompt upon download completion
+/// - Top right labeled action button ("Check for update" / "Install" / "Update")
+/// - Interactive, expandable Older Releases with full historical changelogs
 /// - Categorized sections (New Features, Bug Fixes, Improvements & Notes)
-/// - Scope tag detection (`[scope]` or `**scope:**`) and inline code chips (`` `code` ``)
-/// - Morphe circular download progress ring (percentage and downloaded/total MB)
-/// - Full-width action buttons spanning the screen width
+/// - Scope tag detection (`[scope]`) and inline code chips (`` `code` ``)
+/// - Pull-to-refresh anywhere across the screen
 class UpdatesScreen extends ConsumerStatefulWidget {
   const UpdatesScreen({super.key});
 
@@ -65,53 +65,82 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     final provider = ref.read(appUpdateProvider.notifier);
     final hasUpdate = state.latestRelease != null;
 
-    // Build the consolidated list of releases to display in the Morphe timeline:
-    // 1. Latest release (if available)
-    // 2. Current release (if available or from allReleases)
-    // 3. Older releases
     final releases = _resolveReleases(state);
+
+    // Dedicated download screen while downloading
+    if (state.status == UpdateStatus.downloading) {
+      return RouteScaffold(
+        title: 'Downloading Update',
+        actions: [
+          Tooltip(
+            message: 'Check for updates',
+            child: AppActionButton(
+              label: 'Cancel',
+              icon: Icons.close_rounded,
+              compact: true,
+              onPressed: () => provider.cancelDownload(),
+            ),
+          ),
+        ],
+        child: _buildDedicatedDownloadView(context, state, provider),
+      );
+    }
 
     return RouteScaffold(
       title: 'Updates',
       actions: [
-        Tooltip(
-          message: 'Check for updates',
-          child: HeaderIconButton(
-            icon: Icons.refresh_rounded,
-            onPressed: state.status == UpdateStatus.checking
-                ? null
-                : () => provider.checkForUpdates(force: true),
-            semanticLabel: 'Check for updates',
+        if (state.status == UpdateStatus.downloaded)
+          Tooltip(
+            message: 'Check for updates',
+            child: AppActionButton(
+              label: 'Install',
+              icon: Icons.install_mobile_rounded,
+              compact: true,
+              prominent: true,
+              onPressed: () => provider.installUpdate(),
+            ),
+          )
+        else if (hasUpdate && state.status == UpdateStatus.idle)
+          Tooltip(
+            message: 'Check for updates',
+            child: AppActionButton(
+              label: 'Update',
+              icon: Icons.download_rounded,
+              compact: true,
+              prominent: true,
+              onPressed: () => provider.downloadUpdate(),
+            ),
+          )
+        else
+          Tooltip(
+            message: 'Check for updates',
+            child: AppActionButton(
+              label: 'Check for update',
+              icon: Icons.refresh_rounded,
+              compact: true,
+              onPressed: state.status == UpdateStatus.checking
+                  ? null
+                  : () => provider.checkForUpdates(force: true),
+            ),
           ),
-        ),
       ],
       child: GlassIsolationScope(
         defaultQuality: GlassQuality.standard,
         child: RefreshIndicator(
           onRefresh: () => provider.checkForUpdates(force: true),
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildHeroCard(context, state),
-                if (state.status == UpdateStatus.downloading) ...[
-                  const SizedBox(height: AppSpacing.lg),
-                  _buildMorpheDownloadProgress(context, state),
-                ],
-                if (hasUpdate) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  _buildReleaseInfoCard(context, state.latestRelease!),
-                ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Top Section: Hero Card with Version Transition & Update Action Button
+              _buildHeroCard(context, state, provider),
+              if (hasUpdate) ...[
                 const SizedBox(height: AppSpacing.md),
-                _buildFullMorpheTimeline(context, state, releases),
-                const SizedBox(height: AppSpacing.xl),
-                _buildFullScreenActionButtons(context, state, provider),
-                const SizedBox(height: AppSpacing.xxl),
+                _buildReleaseInfoCard(context, state.latestRelease!),
               ],
-            ),
+              const SizedBox(height: AppSpacing.md),
+              _buildFullMorpheTimeline(context, state, releases),
+              const SizedBox(height: AppSpacing.xxl),
+            ],
           ),
         ),
       ),
@@ -146,10 +175,14 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
   }
 
   // ===========================================================================
-  // HERO CARD (Morphe status header & version comparison)
+  // HERO CARD (Morphe status header, version comparison, and update button on top)
   // ===========================================================================
 
-  Widget _buildHeroCard(BuildContext context, AppUpdateState state) {
+  Widget _buildHeroCard(
+    BuildContext context,
+    AppUpdateState state,
+    AppUpdateProvider provider,
+  ) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final hasUpdate = state.latestRelease != null;
@@ -188,12 +221,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
       statusSubtitle = state.errorMessage ?? 'Could not reach update server';
       icon = Icons.error_outline_rounded;
       color = scheme.error;
-    } else if (state.status == UpdateStatus.downloading) {
-      statusTitle = 'Downloading update…';
-      statusSubtitle =
-          'Fetching version ${state.latestRelease?.versionName ?? ''}';
-      icon = Icons.downloading_rounded;
-      color = scheme.primary;
     } else if (state.status == UpdateStatus.downloaded) {
       statusTitle = 'Update Ready to Install';
       statusSubtitle =
@@ -211,13 +238,13 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
                 Container(
-                  width: 52,
-                  height: 52,
+                  width: 50,
+                  height: 50,
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.16),
                     shape: BoxShape.circle,
@@ -317,8 +344,83 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                       ],
                     ),
             ),
+            const SizedBox(height: AppSpacing.md),
+            // Full-width update button right on top
+            _buildTopActionButton(context, state, provider),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTopActionButton(
+    BuildContext context,
+    AppUpdateState state,
+    AppUpdateProvider provider,
+  ) {
+    if (kIsWeb) {
+      if (state.latestRelease != null) {
+        return const SizedBox(
+          width: double.infinity,
+          child: GlassButton(
+            icon: Icon(Icons.refresh_rounded),
+            label: 'Reload App',
+            onTap: reloadWebPage,
+          ),
+        );
+      }
+      return SizedBox(
+        width: double.infinity,
+        child: GlassButton(
+          icon: const Icon(Icons.refresh_rounded),
+          label: 'Check for Updates',
+          onTap: () => provider.checkForUpdates(force: true),
+        ),
+      );
+    }
+
+    if (state.latestRelease != null && state.status == UpdateStatus.idle) {
+      final sizeStr = state.latestRelease!.apk?.sizeBytes != null
+          ? ' (${(state.latestRelease!.apk!.sizeBytes / 1024 / 1024).toStringAsFixed(1)} MB)'
+          : '';
+      return SizedBox(
+        width: double.infinity,
+        child: GlassButton(
+          icon: const Icon(Icons.download_rounded),
+          label: 'Download Update$sizeStr',
+          onTap: () => provider.downloadUpdate(),
+        ),
+      );
+    }
+
+    if (state.status == UpdateStatus.downloaded) {
+      return SizedBox(
+        width: double.infinity,
+        child: GlassButton(
+          icon: const Icon(Icons.install_mobile_rounded),
+          label: 'Install Update',
+          onTap: () => provider.installUpdate(),
+        ),
+      );
+    }
+
+    if (state.status == UpdateStatus.error) {
+      return SizedBox(
+        width: double.infinity,
+        child: GlassButton(
+          icon: const Icon(Icons.refresh_rounded),
+          label: 'Try Again',
+          onTap: () => provider.checkForUpdates(force: true),
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      child: GlassButton(
+        icon: const Icon(Icons.refresh_rounded),
+        label: 'Check for Updates',
+        onTap: () => provider.checkForUpdates(force: true),
       ),
     );
   }
@@ -481,8 +583,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     final primaryRelease = releases.first;
     final olderReleases = releases.skip(1).toList();
 
-    // The primary release is titled "What's new in [version]" when update is available,
-    // matching test expectations and Morphe's headline pattern.
     final primaryTitle = hasUpdate
         ? "What's new in ${primaryRelease.versionName}"
         : 'Changelog: v${primaryRelease.versionName}';
@@ -490,7 +590,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Primary / Latest release card
         _buildReleaseTimelineCard(
           context,
           release: primaryRelease,
@@ -499,7 +598,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
           isInstalled: !hasUpdate,
           isExpandedByDefault: true,
         ),
-        // Older releases section on the continuous timeline
         if (olderReleases.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
           _buildOlderReleasesSection(context, state, olderReleases),
@@ -529,7 +627,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Timeline header row with release node, version badge, date, changes counter
           Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.sm),
             child: Row(
@@ -583,7 +680,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
             ),
           ),
           const Divider(height: 1),
-          // Categorized change sections on the timeline
           CustomPaint(
             painter: _MorpheTimelineRailPainter(
               railColor: scheme.outlineVariant.withValues(alpha: 0.4),
@@ -655,8 +751,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     AppUpdateState state,
     List<AppUpdateRelease> olderReleases,
   ) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final scheme = Theme.of(context).colorScheme;
     final currentVersion = state.currentVersionName;
 
     return SectionCard(
@@ -701,7 +796,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Expandable release header tile
         InkWell(
           onTap: () => _toggleReleaseExpanded(release.id),
           borderRadius: BorderRadius.circular(AppRadii.sm),
@@ -779,7 +873,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
             ),
           ),
         ),
-        // Expanded changelog content
         if (isExpanded)
           Padding(
             padding: const EdgeInsets.only(
@@ -887,7 +980,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Category header chip in Morphe style
           Padding(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
             child: Row(
@@ -920,7 +1012,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
               ],
             ),
           ),
-          // Change items with scope badge and inline code chip rendering
           ...displayedItems.asMap().entries.map((entry) {
             final isLast =
                 entry.key == displayedItems.length - 1 && !hasOverflow;
@@ -978,7 +1069,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    // Check for scope prefix like `**scope:**` or `[scope]`
     String? scope;
     String body = text;
 
@@ -997,7 +1087,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Subtle bullet dot
               Container(
                 margin: const EdgeInsets.only(top: 7, right: 8),
                 width: 5,
@@ -1063,12 +1152,13 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
   }
 
   // ===========================================================================
-  // MORPHE DOWNLOAD PROGRESS RING
+  // DEDICATED MORPHE DOWNLOAD VIEW (Progress Ring Screen)
   // ===========================================================================
 
-  Widget _buildMorpheDownloadProgress(
+  Widget _buildDedicatedDownloadView(
     BuildContext context,
     AppUpdateState state,
+    AppUpdateProvider provider,
   ) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
@@ -1077,218 +1167,121 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     final writtenMb = (state.bytesWritten / 1024 / 1024).toStringAsFixed(1);
     final totalMb = (state.bytesExpected / 1024 / 1024).toStringAsFixed(1);
 
-    return GlassCard(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.lg,
-        ),
-        child: Column(
-          children: [
-            SizedBox(
-              width: 190,
-              height: 190,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Outer glowing shadow
-                  Container(
-                    width: 190,
-                    height: 190,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: scheme.primary.withValues(alpha: 0.12),
-                          blurRadius: 28,
-                          spreadRadius: 4,
-                        ),
-                      ],
-                    ),
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              GlassCard(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                    vertical: AppSpacing.xxl,
                   ),
-                  // Background circular track
-                  SizedBox(
-                    width: 170,
-                    height: 170,
-                    child: CircularProgressIndicator(
-                      value: 1.0,
-                      strokeWidth: 8,
-                      color:
-                          scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  // Foreground animated progress
-                  SizedBox(
-                    width: 170,
-                    height: 170,
-                    child: CircularProgressIndicator(
-                      value: progress > 0 ? progress : null,
-                      strokeWidth: 8,
-                      strokeCap: StrokeCap.round,
-                      color: scheme.primary,
-                    ),
-                  ),
-                  // Center percentage & size
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
+                  child: Column(
                     children: [
-                      Text(
-                        '$percent%',
-                        style: theme.textTheme.displaySmall?.copyWith(
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -1,
-                          color: scheme.onSurface,
+                      SizedBox(
+                        width: 220,
+                        height: 220,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Container(
+                              width: 220,
+                              height: 220,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color:
+                                        scheme.primary.withValues(alpha: 0.16),
+                                    blurRadius: 36,
+                                    spreadRadius: 6,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(
+                              width: 195,
+                              height: 195,
+                              child: CircularProgressIndicator(
+                                value: 1.0,
+                                strokeWidth: 10,
+                                color: scheme.surfaceContainerHighest
+                                    .withValues(alpha: 0.5),
+                              ),
+                            ),
+                            SizedBox(
+                              width: 195,
+                              height: 195,
+                              child: CircularProgressIndicator(
+                                value: progress > 0 ? progress : null,
+                                strokeWidth: 10,
+                                strokeCap: StrokeCap.round,
+                                color: scheme.primary,
+                              ),
+                            ),
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '$percent%',
+                                  style: theme.textTheme.displayMedium?.copyWith(
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -1.5,
+                                    color: scheme.onSurface,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  state.bytesExpected > 0
+                                      ? '$writtenMb / $totalMb MB'
+                                      : '$writtenMb MB downloaded',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: AppSpacing.xl),
                       Text(
-                        state.bytesExpected > 0
-                            ? '$writtenMb / $totalMb MB'
-                            : '$writtenMb MB downloaded',
+                        'Downloading Update Package',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'v${state.latestRelease?.versionName ?? ''} · Please keep the app open',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: scheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              'Downloading update package…',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ===========================================================================
-  // FULL-SCREEN / FULL-WIDTH ACTION BUTTONS
-  // ===========================================================================
-
-  Widget _buildFullScreenActionButtons(
-    BuildContext context,
-    AppUpdateState state,
-    AppUpdateProvider provider,
-  ) {
-    if (kIsWeb) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (state.latestRelease != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-              child: Text(
-                'To apply this update, please use the button below to hard '
-                'refresh the application. If that does not work, close the '
-                'app entirely and reopen it.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  height: 1.5,
                 ),
               ),
-            ),
-          if (state.latestRelease != null)
-            const SizedBox(height: AppSpacing.md),
-          if (state.latestRelease != null)
-            const SizedBox(
-              width: double.infinity,
-              child: GlassButton(
-                icon: Icon(Icons.refresh_rounded),
-                label: 'Reload App',
-                onTap: reloadWebPage,
+              const SizedBox(height: AppSpacing.lg),
+              SizedBox(
+                width: double.infinity,
+                child: GlassButton(
+                  icon: const Icon(Icons.close_rounded),
+                  label: 'Cancel Download',
+                  onTap: () => provider.cancelDownload(),
+                ),
               ),
-            ),
-          if (state.latestRelease == null && state.status == UpdateStatus.idle)
-            SizedBox(
-              width: double.infinity,
-              child: GlassButton(
-                icon: const Icon(Icons.refresh_rounded),
-                label: 'Check for Updates',
-                onTap: () => provider.checkForUpdates(force: true),
-              ),
-            ),
-          if (state.status == UpdateStatus.error)
-            SizedBox(
-              width: double.infinity,
-              child: GlassButton(
-                icon: const Icon(Icons.refresh_rounded),
-                label: 'Try Again',
-                onTap: () => provider.checkForUpdates(force: true),
-              ),
-            ),
-        ],
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Primary full-width button
-        if (state.latestRelease != null && state.status == UpdateStatus.idle) ...[
-          SizedBox(
-            width: double.infinity,
-            child: GlassButton(
-              icon: const Icon(Icons.download_rounded),
-              label: 'Download Update',
-              onTap: () => provider.downloadUpdate(),
-            ),
+            ],
           ),
-          const SizedBox(height: AppSpacing.sm),
-          SizedBox(
-            width: double.infinity,
-            child: GlassButton(
-              icon: const Icon(Icons.refresh_rounded),
-              label: 'Check for Updates',
-              onTap: () => provider.checkForUpdates(force: true),
-            ),
-          ),
-        ],
-        if (state.status == UpdateStatus.downloading)
-          SizedBox(
-            width: double.infinity,
-            child: GlassButton(
-              icon: const Icon(Icons.close_rounded),
-              label: 'Cancel Download',
-              onTap: () => provider.cancelDownload(),
-            ),
-          ),
-        if (state.status == UpdateStatus.downloaded)
-          SizedBox(
-            width: double.infinity,
-            child: GlassButton(
-              icon: const Icon(Icons.install_mobile_rounded),
-              label: 'Install Update',
-              onTap: () => provider.installUpdate(),
-            ),
-          ),
-        if (state.latestRelease == null && state.status == UpdateStatus.idle)
-          SizedBox(
-            width: double.infinity,
-            child: GlassButton(
-              icon: const Icon(Icons.refresh_rounded),
-              label: 'Check for Updates',
-              onTap: () => provider.checkForUpdates(force: true),
-            ),
-          ),
-        if (state.status == UpdateStatus.error) ...[
-          SizedBox(
-            width: double.infinity,
-            child: GlassButton(
-              icon: const Icon(Icons.refresh_rounded),
-              label: 'Try Again',
-              onTap: () => provider.checkForUpdates(force: true),
-            ),
-          ),
-        ],
-      ],
+        ),
+      ),
     );
   }
 
@@ -1419,8 +1412,6 @@ class _MorpheInlineText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // If the text has no backticks or bold formatting, output plain Text
-    // so tests like find.text('Feature A') match exactly.
     if (!text.contains('`') && !text.contains('**')) {
       return Text(text, style: style);
     }
@@ -1430,7 +1421,6 @@ class _MorpheInlineText extends StatelessWidget {
     final effectiveStyle = style ?? theme.textTheme.bodyMedium!;
 
     final spans = <InlineSpan>[];
-    // Regex matching either `code` or **bold**
     final regex = RegExp(r'`([^`]+)`|\*\*(.+?)\*\*');
     int lastEnd = 0;
 
