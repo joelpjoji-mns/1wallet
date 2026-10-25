@@ -263,12 +263,8 @@ class HomeWidgetReorderableIcon extends StatelessWidget {
       );
     }
 
-    final message = tooltip != null
-        ? '$tooltip · Long press to reorder'
-        : 'Tap ${reorderScope.label} / Long press to reorder';
-
     return Tooltip(
-      message: message,
+      message: 'Long press ${reorderScope.label} to reorder widgets',
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onLongPress: reorderScope.onEnterReorderMode,
