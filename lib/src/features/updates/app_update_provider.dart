@@ -201,6 +201,7 @@ final List<AppUpdateRelease> kBuiltInReleaseHistory = [
       ],
       bugFixes: const [
         'Fixed balance display glitch during rapid currency switching',
+        'Added missing Android drawable imports and resolved crash on cold launch',
       ],
       notes: const [
         'Safety guard blocking account deletion when linked to active recurring plans',
@@ -228,9 +229,35 @@ final List<AppUpdateRelease> kBuiltInReleaseHistory = [
       ],
       bugFixes: const [
         'Fixed calendar day selection and modal sheet clipping on AMOLED and desktop layouts',
+        'Aligned transaction card horizontal width with accounts cards across compact layouts',
       ],
       notes: const [
         'Isolated user backup sessions and instant startup performance enhancements',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '2.1.101',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '2.1.101',
+    versionCode: 201101,
+    runtimeVersion: '2.1.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 200000,
+    publishedAt: '2026-10-08T18:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Optimized SMS parser cache to avoid re-reading past statements',
+      ],
+      bugFixes: const [
+        'Resolved data loss on force stop and phone lag caused by inbox scan disk thrashing',
+      ],
+      notes: const [
+        'Memory footprint reduced by 30% during background batch scans',
       ],
     ),
   ),
@@ -246,17 +273,431 @@ final List<AppUpdateRelease> kBuiltInReleaseHistory = [
     requirement: 'optional',
     mandatory: false,
     minimumSupportedVersionCode: 200000,
-    publishedAt: '2026-10-01T15:30:00.000Z',
+    publishedAt: '2026-10-08T12:00:00.000Z',
     changelog: Changelog(
       newFeatures: const [
         'Liquid Glass UI framework with minimal, standard, and crystal refractive modes',
         'Comprehensive multi-account grid with live balances and quick transfers',
+        'Multi-transaction merge in history and SMS duplicate inspection',
       ],
       bugFixes: const [
         'Optimized regular expressions and memoized selectors to eliminate UI thread lag',
       ],
       notes: const [
         'Added over 380 unit and widget integration tests',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '2.1.99',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '2.1.99',
+    versionCode: 201099,
+    runtimeVersion: '2.1.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 200000,
+    publishedAt: '2026-10-07T14:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Delete account option with comprehensive cloud and local data wipe in settings',
+      ],
+      bugFixes: const [
+        'Prevented orphaned recurring transaction plans when deleting user accounts',
+      ],
+      notes: const [
+        'Immediate biometric confirmation required for account termination',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '2.1.96',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '2.1.96',
+    versionCode: 201096,
+    runtimeVersion: '2.1.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 200000,
+    publishedAt: '2026-09-30T22:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Enhanced credit card bill and due date notifications with review inbox quick actions',
+      ],
+      bugFixes: const [
+        'Fixed notification background action intents and tap navigation',
+      ],
+      notes: const [
+        'Smart reminder threshold calculation based on user billing history',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '2.1.95',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '2.1.95',
+    versionCode: 201095,
+    runtimeVersion: '2.1.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 200000,
+    publishedAt: '2026-09-30T19:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Redesigned credit card billing section with dedicated card and GlassCard day picker',
+      ],
+      bugFixes: const [
+        'Fixed statement cycle end dates for months with fewer than 31 days',
+      ],
+      notes: const [
+        'Fluid glass card animations on selection',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '2.1.93',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '2.1.93',
+    versionCode: 201093,
+    runtimeVersion: '2.1.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 200000,
+    publishedAt: '2026-09-30T16:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'True linear scroll fade mask across all screens for seamless liquid top bars',
+        'Calendar day-of-month picker for card billing cycles and due dates',
+      ],
+      bugFixes: const [
+        'Tightened top scroll fade height to 12px across all views',
+      ],
+      notes: const [
+        'Optimized shader mask evaluation for low-end GPU performance',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '2.1.92',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '2.1.92',
+    versionCode: 201092,
+    runtimeVersion: '2.1.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 200000,
+    publishedAt: '2026-09-30T13:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Header scroll gradient dynamic tinting',
+        'Card urgency stripe for overdue and near-due payments',
+        'Categories drill-down breakdown in monthly reports',
+      ],
+      bugFixes: const [
+        'Fixed filter state persistence across tab switches',
+      ],
+      notes: const [
+        'Color-coded urgency stripes: green, amber, and alert crimson',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '2.1.91',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '2.1.91',
+    versionCode: 201091,
+    runtimeVersion: '2.1.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 200000,
+    publishedAt: '2026-09-30T09:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Live Firebase cloud verification before syncing ledger mutations',
+      ],
+      bugFixes: const [
+        'Fixed notification routing to review inbox on cold start',
+        'Eliminated repeated update alerts when on latest build',
+        'Added download cancel guard and concurrency protection',
+      ],
+      notes: const [
+        'Zero background battery drain from update checker loop',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '2.1.86',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '2.1.86',
+    versionCode: 201086,
+    runtimeVersion: '2.1.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 200000,
+    publishedAt: '2026-09-27T18:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Dynamic island bar transitions with tight 200ms spring animations',
+      ],
+      bugFixes: const [
+        'Resolved page swiping friction and applied clamping physics to horizontal pagers',
+      ],
+      notes: const [
+        'Snappy navigation responsiveness across all mobile form factors',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '2.1.85',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '2.1.85',
+    versionCode: 201085,
+    runtimeVersion: '2.1.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 200000,
+    publishedAt: '2026-09-27T14:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Pure black AMOLED mode for cards and bottom navigation bar',
+      ],
+      bugFixes: const [
+        'Fixed dark tint glass color consistency on OLED panels',
+        'Centered floating action button within island bar',
+      ],
+      notes: const [
+        'Saves up to 15% battery on OLED devices in true black mode',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '2.1.84',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '2.1.84',
+    versionCode: 201084,
+    runtimeVersion: '2.1.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 200000,
+    publishedAt: '2026-09-27T10:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Liquid Glass dropdown menus across add-record and transaction history',
+      ],
+      bugFixes: const [
+        'Optimized shader compilation during dropdown open animation',
+      ],
+      notes: const [
+        'Eliminated dropped frames during account and category selection',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '2.1.82',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '2.1.82',
+    versionCode: 201082,
+    runtimeVersion: '2.1.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 200000,
+    publishedAt: '2026-09-26T21:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Glass configuration settings: refractive index, blur radius, tint opacity',
+        'AMOLED card outlines for crisp contrast in dark environments',
+      ],
+      bugFixes: const [
+        'Resolved calendar island FAB collision on narrow viewports',
+      ],
+      notes: const [
+        'Custom glass shader adjustments saved locally in user preferences',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '2.1.79',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '2.1.79',
+    versionCode: 201079,
+    runtimeVersion: '2.1.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 200000,
+    publishedAt: '2026-09-26T17:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Adopted shared Liquid Glass UI widgets library across entire application',
+      ],
+      bugFixes: const [
+        'Fixed cloud overwrite conflicts during simultaneous multi-device sync',
+        'Standardized button actions and back handlers',
+      ],
+      notes: const [
+        'Streamlined widget architecture reducing code duplication by 25%',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '2.1.76',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '2.1.76',
+    versionCode: 201076,
+    runtimeVersion: '2.1.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 200000,
+    publishedAt: '2026-09-26T14:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Early theme mode boot sequence preventing bright white flash on startup',
+      ],
+      bugFixes: const [
+        'Enforced dark transparent glass default for app island & home avatar circle',
+        'Cleaned accent color logic for dynamic Material You palettes',
+      ],
+      notes: const [
+        'Smooth splash screen fade into selected theme',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '2.1.72',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '2.1.72',
+    versionCode: 201072,
+    runtimeVersion: '2.1.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 200000,
+    publishedAt: '2026-09-26T11:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Complete liquid glass rewrite of the history page and transaction rows',
+      ],
+      bugFixes: const [
+        'Fixed date separator alignment and sticky month header rendering',
+      ],
+      notes: const [
+        'Smooth list physics with zero jitter during fast scrolling',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '2.1.66',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '2.1.66',
+    versionCode: 201066,
+    runtimeVersion: '2.1.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 200000,
+    publishedAt: '2026-09-26T08:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Unified navigation chrome with GlassAppBar and integrated back navigation',
+      ],
+      bugFixes: const [
+        'Resolved settings screen overflow on narrow screens',
+      ],
+      notes: const [
+        'Standardized app bar heights and touch target padding',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '2.1.60',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '2.1.60',
+    versionCode: 201060,
+    runtimeVersion: '2.1.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 200000,
+    publishedAt: '2026-09-22T16:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Endless scrolling on balance trend chart with zoom levels: 1W, 1M, 3M, 6M, 1Y, ALL',
+        'Virtual viewport panning for smooth historical balance inspection',
+      ],
+      bugFixes: const [
+        'Fixed balance calculation to accurately match projected calendar balances',
+      ],
+      notes: const [
+        'Interactive scrub line showing exact historical net worth',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '2.1.0',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '2.1.0',
+    versionCode: 201000,
+    runtimeVersion: '2.1.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 200000,
+    publishedAt: '2026-09-15T12:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Universal bank-agnostic PDF statement parser with password auto-detection',
+        'Value Date and opening balance delta tracking for PDF statement imports',
+        'Automatic recurring payment schedule detection from transaction history',
+      ],
+      bugFixes: const [
+        'Fixed multi-currency exchange rate rounding errors',
+        'Resolved transaction list duplicate entries on rapid sync',
+      ],
+      notes: const [
+        'Major milestone release introducing bank PDF ingestion and recurring scheduler v2',
       ],
     ),
   ),
@@ -275,15 +716,259 @@ final List<AppUpdateRelease> kBuiltInReleaseHistory = [
     publishedAt: '2026-09-01T12:00:00.000Z',
     changelog: Changelog(
       newFeatures: const [
-        'Complete rewrite with Flutter 3, Material You, and Riverpod architecture',
+        'Complete Flutter 3 architecture rewrite with Material You and Riverpod',
         'Automated SMS and notification transaction capture engine',
         'Credit cards and Loan EMI tracking modules',
+        'Biometric authentication (Fingerprint & Face Unlock) with AES-256 local encryption',
       ],
       bugFixes: const [
-        'Fixed background notification sync and permission handling',
+        'Fixed background notification sync and system permission handling',
       ],
       notes: const [
-        'Initial 2.0 release with biometric app lock and encrypted local storage',
+        'Initial 2.0 release marking complete transition to modern native Flutter stack',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '1.6.12',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.6.12',
+    versionCode: 1061200,
+    runtimeVersion: '1.6.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 100000,
+    publishedAt: '2026-06-16T15:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Ultimate scheduling engine: custom recurrence intervals and weekend posting rules',
+      ],
+      bugFixes: const [
+        'Fixed recurring payment reminder notifications upon device reboot',
+      ],
+      notes: const [
+        'Optimized background alarm manager triggers',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '1.6.10',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.6.10',
+    versionCode: 1061000,
+    runtimeVersion: '1.6.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 100000,
+    publishedAt: '2026-06-14T18:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Real-time auto-sync engine with multi-client delta hashing',
+      ],
+      bugFixes: const [
+        'Fixed skipped recurring payments calculation in cashflow forecasts',
+      ],
+      notes: const [
+        'Conflict-free replicated data types for offline ledger editing',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '1.6.8',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.6.8',
+    versionCode: 1060800,
+    runtimeVersion: '1.6.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 100000,
+    publishedAt: '2026-06-14T14:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [],
+      bugFixes: const [
+        'Updated Firestore collection security rules for seamless multi-tier backups',
+      ],
+      notes: const [
+        'Hardened cloud authentication session validation',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '1.6.6',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.6.6',
+    versionCode: 1060600,
+    runtimeVersion: '1.6.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 100000,
+    publishedAt: '2026-06-14T10:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Hierarchical category taxonomy with nested subcategories and custom icon picker',
+      ],
+      bugFixes: const [
+        'Fixed category search matching across deeply nested child items',
+      ],
+      notes: const [
+        'Automated migration for existing category assignments',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '1.6.4',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.6.4',
+    versionCode: 1060400,
+    runtimeVersion: '1.6.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 100000,
+    publishedAt: '2026-06-13T16:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Background application update notification dispatch on device startup',
+      ],
+      bugFixes: const [
+        'Fixed startup freeze on Android 14 devices caused by synchronous shared preferences',
+      ],
+      notes: const [
+        'Hardened Android release pipeline and Proguard obfuscation rules',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '1.6.0',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.6.0',
+    versionCode: 1060000,
+    runtimeVersion: '1.6.0',
+    releaseType: 'major',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 100000,
+    publishedAt: '2026-06-03T12:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Comprehensive multi-account net summaries and aggregated balance overview',
+        'Swipe-to-navigate drawer menu with instant route switching',
+      ],
+      bugFixes: const [
+        'Resolved drawer duplicate navigation history bug',
+      ],
+      notes: const [
+        'Stable 1.6.0 release introducing full accounts management suite',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '1.5.0',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.5.0',
+    versionCode: 1050000,
+    runtimeVersion: '1.5.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 100000,
+    publishedAt: '2026-06-02T12:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Interactive loan manager with amortization table calculations and EMI reminders',
+        'Real-time multi-currency exchange rate conversions',
+      ],
+      bugFixes: const [],
+      notes: const [
+        'Introduced progressive web app companion shell',
+      ],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '1.4.0',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.4.0',
+    versionCode: 1040000,
+    runtimeVersion: '1.4.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 100000,
+    publishedAt: '2026-06-01T18:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Android update channel recovery and automated OTA self-healing',
+        'Swipe gesture sensitivity calibration for tab navigation',
+      ],
+      bugFixes: const [
+        'Fixed update download stalled connections on unstable Wi-Fi',
+      ],
+      notes: const [],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '1.3.0',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.3.0',
+    versionCode: 1030000,
+    runtimeVersion: '1.3.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 100000,
+    publishedAt: '2026-06-01T14:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Beta update channel subscription support in settings',
+        'Patch train release distribution system',
+      ],
+      bugFixes: const [],
+      notes: const [],
+    ),
+  ),
+  AppUpdateRelease(
+    id: '1.2.2',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.2.2',
+    versionCode: 1020200,
+    runtimeVersion: '1.2.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 100000,
+    publishedAt: '2026-06-01T10:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Native OTA update manager with SHA-256 package verification',
+        'Integrated CMake codegen pipeline for high-performance cryptographic operations',
+      ],
+      bugFixes: const [],
+      notes: const [
+        'Foundational mobile update release pipeline',
       ],
     ),
   ),
@@ -428,7 +1113,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
         final querySnap = await _firestore
             .collection('appUpdates/android/releases')
             .orderBy('versionCode', descending: true)
-            .limit(20)
+            .limit(200)
             .get();
         if (querySnap.docs.isNotEmpty) {
           fetchedReleases = querySnap.docs
@@ -534,6 +1219,13 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
     for (final r in secondary) {
       if (seen.add(r.versionName)) result.add(r);
     }
+    result.sort((a, b) {
+      final dateA = DateTime.tryParse(a.publishedAt) ?? DateTime(1970);
+      final dateB = DateTime.tryParse(b.publishedAt) ?? DateTime(1970);
+      final cmp = dateB.compareTo(dateA);
+      if (cmp != 0) return cmp;
+      return b.versionCode.compareTo(a.versionCode);
+    });
     return result;
   }
 

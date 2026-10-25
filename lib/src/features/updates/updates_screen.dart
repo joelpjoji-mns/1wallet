@@ -76,7 +76,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
             message: 'Check for updates',
             child: AppActionButton(
               label: 'Cancel',
-              icon: Icons.close_rounded,
               compact: true,
               onPressed: () => provider.cancelDownload(),
             ),
@@ -94,7 +93,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
             message: 'Check for updates',
             child: AppActionButton(
               label: 'Install',
-              icon: Icons.install_mobile_rounded,
               compact: true,
               prominent: true,
               onPressed: () => provider.installUpdate(),
@@ -104,8 +102,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
           Tooltip(
             message: 'Check for updates',
             child: AppActionButton(
-              label: 'Update',
-              icon: Icons.download_rounded,
+              label: 'Install',
               compact: true,
               prominent: true,
               onPressed: () => provider.downloadUpdate(),
@@ -116,7 +113,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
             message: 'Check for updates',
             child: AppActionButton(
               label: 'Check for update',
-              icon: Icons.refresh_rounded,
               compact: true,
               onPressed: state.status == UpdateStatus.checking
                   ? null
@@ -161,11 +157,21 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
       list.add(state.currentRelease!);
     }
 
-    final pool = state.allReleases.isNotEmpty
-        ? state.allReleases
-        : kBuiltInReleaseHistory;
+    final pool = <AppUpdateRelease>[
+      ...state.allReleases,
+      ...kBuiltInReleaseHistory,
+    ];
 
-    for (final rel in pool) {
+    final sortedPool = List<AppUpdateRelease>.from(pool)
+      ..sort((a, b) {
+        final dateA = DateTime.tryParse(a.publishedAt) ?? DateTime(1970);
+        final dateB = DateTime.tryParse(b.publishedAt) ?? DateTime(1970);
+        final cmp = dateB.compareTo(dateA);
+        if (cmp != 0) return cmp;
+        return b.versionCode.compareTo(a.versionCode);
+      });
+
+    for (final rel in sortedPool) {
       if (seen.add(rel.versionName)) {
         list.add(rel);
       }
@@ -344,9 +350,11 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                       ],
                     ),
             ),
-            const SizedBox(height: AppSpacing.md),
-            // Full-width update button right on top
-            _buildTopActionButton(context, state, provider),
+            if (hasUpdate || state.status == UpdateStatus.downloaded) ...[
+              const SizedBox(height: AppSpacing.md),
+              // Full-width update button right on top
+              _buildTopActionButton(context, state, provider),
+            ],
           ],
         ),
       ),
@@ -360,22 +368,21 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
   ) {
     if (kIsWeb) {
       if (state.latestRelease != null) {
-        return const SizedBox(
-          width: double.infinity,
-          child: GlassButton(
-            icon: Icon(Icons.refresh_rounded),
-            label: 'Reload App',
-            onTap: reloadWebPage,
-          ),
+        return _buildMorpheTextButton(
+          context,
+          label: 'Reload App',
+          onTap: reloadWebPage,
         );
       }
-      return SizedBox(
-        width: double.infinity,
-        child: GlassButton(
-          icon: const Icon(Icons.refresh_rounded),
-          label: 'Check for Updates',
-          onTap: () => provider.checkForUpdates(force: true),
-        ),
+      return const SizedBox.shrink();
+    }
+
+    if (state.status == UpdateStatus.downloaded) {
+      return _buildMorpheTextButton(
+        context,
+        label: 'Install Update',
+        onTap: () => provider.installUpdate(),
+        prominent: true,
       );
     }
 
@@ -383,44 +390,53 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
       final sizeStr = state.latestRelease!.apk?.sizeBytes != null
           ? ' (${(state.latestRelease!.apk!.sizeBytes / 1024 / 1024).toStringAsFixed(1)} MB)'
           : '';
-      return SizedBox(
-        width: double.infinity,
-        child: GlassButton(
-          icon: const Icon(Icons.download_rounded),
-          label: 'Download Update$sizeStr',
-          onTap: () => provider.downloadUpdate(),
-        ),
-      );
-    }
-
-    if (state.status == UpdateStatus.downloaded) {
-      return SizedBox(
-        width: double.infinity,
-        child: GlassButton(
-          icon: const Icon(Icons.install_mobile_rounded),
-          label: 'Install Update',
-          onTap: () => provider.installUpdate(),
-        ),
+      return _buildMorpheTextButton(
+        context,
+        label: 'Install Update$sizeStr',
+        onTap: () => provider.downloadUpdate(),
+        prominent: true,
       );
     }
 
     if (state.status == UpdateStatus.error) {
-      return SizedBox(
-        width: double.infinity,
-        child: GlassButton(
-          icon: const Icon(Icons.refresh_rounded),
-          label: 'Try Again',
-          onTap: () => provider.checkForUpdates(force: true),
-        ),
+      return _buildMorpheTextButton(
+        context,
+        label: 'Try Again',
+        onTap: () => provider.checkForUpdates(force: true),
+        prominent: false,
       );
     }
 
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildMorpheTextButton(
+    BuildContext context, {
+    required String label,
+    required VoidCallback onTap,
+    bool prominent = true,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
     return SizedBox(
       width: double.infinity,
-      child: GlassButton(
-        icon: const Icon(Icons.refresh_rounded),
-        label: 'Check for Updates',
-        onTap: () => provider.checkForUpdates(force: true),
+      child: GlassButton.custom(
+        label: label,
+        onTap: onTap,
+        height: 48,
+        shape: const LiquidRoundedRectangle(borderRadius: AppRadii.pill),
+        useOwnLayer: true,
+        quality: GlassQuality.standard,
+        style: prominent ? GlassButtonStyle.prominent : GlassButtonStyle.filled,
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: prominent ? scheme.onPrimary : scheme.primary,
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+            ),
+          ),
+        ),
       ),
     );
   }
