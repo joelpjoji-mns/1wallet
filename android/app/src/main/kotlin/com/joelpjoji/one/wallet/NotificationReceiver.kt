@@ -19,11 +19,153 @@ class NotificationReceiver : NotificationListenerService() {
 
         @Volatile
         var instance: NotificationReceiver? = null
+
+        @Volatile
+        private var isBackgroundWorkerRunning = false
+
+        private val DEFAULT_PACKAGES = listOf(
+            "com.chase.sig.android",
+            "com.revolut.revolut",
+            "com.google.android.apps.nbu.paisa.user",
+            "com.google.android.apps.walletnfcrel",
+            "com.venmo",
+            "com.paypal.android.p2pmobile",
+            "com.monzo.android",
+            "com.capitalone.mobile",
+            "com.amex.android.amexmobile",
+            "org.westpac.bank",
+            "com.commbank.netbank",
+            "net.bnz.boost",
+            "com.phonepe.app",
+            "net.one97.paytm"
+        )
+
+        private val DEFAULT_TRIGGERS = listOf(
+            "debited", "credited", "spent", "paid", "received", "withdrawn",
+            "deposited", "sent", "charged", "transferred", "refund"
+        )
+
+        private val DEFAULT_IGNORES = listOf(
+            "otp", "code", "requested", "failed", "declined", "pending",
+            "due", "statement", "bill", "reminder"
+        )
+
+        fun startBackgroundWorker(context: Context) {
+            if (isBackgroundWorkerRunning) return
+            synchronized(this) {
+                if (isBackgroundWorkerRunning) return
+                isBackgroundWorkerRunning = true
+                val appContext = context.applicationContext
+                val thread = Thread {
+                    while (true) {
+                        try {
+                            checkAppUpdates(appContext)
+                        } catch (_: Exception) {
+                        }
+                        try {
+                            // Very light background thread: checks update channel every 15 minutes
+                            Thread.sleep(15 * 60 * 1000L)
+                        } catch (_: InterruptedException) {
+                            break
+                        }
+                    }
+                }
+                thread.isDaemon = true
+                thread.name = "1wallet-light-bg-thread"
+                thread.start()
+            }
+        }
+
+        private fun checkAppUpdates(context: Context) {
+            try {
+                val url = java.net.URL("https://firestore.googleapis.com/v1/projects/wallet-1a5af/databases/(default)/documents/appUpdates/android/channels/stable?key=AIzaSyBk90j9VTe_U49umSWBZUs1eeYWA1AfF1c")
+                val conn = (url.openConnection() as java.net.HttpURLConnection).apply {
+                    connectTimeout = 8000
+                    readTimeout = 8000
+                    requestMethod = "GET"
+                }
+                if (conn.responseCode == 200) {
+                    val body = conn.inputStream.bufferedReader().use { it.readText() }
+                    val json = org.json.JSONObject(body)
+                    val fields = json.optJSONObject("fields") ?: return
+                    val latestCode = fields.optJSONObject("latestVersionCode")?.optString("integerValue")?.toIntOrNull()
+                        ?: fields.optJSONObject("latestVersionCode")?.optInt("integerValue") ?: 0
+                    val latestName = fields.optJSONObject("latestVersionName")?.optString("stringValue") ?: "New version"
+
+                    val pm = context.packageManager
+                    val pInfo = pm.getPackageInfo(context.packageName, 0)
+                    val currentCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        pInfo.longVersionCode.toInt()
+                    } else {
+                        @Suppress("DEPRECATION")
+                        pInfo.versionCode
+                    }
+
+                    val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                    val lastNotified = try {
+                        prefs.getLong("flutter.lastNotifiedVersionCode.stable", 0L).toInt()
+                    } catch (_: Exception) {
+                        try { prefs.getInt("flutter.lastNotifiedVersionCode.stable", 0) } catch (_: Exception) { 0 }
+                    }
+
+                    if (latestCode > currentCode && latestCode > lastNotified) {
+                        showAppUpdateNotification(context, latestName)
+                        prefs.edit().putLong("flutter.lastNotifiedVersionCode.stable", latestCode.toLong()).apply()
+                    }
+                }
+            } catch (_: Exception) {
+            }
+        }
+
+        fun showAppUpdateNotification(context: Context, versionName: String) {
+            try {
+                val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                val channelId = "app_updates"
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    val channel = NotificationChannel(
+                        channelId,
+                        "App Updates",
+                        NotificationManager.IMPORTANCE_HIGH
+                    ).apply {
+                        description = "Notifications for new app versions"
+                    }
+                    notificationManager.createNotificationChannel(channel)
+                }
+
+                val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                launchIntent?.putExtra("flutter_route", "/updates")
+                val pendingIntent = PendingIntent.getActivity(
+                    context,
+                    201,
+                    launchIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+
+                val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    Notification.Builder(context, channelId)
+                } else {
+                    Notification.Builder(context)
+                }
+
+                val smallIcon = context.resources.getIdentifier("ic_launcher", "mipmap", context.packageName)
+                    .takeIf { it != 0 } ?: android.R.drawable.ic_dialog_info
+
+                builder.setSmallIcon(smallIcon)
+                    .setContentTitle("Update Available")
+                    .setContentText("Version $versionName is ready to install")
+                    .setContentIntent(pendingIntent)
+                    .setAutoCancel(true)
+
+                notificationManager.notify(99999, builder.build())
+            } catch (_: Exception) {
+            }
+        }
     }
 
     override fun onListenerConnected() {
         super.onListenerConnected()
         instance = this
+        startBackgroundWorker(this)
     }
 
     override fun onListenerDisconnected() {
@@ -46,17 +188,21 @@ class NotificationReceiver : NotificationListenerService() {
         val context = applicationContext
         val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
 
-        // 1. Check if notification capture is enabled
+        // 1. Check if notification capture is enabled (defaults to true)
         val captureEnabled = try {
-            prefs.getBoolean("flutter.one_wallet_flutter.notification_capture_enabled", false)
+            if (prefs.contains("flutter.one_wallet_flutter.notification_capture_enabled")) {
+                prefs.getBoolean("flutter.one_wallet_flutter.notification_capture_enabled", true)
+            } else {
+                true
+            }
         } catch (e: Exception) {
-            false
+            true
         }
         if (!captureEnabled) return
 
         // 2. Check if the package is in the target whitelist
         val packageName = sbn.packageName ?: return
-        val targetPackages = loadList(prefs, "flutter.one_wallet_flutter.notification_target_packages")
+        val targetPackages = loadList(prefs, "flutter.one_wallet_flutter.notification_target_packages", DEFAULT_PACKAGES)
         if (!targetPackages.contains(packageName.lowercase())) {
             return
         }
@@ -71,8 +217,8 @@ class NotificationReceiver : NotificationListenerService() {
         val combinedText = "$title $text $bigText".trim()
         if (combinedText.isEmpty()) return
 
-        val triggers = loadList(prefs, "flutter.one_wallet_flutter.notification_trigger_words")
-        val ignores = loadList(prefs, "flutter.one_wallet_flutter.notification_ignore_words")
+        val triggers = loadList(prefs, "flutter.one_wallet_flutter.notification_trigger_words", DEFAULT_TRIGGERS)
+        val ignores = loadList(prefs, "flutter.one_wallet_flutter.notification_ignore_words", DEFAULT_IGNORES)
         val lowerText = combinedText.lowercase()
 
         val builtInBillIgnores = listOf(
@@ -137,14 +283,15 @@ class NotificationReceiver : NotificationListenerService() {
         }
     }
 
-    private fun loadList(prefs: SharedPreferences, key: String): List<String> {
+    private fun loadList(prefs: SharedPreferences, key: String, fallback: List<String> = emptyList()): List<String> {
         val raw = try { prefs.getString(key, "") ?: "" } catch (e: Exception) { "" }
-        if (raw.isEmpty()) return emptyList()
+        if (raw.isEmpty()) return fallback
         return try {
             val arr = org.json.JSONArray(raw)
-            (0 until arr.length()).map { arr.getString(it).lowercase() }
+            val list = (0 until arr.length()).map { arr.getString(it).lowercase() }.filter { it.isNotBlank() }
+            if (list.isEmpty()) fallback else list
         } catch (e: Exception) {
-            emptyList()
+            fallback
         }
     }
 
@@ -250,13 +397,111 @@ class NotificationReceiver : NotificationListenerService() {
     }
 
     private fun showBillStatementNotification(context: Context, amount: String?, last4: String?): Boolean {
-        // Disabled per user preference: no native Android stock notifications or overlays
-        return false
+        return try {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val channelId = "one_wallet_capture"
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    channelId,
+                    "Transaction Capture",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Notifications for detected bank transactions and statements"
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            launchIntent?.putExtra("flutter_route", "/sync")
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                202,
+                launchIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Notification.Builder(context, channelId)
+            } else {
+                Notification.Builder(context)
+            }
+
+            val title = if (amount != null) "Statement notice: $amount" else "Bill statement detected"
+            val text = if (last4 != null) {
+                "Card ••$last4 · Tap to view upcoming statement."
+            } else {
+                "Tap to review detected statement notice."
+            }
+
+            val smallIcon = context.resources.getIdentifier("ic_launcher", "mipmap", context.packageName)
+                .takeIf { it != 0 } ?: android.R.drawable.ic_dialog_info
+
+            builder.setSmallIcon(smallIcon)
+                .setContentTitle(title)
+                .setContentText(text)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+
+            notificationManager.notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), builder.build())
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun showNotification(context: Context, amount: String?, last4: String?): Boolean {
-        // Disabled per user preference: no native Android stock notifications or overlays
-        return false
+        return try {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val channelId = "one_wallet_capture"
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    channelId,
+                    "Transaction Capture",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Notifications for detected bank transactions and statements"
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            launchIntent?.putExtra("flutter_route", "/review")
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                203,
+                launchIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Notification.Builder(context, channelId)
+            } else {
+                Notification.Builder(context)
+            }
+
+            val title = if (amount != null) "Transaction detected: $amount" else "Transaction detected"
+            val text = if (last4 != null) {
+                "Account ••$last4 · Tap to review and save."
+            } else {
+                "Tap to review and save."
+            }
+
+            val smallIcon = context.resources.getIdentifier("ic_launcher", "mipmap", context.packageName)
+                .takeIf { it != 0 } ?: android.R.drawable.ic_dialog_info
+
+            builder.setSmallIcon(smallIcon)
+                .setContentTitle(title)
+                .setContentText(text)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+
+            notificationManager.notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), builder.build())
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun nativeIgnoreReason(amount: String?, matchedTrigger: String?, matchedIgnore: String?): String {

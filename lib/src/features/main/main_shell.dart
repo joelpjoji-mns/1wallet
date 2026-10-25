@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,7 +40,7 @@ class _MainShellState extends ConsumerState<MainShell>
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   late final PageController _pageController;
   final ValueNotifier<int> _selectedIndex = ValueNotifier(0);
-
+  Timer? _lightBackgroundPeriodicTimer;
 
   @override
   void initState() {
@@ -50,6 +51,14 @@ class _MainShellState extends ConsumerState<MainShell>
       ref.read(exchangeRateServiceProvider).refreshRatesIfStale();
       ref.read(appUpdateProvider.notifier).checkForUpdates();
     });
+    _lightBackgroundPeriodicTimer = Timer.periodic(
+      const Duration(minutes: 15),
+      (_) {
+        ref.read(exchangeRateServiceProvider).refreshRatesIfStale();
+        ref.read(appUpdateProvider.notifier).checkForUpdates();
+        ref.read(ledgerProvider.notifier).processSpooledSms();
+      },
+    );
   }
 
   @override
@@ -57,12 +66,14 @@ class _MainShellState extends ConsumerState<MainShell>
     if (state == AppLifecycleState.resumed) {
       ref.read(exchangeRateServiceProvider).refreshRatesIfStale();
       ref.read(appUpdateProvider.notifier).checkForUpdates();
+      ref.read(ledgerProvider.notifier).processSpooledSms();
     }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _lightBackgroundPeriodicTimer?.cancel();
     _pageController.dispose();
     _selectedIndex.dispose();
     super.dispose();

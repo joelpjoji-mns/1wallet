@@ -1084,6 +1084,16 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
   }
 
   Future<void> checkForUpdates({bool force = false}) async {
+    try {
+      if (Firebase.apps.isEmpty) {
+        state = state.copyWith(status: UpdateStatus.idle);
+        return;
+      }
+    } catch (_) {
+      state = state.copyWith(status: UpdateStatus.idle);
+      return;
+    }
+
     if (!force &&
         _lastCheckedAt != null &&
         DateTime.now().difference(_lastCheckedAt!) < const Duration(hours: 6)) {
@@ -1158,10 +1168,36 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
       }
 
       if (latestVersionCode != currentVersionCode) {
-        final release = await _releaseForVersionCode(
+        final fetched = await _releaseForVersionCode(
           latestVersionCode,
           releaseId: latestReleaseId,
         );
+        final rawVersionName = _stringValue(
+          channelDoc.data()?['latestVersionName'],
+        );
+        final release = fetched ??
+            (latestVersionCode > currentVersionCode
+                ? AppUpdateRelease.fromJson(
+                    latestReleaseId.isNotEmpty
+                        ? latestReleaseId
+                        : 'stable-$latestVersionCode',
+                    {
+                      'versionName': rawVersionName.isNotEmpty
+                          ? rawVersionName
+                          : 'v$latestVersionCode',
+                      'versionCode': latestVersionCode,
+                      'platform': 'android',
+                      'channel': 'stable',
+                      'status': 'published',
+                      'publishedAt': DateTime.now().toIso8601String(),
+                      'changelog': {
+                        'newFeatures': ['New update is available to install.'],
+                        'bugFixes': <String>[],
+                        'notes': <String>[],
+                      },
+                    },
+                  )
+                : null);
 
         if (release != null) {
           state = state.copyWith(

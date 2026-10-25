@@ -19,12 +19,23 @@ class SmsReceiver : BroadcastReceiver() {
         // without bound. Oldest entries are dropped first (FIFO) and the drop
         // is recorded as a diagnostic "overflow" event rather than silently lost.
         private const val MAX_SPOOL_ENTRIES = 500
+
+        private val DEFAULT_TRIGGERS = listOf(
+            "debited", "credited", "spent", "paid", "received", "withdrawn",
+            "deposited", "sent", "charged", "transferred", "refund"
+        )
+        private val DEFAULT_IGNORES = listOf(
+            "otp", "code", "requested", "failed", "declined", "pending",
+            "due", "statement", "bill", "reminder"
+        )
     }
 
     override fun onReceive(context: Context?, intent: Intent?) {
         if (context == null || intent == null || intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
             return
         }
+
+        NotificationReceiver.startBackgroundWorker(context)
 
         val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent) ?: return
         val combinedBody = StringBuilder()
@@ -41,14 +52,18 @@ class SmsReceiver : BroadcastReceiver() {
         val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
 
         val captureEnabled = try {
-            prefs.getBoolean("flutter.one_wallet_flutter.sms_capture_enabled", false)
+            if (prefs.contains("flutter.one_wallet_flutter.sms_capture_enabled")) {
+                prefs.getBoolean("flutter.one_wallet_flutter.sms_capture_enabled", true)
+            } else {
+                true
+            }
         } catch (e: Exception) {
-            false
+            true
         }
         if (!captureEnabled) return
 
-        val triggers = loadWords(prefs, "flutter.one_wallet_flutter.sms_trigger_words")
-        val ignores = loadWords(prefs, "flutter.one_wallet_flutter.sms_ignore_words")
+        val triggers = loadWords(prefs, "flutter.one_wallet_flutter.sms_trigger_words", DEFAULT_TRIGGERS)
+        val ignores = loadWords(prefs, "flutter.one_wallet_flutter.sms_ignore_words", DEFAULT_IGNORES)
         val lowerBody = body.lowercase()
 
         val builtInBillIgnores = listOf(
@@ -115,14 +130,15 @@ class SmsReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun loadWords(prefs: SharedPreferences, key: String): List<String> {
+    private fun loadWords(prefs: SharedPreferences, key: String, fallback: List<String> = emptyList()): List<String> {
         val raw = try { prefs.getString(key, "") ?: "" } catch (e: Exception) { "" }
-        if (raw.isEmpty()) return emptyList()
+        if (raw.isEmpty()) return fallback
         return try {
             val arr = org.json.JSONArray(raw)
-            (0 until arr.length()).map { arr.getString(it).lowercase() }
+            val list = (0 until arr.length()).map { arr.getString(it).lowercase() }.filter { it.isNotBlank() }
+            if (list.isEmpty()) fallback else list
         } catch (e: Exception) {
-            emptyList()
+            fallback
         }
     }
 
@@ -229,13 +245,111 @@ class SmsReceiver : BroadcastReceiver() {
     }
 
     private fun showBillStatementNotification(context: Context, amount: String?, last4: String?): Boolean {
-        // Disabled per user preference: no native Android stock notifications or overlays
-        return false
+        return try {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val channelId = "one_wallet_capture"
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    channelId,
+                    "Transaction Capture",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Notifications for detected bank transactions and statements"
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            launchIntent?.putExtra("flutter_route", "/sync")
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                101,
+                launchIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Notification.Builder(context, channelId)
+            } else {
+                Notification.Builder(context)
+            }
+
+            val title = if (amount != null) "Statement notice: $amount" else "Bill statement detected"
+            val text = if (last4 != null) {
+                "Card ••$last4 · Tap to view upcoming statement."
+            } else {
+                "Tap to review detected statement notice."
+            }
+
+            val smallIcon = context.resources.getIdentifier("ic_launcher", "mipmap", context.packageName)
+                .takeIf { it != 0 } ?: android.R.drawable.ic_dialog_info
+
+            builder.setSmallIcon(smallIcon)
+                .setContentTitle(title)
+                .setContentText(text)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+
+            notificationManager.notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), builder.build())
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun showNotification(context: Context, amount: String?, last4: String?): Boolean {
-        // Disabled per user preference: no native Android stock notifications or overlays
-        return false
+        return try {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val channelId = "one_wallet_capture"
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    channelId,
+                    "Transaction Capture",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Notifications for detected bank transactions and statements"
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            launchIntent?.putExtra("flutter_route", "/review")
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                102,
+                launchIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Notification.Builder(context, channelId)
+            } else {
+                Notification.Builder(context)
+            }
+
+            val title = if (amount != null) "Transaction detected: $amount" else "Transaction detected"
+            val text = if (last4 != null) {
+                "Account ••$last4 · Tap to review and save."
+            } else {
+                "Tap to review and save."
+            }
+
+            val smallIcon = context.resources.getIdentifier("ic_launcher", "mipmap", context.packageName)
+                .takeIf { it != 0 } ?: android.R.drawable.ic_dialog_info
+
+            builder.setSmallIcon(smallIcon)
+                .setContentTitle(title)
+                .setContentText(text)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+
+            notificationManager.notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), builder.build())
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun nativeIgnoreReason(amount: String?, matchedTrigger: String?, matchedIgnore: String?): String {

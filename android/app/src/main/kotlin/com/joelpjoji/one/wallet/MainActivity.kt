@@ -34,6 +34,7 @@ class MainActivity : FlutterFragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         initialRoute = intent?.getStringExtra("flutter_route")
+        NotificationReceiver.startBackgroundWorker(this)
     }
 
     override fun onNewIntent(intent: Intent) {

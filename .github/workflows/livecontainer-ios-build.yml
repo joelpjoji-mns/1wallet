@@ -1,0 +1,69 @@
+name: Build iOS for LiveContainer
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'lib/**'
+      - 'ios/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/livecontainer-ios-build.yml'
+    branches:
+      - main
+
+jobs:
+  build-livecontainer-ipa:
+    name: Build LiveContainer IPA
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Write mobile environment
+        run: |
+          {
+            echo "EXPO_PUBLIC_FIREBASE_API_KEY=${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}"
+            echo "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}"
+            echo "EXPO_PUBLIC_FIREBASE_PROJECT_ID=${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}"
+            echo "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}"
+            echo "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}"
+            echo "EXPO_PUBLIC_FIREBASE_APP_ID=${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID }}"
+            echo "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=${{ secrets.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID }}"
+            echo "EXPO_PUBLIC_FIREBASE_USE_EMULATOR=false"
+            echo "ONEWALLET_ENABLE_EMAIL_PASSWORD_AUTH=false"
+          } > .env
+          cp .env config.env
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build iOS App (No Codesign)
+        run: flutter build ios --release --no-codesign
+
+      - name: Package LiveContainer IPA
+        run: |
+          set -euo pipefail
+          mkdir -p build/LiveContainer_Payload/Payload
+          cp -R build/ios/iphoneos/Runner.app build/LiveContainer_Payload/Payload/
+          cd build/LiveContainer_Payload
+          zip -qr ../../1wallet-LiveContainer.ipa Payload
+          cd ../..
+          ls -lh 1wallet-LiveContainer.ipa
+
+      - name: Upload LiveContainer IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 1wallet-LiveContainer-IPA
+          path: 1wallet-LiveContainer.ipa
+          if-no-files-found: error
