@@ -78,7 +78,11 @@ class NotificationReceiver : NotificationListenerService() {
 
         private fun checkAppUpdates(context: Context) {
             try {
-                val url = java.net.URL("https://firestore.googleapis.com/v1/projects/wallet-1a5af/databases/(default)/documents/appUpdates/android/channels/stable?key=AIzaSyBk90j9VTe_U49umSWBZUs1eeYWA1AfF1c")
+                val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                val projectId = prefs.getString("flutter.firebase_project_id", "wallet-1a5af")?.takeIf { it.isNotBlank() } ?: "wallet-1a5af"
+                val apiKey = prefs.getString("flutter.firebase_api_key", "") ?: ""
+                val queryParam = if (apiKey.isNotBlank()) "?key=$apiKey" else ""
+                val url = java.net.URL("https://firestore.googleapis.com/v1/projects/$projectId/databases/(default)/documents/appUpdates/android/channels/stable$queryParam")
                 val conn = (url.openConnection() as java.net.HttpURLConnection).apply {
                     connectTimeout = 8000
                     readTimeout = 8000
@@ -101,7 +105,6 @@ class NotificationReceiver : NotificationListenerService() {
                         pInfo.versionCode
                     }
 
-                    val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
                     val lastNotified = try {
                         prefs.getLong("flutter.lastNotifiedVersionCode.stable", 0L).toInt()
                     } catch (_: Exception) {

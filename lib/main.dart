@@ -39,6 +39,14 @@ Future<void> main() async {
     }
   }
   final prefs = await sharedPreferencesWarmup;
+  final firebaseApiKey = FirebaseEnv.firebaseOptions?.apiKey;
+  final firebaseProjectId = FirebaseEnv.firebaseOptions?.projectId;
+  if (firebaseApiKey != null) {
+    unawaited(prefs.setString('firebase_api_key', firebaseApiKey));
+  }
+  if (firebaseProjectId != null) {
+    unawaited(prefs.setString('firebase_project_id', firebaseProjectId));
+  }
   await Future.wait([dateFormattingWarmup, glassWarmup]);
   runApp(
     ProviderScope(
