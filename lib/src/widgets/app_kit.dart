@@ -565,25 +565,40 @@ class AppActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final content = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (icon != null) ...[
-          Icon(
-            icon,
-            size: 18,
-            color: prominent ? scheme.onPrimary : scheme.primary,
+    final bg = prominent
+        ? scheme.primary
+        : scheme.surfaceContainerHighest.withValues(alpha: 0.65);
+    final fg = prominent ? scheme.onPrimary : scheme.primary;
+
+    final content = Container(
+      height: compact ? 36 : 48,
+      padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 20),
+      decoration: BoxDecoration(
+        color: enabled && onPressed != null ? bg : bg.withValues(alpha: 0.38),
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (icon != null) ...[
+            Icon(
+              icon,
+              size: compact ? 16 : 18,
+              color: fg,
+            ),
+            const SizedBox(width: AppSpacing.xs),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              color: fg,
+              fontWeight: FontWeight.w700,
+              fontSize: compact ? 13 : 15,
+            ),
           ),
-          const SizedBox(width: AppSpacing.xs),
         ],
-        Text(
-          label,
-          style: TextStyle(
-            color: prominent ? scheme.onPrimary : scheme.primary,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
+      ),
     );
     return GlassButton.custom(
       label: label,
@@ -594,10 +609,7 @@ class AppActionButton extends StatelessWidget {
       useOwnLayer: true,
       quality: GlassQuality.standard,
       style: prominent ? GlassButtonStyle.prominent : GlassButtonStyle.filled,
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 18),
-        child: content,
-      ),
+      child: content,
     );
   }
 }
