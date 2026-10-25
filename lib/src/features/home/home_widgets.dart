@@ -217,7 +217,7 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                 value: standardHomeDateFilterOptions.contains(_period)
                     ? _period
                     : 'This month',
-                options: const [
+                options: [
                   for (final opt in standardHomeDateFilterOptions)
                     GlassDropdownOption(opt, opt),
                 ],
@@ -1148,7 +1148,7 @@ class _BalanceTrendHomeWidgetState
       value: standardHomeDateFilterOptions.contains(_period)
           ? _period
           : 'This month',
-      options: const [
+      options: [
         for (final opt in standardHomeDateFilterOptions)
           GlassDropdownOption(opt, opt),
       ],
