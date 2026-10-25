@@ -200,6 +200,8 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                 size: 32,
                 iconSize: 18,
                 borderRadius: AppRadii.sm,
+                onTap: () => widget.onTabSelected(1),
+                tooltip: 'View records',
               ),
               const SizedBox(width: AppSpacing.xs),
               Expanded(
@@ -212,36 +214,17 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                 ),
               ),
               GlassDropdownPill<String>(
-                value: _period,
+                value: standardHomeDateFilterOptions.contains(_period)
+                    ? _period
+                    : 'This month',
                 options: const [
-                  GlassDropdownOption('Today', 'Today'),
-                  GlassDropdownOption('This week', 'This week'),
-                  GlassDropdownOption('This month', 'This month'),
-                  GlassDropdownOption('This year', 'This year'),
+                  for (final opt in standardHomeDateFilterOptions)
+                    GlassDropdownOption(opt, opt),
                 ],
                 onChanged: _onPeriodChanged,
                 icon: Icons.calendar_month,
                 semanticLabel: 'Balance period',
               ),
-              const SizedBox(width: AppSpacing.xs),
-              if (allCurrencies.length > 1 && forcedCurrency == null)
-                GlassDropdownPill<String>(
-                  value: displayCurrency,
-                  options: [
-                    for (final currency in allCurrencies)
-                      GlassDropdownOption(currency, currency),
-                  ],
-                  onChanged: (val) {
-                    ref.read(ledgerProvider.notifier).setDisplayCurrency(val);
-                  },
-                  icon: Icons.currency_exchange_outlined,
-                  semanticLabel: 'Display currency',
-                )
-              else
-                HomeBalancePill(
-                  label: displayCurrency,
-                  icon: Icons.currency_exchange_outlined,
-                ),
             ],
           ),
           const SizedBox(height: 2),
@@ -447,13 +430,20 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedAccountId = ref.watch(homeSelectedAccountProvider);
+    final period = getHomeWidgetFilter(
+      state.preferences.homeWidgetFilters,
+      'recentRecords',
+    );
+    final range = homeWidgetDateRange(period);
     final recent = ref
         .watch(_homeSortedTransactionsProvider)
         .where(
           (t) =>
-              selectedAccountId == null ||
-              t.accountId == selectedAccountId ||
-              t.counterAccountId == selectedAccountId,
+              (selectedAccountId == null ||
+                  t.accountId == selectedAccountId ||
+                  t.counterAccountId == selectedAccountId) &&
+              !t.occurredAt.isBefore(range.start) &&
+              t.occurredAt.isBefore(range.end),
         )
         .take(25)
         .toList();
@@ -464,6 +454,16 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
       iconColor: Theme.of(context).colorScheme.error,
       actionLabel: 'View',
       onAction: () => onTabSelected(1),
+      dateFilter: period,
+      onDateFilterChanged: (value) {
+        final newFilters = Map<String, String>.from(
+          state.preferences.homeWidgetFilters,
+        );
+        newFilters['recentRecords'] = value;
+        ref.read(ledgerProvider.notifier).updatePreferences(
+              state.preferences.copyWith(homeWidgetFilters: newFilters),
+            );
+      },
       child: recent.isEmpty
           ? const EmptyState(
               icon: Icons.receipt_long_outlined,
@@ -557,11 +557,15 @@ class _BalanceTrendHomeWidgetState
       case 'This week':
         return 7;
       case 'This month':
+      case '30 days':
         return 30;
+      case '6 months':
+        return 180;
+      case '1 year':
       case 'This year':
         return 365;
       default:
-        return 0; // sentinel for "All time" — computed later
+        return 30;
     }
   }
 
@@ -1141,12 +1145,12 @@ class _BalanceTrendHomeWidgetState
 
   Widget _buildDropdown() {
     return GlassDropdownPill<String>(
-      value: _period,
+      value: standardHomeDateFilterOptions.contains(_period)
+          ? _period
+          : 'This month',
       options: const [
-        GlassDropdownOption('This week', 'This week'),
-        GlassDropdownOption('This month', 'This month'),
-        GlassDropdownOption('This year', 'This year'),
-        GlassDropdownOption('All time', 'All time'),
+        for (final opt in standardHomeDateFilterOptions)
+          GlassDropdownOption(opt, opt),
       ],
       onChanged: (value) {
         setState(() {
@@ -1372,6 +1376,10 @@ class _CurrencyValuesHomeWidgetState
       );
     }
 
+    final period = getHomeWidgetFilter(
+      widget.state.preferences.homeWidgetFilters,
+      'currencyValues',
+    );
     return HomeWidgetCard(
       title: 'Currency calculator',
       subtitle: 'Live conversions',
@@ -1379,6 +1387,16 @@ class _CurrencyValuesHomeWidgetState
       iconColor: scheme.tertiary,
       actionLabel: 'Rates',
       onAction: () => context.push('/currencies'),
+      dateFilter: period,
+      onDateFilterChanged: (val) {
+        final newFilters = Map<String, String>.from(
+          widget.state.preferences.homeWidgetFilters,
+        );
+        newFilters['currencyValues'] = val;
+        ref.read(ledgerProvider.notifier).updatePreferences(
+              widget.state.preferences.copyWith(homeWidgetFilters: newFilters),
+            );
+      },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1546,15 +1564,12 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    final filter =
-        state.preferences.homeWidgetFilters['upcomingScheduled'] ?? '1_week';
-    final int daysLimit = switch (filter) {
-      '1_week' => 7,
-      '2_weeks' => 14,
-      '1_month' => 30,
-      _ => 7,
-    };
-    final limitDate = today.add(Duration(days: daysLimit));
+    final period = getHomeWidgetFilter(
+      state.preferences.homeWidgetFilters,
+      'upcomingScheduled',
+      defaultValue: 'This week',
+    );
+    final limitDate = homeWidgetFutureLimit(period);
 
     final scheduled = ref
         .watch(_homeScheduledTransactionsProvider)
@@ -1594,28 +1609,18 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
       iconColor: Theme.of(context).colorScheme.secondary,
       actionLabel: 'Open',
       onAction: () => context.push('/recurring'),
-      headerTrailing: GlassDropdownPill<String>(
-        value: const ['1_week', '2_weeks', '1_month'].contains(filter)
-            ? filter
-            : '1_week',
-        options: const [
-          GlassDropdownOption('1_week', 'Next 7 days'),
-          GlassDropdownOption('2_weeks', 'Next 14 days'),
-          GlassDropdownOption('1_month', 'Next 30 days'),
-        ],
-        semanticLabel: 'Upcoming payment range',
-        onChanged: (value) {
-          final newFilters = Map<String, String>.from(
-            state.preferences.homeWidgetFilters,
-          );
-          newFilters['upcomingScheduled'] = value;
-          ref
-              .read(ledgerProvider.notifier)
-              .updatePreferences(
-                state.preferences.copyWith(homeWidgetFilters: newFilters),
-              );
-        },
-      ),
+      dateFilter: period,
+      onDateFilterChanged: (value) {
+        final newFilters = Map<String, String>.from(
+          state.preferences.homeWidgetFilters,
+        );
+        newFilters['upcomingScheduled'] = value;
+        ref
+            .read(ledgerProvider.notifier)
+            .updatePreferences(
+              state.preferences.copyWith(homeWidgetFilters: newFilters),
+            );
+      },
       child: Column(
         children: [
           Row(
@@ -1689,13 +1694,17 @@ class LoansAndEmisHomeWidget extends ConsumerWidget {
         return sum + (bal < 0 ? -bal : 0);
       },
     );
-    final monthEnd = DateTime.now().add(const Duration(days: 30));
+    final period = getHomeWidgetFilter(
+      state.preferences.homeWidgetFilters,
+      'emiTracker',
+    );
+    final limitDate = homeWidgetFutureLimit(period);
     final emis = ref
         .watch(_homeScheduledTransactionsProvider)
         .where(
           (transaction) =>
               transaction.type == 'loan_repayment' &&
-              !transaction.occurredAt.isAfter(monthEnd),
+              !transaction.occurredAt.isAfter(limitDate),
         )
         .toList();
     final displayCurrency = state.preferences.displayCurrency;
@@ -1717,6 +1726,16 @@ class LoansAndEmisHomeWidget extends ConsumerWidget {
       iconColor: Theme.of(context).colorScheme.secondary,
       actionLabel: 'Loans',
       onAction: () => context.push('/loans'),
+      dateFilter: period,
+      onDateFilterChanged: (val) {
+        final newFilters = Map<String, String>.from(
+          state.preferences.homeWidgetFilters,
+        );
+        newFilters['emiTracker'] = val;
+        ref.read(ledgerProvider.notifier).updatePreferences(
+              state.preferences.copyWith(homeWidgetFilters: newFilters),
+            );
+      },
       child: Column(
         children: [
           Row(
@@ -1780,9 +1799,22 @@ class PlannedPaymentsHomeWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final period = getHomeWidgetFilter(
+      state.preferences.homeWidgetFilters,
+      'plannedPaymentsTile',
+    );
+    final limitDate = homeWidgetFutureLimit(period);
+    final today = DateTime.now();
     final planned = ref
         .watch(_homeScheduledTransactionsProvider)
-        .where((tx) => expenseTypes.contains(tx.type))
+        .where(
+          (tx) =>
+              expenseTypes.contains(tx.type) &&
+              !tx.occurredAt.isBefore(
+                DateTime(today.year, today.month, today.day),
+              ) &&
+              !tx.occurredAt.isAfter(limitDate),
+        )
         .fold<int>(0, (sum, tx) => sum + tx.baseAmount.amountMinor);
     return HomeWidgetCard(
       title: 'Planned payments',
@@ -1791,6 +1823,16 @@ class PlannedPaymentsHomeWidget extends ConsumerWidget {
       iconColor: Theme.of(context).colorScheme.secondary,
       actionLabel: 'Planned',
       onAction: () => context.push('/planned'),
+      dateFilter: period,
+      onDateFilterChanged: (val) {
+        final newFilters = Map<String, String>.from(
+          state.preferences.homeWidgetFilters,
+        );
+        newFilters['plannedPaymentsTile'] = val;
+        ref.read(ledgerProvider.notifier).updatePreferences(
+              state.preferences.copyWith(homeWidgetFilters: newFilters),
+            );
+      },
       child: HomeMetricTile(
         label: 'Planned',
         value: _formatDisplayBaseMoney(state, planned),
@@ -1821,13 +1863,17 @@ class LoansHomeWidget extends ConsumerWidget {
         return sum + (bal < 0 ? -bal : 0);
       },
     );
-    final monthEnd = DateTime.now().add(const Duration(days: 30));
+    final period = getHomeWidgetFilter(
+      state.preferences.homeWidgetFilters,
+      'emiTracker',
+    );
+    final limitDate = homeWidgetFutureLimit(period);
     final emis = ref
         .watch(_homeScheduledTransactionsProvider)
         .where(
           (transaction) =>
               transaction.type == 'loan_repayment' &&
-              !transaction.occurredAt.isAfter(monthEnd),
+              !transaction.occurredAt.isAfter(limitDate),
         )
         .toList();
     final emiTotal = emis.fold<int>(
@@ -1842,6 +1888,16 @@ class LoansHomeWidget extends ConsumerWidget {
       iconColor: Theme.of(context).colorScheme.secondary,
       actionLabel: 'Loans',
       onAction: () => context.push('/loans'),
+      dateFilter: period,
+      onDateFilterChanged: (val) {
+        final newFilters = Map<String, String>.from(
+          state.preferences.homeWidgetFilters,
+        );
+        newFilters['emiTracker'] = val;
+        ref.read(ledgerProvider.notifier).updatePreferences(
+              state.preferences.copyWith(homeWidgetFilters: newFilters),
+            );
+      },
       child: Column(
         children: [
           Row(
@@ -1904,6 +1960,11 @@ class CardsHomeWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final period = getHomeWidgetFilter(
+      state.preferences.homeWidgetFilters,
+      'cardDebt',
+    );
+    final limitDate = homeWidgetFutureLimit(period);
     final balances = ref.watch(homeAccountBalanceMapProvider);
     final cards = state.accounts
         .where(
@@ -1935,7 +1996,11 @@ class CardsHomeWidget extends ConsumerWidget {
     }
     final payments = ref
         .watch(_homeScheduledTransactionsProvider)
-        .where((transaction) => transaction.type == 'card_payment')
+        .where(
+          (transaction) =>
+              transaction.type == 'card_payment' &&
+              !transaction.occurredAt.isAfter(limitDate),
+        )
         .toList();
     final planned = payments.fold<int>(
       0,
@@ -1948,6 +2013,16 @@ class CardsHomeWidget extends ConsumerWidget {
       iconColor: Theme.of(context).colorScheme.secondary,
       actionLabel: 'Cards',
       onAction: () => context.push('/cards'),
+      dateFilter: period,
+      onDateFilterChanged: (val) {
+        final newFilters = Map<String, String>.from(
+          state.preferences.homeWidgetFilters,
+        );
+        newFilters['cardDebt'] = val;
+        ref.read(ledgerProvider.notifier).updatePreferences(
+              state.preferences.copyWith(homeWidgetFilters: newFilters),
+            );
+      },
       child: Column(
         children: [
           Row(
@@ -2053,7 +2128,7 @@ class AccountGroupsHomeWidget extends StatelessWidget {
   }
 }
 
-class TopCategoriesHomeWidget extends StatelessWidget {
+class TopCategoriesHomeWidget extends ConsumerWidget {
   const TopCategoriesHomeWidget({
     required this.state,
     required this.onRecords,
@@ -2064,8 +2139,13 @@ class TopCategoriesHomeWidget extends StatelessWidget {
   final VoidCallback onRecords;
 
   @override
-  Widget build(BuildContext context) {
-    final items = _categoryTotals(state, income: false);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final period = getHomeWidgetFilter(
+      state.preferences.homeWidgetFilters,
+      'topCategories',
+    );
+    final range = homeWidgetDateRange(period);
+    final items = _categoryTotals(state, income: false, range: range);
     return _CategoryListWidget(
       state: state,
       title: 'Categories',
@@ -2074,6 +2154,16 @@ class TopCategoriesHomeWidget extends StatelessWidget {
       actionLabel: 'Records',
       onRecords: onRecords,
       items: items,
+      period: period,
+      onPeriodChanged: (val) {
+        final newFilters = Map<String, String>.from(
+          state.preferences.homeWidgetFilters,
+        );
+        newFilters['topCategories'] = val;
+        ref.read(ledgerProvider.notifier).updatePreferences(
+              state.preferences.copyWith(homeWidgetFilters: newFilters),
+            );
+      },
     );
   }
 }
@@ -2087,6 +2177,8 @@ class _CategoryListWidget extends ConsumerStatefulWidget {
     required this.actionLabel,
     required this.onRecords,
     required this.items,
+    required this.period,
+    required this.onPeriodChanged,
   });
 
   final LedgerState state;
@@ -2096,6 +2188,8 @@ class _CategoryListWidget extends ConsumerStatefulWidget {
   final String actionLabel;
   final VoidCallback onRecords;
   final List<_CategoryTotal> items;
+  final String period;
+  final ValueChanged<String> onPeriodChanged;
 
   @override
   ConsumerState<_CategoryListWidget> createState() => _CategoryListWidgetState();
@@ -2119,9 +2213,11 @@ class _CategoryListWidgetState extends ConsumerState<_CategoryListWidget> {
         iconColor: widget.iconColor,
         actionLabel: widget.actionLabel,
         onAction: widget.onRecords,
+        dateFilter: widget.period,
+        onDateFilterChanged: widget.onPeriodChanged,
         child: widget.items.isEmpty
             ? Text(
-                'No matching records this month.',
+                'No matching records for this period.',
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -2641,10 +2737,11 @@ class _SubcategoryEntry {
 List<_CategoryTotal> _categoryTotals(
   LedgerState state, {
   required bool income,
+  DateTimeRange? range,
 }) {
   final now = DateTime.now();
-  final start = DateTime(now.year, now.month);
-  final end = DateTime(now.year, now.month + 1);
+  final start = range?.start ?? DateTime(now.year, now.month);
+  final end = range?.end ?? DateTime(now.year, now.month + 1);
   final rootBuckets = <String, _CategoryBucket>{};
 
   for (final transaction in state.transactions) {
@@ -2825,12 +2922,16 @@ class DashboardCard extends StatelessWidget {
   }
 }
 
-class CreditUtilizationWidget extends StatelessWidget {
+class CreditUtilizationWidget extends ConsumerWidget {
   const CreditUtilizationWidget({required this.state, super.key});
   final LedgerState state;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final period = getHomeWidgetFilter(
+      state.preferences.homeWidgetFilters,
+      'creditUtilization',
+    );
     final scheme = Theme.of(context).colorScheme;
     // Exclude loans as requested
     final creditAccounts = state.accounts
@@ -2841,19 +2942,26 @@ class CreditUtilizationWidget extends StatelessWidget {
     final balances = accountBalanceMap(state);
 
     return RepaintBoundary(
-      child: DashboardCard(
+      child: HomeWidgetCard(
+        title: 'Credit utilization',
+        subtitle: 'Which credit cards am I using the most?',
+        icon: Icons.credit_score_outlined,
+        iconColor: scheme.primary,
+        actionLabel: 'Cards',
+        onAction: () => context.push('/cards'),
+        dateFilter: period,
+        onDateFilterChanged: (val) {
+          final newFilters = Map<String, String>.from(
+            state.preferences.homeWidgetFilters,
+          );
+          newFilters['creditUtilization'] = val;
+          ref.read(ledgerProvider.notifier).updatePreferences(
+                state.preferences.copyWith(homeWidgetFilters: newFilters),
+              );
+        },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Credit Card Utilization',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              'Which credit cards am I using the most?',
-              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: 24),
             if (creditAccounts.isEmpty) const Text('No credit accounts.'),
             ...creditAccounts.map((acc) {
               final rawBal = convertMoneyForDisplay(

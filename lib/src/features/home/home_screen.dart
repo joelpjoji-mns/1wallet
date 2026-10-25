@@ -77,14 +77,6 @@ class HomeScreen extends ConsumerWidget {
             icon: const Icon(Icons.restart_alt_rounded),
             onPressed: () {
               ref.read(ledgerProvider.notifier).resetHomeWidgetOrder();
-              ScaffoldMessenger.of(context)
-                ..hideCurrentSnackBar()
-                ..showSnackBar(
-                  const SnackBar(
-                    content: Text('Home widgets reset'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
             },
           ),
         if (reorderMode)
@@ -271,14 +263,6 @@ class _HomeDashboardList extends ConsumerWidget {
 
   void _enterReorderMode(BuildContext context, WidgetRef ref) {
     ref.read(homeWidgetReorderModeProvider.notifier).state = true;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(
-          content: Text('Drag widget icons to rearrange Home.'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
   }
 
   void _reorderHomeWidgets(WidgetRef ref, int oldIndex, int newIndex) {

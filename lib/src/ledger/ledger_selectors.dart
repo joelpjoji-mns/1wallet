@@ -448,19 +448,38 @@ Money totalBalance(
 
   switch (period) {
     case 'Today':
+    case 'today':
       start = today;
       end = today.add(const Duration(days: 1));
       break;
     case 'This week':
+    case 'thisWeek':
       final diff = now.weekday - 1; // 0 for Monday
       start = today.subtract(Duration(days: diff));
       end = start.add(const Duration(days: 7));
       break;
+    case '30 days':
+    case '30_days':
+    case '30Days':
+      start = today.subtract(const Duration(days: 30));
+      end = today.add(const Duration(days: 1));
+      break;
+    case '6 months':
+    case '6_months':
+    case '6Months':
+      start = DateTime(now.year, now.month - 6, now.day);
+      end = today.add(const Duration(days: 1));
+      break;
+    case '1 year':
+    case '1_year':
+    case '1Year':
     case 'This year':
-      start = DateTime(now.year);
-      end = DateTime(now.year + 1);
+    case 'thisYear':
+      start = DateTime(now.year - 1, now.month, now.day);
+      end = today.add(const Duration(days: 1));
       break;
     case 'This month':
+    case 'thisMonth':
     default:
       start = DateTime(now.year, now.month);
       end = DateTime(now.year, now.month + 1);

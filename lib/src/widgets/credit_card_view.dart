@@ -31,14 +31,6 @@ class CreditCardView extends StatelessWidget {
   void _copyToClipboard(BuildContext context, String text, String label) {
     if (text.isEmpty || text == '***' || text.contains('****')) return;
     Clipboard.setData(ClipboardData(text: text.replaceAll(RegExp(r'\s+'), '')));
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('Copied $label to clipboard'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
   }
 
   String _formatCardNumber(String number) {

@@ -381,35 +381,8 @@ class NotificationService {
   }
 
   static Future<void> showAppNotification(AppNotification notification) async {
-    await requestPermissions();
-
-    final androidDetails = AndroidNotificationDetails(
-      'alerts',
-      'Alerts',
-      channelDescription: 'Important wallet alerts',
-      importance: Importance.high,
-      priority: Priority.high,
-      color: await _notificationAccentColor(),
-      styleInformation: BigTextStyleInformation(notification.body),
-    );
-    const darwinDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-    final notificationDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: darwinDetails,
-      macOS: darwinDetails,
-    );
-
-    await _notificationsPlugin.show(
-      id: notification.id.hashCode,
-      title: notification.title,
-      body: notification.body,
-      notificationDetails: notificationDetails,
-      payload: notification.actionRoute,
-    );
+    // Disabled OS-level notification popups per user preference
+    return;
   }
 
   static Future<Color> _notificationAccentColor() async {

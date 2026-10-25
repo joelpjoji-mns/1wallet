@@ -105,6 +105,13 @@ abstract final class AppTheme {
         color: scheme.primary,
         linearTrackColor: scheme.surfaceContainerHighest,
       ),
+      snackBarTheme: const SnackBarThemeData(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        contentTextStyle: TextStyle(color: Colors.transparent, fontSize: 0.001),
+        actionTextColor: Colors.transparent,
+        disabledActionTextColor: Colors.transparent,
+      ),
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: ZoomPageTransitionsBuilder(),

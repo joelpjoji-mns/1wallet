@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 enum HomeDashboardWidgetId {
   balanceHero('balanceHero'),
   plannedPaymentsTile('plannedPaymentsTile'),
@@ -33,32 +35,118 @@ const defaultHomeWidgetOrder = [
   HomeDashboardWidgetId.creditUtilization,
 ];
 
+const standardHomeDateFilterOptions = [
+  'This week',
+  'This month',
+  '30 days',
+  '6 months',
+  '1 year',
+];
+
 const homeWidgetDatePresets = [
-  'today',
   'thisWeek',
   'thisMonth',
-  'lastMonth',
-  'thisYear',
-  'allTime',
+  '30Days',
+  '6Months',
+  '1Year',
 ];
 
 const homeWidgetDateLabels = {
-  'today': 'Today',
   'thisWeek': 'This week',
   'thisMonth': 'This month',
-  'lastMonth': 'Last month',
-  'thisYear': 'This year',
-  'allTime': 'All time',
+  '30Days': '30 days',
+  '6Months': '6 months',
+  '1Year': '1 year',
+  'This week': 'This week',
+  'This month': 'This month',
+  '30 days': '30 days',
+  '6 months': '6 months',
+  '1 year': '1 year',
+  'today': 'This week',
+  'lastMonth': '30 days',
+  'thisYear': '1 year',
+  'allTime': '1 year',
+  '1_week': 'This week',
+  '2_weeks': 'This week',
+  '1_month': 'This month',
 };
 
-const balanceHeroDatePresets = ['today', 'thisWeek', 'thisMonth', 'thisYear'];
-const currencyRateDatePresets = [
-  'today',
-  'thisWeek',
-  'thisMonth',
-  'lastMonth',
-  'thisYear',
-];
+const balanceHeroDatePresets = standardHomeDateFilterOptions;
+const currencyRateDatePresets = standardHomeDateFilterOptions;
+
+DateTimeRange homeWidgetDateRange(String period) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  switch (period) {
+    case 'This week':
+    case 'thisWeek':
+      final diff = now.weekday - 1;
+      final start = today.subtract(Duration(days: diff));
+      return DateTimeRange(
+        start: start,
+        end: start.add(const Duration(days: 7)),
+      );
+    case '30 days':
+    case '30_days':
+    case '30Days':
+      return DateTimeRange(
+        start: today.subtract(const Duration(days: 30)),
+        end: today.add(const Duration(days: 1)),
+      );
+    case '6 months':
+    case '6_months':
+    case '6Months':
+      return DateTimeRange(
+        start: DateTime(now.year, now.month - 6, now.day),
+        end: today.add(const Duration(days: 1)),
+      );
+    case '1 year':
+    case '1_year':
+    case '1Year':
+    case 'This year':
+    case 'thisYear':
+      return DateTimeRange(
+        start: DateTime(now.year - 1, now.month, now.day),
+        end: today.add(const Duration(days: 1)),
+      );
+    case 'This month':
+    case 'thisMonth':
+    default:
+      return DateTimeRange(
+        start: DateTime(now.year, now.month),
+        end: DateTime(now.year, now.month + 1),
+      );
+  }
+}
+
+DateTime homeWidgetFutureLimit(String period) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  switch (period) {
+    case 'This week':
+    case 'thisWeek':
+      final diff = 7 - now.weekday;
+      return today.add(Duration(days: diff + 1));
+    case '30 days':
+    case '30_days':
+    case '30Days':
+      return today.add(const Duration(days: 30));
+    case '6 months':
+    case '6_months':
+    case '6Months':
+      return DateTime(now.year, now.month + 6, now.day);
+    case '1 year':
+    case '1_year':
+    case '1Year':
+    case 'This year':
+    case 'thisYear':
+      return DateTime(now.year + 1, now.month, now.day);
+    case 'This month':
+    case 'thisMonth':
+    default:
+      return DateTime(now.year, now.month + 1);
+  }
+}
 
 List<HomeDashboardWidgetId> resolveHomeWidgetOrder(
   List<String> persisted, {
@@ -100,11 +188,11 @@ HomeDashboardWidgetId? homeWidgetIdFromStorageKey(String key) {
 
 String defaultDatePresetForHomeWidget(String id) {
   return switch (id) {
-    'balanceHero' => 'thisMonth',
+    'balanceHero' => 'This month',
     'accountGrid' || 'accountGroups' => 'allTime',
-    'currencyValues' => 'thisMonth',
-    'balanceTrend' => 'thisYear',
-    _ => 'thisMonth',
+    'currencyValues' => 'This month',
+    'balanceTrend' => 'This month',
+    _ => 'This month',
   };
 }
 
@@ -153,4 +241,14 @@ List<String> restoreHomeWidgetStorageKey(List<String> order, String id) {
     }
   }
   return [...current, id];
+}
+
+String getHomeWidgetFilter(
+  Map<String, String> homeWidgetFilters,
+  String widgetKey, {
+  String defaultValue = 'This month',
+}) {
+  final val = homeWidgetFilters[widgetKey];
+  if (val == null || val.isEmpty) return defaultValue;
+  return homeWidgetDateLabels[val] ?? val;
 }

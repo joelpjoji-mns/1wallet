@@ -5,6 +5,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
+import 'home_widget_models.dart';
 
 class HomeWidgetCard extends StatelessWidget {
   const HomeWidgetCard({
@@ -17,6 +18,10 @@ class HomeWidgetCard extends StatelessWidget {
     this.actionLabel,
     this.onAction,
     this.headerTrailing,
+    this.dateFilter,
+    this.onDateFilterChanged,
+    this.dateFilterOptions = standardHomeDateFilterOptions,
+    this.onIconTap,
   });
 
   final String title;
@@ -27,6 +32,10 @@ class HomeWidgetCard extends StatelessWidget {
   final VoidCallback? onAction;
   final Widget? headerTrailing;
   final Widget child;
+  final String? dateFilter;
+  final ValueChanged<String>? onDateFilterChanged;
+  final List<String> dateFilterOptions;
+  final VoidCallback? onIconTap;
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +56,8 @@ class HomeWidgetCard extends StatelessWidget {
                 HomeWidgetReorderableIcon(
                   icon: icon,
                   iconColor: resolvedIconColor,
+                  onTap: onIconTap ?? onAction,
+                  tooltip: actionLabel != null ? '$title: $actionLabel' : title,
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
@@ -92,8 +103,22 @@ class HomeWidgetCard extends StatelessWidget {
                         : null,
                     quality: GlassQuality.minimal,
                   ),
-                ],
-                if (actionLabel != null && onAction != null) ...[
+                ] else if (dateFilter != null && onDateFilterChanged != null) ...[
+                  const SizedBox(width: AppSpacing.xs),
+                  GlassDropdownPill<String>(
+                    value: dateFilterOptions.contains(dateFilter)
+                        ? dateFilter!
+                        : (dateFilterOptions.contains('This month')
+                            ? 'This month'
+                            : dateFilterOptions.first),
+                    options: [
+                      for (final option in dateFilterOptions)
+                        GlassDropdownOption(option, option),
+                    ],
+                    semanticLabel: '$title date filter',
+                    onChanged: onDateFilterChanged!,
+                  ),
+                ] else if (actionLabel != null && onAction != null && headerTrailing == null) ...[
                   const SizedBox(width: AppSpacing.xs),
                   AppActionButton(
                     label: actionLabel!,
@@ -161,6 +186,8 @@ class HomeWidgetReorderableIcon extends StatelessWidget {
     this.size = 42,
     this.iconSize = 24,
     this.borderRadius = AppRadii.md,
+    this.onTap,
+    this.tooltip,
   });
 
   final IconData icon;
@@ -168,11 +195,15 @@ class HomeWidgetReorderableIcon extends StatelessWidget {
   final double size;
   final double iconSize;
   final double borderRadius;
+  final VoidCallback? onTap;
+  final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final reorderScope = HomeWidgetCardReorderScope.maybeOf(context);
+    final isReorderMode = reorderScope?.reorderMode ?? false;
+
     Widget leadingIcon = Container(
       width: size,
       height: size,
@@ -182,9 +213,26 @@ class HomeWidgetReorderableIcon extends StatelessWidget {
       ),
       child: Icon(icon, color: iconColor, size: iconSize),
     );
-    if (reorderScope == null) return leadingIcon;
 
-    if (reorderScope.reorderMode) {
+    if (onTap != null && !isReorderMode) {
+      leadingIcon = Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(borderRadius),
+          child: leadingIcon,
+        ),
+      );
+    }
+
+    if (reorderScope == null) {
+      if (tooltip != null) {
+        return Tooltip(message: tooltip!, child: leadingIcon);
+      }
+      return leadingIcon;
+    }
+
+    if (isReorderMode) {
       return ReorderableDelayedDragStartListener(
         index: reorderScope.index,
         child: Tooltip(
@@ -215,8 +263,12 @@ class HomeWidgetReorderableIcon extends StatelessWidget {
       );
     }
 
+    final message = tooltip != null
+        ? '$tooltip · Long press to reorder'
+        : 'Tap ${reorderScope.label} / Long press to reorder';
+
     return Tooltip(
-      message: 'Long press ${reorderScope.label} to reorder widgets',
+      message: message,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onLongPress: reorderScope.onEnterReorderMode,

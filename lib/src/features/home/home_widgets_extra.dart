@@ -1,17 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../data/ledger_models.dart';
+import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/privacy_text.dart';
 import 'home_widget_card.dart';
+import 'home_widget_models.dart';
 
-class NetWorthHomeWidget extends StatelessWidget {
+class NetWorthHomeWidget extends ConsumerWidget {
   const NetWorthHomeWidget({required this.state, super.key});
 
   final LedgerState state;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final period = getHomeWidgetFilter(
+      state.preferences.homeWidgetFilters,
+      'netWorth',
+    );
     final scheme = Theme.of(context).colorScheme;
     final locale = state.preferences.locale;
     final worth = netWorth(state);
@@ -28,6 +36,18 @@ class NetWorthHomeWidget extends StatelessWidget {
       title: 'Net worth',
       subtitle: 'What you own minus what you owe',
       icon: Icons.account_balance_outlined,
+      dateFilter: period,
+      onDateFilterChanged: (val) {
+        final newFilters = Map<String, String>.from(
+          state.preferences.homeWidgetFilters,
+        );
+        newFilters['netWorth'] = val;
+        ref.read(ledgerProvider.notifier).updatePreferences(
+              state.preferences.copyWith(homeWidgetFilters: newFilters),
+            );
+      },
+      actionLabel: 'Accounts',
+      onAction: () => context.push('/account/all'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
