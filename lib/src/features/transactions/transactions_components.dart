@@ -149,6 +149,7 @@ class TransactionCommandStrip extends StatelessWidget {
                                 GlassDropdownOption('today', 'Today'),
                                 GlassDropdownOption('this_week', 'This week'),
                                 GlassDropdownOption('this_month', 'This month'),
+                                GlassDropdownOption('last_month', 'Last month'),
                                 GlassDropdownOption(
                                   'last_30_days',
                                   'Last 30 days',

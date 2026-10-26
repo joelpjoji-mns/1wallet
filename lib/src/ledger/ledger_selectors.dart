@@ -458,6 +458,17 @@ Money totalBalance(
       start = today.subtract(Duration(days: diff));
       end = start.add(const Duration(days: 7));
       break;
+    case 'This month':
+    case 'thisMonth':
+      start = DateTime(now.year, now.month);
+      end = DateTime(now.year, now.month + 1);
+      break;
+    case 'Last month':
+    case 'lastMonth':
+    case 'last_month':
+      start = DateTime(now.year, now.month - 1);
+      end = DateTime(now.year, now.month);
+      break;
     case '30 days':
     case '30_days':
     case '30Days':
@@ -473,13 +484,20 @@ Money totalBalance(
     case '1 year':
     case '1_year':
     case '1Year':
-    case 'This year':
-    case 'thisYear':
-      start = DateTime(now.year - 1, now.month, now.day);
+      start = today.subtract(const Duration(days: 365));
       end = today.add(const Duration(days: 1));
       break;
-    case 'This month':
-    case 'thisMonth':
+    case 'This year':
+    case 'thisYear':
+      start = DateTime(now.year, 1, 1);
+      end = DateTime(now.year + 1, 1, 1);
+      break;
+    case 'All time':
+    case 'allTime':
+    case 'all':
+      start = DateTime(1970, 1, 1);
+      end = DateTime(2100, 1, 1);
+      break;
     default:
       start = DateTime(now.year, now.month);
       end = DateTime(now.year, now.month + 1);

@@ -343,7 +343,10 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
       'Today' => 'today',
       'This week' => 'this_week',
       'This month' => 'this_month',
+      'Last month' => 'last_month',
+      '30 days' => 'last_30_days',
       'This year' => 'this_year',
+      '1 year' => 'this_year',
       _ => 'all',
     };
   }
@@ -557,6 +560,7 @@ class _BalanceTrendHomeWidgetState
       case 'This week':
         return 7;
       case 'This month':
+      case 'Last month':
       case '30 days':
         return 30;
       case '6 months':
@@ -564,6 +568,8 @@ class _BalanceTrendHomeWidgetState
       case '1 year':
       case 'This year':
         return 365;
+      case 'All time':
+        return 365 * 3;
       default:
         return 30;
     }
@@ -1155,7 +1161,7 @@ class _BalanceTrendHomeWidgetState
       onChanged: (value) {
         setState(() {
           _period = value;
-          _scrollOffset = 0.0; // Reset view to "now" on zoom change
+          _scrollOffset = value == 'Last month' ? -30.0 : 0.0;
         });
         _savePreference(value);
       },
@@ -1376,10 +1382,6 @@ class _CurrencyValuesHomeWidgetState
       );
     }
 
-    final period = getHomeWidgetFilter(
-      widget.state.preferences.homeWidgetFilters,
-      'currencyValues',
-    );
     return HomeWidgetCard(
       title: 'Currency calculator',
       subtitle: 'Live conversions',
@@ -1387,16 +1389,6 @@ class _CurrencyValuesHomeWidgetState
       iconColor: scheme.tertiary,
       actionLabel: 'Rates',
       onAction: () => context.push('/currencies'),
-      dateFilter: period,
-      onDateFilterChanged: (val) {
-        final newFilters = Map<String, String>.from(
-          widget.state.preferences.homeWidgetFilters,
-        );
-        newFilters['currencyValues'] = val;
-        ref.read(ledgerProvider.notifier).updatePreferences(
-              widget.state.preferences.copyWith(homeWidgetFilters: newFilters),
-            );
-      },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1610,6 +1602,7 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
       actionLabel: 'Open',
       onAction: () => context.push('/recurring'),
       dateFilter: period,
+      dateFilterOptions: futureHomeDateFilterOptions,
       onDateFilterChanged: (value) {
         final newFilters = Map<String, String>.from(
           state.preferences.homeWidgetFilters,
@@ -1727,6 +1720,7 @@ class LoansAndEmisHomeWidget extends ConsumerWidget {
       actionLabel: 'Loans',
       onAction: () => context.push('/loans'),
       dateFilter: period,
+      dateFilterOptions: futureHomeDateFilterOptions,
       onDateFilterChanged: (val) {
         final newFilters = Map<String, String>.from(
           state.preferences.homeWidgetFilters,
@@ -1824,6 +1818,7 @@ class PlannedPaymentsHomeWidget extends ConsumerWidget {
       actionLabel: 'Planned',
       onAction: () => context.push('/planned'),
       dateFilter: period,
+      dateFilterOptions: futureHomeDateFilterOptions,
       onDateFilterChanged: (val) {
         final newFilters = Map<String, String>.from(
           state.preferences.homeWidgetFilters,
@@ -1889,6 +1884,7 @@ class LoansHomeWidget extends ConsumerWidget {
       actionLabel: 'Loans',
       onAction: () => context.push('/loans'),
       dateFilter: period,
+      dateFilterOptions: futureHomeDateFilterOptions,
       onDateFilterChanged: (val) {
         final newFilters = Map<String, String>.from(
           state.preferences.homeWidgetFilters,
@@ -2014,6 +2010,7 @@ class CardsHomeWidget extends ConsumerWidget {
       actionLabel: 'Cards',
       onAction: () => context.push('/cards'),
       dateFilter: period,
+      dateFilterOptions: futureHomeDateFilterOptions,
       onDateFilterChanged: (val) {
         final newFilters = Map<String, String>.from(
           state.preferences.homeWidgetFilters,
@@ -2933,10 +2930,6 @@ class CreditUtilizationWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final period = getHomeWidgetFilter(
-      state.preferences.homeWidgetFilters,
-      'creditUtilization',
-    );
     final scheme = Theme.of(context).colorScheme;
     // Exclude loans as requested
     final creditAccounts = state.accounts
@@ -2954,16 +2947,6 @@ class CreditUtilizationWidget extends ConsumerWidget {
         iconColor: scheme.primary,
         actionLabel: 'Cards',
         onAction: () => context.push('/cards'),
-        dateFilter: period,
-        onDateFilterChanged: (val) {
-          final newFilters = Map<String, String>.from(
-            state.preferences.homeWidgetFilters,
-          );
-          newFilters['creditUtilization'] = val;
-          ref.read(ledgerProvider.notifier).updatePreferences(
-                state.preferences.copyWith(homeWidgetFilters: newFilters),
-              );
-        },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

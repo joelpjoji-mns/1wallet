@@ -38,34 +38,50 @@ const defaultHomeWidgetOrder = [
 const standardHomeDateFilterOptions = [
   'This week',
   'This month',
+  'Last month',
   '30 days',
   '6 months',
-  '1 year',
+  'This year',
+  'All time',
+];
+
+const futureHomeDateFilterOptions = [
+  'This week',
+  'This month',
+  '30 days',
+  '6 months',
+  'This year',
+  'All time',
 ];
 
 const homeWidgetDatePresets = [
   'thisWeek',
   'thisMonth',
+  'lastMonth',
   '30Days',
   '6Months',
-  '1Year',
+  'thisYear',
+  'allTime',
 ];
 
 const homeWidgetDateLabels = {
   'thisWeek': 'This week',
   'thisMonth': 'This month',
+  'lastMonth': 'Last month',
   '30Days': '30 days',
   '6Months': '6 months',
   '1Year': '1 year',
+  'thisYear': 'This year',
+  'allTime': 'All time',
   'This week': 'This week',
   'This month': 'This month',
+  'Last month': 'Last month',
   '30 days': '30 days',
   '6 months': '6 months',
   '1 year': '1 year',
-  'today': 'This week',
-  'lastMonth': '30 days',
-  'thisYear': '1 year',
-  'allTime': '1 year',
+  'This year': 'This year',
+  'All time': 'All time',
+  'today': 'Today',
   '1_week': 'This week',
   '2_weeks': 'This week',
   '1_month': 'This month',
@@ -78,6 +94,12 @@ DateTimeRange homeWidgetDateRange(String period) {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
   switch (period) {
+    case 'Today':
+    case 'today':
+      return DateTimeRange(
+        start: today,
+        end: today.add(const Duration(days: 1)),
+      );
     case 'This week':
     case 'thisWeek':
       final diff = now.weekday - 1;
@@ -85,6 +107,19 @@ DateTimeRange homeWidgetDateRange(String period) {
       return DateTimeRange(
         start: start,
         end: start.add(const Duration(days: 7)),
+      );
+    case 'This month':
+    case 'thisMonth':
+      return DateTimeRange(
+        start: DateTime(now.year, now.month),
+        end: DateTime(now.year, now.month + 1),
+      );
+    case 'Last month':
+    case 'lastMonth':
+    case 'last_month':
+      return DateTimeRange(
+        start: DateTime(now.year, now.month - 1),
+        end: DateTime(now.year, now.month),
       );
     case '30 days':
     case '30_days':
@@ -103,14 +138,23 @@ DateTimeRange homeWidgetDateRange(String period) {
     case '1 year':
     case '1_year':
     case '1Year':
+      return DateTimeRange(
+        start: today.subtract(const Duration(days: 365)),
+        end: today.add(const Duration(days: 1)),
+      );
     case 'This year':
     case 'thisYear':
       return DateTimeRange(
-        start: DateTime(now.year - 1, now.month, now.day),
-        end: today.add(const Duration(days: 1)),
+        start: DateTime(now.year, 1, 1),
+        end: DateTime(now.year + 1, 1, 1),
       );
-    case 'This month':
-    case 'thisMonth':
+    case 'All time':
+    case 'allTime':
+    case 'all':
+      return DateTimeRange(
+        start: DateTime(1970, 1, 1),
+        end: DateTime(2100, 1, 1),
+      );
     default:
       return DateTimeRange(
         start: DateTime(now.year, now.month),
@@ -138,9 +182,14 @@ DateTime homeWidgetFutureLimit(String period) {
     case '1 year':
     case '1_year':
     case '1Year':
+      return DateTime(now.year + 1, now.month, now.day);
     case 'This year':
     case 'thisYear':
-      return DateTime(now.year + 1, now.month, now.day);
+      return DateTime(now.year + 1, 1, 1);
+    case 'All time':
+    case 'allTime':
+    case 'all':
+      return DateTime(2100, 1, 1);
     case 'This month':
     case 'thisMonth':
     default:

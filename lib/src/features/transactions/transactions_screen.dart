@@ -1315,6 +1315,10 @@ bool _matchesDateFilter(
       return !date.isBefore(start) && date.isBefore(end);
     }(),
     'this_month' => date.year == current.year && date.month == current.month,
+    'last_month' => () {
+      final prevMonth = DateTime(current.year, current.month - 1);
+      return date.year == prevMonth.year && date.month == prevMonth.month;
+    }(),
     'last_30_days' => !day.isBefore(
       DateTime(
         current.year,
@@ -1351,6 +1355,7 @@ String _dateFilterLabel(String value) {
     'today' => 'Today',
     'this_week' => 'This week',
     'this_month' => 'This month',
+    'last_month' => 'Last month',
     'last_30_days' => 'Last 30 days',
     'this_year' => 'This year',
     _ => 'All time',

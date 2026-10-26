@@ -16,10 +16,6 @@ class NetWorthHomeWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final period = getHomeWidgetFilter(
-      state.preferences.homeWidgetFilters,
-      'netWorth',
-    );
     final scheme = Theme.of(context).colorScheme;
     final locale = state.preferences.locale;
     final worth = netWorth(state);
@@ -36,16 +32,6 @@ class NetWorthHomeWidget extends ConsumerWidget {
       title: 'Net worth',
       subtitle: 'What you own minus what you owe',
       icon: Icons.account_balance_outlined,
-      dateFilter: period,
-      onDateFilterChanged: (val) {
-        final newFilters = Map<String, String>.from(
-          state.preferences.homeWidgetFilters,
-        );
-        newFilters['netWorth'] = val;
-        ref.read(ledgerProvider.notifier).updatePreferences(
-              state.preferences.copyWith(homeWidgetFilters: newFilters),
-            );
-      },
       actionLabel: 'Accounts',
       onAction: () => context.push('/account/all'),
       child: Column(
