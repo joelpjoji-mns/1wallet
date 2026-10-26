@@ -19,6 +19,16 @@ function writeOutput(file, values) {
   }
 }
 
+function formatVersionName(baseVersion, runNum) {
+  if (!runNum) return baseVersion;
+  const match = baseVersion.match(/^(\d+\.\d+)(?:\.\d+)?$/);
+  if (!match) return baseVersion.replace(/\.\d+$/, `.${runNum}`);
+  const prefix = match[1];
+  const num = parseInt(runNum, 10);
+  const patchStr = num < 10 ? `0${num}` : `${num}`;
+  return `${prefix}.${patchStr}`;
+}
+
 const runNumber = readArg('--run-number');
 const outputFile = readArg('--output', process.env.GITHUB_OUTPUT);
 const pubspecPath = path.resolve(__dirname, '..', 'pubspec.yaml');
@@ -34,10 +44,8 @@ const [, pubspecVersionName, pubspecVersionCode] = versionMatch;
 
 // Use pubspecVersionCode as base, add run number to ensure it increments on CI
 const versionCode = runNumber ? String(parseInt(pubspecVersionCode, 10) + parseInt(runNumber, 10)) : pubspecVersionCode;
-// Use the proper version name from pubspec.yaml, replace patch version with run number if available
-const versionName = runNumber 
-  ? pubspecVersionName.replace(/\.\d+$/, `.${runNumber}`) 
-  : pubspecVersionName;
+// Use formatVersionName to format patch with leading zero if single digit (e.g. 2.1.01, 2.1.10, 2.1.147)
+const versionName = formatVersionName(pubspecVersionName, runNumber);
 
 const channel = 'stable';
 const values = {

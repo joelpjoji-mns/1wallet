@@ -75,5 +75,52 @@ void main() {
         isTrue,
       );
     });
+
+    test('seamlessly transitions from 200xxxx to 210xxxx versions', () {
+      // Installed: 2.1.146 with versionCode 2002146
+      // Latest: 2.1.147 with versionCode 2100147
+      expect(
+        AppUpdateProvider.isReleaseNewer(
+          latestVersionCode: 2100147,
+          latestVersionName: '2.1.147',
+          currentVersionCode: 2002146,
+          currentVersionName: '2.1.146',
+        ),
+        isTrue,
+      );
+
+      // Once 2.1.147 is installed (arm64 split adds 2000 -> 2102147):
+      expect(
+        AppUpdateProvider.isReleaseNewer(
+          latestVersionCode: 2100147,
+          latestVersionName: '2.1.147',
+          currentVersionCode: 2102147,
+          currentVersionName: '2.1.147',
+        ),
+        isFalse,
+      );
+    });
+
+    test('handles padded two-digit patch versions (e.g. 2.1.01 vs 2.1.00)', () {
+      expect(
+        AppUpdateProvider.isReleaseNewer(
+          latestVersionCode: 2100001,
+          latestVersionName: '2.1.01',
+          currentVersionCode: 2100000,
+          currentVersionName: '2.1.00',
+        ),
+        isTrue,
+      );
+
+      expect(
+        AppUpdateProvider.isReleaseNewer(
+          latestVersionCode: 2100001,
+          latestVersionName: '2.1.01',
+          currentVersionCode: 2102001,
+          currentVersionName: '2.1.01',
+        ),
+        isFalse,
+      );
+    });
   });
 }
