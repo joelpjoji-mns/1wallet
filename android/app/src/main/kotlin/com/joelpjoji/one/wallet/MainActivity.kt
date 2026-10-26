@@ -22,6 +22,7 @@ import android.app.Notification
 import android.content.ComponentName
 import android.os.Build
 import android.service.notification.NotificationListenerService
+import android.view.Display
 import java.io.ByteArrayOutputStream
 
 class MainActivity : FlutterFragmentActivity() {
@@ -45,8 +46,44 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setHighRefreshRate()
         initialRoute = extractRoute(intent)
         NotificationReceiver.startBackgroundWorker(this)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        setHighRefreshRate()
+    }
+
+    private fun setHighRefreshRate() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                val currentDisplay = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    display
+                } else {
+                    @Suppress("DEPRECATION")
+                    windowManager.defaultDisplay
+                }
+                val modes = currentDisplay?.supportedModes ?: return
+                var bestMode: Display.Mode? = null
+                var maxRate = 0f
+                for (mode in modes) {
+                    if (mode.refreshRate > maxRate) {
+                        maxRate = mode.refreshRate
+                        bestMode = mode
+                    }
+                }
+                if (bestMode != null && maxRate >= 60f) {
+                    val params = window.attributes
+                    if (params.preferredDisplayModeId != bestMode.modeId) {
+                        params.preferredDisplayModeId = bestMode.modeId
+                        window.attributes = params
+                    }
+                }
+            } catch (_: Exception) {
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

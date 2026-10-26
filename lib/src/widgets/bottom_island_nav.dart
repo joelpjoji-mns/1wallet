@@ -113,7 +113,7 @@ class BottomIslandNavBar extends StatelessWidget {
                         verticalPadding: 12,
                         spacing: hasDownFab ? 4 : 6,
                         settings: glassSettings,
-                        quality: GlassQuality.standard,
+                        quality: GlassQuality.minimal,
                         indicatorColor: scheme.primary.withAlphaFactor(
                           isDark ? 0.30 : 0.14,
                         ),
@@ -121,7 +121,7 @@ class BottomIslandNavBar extends StatelessWidget {
                         unselectedIconColor: scheme.onSurfaceVariant,
                         selectedLabelColor: scheme.primary,
                         unselectedLabelColor: scheme.onSurfaceVariant,
-                        backgroundQuality: GlassQuality.standard,
+                        backgroundQuality: GlassQuality.minimal,
                       ),
                     ),
                     if (action != null)

@@ -21,8 +21,8 @@ class RightSwipeGestureRecognizer extends HorizontalDragGestureRecognizer {
     if (globalDistanceMoved > slop) {
       return true;
     }
-    // If moving left (dx < 0) beyond touch slop: immediately reject so parent PageView wins
-    if (globalDistanceMoved < -slop) {
+    // If moving left (dx < 0), immediately reject so parent PageView wins without delay
+    if (globalDistanceMoved < -0.5) {
       resolve(GestureDisposition.rejected);
     }
     return false;
@@ -272,44 +272,32 @@ class AppTopFadeMask extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!enabled) return child;
+    final surfaceColor = Theme.of(context).colorScheme.surface;
 
-    return ShaderMask(
-      shaderCallback: (Rect bounds) {
-        if (bounds.height <= 0) {
-          return const LinearGradient(
-            colors: [Colors.white, Colors.white],
-          ).createShader(bounds);
-        }
-        final double stop = (fadeHeight / bounds.height).clamp(0.001, 1.0);
-        return LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: const [
-            Color(0x00FFFFFF), // 0% opacity (completely faded)
-            Color(0x0AFFFFFF), // 4% opacity (smooth non-linear start)
-            Color(0x29FFFFFF), // 16% opacity
-            Color(0x5EFFFFFF), // 37% opacity
-            Color(0x9EFFFFFF), // 62% opacity
-            Color(0xD6FFFFFF), // 84% opacity
-            Color(0xF5FFFFFF), // 96% opacity
-            Color(0xFFFFFFFF), // 100% opacity (continuous blend, no line)
-            Color(0xFFFFFFFF),
-          ],
-          stops: [
-            0.0,
-            stop * 0.15,
-            stop * 0.30,
-            stop * 0.50,
-            stop * 0.70,
-            stop * 0.85,
-            stop * 0.95,
-            stop,
-            1.0,
-          ],
-        ).createShader(bounds);
-      },
-      blendMode: BlendMode.dstIn,
-      child: child,
+    return Stack(
+      children: [
+        child,
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: fadeHeight,
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    surfaceColor,
+                    surfaceColor.withAlpha(0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

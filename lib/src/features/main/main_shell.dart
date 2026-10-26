@@ -42,6 +42,7 @@ class _MainShellState extends ConsumerState<MainShell>
   final ValueNotifier<int> _selectedIndex = ValueNotifier(0);
   Timer? _lightBackgroundPeriodicTimer;
   late final List<Widget> _screens;
+  late final Widget _mainBody;
 
   @override
   void initState() {
@@ -65,6 +66,17 @@ class _MainShellState extends ConsumerState<MainShell>
         child: AccountsScreen(onMenuPressed: _openDrawer),
       ),
     ];
+    _mainBody = PageView(
+      controller: _pageController,
+      physics: const PageScrollPhysics(),
+      dragStartBehavior: DragStartBehavior.start,
+      onPageChanged: (index) {
+        if (_selectedIndex.value != index) {
+          _selectedIndex.value = index;
+        }
+      },
+      children: _screens,
+    );
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(exchangeRateServiceProvider).refreshRatesIfStale();
@@ -147,21 +159,6 @@ class _MainShellState extends ConsumerState<MainShell>
     return false;
   }
 
-  Widget _buildMainBody() {
-    return PageView(
-      controller: _pageController,
-      physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
-      dragStartBehavior: DragStartBehavior.start,
-      allowImplicitScrolling: true,
-      onPageChanged: (index) {
-        if (_selectedIndex.value != index) {
-          _selectedIndex.value = index;
-        }
-      },
-      children: _screens,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     ref.listen<LedgerState>(ledgerProvider, (previous, next) {
@@ -170,8 +167,6 @@ class _MainShellState extends ConsumerState<MainShell>
         NotificationService.syncScheduledNotifications(next);
       }
     });
-
-    final mainBody = _buildMainBody();
 
     return BackButtonListener(
       onBackButtonPressed: () async {
@@ -185,7 +180,7 @@ class _MainShellState extends ConsumerState<MainShell>
       },
       child: ValueListenableBuilder<int>(
         valueListenable: _selectedIndex,
-        child: mainBody,
+        child: _mainBody,
         builder: (context, selectedIndex, cachedMainBody) {
           final dueCardCount = ref.watch(
             ledgerProvider.select((state) => creditCardsDueSoonCount(state)),
