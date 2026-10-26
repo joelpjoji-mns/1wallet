@@ -84,7 +84,7 @@ jobs:
     runs-on: ubuntu-24.04
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || github.event_name == 'push'
     env:
-      APK_PATH: build/app/outputs/flutter-apk/app-release.apk
+      APK_PATH: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
       RELEASE_ARCHITECTURE: arm64-v8a
       ASSET_REPO: ${{ vars.APK_RELEASE_REPO }}
       FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID || 'wallet-1a5af' }}
@@ -214,7 +214,7 @@ jobs:
           ONEWALLET_RELEASE_KEY_PASSWORD: ${{ secrets.ONEWALLET_RELEASE_KEY_PASSWORD }}
           ONEWALLET_VERSION_NAME: ${{ steps.info.outputs.versionName }}
           ONEWALLET_VERSION_CODE: ${{ steps.info.outputs.versionCode }}
-        run: flutter build apk --release --target-platform android-arm64 --build-name="${{ steps.info.outputs.versionName }}" --build-number="${{ steps.info.outputs.versionCode }}"
+        run: flutter build apk --release --split-per-abi --obfuscate --split-debug-info=build/app/outputs/symbols --build-name="${{ steps.info.outputs.versionName }}" --build-number="${{ steps.info.outputs.versionCode }}"
 
       - name: Stage release assets
         if: steps.notes_source.outputs.skip_release != 'true'
