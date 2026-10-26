@@ -1167,66 +1167,73 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
         return;
       }
 
-      if (latestVersionCode != currentVersionCode) {
-        final fetched = await _releaseForVersionCode(
-          latestVersionCode,
-          releaseId: latestReleaseId,
-        );
-        final rawVersionName = _stringValue(
-          channelDoc.data()?['latestVersionName'],
-        );
-        final release = fetched ??
-            (latestVersionCode > currentVersionCode
-                ? AppUpdateRelease.fromJson(
-                    latestReleaseId.isNotEmpty
-                        ? latestReleaseId
-                        : 'stable-$latestVersionCode',
-                    {
-                      'versionName': rawVersionName.isNotEmpty
-                          ? rawVersionName
-                          : 'v$latestVersionCode',
-                      'versionCode': latestVersionCode,
-                      'platform': 'android',
-                      'channel': 'stable',
-                      'status': 'published',
-                      'publishedAt': DateTime.now().toIso8601String(),
-                      'changelog': {
-                        'newFeatures': ['New update is available to install.'],
-                        'bugFixes': <String>[],
-                        'notes': <String>[],
-                      },
-                    },
-                  )
-                : null);
+      final candidateRelease = await _releaseForVersionCode(
+        latestVersionCode,
+        releaseId: latestReleaseId,
+      );
+      final rawVersionName = _stringValue(
+        channelDoc.data()?['latestVersionName'] ??
+            channelDoc.data()?['versionName'],
+      );
+      final latestName = candidateRelease?.versionName.isNotEmpty == true
+          ? candidateRelease!.versionName
+          : rawVersionName;
 
-        if (release != null) {
-          state = state.copyWith(
-            status: UpdateStatus.idle,
-            latestRelease: release,
-            currentRelease: currentRelease,
-            allReleases: allReleases,
-            clearCurrentRelease: currentRelease == null,
-          );
+      final isNewer = isReleaseNewer(
+        latestVersionCode: latestVersionCode,
+        latestVersionName: latestName,
+        currentVersionCode: currentVersionCode,
+        currentVersionName: currentVersionName,
+      );
 
-          final prefs = await SharedPreferences.getInstance();
-          const notificationKey = 'lastNotifiedVersionCode.stable';
-          final lastNotifiedVersionCode = prefs.getInt(notificationKey) ?? 0;
-          if (latestVersionCode > lastNotifiedVersionCode &&
-              latestVersionCode > currentVersionCode) {
-            await NotificationService.showUpdateNotification(
-              release.versionName,
+      if (isNewer) {
+        final release = candidateRelease ??
+            AppUpdateRelease.fromJson(
+              latestReleaseId.isNotEmpty
+                  ? latestReleaseId
+                  : 'stable-$latestVersionCode',
+              {
+                'versionName': rawVersionName.isNotEmpty
+                    ? rawVersionName
+                    : 'v$latestVersionCode',
+                'versionCode': latestVersionCode,
+                'platform': 'android',
+                'channel': 'stable',
+                'status': 'published',
+                'publishedAt': DateTime.now().toIso8601String(),
+                'changelog': {
+                  'newFeatures': ['New update is available to install.'],
+                  'bugFixes': <String>[],
+                  'notes': <String>[],
+                },
+              },
             );
-            await prefs.setInt(notificationKey, latestVersionCode);
-          }
-          return;
+
+        state = state.copyWith(
+          status: UpdateStatus.idle,
+          latestRelease: release,
+          currentRelease: currentRelease,
+          allReleases: allReleases,
+          clearCurrentRelease: currentRelease == null,
+        );
+
+        final prefs = await SharedPreferences.getInstance();
+        const notificationKey = 'lastNotifiedVersionCode.stable';
+        final lastNotifiedVersionCode = prefs.getInt(notificationKey) ?? 0;
+        if (latestVersionCode > lastNotifiedVersionCode) {
+          await NotificationService.showUpdateNotification(
+            release.versionName,
+          );
+          await prefs.setInt(notificationKey, latestVersionCode);
         }
+        return;
       }
 
       state = state.copyWith(
         status: UpdateStatus.idle,
-        currentRelease: currentRelease,
+        currentRelease: currentRelease ?? candidateRelease,
         allReleases: allReleases,
-        clearCurrentRelease: currentRelease == null,
+        clearCurrentRelease: currentRelease == null && candidateRelease == null,
         clearLatestRelease: true,
       );
     } catch (e) {
@@ -1241,6 +1248,68 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
             : kBuiltInReleaseHistory,
       );
     }
+  }
+
+  static bool isReleaseNewer({
+    required int latestVersionCode,
+    required String latestVersionName,
+    required int currentVersionCode,
+    required String currentVersionName,
+  }) {
+    final cleanLatest = _cleanVersion(latestVersionName);
+    final cleanCurrent = _cleanVersion(currentVersionName);
+
+    // 1. If semantic versions match, it's definitely the current version (no update)
+    if (cleanLatest.isNotEmpty &&
+        cleanCurrent.isNotEmpty &&
+        cleanLatest == cleanCurrent) {
+      return false;
+    }
+
+    // 2. Semantic version comparison (e.g. 2.1.147 > 2.1.146)
+    final semverCmp = _compareSemanticVersions(cleanLatest, cleanCurrent);
+    if (semverCmp != null) {
+      return semverCmp > 0;
+    }
+
+    // 3. Normalized versionCode fallback (handles ABI split offset: arm64 adds 2000, armv7 adds 1000, etc.)
+    final normCurrent = _normalizeVersionCode(currentVersionCode);
+    final normLatest = _normalizeVersionCode(latestVersionCode);
+    return normLatest > normCurrent;
+  }
+
+  static String _cleanVersion(String v) {
+    return v.trim().replaceFirst(RegExp(r'^[vV]'), '');
+  }
+
+  static int? _compareSemanticVersions(String v1, String v2) {
+    if (v1.isEmpty || v2.isEmpty) return null;
+    final parts1 = v1.split('.').map((p) => int.tryParse(p) ?? -1).toList();
+    final parts2 = v2.split('.').map((p) => int.tryParse(p) ?? -1).toList();
+    if (parts1.any((p) => p == -1) || parts2.any((p) => p == -1)) {
+      return null;
+    }
+    final maxLength =
+        parts1.length > parts2.length ? parts1.length : parts2.length;
+    for (int i = 0; i < maxLength; i++) {
+      final p1 = i < parts1.length ? parts1[i] : 0;
+      final p2 = i < parts2.length ? parts2[i] : 0;
+      if (p1 > p2) return 1;
+      if (p1 < p2) return -1;
+    }
+    return 0;
+  }
+
+  static int _normalizeVersionCode(int code) {
+    if (code >= 2000000) {
+      final offset = code - 2000000;
+      return 2000000 + (offset % 1000);
+    }
+    if (code >= 1000000) {
+      final offset = code - 1000000;
+      return 1000000 + (offset % 1000);
+    }
+    return code;
   }
 
   static List<AppUpdateRelease> _mergeReleases(

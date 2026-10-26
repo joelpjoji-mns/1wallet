@@ -209,6 +209,7 @@ try {
     channel,
     latestVersionCode: versionCode,
     latestReleaseId: releaseId,
+    latestVersionName: versionName,
     versionName,
     updatedAt: publishedAt,
   });
