@@ -37,7 +37,11 @@ class NotificationReceiver : NotificationListenerService() {
             "com.commbank.netbank",
             "net.bnz.boost",
             "com.phonepe.app",
-            "net.one97.paytm"
+            "net.one97.paytm",
+            "com.google.android.gm",
+            "com.microsoft.office.outlook",
+            "com.samsung.android.email.provider",
+            "com.yahoo.mobile.client.android.mail"
         )
 
         private val DEFAULT_TRIGGERS = listOf(
@@ -49,6 +53,28 @@ class NotificationReceiver : NotificationListenerService() {
             "otp", "code", "requested", "failed", "declined", "pending",
             "due", "statement", "bill", "reminder"
         )
+
+        fun getSmallNotificationIcon(context: Context): Int {
+            return context.resources.getIdentifier("ic_notification", "drawable", context.packageName)
+                .takeIf { it != 0 }
+                ?: context.resources.getIdentifier("ic_launcher_foreground", "drawable", context.packageName)
+                .takeIf { it != 0 }
+                ?: context.resources.getIdentifier("ic_launcher", "mipmap", context.packageName)
+                .takeIf { it != 0 } ?: android.R.drawable.ic_dialog_info
+        }
+
+        fun applyNotificationIcons(context: Context, builder: Notification.Builder) {
+            builder.setSmallIcon(getSmallNotificationIcon(context))
+            val largeIconId = context.resources.getIdentifier("ic_launcher", "mipmap", context.packageName)
+            if (largeIconId != 0) {
+                try {
+                    val bitmap = android.graphics.BitmapFactory.decodeResource(context.resources, largeIconId)
+                    if (bitmap != null) {
+                        builder.setLargeIcon(bitmap)
+                    }
+                } catch (_: Exception) {}
+            }
+        }
 
         fun startBackgroundWorker(context: Context) {
             if (isBackgroundWorkerRunning) return
@@ -150,11 +176,8 @@ class NotificationReceiver : NotificationListenerService() {
                     Notification.Builder(context)
                 }
 
-                val smallIcon = context.resources.getIdentifier("ic_launcher", "mipmap", context.packageName)
-                    .takeIf { it != 0 } ?: android.R.drawable.ic_dialog_info
-
-                builder.setSmallIcon(smallIcon)
-                    .setContentTitle("Update Available")
+                applyNotificationIcons(context, builder)
+                builder.setContentTitle("Update Available")
                     .setContentText("Version $versionName is ready to install")
                     .setContentIntent(pendingIntent)
                     .setAutoCancel(true)
@@ -247,17 +270,26 @@ class NotificationReceiver : NotificationListenerService() {
         val matchedBillNotice = findMatchingWord(lowerText, builtInBillIgnores)
         if (matchedBillNotice != null) {
             val amount = extractAmount(combinedText)
+            val spooled = spoolMessage(
+                context,
+                title.ifEmpty { "Statement Notice" },
+                combinedText,
+                amount,
+                matchedBillNotice,
+                isBillStatement = true
+            )
             val notificationShown = showBillStatementNotification(context, amount, extractLast4(combinedText))
             appendDiagnostic(
                 context,
                 source = "notification",
                 stage = "native-notification",
                 decision = "bill-statement-notice",
-                reason = "detected card bill/statement notice instead of transaction",
+                reason = "detected card bill/statement notice and spooled for card account update",
                 rawText = combinedText,
                 amount = amount,
                 matchedIgnoreWord = matchedBillNotice,
-                notificationShown = notificationShown
+                notificationShown = notificationShown,
+                nativeAccepted = spooled
             )
             return
         }
@@ -354,7 +386,14 @@ class NotificationReceiver : NotificationListenerService() {
         return null
     }
 
-    private fun spoolMessage(context: Context, sender: String, body: String, amount: String?, matchedTrigger: String?): Boolean {
+    private fun spoolMessage(
+        context: Context,
+        sender: String,
+        body: String,
+        amount: String?,
+        matchedTrigger: String?,
+        isBillStatement: Boolean = false
+    ): Boolean {
         val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
         val spoolKey = "flutter.one_wallet_flutter.notification_spool"
 
@@ -375,6 +414,7 @@ class NotificationReceiver : NotificationListenerService() {
         payload.put("nativeSource", "notification")
         payload.put("nativeAccepted", true)
         payload.put("notificationShown", true)
+        if (isBillStatement) payload.put("isBillStatement", true)
         if (amount != null) payload.put("nativeMatchedAmount", amount)
         if (matchedTrigger != null) payload.put("nativeMatchedTriggerWord", matchedTrigger)
 
@@ -454,11 +494,8 @@ class NotificationReceiver : NotificationListenerService() {
                 "Tap to review detected statement notice."
             }
 
-            val smallIcon = context.resources.getIdentifier("ic_launcher", "mipmap", context.packageName)
-                .takeIf { it != 0 } ?: android.R.drawable.ic_dialog_info
-
-            builder.setSmallIcon(smallIcon)
-                .setContentTitle(title)
+            applyNotificationIcons(context, builder)
+            builder.setContentTitle(title)
                 .setContentText(text)
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
@@ -512,11 +549,8 @@ class NotificationReceiver : NotificationListenerService() {
                 "Tap to review and save."
             }
 
-            val smallIcon = context.resources.getIdentifier("ic_launcher", "mipmap", context.packageName)
-                .takeIf { it != 0 } ?: android.R.drawable.ic_dialog_info
-
-            builder.setSmallIcon(smallIcon)
-                .setContentTitle(title)
+            applyNotificationIcons(context, builder)
+            builder.setContentTitle(title)
                 .setContentText(text)
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)

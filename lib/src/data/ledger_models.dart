@@ -262,6 +262,10 @@ const List<String> kDefaultNotificationPackages = [
   'org.westpac.bank',
   'com.commbank.netbank',
   'net.bnz.boost',
+  'com.google.android.gm',
+  'com.microsoft.office.outlook',
+  'com.samsung.android.email.provider',
+  'com.yahoo.mobile.client.android.mail',
 ];
 
 @immutable

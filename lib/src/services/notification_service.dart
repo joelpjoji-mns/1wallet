@@ -48,7 +48,7 @@ class NotificationService {
     if (_initialized) return;
 
     const androidSettings = AndroidInitializationSettings(
-      '@mipmap/ic_launcher',
+      '@drawable/ic_notification',
     );
     const darwinSettings = DarwinInitializationSettings(
       requestAlertPermission: false,
@@ -128,6 +128,8 @@ class NotificationService {
       channelDescription: 'Notifications for new app versions',
       importance: Importance.high,
       priority: Priority.high,
+      icon: '@drawable/ic_notification',
+      largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       color: await _notificationAccentColor(),
     );
     const darwinDetails = DarwinNotificationDetails(
@@ -321,6 +323,8 @@ class NotificationService {
       channelDescription: 'Notifications for upcoming payments',
       importance: Importance.high,
       priority: Priority.high,
+      icon: '@drawable/ic_notification',
+      largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       color: resolvedAccent,
     );
     const darwinDetails = DarwinNotificationDetails(

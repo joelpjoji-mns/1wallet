@@ -76,17 +76,26 @@ class SmsReceiver : BroadcastReceiver() {
         val matchedBillNotice = findMatchingWord(lowerBody, builtInBillIgnores)
         if (matchedBillNotice != null) {
             val amount = extractAmount(body)
+            val spooled = spoolMessage(
+                context,
+                sender,
+                body,
+                amount,
+                matchedBillNotice,
+                isBillStatement = true
+            )
             val notificationShown = showBillStatementNotification(context, amount, extractLast4(body))
             appendDiagnostic(
                 context,
                 source = "sms",
                 stage = "native-sms",
                 decision = "bill-statement-notice",
-                reason = "detected card bill/statement notice instead of transaction",
+                reason = "detected card bill/statement notice and spooled for card account update",
                 rawText = body,
                 amount = amount,
                 matchedIgnoreWord = matchedBillNotice,
-                notificationShown = notificationShown
+                notificationShown = notificationShown,
+                nativeAccepted = spooled
             )
             return
         }
@@ -185,7 +194,14 @@ class SmsReceiver : BroadcastReceiver() {
         return null
     }
 
-    private fun spoolMessage(context: Context, sender: String, body: String, amount: String?, matchedTrigger: String?): Boolean {
+    private fun spoolMessage(
+        context: Context,
+        sender: String,
+        body: String,
+        amount: String?,
+        matchedTrigger: String?,
+        isBillStatement: Boolean = false
+    ): Boolean {
         val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
         val spoolKey = "flutter.one_wallet_flutter.sms_spool"
 
@@ -206,6 +222,7 @@ class SmsReceiver : BroadcastReceiver() {
         payload.put("nativeSource", "sms")
         payload.put("nativeAccepted", true)
         payload.put("notificationShown", true)
+        if (isBillStatement) payload.put("isBillStatement", true)
         if (amount != null) payload.put("nativeMatchedAmount", amount)
         if (matchedTrigger != null) payload.put("nativeMatchedTriggerWord", matchedTrigger)
 
@@ -286,11 +303,8 @@ class SmsReceiver : BroadcastReceiver() {
                 "Tap to review detected statement notice."
             }
 
-            val smallIcon = context.resources.getIdentifier("ic_launcher", "mipmap", context.packageName)
-                .takeIf { it != 0 } ?: android.R.drawable.ic_dialog_info
-
-            builder.setSmallIcon(smallIcon)
-                .setContentTitle(title)
+            NotificationReceiver.applyNotificationIcons(context, builder)
+            builder.setContentTitle(title)
                 .setContentText(text)
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
@@ -344,11 +358,8 @@ class SmsReceiver : BroadcastReceiver() {
                 "Tap to review and save."
             }
 
-            val smallIcon = context.resources.getIdentifier("ic_launcher", "mipmap", context.packageName)
-                .takeIf { it != 0 } ?: android.R.drawable.ic_dialog_info
-
-            builder.setSmallIcon(smallIcon)
-                .setContentTitle(title)
+            NotificationReceiver.applyNotificationIcons(context, builder)
+            builder.setContentTitle(title)
                 .setContentText(text)
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)

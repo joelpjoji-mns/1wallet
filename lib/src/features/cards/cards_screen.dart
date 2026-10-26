@@ -146,12 +146,22 @@ class _CardAccountTile extends ConsumerWidget {
       }
     }
 
+    final lastStmtAmountMinorStr =
+        account.encryptedDetails?['lastStatementAmountMinor'];
+    final lastStmtAmountMinor = lastStmtAmountMinorStr != null
+        ? int.tryParse(lastStmtAmountMinorStr)
+        : null;
+    final lastStmtCurrency =
+        account.encryptedDetails?['lastStatementCurrency'] ?? account.currency;
+
     final subtitleParts = [
       account.institution,
       if (account.displayLast4 != null) '•••• ${account.displayLast4}',
       account.currency,
       if (dueStatus?.statementDate != null)
         'Bill: ${DateFormat('d MMM').format(dueStatus!.statementDate!)}',
+      if (lastStmtAmountMinor != null && dueStatus != null && !dueStatus.isPaid)
+        'Due: ${formatMoney(Money(amountMinor: lastStmtAmountMinor, currency: lastStmtCurrency), state.preferences.locale)}',
     ].whereType<String>().join(' · ');
 
     return DecoratedBox(

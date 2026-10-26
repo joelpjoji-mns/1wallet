@@ -835,6 +835,43 @@ class LedgerController extends StateNotifier<LedgerState> {
   bool _isProcessingSpooledSms = false;
   bool _isProcessingSpooledNotifications = false;
 
+  Account? _applyStatementToAccount({
+    required LedgerState currentState,
+    required BillStatementNotice notice,
+    Account? matchedAccount,
+  }) {
+    final targetAccount =
+        matchedAccount ?? matchAccountForStatement(currentState, notice);
+    if (targetAccount == null) return null;
+
+    final details = Map<String, String>.from(
+      targetAccount.encryptedDetails ?? const {},
+    );
+    if (notice.amount != null) {
+      details['lastStatementAmountMinor'] =
+          notice.amount!.amountMinor.toString();
+      details['lastStatementCurrency'] = notice.amount!.currency;
+    }
+    if (notice.minAmountDue != null) {
+      details['lastStatementMinDueMinor'] =
+          notice.minAmountDue!.amountMinor.toString();
+    }
+    if (notice.dueDate != null) {
+      details['lastStatementDueDate'] = notice.dueDate!.toIso8601String();
+    }
+    if (notice.statementDate != null) {
+      details['lastStatementDate'] = notice.statementDate!.toIso8601String();
+    }
+    details['lastStatementUpdated'] = DateTime.now().toIso8601String();
+
+    return targetAccount.copyWith(
+      dueDay: notice.dueDay ?? targetAccount.dueDay,
+      statementDay: notice.statementDay ?? targetAccount.statementDay,
+      notifyDaysBeforeDue: targetAccount.notifyDaysBeforeDue ?? 3,
+      encryptedDetails: details,
+    );
+  }
+
   Future<void> processSpooledSms() async {
     if (_isProcessingSpooledSms) return;
     _isProcessingSpooledSms = true;
@@ -843,6 +880,8 @@ class LedgerController extends StateNotifier<LedgerState> {
       if (spooled.isEmpty) return;
 
       final newCandidates = <CaptureCandidate>[];
+      final updatedAccounts = <String, Account>{};
+
       for (final payload in spooled) {
         final body = payload['body'] as String?;
         final timestampStr = payload['timestamp'] as String?;
@@ -850,6 +889,25 @@ class LedgerController extends StateNotifier<LedgerState> {
             ? DateTime.tryParse(timestampStr)
             : null;
         if (body != null && body.isNotEmpty) {
+          final isStatement = payload['isBillStatement'] == true ||
+              isBillStatementMessage(body);
+          if (isStatement) {
+            final notice = parseBillStatementNotice(
+              body,
+              fallbackCurrency: state.preferences.baseCurrency,
+              receivedAt: receivedAt,
+            );
+            if (notice != null) {
+              final updatedAcc = _applyStatementToAccount(
+                currentState: state,
+                notice: notice,
+              );
+              if (updatedAcc != null) {
+                updatedAccounts[updatedAcc.id] = updatedAcc;
+              }
+            }
+          }
+
           final nativeAccepted =
               payload['nativeAccepted'] == true ||
               payload['notificationShown'] == true ||
@@ -880,9 +938,17 @@ class LedgerController extends StateNotifier<LedgerState> {
         }
       }
 
-      if (newCandidates.isNotEmpty) {
+      var nextAccounts = state.accounts;
+      if (updatedAccounts.isNotEmpty) {
+        nextAccounts = state.accounts
+            .map((a) => updatedAccounts[a.id] ?? a)
+            .toList();
+      }
+
+      if (newCandidates.isNotEmpty || updatedAccounts.isNotEmpty) {
         await _commit(
           state.copyWith(
+            accounts: nextAccounts,
             captureCandidates: [...newCandidates, ...state.captureCandidates],
           ),
         );
@@ -902,6 +968,8 @@ class LedgerController extends StateNotifier<LedgerState> {
       if (spooled.isEmpty) return;
 
       final newCandidates = <CaptureCandidate>[];
+      final updatedAccounts = <String, Account>{};
+
       for (final payload in spooled) {
         final body = payload['body'] as String?;
         final timestampStr = payload['timestamp'] as String?;
@@ -909,6 +977,25 @@ class LedgerController extends StateNotifier<LedgerState> {
             ? DateTime.tryParse(timestampStr)
             : null;
         if (body != null && body.isNotEmpty) {
+          final isStatement = payload['isBillStatement'] == true ||
+              isBillStatementMessage(body);
+          if (isStatement) {
+            final notice = parseBillStatementNotice(
+              body,
+              fallbackCurrency: state.preferences.baseCurrency,
+              receivedAt: receivedAt,
+            );
+            if (notice != null) {
+              final updatedAcc = _applyStatementToAccount(
+                currentState: state,
+                notice: notice,
+              );
+              if (updatedAcc != null) {
+                updatedAccounts[updatedAcc.id] = updatedAcc;
+              }
+            }
+          }
+
           final nativeAccepted =
               payload['nativeAccepted'] == true ||
               payload['notificationShown'] == true ||
@@ -942,9 +1029,17 @@ class LedgerController extends StateNotifier<LedgerState> {
         }
       }
 
-      if (newCandidates.isNotEmpty) {
+      var nextAccounts = state.accounts;
+      if (updatedAccounts.isNotEmpty) {
+        nextAccounts = state.accounts
+            .map((a) => updatedAccounts[a.id] ?? a)
+            .toList();
+      }
+
+      if (newCandidates.isNotEmpty || updatedAccounts.isNotEmpty) {
         await _commit(
           state.copyWith(
+            accounts: nextAccounts,
             captureCandidates: [...newCandidates, ...state.captureCandidates],
           ),
         );
@@ -2312,8 +2407,29 @@ class LedgerController extends StateNotifier<LedgerState> {
     );
 
     if (result.queued && result.candidate != null) {
+      var nextAccounts = state.accounts;
+      if (isBillStatementMessage(rawText)) {
+        final notice = parseBillStatementNotice(
+          rawText,
+          fallbackCurrency: state.preferences.baseCurrency,
+          receivedAt: receivedAt,
+        );
+        if (notice != null) {
+          final updatedAcc = _applyStatementToAccount(
+            currentState: state,
+            notice: notice,
+          );
+          if (updatedAcc != null) {
+            nextAccounts = state.accounts
+                .map((a) => a.id == updatedAcc.id ? updatedAcc : a)
+                .toList();
+          }
+        }
+      }
+
       await _commit(
         state.copyWith(
+          accounts: nextAccounts,
           captureCandidates: [result.candidate!, ...state.captureCandidates],
         ),
       );
@@ -2358,6 +2474,15 @@ class LedgerController extends StateNotifier<LedgerState> {
       }
     }
 
+    final isStatement = isBillStatementMessage(rawText);
+    final statementNotice = isStatement
+        ? parseBillStatementNotice(
+            rawText,
+            fallbackCurrency: state.preferences.baseCurrency,
+            receivedAt: actualReceivedAt,
+          )
+        : null;
+
     final parsed = parseTransactionMessage(
       rawText,
       fallbackCurrency: state.preferences.baseCurrency,
@@ -2377,7 +2502,7 @@ class LedgerController extends StateNotifier<LedgerState> {
         notificationShown: notificationShown,
       );
     }
-    if (parsed.ignored && !forceQueue) {
+    if (parsed.ignored && !forceQueue && statementNotice == null) {
       return CaptureImportResult(
         source: source,
         status: CaptureImportStatus.ignored,
@@ -2389,7 +2514,7 @@ class LedgerController extends StateNotifier<LedgerState> {
       );
     }
 
-    Money? parsedAmount = parsed.amount;
+    Money? parsedAmount = statementNotice?.amount ?? parsed.amount;
     if (parsedAmount == null &&
         nativeMatchedAmount != null &&
         nativeMatchedAmount.trim().isNotEmpty) {
@@ -2402,21 +2527,36 @@ class LedgerController extends StateNotifier<LedgerState> {
       parsedAmount = fallbackParsed.amount;
     }
 
+    String? statementMerchant;
+    String? matchedAccountId;
+    if (statementNotice != null) {
+      final matchedAcc = matchAccountForStatement(state, statementNotice);
+      matchedAccountId = matchedAcc?.id;
+      final inst = statementNotice.institution ?? matchedAcc?.name;
+      statementMerchant = inst != null ? '$inst Bill' : 'Credit Card Statement';
+    }
+
     final effectiveParsed = ParsedTransactionMessage(
       rawText: parsed.rawText.isNotEmpty ? parsed.rawText : rawText,
-      ignored: parsed.ignored,
+      ignored: statementNotice != null ? false : parsed.ignored,
       hasAmount: parsedAmount != null,
-      hasTriggerWord: parsed.hasTriggerWord || nativeMatchedTriggerWord != null,
+      hasTriggerWord: statementNotice != null ||
+          parsed.hasTriggerWord ||
+          nativeMatchedTriggerWord != null,
       amount: parsedAmount,
-      merchant: parsed.merchant,
-      transactionType: parsed.transactionType,
-      last4: parsed.last4,
-      institutionName: parsed.institutionName,
-      matchedTriggerWord: parsed.matchedTriggerWord ?? nativeMatchedTriggerWord,
-      matchedIgnoreWord: parsed.matchedIgnoreWord,
+      merchant: statementMerchant ?? parsed.merchant,
+      transactionType:
+          statementNotice != null ? 'expense' : parsed.transactionType,
+      last4: statementNotice?.last4 ?? parsed.last4,
+      institutionName: statementNotice?.institution ?? parsed.institutionName,
+      matchedTriggerWord: statementNotice != null
+          ? 'bill'
+          : (parsed.matchedTriggerWord ?? nativeMatchedTriggerWord),
+      matchedIgnoreWord:
+          statementNotice != null ? null : parsed.matchedIgnoreWord,
     );
 
-    final matchedAccountId = _matchAccountToSms(state, effectiveParsed);
+    matchedAccountId ??= _matchAccountToSms(state, effectiveParsed);
     final duplicateMatch = _captureDuplicateKind(
       state: state,
       parsed: effectiveParsed,
@@ -2479,8 +2619,26 @@ class LedgerController extends StateNotifier<LedgerState> {
   ) async {
     final results = <CaptureImportResult>[];
     final newCandidates = <CaptureCandidate>[];
+    final updatedAccounts = <String, Account>{};
 
     for (final message in messages) {
+      if (isBillStatementMessage(message.text)) {
+        final notice = parseBillStatementNotice(
+          message.text,
+          fallbackCurrency: state.preferences.baseCurrency,
+          receivedAt: message.receivedAt,
+        );
+        if (notice != null) {
+          final updatedAcc = _applyStatementToAccount(
+            currentState: state,
+            notice: notice,
+          );
+          if (updatedAcc != null) {
+            updatedAccounts[updatedAcc.id] = updatedAcc;
+          }
+        }
+      }
+
       final result = _evaluateCaptureMessage(
         rawText: message.text,
         source: 'sms',
@@ -2495,10 +2653,18 @@ class LedgerController extends StateNotifier<LedgerState> {
       results.add(result);
     }
 
-    // Single atomic commit for all discovered candidates from the batch
-    if (newCandidates.isNotEmpty) {
+    var nextAccounts = state.accounts;
+    if (updatedAccounts.isNotEmpty) {
+      nextAccounts = state.accounts
+          .map((a) => updatedAccounts[a.id] ?? a)
+          .toList();
+    }
+
+    // Single atomic commit for all discovered candidates and account updates from the batch
+    if (newCandidates.isNotEmpty || updatedAccounts.isNotEmpty) {
       await _commit(
         state.copyWith(
+          accounts: nextAccounts,
           captureCandidates: [...newCandidates, ...state.captureCandidates],
         ),
       );
@@ -2523,8 +2689,26 @@ class LedgerController extends StateNotifier<LedgerState> {
   ) async {
     final results = <CaptureImportResult>[];
     final newCandidates = <CaptureCandidate>[];
+    final updatedAccounts = <String, Account>{};
 
     for (final notification in notifications) {
+      if (isBillStatementMessage(notification.text)) {
+        final notice = parseBillStatementNotice(
+          notification.text,
+          fallbackCurrency: state.preferences.baseCurrency,
+          receivedAt: notification.receivedAt,
+        );
+        if (notice != null) {
+          final updatedAcc = _applyStatementToAccount(
+            currentState: state,
+            notice: notice,
+          );
+          if (updatedAcc != null) {
+            updatedAccounts[updatedAcc.id] = updatedAcc;
+          }
+        }
+      }
+
       final result = _evaluateCaptureMessage(
         rawText: notification.text,
         source: 'notification',
@@ -2543,9 +2727,17 @@ class LedgerController extends StateNotifier<LedgerState> {
       );
     }
 
-    if (newCandidates.isNotEmpty) {
+    var nextAccounts = state.accounts;
+    if (updatedAccounts.isNotEmpty) {
+      nextAccounts = state.accounts
+          .map((a) => updatedAccounts[a.id] ?? a)
+          .toList();
+    }
+
+    if (newCandidates.isNotEmpty || updatedAccounts.isNotEmpty) {
       await _commit(
         state.copyWith(
+          accounts: nextAccounts,
           captureCandidates: [...newCandidates, ...state.captureCandidates],
         ),
       );

@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
+
 import '../data/ledger_models.dart';
 
 class ParsedTransactionMessage {
@@ -488,4 +490,416 @@ List<String> extractAllNumberFragments(String text) {
   }
 
   return results.toList();
+}
+
+bool digitsSuffixMatch(String? candidate, String query) {
+  if (candidate == null) return false;
+  final cleanCandidate = candidate.replaceAll(RegExp(r'\D'), '');
+  final cleanQuery = query.replaceAll(RegExp(r'\D'), '');
+  if (cleanCandidate.isEmpty || cleanQuery.isEmpty) return false;
+  return cleanCandidate.endsWith(cleanQuery) ||
+      cleanQuery.endsWith(cleanCandidate);
+}
+
+@immutable
+class BillStatementNotice {
+  const BillStatementNotice({
+    required this.rawText,
+    this.amount,
+    this.minAmountDue,
+    this.dueDate,
+    this.dueDay,
+    this.statementDate,
+    this.statementDay,
+    this.last4,
+    this.institution,
+  });
+
+  final String rawText;
+  final Money? amount;
+  final Money? minAmountDue;
+  final DateTime? dueDate;
+  final int? dueDay;
+  final DateTime? statementDate;
+  final int? statementDay;
+  final String? last4;
+  final String? institution;
+}
+
+final RegExp _statementMarkersRegex = RegExp(
+  r'\b(?:e-?statement|e-?bill|statement|credit\s+card\s+bill)\b',
+  caseSensitive: false,
+);
+
+final RegExp _dueMarkersRegex = RegExp(
+  r'\b(?:total\s+amount\s+due|total\s+amt\s+due|total\s+due|minimum\s+amount\s+due|min\s+amount\s+due|min\s+due|payment\s+due\s+date|payment\s+due|amount\s+due|bill\s+due|bill\s+is\s+ready|statement\s+ready|statement\s+is\s+ready|statement\s+generated|statement\s+has\s+been\s+generated|statement\s+has\s+generated|statement\s+is\s+generated|bill\s+generated|bill\s+has\s+been\s+generated|bill\s+is\s+generated)\b',
+  caseSensitive: false,
+);
+
+bool isBillStatementMessage(String text) {
+  final lower = text.toLowerCase();
+  if (_dueMarkersRegex.hasMatch(lower)) return true;
+  if (_statementMarkersRegex.hasMatch(lower) &&
+      (lower.contains('due') ||
+          lower.contains('ready') ||
+          lower.contains('generated') ||
+          lower.contains('balance'))) {
+    return true;
+  }
+  return false;
+}
+
+const Map<String, int> _statementMonthMap = {
+  'jan': 1, 'january': 1,
+  'feb': 2, 'february': 2,
+  'mar': 3, 'march': 3,
+  'apr': 4, 'april': 4,
+  'may': 5,
+  'jun': 6, 'june': 6,
+  'jul': 7, 'july': 7,
+  'aug': 8, 'august': 8,
+  'sep': 9, 'september': 9, 'sept': 9,
+  'oct': 10, 'october': 10,
+  'nov': 11, 'november': 11,
+  'dec': 12, 'december': 12,
+};
+
+DateTime? _parseStatementDateComponent(
+  String dayStr,
+  String monthStr,
+  String? yearStr, {
+  DateTime? fallbackNow,
+}) {
+  final day = int.tryParse(dayStr);
+  if (day == null || day < 1 || day > 31) return null;
+
+  int? month = int.tryParse(monthStr);
+  month ??= _statementMonthMap[monthStr.toLowerCase().trim()];
+  if (month == null || month < 1 || month > 12) return null;
+
+  int year;
+  if (yearStr != null && yearStr.isNotEmpty) {
+    var y = int.tryParse(yearStr);
+    if (y == null) return null;
+    if (y < 100) {
+      y += 2000;
+    }
+    year = y;
+  } else {
+    final now = fallbackNow ?? DateTime.now();
+    year = now.year;
+    if (month < now.month - 6) {
+      year += 1;
+    }
+  }
+
+  final maxDay = DateTime(year, month + 1, 0).day;
+  return DateTime(year, month, day.clamp(1, maxDay));
+}
+
+final List<RegExp> _dueDatePatterns = [
+  // 1. Due date: 15-Nov-2026 / 15/11/2026 / 15-11-26
+  RegExp(
+    r'(?:due\s*(?:date|on|by)?|payment\s*due(?:\s*date)?|pay\s*by)[:\s]+(\d{1,2})[-/. ]([A-Za-z]{3,9}|\d{1,2})[-/. ](\d{2,4})',
+    caseSensitive: false,
+  ),
+  // 2. Due on Nov 18, 2026 / Dec 2
+  RegExp(
+    r'(?:due\s*(?:date|on|by)?|payment\s*due(?:\s*date)?|pay\s*by)[:\s]+([A-Za-z]{3,9})\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{2,4}))?',
+    caseSensitive: false,
+  ),
+  // 3. Due 15th Nov / 22 Nov 2026
+  RegExp(
+    r'(?:due\s*(?:date|on|by)?|payment\s*due(?:\s*date)?|pay\s*by)[:\s]+(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3,9})(?:,?\s*(\d{2,4}))?',
+    caseSensitive: false,
+  ),
+  // 4. Due on 15th / due by 20th
+  RegExp(
+    r'(?:due\s*(?:on|by)|payment\s*due)[:\s]+(\d{1,2})(?:st|nd|rd|th)?\b',
+    caseSensitive: false,
+  ),
+];
+
+final List<RegExp> _statementDatePatterns = [
+  RegExp(
+    r'(?:statement\s*(?:generated\s*on|date|as\s*on|dated|of)|e-?statement\s*(?:dated|of|for)|bill\s*(?:generated\s*on|date))[:\s]+(\d{1,2})[-/. ]([A-Za-z]{3,9}|\d{1,2})(?:[-/. ](\d{2,4}))?',
+    caseSensitive: false,
+  ),
+  RegExp(
+    r'(?:statement\s*(?:generated\s*on|date|as\s*on|dated|of)|e-?statement\s*(?:dated|of|for)|bill\s*(?:generated\s*on|date))[:\s]+([A-Za-z]{3,9})\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{2,4}))?',
+    caseSensitive: false,
+  ),
+];
+
+final List<RegExp> _statementAmountPatterns = [
+  RegExp(
+    r'(?:total\s+amount\s+due|total\s+amt\s+due|total\s+due|amount\s+due|new\s+balance|bill\s+amount|payment\s+of)[:\s]*(?:INR|Rs\.?|₹|USD|\$|GBP|£|AED|EUR|€|AUD|A\$|CAD|C\$|SGD|S\$)?[:\s]*([0-9]+(?:[.,\s][0-9]+)*)',
+    caseSensitive: false,
+  ),
+  RegExp(
+    r'(?:INR|Rs\.?|₹|USD|\$|GBP|£|AED|EUR|€|AUD|A\$|CAD|C\$|SGD|S\$)\s*([0-9]+(?:[.,\s][0-9]+)*)\s*(?:is\s+due|due)',
+    caseSensitive: false,
+  ),
+];
+
+final RegExp _minAmountPattern = RegExp(
+  r'(?:min(?:imum)?\s*(?:amount|amt)?\s*due|min\s*due)[:\s]*(?:INR|Rs\.?|₹|USD|\$|GBP|£|AED|EUR|€|AUD|A\$|CAD|C\$|SGD|S\$)?[:\s]*([0-9]+(?:[.,\s][0-9]+)*)',
+  caseSensitive: false,
+);
+
+BillStatementNotice? parseBillStatementNotice(
+  String rawText, {
+  String fallbackCurrency = kDefaultCurrency,
+  DateTime? receivedAt,
+}) {
+  final text = rawText.trim();
+  if (text.isEmpty) return null;
+
+  final currency = _detectCurrency(text) ?? fallbackCurrency;
+
+  // 1. Extract total amount due
+  int? amountMinor;
+  for (final pattern in _statementAmountPatterns) {
+    final match = pattern.firstMatch(text);
+    if (match != null) {
+      var valStr = match.group(1)!.replaceAll(' ', '');
+      if (_europeanDecimalCommaRegex.hasMatch(valStr)) {
+        valStr = valStr.replaceAll('.', '').replaceAll(',', '.');
+      } else {
+        valStr = valStr.replaceAll(',', '');
+      }
+      final parsed = double.tryParse(valStr);
+      if (parsed != null && parsed > 0 && parsed < 100000000) {
+        final digits = _minorDigits(currency);
+        amountMinor = (parsed * math.pow(10, digits)).round();
+        break;
+      }
+    }
+  }
+  // Fallback to general amount extractor
+  amountMinor ??= _extractAmountMinor(text, currency: currency);
+
+  final totalAmount = amountMinor != null
+      ? Money(amountMinor: amountMinor, currency: currency)
+      : null;
+
+  // 2. Extract minimum amount due
+  Money? minAmountDue;
+  final minMatch = _minAmountPattern.firstMatch(text);
+  if (minMatch != null) {
+    var valStr = minMatch.group(1)!.replaceAll(' ', '');
+    if (_europeanDecimalCommaRegex.hasMatch(valStr)) {
+      valStr = valStr.replaceAll('.', '').replaceAll(',', '.');
+    } else {
+      valStr = valStr.replaceAll(',', '');
+    }
+    final parsed = double.tryParse(valStr);
+    if (parsed != null && parsed > 0 && parsed < 100000000) {
+      final digits = _minorDigits(currency);
+      final minMinor = (parsed * math.pow(10, digits)).round();
+      minAmountDue = Money(amountMinor: minMinor, currency: currency);
+    }
+  }
+
+  // 3. Extract Due Date / Due Day
+  DateTime? dueDate;
+  int? dueDay;
+  final refNow = receivedAt ?? DateTime.now();
+
+  for (int i = 0; i < _dueDatePatterns.length; i++) {
+    final pattern = _dueDatePatterns[i];
+    final match = pattern.firstMatch(text);
+    if (match == null) continue;
+
+    if (i == 0) {
+      // day, month, year
+      dueDate = _parseStatementDateComponent(
+        match.group(1)!,
+        match.group(2)!,
+        match.group(3),
+        fallbackNow: refNow,
+      );
+      if (dueDate != null) {
+        dueDay = dueDate.day;
+        break;
+      }
+    } else if (i == 1) {
+      // month, day, year
+      dueDate = _parseStatementDateComponent(
+        match.group(2)!,
+        match.group(1)!,
+        match.group(3),
+        fallbackNow: refNow,
+      );
+      if (dueDate != null) {
+        dueDay = dueDate.day;
+        break;
+      }
+    } else if (i == 2) {
+      // day, month, year
+      dueDate = _parseStatementDateComponent(
+        match.group(1)!,
+        match.group(2)!,
+        match.group(3),
+        fallbackNow: refNow,
+      );
+      if (dueDate != null) {
+        dueDay = dueDate.day;
+        break;
+      }
+    } else if (i == 3) {
+      // day only
+      final d = int.tryParse(match.group(1)!);
+      if (d != null && d >= 1 && d <= 31) {
+        dueDay = d;
+        break;
+      }
+    }
+  }
+
+  // 4. Extract Statement Date / Statement Day
+  DateTime? statementDate;
+  int? statementDay;
+
+  for (int i = 0; i < _statementDatePatterns.length; i++) {
+    final pattern = _statementDatePatterns[i];
+    final match = pattern.firstMatch(text);
+    if (match == null) continue;
+
+    if (i == 0) {
+      statementDate = _parseStatementDateComponent(
+        match.group(1)!,
+        match.group(2)!,
+        match.group(3),
+        fallbackNow: refNow,
+      );
+      if (statementDate != null) {
+        statementDay = statementDate.day;
+        break;
+      }
+    } else if (i == 1) {
+      statementDate = _parseStatementDateComponent(
+        match.group(2)!,
+        match.group(1)!,
+        match.group(3),
+        fallbackNow: refNow,
+      );
+      if (statementDate != null) {
+        statementDay = statementDate.day;
+        break;
+      }
+    }
+  }
+
+  // Fallback statement date/day from receivedAt
+  if (statementDate == null && receivedAt != null) {
+    statementDate = receivedAt;
+    statementDay = receivedAt.day;
+  }
+
+  // 5. Last 4 & Institution
+  final last4 = _extractLast4(text);
+  final institution = _detectInstitution(text.toLowerCase());
+
+  return BillStatementNotice(
+    rawText: text,
+    amount: totalAmount,
+    minAmountDue: minAmountDue,
+    dueDate: dueDate,
+    dueDay: dueDay,
+    statementDate: statementDate,
+    statementDay: statementDay,
+    last4: last4,
+    institution: institution,
+  );
+}
+
+Account? matchAccountForStatement(LedgerState state, BillStatementNotice notice) {
+  final activeAccounts = state.accounts.where((a) => !a.isArchived).toList();
+  if (activeAccounts.isEmpty) return null;
+
+  final rawLower = notice.rawText.toLowerCase();
+  final allFragments = extractAllNumberFragments(notice.rawText);
+
+  Account? bestMatch;
+  int highestScore = -1;
+
+  for (final account in activeAccounts) {
+    int score = 0;
+    final isCard = account.type == 'card' || account.type == 'credit_card';
+    if (isCard) {
+      score += 25; // Priority for cards on statement matching
+    }
+
+    // 1. Last 4 match
+    if (notice.last4 != null) {
+      if (digitsSuffixMatch(account.cardLast4, notice.last4!) ||
+          digitsSuffixMatch(account.accountLast4, notice.last4!)) {
+        score += 100;
+      }
+      if (account.encryptedDetails != null) {
+        final accNum = account.encryptedDetails!['accountNumber'];
+        if (accNum != null) {
+          final cleanAccNum = accNum.replaceAll(RegExp(r'\D'), '');
+          if (cleanAccNum.isNotEmpty && cleanAccNum.endsWith(notice.last4!)) {
+            score += 150;
+          }
+        }
+      }
+    }
+
+    // 2. Fragment match if not already matched
+    if (score < 100) {
+      for (final fragment in allFragments) {
+        if (digitsSuffixMatch(account.cardLast4, fragment) ||
+            digitsSuffixMatch(account.accountLast4, fragment)) {
+          score += 80;
+          break;
+        }
+      }
+    }
+
+    // 3. Institution match
+    if (notice.institution != null && account.institution != null) {
+      final instLower = account.institution!.toLowerCase();
+      final noticeInstLower = notice.institution!.toLowerCase();
+      if (instLower.contains(noticeInstLower) ||
+          noticeInstLower.contains(instLower)) {
+        score += 50;
+      }
+    } else if (account.institution != null) {
+      final instLower = account.institution!.toLowerCase();
+      if (rawLower.contains(instLower)) {
+        score += 35;
+      }
+    }
+
+    // 4. Account name match
+    final nameLower = account.name.toLowerCase();
+    if (rawLower.contains(nameLower)) {
+      score += 50;
+    } else {
+      final nameTokens = nameLower
+          .split(RegExp(r'\s+'))
+          .where((t) => t.length > 2)
+          .toList();
+      if (nameTokens.isNotEmpty) {
+        final matched = nameTokens.where((t) => rawLower.contains(t)).length;
+        if (matched > 0) {
+          score += (40 * matched / nameTokens.length).round();
+        }
+      }
+    }
+
+    if (score > highestScore) {
+      highestScore = score;
+      bestMatch = account;
+    }
+  }
+
+  // Minimum threshold: 50 points
+  if (highestScore >= 50) {
+    return bestMatch;
+  }
+  return null;
 }
