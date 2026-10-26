@@ -26,6 +26,14 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Cache Pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
       - name: Flutter dependencies
         run: flutter pub get
 
@@ -52,11 +60,12 @@ jobs:
 
       - name: Build APK
         env:
+          ONEWALLET_RELEASE_ARCHITECTURES: arm64-v8a
           ONEWALLET_RELEASE_STORE_FILE: release.keystore
           ONEWALLET_RELEASE_STORE_PASSWORD: ${{ secrets.ONEWALLET_RELEASE_STORE_PASSWORD }}
           ONEWALLET_RELEASE_KEY_ALIAS: ${{ secrets.ONEWALLET_RELEASE_KEY_ALIAS }}
           ONEWALLET_RELEASE_KEY_PASSWORD: ${{ secrets.ONEWALLET_RELEASE_KEY_PASSWORD }}
-        run: flutter build apk --release --split-per-abi --obfuscate --split-debug-info=build/app/outputs/symbols
+        run: flutter build apk --release --target-platform android-arm64 --split-per-abi --obfuscate --split-debug-info=build/app/outputs/symbols
 
       - name: Upload to Firebase App Distribution
         uses: wzieba/Firebase-Distribution-Github-Action@v1

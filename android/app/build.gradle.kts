@@ -64,6 +64,13 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        val releaseArch = releaseProperty("ONEWALLET_RELEASE_ARCHITECTURES")
+        if (!releaseArch.isNullOrBlank()) {
+            ndk {
+                abiFilters += releaseArch.split(",").map { it.trim() }
+            }
+        }
     }
 
     buildTypes {

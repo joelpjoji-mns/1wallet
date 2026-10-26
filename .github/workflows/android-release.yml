@@ -120,6 +120,14 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Cache Pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
       - name: Setup Node
         uses: actions/setup-node@v6.4.0
         with:
@@ -214,7 +222,7 @@ jobs:
           ONEWALLET_RELEASE_KEY_PASSWORD: ${{ secrets.ONEWALLET_RELEASE_KEY_PASSWORD }}
           ONEWALLET_VERSION_NAME: ${{ steps.info.outputs.versionName }}
           ONEWALLET_VERSION_CODE: ${{ steps.info.outputs.versionCode }}
-        run: flutter build apk --release --split-per-abi --obfuscate --split-debug-info=build/app/outputs/symbols --build-name="${{ steps.info.outputs.versionName }}" --build-number="${{ steps.info.outputs.versionCode }}"
+        run: flutter build apk --release --target-platform android-arm64 --split-per-abi --obfuscate --split-debug-info=build/app/outputs/symbols --build-name="${{ steps.info.outputs.versionName }}" --build-number="${{ steps.info.outputs.versionCode }}"
 
       - name: Stage release assets
         if: steps.notes_source.outputs.skip_release != 'true'
