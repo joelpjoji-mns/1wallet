@@ -76,28 +76,62 @@ void main() {
       );
     });
 
-    test('seamlessly transitions from 200xxxx to 210xxxx versions', () {
-      // Installed: 2.1.146 with versionCode 2002146
-      // Latest: 2.1.147 with versionCode 2100147
+    test('seamlessly transitions from legacy 2.1.146 (code 2002146) to new schema 2.1.51 (code 2100151)', () {
       expect(
         AppUpdateProvider.isReleaseNewer(
-          latestVersionCode: 2100147,
-          latestVersionName: '2.1.147',
+          latestVersionCode: 2100151,
+          latestVersionName: '2.1.51',
           currentVersionCode: 2002146,
           currentVersionName: '2.1.146',
         ),
         isTrue,
       );
 
-      // Once 2.1.147 is installed (arm64 split adds 2000 -> 2102147):
+      // Once 2.1.51 is installed (arm64 split adds 2000 -> 2102151):
       expect(
         AppUpdateProvider.isReleaseNewer(
-          latestVersionCode: 2100147,
-          latestVersionName: '2.1.147',
-          currentVersionCode: 2102147,
-          currentVersionName: '2.1.147',
+          latestVersionCode: 2100151,
+          latestVersionName: '2.1.51',
+          currentVersionCode: 2102151,
+          currentVersionName: '2.1.51',
         ),
         isFalse,
+      );
+    });
+
+    test('handles patch rollover (e.g. 2.1.99 to 2.2.00)', () {
+      expect(
+        AppUpdateProvider.isReleaseNewer(
+          latestVersionCode: 2100200,
+          latestVersionName: '2.2.00',
+          currentVersionCode: 2102199,
+          currentVersionName: '2.1.99',
+        ),
+        isTrue,
+      );
+    });
+
+    test('handles minor rollover (e.g. 2.9.99 to 3.0.00)', () {
+      expect(
+        AppUpdateProvider.isReleaseNewer(
+          latestVersionCode: 2101000,
+          latestVersionName: '3.0.00',
+          currentVersionCode: 2102999,
+          currentVersionName: '2.9.99',
+        ),
+        isTrue,
+      );
+    });
+
+    test('handles major rollover (e.g. 9.9.99 to 10.0.00)', () {
+      expect(
+        AppUpdateProvider.isReleaseNewer(
+          latestVersionCode: 2108000,
+          latestVersionName: '10.0.00',
+          currentVersionCode: 2109999,
+          currentVersionName: '9.9.99',
+        ),
+        isTrue,
       );
     });
 

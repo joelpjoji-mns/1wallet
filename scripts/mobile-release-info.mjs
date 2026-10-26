@@ -20,13 +20,29 @@ function writeOutput(file, values) {
 }
 
 function formatVersionName(baseVersion, runNum) {
-  if (!runNum) return baseVersion;
-  const match = baseVersion.match(/^(\d+\.\d+)(?:\.\d+)?$/);
-  if (!match) return baseVersion.replace(/\.\d+$/, `.${runNum}`);
-  const prefix = match[1];
-  const num = parseInt(runNum, 10);
-  const patchStr = num < 10 ? `0${num}` : `${num}`;
-  return `${prefix}.${patchStr}`;
+  if (runNum === undefined || runNum === null || runNum === '') return baseVersion;
+  const match = baseVersion.match(/^(\d+)(?:\.(\d+))?(?:\.(\d+))?$/);
+  const baseMajor = match && match[1] !== undefined ? parseInt(match[1], 10) : 2;
+  const baseMinor = match && match[2] !== undefined ? parseInt(match[2], 10) : 0;
+  const basePatch = match && match[3] !== undefined ? parseInt(match[3], 10) : 0;
+
+  const n = parseInt(runNum, 10);
+  if (Number.isNaN(n)) return baseVersion;
+
+  // Schema:
+  // - 100 patch versions per minor (00..99, 2-digit padded).
+  // - 10 minor versions per major (0..9).
+  // - Total 1000 versions per major block.
+  // - e.g. 2.0.99 -> 2.1.00; 2.1.49 for run 149; 2.9.99 -> 3.0.00; 9.9.99 -> 10.0.00.
+  const baseIndex = baseMajor * 1000 + baseMinor * 100 + basePatch;
+  const total = baseIndex + n;
+
+  const major = Math.floor(total / 1000);
+  const minor = Math.floor((total % 1000) / 100);
+  const patch = total % 100;
+  const patchStr = patch < 10 ? `0${patch}` : `${patch}`;
+
+  return `${major}.${minor}.${patchStr}`;
 }
 
 const runNumber = readArg('--run-number');

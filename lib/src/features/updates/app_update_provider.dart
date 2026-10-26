@@ -1300,13 +1300,20 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
       return false;
     }
 
-    // 2. Semantic version comparison (e.g. 2.1.147 > 2.1.146)
+    // 2. Transition guard: moving from legacy 200xxxx series (e.g. 2.1.146) to 210xxxx series (e.g. 2.1.51)
+    if (latestVersionCode >= 2100000 &&
+        currentVersionCode > 0 &&
+        currentVersionCode < 2100000) {
+      return true;
+    }
+
+    // 3. Semantic version comparison (e.g. 2.1.52 > 2.1.51, 2.2.00 > 2.1.99, 3.0.00 > 2.9.99, 10.0.00 > 9.9.99)
     final semverCmp = _compareSemanticVersions(cleanLatest, cleanCurrent);
     if (semverCmp != null) {
       return semverCmp > 0;
     }
 
-    // 3. Normalized versionCode fallback (handles ABI split offset: arm64 adds 2000, armv7 adds 1000, etc.)
+    // 4. Normalized versionCode fallback (handles ABI split offset: arm64 adds 2000, armv7 adds 1000, etc.)
     final normCurrent = _normalizeVersionCode(currentVersionCode);
     final normLatest = _normalizeVersionCode(latestVersionCode);
     return normLatest > normCurrent;
