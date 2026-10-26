@@ -50,7 +50,7 @@ const changelogSource = JSON.parse(fs.readFileSync(changelogPath, 'utf8'));
 const changelog = {
   newFeatures: changelogSource.newFeatures ?? changelogSource.features ?? changelogSource.changelog?.newFeatures ?? changelogSource.changelog?.features ?? [],
   bugFixes: changelogSource.bugFixes ?? changelogSource.fixes ?? changelogSource.changelog?.bugFixes ?? changelogSource.changelog?.fixes ?? [],
-  notes: changelogSource.notes ?? changelogSource.changelog?.notes ?? [],
+  notes: changelogSource.notes ?? changelogSource.improvements ?? changelogSource.changelog?.notes ?? changelogSource.changelog?.improvements ?? [],
 };
 const manifest = {
   versionName: version,

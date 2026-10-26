@@ -1120,15 +1120,35 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
 
       List<AppUpdateRelease> fetchedReleases = [];
       try {
+        final res = await _dio.get(
+          'https://api.github.com/repos/joelpjoji-mns/1wallet/releases?per_page=30',
+          options: Options(
+            headers: {'User-Agent': '1Wallet-App'},
+            sendTimeout: const Duration(seconds: 8),
+            receiveTimeout: const Duration(seconds: 8),
+          ),
+        );
+        if (res.statusCode == 200 && res.data is List) {
+          for (final item in res.data) {
+            if (item is Map) {
+              final r = _parseGitHubRelease(Map<String, dynamic>.from(item));
+              if (r != null) fetchedReleases.add(r);
+            }
+          }
+        }
+      } catch (_) {}
+
+      try {
         final querySnap = await _firestore
             .collection('appUpdates/android/releases')
             .orderBy('versionCode', descending: true)
             .limit(200)
             .get();
         if (querySnap.docs.isNotEmpty) {
-          fetchedReleases = querySnap.docs
+          final firestoreReleases = querySnap.docs
               .map((doc) => AppUpdateRelease.fromFirestore(doc))
               .toList();
+          fetchedReleases = _mergeReleases(fetchedReleases, firestoreReleases);
         }
       } catch (_) {}
 
@@ -1332,6 +1352,114 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
       return b.versionCode.compareTo(a.versionCode);
     });
     return result;
+  }
+
+  static AppUpdateRelease? _parseGitHubRelease(Map<String, dynamic> json) {
+    final tagName = _stringValue(json['tag_name']);
+    if (!tagName.startsWith('android-')) return null;
+
+    final versionName = tagName.replaceFirst('android-', '');
+    final publishedAt = _stringValue(json['published_at']);
+    final body = _stringValue(json['body']);
+
+    ApkMetadata? apk;
+    final assets = json['assets'];
+    if (assets is List) {
+      for (final a in assets) {
+        if (a is Map) {
+          final aMap = Map<String, dynamic>.from(a);
+          final name = _stringValue(aMap['name']);
+          if (name.endsWith('.apk')) {
+            apk = ApkMetadata(
+              downloadUrl: _stringValue(aMap['browser_download_url']),
+              fileName: name,
+              sizeBytes: _intValue(aMap['size']),
+              sha256: '',
+              architecture: name.contains('arm64') ? 'arm64-v8a' : 'universal',
+            );
+            break;
+          }
+        }
+      }
+    }
+
+    final changelog = _parseMarkdownChangelog(body);
+    final versionCode = _deriveVersionCode(versionName);
+
+    return AppUpdateRelease(
+      id: tagName,
+      platform: 'android',
+      channel: 'stable',
+      status: 'published',
+      versionName: versionName,
+      versionCode: versionCode,
+      runtimeVersion: versionName,
+      releaseType: 'full',
+      requirement: 'optional',
+      mandatory: false,
+      minimumSupportedVersionCode: 0,
+      publishedAt: publishedAt,
+      changelog: changelog,
+      apk: apk,
+    );
+  }
+
+  static Changelog _parseMarkdownChangelog(String body) {
+    final features = <String>[];
+    final fixes = <String>[];
+    final notes = <String>[];
+
+    final lines = body.split('\n');
+    String currentSection = '';
+
+    for (final rawLine in lines) {
+      final line = rawLine.trim();
+      if (line.startsWith('#')) {
+        final heading = line.toLowerCase();
+        if (heading.contains('feature')) {
+          currentSection = 'features';
+        } else if (heading.contains('fix') || heading.contains('bug')) {
+          currentSection = 'fixes';
+        } else if (heading.contains('improvement') ||
+            heading.contains('note') ||
+            heading.contains('enhancement')) {
+          currentSection = 'notes';
+        } else {
+          currentSection = '';
+        }
+        continue;
+      }
+
+      if (line.startsWith('-') || line.startsWith('*')) {
+        final clean = line.replaceFirst(RegExp(r'^[-*]\s*'), '').trim();
+        if (clean.isEmpty) continue;
+        if (currentSection == 'features') {
+          features.add(clean);
+        } else if (currentSection == 'fixes') {
+          fixes.add(clean);
+        } else {
+          notes.add(clean);
+        }
+      }
+    }
+
+    return Changelog(
+      newFeatures: features,
+      bugFixes: fixes,
+      notes: notes,
+    );
+  }
+
+  static int _deriveVersionCode(String versionName) {
+    final clean = versionName.trim().replaceFirst(RegExp(r'^[vV]'), '');
+    final parts = clean.split('.').map((p) => int.tryParse(p) ?? 0).toList();
+    if (parts.length >= 3) {
+      final major = parts[0];
+      final minor = parts[1];
+      final patch = parts[2];
+      return major * 1000000 + minor * 100000 + patch;
+    }
+    return 0;
   }
 
   Future<AppUpdateRelease?> _releaseForVersionCode(
