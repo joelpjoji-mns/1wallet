@@ -28,7 +28,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 final _homeScheduledTransactionsProvider =
     Provider.autoDispose<List<TransactionRecord>>((ref) {
-      final state = ref.watch(ledgerProvider);
+      ref.watch(
+        ledgerProvider.select(
+          (s) => (s.transactions, s.accounts),
+        ),
+      );
+      final state = ref.read(ledgerProvider);
       return scheduledTransactions(state);
     });
 

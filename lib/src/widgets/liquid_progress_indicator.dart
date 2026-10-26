@@ -39,17 +39,19 @@ class _LiquidProgressIndicatorState extends State<LiquidProgressIndicator>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return CustomPaint(
-          painter: _LiquidPainter(
-            value: widget.value,
-            color: widget.color,
-            phase: _controller.value * 2 * math.pi,
-          ),
-        );
-      },
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return CustomPaint(
+            painter: _LiquidPainter(
+              value: widget.value,
+              color: widget.color,
+              phase: _controller.value * 2 * math.pi,
+            ),
+          );
+        },
+      ),
     );
   }
 }

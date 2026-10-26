@@ -11,7 +11,17 @@ final homeTotalBalanceProvider = Provider.family
       ref,
       args,
     ) {
-      final state = ref.watch(ledgerProvider);
+      ref.watch(
+        ledgerProvider.select(
+          (s) => (
+            s.accounts,
+            s.transactions,
+            s.exchangeRates,
+            s.preferences.displayCurrency,
+          ),
+        ),
+      );
+      final state = ref.read(ledgerProvider);
       return totalBalance(
         state,
         accountId: args.accountId,
@@ -24,7 +34,17 @@ final homeFlowForPeriodProvider = Provider.family
       ({Money income, Money expense}),
       ({String period, String? accountId, String? targetCurrency})
     >((ref, args) {
-      final state = ref.watch(ledgerProvider);
+      ref.watch(
+        ledgerProvider.select(
+          (s) => (
+            s.accounts,
+            s.transactions,
+            s.exchangeRates,
+            s.preferences.displayCurrency,
+          ),
+        ),
+      );
+      final state = ref.read(ledgerProvider);
       return flowForPeriod(
         state,
         args.period,
@@ -62,12 +82,22 @@ final homeBalanceFutureTrendProvider = FutureProvider.family
 final homeAccountBalanceMapProvider = Provider.autoDispose<Map<String, Money>>((
   ref,
 ) {
-  final state = ref.watch(ledgerProvider);
+  ref.watch(
+    ledgerProvider.select(
+      (s) => (s.accounts, s.transactions),
+    ),
+  );
+  final state = ref.read(ledgerProvider);
   return accountBalanceMap(state);
 });
 
 final homeCurrencyBreakdownProvider = Provider.family
     .autoDispose<List<Money>, String?>((ref, accountId) {
-      final state = ref.watch(ledgerProvider);
+      ref.watch(
+        ledgerProvider.select(
+          (s) => (s.accounts, s.transactions),
+        ),
+      );
+      final state = ref.read(ledgerProvider);
       return balanceBreakdownByCurrency(state, accountId: accountId);
     });

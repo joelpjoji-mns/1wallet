@@ -315,7 +315,9 @@ class _GoogleGlyph extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(size: Size.square(size), painter: _GoogleGlyphPainter());
+    return RepaintBoundary(
+      child: CustomPaint(size: Size.square(size), painter: _GoogleGlyphPainter()),
+    );
   }
 }
 

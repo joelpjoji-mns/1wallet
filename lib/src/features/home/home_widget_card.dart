@@ -507,21 +507,23 @@ class _MiniLineChartState extends State<MiniLineChart> {
             setState(() => _touchPosition = details.localPosition),
         onPanEnd: (details) => setState(() => _touchPosition = null),
         onPanCancel: () => setState(() => _touchPosition = null),
-        child: CustomPaint(
-          painter: _MiniLineChartPainter(
-            values: widget.values.map((value) => value.toDouble()).toList(),
-            lineColor: widget.color ?? scheme.primary,
-            gridColor: scheme.outlineVariant,
-            xAxisLabels: widget.xAxisLabels,
-            yAxisLabels: widget.yAxisLabels,
-            textColor: scheme.onSurfaceVariant,
-            touchPosition: _touchPosition,
-            tooltipFormatter: widget.tooltipFormatter,
-            minY: widget.minY,
-            maxY: widget.maxY,
-            dotBackgroundColor: scheme.surface,
+        child: RepaintBoundary(
+          child: CustomPaint(
+            painter: _MiniLineChartPainter(
+              values: widget.values.map((value) => value.toDouble()).toList(),
+              lineColor: widget.color ?? scheme.primary,
+              gridColor: scheme.outlineVariant,
+              xAxisLabels: widget.xAxisLabels,
+              yAxisLabels: widget.yAxisLabels,
+              textColor: scheme.onSurfaceVariant,
+              touchPosition: _touchPosition,
+              tooltipFormatter: widget.tooltipFormatter,
+              minY: widget.minY,
+              maxY: widget.maxY,
+              dotBackgroundColor: scheme.surface,
+            ),
+            child: const SizedBox.expand(),
           ),
-          child: const SizedBox.expand(),
         ),
       ),
     );

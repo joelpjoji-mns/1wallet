@@ -297,7 +297,7 @@ class LedgerRepository {
     LedgerState? fallback;
     if (payload != null && payload.trim().isNotEmpty) {
       try {
-        final decoded = decodeLedgerState(payload);
+        final decoded = await foundation.compute(decodeLedgerState, payload);
         if (_hasWalletData(decoded)) {
           return decoded;
         }
@@ -313,7 +313,7 @@ class LedgerRepository {
       try {
         final content = await file.readAsString();
         if (content.trim().isNotEmpty) {
-          final decoded = decodeLedgerState(content);
+          final decoded = await foundation.compute(decodeLedgerState, content);
           if (_hasWalletData(decoded)) {
             // Restore SharedPreferences from file cache
             await preferences.setString(_ledgerStorageKey, content);
@@ -1000,7 +1000,7 @@ class LedgerController extends StateNotifier<LedgerState> {
   }
 
   Future<void> importArchive(String archiveSource, {bool force = false}) async {
-    final incoming = decodeLedgerArchive(archiveSource);
+    final incoming = await foundation.compute(decodeLedgerArchive, archiveSource);
     final active = _activeUser;
     if (!force &&
         active != null &&
@@ -3067,10 +3067,10 @@ class LedgerController extends StateNotifier<LedgerState> {
       try {
         if (await file.exists()) {
           final stat = await file.stat();
-          LedgerState? decodedState;
+          final LedgerState decodedState;
           try {
             final content = await file.readAsString();
-            decodedState = decodeLedgerArchive(content);
+            decodedState = await foundation.compute(decodeLedgerArchive, content);
           } catch (_) {
             continue;
           }
@@ -3178,7 +3178,7 @@ class LedgerController extends StateNotifier<LedgerState> {
           if (candidate.isLegacyUnsuffixed && isAuthenticatedUser) {
             try {
               final content = await file.readAsString();
-              final decoded = decodeLedgerArchive(content);
+              final decoded = await foundation.compute(decodeLedgerArchive, content);
               if (decoded.userId.isNotEmpty &&
                   decoded.userId != 'local-user' &&
                   decoded.userId != user.userId) {

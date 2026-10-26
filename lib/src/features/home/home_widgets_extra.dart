@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../data/ledger_models.dart';
-import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/privacy_text.dart';
 import 'home_widget_card.dart';
-import 'home_widget_models.dart';
 
 class NetWorthHomeWidget extends ConsumerWidget {
   const NetWorthHomeWidget({required this.state, super.key});
