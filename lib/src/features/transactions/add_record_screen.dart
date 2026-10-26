@@ -1305,7 +1305,9 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       _type = candidate.transactionType == 'income' ? 'income' : 'expense';
       _accountId = candidate.suggestedAccountId ?? widget.initialAccountId;
       _categoryId = candidate.suggestedCategoryId;
-      _notesController.text = candidate.merchant ?? candidate.rawText ?? '';
+      _notesController.text = (candidate.rawText?.trim().isNotEmpty == true)
+          ? candidate.rawText!.trim()
+          : (candidate.merchant ?? '');
       _locationController.text = '';
       _paymentMethodController.text = candidate.source.toUpperCase();
       if (candidate.parsedAmount != null) {

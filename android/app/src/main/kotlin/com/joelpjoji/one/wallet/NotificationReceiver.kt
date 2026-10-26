@@ -212,12 +212,25 @@ class NotificationReceiver : NotificationListenerService() {
 
         // 3. Extract title and body/text
         val extras = sbn.notification.extras ?: return
-        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
-        val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
-        val bigText = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString() ?: ""
+        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim() ?: ""
+        val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim() ?: ""
+        val bigText = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim() ?: ""
 
-        // Combine them to parse
-        val combinedText = "$title $text $bigText".trim()
+        // Deduplicate text and bigText if they overlap, and preserve full message cleanly
+        val contentBody = when {
+            bigText.isNotBlank() && text.isNotBlank() && bigText.contains(text) -> bigText
+            text.isNotBlank() && bigText.isNotBlank() && text.contains(bigText) -> text
+            bigText.isNotBlank() && text.isNotBlank() -> "$text $bigText"
+            bigText.isNotBlank() -> bigText
+            else -> text
+        }.trim()
+
+        val combinedText = if (title.isNotBlank()) {
+            if (contentBody.isNotBlank()) "$title: $contentBody" else title
+        } else {
+            contentBody
+        }.trim()
+
         if (combinedText.isEmpty()) return
 
         val triggers = loadList(prefs, "flutter.one_wallet_flutter.notification_trigger_words", DEFAULT_TRIGGERS)
@@ -415,11 +428,15 @@ class NotificationReceiver : NotificationListenerService() {
                 notificationManager.createNotificationChannel(channel)
             }
 
-            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-            launchIntent?.putExtra("flutter_route", "/sync")
+            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+                putExtra("flutter_route", "/sync")
+                addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                data = android.net.Uri.parse("onewallet://sync?ts=${System.currentTimeMillis()}")
+            }
+            val reqCode = (System.currentTimeMillis() % 100000).toInt() + 2000
             val pendingIntent = PendingIntent.getActivity(
                 context,
-                202,
+                reqCode,
                 launchIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
@@ -469,11 +486,15 @@ class NotificationReceiver : NotificationListenerService() {
                 notificationManager.createNotificationChannel(channel)
             }
 
-            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-            launchIntent?.putExtra("flutter_route", "/review")
+            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+                putExtra("flutter_route", "/review")
+                addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                data = android.net.Uri.parse("onewallet://review?ts=${System.currentTimeMillis()}")
+            }
+            val reqCode = (System.currentTimeMillis() % 100000).toInt() + 3000
             val pendingIntent = PendingIntent.getActivity(
                 context,
-                203,
+                reqCode,
                 launchIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )

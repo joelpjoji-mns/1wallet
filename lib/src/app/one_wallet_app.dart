@@ -67,18 +67,12 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
       return;
     }
 
-    if (_pendingNotificationRoute != null) {
-      final route = _pendingNotificationRoute!;
+    final route = _pendingNotificationRoute ?? _pendingSmsRoute;
+    if (route != null) {
       _pendingNotificationRoute = null;
-      ref.read(appRouterProvider).push(route);
-    }
-
-    if (_pendingSmsRoute != null) {
-      final route = _pendingSmsRoute!;
       _pendingSmsRoute = null;
       // Process any spooled notifications/SMS first so the review queue is
-      // populated *before* we navigate to it. Without this await the route
-      // arrives before the candidates are committed and the queue looks empty.
+      // populated *before* we navigate to it.
       _processPendingSpoolThenPush(route);
     }
   }
@@ -93,7 +87,11 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
       _processingSpooledForRoute = false;
     }
     if (!mounted) return;
-    await ref.read(appRouterProvider).push(route);
+    final router = ref.read(appRouterProvider);
+    final currentLoc = router.routerDelegate.currentConfiguration.uri.path;
+    if (currentLoc != route) {
+      await router.push(route);
+    }
   }
 
   @override

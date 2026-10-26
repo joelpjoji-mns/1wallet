@@ -31,15 +31,28 @@ class MainActivity : FlutterFragmentActivity() {
     private var methodChannel: MethodChannel? = null
     private var pendingPermissionResult: MethodChannel.Result? = null
 
+    private fun extractRoute(intent: Intent?): String? {
+        val directRoute = intent?.getStringExtra("flutter_route")
+        if (!directRoute.isNullOrBlank()) return directRoute
+        val dataUri = intent?.data
+        if (dataUri != null) {
+            if (dataUri.host == "review") return "/review"
+            if (dataUri.host == "sync") return "/sync"
+            if (dataUri.host == "updates") return "/updates"
+        }
+        return null
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        initialRoute = intent?.getStringExtra("flutter_route")
+        initialRoute = extractRoute(intent)
         NotificationReceiver.startBackgroundWorker(this)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        val route = intent.getStringExtra("flutter_route")
+        setIntent(intent)
+        val route = extractRoute(intent)
         if (route != null) {
             initialRoute = route
             methodChannel?.invokeMethod("onRoute", route)

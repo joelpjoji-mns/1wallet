@@ -245,4 +245,21 @@ void main() {
     expect(notifications[0].body, 'Paid to Starbucks INR 250.00 debited from bank account');
     expect(notifications[1].appName, 'WhatsApp');
   });
+
+  test('approveCaptureCandidate captures the full SMS or notification body in transaction notes', () async {
+    final controller = await controllerWithAccount();
+    addTearDown(controller.dispose);
+
+    const fullMessage = 'HDFC Bank: Rs 550.00 debited from a/c **1234 on 26-Oct at Starbucks Coffee Pvt Ltd. Ref: 987654321.';
+    final result = await controller.importSmsMessageDetailed(
+      fullMessage,
+      stage: 'test-notes',
+    );
+
+    expect(result.status, CaptureImportStatus.queued);
+    final candidateId = result.candidate!.id;
+
+    final tx = await controller.approveCaptureCandidate(candidateId);
+    expect(tx.notes, fullMessage);
+  });
 }

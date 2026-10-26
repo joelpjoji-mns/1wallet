@@ -260,11 +260,15 @@ class SmsReceiver : BroadcastReceiver() {
                 notificationManager.createNotificationChannel(channel)
             }
 
-            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-            launchIntent?.putExtra("flutter_route", "/sync")
+            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+                putExtra("flutter_route", "/sync")
+                addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                data = android.net.Uri.parse("onewallet://sync?ts=${System.currentTimeMillis()}")
+            }
+            val reqCode = (System.currentTimeMillis() % 100000).toInt() + 1000
             val pendingIntent = PendingIntent.getActivity(
                 context,
-                101,
+                reqCode,
                 launchIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
@@ -314,11 +318,15 @@ class SmsReceiver : BroadcastReceiver() {
                 notificationManager.createNotificationChannel(channel)
             }
 
-            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-            launchIntent?.putExtra("flutter_route", "/review")
+            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+                putExtra("flutter_route", "/review")
+                addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                data = android.net.Uri.parse("onewallet://review?ts=${System.currentTimeMillis()}")
+            }
+            val reqCode = (System.currentTimeMillis() % 100000).toInt() + 4000
             val pendingIntent = PendingIntent.getActivity(
                 context,
-                102,
+                reqCode,
                 launchIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )

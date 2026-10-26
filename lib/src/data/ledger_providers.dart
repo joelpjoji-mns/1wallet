@@ -825,11 +825,7 @@ class LedgerController extends StateNotifier<LedgerState> {
       return;
     }
 
-    final smsEnabled = state.preferences.smsCaptureEnabled;
-    final notifEnabled = state.preferences.notificationCaptureEnabled;
-    if (!smsEnabled && !notifEnabled) return;
-
-    _spoolPollTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+    _spoolPollTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (!mounted) return;
       unawaited(processSpooledSms());
       unawaited(processSpooledNotifications());
@@ -860,6 +856,9 @@ class LedgerController extends StateNotifier<LedgerState> {
               payload['nativeNotificationShown'] == true ||
               payload['nativeSource'] != null;
 
+          final nativeMatchedAmount = payload['nativeMatchedAmount'] as String?;
+          final nativeMatchedTriggerWord = payload['nativeMatchedTriggerWord'] as String?;
+
           final result = _evaluateCaptureMessage(
             rawText: body,
             source: 'sms',
@@ -870,6 +869,8 @@ class LedgerController extends StateNotifier<LedgerState> {
             notificationShown: true,
             forceQueue: true,
             additionalCandidates: newCandidates,
+            nativeMatchedAmount: nativeMatchedAmount,
+            nativeMatchedTriggerWord: nativeMatchedTriggerWord,
           );
 
           if (result.queued && result.candidate != null) {
@@ -914,6 +915,9 @@ class LedgerController extends StateNotifier<LedgerState> {
               payload['nativeNotificationShown'] == true ||
               payload['nativeSource'] != null;
 
+          final nativeMatchedAmount = payload['nativeMatchedAmount'] as String?;
+          final nativeMatchedTriggerWord = payload['nativeMatchedTriggerWord'] as String?;
+
           final result = _evaluateCaptureMessage(
             rawText: body,
             source: 'notification',
@@ -924,6 +928,8 @@ class LedgerController extends StateNotifier<LedgerState> {
             notificationShown: true,
             forceQueue: true,
             additionalCandidates: newCandidates,
+            nativeMatchedAmount: nativeMatchedAmount,
+            nativeMatchedTriggerWord: nativeMatchedTriggerWord,
           );
 
           if (result.queued && result.candidate != null) {
@@ -1941,7 +1947,9 @@ class LedgerController extends StateNotifier<LedgerState> {
       name: _blankToNull(candidate.merchant),
       occurredAt: candidate.createdAt,
       paymentMethod: candidate.source.toUpperCase(),
-      notes: _blankToNull(candidate.merchant) ?? candidate.rawText,
+      notes: (candidate.rawText?.trim().isNotEmpty == true)
+          ? candidate.rawText!.trim()
+          : _blankToNull(candidate.merchant),
     );
     final candidates = [
       for (final item in state.captureCandidates)
@@ -2325,6 +2333,8 @@ class LedgerController extends StateNotifier<LedgerState> {
     bool notificationShown = false,
     bool forceQueue = false,
     Iterable<CaptureCandidate> additionalCandidates = const [],
+    String? nativeMatchedAmount,
+    String? nativeMatchedTriggerWord,
   }) {
     final actualReceivedAt = receivedAt ?? DateTime.now();
 
@@ -2379,10 +2389,37 @@ class LedgerController extends StateNotifier<LedgerState> {
       );
     }
 
-    final matchedAccountId = _matchAccountToSms(state, parsed);
+    Money? parsedAmount = parsed.amount;
+    if (parsedAmount == null &&
+        nativeMatchedAmount != null &&
+        nativeMatchedAmount.trim().isNotEmpty) {
+      final fallbackParsed = parseTransactionMessage(
+        nativeMatchedAmount.trim(),
+        fallbackCurrency: state.preferences.baseCurrency,
+        triggerWords: triggerWords,
+        ignoreWords: ignoreWords,
+      );
+      parsedAmount = fallbackParsed.amount;
+    }
+
+    final effectiveParsed = ParsedTransactionMessage(
+      rawText: parsed.rawText.isNotEmpty ? parsed.rawText : rawText,
+      ignored: parsed.ignored,
+      hasAmount: parsedAmount != null,
+      hasTriggerWord: parsed.hasTriggerWord || nativeMatchedTriggerWord != null,
+      amount: parsedAmount,
+      merchant: parsed.merchant,
+      transactionType: parsed.transactionType,
+      last4: parsed.last4,
+      institutionName: parsed.institutionName,
+      matchedTriggerWord: parsed.matchedTriggerWord ?? nativeMatchedTriggerWord,
+      matchedIgnoreWord: parsed.matchedIgnoreWord,
+    );
+
+    final matchedAccountId = _matchAccountToSms(state, effectiveParsed);
     final duplicateMatch = _captureDuplicateKind(
       state: state,
-      parsed: parsed,
+      parsed: effectiveParsed,
       receivedAt: actualReceivedAt,
       matchedAccountId: matchedAccountId,
       additionalCandidates: additionalCandidates,
@@ -2395,7 +2432,7 @@ class LedgerController extends StateNotifier<LedgerState> {
         status: CaptureImportStatus.duplicate,
         reason: _reasonForDuplicate(duplicateMatch.kind),
         receivedAt: actualReceivedAt,
-        parsed: parsed,
+        parsed: effectiveParsed,
         nativeAccepted: nativeAccepted,
         notificationShown: notificationShown,
         duplicateOfId: duplicateMatch.matchedId,
@@ -2403,21 +2440,21 @@ class LedgerController extends StateNotifier<LedgerState> {
       );
     }
 
-    final type = parsed.transactionType == 'income' ? 'income' : 'expense';
+    final type = effectiveParsed.transactionType == 'income' ? 'income' : 'expense';
     final category = _suggestCategory(
       state,
-      parsed.merchant ?? parsed.rawText,
+      effectiveParsed.merchant ?? effectiveParsed.rawText,
       type,
-      isMerchant: parsed.merchant != null && parsed.merchant!.isNotEmpty,
+      isMerchant: effectiveParsed.merchant != null && effectiveParsed.merchant!.isNotEmpty,
     );
     final candidate = CaptureCandidate(
       id: _newId('cap'),
       source: source,
       status: 'pending',
       createdAt: actualReceivedAt,
-      rawText: parsed.rawText,
-      parsedAmount: parsed.amount,
-      merchant: parsed.merchant,
+      rawText: effectiveParsed.rawText.isNotEmpty ? effectiveParsed.rawText : rawText,
+      parsedAmount: parsedAmount,
+      merchant: effectiveParsed.merchant,
       transactionType: type,
       suggestedAccountId: matchedAccountId,
       suggestedCategoryId: category?.category.id,
@@ -2428,7 +2465,7 @@ class LedgerController extends StateNotifier<LedgerState> {
       source: source,
       status: CaptureImportStatus.queued,
       receivedAt: actualReceivedAt,
-      parsed: parsed,
+      parsed: effectiveParsed,
       candidate: candidate,
       nativeAccepted: nativeAccepted,
       notificationShown: notificationShown,

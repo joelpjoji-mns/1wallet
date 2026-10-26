@@ -57,6 +57,7 @@ class _MainShellState extends ConsumerState<MainShell>
         ref.read(exchangeRateServiceProvider).refreshRatesIfStale();
         ref.read(appUpdateProvider.notifier).checkForUpdates();
         ref.read(ledgerProvider.notifier).processSpooledSms();
+        ref.read(ledgerProvider.notifier).processSpooledNotifications();
       },
     );
   }
@@ -67,6 +68,7 @@ class _MainShellState extends ConsumerState<MainShell>
       ref.read(exchangeRateServiceProvider).refreshRatesIfStale();
       ref.read(appUpdateProvider.notifier).checkForUpdates();
       ref.read(ledgerProvider.notifier).processSpooledSms();
+      ref.read(ledgerProvider.notifier).processSpooledNotifications();
     }
   }
 

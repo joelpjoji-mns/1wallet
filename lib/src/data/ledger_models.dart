@@ -300,7 +300,7 @@ class LedgerPreferences {
     this.smsTriggerWords = kDefaultSmsTriggerWords,
     this.smsIgnoreWords = kDefaultSmsIgnoreWords,
     this.smsBlockPatterns = const [],
-    this.notificationCaptureEnabled = false,
+    this.notificationCaptureEnabled = true,
     this.notificationTriggerWords = kDefaultSmsTriggerWords,
     this.notificationIgnoreWords = kDefaultSmsIgnoreWords,
     this.notificationTargetPackages = kDefaultNotificationPackages,

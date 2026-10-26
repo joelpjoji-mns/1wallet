@@ -12,11 +12,48 @@ import '../../widgets/app_kit.dart';
 import '../../widgets/privacy_text.dart';
 import '../notifications/notification_engine.dart';
 
-class ReviewQueueScreen extends ConsumerWidget {
+class ReviewQueueScreen extends ConsumerStatefulWidget {
   const ReviewQueueScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ReviewQueueScreen> createState() => _ReviewQueueScreenState();
+}
+
+class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshSpooled();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshSpooled();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  Future<void> _refreshSpooled() async {
+    if (!mounted) return;
+    try {
+      await ref.read(ledgerProvider.notifier).processSpooledSms();
+      if (!mounted) return;
+      await ref.read(ledgerProvider.notifier).processSpooledNotifications();
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(ledgerProvider);
     final candidates = state.captureCandidates
         .where((candidate) => candidate.status == 'pending')
@@ -79,28 +116,40 @@ class ReviewQueueScreen extends ConsumerWidget {
           ],
         ),
         body: SafeArea(
-          child: items.isEmpty
-              ? _buildEmptyState(context)
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.lg,
-                    AppSpacing.md,
-                    AppSpacing.lg,
-                    AppSpacing.xxl,
+          child: RefreshIndicator(
+            onRefresh: _refreshSpooled,
+            child: items.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      SizedBox(
+                        height: MediaQuery.sizeOf(context).height * 0.7,
+                        child: _buildEmptyState(context),
+                      ),
+                    ],
+                  )
+                : ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.md,
+                      AppSpacing.lg,
+                      AppSpacing.xxl,
+                    ),
+                    itemCount: items.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: AppSpacing.md),
+                    itemBuilder: (context, index) {
+                      final item = items[index];
+                      if (item is CaptureCandidate) {
+                        return _buildCandidateCard(context, ref, state, item);
+                      } else if (item is AppNotification) {
+                        return _buildNotificationCard(context, ref, state, item);
+                      }
+                      return const SizedBox();
+                    },
                   ),
-                  itemCount: items.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: AppSpacing.md),
-                  itemBuilder: (context, index) {
-                    final item = items[index];
-                    if (item is CaptureCandidate) {
-                      return _buildCandidateCard(context, ref, state, item);
-                    } else if (item is AppNotification) {
-                      return _buildNotificationCard(context, ref, state, item);
-                    }
-                    return const SizedBox();
-                  },
-                ),
+          ),
         ),
       ),
     );
