@@ -116,6 +116,7 @@ class HomeScreen extends ConsumerWidget {
                 widgetOrder: widgetOrder,
                 onTabSelected: onTabSelected,
                 reorderMode: reorderMode,
+                onMenuPressed: onMenuPressed,
               ),
             ),
           ),
@@ -130,11 +131,13 @@ class _HomeDashboardList extends ConsumerWidget {
     required this.widgetOrder,
     required this.onTabSelected,
     required this.reorderMode,
+    required this.onMenuPressed,
   });
 
   final List<HomeDashboardWidgetId> widgetOrder;
   final ValueChanged<int> onTabSelected;
   final bool reorderMode;
+  final VoidCallback onMenuPressed;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -243,7 +246,18 @@ class _HomeDashboardList extends ConsumerWidget {
     int index,
   ) {
     final id = widgetOrder[index];
-    return HomeWidgetCardReorderScope(
+    final accountGridIndex =
+        widgetOrder.indexOf(HomeDashboardWidgetId.accountGrid);
+    final isAtOrAboveAccountGrid =
+        (accountGridIndex != -1 && index <= accountGridIndex) ||
+        id == HomeDashboardWidgetId.balanceHero ||
+        id == HomeDashboardWidgetId.accountGrid;
+
+    final canSwipeToOpenDrawer = !reorderMode &&
+        isAtOrAboveAccountGrid &&
+        id != HomeDashboardWidgetId.balanceTrend;
+
+    final widgetCard = HomeWidgetCardReorderScope(
       reorderMode: reorderMode,
       index: index,
       label: _homeWidgetLabel(id),
@@ -259,6 +273,15 @@ class _HomeDashboardList extends ConsumerWidget {
         onTabSelected: onTabSelected,
       ),
     );
+
+    if (canSwipeToOpenDrawer) {
+      return RightSwipeToOpenDrawer(
+        onOpenDrawer: onMenuPressed,
+        child: widgetCard,
+      );
+    }
+
+    return widgetCard;
   }
 
   void _enterReorderMode(BuildContext context, WidgetRef ref) {

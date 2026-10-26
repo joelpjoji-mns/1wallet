@@ -41,11 +41,30 @@ class _MainShellState extends ConsumerState<MainShell>
   late final PageController _pageController;
   final ValueNotifier<int> _selectedIndex = ValueNotifier(0);
   Timer? _lightBackgroundPeriodicTimer;
+  late final List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
+    _screens = [
+      _KeepAliveWrapper(
+        key: const PageStorageKey<String>('main-shell-tab-0'),
+        child: HomeScreen(onMenuPressed: _openDrawer, onTabSelected: _selectTab),
+      ),
+      _KeepAliveWrapper(
+        key: const PageStorageKey<String>('main-shell-tab-1'),
+        child: TransactionsScreen(onMenuPressed: _openDrawer),
+      ),
+      _KeepAliveWrapper(
+        key: const PageStorageKey<String>('main-shell-tab-2'),
+        child: CalendarScreen(onMenuPressed: _openDrawer),
+      ),
+      _KeepAliveWrapper(
+        key: const PageStorageKey<String>('main-shell-tab-3'),
+        child: AccountsScreen(onMenuPressed: _openDrawer),
+      ),
+    ];
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(exchangeRateServiceProvider).refreshRatesIfStale();
@@ -90,11 +109,15 @@ class _MainShellState extends ConsumerState<MainShell>
     if (!_pageController.hasClients) return;
     final currentPage = _pageController.page?.round();
     if (currentPage == index) return;
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-    );
+    if (currentPage != null && (currentPage - index).abs() > 1) {
+      _pageController.jumpToPage(index);
+    } else {
+      _pageController.animateToPage(
+        index,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      );
+    }
   }
 
   bool _shouldSyncScheduledNotifications(
@@ -124,6 +147,21 @@ class _MainShellState extends ConsumerState<MainShell>
     return false;
   }
 
+  Widget _buildMainBody() {
+    return PageView(
+      controller: _pageController,
+      physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
+      dragStartBehavior: DragStartBehavior.start,
+      allowImplicitScrolling: true,
+      onPageChanged: (index) {
+        if (_selectedIndex.value != index) {
+          _selectedIndex.value = index;
+        }
+      },
+      children: _screens,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen<LedgerState>(ledgerProvider, (previous, next) {
@@ -132,6 +170,8 @@ class _MainShellState extends ConsumerState<MainShell>
         NotificationService.syncScheduledNotifications(next);
       }
     });
+
+    final mainBody = _buildMainBody();
 
     return BackButtonListener(
       onBackButtonPressed: () async {
@@ -145,7 +185,8 @@ class _MainShellState extends ConsumerState<MainShell>
       },
       child: ValueListenableBuilder<int>(
         valueListenable: _selectedIndex,
-        builder: (context, selectedIndex, child) {
+        child: mainBody,
+        builder: (context, selectedIndex, cachedMainBody) {
           final dueCardCount = ref.watch(
             ledgerProvider.select((state) => creditCardsDueSoonCount(state)),
           );
@@ -176,24 +217,6 @@ class _MainShellState extends ConsumerState<MainShell>
               badgeCount: dueCardCount > 0 ? dueCardCount : null,
             ),
           ];
-
-          Widget mainBody = PageView.builder(
-            controller: _pageController,
-            physics: const PageScrollPhysics(parent: ClampingScrollPhysics()),
-            dragStartBehavior: DragStartBehavior.down,
-            itemCount: tabs.length,
-            onPageChanged: (index) {
-              if (_selectedIndex.value != index) {
-                _selectedIndex.value = index;
-              }
-            },
-            itemBuilder: (context, index) {
-              return _KeepAliveWrapper(
-                key: PageStorageKey<String>('main-shell-tab-$index'),
-                child: _buildScreen(index),
-              );
-            },
-          );
 
           final homeReordering = ref.watch(homeWidgetReorderModeProvider);
           final showAction = selectedIndex != 0 || !homeReordering;
@@ -227,7 +250,7 @@ class _MainShellState extends ConsumerState<MainShell>
 
           Widget mobileBody = Stack(
             children: [
-              mainBody,
+              cachedMainBody!,
               Positioned(
                 left: 0,
                 right: 0,
@@ -258,7 +281,7 @@ class _MainShellState extends ConsumerState<MainShell>
                 Expanded(
                   child: Stack(
                     children: [
-                      Positioned.fill(child: mainBody),
+                      Positioned.fill(child: cachedMainBody),
                       if (showAction)
                         Positioned(
                           right: AppSpacing.xl,
@@ -289,16 +312,6 @@ class _MainShellState extends ConsumerState<MainShell>
         },
       ),
     );
-  }
-
-  Widget _buildScreen(int index) {
-    return switch (index) {
-      0 => HomeScreen(onMenuPressed: _openDrawer, onTabSelected: _selectTab),
-      1 => TransactionsScreen(onMenuPressed: _openDrawer),
-      2 => CalendarScreen(onMenuPressed: _openDrawer),
-      3 => AccountsScreen(onMenuPressed: _openDrawer),
-      _ => const SizedBox.shrink(),
-    };
   }
 }
 

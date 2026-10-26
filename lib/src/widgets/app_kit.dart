@@ -1,8 +1,96 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../design/tokens.dart';
+
+/// A horizontal drag gesture recognizer that only claims gestures moving to the right
+/// (dx > 0) beyond touch slop. Rejects gestures moving to the left so that
+/// parent horizontal navigators (such as PageView) can handle leftward gestures seamlessly.
+class RightSwipeGestureRecognizer extends HorizontalDragGestureRecognizer {
+  RightSwipeGestureRecognizer({super.debugOwner, super.supportedDevices});
+
+  @override
+  bool hasSufficientGlobalDistanceToAccept(
+    PointerDeviceKind pointerDeviceKind,
+    double? deviceTouchSlop,
+  ) {
+    final slop = computeHitSlop(pointerDeviceKind, gestureSettings);
+    // If moving right (dx > 0) beyond touch slop: declare win in gesture arena
+    if (globalDistanceMoved > slop) {
+      return true;
+    }
+    // If moving left (dx < 0) beyond touch slop: immediately reject so parent PageView wins
+    if (globalDistanceMoved < -slop) {
+      resolve(GestureDisposition.rejected);
+    }
+    return false;
+  }
+}
+
+/// Wraps widgets to detect a rightward swipe gesture to trigger drawer opening,
+/// while letting leftward swipes pass through to parent PageView and vertical
+/// scrolls pass through to scrollable lists.
+class RightSwipeToOpenDrawer extends StatefulWidget {
+  const RightSwipeToOpenDrawer({
+    required this.child,
+    required this.onOpenDrawer,
+    this.enabled = true,
+    super.key,
+  });
+
+  final Widget child;
+  final VoidCallback onOpenDrawer;
+  final bool enabled;
+
+  @override
+  State<RightSwipeToOpenDrawer> createState() => _RightSwipeToOpenDrawerState();
+}
+
+class _RightSwipeToOpenDrawerState extends State<RightSwipeToOpenDrawer> {
+  double _dragDistance = 0.0;
+  bool _triggered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.enabled) return widget.child;
+
+    return RawGestureDetector(
+      behavior: HitTestBehavior.translucent,
+      gestures: <Type, GestureRecognizerFactory>{
+        RightSwipeGestureRecognizer:
+            GestureRecognizerFactoryWithHandlers<RightSwipeGestureRecognizer>(
+          () => RightSwipeGestureRecognizer(),
+          (RightSwipeGestureRecognizer instance) {
+            instance
+              ..onStart = (_) {
+                _dragDistance = 0.0;
+                _triggered = false;
+              }
+              ..onUpdate = (details) {
+                _dragDistance += details.delta.dx;
+                if (!_triggered && _dragDistance > 38.0) {
+                  _triggered = true;
+                  widget.onOpenDrawer();
+                }
+              }
+              ..onEnd = (details) {
+                if (!_triggered) {
+                  final velocity = details.primaryVelocity ?? 0.0;
+                  if (velocity > 100.0 || _dragDistance > 24.0) {
+                    _triggered = true;
+                    widget.onOpenDrawer();
+                  }
+                }
+              };
+          },
+        ),
+      },
+      child: widget.child,
+    );
+  }
+}
 
 /// A consistent, accessible top-right action for single-screen form saves.
 class HeaderSaveAction extends StatefulWidget {
@@ -390,24 +478,31 @@ class AppHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final canPop = Navigator.of(context).canPop();
+    final header = GlassAppBar(
+      title: Text(
+        title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(
+          context,
+        ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+      ),
+      leading: onMenuPressed != null
+          ? AppMenuAction(onPressed: onMenuPressed!)
+          : canPop
+          ? const AppBackAction()
+          : null,
+      actions: actions,
+    );
+
     return GlassIsolationScope(
       defaultQuality: GlassQuality.premium,
-      child: GlassAppBar(
-        title: Text(
-          title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-        ),
-        leading: onMenuPressed != null
-            ? AppMenuAction(onPressed: onMenuPressed!)
-            : canPop
-            ? const AppBackAction()
-            : null,
-        actions: actions,
-      ),
+      child: onMenuPressed != null
+          ? RightSwipeToOpenDrawer(
+              onOpenDrawer: onMenuPressed!,
+              child: header,
+            )
+          : header,
     );
   }
 }
