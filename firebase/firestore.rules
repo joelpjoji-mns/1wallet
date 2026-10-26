@@ -277,7 +277,7 @@ service cloud.firestore {
     function isValidAppUpdateChannel(data, platform, channel) {
       return platform in ['android', 'ios'] &&
         data is map &&
-        data.keys().hasOnly(['platform', 'channel', 'status', 'latestVersionCode', 'latestReleaseId', 'versionName', 'updatedAt']) &&
+        data.keys().hasOnly(['platform', 'channel', 'status', 'latestVersionCode', 'latestReleaseId', 'versionName', 'latestVersionName', 'updatedAt']) &&
         (!('platform' in data) || data.platform == platform) &&
         data.channel == channel &&
         (!('status' in data) || data.status == 'published') &&

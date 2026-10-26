@@ -1154,28 +1154,51 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
 
       final allReleases = _mergeReleases(fetchedReleases, kBuiltInReleaseHistory);
 
-      final channelDoc = await _firestore
-          .collection('appUpdates/android/channels')
-          .doc('stable')
-          .get();
-
-      if (!channelDoc.exists) {
-        state = state.copyWith(
-          status: UpdateStatus.idle,
-          currentRelease: currentRelease,
-          allReleases: allReleases,
-          clearCurrentRelease: currentRelease == null,
-          clearLatestRelease: true,
-        );
-        return;
+      DocumentSnapshot? channelDoc;
+      try {
+        channelDoc = await _firestore
+            .collection('appUpdates/android/channels')
+            .doc('stable')
+            .get();
+      } catch (_) {
+        channelDoc = null;
       }
 
-      final latestVersionCode = _nullableIntValue(
-        channelDoc.data()?['latestVersionCode'],
-      );
-      final latestReleaseId = _stringValue(
-        channelDoc.data()?['latestReleaseId'],
-      );
+      int? latestVersionCode;
+      String latestReleaseId = '';
+      String rawVersionName = '';
+      AppUpdateRelease? candidateRelease;
+
+      if (channelDoc != null && channelDoc.exists) {
+        final data = channelDoc.data() as Map<String, dynamic>?;
+        if (data != null) {
+          latestVersionCode = _nullableIntValue(data['latestVersionCode']);
+          latestReleaseId = _stringValue(data['latestReleaseId']);
+          rawVersionName = _stringValue(
+            data['latestVersionName'] ?? data['versionName'],
+          );
+          if (latestVersionCode != null) {
+            try {
+              candidateRelease = await _releaseForVersionCode(
+                latestVersionCode,
+                releaseId: latestReleaseId,
+              );
+            } catch (_) {}
+          }
+        }
+      }
+
+      // If Firestore channel document was unavailable, permission denied,
+      // or unpopulated, seamlessly fallback to the newest release discovered
+      // from GitHub Releases API:
+      if (candidateRelease == null && allReleases.isNotEmpty) {
+        final newestFromApi = allReleases.first;
+        candidateRelease = newestFromApi;
+        latestVersionCode = newestFromApi.versionCode;
+        latestReleaseId = newestFromApi.id;
+        rawVersionName = newestFromApi.versionName;
+      }
+
       if (latestVersionCode == null) {
         state = state.copyWith(
           status: UpdateStatus.idle,
@@ -1186,15 +1209,6 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
         );
         return;
       }
-
-      final candidateRelease = await _releaseForVersionCode(
-        latestVersionCode,
-        releaseId: latestReleaseId,
-      );
-      final rawVersionName = _stringValue(
-        channelDoc.data()?['latestVersionName'] ??
-            channelDoc.data()?['versionName'],
-      );
       final latestName = candidateRelease?.versionName.isNotEmpty == true
           ? candidateRelease!.versionName
           : rawVersionName;
