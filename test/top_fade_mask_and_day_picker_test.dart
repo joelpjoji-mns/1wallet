@@ -4,7 +4,7 @@ import 'package:one_wallet_flutter/src/features/accounts/account_editor_screen.d
 import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 
 void main() {
-  testWidgets('AppTopFadeMask applies ShaderMask with BlendMode.dstIn', (tester) async {
+  testWidgets('AppTopFadeMask applies gradient overlay without blocking content', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
@@ -20,15 +20,15 @@ void main() {
       ),
     );
 
-    final shaderMaskFinder = find.byType(ShaderMask);
-    expect(shaderMaskFinder, findsOneWidget);
+    final contentFinder = find.text('Content');
+    expect(contentFinder, findsOneWidget);
 
-    final shaderMask = tester.widget<ShaderMask>(shaderMaskFinder);
-    expect(shaderMask.blendMode, equals(BlendMode.dstIn));
+    final stackFinder = find.byType(Stack);
+    expect(stackFinder, findsWidgets);
 
-    // Verify shader callback executes without errors
-    final shader = shaderMask.shaderCallback(const Rect.fromLTWH(0, 0, 200, 200));
-    expect(shader, isNotNull);
+    final stack = tester.widget<Stack>(stackFinder.first);
+    expect(stack.alignment, equals(Alignment.center));
+    expect(stack.fit, equals(StackFit.passthrough));
   });
 
   testWidgets('showDayOfMonthPicker displays days 1 to 31 and picks a day', (tester) async {

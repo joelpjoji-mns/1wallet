@@ -83,19 +83,27 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
           const SizedBox(height: AppSpacing.sm),
           Expanded(
             child: AppTopFadeMask(
+              enabled: rows.isNotEmpty,
               child: rows.isEmpty
-                ? SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        _buildListHeader(context, state, rows),
-                        const EmptyState(
-                          icon: Icons.wallet_outlined,
-                          title: 'No accounts found',
-                          body:
-                              'Add a cash, bank, card, loan, or wallet account to start tracking.',
-                        ),
-                      ],
-                    ),
+                ? EmptyState(
+                    icon: _query.isNotEmpty
+                        ? Icons.search_off_rounded
+                        : Icons.wallet_outlined,
+                    title: _query.isNotEmpty
+                        ? 'No matching accounts'
+                        : 'No accounts found',
+                    body: _query.isNotEmpty
+                        ? 'No accounts match "$_query". Try a different search term.'
+                        : 'Add a cash, bank, card, loan, or wallet account to start tracking.',
+                    actionLabel: _query.isNotEmpty
+                        ? 'Clear search'
+                        : 'Add account',
+                    actionIcon: _query.isNotEmpty
+                        ? Icons.clear_rounded
+                        : Icons.add_rounded,
+                    onAction: _query.isNotEmpty
+                        ? () => setState(() => _query = '')
+                        : () => context.push('/account/new'),
                   )
                 : AppResponsiveLayout(
                     mobile: ReorderableListView.builder(

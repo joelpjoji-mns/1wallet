@@ -275,6 +275,8 @@ class AppTopFadeMask extends StatelessWidget {
     final surfaceColor = Theme.of(context).colorScheme.surface;
 
     return Stack(
+      fit: StackFit.passthrough,
+      alignment: Alignment.center,
       children: [
         child,
         Positioned(
@@ -1410,6 +1412,7 @@ class EmptyState extends StatelessWidget {
     super.key,
     this.actionLabel,
     this.onAction,
+    this.actionIcon,
   });
 
   final IconData icon;
@@ -1417,40 +1420,56 @@ class EmptyState extends StatelessWidget {
   final String body;
   final String? actionLabel;
   final VoidCallback? onAction;
+  final IconData? actionIcon;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          IconBubble(icon: icon, color: scheme.primary),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+    final lowerAction = actionLabel?.toLowerCase() ?? '';
+    final defaultActionIcon = lowerAction.contains('clear') ||
+            lowerAction.contains('reset')
+        ? Icons.filter_alt_off_rounded
+        : (lowerAction.contains('back') || lowerAction.contains('home')
+            ? Icons.arrow_back_rounded
+            : Icons.add_rounded);
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              IconBubble(icon: icon, color: scheme.primary),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                body,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: scheme.onSurfaceVariant),
+              ),
+              if (actionLabel != null && onAction != null) ...[
+                const SizedBox(height: AppSpacing.md),
+                AppActionButton(
+                  label: actionLabel!,
+                  onPressed: onAction,
+                  icon: actionIcon ?? defaultActionIcon,
+                  prominent: true,
+                ),
+              ],
+            ],
           ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            body,
-            textAlign: TextAlign.center,
-            style: TextStyle(color: scheme.onSurfaceVariant),
-          ),
-          if (actionLabel != null && onAction != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            AppActionButton(
-              label: actionLabel!,
-              onPressed: onAction,
-              icon: Icons.add_rounded,
-              prominent: true,
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }

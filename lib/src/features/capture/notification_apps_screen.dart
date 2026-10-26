@@ -117,8 +117,21 @@ class _NotificationAppsScreenState
                     )
                   else if (_apps == null || _apps!.isEmpty)
                     const Expanded(
-                      child: Center(
-                        child: Text('No apps found or unsupported platform.'),
+                      child: EmptyState(
+                        icon: Icons.apps_outlined,
+                        title: 'No apps found',
+                        body: 'No apps found or unsupported platform.',
+                      ),
+                    )
+                  else if (filteredApps.isEmpty)
+                    Expanded(
+                      child: EmptyState(
+                        icon: Icons.search_off_rounded,
+                        title: 'No matching apps',
+                        body: 'No apps match "$_searchQuery".',
+                        actionLabel: 'Clear search',
+                        actionIcon: Icons.clear_rounded,
+                        onAction: () => setState(() => _searchQuery = ''),
                       ),
                     )
                   else

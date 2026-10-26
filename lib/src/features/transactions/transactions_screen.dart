@@ -570,6 +570,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             ),
           Expanded(
             child: AppTopFadeMask(
+              enabled: transactions.isNotEmpty,
               child: transactions.isEmpty
                 ? EmptyState(
                     icon: Icons.format_list_bulleted_rounded,
@@ -580,6 +581,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                     actionLabel: hasActiveFilters
                         ? 'Clear filters'
                         : 'Add transaction',
+                    actionIcon: hasActiveFilters
+                        ? Icons.filter_alt_off_rounded
+                        : Icons.add_rounded,
                     onAction: hasActiveFilters
                         ? _clearFilters
                         : () => context.push('/add'),

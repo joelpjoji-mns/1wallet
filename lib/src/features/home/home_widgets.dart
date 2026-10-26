@@ -2216,10 +2216,15 @@ class _CategoryListWidgetState extends ConsumerState<_CategoryListWidget> {
         dateFilter: widget.period,
         onDateFilterChanged: widget.onPeriodChanged,
         child: widget.items.isEmpty
-            ? Text(
-                'No matching records for this period.',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ? Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                child: Center(
+                  child: Text(
+                    'No matching records for this period.',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ),
               )
             : Column(
@@ -2962,7 +2967,18 @@ class CreditUtilizationWidget extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (creditAccounts.isEmpty) const Text('No credit accounts.'),
+            if (creditAccounts.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                child: Center(
+                  child: Text(
+                    'No credit accounts.',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
             ...creditAccounts.map((acc) {
               final rawBal = convertMoneyForDisplay(
                 state,
