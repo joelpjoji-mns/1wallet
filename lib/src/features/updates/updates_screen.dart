@@ -88,37 +88,17 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     return RouteScaffold(
       title: 'Updates',
       actions: [
-        if (state.status == UpdateStatus.downloaded)
-          Tooltip(
-            message: 'Install update',
-            child: AppActionButton(
-              label: 'Install',
-              compact: true,
-              prominent: true,
-              onPressed: () => provider.installUpdate(),
-            ),
-          )
-        else if (hasUpdate && state.status == UpdateStatus.idle)
-          Tooltip(
-            message: 'Install update',
-            child: AppActionButton(
-              label: 'Install',
-              compact: true,
-              prominent: true,
-              onPressed: () => provider.downloadUpdate(),
-            ),
-          )
-        else
-          Tooltip(
-            message: 'Check for updates',
-            child: AppActionButton(
-              label: 'Check for update',
-              compact: true,
-              onPressed: state.status == UpdateStatus.checking
-                  ? null
-                  : () => provider.checkForUpdates(force: true),
-            ),
+        Tooltip(
+          message: 'Check for updates',
+          child: HeaderIconButton(
+            icon: Icons.refresh_rounded,
+            loading: state.status == UpdateStatus.checking,
+            onPressed: state.status == UpdateStatus.checking
+                ? null
+                : () => provider.checkForUpdates(force: true),
+            semanticLabel: 'Check for updates',
           ),
+        ),
       ],
       child: GlassIsolationScope(
         defaultQuality: GlassQuality.standard,

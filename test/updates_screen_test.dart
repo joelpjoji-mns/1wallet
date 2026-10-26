@@ -88,6 +88,9 @@ void main() {
       expect(find.text('Note C'), findsOneWidget);
 
       expect(find.byType(GlassCard), findsWidgets);
+
+      // Verify the top-right header action is the refresh/check button
+      expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
     },
   );
 }
