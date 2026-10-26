@@ -205,14 +205,21 @@ try {
   const token = await accessToken(serviceAccount);
   await patchDocument(token, `appUpdates/android/releases/${releaseId}`, release);
   await patchDocument(token, `appUpdates/android/releases/${versionCode}`, release);
-  await patchDocument(token, `appUpdates/android/channels/${channel}`, {
+  const channelFields = {
     channel,
     latestVersionCode: versionCode,
     latestReleaseId: releaseId,
-    latestVersionName: versionName,
     versionName,
     updatedAt: publishedAt,
-  });
+  };
+  const updateMask = Object.keys(channelFields)
+    .map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`)
+    .join('&');
+  await patchDocument(
+    token,
+    `appUpdates/android/channels/${channel}?${updateMask}`,
+    channelFields,
+  );
   console.log(
     `Published ${channel} update ${versionName} (${versionCode}) metadata to Firebase project ${project}.`,
   );
