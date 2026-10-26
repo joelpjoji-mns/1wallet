@@ -19,21 +19,17 @@ function writeOutput(file, values) {
   }
 }
 
-function formatVersionName(baseVersion, runNum) {
-  if (runNum === undefined || runNum === null || runNum === '') return baseVersion;
+function formatVersionInfo(baseVersion, runNum, startRun = 155) {
   const match = baseVersion.match(/^(\d+)(?:\.(\d+))?(?:\.(\d+))?$/);
   const baseMajor = match && match[1] !== undefined ? parseInt(match[1], 10) : 2;
-  const baseMinor = match && match[2] !== undefined ? parseInt(match[2], 10) : 0;
+  const baseMinor = match && match[2] !== undefined ? parseInt(match[2], 10) : 2;
   const basePatch = match && match[3] !== undefined ? parseInt(match[3], 10) : 0;
 
-  const n = parseInt(runNum, 10);
-  if (Number.isNaN(n)) return baseVersion;
+  const n = runNum !== undefined && runNum !== null && runNum !== ''
+    ? Math.max(0, parseInt(runNum, 10) - startRun)
+    : 0;
 
-  // Schema:
-  // - 100 patch versions per minor (00..99, 2-digit padded).
-  // - 10 minor versions per major (0..9).
-  // - Total 1000 versions per major block.
-  // - e.g. 2.0.99 -> 2.1.00; 2.1.49 for run 149; 2.9.99 -> 3.0.00; 9.9.99 -> 10.0.00.
+  // 4-digit code (e.g. 2200 for 2.2.00, 2201 for 2.2.01, 2300 for 2.3.00, 3000 for 3.0.00)
   const baseIndex = baseMajor * 1000 + baseMinor * 100 + basePatch;
   const total = baseIndex + n;
 
@@ -42,7 +38,12 @@ function formatVersionName(baseVersion, runNum) {
   const patch = total % 100;
   const patchStr = patch < 10 ? `0${patch}` : `${patch}`;
 
-  return `${major}.${minor}.${patchStr}`;
+  const versionName = `${major}.${minor}.${patchStr}`;
+  // Android OS versionCode must stay > 2102151 to allow install without downgrade failure.
+  // 2,100,000 + 4-digit code gives 2102200 for 2.2.00!
+  const versionCode = String(2100000 + total);
+
+  return { versionName, versionCode, buildNumber: total };
 }
 
 const runNumber = readArg('--run-number');
@@ -56,12 +57,9 @@ if (!versionMatch) {
   process.exit(1);
 }
 
-const [, pubspecVersionName, pubspecVersionCode] = versionMatch;
-
-// Use pubspecVersionCode as base, add run number to ensure it increments on CI
-const versionCode = runNumber ? String(parseInt(pubspecVersionCode, 10) + parseInt(runNumber, 10)) : pubspecVersionCode;
-// Use formatVersionName to format patch with leading zero if single digit (e.g. 2.1.01, 2.1.10, 2.1.147)
-const versionName = formatVersionName(pubspecVersionName, runNumber);
+const [, pubspecVersionName] = versionMatch;
+const startRunEnv = parseInt(readArg('--start-run', process.env.ONEWALLET_START_RUN || '155'), 10);
+const { versionName, versionCode } = formatVersionInfo(pubspecVersionName, runNumber, startRunEnv);
 
 const channel = 'stable';
 const values = {

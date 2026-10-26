@@ -1341,6 +1341,30 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
     return 0;
   }
 
+  static String formatDisplayBuild(String versionName, int fallbackCode) {
+    final clean = _cleanVersion(versionName);
+    final parts = clean.split('.');
+    if (parts.length >= 3) {
+      final major = int.tryParse(parts[0]);
+      final minor = int.tryParse(parts[1]);
+      final patch = int.tryParse(parts[2]);
+      if (major != null && minor != null && patch != null) {
+        return '${major * 1000 + minor * 100 + patch}';
+      }
+    }
+    if (fallbackCode > 0) {
+      if (fallbackCode >= 2100000) {
+        final codeWithoutOffset = fallbackCode - 2100000;
+        final normalized = codeWithoutOffset >= 2000
+            ? codeWithoutOffset - 2000
+            : codeWithoutOffset;
+        if (normalized > 0) return '$normalized';
+      }
+      return '$fallbackCode';
+    }
+    return 'Unknown';
+  }
+
   static int _normalizeVersionCode(int code) {
     if (code >= 2000000) {
       final offset = code - 2000000;

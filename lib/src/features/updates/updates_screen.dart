@@ -176,9 +176,10 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     final versionName = state.currentVersionName.isEmpty
         ? 'Unknown'
         : state.currentVersionName;
-    final versionCode = state.currentVersionCode == 0
-        ? 'Unknown'
-        : state.currentVersionCode.toString();
+    final displayBuild = AppUpdateProvider.formatDisplayBuild(
+      state.currentVersionName,
+      state.currentVersionCode,
+    );
 
     String statusTitle;
     String statusSubtitle;
@@ -198,7 +199,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
         color = scheme.primary;
       } else {
         statusTitle = 'App is up to date';
-        statusSubtitle = 'Version $versionName (Build $versionCode)';
+        statusSubtitle = 'Version $versionName (Build $displayBuild)';
         icon = Icons.check_circle_rounded;
         color = const Color(0xFF2E7D32);
       }
@@ -494,8 +495,11 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
           _buildDetailRow(
             context,
             icon: Icons.tag_rounded,
-            title: 'Version Code',
-            value: '${release.versionCode}',
+            title: 'Build Number',
+            value: AppUpdateProvider.formatDisplayBuild(
+              release.versionName,
+              release.versionCode,
+            ),
           ),
           const Divider(height: 1),
           _buildDetailRow(
