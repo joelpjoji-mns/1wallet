@@ -261,7 +261,12 @@ Future<void> _pumpVariant(
     }
     await _settle(tester);
     _drainErrors('$route @ ${variant.name}');
-    await _capture(tester, boundaryKey, _slug(route), variant.name);
+    await _capture(
+      tester,
+      boundaryKey,
+      '${ledger == null ? '' : 'empty-'}${_slug(route)}',
+      variant.name,
+    );
   }
 }
 

@@ -23,6 +23,14 @@ Contains unit tests, widget tests, integration flows, and test fixtures for the 
 | `login_offline_option_test.dart` | Offline entry button and acknowledgement gate. |
 | `offline_mode_screens_test.dart` | Settings and Sync render the offline state through the real router. |
 
+### Design-system coverage
+
+| Test | Covers |
+| :--- | :--- |
+| `ui_route_matrix_test.dart` | Renders every route (plus login/onboarding/permissions) in light and AMOLED dark, at 1.0× and 1.3× text, on a 360 dp phone and a tablet, with sample data and with an empty wallet. It loads the real Inter/Material Icons fonts and fails on any overflow or framework error, reporting the offending `lib/src` file:line. `--dart-define=UI_AUDIT_SHOTS=<dir>` (+ optional `UI_AUDIT_SHOTS_FILTER=slug[@variant],…`) also writes PNG screenshots, used by `doc/ui-audit.md`. |
+| `ui_design_system_guard_test.dart` | Lint-style guard: feature screens may not use raw radii, font sizes or families, hex/named colours, inline `SnackBar`s, raw bottom sheets, Material `Card`/`ListTile`/`Switch`/`AppBar`, raw `GlassGroupedSection`/`GlassListTile`/`GlassButton`, or extra `Scaffold`s. All of `lib/src` must avoid `withAlpha(int)` and plain icon glyphs. Exceptions are allow-listed with reasons; a justified one-off uses `// ui-guard: allow <reason>`. |
+| `app_kit_helpers_test.dart` | The canonical helpers: `showAppSnackBar`, `showAppConfirmDialog`, `showAppSheet`, `AppLoadingState`, the `EmptyState` danger tone, `AppGroupedSection`/`AppGroupedTile` (font and merged toggle semantics) and the `HeaderIconButton` tooltip. |
+
 ---
 
 ## 🛡️ Critical Invariants & Architecture
