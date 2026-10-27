@@ -214,11 +214,11 @@ jobs:
 
       - name: Test update notification failure handling
         if: steps.notes_source.outputs.skip_release != 'true'
-        run: flutter test --no-pub test/update_notification_failure_test.dart test/app_update_version_check_test.dart test/updates_screen_test.dart
+        run: flutter test --no-pub test/update_notification_failure_test.dart test/app_update_version_check_test.dart test/updates_screen_test.dart test/legacy_updater_recovery_test.dart
 
       - name: Test release resource validator
         if: steps.notes_source.outputs.skip_release != 'true'
-        run: node --test scripts/validate-android-notification-resources.test.mjs
+        run: node --test scripts/validate-android-notification-resources.test.mjs scripts/android-apk-tools.test.mjs
 
       - name: Build signed arm64 APK
         if: steps.notes_source.outputs.skip_release != 'true'
@@ -315,6 +315,13 @@ jobs:
             --changelog-json .tmp-release-notes.json \
             "${mandatory_args[@]}" \
             --output "importdata/mobile-update-${{ steps.info.outputs.versionName }}-${{ steps.info.outputs.channel }}.json"
+
+      - name: Validate update manifest against installed APK
+        if: steps.notes_source.outputs.skip_release != 'true'
+        run: |
+          node scripts/validate-mobile-update-manifest.mjs \
+            --apk "$APK_PATH" \
+            --manifest "importdata/mobile-update-${{ steps.info.outputs.versionName }}-${{ steps.info.outputs.channel }}.json"
 
       - name: Publish update metadata to Firestore
         if: steps.notes_source.outputs.skip_release != 'true'

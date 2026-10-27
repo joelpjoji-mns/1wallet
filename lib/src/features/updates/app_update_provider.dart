@@ -1285,6 +1285,8 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
     try {
       final prefs = await SharedPreferences.getInstance();
       if (!mounted) return;
+      await prefs.reload();
+      if (!mounted) return;
       const notificationKey = 'lastNotifiedVersionCode.stable';
       final lastNotifiedVersionCode = prefs.getInt(notificationKey) ?? 0;
       if (release.versionCode > lastNotifiedVersionCode) {

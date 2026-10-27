@@ -59,7 +59,7 @@ jobs:
         run: bash android/gradlew -p android :app:testDebugUnitTest :app:assembleDebug
 
       - name: Test release resource validator
-        run: node --test scripts/validate-android-notification-resources.test.mjs
+        run: node --test scripts/validate-android-notification-resources.test.mjs scripts/android-apk-tools.test.mjs
 
       - name: Build shrunk release and validate notification resources
         run: |

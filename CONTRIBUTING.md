@@ -42,6 +42,7 @@ flutter analyze
 
 # Validate dynamic notification resources in the actual shrunk release APK.
 node --test scripts/validate-android-notification-resources.test.mjs
+node --test scripts/android-apk-tools.test.mjs
 flutter build apk --release --target-platform android-arm64 --split-per-abi
 node scripts/validate-android-notification-resources.mjs --apk build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
 
@@ -66,6 +67,21 @@ syntax, and use an actual bitmap drawable rather than an adaptive launcher XML
 for the large icon. Native tests exercise both name lookup and bitmap decoding.
 A notification-delivery failure must also leave a discovered update available
 to download, with a non-blocking warning instead of an update-check error.
+
+Update manifests and Firestore channels must use the **actual APK versionCode**
+read by `aapt`, not the Flutter base build number: ABI splitting adds an offset.
+The shipped 2.2.01 native worker compares raw installed codes and shares its
+notification delivery marker with the Dart updater. Regressions must therefore
+exercise the pinned shipped check/download methods, not only the fixed client:
+
+```powershell
+flutter test test\legacy_updater_recovery_test.dart
+node scripts\validate-mobile-update-manifest.mjs --apk PATH_TO_RELEASE_APK --manifest PATH_TO_MANIFEST
+```
+
+The signed-release workflow verifies that manifest versions, hashes, sizes, and
+architectures match the packaged APK before publishing update metadata. Both
+`versionName` and the older `latestVersionName` channel key are updated together.
 
 ---
 

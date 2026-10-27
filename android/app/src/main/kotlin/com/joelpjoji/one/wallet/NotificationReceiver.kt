@@ -113,31 +113,34 @@ class NotificationReceiver : NotificationListenerService() {
                     val body = conn.inputStream.bufferedReader().use { it.readText() }
                     val json = org.json.JSONObject(body)
                     val fields = json.optJSONObject("fields") ?: return
-                    val latestCode = fields.optJSONObject("latestVersionCode")?.optString("integerValue")?.toIntOrNull()
-                        ?: fields.optJSONObject("latestVersionCode")?.optInt("integerValue") ?: 0
-                    val latestName = fields.optJSONObject("latestVersionName")?.optString("stringValue") ?: "New version"
-
-                    val pm = context.packageManager
-                    val pInfo = pm.getPackageInfo(context.packageName, 0)
-                    val currentCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        pInfo.longVersionCode.toInt()
-                    } else {
-                        @Suppress("DEPRECATION")
-                        pInfo.versionCode
-                    }
-
-                    val lastNotified = try {
-                        prefs.getLong("flutter.lastNotifiedVersionCode.stable", 0L).toInt()
-                    } catch (_: Exception) {
-                        try { prefs.getInt("flutter.lastNotifiedVersionCode.stable", 0) } catch (_: Exception) { 0 }
-                    }
-
-                    if (latestCode > currentCode && latestCode > lastNotified) {
-                        showAppUpdateNotification(context, latestName)
-                        prefs.edit().putLong("flutter.lastNotifiedVersionCode.stable", latestCode.toLong()).apply()
-                    }
+                    processAppUpdateFields(context, fields)
                 }
             } catch (_: Exception) {
+            }
+        }
+
+        // Keep the shipped raw-code/shared-preference contract covered: older
+        // installed clients rely on this native path before their Dart check.
+        internal fun processAppUpdateFields(context: Context, fields: org.json.JSONObject) {
+            val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            val latestCode = fields.optJSONObject("latestVersionCode")?.optString("integerValue")?.toIntOrNull()
+                ?: fields.optJSONObject("latestVersionCode")?.optInt("integerValue") ?: 0
+            val latestName = fields.optJSONObject("latestVersionName")?.optString("stringValue") ?: "New version"
+            val info = context.packageManager.getPackageInfo(context.packageName, 0)
+            val currentCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                info.longVersionCode.toInt()
+            } else {
+                @Suppress("DEPRECATION")
+                info.versionCode
+            }
+            val lastNotified = try {
+                prefs.getLong("flutter.lastNotifiedVersionCode.stable", 0L).toInt()
+            } catch (_: ClassCastException) {
+                prefs.getInt("flutter.lastNotifiedVersionCode.stable", 0)
+            }
+            if (latestCode > currentCode && latestCode > lastNotified) {
+                showAppUpdateNotification(context, latestName)
+                prefs.edit().putLong("flutter.lastNotifiedVersionCode.stable", latestCode.toLong()).apply()
             }
         }
 

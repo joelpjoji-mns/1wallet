@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { createSign } from 'node:crypto';
 import fs from 'node:fs';
+import { updateChannelFields } from './android-apk-tools.mjs';
 
 function readArg(name, fallback = undefined) {
   const index = process.argv.indexOf(name);
@@ -36,6 +37,13 @@ if (!versionName) {
   console.error('Manifest is missing required field: versionName/version');
   process.exit(1);
 }
+const versionCode = Number(manifest.versionCode);
+const channel = String(manifest.channel);
+const releaseId = `${channel}-${versionCode}`;
+const publishedAt = manifest.generatedAt ?? new Date().toISOString();
+const channelFields = updateChannelFields({
+  ...manifest, versionCode, channel, versionName, generatedAt: publishedAt,
+}, releaseId);
 
 if (skipUpload) {
   console.log(
@@ -163,11 +171,7 @@ function normalizeChangelog(source) {
   };
 }
 
-const versionCode = Number.parseInt(manifest.versionCode, 10);
-const channel = String(manifest.channel);
-const releaseId = `${channel}-${versionCode}`;
 const apk = manifest.apk ?? {};
-const publishedAt = manifest.generatedAt ?? new Date().toISOString();
 const release = {
   id: releaseId,
   platform: manifest.platform ?? 'android',
@@ -205,13 +209,6 @@ try {
   const token = await accessToken(serviceAccount);
   await patchDocument(token, `appUpdates/android/releases/${releaseId}`, release);
   await patchDocument(token, `appUpdates/android/releases/${versionCode}`, release);
-  const channelFields = {
-    channel,
-    latestVersionCode: versionCode,
-    latestReleaseId: releaseId,
-    versionName,
-    updatedAt: publishedAt,
-  };
   const updateMask = Object.keys(channelFields)
     .map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`)
     .join('&');

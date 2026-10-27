@@ -2,6 +2,7 @@
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { readApkInfo, publishedApkVersionCode } from './android-apk-tools.mjs';
 
 function readArg(name, fallback = undefined) {
   const index = process.argv.indexOf(name);
@@ -26,7 +27,7 @@ function requiredArg(name) {
 
 const apkPath = requiredArg('--apk');
 const version = requiredArg('--version');
-const versionCode = requiredArg('--version-code');
+const baseVersionCode = Number(requiredArg('--version-code'));
 const url = requiredArg('--url');
 const fileName = requiredArg('--file-name');
 const architecture = requiredArg('--architecture');
@@ -46,6 +47,10 @@ if (!fs.existsSync(changelogPath)) {
 }
 
 const apk = fs.readFileSync(apkPath);
+const apkInfo = readApkInfo(apkPath, readArg('--aapt'));
+const versionCode = publishedApkVersionCode(apkInfo, {
+  versionName: version, baseVersionCode, architecture,
+});
 const changelogSource = JSON.parse(fs.readFileSync(changelogPath, 'utf8'));
 const changelog = {
   newFeatures: changelogSource.newFeatures ?? changelogSource.features ?? changelogSource.changelog?.newFeatures ?? changelogSource.changelog?.features ?? [],
@@ -55,7 +60,7 @@ const changelog = {
 const manifest = {
   versionName: version,
   version,
-  versionCode: Number.parseInt(versionCode, 10),
+  versionCode,
   platform: 'android',
   channel,
   status: 'published',

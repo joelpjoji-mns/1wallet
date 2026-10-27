@@ -176,3 +176,24 @@ verified owner-specific local cleanup.
 See the [backend deployment and recovery guide](../firebase/functions/README.md)
 for receipt recovery, retention constraints, emulator verification, and the
 separate production activation checklist.
+
+## Installed-client update metadata compatibility
+
+The build passed to Flutter is a base number. A split APK has a different native
+Android `versionCode` (for example base `2102206` becomes arm64 `2104206`).
+Update manifests, release-document IDs, and channel `latestVersionCode` must
+carry the **actual packaged APK code**, read from the APK rather than guessed.
+The semantic version and APK checksum remain the authentic release values.
+
+The shipped 2.2.01 native update worker compares raw installed and published
+codes. Publishing a base code lower than its installed split code suppresses
+that worker, leaving the old Dart updater to attempt a broken notification
+before exposing its install button. Correct metadata allows the existing native
+worker to advance the shared delivery marker, which the shipped Dart flow reads
+after its normal preference-cache refresh. Users can then use the existing
+in-app checksum-verified download and Android installer handoff.
+
+Channel publication sets both `versionName` and `latestVersionName` consistently.
+The publisher never substitutes a fake zero code or disables checksum/signature
+verification. Release validation checks the actual APK against its manifest,
+and pinned legacy-client tests reproduce both the failure and recovery paths.

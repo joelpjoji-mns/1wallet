@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { findAapt } from './android-apk-tools.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -35,23 +36,6 @@ export function validateNotificationResources(required, resourceTable, packagedF
         'Preserve dynamic notification resources in res/raw/onewallet_notification_keep.xml.');
     }
   }
-}
-
-function findAapt(explicitPath) {
-  if (explicitPath) return explicitPath;
-  const sdk = process.env.ANDROID_SDK_ROOT || process.env.ANDROID_HOME ||
-    (process.platform === 'win32' && process.env.LOCALAPPDATA
-      ? path.join(process.env.LOCALAPPDATA, 'Android', 'Sdk') : null);
-  if (!sdk) throw new Error('Set ANDROID_SDK_ROOT/ANDROID_HOME or pass --aapt.');
-  const directory = path.join(sdk, 'build-tools');
-  const versions = fs.readdirSync(directory)
-    .filter(version => /^\d+\.\d+\.\d+$/.test(version))
-    .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
-  for (const version of versions) {
-    const executable = path.join(directory, version, process.platform === 'win32' ? 'aapt.exe' : 'aapt');
-    if (fs.existsSync(executable)) return executable;
-  }
-  throw new Error('No Android build-tools aapt executable is available.');
 }
 
 function main() {
