@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../auth/app_mode.dart';
 import '../auth/auth_controller.dart';
 import '../cloud_sync/cloud_sync_controller.dart';
 import '../data/ledger_models.dart';
@@ -37,6 +38,18 @@ final startupStateProvider = Provider<StartupState>((ref) {
     return const StartupState.pending(
       stage: StartupStage.session,
       message: 'Checking your secure session',
+    );
+  }
+
+  if (auth.isLocalOnly) {
+    return _offlineStartupState(
+      ref,
+      auth: auth,
+      ledgerLoad: ledgerLoad,
+      ledgerOwner: ledgerSummary.userId,
+      hasWalletData: ledgerSummary.hasWalletData,
+      onboarding: onboarding,
+      permissionSetup: permissionSetup,
     );
   }
 
@@ -189,6 +202,128 @@ final startupStateProvider = Provider<StartupState>((ref) {
 
   return const StartupState.ready(destination: StartupDestination.onboarding);
 });
+
+/// Offline mode startup: the same permissions → onboarding → home flow as a
+/// signed-in account, owned by [localOwnerId], with no cloud-sync gating and
+/// no dependency on Firebase or the network.
+StartupState _offlineStartupState(
+  Ref ref, {
+  required AuthState auth,
+  required LedgerLoadState ledgerLoad,
+  required String ledgerOwner,
+  required bool hasWalletData,
+  required OnboardingState onboarding,
+  required PermissionSetupState permissionSetup,
+}) {
+  const ownerId = localOwnerId;
+
+  if (!ledgerLoad.isReady) {
+    return const StartupState.pending(
+      stage: StartupStage.wallet,
+      message: 'Opening your offline wallet',
+    );
+  }
+
+  if (ledgerLoad.errorMessage != null) {
+    return StartupState.recoverableError(
+      title: 'Wallet setup needs attention',
+      message: ledgerLoad.errorMessage!,
+    );
+  }
+
+  // Offline mode may only ever open the device-only wallet. Anything else is
+  // resolved by AuthController (finish an interrupted upgrade, or return to
+  // sign-in) before any wallet data is shown.
+  final ownedLocally = ledgerOwner.isEmpty || ledgerOwner == ownerId;
+  if (!auth.localOwnershipVerified || !ownedLocally) {
+    if (auth.errorMessage != null && !auth.localOwnershipVerified) {
+      return StartupState.recoverableError(
+        title: 'Offline wallet needs attention',
+        message: auth.errorMessage!,
+      );
+    }
+    Future.microtask(() {
+      ref
+          .read(authControllerProvider.notifier)
+          .verifyLocalOwnership(ledgerOwner);
+    });
+    return const StartupState.pending(
+      stage: StartupStage.wallet,
+      message: 'Checking your offline wallet',
+    );
+  }
+
+  if (permissionSetup.userId != ownerId && !permissionSetup.isLoading) {
+    Future.microtask(() {
+      ref.read(permissionSetupControllerProvider.notifier).loadForUser(ownerId);
+    });
+    return const StartupState.pending(
+      stage: StartupStage.wallet,
+      message: 'Preparing permission setup',
+    );
+  }
+
+  if (permissionSetup.isLoading) {
+    return const StartupState.pending(
+      stage: StartupStage.wallet,
+      message: 'Checking device permissions',
+    );
+  }
+
+  if (permissionSetup.errorMessage != null) {
+    return StartupState.recoverableError(
+      title: 'Permissions setup needs attention',
+      message: permissionSetup.errorMessage!,
+    );
+  }
+
+  if (!permissionSetup.completed) {
+    return const StartupState.ready(
+      destination: StartupDestination.permissions,
+    );
+  }
+
+  if (hasWalletData) {
+    if (!onboarding.completed || onboarding.userId != ownerId) {
+      Future.microtask(() {
+        ref
+            .read(onboardingControllerProvider.notifier)
+            .setCompleted(ownerId, true);
+      });
+    }
+    return const StartupState.ready(destination: StartupDestination.home);
+  }
+
+  if (onboarding.userId != ownerId && !onboarding.isLoading) {
+    Future.microtask(() {
+      ref.read(onboardingControllerProvider.notifier).loadForUser(ownerId);
+    });
+    return const StartupState.pending(
+      stage: StartupStage.wallet,
+      message: 'Loading your wallet setup',
+    );
+  }
+
+  if (onboarding.isLoading) {
+    return const StartupState.pending(
+      stage: StartupStage.wallet,
+      message: 'Loading your wallet setup',
+    );
+  }
+
+  if (onboarding.errorMessage != null) {
+    return StartupState.recoverableError(
+      title: 'Wallet setup needs attention',
+      message: onboarding.errorMessage!,
+    );
+  }
+
+  if (onboarding.completed && onboarding.userId == ownerId) {
+    return const StartupState.ready(destination: StartupDestination.home);
+  }
+
+  return const StartupState.ready(destination: StartupDestination.onboarding);
+}
 
 bool _hasWalletData(LedgerState ledger) {
   return ledger.accounts.isNotEmpty || ledger.transactions.isNotEmpty;

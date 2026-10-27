@@ -20,7 +20,7 @@ The `features/` directory contains screen-level UI and user workflows for 1Walle
 | `imports/` | Bank statement import screens (PDF, CSV) | [imports/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/imports/AGENTS.md) |
 | `launch/` | Brand splash screen and initialization sequence | [launch/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/launch/AGENTS.md) |
 | `loans/` | Loan management, debt amortization & payoff simulation | [loans/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/loans/AGENTS.md) |
-| `login/` | User authentication, social logins, and guest mode entry | [login/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/login/AGENTS.md) |
+| `login/` | Google sign-in and offline-only ("Local Wallet") mode entry | [login/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/login/AGENTS.md) |
 | `main/` | Main shell, navigation bar, side drawer & navigation rail | [main/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/main/AGENTS.md) |
 | `notifications/` | Local notifications manager and budget alerts | [notifications/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/notifications/AGENTS.md) |
 | `onboarding/` | First-run setup wizard and default wallet creation | [onboarding/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/onboarding/AGENTS.md) |
@@ -28,7 +28,7 @@ The `features/` directory contains screen-level UI and user workflows for 1Walle
 | `recurring/` | Recurring payment rules, subscriptions & scheduled bills | [recurring/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/recurring/AGENTS.md) |
 | `reports/` | Financial analytics, spending breakdown & trend charts | [reports/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/reports/AGENTS.md) |
 | `routes/` | Route definitions and screen factories for GoRouter | [routes/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/routes/AGENTS.md) |
-| `settings/` | User preferences, data backup/restore, permission setup | [settings/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/settings/AGENTS.md) |
+| `settings/` | User preferences, data backup/restore, permission setup, offline mode card & Google upgrade flow | [settings/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/settings/AGENTS.md) |
 | `sync/` | Cloud sync status, manual sync triggers & conflict screen | [sync/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/sync/AGENTS.md) |
 | `transactions/` | Transaction listing, creation calculator & detail editor | [transactions/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/transactions/AGENTS.md) |
 | `updates/` | In-app software update checker and release notes modal | [updates/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/updates/AGENTS.md) |

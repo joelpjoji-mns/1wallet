@@ -42,11 +42,11 @@ class LaunchScreen extends ConsumerWidget {
           },
           tertiaryLabel: 'Open wallet anyway',
           onTertiaryAction: () {
-            final user = ref.read(authControllerProvider).user;
-            if (user != null) {
+            final ownerId = ref.read(authControllerProvider).ownerId;
+            if (ownerId != null) {
               ref
                   .read(onboardingControllerProvider.notifier)
-                  .setCompleted(user.id, true);
+                  .setCompleted(ownerId, true);
             }
             ref.read(cloudSyncControllerProvider.notifier).skipBootstrap();
           },
@@ -58,6 +58,7 @@ class LaunchScreen extends ConsumerWidget {
         body: startup.message ?? 'Something went wrong while starting 1wallet.',
         actionLabel: 'Try again',
         onAction: () {
+          ref.read(authControllerProvider.notifier).retryLocalOwnershipCheck();
           ref.read(cloudSyncControllerProvider.notifier).retryBootstrap();
           ref.invalidate(ledgerProvider);
         },

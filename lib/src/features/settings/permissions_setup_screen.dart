@@ -24,8 +24,8 @@ class _PermissionsSetupScreenState
 
   Future<void> _finishSetup() async {
     if (_requestingAll) return;
-    final user = ref.read(authControllerProvider).user;
-    if (user == null) {
+    final ownerId = ref.read(authControllerProvider).ownerId;
+    if (ownerId == null) {
       context.go('/login');
       return;
     }
@@ -59,7 +59,7 @@ class _PermissionsSetupScreenState
 
       await ref
           .read(permissionSetupControllerProvider.notifier)
-          .setCompleted(user.id, true);
+          .setCompleted(ownerId, true);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context)

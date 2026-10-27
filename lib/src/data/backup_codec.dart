@@ -127,12 +127,22 @@ Future<LedgerState> decodeBackup(
   required String targetUserId,
   bool allowLegacy = false,
   bool rewrapForImport = false,
+  bool adoptAsLocalOwner = false,
 }) async {
   ensureSupportedBackupSize(source.length);
+  // Historically a 'local-user' target meant "keep the backup's owner".
+  // Offline mode owns its wallet as 'local-user', so it opts in explicitly to
+  // have secure fields wrapped for the local owner instead.
+  final explicitTarget = adoptAsLocalOwner ? 'local-user' : targetUserId;
   if (source.startsWith('v2:')) {
     final archive = await SecureKeyStore.decrypt(source, purpose: 'backup');
     final ledger = await compute(decodeLedgerArchive, archive);
-    return _rekeyImported(ledger, targetUserId, rewrapForImport);
+    return _rekeyImported(
+      ledger,
+      explicitTarget,
+      rewrapForImport,
+      explicitLocalTarget: adoptAsLocalOwner,
+    );
   }
   final envelope = await compute(jsonDecode, source);
   if (envelope is! Map<String, dynamic> || envelope['format'] != _format) {
@@ -142,7 +152,12 @@ Future<LedgerState> decodeBackup(
       );
     }
     final ledger = await compute(decodeLedgerArchive, source);
-    return _rekeyImported(ledger, targetUserId, rewrapForImport);
+    return _rekeyImported(
+      ledger,
+      explicitTarget,
+      rewrapForImport,
+      explicitLocalTarget: adoptAsLocalOwner,
+    );
   }
   if (envelope['version'] != 1 ||
       envelope['kdf'] != 'PBKDF2-HMAC-SHA256' ||
@@ -172,7 +187,9 @@ Future<LedgerState> decodeBackup(
   return _rewrapFields(
     ledger,
     exporting: false,
-    targetUserId: targetUserId == 'local-user' ? ledger.userId : targetUserId,
+    targetUserId: targetUserId == 'local-user' && !adoptAsLocalOwner
+        ? ledger.userId
+        : explicitTarget,
   );
 }
 
@@ -196,9 +213,12 @@ String _open((String, Uint8List, Uint8List, String) input) {
 Future<LedgerState> _rekeyImported(
   LedgerState ledger,
   String target,
-  bool importing,
-) async {
-  if (!importing || target == 'local-user' || target == ledger.userId) {
+  bool importing, {
+  bool explicitLocalTarget = false,
+}) async {
+  if (!importing ||
+      (target == 'local-user' && !explicitLocalTarget) ||
+      target == ledger.userId) {
     return ledger;
   }
   final transport = await _rewrapFields(
@@ -207,4 +227,51 @@ Future<LedgerState> _rekeyImported(
     targetUserId: ledger.userId,
   );
   return _rewrapFields(transport, exporting: false, targetUserId: target);
+}
+
+/// Moves a wallet to [targetUserId]: owner-scoped secure account fields are
+/// re-encrypted for the new owner and the ledger is stamped with it.
+///
+/// Used by the offline → Google upgrade. A field that cannot be opened on
+/// this device is kept unchanged instead of aborting the migration, so the
+/// rest of the wallet is never lost because of one unreadable secret.
+Future<LedgerState> rekeyLedgerForOwner(
+  LedgerState ledger,
+  String targetUserId,
+) async {
+  if (ledger.userId == targetUserId) return ledger;
+  final accounts = <Account>[];
+  for (final account in ledger.accounts) {
+    final details = account.encryptedDetails;
+    if (details == null || details.isEmpty) {
+      accounts.add(account);
+      continue;
+    }
+    final next = <String, String>{};
+    for (final entry in details.entries) {
+      if (statementMetadataKeys.contains(entry.key)) {
+        next[entry.key] = entry.value;
+        continue;
+      }
+      final context = SecureKeyStore.fieldContext(account.id, entry.key);
+      try {
+        final versioned = entry.value.startsWith('v2:');
+        final plain = await SecureKeyStore.decrypt(
+          entry.value,
+          userId: versioned ? ledger.userId : null,
+          context: versioned ? context : null,
+        );
+        next[entry.key] = await SecureKeyStore.encrypt(
+          plain,
+          userId: targetUserId,
+          context: context,
+        );
+      } catch (error) {
+        debugPrint('Secure field kept during re-key: ${error.runtimeType}');
+        next[entry.key] = entry.value;
+      }
+    }
+    accounts.add(account.copyWith(encryptedDetails: next));
+  }
+  return ledger.copyWith(userId: targetUserId, accounts: accounts);
 }

@@ -7,8 +7,8 @@ Guides new users through their first launch: setting their base currency, creati
 
 ## 📜 Key Files
 
-- **`onboarding_screen.dart`**: Multi-step wizard UI with fluid page indicator and card transitions.
-- **`onboarding_controller.dart`**: State notifier holding temporary user selections before atomic initialization into `LedgerController`.
+- **`onboarding_screen.dart`**: Multi-step wizard UI with fluid page indicator and card transitions. Uses `AuthState.ownerId`, so it also creates the offline (`'local-user'`) wallet. Offline, the display name is stored on the device (`AuthController.setLocalDisplayName`) and no cloud upload is attempted.
+- **`onboarding_controller.dart`**: State notifier holding temporary user selections before atomic initialization into `LedgerController`. Completion is keyed by owner id. `copyCompletion` carries it over on an offline → Google upgrade.
 
 ---
 

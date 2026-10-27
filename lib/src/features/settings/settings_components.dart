@@ -12,11 +12,18 @@ class SettingsProfileSection extends StatelessWidget {
   const SettingsProfileSection({
     required this.user,
     required this.onSignOut,
+    this.offline = false,
+    this.onUpgrade,
     super.key,
   });
 
   final AuthUser? user;
   final VoidCallback onSignOut;
+
+  /// Offline mode: shows the device-only badge and offers the Google upgrade
+  /// instead of "Sign out" (which would strand the device-only wallet).
+  final bool offline;
+  final VoidCallback? onUpgrade;
 
   @override
   Widget build(BuildContext context) {
@@ -67,17 +74,21 @@ class SettingsProfileSection extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            user?.isGoogleProvider == true
+                            offline
+                                ? Icons.phonelink_lock_outlined
+                                : user?.isGoogleProvider == true
                                 ? Icons.cloud_done_outlined
                                 : Icons.cloud_outlined,
                             size: 14,
-                            color: user?.isGoogleProvider == true
+                            color: !offline && user?.isGoogleProvider == true
                                 ? Colors.green
                                 : theme.colorScheme.primary,
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            user?.isGoogleProvider == true
+                            offline
+                                ? 'Offline'
+                                : user?.isGoogleProvider == true
                                 ? 'Google Sync'
                                 : 'Local',
                             style: const TextStyle(
@@ -92,16 +103,16 @@ class SettingsProfileSection extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           FilledButton.tonal(
-                            onPressed: onSignOut,
+                            onPressed: offline ? onUpgrade : onSignOut,
                             style: FilledButton.styleFrom(
                               visualDensity: VisualDensity.compact,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
                               ),
                             ),
-                            child: const Text(
-                              'Sign out',
-                              style: TextStyle(fontSize: 12),
+                            child: Text(
+                              offline ? 'Sync with Google' : 'Sign out',
+                              style: const TextStyle(fontSize: 12),
                             ),
                           ),
                         ],

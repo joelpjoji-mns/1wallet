@@ -7,7 +7,7 @@ Handles the animated splash and launch experience when the app opens, coordinati
 
 ## 📜 Key Files
 
-- **`launch_screen.dart`**: Animated screen displaying brand logo, tagline, and progress state while local databases and encryption stores hydrate.
+- **`launch_screen.dart`**: Animated screen displaying brand logo, tagline, and progress state while local databases and encryption stores hydrate. Recovery actions use `AuthState.ownerId` and "Try again" also re-runs the offline ownership check (`retryLocalOwnershipCheck`).
 - **`brand_widgets.dart`**: Shared brand logo, frosted glass badges, and typographic headers used across launch and marketing screens.
 
 ---

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+- Offline-only mode ("Use without an account"):
+  - Run 1Wallet entirely on the device with no Google sign-in, Firebase account, or cloud sync.
+  - Includes an explicit consent sheet, offline status in Settings and Sync, and encrypted backup export/import shortcuts.
+- "Back up & sync with Google" upgrade for offline wallets:
+  - Moves the wallet to a Google account with no data loss.
+  - If the account already has a cloud wallet, the user explicitly chooses to keep this device's wallet, use the cloud wallet, or merge both.
+
+### Fixed
+- Importing a backup created by another account now re-owns it to the importing offline wallet instead of keeping the foreign account id.
+- Background SMS/notification polling now follows the active device wallet owner.
+
 ## [2.1.0] - 2026-10-26
 
 ### Added

@@ -310,8 +310,12 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
   void _init() {
     try {
-      if (Firebase.apps.isEmpty) return;
+      if (Firebase.apps.isEmpty) {
+        _markOfflineModeIfActive();
+        return;
+      }
     } catch (_) {
+      _markOfflineModeIfActive();
       return;
     }
     _ref.listen(ledgerLoadStateProvider, (previous, next) {
@@ -418,9 +422,29 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     _userDocSubscription?.cancel();
     _userDocSubscription = null;
     _cancelTimers();
-    state = const CloudSyncState(
-      disabledReason: 'Sign in with Google to enable sync.',
+    state = CloudSyncState(
+      disabledReason: _isOfflineMode
+          ? offlineModeSyncDisabledReason
+          : 'Sign in with Google to enable sync.',
     );
+  }
+
+  bool get _isOfflineMode {
+    try {
+      return _ref.read(authControllerProvider).isLocalOnly;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Offline mode keeps sync permanently disabled with a user-facing reason,
+  /// even on builds where Firebase is not configured at all.
+  void _markOfflineModeIfActive() {
+    if (_isOfflineMode) {
+      state = const CloudSyncState(
+        disabledReason: offlineModeSyncDisabledReason,
+      );
+    }
   }
 
   void _cancelTimers() {
@@ -1067,6 +1091,18 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         ),
       );
     }
+    final auth = _ref.read(authControllerProvider);
+    if (!cloudWritesAllowed(
+      localOnlyMode: auth.isLocalOnly,
+      signedInUserId: auth.user?.id,
+    )) {
+      return Future.value(
+        CloudWriteResult(
+          CloudWriteOutcome.unavailable,
+          message: auth.isLocalOnly ? offlineModeSyncDisabledReason : null,
+        ),
+      );
+    }
     final running = _uploadTask;
     if (running != null) return running;
     final task = _uploadSnapshot(reason: reason);
@@ -1646,102 +1682,16 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
   /// 1. Modern chunked backup (wallet_backups/chunk_N).
   /// 2. Legacy uncompressed collections (users/$userId/accounts, etc.) if chunked is empty.
   /// 3. Local auto-backup file (1wallet_auto_backup.onewallet) if both cloud tiers are empty.
-  Future<Map<String, dynamic>> _fetchCloudRestoreData(String userId) async {
+  Future<Map<String, dynamic>> _fetchCloudRestoreData(String userId) {
     final epoch = _syncEpoch;
-    final backupQuery = await _firestore
-        .collection('users/$userId/wallet_backups')
-        .orderBy('index')
-        .get()
-        .timeout(cloudSyncReadTimeout);
-    _ensureCurrent(userId, epoch);
-
-    Map<String, dynamic>? chunkedData;
-
-    if (backupQuery.docs.isNotEmpty) {
-      state = state.copyWith(
-        progressMessage: 'Downloading backup...',
-        progress: 0.1,
-      );
-      final compressedBytes = <int>[];
-      int processedChunks = 0;
-      final totalChunks = backupQuery.docs.length;
-
-      for (final doc in backupQuery.docs) {
-        final blob = doc.data()['data'] as Blob?;
-        if (blob != null) {
-          compressedBytes.addAll(blob.bytes);
-        }
-        processedChunks++;
-        state = state.copyWith(
-          progressMessage:
-              'Downloading chunk $processedChunks of $totalChunks...',
-          progress: 0.1 + (0.7 * (processedChunks / totalChunks)),
-        );
-      }
-
-      state = state.copyWith(
-        progressMessage: 'Extracting data...',
-        progress: 0.85,
-      );
-      // Using compute for heavy unzipping
-      final bytes = await compute(_decodeGzipBytes, compressedBytes);
-      _ensureCurrent(userId, epoch);
-      final jsonStr = await compute(utf8.decode, bytes);
-      _ensureCurrent(userId, epoch);
-      chunkedData = await compute(jsonDecode, jsonStr) as Map<String, dynamic>;
-      _ensureCurrent(userId, epoch);
-      chunkedData['userId'] = userId;
-
-      return chunkedData;
-    }
-
-    // Tier 2: Fallback to legacy uncompressed collections if no compressed backup exists,
-    // OR if the chunked backup was empty (e.g. from an erroneous empty snapshot).
-    state = state.copyWith(
-      progressMessage: 'Checking legacy collections...',
-      progress: 0.5,
-    );
-    try {
-      final results = await Future.wait([
-        _firestore.collection('users/$userId/accounts').get(),
-        _firestore.collection('users/$userId/categories').get(),
-        _firestore.collection('users/$userId/transactions').get(),
-        _firestore.collection('users/$userId/captureCandidates').get(),
-        _firestore.collection('users/$userId/importBatches').get(),
-        _firestore.doc('users/$userId/metadata/preferences').get(),
-      ]).timeout(const Duration(seconds: 45));
-      _ensureCurrent(userId, epoch);
-
-      final accountsQuery = results[0] as QuerySnapshot<Map<String, dynamic>>;
-      final categoriesQuery = results[1] as QuerySnapshot<Map<String, dynamic>>;
-      final txnsQuery = results[2] as QuerySnapshot<Map<String, dynamic>>;
-      final captureQuery = results[3] as QuerySnapshot<Map<String, dynamic>>;
-      final importsQuery = results[4] as QuerySnapshot<Map<String, dynamic>>;
-      final prefsDoc = results[5] as DocumentSnapshot<Map<String, dynamic>>;
-
-      if (accountsQuery.docs.isNotEmpty || txnsQuery.docs.isNotEmpty) {
-        debugPrint(
-          'CloudSync _fetchCloudRestoreData: recovered ${accountsQuery.docs.length} accounts and ${txnsQuery.docs.length} transactions from legacy collections!',
-        );
-        return {
-          'userId': userId,
-          'preferences': prefsDoc.exists ? prefsDoc.data() : null,
-          'accounts': accountsQuery.docs.map((d) => d.data()).toList(),
-          'categories': categoriesQuery.docs.map((d) => d.data()).toList(),
-          'transactions': txnsQuery.docs.map((d) => d.data()).toList(),
-          'captureCandidates': captureQuery.docs.map((d) => d.data()).toList(),
-          'importBatches': importsQuery.docs.map((d) => d.data()).toList(),
-          '_healedFromLegacyOrBackup': true,
-        };
-      }
-    } catch (e) {
-      if (!_isCurrent(userId, epoch)) rethrow;
-      debugPrint('CloudSync _fetchCloudRestoreData legacy fetch error: $e');
-      rethrow;
-    }
-
-    throw StateError(
-      'No valid cloud snapshot was found. Restore a backup explicitly.',
+    return _fetchCloudRestoreDataFrom(
+      _firestore,
+      userId,
+      ensureCurrent: () => _ensureCurrent(userId, epoch),
+      isCurrent: () => _isCurrent(userId, epoch),
+      onProgress: (message, progress) {
+        state = state.copyWith(progressMessage: message, progress: progress);
+      },
     );
   }
 
@@ -1984,4 +1934,196 @@ Map<String, dynamic> _encodeCloudSnapshotData(
 
 List<int> _decodeGzipBytes(List<int> bytes) {
   return const GZipDecoder().decodeBytes(bytes);
+}
+
+Future<Map<String, dynamic>> _fetchCloudRestoreDataFrom(
+  FirebaseFirestore firestore,
+  String userId, {
+  void Function()? ensureCurrent,
+  bool Function()? isCurrent,
+  void Function(String message, double progress)? onProgress,
+  GetOptions? options,
+}) async {
+  final backupQuery = await firestore
+      .collection('users/$userId/wallet_backups')
+      .orderBy('index')
+      .get(options)
+      .timeout(cloudSyncReadTimeout);
+  ensureCurrent?.call();
+
+  Map<String, dynamic>? chunkedData;
+
+  if (backupQuery.docs.isNotEmpty) {
+    onProgress?.call('Downloading backup...', 0.1);
+    final compressedBytes = <int>[];
+    int processedChunks = 0;
+    final totalChunks = backupQuery.docs.length;
+
+    for (final doc in backupQuery.docs) {
+      final blob = doc.data()['data'] as Blob?;
+      if (blob != null) {
+        compressedBytes.addAll(blob.bytes);
+      }
+      processedChunks++;
+      onProgress?.call(
+        'Downloading chunk $processedChunks of $totalChunks...',
+        0.1 + (0.7 * (processedChunks / totalChunks)),
+      );
+    }
+
+    onProgress?.call('Extracting data...', 0.85);
+    // Using compute for heavy unzipping
+    final bytes = await compute(_decodeGzipBytes, compressedBytes);
+    ensureCurrent?.call();
+    final jsonStr = await compute(utf8.decode, bytes);
+    ensureCurrent?.call();
+    chunkedData = await compute(jsonDecode, jsonStr) as Map<String, dynamic>;
+    ensureCurrent?.call();
+    chunkedData['userId'] = userId;
+
+    return chunkedData;
+  }
+
+  // Tier 2: Fallback to legacy uncompressed collections if no compressed backup exists,
+  // OR if the chunked backup was empty (e.g. from an erroneous empty snapshot).
+  onProgress?.call('Checking legacy collections...', 0.5);
+  try {
+    final results = await Future.wait([
+      firestore.collection('users/$userId/accounts').get(options),
+      firestore.collection('users/$userId/categories').get(options),
+      firestore.collection('users/$userId/transactions').get(options),
+      firestore.collection('users/$userId/captureCandidates').get(options),
+      firestore.collection('users/$userId/importBatches').get(options),
+      firestore.doc('users/$userId/metadata/preferences').get(options),
+    ]).timeout(const Duration(seconds: 45));
+    ensureCurrent?.call();
+
+    final accountsQuery = results[0] as QuerySnapshot<Map<String, dynamic>>;
+    final categoriesQuery = results[1] as QuerySnapshot<Map<String, dynamic>>;
+    final txnsQuery = results[2] as QuerySnapshot<Map<String, dynamic>>;
+    final captureQuery = results[3] as QuerySnapshot<Map<String, dynamic>>;
+    final importsQuery = results[4] as QuerySnapshot<Map<String, dynamic>>;
+    final prefsDoc = results[5] as DocumentSnapshot<Map<String, dynamic>>;
+
+    if (accountsQuery.docs.isNotEmpty || txnsQuery.docs.isNotEmpty) {
+      debugPrint(
+        'CloudSync _fetchCloudRestoreData: recovered ${accountsQuery.docs.length} accounts and ${txnsQuery.docs.length} transactions from legacy collections!',
+      );
+      return {
+        'userId': userId,
+        'preferences': prefsDoc.exists ? prefsDoc.data() : null,
+        'accounts': accountsQuery.docs.map((d) => d.data()).toList(),
+        'categories': categoriesQuery.docs.map((d) => d.data()).toList(),
+        'transactions': txnsQuery.docs.map((d) => d.data()).toList(),
+        'captureCandidates': captureQuery.docs.map((d) => d.data()).toList(),
+        'importBatches': importsQuery.docs.map((d) => d.data()).toList(),
+        '_healedFromLegacyOrBackup': true,
+      };
+    }
+  } catch (e) {
+    if (!(isCurrent?.call() ?? true)) rethrow;
+    debugPrint('CloudSync _fetchCloudRestoreData legacy fetch error: $e');
+    rethrow;
+  }
+
+  throw StateError(
+    'No valid cloud snapshot was found. Restore a backup explicitly.',
+  );
+}
+
+/// Read-only summary of a Google account's cloud wallet, used by the offline
+/// → Google upgrade to decide whether the user must pick which wallet to keep.
+@immutable
+class CloudWalletProbe {
+  const CloudWalletProbe({required this.exists, required this.live});
+
+  final bool exists;
+
+  /// The live `users/{uid}` version observed by the probe.
+  final CloudWriteState live;
+}
+
+/// A cloud wallet together with the exact cloud version it was read at.
+@immutable
+class CloudWalletSnapshot {
+  const CloudWalletSnapshot({required this.ledger, required this.version});
+
+  final LedgerState ledger;
+  final CloudWriteState version;
+}
+
+/// Checks (from the server, never the local cache) whether [userId] already
+/// has a cloud wallet, using the same presence rules as `_bootstrap`.
+Future<CloudWalletProbe> probeCloudWallet(
+  FirebaseFirestore firestore,
+  String userId,
+) async {
+  const server = GetOptions(source: Source.server);
+  final docs = await Future.wait([
+    firestore.doc('users/$userId/metadata/preferences').get(server),
+    firestore.doc('users/$userId').get(server),
+  ]).timeout(cloudSyncReadTimeout);
+  final prefsDoc = docs[0];
+  final userDoc = docs[1];
+  var exists = hasCloudWalletData(
+    userDocExists: userDoc.exists,
+    legacyPreferencesDocExists: prefsDoc.exists,
+  );
+  final live = _cloudWriteStateFromDocData(userDoc.data());
+  if (userDoc.exists &&
+      !prefsDoc.exists &&
+      (live.cloudRevision == null || live.cloudRevision == 0)) {
+    final presence = await Future.wait([
+      firestore.collection('users/$userId/wallet_backups').limit(1).get(server),
+      firestore.collection('users/$userId/accounts').limit(1).get(server),
+      firestore.collection('users/$userId/transactions').limit(1).get(server),
+    ]).timeout(cloudSyncReadTimeout);
+    exists = presence.any((snapshot) => snapshot.docs.isNotEmpty);
+  }
+  return CloudWalletProbe(exists: exists, live: live);
+}
+
+/// Downloads [userId]'s cloud wallet bracketed by version reads, so the
+/// returned [CloudWalletSnapshot.version] describes exactly the returned
+/// ledger. Used to merge an offline wallet into an existing cloud wallet.
+Future<CloudWalletSnapshot> fetchCloudWalletSnapshot(
+  FirebaseFirestore firestore,
+  String userId,
+) async {
+  const server = GetOptions(source: Source.server);
+  final (
+    data,
+    version,
+  ) = await readCloudSyncVersionConsistent<Map<String, dynamic>>(
+    readVersionToken: () async {
+      final snap = await firestore
+          .doc('users/$userId')
+          .get(server)
+          .timeout(cloudSyncReadTimeout);
+      return _cloudWriteStateFromDocData(snap.data());
+    },
+    fetchPayload: () =>
+        _fetchCloudRestoreDataFrom(firestore, userId, options: server),
+  );
+  final ledger = await compute(_parseCloudRestoreData, data);
+  return CloudWalletSnapshot(ledger: ledger, version: version);
+}
+
+/// Records [userId] as this device's sync owner before an offline → Google
+/// upgrade publishes the account, so `_bootstrap` never treats the migrated
+/// wallet as a previous user's leftovers. [baseline] is the cloud version the
+/// migrated wallet is known to supersede (keep-this-device / merge); the
+/// first upload then replaces exactly that version and any newer cloud write
+/// is still caught by the transactional conflict check.
+Future<void> primeCloudSyncOwnerForUpgrade(
+  String userId, {
+  CloudWriteState? baseline,
+}) async {
+  final existing = await CloudSyncMetadata.load();
+  await CloudSyncMetadata(
+    deviceId: existing.deviceId,
+    userId: userId,
+    lastCloudRevision: baseline?.cloudRevision,
+    lastObservedCloudUpdatedAt: baseline?.updatedAt?.toUtc().toIso8601String(),
+  ).save();
 }

@@ -10,6 +10,7 @@ UI screen and diagnostics for monitoring cloud synchronization status, viewing l
 - **`sync_screen.dart`**:
   - Displays sync state (`idle`, `restoring`, `uploading`, `error`), pending record counts, connected device ID, and account email.
   - Provides a manual "Sync Now" button and conflict resolution actions.
+  - In offline mode the screen shows `OfflineModeCard` (from `../settings/offline_mode_section.dart`) above the cloud card. The cloud card renders its disabled state ("Not syncing" plus `offlineModeSyncDisabledReason`). Sync Now, interval and verification UI stay hidden.
 
 ---
 

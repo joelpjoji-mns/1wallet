@@ -130,6 +130,25 @@ the native SQLite acknowledgment succeeds, and preserved across cloud/manual
 restore. The native queue tags owner/source/stable ID and retains quarantined
 payloads. Legacy unowned messages require confirmation before assignment.
 
+### Offline mode (device-only wallets)
+
+- `one_wallet.app_mode.v1` (`online` | `offline`, absent = `online`) is a
+  device-scoped preference read synchronously at startup.
+  `one_wallet.app_mode.local_name.v1` optionally stores the offline profile
+  name. Neither is part of the ledger or any backup.
+- An offline wallet is owned by `'local-user'` (the long-standing sentinel). It
+  uses the same `onewallet.local.v2` persistence, owner-scoped secure fields,
+  device auto-backups and capture queue as a signed-in account, under that
+  owner id. Edits still set `has_unsynced_changes`; nothing is ever uploaded.
+- Importing any backup offline stamps `'local-user'` and re-wraps secure fields
+  for it (`decodeBackup(adoptAsLocalOwner: true)`).
+- Offline → Google upgrade re-keys secure fields to the uid
+  (`rekeyLedgerForOwner`), copies the local permission/onboarding completion
+  flags, and primes `one_wallet_flutter.cloud_sync.v1` with the uid (and the
+  superseded cloud baseline for keep-local/merge) before publishing the
+  account. Keep-cloud first writes the offline wallet's encrypted on-device
+  automatic backup, then resets the device like a fresh sign-in.
+
 ## Financial input validation
 
 Required money is `{ amountMinor: integer, currency: string }`. Malformed supplied

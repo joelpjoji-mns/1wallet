@@ -14,6 +14,7 @@ import '../common/full_screen_picker.dart';
 import '../common/route_scaffold.dart';
 import '../onboarding/onboarding_controller.dart';
 import 'account_deletion_controller.dart';
+import 'offline_mode_section.dart';
 import 'permission_setup_controller.dart';
 import 'settings_components.dart';
 
@@ -61,7 +62,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final state = ref.watch(ledgerProvider);
     final auth = ref.watch(authControllerProvider);
     final themeState = ref.watch(themeControllerProvider);
-    final user = auth.user;
     final appLock = ref.watch(appLockProvider);
 
     return RouteScaffold(
@@ -77,10 +77,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 children: [
                   // ── Profile ──
                   SettingsProfileSection(
-                    user: user,
+                    user: auth.profileUser,
+                    offline: auth.isLocalOnly,
                     onSignOut: () => _signOut(ref),
+                    onUpgrade: () => showOfflineUpgradeSheet(context),
                   ),
                   const SizedBox(height: AppSpacing.md),
+
+                  if (auth.isLocalOnly) ...[
+                    const OfflineModeCard(),
+                    const SizedBox(height: AppSpacing.md),
+                  ],
 
                   // ── Privacy (prominent quick access) ──
                   _PrivacyQuickCard(
@@ -322,39 +329,42 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   const SizedBox(height: AppSpacing.md),
 
                   // ── Danger zone ──
-                  GlassGroupedSection(
-                    header: Text(
-                      'Danger zone',
-                      style: TextStyle(
-                        color: theme.colorScheme.error,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    children: [
-                      GlassListTile(
-                        leading: Icon(
-                          Icons.delete_forever_rounded,
+                  // Offline mode has no account to delete; its wallet is
+                  // managed through backups and Data backup instead.
+                  if (!auth.isLocalOnly)
+                    GlassGroupedSection(
+                      header: Text(
+                        'Danger zone',
+                        style: TextStyle(
                           color: theme.colorScheme.error,
+                          fontWeight: FontWeight.bold,
                         ),
-                        title: Text(
-                          'Delete account',
-                          style: TextStyle(
+                      ),
+                      children: [
+                        GlassListTile(
+                          leading: Icon(
+                            Icons.delete_forever_rounded,
                             color: theme.colorScheme.error,
-                            fontWeight: FontWeight.w600,
                           ),
+                          title: Text(
+                            'Delete account',
+                            style: TextStyle(
+                              color: theme.colorScheme.error,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: const Text(
+                            'Delete this account\'s cloud data and its wallet on this device.',
+                          ),
+                          trailing: Icon(
+                            Icons.chevron_right,
+                            size: 20,
+                            color: theme.colorScheme.error,
+                          ),
+                          onTap: _showDeleteAccountDialog,
                         ),
-                        subtitle: const Text(
-                          'Delete this account\'s cloud data and its wallet on this device.',
-                        ),
-                        trailing: Icon(
-                          Icons.chevron_right,
-                          size: 20,
-                          color: theme.colorScheme.error,
-                        ),
-                        onTap: _showDeleteAccountDialog,
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
                   const SizedBox(height: AppSpacing.xl),
                 ],
               ),
@@ -454,6 +464,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _signOut(WidgetRef ref) async {
+    // Signing out clears the device wallet; offline mode has no other copy.
+    if (ref.read(authControllerProvider).isLocalOnly) return;
     await ref.read(ledgerProvider.notifier).flushAutoBackupBeforeSignOut();
     await ref.read(cloudSyncControllerProvider.notifier).handleSignOut();
     await ref.read(ledgerProvider.notifier).clearSessionOnSignOut();

@@ -39,8 +39,17 @@ class LedgerUserIdentity {
   final String? displayName;
   final String? email;
 
+  /// The offline-mode owner of a wallet that lives only on this device.
+  static const localOwner = LedgerUserIdentity(userId: 'local-user');
+
   bool get isAuthenticated =>
       userId.trim().isNotEmpty && userId.trim() != 'local-user';
+
+  bool get isLocalOwner => userId.trim() == 'local-user';
+
+  /// Whether this identity owns the device wallet: a signed-in Google account
+  /// or the offline-mode local owner. Gates on-device capture ownership.
+  bool get ownsDeviceWallet => isAuthenticated || isLocalOwner;
 }
 
 /// Sanitizes a name, email, or userId segment for safe cross-platform filenames.
@@ -170,9 +179,10 @@ final ledgerLoadStateProvider = StateProvider<LedgerLoadState>((ref) {
 final ledgerProvider = StateNotifierProvider<LedgerController, LedgerState>((
   ref,
 ) {
-  final initialAuthUser = ref.read(authControllerProvider).user;
+  final initialAuth = ref.read(authControllerProvider);
+  final initialAuthUser = initialAuth.user;
   final initialIdentity = initialAuthUser == null
-      ? null
+      ? (initialAuth.isLocalOnly ? LedgerUserIdentity.localOwner : null)
       : LedgerUserIdentity(
           userId: initialAuthUser.id,
           displayName: initialAuthUser.displayName,
@@ -234,8 +244,14 @@ final ledgerProvider = StateNotifierProvider<LedgerController, LedgerState>((
           ),
         ),
       );
+    } else if (next.isLocalOnly) {
+      if (previous?.isLocalOnly != true) {
+        unawaited(controller.setActiveUser(LedgerUserIdentity.localOwner));
+      }
     } else if (previous?.user != null) {
       unawaited(controller.clearSessionOnSignOut());
+    } else if (previous?.isLocalOnly == true) {
+      unawaited(controller.releaseLocalOwner());
     }
   });
   return controller;
@@ -701,7 +717,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     final preferences = state.preferences;
     return CaptureQueue.client.configure(
       active != null &&
-              active.isAuthenticated &&
+              active.ownsDeviceWallet &&
               state.userId == active.userId &&
               _deletingOwner != active.userId
           ? active.userId
@@ -721,7 +737,7 @@ class LedgerController extends StateNotifier<LedgerState> {
   Future<void> assignLegacyCaptures() => _runMutation(() async {
     final owner = _activeUser;
     if (owner == null ||
-        !owner.isAuthenticated ||
+        !owner.ownsDeviceWallet ||
         state.userId != owner.userId) {
       throw StateError('Sign in before assigning legacy captures.');
     }
@@ -989,6 +1005,133 @@ class LedgerController extends StateNotifier<LedgerState> {
     await _repository.clear();
   }
 
+  /// Prepares this device's wallet for offline mode and makes the local owner
+  /// active.
+  ///
+  /// Returns false and changes nothing when the stored wallet still holds
+  /// data owned by a Google account: offline mode never opens (or silently
+  /// discards) another owner's wallet. An empty leftover wallet of a previous
+  /// account is replaced by an empty local one.
+  Future<bool> claimForLocalOwner() => _runMutation(() async {
+    final prefs = await SharedPreferences.getInstance();
+    _checkSession();
+    final owner = state.userId;
+    if (owner.isNotEmpty && owner != 'local-user') {
+      if (_hasWalletData(state)) return false;
+      state = emptyLedgerState();
+      await _repository.clear();
+      _checkSession();
+      await prefs.remove('has_unsynced_changes');
+      await prefs.remove('last_local_modified_at');
+      _checkSession();
+    }
+    if (!await prefs.setString(_lastActiveUserIdKey, 'local-user')) {
+      throw StateError('Could not persist wallet ownership.');
+    }
+    _checkSession();
+    _activeUser = LedgerUserIdentity.localOwner;
+    await _publishCaptureConfiguration();
+    _checkSession();
+    _syncSpoolPolling();
+    _setLoadState(
+      LedgerLoadState.ready(hasPersistedLedger: _hasWalletData(state)),
+    );
+    return true;
+  });
+
+  /// Detaches the offline owner when offline mode is left without an upgrade
+  /// (the stored wallet turned out to belong to a Google account).
+  Future<void> releaseLocalOwner() => _runMutation(() async {
+    if (!(_activeUser?.isLocalOwner ?? false)) return;
+    _spoolPollTimer?.cancel();
+    _spoolPollTimer = null;
+    _activeUser = null;
+    await CaptureQueue.client.configure(null);
+    _checkSession();
+  }, allowDuringDeletion: true);
+
+  void _requireOfflineWalletFor(LedgerUserIdentity owner) {
+    if (!owner.isAuthenticated) {
+      throw ArgumentError('A Google account owner is required.');
+    }
+    if (state.userId != 'local-user' || !(_activeUser?.isLocalOwner ?? false)) {
+      throw StateError(
+        'Only the offline wallet can be moved to a Google account.',
+      );
+    }
+  }
+
+  /// Offline → Google upgrade ("keep this device" / "merge"): moves the
+  /// offline wallet to [owner] in one serialized step — drain captures queued
+  /// for the local owner, re-key secure account fields, stamp the owner and
+  /// commit it as unsynced so cloud sync uploads it. [transform] receives the
+  /// re-keyed wallet and may return a different wallet of the same owner
+  /// (used to merge with the cloud wallet).
+  Future<void> adoptLocalWalletForOwner(
+    LedgerUserIdentity owner, {
+    LedgerState Function(LedgerState rekeyed)? transform,
+  }) => _runMutation(() async {
+    _requireOfflineWalletFor(owner);
+    await _processQueuedCaptures('sms');
+    await _processQueuedCaptures('notification');
+    _checkSession();
+    _spoolPollTimer?.cancel();
+    _spoolPollTimer = null;
+    await CaptureQueue.client.configure(null);
+    _checkSession();
+    final rekeyed = await rekeyLedgerForOwner(state, owner.userId);
+    _checkSession();
+    final next = transform == null ? rekeyed : transform(rekeyed);
+    if (next.userId != owner.userId) {
+      throw StateError('The migrated wallet has the wrong owner.');
+    }
+    _activeUser = owner;
+    await _commit(next);
+    await _publishCaptureConfiguration();
+    _checkSession();
+    _syncSpoolPolling();
+    _setLoadState(
+      LedgerLoadState.ready(hasPersistedLedger: _hasWalletData(state)),
+    );
+  });
+
+  /// Offline → Google upgrade ("use cloud wallet"): leaves the device exactly
+  /// like a fresh sign-in so the standard cloud restore pulls the account's
+  /// wallet. The offline wallet is first written to its encrypted on-device
+  /// automatic backup; if that safety copy cannot be written nothing changes.
+  Future<void> resetLocalWalletForCloudOwner(LedgerUserIdentity owner) =>
+      _runMutation(() async {
+        _requireOfflineWalletFor(owner);
+        _spoolPollTimer?.cancel();
+        _spoolPollTimer = null;
+        _prefsSaveTimer?.cancel();
+        _prefsSaveTimer = null;
+        _autoBackupTimer?.cancel();
+        _autoBackupTimer = null;
+        await CaptureQueue.client.configure(null);
+        _checkSession();
+        if (_hasWalletData(state) && !LedgerProvidersConfig.disableAutoBackup) {
+          await _performAutoBackup(
+            state,
+            userOverride: LedgerUserIdentity.localOwner,
+          );
+          _checkSession();
+        }
+        final prefs = await SharedPreferences.getInstance();
+        _checkSession();
+        _activeUser = owner;
+        state = emptyLedgerState(userId: owner.userId);
+        await _repository.clear();
+        _checkSession();
+        await prefs.remove('has_unsynced_changes');
+        await prefs.remove('last_local_modified_at');
+        if (!await prefs.setString(_lastActiveUserIdKey, owner.userId)) {
+          throw StateError('Could not persist wallet ownership.');
+        }
+        _checkSession();
+        _setLoadState(const LedgerLoadState.ready(hasPersistedLedger: false));
+      });
+
   Future<void> purgeAllLocalData({LedgerUserIdentity? userOverride}) {
     if (userOverride == null ||
         state.userId == userOverride.userId ||
@@ -1029,7 +1172,7 @@ class LedgerController extends StateNotifier<LedgerState> {
 
   void resumeSpoolPolling() {
     _isSpoolPollingPaused = false;
-    if (isDeletionPending || !(_activeUser?.isAuthenticated ?? false)) return;
+    if (isDeletionPending || !(_activeUser?.ownsDeviceWallet ?? false)) return;
     unawaited(processSpooledSms());
     unawaited(processSpooledNotifications());
     _syncSpoolPolling();
@@ -1041,7 +1184,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     if (_isSpoolPollingPaused ||
         !mounted ||
         isDeletionPending ||
-        !(_activeUser?.isAuthenticated ?? false)) {
+        !(_activeUser?.ownsDeviceWallet ?? false)) {
       return;
     }
     if (foundation.kIsWeb ||
@@ -1053,7 +1196,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     _spoolPollTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (!mounted ||
           isDeletionPending ||
-          !(_activeUser?.isAuthenticated ?? false)) {
+          !(_activeUser?.ownsDeviceWallet ?? false)) {
         return;
       }
       unawaited(processSpooledSms());
@@ -1270,12 +1413,14 @@ class LedgerController extends StateNotifier<LedgerState> {
     bool force = false,
     String? passphrase,
   }) => _runMutation(() async {
+    final localOwner = _activeUser?.isLocalOwner ?? false;
     final incoming = await decodeBackup(
       archiveSource,
       passphrase: passphrase,
       targetUserId: _activeUser?.userId ?? state.userId,
       allowLegacy: true,
       rewrapForImport: true,
+      adoptAsLocalOwner: localOwner,
     );
     _checkSession();
     final active = _activeUser;
@@ -1297,7 +1442,7 @@ class LedgerController extends StateNotifier<LedgerState> {
         'This prevents accidental data loss.',
       );
     }
-    final stamped = (active != null && active.isAuthenticated)
+    final stamped = (active != null && active.ownsDeviceWallet)
         ? incoming.copyWith(userId: active.userId)
         : incoming;
     await _commit(

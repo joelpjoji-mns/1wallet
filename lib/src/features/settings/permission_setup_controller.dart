@@ -15,14 +15,14 @@ final permissionSetupControllerProvider =
       } catch (_) {}
       String? initialUserId;
       try {
-        initialUserId = ref.read(authControllerProvider).user?.id;
+        initialUserId = ref.read(authControllerProvider).ownerId;
       } catch (_) {}
       final controller = PermissionSetupController(
         prefs: prefs,
         initialUserId: initialUserId,
       );
       ref.listen<AuthState>(authControllerProvider, (prev, next) {
-        final nextUserId = next.user?.id;
+        final nextUserId = next.ownerId;
         if (nextUserId != null && prefs != null) {
           controller.syncForUser(nextUserId);
         }
@@ -105,6 +105,19 @@ class PermissionSetupController extends StateNotifier<PermissionSetupState> {
 
   void clear() {
     state = const PermissionSetupState();
+  }
+
+  /// Marks [to] as set up when [from] already finished permission setup,
+  /// without switching the active owner (used by the offline → Google
+  /// upgrade).
+  static Future<void> copyCompletion({
+    required String from,
+    required String to,
+  }) async {
+    final preferences = await SharedPreferences.getInstance();
+    if (preferences.getBool(_key(from)) ?? false) {
+      await preferences.setBool(_key(to), true);
+    }
   }
 
   static String _key(String userId) {

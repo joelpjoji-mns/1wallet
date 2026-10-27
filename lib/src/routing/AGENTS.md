@@ -19,6 +19,7 @@ Configures declarative routing for the application using `go_router`, handling d
 1. **Authentication & Onboarding Guards**:
    - If user has not completed onboarding, any path redirect must funnel to `/onboarding`.
    - If app lock is triggered, the route is held under `AppLockGate`.
+   - Redirects follow `startupStateProvider` only. Offline mode (`AuthPhase.localOnly`) is a first-class session: it never redirects to `/login`. Like a signed-in account, it may open `/data-backup` from a recoverable startup error.
 2. **Deep Link Safety**:
    - Deep links into subroutes (e.g. `/transaction/xyz`) must handle non-existent IDs gracefully by falling back to the parent route without crashing.
 

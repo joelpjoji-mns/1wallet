@@ -21,6 +21,8 @@ Checks for newer application releases via Firebase or GitHub releases manifest, 
    - Version comparison must parse SemVer strings (`major.minor.patch+build`) correctly.
 2. **Non-Blocking UI**:
    - Update checks must fail silently on network unavailability without blocking normal app usage unless marked as a critical breaking update.
+3. **No Account Dependency**:
+   - Update checks must keep working in offline mode (no Firebase user). They read public `appUpdates/*` documents (unauthenticated `get` is allowed by `firebase/firestore.rules`) and fall back to the GitHub Releases API. Never gate update checks on `authControllerProvider`.
 
 ---
 

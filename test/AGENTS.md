@@ -11,6 +11,17 @@ Contains unit tests, widget tests, integration flows, and test fixtures for the 
 - **`test_harness.dart`**: Boilerplate test harness providing mocked Riverpod containers, Fake authentication users, and standard screen test wrappers.
 - **`test_prefs.dart` & `test_sp.dart`**: In-memory `SharedPreferences` mocks for deterministic testing without disk I/O.
 - **`fixtures/`**: Sample bank SMS messages, mock PDF statements, and sample CSV export files.
+- **`offline_mode_fakes.dart`**: `FakeAuthRepository` (scripted Google sign-in, no Firebase), `MemoryLedgerRepository` and `FakeUpgradeGateway` (Firestore stand-in for the offline → Google upgrade).
+
+### Offline mode coverage
+
+| Test | Covers |
+| :--- | :--- |
+| `offline_mode_startup_test.dart` | Offline startup routing with no Firebase. Default online flow unchanged. Foreign/interrupted ownership. Cloud sync stays disabled and never reaches Firestore. |
+| `offline_backup_roundtrip_test.dart` | Encrypted export → wipe → import, and local-owner re-ownership of imported backups. |
+| `offline_upgrade_migration_test.dart` | Offline → Google migration: no cloud wallet, and keep local / keep cloud / merge / cancel / failure branches. Also `mergeLedgerStates`. |
+| `login_offline_option_test.dart` | Offline entry button and acknowledgement gate. |
+| `offline_mode_screens_test.dart` | Settings and Sync render the offline state through the real router. |
 
 ---
 

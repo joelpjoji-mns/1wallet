@@ -128,7 +128,8 @@ Synchronization with Firebase Firestore follows an optimistic document snapshot 
 
 SMS and notification producers append to one app-private SQLite queue on a
 background executor. Owner and filtering configuration are revisioned together;
-an append from an obsolete configuration is rejected. Signed-out capture pauses.
+an append from an obsolete configuration is rejected. Signed-out capture pauses;
+offline mode captures for the `'local-user'` owner.
 Consumers read without deleting, validate/quarantine individual entries, commit
 the ledger with durable local ingress receipts, then acknowledge IDs. Pending
 receipts survive restart and prevent duplicate application after an ack failure.
@@ -153,6 +154,36 @@ and update notifications remain separate supported paths. App lock is configured
 locally through its device controller, not an obsolete synced ledger flag.
 Archived-data decoders, legacy queue migration, and upgrade regression fixtures
 remain intentionally supported; synchronization alone does not retire them.
+
+### 8. Offline-Only Mode ("Local Wallet")
+
+A user can choose "Use without an account (Offline)" on the entry screen. The
+persisted `AppMode` (`lib/src/auth/app_mode.dart`) puts `AuthController` in
+`AuthPhase.localOnly`:
+
+- No Firebase user is published and no anonymous account is created.
+- The wallet is owned by `'local-user'`.
+- Startup runs permissions → onboarding → home without Firebase or network.
+- `CloudSyncController` stays `disabled`, because every Firestore path requires
+  a published user.
+- Capture, auto-backups, encrypted export/import, app lock and in-app updates
+  work as for signed-in users.
+- A missing mode means `online`, so existing installs are unaffected.
+
+"Back up & sync with Google" (`lib/src/offline_mode/`) runs these steps in
+order:
+
+1. Sign in without publishing the account.
+2. Probe the cloud. If both wallets hold data, ask the user to keep local, keep
+   cloud, or merge.
+3. Prime the sync owner and baseline.
+4. Migrate the wallet in one serialized ledger mutation.
+5. Persist `online`, then publish the account.
+
+The standard bootstrap then uploads (keep local / merge) or restores (keep
+cloud), and the transactional conflict check still guards concurrent cloud
+writes. An interrupted upgrade is finished or safely returned to sign-in at the
+next startup. Offline mode never opens a wallet owned by a Google uid.
 
 ---
 

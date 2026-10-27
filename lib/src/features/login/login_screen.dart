@@ -3,9 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/auth_controller.dart';
 import '../launch/brand_widgets.dart';
+import 'offline_mode_sheet.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
+
+  static const offlineButtonKey = Key('login-use-offline');
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -285,7 +288,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 48),
+                        const SizedBox(height: 20),
+                        StaggeredFadeIn(
+                          delay: const Duration(milliseconds: 260),
+                          child: Center(
+                            child: TextButton.icon(
+                              key: LoginScreen.offlineButtonKey,
+                              onPressed: auth.isSigningIn
+                                  ? null
+                                  : () => showOfflineModeSheet(context),
+                              icon: const Icon(Icons.phonelink_lock_outlined),
+                              label: const Text(
+                                'Use without an account (Offline)',
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 28),
                         Center(
                           child: Text(
                             'Secure • Private • Local First',

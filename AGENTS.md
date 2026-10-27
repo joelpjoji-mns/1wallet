@@ -49,6 +49,7 @@ Every functional directory in this codebase maintains its own dedicated `AGENTS.
 | `lib/src/features/` | Feature screen modules & UI domains | [features/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/AGENTS.md) |
 | `lib/src/imports/` | PDF statement extraction, CSV parser | [imports/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/imports/AGENTS.md) |
 | `lib/src/ledger/` | Derived selectors, balance aggregation, net worth | [ledger/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/ledger/AGENTS.md) |
+| `lib/src/offline_mode/` | Offline-only mode entry & offline → Google upgrade coordination | [offline_mode/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/offline_mode/AGENTS.md) |
 | `lib/src/routing/` | GoRouter declarative routes, redirect guards | [routing/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/routing/AGENTS.md) |
 | `lib/src/security/` | Biometric authentication, PIN lock gate | [security/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/security/AGENTS.md) |
 | `lib/src/services/` | Local notifications & device background services | [services/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/services/AGENTS.md) |

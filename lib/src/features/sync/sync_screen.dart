@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
+import '../../auth/auth_controller.dart';
 import '../../cloud_sync/cloud_sync_controller.dart';
 import '../../cloud_sync/cloud_sync_write_guard.dart';
 import '../../data/ledger_models.dart';
@@ -13,6 +14,7 @@ import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 import '../common/route_scaffold.dart';
+import '../settings/offline_mode_section.dart';
 import '../transactions/transaction_row.dart';
 
 class SyncScreen extends ConsumerStatefulWidget {
@@ -37,7 +39,10 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final sync = ref.watch(cloudSyncControllerProvider);
-    final enabled = sync.phase != CloudSyncPhase.disabled;
+    final offline = ref.watch(
+      authControllerProvider.select((auth) => auth.isLocalOnly),
+    );
+    final enabled = !offline && sync.phase != CloudSyncPhase.disabled;
     final state = ref.watch(ledgerProvider);
     final pending = state.captureCandidates
         .where((candidate) => candidate.status == 'pending')
@@ -67,6 +72,11 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
         children: [
           if (isWorking) ...[
             const LinearProgressIndicator(),
+            const SizedBox(height: 16),
+          ],
+
+          if (offline) ...[
+            const OfflineModeCard(),
             const SizedBox(height: 16),
           ],
 

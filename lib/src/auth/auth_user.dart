@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/foundation.dart';
 
+import 'app_mode.dart';
+
 @immutable
 class AuthUser {
   const AuthUser({
@@ -10,6 +12,19 @@ class AuthUser {
     this.photoUrl,
     this.provider = 'firebase',
   });
+
+  /// Synthetic identity for offline mode. It is never published as
+  /// `AuthState.user`; it only feeds profile UI.
+  factory AuthUser.local({String? displayName}) => AuthUser(
+    id: localOwnerId,
+    email: 'Stored only on this device',
+    displayName: (displayName?.trim().isNotEmpty ?? false)
+        ? displayName!.trim()
+        : 'Offline wallet',
+    provider: localProvider,
+  );
+
+  static const localProvider = 'local';
 
   final String id;
   final String email;
@@ -21,10 +36,13 @@ class AuthUser {
 
   bool get isPasswordProvider => provider == 'password';
 
+  bool get isLocalProvider => provider == localProvider;
+
   String get providerLabel {
     return switch (provider) {
       'google.com' => 'Google',
       'password' => 'Email/password',
+      localProvider => 'This device',
       _ => 'Firebase',
     };
   }

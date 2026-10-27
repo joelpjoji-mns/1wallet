@@ -7,7 +7,7 @@ Provides the root application frame and shell layout, managing the bottom floati
 
 ## 📜 Key Files
 
-- **`main_shell.dart`**: Root scaffold managing child route placement, tab selection state, and adaptive layout transitions based on screen width breakpoints.
+- **`main_shell.dart`**: Root scaffold managing child route placement, tab selection state, and adaptive layout transitions based on screen width breakpoints. Confirms a completed offline → Google upgrade with a snackbar (the post-upgrade redirect closes the upgrade sheet). In offline mode the drawer's "Sign out" tile becomes "Back up with Google" (→ Settings), because signing out would wipe the device-only wallet.
 - **`main_drawer_components.dart`**: Right/left swipeable drawer with quick shortcuts to Settings, Categories, Currencies, Backup, and Diagnostics.
 
 ---

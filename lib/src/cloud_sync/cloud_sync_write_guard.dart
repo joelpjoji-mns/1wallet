@@ -630,3 +630,19 @@ Future<(TPayload, CloudWriteState)> readCloudSyncVersionConsistent<TPayload>({
     'settles.',
   );
 }
+
+/// Shown when cloud sync is off because the device runs in offline mode.
+const offlineModeSyncDisabledReason =
+    'Offline mode is on. This wallet is stored only on this device and is '
+    'never uploaded.';
+
+/// Offline mode (a device-only wallet) must never write to Firestore, even if
+/// a caller reaches an upload entry point directly. Any cloud write also needs
+/// a signed-in Firebase owner.
+bool cloudWritesAllowed({
+  required bool localOnlyMode,
+  required String? signedInUserId,
+}) =>
+    !localOnlyMode &&
+    signedInUserId != null &&
+    signedInUserId.trim().isNotEmpty;

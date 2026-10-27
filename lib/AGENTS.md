@@ -12,7 +12,7 @@ lib/
 ├── main.dart             # Application entrypoint: initialization, error boundaries, runApp
 └── src/
     ├── app/              # OneWalletApp root widget, lifecycle and theme wiring
-    ├── auth/             # Authentication controller and user session state
+    ├── auth/             # Authentication controller, session state, and persisted app mode (online/offline)
     ├── capture/          # Core message, SMS, and receipt capture parsing pipeline
     ├── cloud_sync/       # Offline-first Firestore sync engine and write guards
     ├── config/           # Environment and Firebase configurations
@@ -21,6 +21,7 @@ lib/
     ├── features/         # Screen-level feature modules (accounts, transactions, home, etc.)
     ├── imports/          # Statement parsing engines (PDF, CSV)
     ├── ledger/           # Pure ledger selectors, derived aggregations, and balances
+    ├── offline_mode/     # Offline-only mode entry and offline → Google upgrade coordinator
     ├── routing/          # GoRouter definitions and route protection
     ├── security/         # App lock, biometric auth, and gate widgets
     ├── services/         # Background services and notification dispatchers

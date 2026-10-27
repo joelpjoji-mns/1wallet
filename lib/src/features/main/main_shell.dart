@@ -13,6 +13,7 @@ import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
+import '../../offline_mode/offline_mode_controller.dart';
 import '../../widgets/user_identity_widgets.dart';
 import '../../widgets/bottom_island_nav.dart';
 import 'main_drawer_components.dart';
@@ -85,6 +86,32 @@ class _MainShellState extends ConsumerState<MainShell>
       ref.read(exchangeRateServiceProvider).refreshRatesIfStale();
       ref.read(appUpdateProvider.notifier).checkForUpdates();
     });
+    // The redirect that follows an offline → Google upgrade replaces the page
+    // stack (closing the upgrade sheet), so confirm the result here.
+    ref.listenManual<OfflineModeState>(offlineModeControllerProvider, (
+      previous,
+      next,
+    ) {
+      if (next.stage != OfflineUpgradeStage.completed ||
+          next.completionAnnounced) {
+        return;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(offlineModeControllerProvider.notifier).markAnnounced();
+        ScaffoldMessenger.maybeOf(context)
+          ?..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(
+                'Backup & sync is on for '
+                '${next.accountEmail ?? 'your Google account'}.',
+              ),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+      });
+    }, fireImmediately: true);
     _lightBackgroundPeriodicTimer = Timer.periodic(
       const Duration(minutes: 15),
       (_) {
@@ -364,8 +391,14 @@ class AppMainDrawer extends ConsumerWidget {
             updateState.status == UpdateStatus.idle
         ? '!'
         : null;
-    final profileName = _profileName(auth.user, ledger);
-    final profileSubtitle = _profileSubtitle(auth.user, ledger);
+    final profileName = auth.isLocalOnly && auth.localDisplayName != null
+        ? auth.localDisplayName!
+        : _profileName(auth.user, ledger);
+    final profileSubtitle = _profileSubtitle(
+      auth.user,
+      ledger,
+      offline: auth.isLocalOnly,
+    );
     final profileInitials = auth.user?.initials ?? _walletInitials(profileName);
 
     Widget content = SafeArea(
@@ -594,41 +627,56 @@ class AppMainDrawer extends ConsumerWidget {
                             accentColor: scheme.primary,
                           ),
                           const SizedBox(height: AppSpacing.xs),
-                          DrawerRouteTile(
-                            config: DrawerRowConfig.route(
-                              'Sign out',
-                              Icons.logout_outlined,
-                              '/login',
+                          if (auth.isLocalOnly)
+                            // Signing out wipes the device wallet, so offline
+                            // mode offers the Google upgrade (in Settings).
+                            DrawerRouteTile(
+                              config: DrawerRowConfig.route(
+                                'Back up with Google',
+                                Icons.cloud_upload_outlined,
+                                '/settings',
+                              ),
+                              selectedIndex: selectedIndex,
+                              onTabSelected: onTabSelected,
+                              accentColor: scheme.primary,
+                            )
+                          else
+                            DrawerRouteTile(
+                              config: DrawerRowConfig.route(
+                                'Sign out',
+                                Icons.logout_outlined,
+                                '/login',
+                              ),
+                              selectedIndex: selectedIndex,
+                              onTabSelected: onTabSelected,
+                              danger: true,
+                              accentColor: scheme.error,
+                              onTapOverride: () async {
+                                Navigator.of(context).pop();
+                                await ref
+                                    .read(ledgerProvider.notifier)
+                                    .flushAutoBackupBeforeSignOut();
+                                await ref
+                                    .read(cloudSyncControllerProvider.notifier)
+                                    .handleSignOut();
+                                await ref
+                                    .read(ledgerProvider.notifier)
+                                    .clearSessionOnSignOut();
+                                ref
+                                    .read(onboardingControllerProvider.notifier)
+                                    .clear();
+                                ref
+                                    .read(
+                                      permissionSetupControllerProvider
+                                          .notifier,
+                                    )
+                                    .clear();
+                                await ref
+                                    .read(authControllerProvider.notifier)
+                                    .signOut();
+                                if (context.mounted) context.go('/login');
+                              },
                             ),
-                            selectedIndex: selectedIndex,
-                            onTabSelected: onTabSelected,
-                            danger: true,
-                            accentColor: scheme.error,
-                            onTapOverride: () async {
-                              Navigator.of(context).pop();
-                              await ref
-                                  .read(ledgerProvider.notifier)
-                                  .flushAutoBackupBeforeSignOut();
-                              await ref
-                                  .read(cloudSyncControllerProvider.notifier)
-                                  .handleSignOut();
-                              await ref
-                                  .read(ledgerProvider.notifier)
-                                  .clearSessionOnSignOut();
-                              ref
-                                  .read(onboardingControllerProvider.notifier)
-                                  .clear();
-                              ref
-                                  .read(
-                                    permissionSetupControllerProvider.notifier,
-                                  )
-                                  .clear();
-                              await ref
-                                  .read(authControllerProvider.notifier)
-                                  .signOut();
-                              if (context.mounted) context.go('/login');
-                            },
-                          ),
                         ],
                       ),
                     ),
@@ -787,11 +835,16 @@ String _profileName(AuthUser? user, LedgerState ledger) {
   return '${ledger.preferences.displayCurrency} wallet';
 }
 
-String _profileSubtitle(AuthUser? user, LedgerState ledger) {
+String _profileSubtitle(
+  AuthUser? user,
+  LedgerState ledger, {
+  bool offline = false,
+}) {
   final accountCount = ledger.accounts
       .where((account) => !account.isArchived)
       .length;
-  return 'My Wallet · $accountCount account${accountCount == 1 ? '' : 's'}';
+  final label = offline ? 'Offline wallet' : 'My Wallet';
+  return '$label · $accountCount account${accountCount == 1 ? '' : 's'}';
 }
 
 String _walletInitials(String source) {

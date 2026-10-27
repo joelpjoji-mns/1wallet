@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../auth/auth_controller.dart';
 import '../../cloud_sync/cloud_sync_controller.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
@@ -446,6 +447,12 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
       true;
 
   Future<void> _reportRestore() async {
+    if (ref.read(authControllerProvider).isLocalOnly) {
+      const message = 'Backup restored on this device.';
+      setState(() => _status = message);
+      _showBackupMessage(message);
+      return;
+    }
     final sync = ref.read(cloudSyncControllerProvider.notifier);
     final result = await sync.overwriteCloudWithLocal();
     if (!mounted) return;

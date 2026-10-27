@@ -65,9 +65,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     _resetDraft();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = ref.read(authControllerProvider);
-      if (auth.user?.displayName != null &&
-          auth.user!.displayName!.isNotEmpty) {
-        _displayNameController.text = auth.user!.displayName!;
+      final name = auth.user?.displayName ?? auth.localDisplayName;
+      if (name != null && name.isNotEmpty) {
+        _displayNameController.text = name;
       }
     });
   }
@@ -111,14 +111,22 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _finishOnboarding() async {
-    final authUser = ref.read(authControllerProvider).user;
-    if (authUser == null) return;
+    final auth = ref.read(authControllerProvider);
+    final ownerId = auth.ownerId;
+    if (ownerId == null) return;
+    final offline = auth.isLocalOnly;
 
-    // Save display name to Firebase Auth
-    if (_displayNameController.text.trim().isNotEmpty) {
-      await firebase_auth.FirebaseAuth.instance.currentUser?.updateDisplayName(
-        _displayNameController.text.trim(),
-      );
+    final displayName = _displayNameController.text.trim();
+    if (displayName.isNotEmpty) {
+      if (offline) {
+        // Offline mode keeps the name on this device only.
+        await ref
+            .read(authControllerProvider.notifier)
+            .setLocalDisplayName(displayName);
+      } else {
+        await firebase_auth.FirebaseAuth.instance.currentUser
+            ?.updateDisplayName(displayName);
+      }
     }
 
     // Save preferences to ledger
@@ -194,14 +202,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
     await ref
         .read(onboardingControllerProvider.notifier)
-        .setCompleted(authUser.id, true);
+        .setCompleted(ownerId, true);
 
     // Force an immediate cloud upload so the brand-new wallet reaches
     // Firebase right away, before the user can clear app data or background
     // the app within the normal 2500ms upload debounce window.
     // Only needed for genuinely new wallets — if existing cloud data was
     // already restored, the sync controller handles uploads automatically.
-    if (!hasExistingData) {
+    // Offline mode never uploads.
+    if (!hasExistingData && !offline) {
       unawaited(
         ref
             .read(cloudSyncControllerProvider.notifier)

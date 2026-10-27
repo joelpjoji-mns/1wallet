@@ -49,9 +49,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isOnboarding = location == '/onboarding';
 
       if (startup.isPending || startup.isRecoverableError) {
+        final auth = ref.read(authControllerProvider);
         if (startup.isRecoverableError &&
             location == '/data-backup' &&
-            ref.read(authControllerProvider).isAuthenticated) {
+            (auth.isAuthenticated || auth.isLocalOnly)) {
           return null;
         }
         return isLaunch ? null : '/launch';
