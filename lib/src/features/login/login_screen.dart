@@ -29,6 +29,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     final unavailable = !auth.googleSignInAvailable;
+    final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
       body: LaunchBackdrop(
@@ -47,10 +48,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         const Spacer(),
                         Text(
                           'SIGN IN',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
+                          style: textTheme.labelLarge?.copyWith(
                             fontWeight: FontWeight.w800,
-                            fontSize: 14,
                             letterSpacing: 2,
                             color: Theme.of(
                               context,
@@ -72,9 +71,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         StaggeredFadeIn(
                           child: Text(
                             'Welcome.\n1Wallet.',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 52,
+                            style: textTheme.displayMedium?.copyWith(
                               fontWeight: FontWeight.w900,
                               height: 0.95,
                               letterSpacing: -2.5,
@@ -87,9 +84,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           delay: const Duration(milliseconds: 100),
                           child: Text(
                             'A smarter way to track, plan, and grow your money effortlessly.',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 19,
+                            style: textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.w400,
                               color: Theme.of(
                                 context,
@@ -123,9 +118,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     unavailable
                                         ? 'Sync offline'
                                         : 'Ready to start?',
-                                    style: TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontSize: 26,
+                                    style: textTheme.headlineMedium?.copyWith(
                                       fontWeight: FontWeight.w800,
                                       color: Theme.of(
                                         context,
@@ -137,9 +130,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     unavailable
                                         ? 'Cloud sync is currently unavailable. You can still use the app locally.'
                                         : 'Sign in to sync your data securely across all your devices.',
-                                    style: TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontSize: 16,
+                                    style: textTheme.bodyLarge?.copyWith(
                                       color: Theme.of(context)
                                           .colorScheme
                                           .onSurface
@@ -285,12 +276,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       child: Text(
                                         auth.errorMessage!,
                                         textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          fontFamily: 'Inter',
+                                        style: textTheme.bodyMedium?.copyWith(
                                           color: Theme.of(
                                             context,
                                           ).colorScheme.error,
-                                          fontSize: 14,
                                           fontWeight: FontWeight.w500,
                                         ),
                                       ),
@@ -313,11 +302,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               icon: const Icon(Icons.phonelink_lock_outlined),
                               label: const Text(
                                 'Use without an account (Offline)',
-                                style: TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                style: TextStyle(fontWeight: FontWeight.w600),
                               ),
                             ),
                           ),
@@ -326,9 +311,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         Center(
                           child: Text(
                             'Secure • Private • Local First',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 12,
+                            style: textTheme.labelMedium?.copyWith(
                               fontWeight: FontWeight.w600,
                               letterSpacing: 1,
                               color: Theme.of(

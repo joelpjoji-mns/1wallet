@@ -58,9 +58,8 @@ class SettingsProfileSection extends StatelessWidget {
                         user?.email ?? 'Not signed in',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+                        style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
-                          fontSize: 13,
                         ),
                       ),
                     ],
@@ -90,8 +89,7 @@ class SettingsProfileSection extends StatelessWidget {
                               : user?.isGoogleProvider == true
                               ? 'Google Sync'
                               : 'Local',
-                          style: const TextStyle(
-                            fontSize: 12,
+                          style: theme.textTheme.labelMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),

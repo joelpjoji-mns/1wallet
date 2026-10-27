@@ -328,11 +328,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.xl),
       children: [
-        const StaggeredFadeIn(
+        StaggeredFadeIn(
           child: Text(
             'Welcome.\nLet\'s set you up.',
-            style: TextStyle(
-              fontSize: 40,
+            style: Theme.of(context).textTheme.displaySmall?.copyWith(
               fontWeight: FontWeight.w900,
               height: 1.1,
               letterSpacing: -1,
@@ -421,11 +420,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.xl),
       children: [
-        const StaggeredFadeIn(
+        StaggeredFadeIn(
           child: Text(
             'What do you want\nto track?',
-            style: TextStyle(
-              fontSize: 40,
+            style: Theme.of(context).textTheme.displaySmall?.copyWith(
               fontWeight: FontWeight.w900,
               height: 1.1,
               letterSpacing: -1,
@@ -475,11 +473,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.xl),
       children: [
-        const StaggeredFadeIn(
+        StaggeredFadeIn(
           child: Text(
             'Add your first\naccount.',
-            style: TextStyle(
-              fontSize: 40,
+            style: Theme.of(context).textTheme.displaySmall?.copyWith(
               fontWeight: FontWeight.w900,
               height: 1.1,
               letterSpacing: -1,
@@ -575,11 +572,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.xl),
       children: [
-        const StaggeredFadeIn(
+        StaggeredFadeIn(
           child: Text(
             'Your accounts',
-            style: TextStyle(
-              fontSize: 40,
+            style: Theme.of(context).textTheme.displaySmall?.copyWith(
               fontWeight: FontWeight.w900,
               height: 1.1,
               letterSpacing: -1,
@@ -618,11 +614,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.xl),
       children: [
-        const StaggeredFadeIn(
+        StaggeredFadeIn(
           child: Text(
             'Just one last\nthing.',
-            style: TextStyle(
-              fontSize: 40,
+            style: Theme.of(context).textTheme.displaySmall?.copyWith(
               fontWeight: FontWeight.w900,
               height: 1.1,
               letterSpacing: -1,

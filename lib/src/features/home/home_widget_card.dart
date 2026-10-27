@@ -472,6 +472,7 @@ class _MiniLineChartState extends State<MiniLineChart> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       height: 150,
       padding: const EdgeInsets.all(AppSpacing.sm),
@@ -504,7 +505,14 @@ class _MiniLineChartState extends State<MiniLineChart> {
               maxY: widget.maxY,
               dotBackgroundColor: scheme.surface,
               tooltipBackgroundColor: scheme.inverseSurface,
-              tooltipTextColor: scheme.onInverseSurface,
+              labelTextStyle: textTheme.labelSmall!.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+              tooltipTextStyle: textTheme.labelMedium!.copyWith(
+                color: scheme.onInverseSurface,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             child: const SizedBox.expand(),
           ),
@@ -524,7 +532,8 @@ class _MiniLineChartPainter extends CustomPainter {
     required this.textColor,
     required this.dotBackgroundColor,
     required this.tooltipBackgroundColor,
-    required this.tooltipTextColor,
+    required this.labelTextStyle,
+    required this.tooltipTextStyle,
     this.touchPosition,
     this.tooltipFormatter,
     this.minY,
@@ -547,20 +556,20 @@ class _MiniLineChartPainter extends CustomPainter {
   /// needs to hold on to a [BuildContext] outside of the widget build phase.
   final Color dotBackgroundColor;
 
-  /// Touch tooltip bubble fill and label colour (inverse surface roles).
+  /// Touch tooltip bubble fill (inverse surface role).
   final Color tooltipBackgroundColor;
-  final Color tooltipTextColor;
+
+  /// Axis label and tooltip text styles, resolved from the theme's type
+  /// scale in the widget's build method.
+  final TextStyle labelTextStyle;
+  final TextStyle tooltipTextStyle;
 
   @override
   void paint(Canvas canvas, Size size) {
     final hasYLabels = yAxisLabels.isNotEmpty;
     final hasXLabels = xAxisLabels.isNotEmpty;
 
-    final labelStyle = TextStyle(
-      color: textColor,
-      fontSize: 10,
-      fontWeight: FontWeight.w600,
-    );
+    final labelStyle = labelTextStyle;
 
     // Calculate chart area
     final leftPadding = hasYLabels ? 45.0 : 0.0;
@@ -690,14 +699,7 @@ class _MiniLineChartPainter extends CustomPainter {
 
       final text = tooltipFormatter!(values[nearestIndex]);
       final tpTip = TextPainter(
-        text: TextSpan(
-          text: text,
-          style: TextStyle(
-            color: tooltipTextColor,
-            fontWeight: FontWeight.bold,
-            fontSize: 12,
-          ),
-        ),
+        text: TextSpan(text: text, style: tooltipTextStyle),
         textDirection: TextDirection.ltr,
       )..layout();
 
@@ -732,7 +734,8 @@ class _MiniLineChartPainter extends CustomPainter {
         oldDelegate.textColor != textColor ||
         oldDelegate.dotBackgroundColor != dotBackgroundColor ||
         oldDelegate.tooltipBackgroundColor != tooltipBackgroundColor ||
-        oldDelegate.tooltipTextColor != tooltipTextColor ||
+        oldDelegate.labelTextStyle != labelTextStyle ||
+        oldDelegate.tooltipTextStyle != tooltipTextStyle ||
         oldDelegate.touchPosition != touchPosition;
   }
 }

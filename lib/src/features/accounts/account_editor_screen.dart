@@ -278,7 +278,6 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                                           color: Theme.of(
                                             context,
                                           ).colorScheme.onSurfaceVariant,
-                                          fontSize: 12,
                                         ),
                                   ),
                                 ],
@@ -1045,7 +1044,10 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (currencyInfo.flag.isNotEmpty) ...[
-                  Text(currencyInfo.flag, style: const TextStyle(fontSize: 16)),
+                  Text(
+                    currencyInfo.flag,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
                   const SizedBox(width: AppSpacing.xs),
                 ] else ...[
                   Icon(
@@ -1291,8 +1293,7 @@ Future<int?> showDayOfMonthPicker({
                   child: Center(
                     child: Text(
                       d,
-                      style: TextStyle(
-                        fontSize: 11,
+                      style: theme.textTheme.labelSmall?.copyWith(
                         fontWeight: FontWeight.w800,
                         color: scheme.onSurfaceVariant,
                       ),
@@ -1347,12 +1348,11 @@ Future<int?> showDayOfMonthPicker({
                     alignment: Alignment.center,
                     child: Text(
                       '$day',
-                      style: TextStyle(
+                      style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: isSelected
                             ? FontWeight.w900
                             : FontWeight.w600,
                         color: isSelected ? scheme.onPrimary : scheme.onSurface,
-                        fontSize: 15,
                       ),
                     ),
                   ),

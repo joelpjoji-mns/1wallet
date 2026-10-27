@@ -101,6 +101,7 @@ class _CardAccountTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final dueStatus = creditCardDueStatus(state, account);
     final rawBalance = accountBalance(state, account);
     final displayBalance = convertMoneyForDisplay(state, rawBalance);
@@ -207,9 +208,8 @@ class _CardAccountTile extends ConsumerWidget {
                         children: [
                           Text(
                             account.name,
-                            style: const TextStyle(
+                            style: textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.w800,
-                              fontSize: 15,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -218,8 +218,7 @@ class _CardAccountTile extends ConsumerWidget {
                             const SizedBox(height: AppSpacing.xxxs),
                             Text(
                               subtitleParts,
-                              style: TextStyle(
-                                fontSize: 12,
+                              style: textTheme.bodySmall?.copyWith(
                                 color: scheme.onSurfaceVariant,
                               ),
                               maxLines: 1,
@@ -232,9 +231,8 @@ class _CardAccountTile extends ConsumerWidget {
                     const SizedBox(width: AppSpacing.xs),
                     PrivacyText(
                       formatMoney(displayBalance, state.preferences.locale),
-                      style: const TextStyle(
+                      style: textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w900,
-                        fontSize: 15,
                       ),
                     ),
                   ],
@@ -243,32 +241,44 @@ class _CardAccountTile extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.xs),
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.xs,
-                          vertical: AppSpacing.xxs,
-                        ),
-                        decoration: BoxDecoration(
-                          color: badgeColor,
-                          borderRadius: BorderRadius.circular(AppRadii.sm),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(badgeIcon, size: 14, color: badgeTextColor),
-                            const SizedBox(width: AppSpacing.xxs),
-                            Text(
-                              badgeLabel,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: badgeTextColor,
-                              ),
+                      Expanded(
+                        child: Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.xs,
+                              vertical: AppSpacing.xxs,
                             ),
-                          ],
+                            decoration: BoxDecoration(
+                              color: badgeColor,
+                              borderRadius: BorderRadius.circular(AppRadii.sm),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  badgeIcon,
+                                  size: 14,
+                                  color: badgeTextColor,
+                                ),
+                                const SizedBox(width: AppSpacing.xxs),
+                                Flexible(
+                                  child: Text(
+                                    badgeLabel,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: textTheme.labelMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: badgeTextColor,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: AppSpacing.xs),
                       if (!dueStatus.isPaid)
                         TextButton.icon(
                           onPressed: () {

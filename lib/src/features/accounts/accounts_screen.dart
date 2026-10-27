@@ -276,8 +276,7 @@ class _CurrencySummaryHeader extends StatelessWidget {
                     entry.key == state.preferences.baseCurrency
                         ? '${entry.key} (Base)'
                         : entry.key,
-                    style: TextStyle(
-                      fontSize: 12,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       fontWeight: entry.key == state.preferences.baseCurrency
                           ? FontWeight.bold
                           : FontWeight.w600,
@@ -289,8 +288,7 @@ class _CurrencySummaryHeader extends StatelessWidget {
                       Money(amountMinor: entry.value, currency: entry.key),
                       state.preferences.locale,
                     ),
-                    style: TextStyle(
-                      fontSize: 13,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: entry.value < 0
                           ? Theme.of(context).colorScheme.error

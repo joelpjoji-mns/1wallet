@@ -560,9 +560,8 @@ class _SecureAccountDetailsScreenState
           const SizedBox(height: AppSpacing.xl),
           Text(
             'These details are encrypted and stored locally. The last 4 digits of your primary number will be mapped for SMS automation.',
-            style: TextStyle(
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontSize: 13,
             ),
             textAlign: TextAlign.center,
           ),

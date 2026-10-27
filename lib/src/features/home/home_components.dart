@@ -40,10 +40,9 @@ class HomeBalancePill extends StatelessWidget {
           ],
           Text(
             label,
-            style: TextStyle(
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
               color: scheme.primary,
               fontWeight: FontWeight.w900,
-              fontSize: 12.5,
             ),
           ),
           if (showChevron) ...[

@@ -368,7 +368,9 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
             child: SingleChildScrollView(
               child: SelectableText(
                 _rawText!,
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontFamily: AppFonts.mono,
+                ),
               ),
             ),
           ),
@@ -610,13 +612,15 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
                 color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(AppRadii.xs),
               ),
-              child: const Text(
+              child: Text(
                 '💡 Common PDF statement password formats:\n'
                 '• Date of Birth (DDMMYYYY or DDMM)\n'
                 '• Customer ID, PAN number, or Account number\n'
                 '• First 4 letters of your name + last 4 digits of phone/account\n'
                 '• Lowercase name + birth year (YYYY)',
-                style: TextStyle(fontSize: 11),
+                style: Theme.of(ctx).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
           ],

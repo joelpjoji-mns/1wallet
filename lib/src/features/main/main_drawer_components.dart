@@ -338,12 +338,11 @@ class _DrawerRouteTileState extends State<DrawerRouteTile> {
                     ),
                     child: Text(
                       widget.config.badge!,
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: widget.danger
                             ? scheme.onErrorContainer
                             : scheme.onSecondaryContainer,
                         fontWeight: FontWeight.w800,
-                        fontSize: 10,
                       ),
                     ),
                   ),

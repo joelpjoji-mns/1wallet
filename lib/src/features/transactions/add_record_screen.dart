@@ -769,13 +769,15 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                 Expanded(
                                   child: Text(
                                     'Status',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurface,
-                                    ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurface,
+                                        ),
                                   ),
                                 ),
                                 GlassDropdownPill<String>(
@@ -1526,9 +1528,8 @@ class _FxAmountCard extends StatelessWidget {
                     const SizedBox(width: AppSpacing.xxs),
                     Text(
                       title,
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: color,
-                        fontSize: 10,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -1539,16 +1540,15 @@ class _FxAmountCard extends StatelessWidget {
                   '$amount $currency',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 14,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
                 ),
                 Text(
                   subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 10),
+                  style: Theme.of(context).textTheme.labelSmall,
                 ),
               ],
             ),

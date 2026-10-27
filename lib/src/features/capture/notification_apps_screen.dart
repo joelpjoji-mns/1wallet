@@ -134,8 +134,7 @@ class _NotificationAppsScreenState
                       ),
                       subtitle: Text(
                         app.packageName,
-                        style: TextStyle(
-                          fontSize: 12,
+                        style: theme.textTheme.bodySmall?.copyWith(
                           color: scheme.onSurfaceVariant,
                         ),
                       ),

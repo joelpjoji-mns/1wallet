@@ -193,13 +193,18 @@ class RecurringScreen extends ConsumerWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              mode == 'past'
-                                  ? 'Historical summary'
-                                  : 'Planned summary',
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            Flexible(
+                              child: Text(
+                                mode == 'past'
+                                    ? 'Historical summary'
+                                    : 'Planned summary',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w800),
+                              ),
                             ),
+                            const SizedBox(width: AppSpacing.xs),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: AppSpacing.xs,
@@ -215,13 +220,13 @@ class RecurringScreen extends ConsumerWidget {
                               ),
                               child: Text(
                                 '${listed.length} item${listed.length == 1 ? '' : 's'}',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onPrimaryContainer,
-                                ),
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onPrimaryContainer,
+                                    ),
                               ),
                             ),
                           ],
@@ -490,12 +495,14 @@ class _RecurringCompactCard extends StatelessWidget {
                                       ),
                                       child: Text(
                                         'OVERDUE',
-                                        style: TextStyle(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w900,
-                                          letterSpacing: 0.8,
-                                          color: scheme.onErrorContainer,
-                                        ),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelSmall
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w900,
+                                              letterSpacing: 0.8,
+                                              color: scheme.onErrorContainer,
+                                            ),
                                       ),
                                     ),
                                   ] else if (isDueToday) ...[
@@ -513,12 +520,14 @@ class _RecurringCompactCard extends StatelessWidget {
                                       ),
                                       child: Text(
                                         'TODAY',
-                                        style: TextStyle(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w900,
-                                          letterSpacing: 0.8,
-                                          color: scheme.onErrorContainer,
-                                        ),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelSmall
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w900,
+                                              letterSpacing: 0.8,
+                                              color: scheme.onErrorContainer,
+                                            ),
                                       ),
                                     ),
                                   ] else if (isUrgent) ...[
@@ -537,12 +546,14 @@ class _RecurringCompactCard extends StatelessWidget {
                                       ),
                                       child: Text(
                                         '${daysUntilDue}D',
-                                        style: TextStyle(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w900,
-                                          letterSpacing: 0.5,
-                                          color: scheme.onErrorContainer,
-                                        ),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelSmall
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w900,
+                                              letterSpacing: 0.5,
+                                              color: scheme.onErrorContainer,
+                                            ),
                                       ),
                                     ),
                                   ],
@@ -554,11 +565,11 @@ class _RecurringCompactCard extends StatelessWidget {
                                   categorySubtitle,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: scheme.onSurfaceVariant,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: scheme.onSurfaceVariant,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                 ),
                               ],
                               const SizedBox(height: AppSpacing.xxxs),
@@ -566,10 +577,8 @@ class _RecurringCompactCard extends StatelessWidget {
                                 recurrence,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: scheme.onSurfaceVariant,
-                                  fontSize: 13,
-                                ),
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(color: scheme.onSurfaceVariant),
                               ),
                               if (extraLine != null) ...[
                                 const SizedBox(height: AppSpacing.xxs),
@@ -577,11 +586,11 @@ class _RecurringCompactCard extends StatelessWidget {
                                   extraLine,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: scheme.onSurfaceVariant,
-                                    fontStyle: FontStyle.italic,
-                                    fontSize: 13,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: scheme.onSurfaceVariant,
+                                        fontStyle: FontStyle.italic,
+                                      ),
                                 ),
                               ],
                             ],
@@ -671,20 +680,34 @@ class _RecurringCompactCard extends StatelessWidget {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    'Payment $postedCount of $total',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: scheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.w600,
+                                  Flexible(
+                                    child: Text(
+                                      'Payment $postedCount of $total',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: scheme.onSurfaceVariant,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                     ),
                                   ),
-                                  Text(
-                                    '${total - postedCount} left',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: scheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.w600,
+                                  const SizedBox(width: AppSpacing.sm),
+                                  Flexible(
+                                    child: Text(
+                                      '${total - postedCount} left',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.end,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: scheme.onSurfaceVariant,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                     ),
                                   ),
                                 ],
@@ -1506,11 +1529,13 @@ class RecurringDetailView extends ConsumerWidget {
                             const SizedBox(height: AppSpacing.xxxs),
                             Text(
                               '${transaction.status.toUpperCase()} · ${transactionTypeLabel(frequency).toUpperCase()}${transaction.postMode == 'auto' ? ' (AUTO)' : ''}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: scheme.onSurfaceVariant,
-                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.labelMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
                             ),
                           ],
                         ),
@@ -1536,19 +1561,21 @@ class RecurringDetailView extends ConsumerWidget {
                           children: [
                             Text(
                               'Next payment',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: scheme.onSurfaceVariant,
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: scheme.onSurfaceVariant),
                             ),
-                            Text(
-                              formatLedgerDate(
-                                transaction.occurredAt,
-                                state.preferences.locale,
-                              ),
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
+                            const SizedBox(width: AppSpacing.sm),
+                            Flexible(
+                              child: Text(
+                                formatLedgerDate(
+                                  transaction.occurredAt,
+                                  state.preferences.locale,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.end,
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(fontWeight: FontWeight.bold),
                               ),
                             ),
                           ],
@@ -1559,10 +1586,8 @@ class RecurringDetailView extends ConsumerWidget {
                           children: [
                             Text(
                               counter != null ? 'From account' : 'Account',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: scheme.onSurfaceVariant,
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: scheme.onSurfaceVariant),
                             ),
                             const SizedBox(width: AppSpacing.sm),
                             Flexible(
@@ -1571,10 +1596,8 @@ class RecurringDetailView extends ConsumerWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 textAlign: TextAlign.end,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(fontWeight: FontWeight.bold),
                               ),
                             ),
                           ],
@@ -1586,10 +1609,8 @@ class RecurringDetailView extends ConsumerWidget {
                             children: [
                               Text(
                                 'To account',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: scheme.onSurfaceVariant,
-                                ),
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(color: scheme.onSurfaceVariant),
                               ),
                               const SizedBox(width: AppSpacing.sm),
                               Flexible(
@@ -1598,10 +1619,8 @@ class RecurringDetailView extends ConsumerWidget {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.end,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(fontWeight: FontWeight.bold),
                                 ),
                               ),
                             ],
@@ -1651,11 +1670,11 @@ class RecurringDetailView extends ConsumerWidget {
                                     'Paid: ${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: paid, currency: loanAccount.currency), state.preferences.locale))}',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: scheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: scheme.onSurfaceVariant,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                   ),
                                 ),
                                 const SizedBox(width: AppSpacing.sm),
@@ -1665,11 +1684,11 @@ class RecurringDetailView extends ConsumerWidget {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     textAlign: TextAlign.end,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: scheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: scheme.onSurfaceVariant,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                   ),
                                 ),
                               ],

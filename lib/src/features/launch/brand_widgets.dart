@@ -633,8 +633,7 @@ class BrandedLoadingState extends StatelessWidget {
                     child: Text(
                       message,
                       key: ValueKey(message),
-                      style: const TextStyle(
-                        fontSize: 18,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w600,
                         letterSpacing: 0.5,
                       ),
@@ -744,6 +743,7 @@ class RecoveryState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = _resolveLaunchPalette(context);
+    final textTheme = Theme.of(context).textTheme;
     return Scaffold(
       body: LaunchBackdrop(
         child: SafeArea(
@@ -757,9 +757,8 @@ class RecoveryState extends StatelessWidget {
                 Text(
                   title,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: textTheme.headlineMedium?.copyWith(
                     color: palette.text,
-                    fontSize: 28,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -0.7,
                   ),
@@ -768,9 +767,8 @@ class RecoveryState extends StatelessWidget {
                 Text(
                   body,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: textTheme.bodyLarge?.copyWith(
                     color: palette.mutedText,
-                    fontSize: 16,
                     height: 1.35,
                   ),
                 ),
@@ -799,9 +797,8 @@ class RecoveryState extends StatelessWidget {
                     onPressed: onTertiaryAction,
                     child: Text(
                       tertiaryLabel!,
-                      style: TextStyle(
+                      style: textTheme.labelMedium?.copyWith(
                         color: palette.mutedText.withValues(alpha: 0.6),
-                        fontSize: 13,
                       ),
                     ),
                   ),

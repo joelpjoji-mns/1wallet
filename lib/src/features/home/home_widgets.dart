@@ -225,17 +225,19 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
               end: total.amountMinor.toDouble(),
             ),
             builder: (context, amountMinor, child) {
-              return PrivacyText(
-                formatMoney(
-                  total.copyWith(amountMinor: amountMinor.round()),
-                  widget.state.preferences.locale,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  fontSize: 40,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -1.2,
+              return FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: PrivacyText(
+                  formatMoney(
+                    total.copyWith(amountMinor: amountMinor.round()),
+                    widget.state.preferences.locale,
+                  ),
+                  maxLines: 1,
+                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -1.2,
+                  ),
                 ),
               );
             },
@@ -264,11 +266,11 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                             ),
                             child: PrivacyText(
                               '${money.currency} ${formatMoney(money, widget.state.preferences.locale)}',
-                              style: TextStyle(
-                                color: scheme.onSurfaceVariant,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                              ),
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                             ),
                           ),
                           if (money != currencyBreakdown.last)
@@ -897,10 +899,10 @@ class _BalanceTrendHomeWidgetState
                               getTitlesWidget: (value, meta) {
                                 return PrivacyText(
                                   formatCompact(value),
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: scheme.onSurfaceVariant,
-                                  ),
+                                  style: Theme.of(context).textTheme.labelSmall
+                                      ?.copyWith(
+                                        color: scheme.onSurfaceVariant,
+                                      ),
                                 );
                               },
                             ),
@@ -921,11 +923,13 @@ class _BalanceTrendHomeWidgetState
                                     meta: meta,
                                     child: Text(
                                       'Now',
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.bold,
-                                        color: scheme.primary,
-                                      ),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: scheme.primary,
+                                          ),
                                       softWrap: false,
                                     ),
                                   );
@@ -946,10 +950,12 @@ class _BalanceTrendHomeWidgetState
                                       date,
                                       widget.state.preferences.locale,
                                     ),
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      color: scheme.onSurfaceVariant,
-                                    ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: scheme.onSurfaceVariant,
+                                        ),
                                     softWrap: false,
                                   ),
                                 );
@@ -1110,10 +1116,11 @@ class _BalanceTrendHomeWidgetState
                                           widget.state.preferences.locale,
                                         ),
                                       ),
-                                      TextStyle(
+                                      Theme.of(
+                                        context,
+                                      ).textTheme.labelMedium!.copyWith(
                                         color: scheme.surface,
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 12,
                                       ),
                                     ),
                                   )
@@ -1141,8 +1148,7 @@ class _BalanceTrendHomeWidgetState
                     const SizedBox(width: AppSpacing.xxs),
                     Text(
                       'Actual',
-                      style: TextStyle(
-                        fontSize: 10,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),
                     ),
@@ -1154,8 +1160,7 @@ class _BalanceTrendHomeWidgetState
                     const SizedBox(width: AppSpacing.xxs),
                     Text(
                       'Projected',
-                      style: TextStyle(
-                        fontSize: 10,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),
                     ),
@@ -1491,12 +1496,12 @@ class _CalculatorRow extends StatelessWidget {
               valueListenable: controller,
               builder: (context, value, child) {
                 final textLen = value.text.length;
-                double fontSize = 18;
-                if (textLen > 15) {
-                  fontSize = 11;
-                } else if (textLen > 11) {
-                  fontSize = 14;
-                }
+                final textTheme = Theme.of(context).textTheme;
+                final baseStyle = textLen > 15
+                    ? textTheme.labelSmall
+                    : textLen > 11
+                    ? textTheme.titleSmall
+                    : textTheme.titleLarge;
 
                 return AppGlassTextField(
                   controller: controller,
@@ -1513,8 +1518,7 @@ class _CalculatorRow extends StatelessWidget {
                     contentPadding: EdgeInsets.zero,
                     hintText: hasRate ? '0' : 'No rate',
                   ),
-                  style: TextStyle(
-                    fontSize: fontSize,
+                  style: baseStyle?.copyWith(
                     fontWeight: FontWeight.w700,
                     color: hasRate ? scheme.onSurface : scheme.error,
                   ),
@@ -1530,9 +1534,8 @@ class _CalculatorRow extends StatelessWidget {
               children: [
                 Text(
                   info.fullName,
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     fontWeight: isBase ? FontWeight.bold : FontWeight.w600,
-                    fontSize: 13,
                     color: isBase ? scheme.onSurface : scheme.onSurfaceVariant,
                   ),
                   textAlign: TextAlign.right,
@@ -1541,14 +1544,15 @@ class _CalculatorRow extends StatelessWidget {
                 if (isBase)
                   Text(
                     'Base Currency',
-                    style: TextStyle(fontSize: 11, color: scheme.tertiary),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: scheme.tertiary),
                     textAlign: TextAlign.right,
                   )
                 else if (rateSubtitle != null && rateSubtitle!.isNotEmpty)
                   Text(
                     rateSubtitle!,
-                    style: TextStyle(
-                      fontSize: 11,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
                     textAlign: TextAlign.right,
@@ -2338,9 +2342,8 @@ class _CategoryItemWidget extends StatelessWidget {
                         item.label,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           fontWeight: FontWeight.w800,
-                          fontSize: 13,
                         ),
                       ),
                     ),
@@ -2350,9 +2353,8 @@ class _CategoryItemWidget extends StatelessWidget {
                         _displayBaseMoney(state, item.amountMinor),
                         state.preferences.locale,
                       ),
-                      style: const TextStyle(
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.w900,
-                        fontSize: 13,
                       ),
                     ),
                     if (hasChildren) ...[
@@ -2419,11 +2421,11 @@ class _CategoryItemWidget extends StatelessWidget {
                         Expanded(
                           child: Text(
                             'All ${item.label}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: scheme.primary,
-                            ),
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: scheme.primary,
+                                ),
                           ),
                         ),
                         Icon(
@@ -2460,11 +2462,11 @@ class _CategoryItemWidget extends StatelessWidget {
                                   sub.label,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                    color: scheme.onSurfaceVariant,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        color: scheme.onSurfaceVariant,
+                                      ),
                                 ),
                               ),
                               const SizedBox(width: AppSpacing.xs),
@@ -2473,10 +2475,8 @@ class _CategoryItemWidget extends StatelessWidget {
                                   _displayBaseMoney(state, sub.amountMinor),
                                   state.preferences.locale,
                                 ),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 12,
-                                ),
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(fontWeight: FontWeight.w800),
                               ),
                               const SizedBox(width: AppSpacing.xxs),
                               Icon(
@@ -2637,17 +2637,19 @@ class _AccountTile extends ConsumerWidget {
                     account.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: foreground,
-                      fontSize: 11,
                       height: 1.1,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
-                // Currency badge for foreign accounts
+                // Currency badge for foreign accounts. Capped and scaled down
+                // so very large accessibility text can't push it past the
+                // narrow tile.
                 if (isForeignCurrency)
                   Container(
+                    constraints: const BoxConstraints(maxWidth: 48),
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.xxs,
                       vertical: AppSpacing.xxxs,
@@ -2660,13 +2662,15 @@ class _AccountTile extends ConsumerWidget {
                         width: 0.5,
                       ),
                     ),
-                    child: Text(
-                      nativeBalance.currency,
-                      style: TextStyle(
-                        color: foreground.withValues(alpha: 0.86),
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.3,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        nativeBalance.currency,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: foreground.withValues(alpha: 0.86),
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.3,
+                        ),
                       ),
                     ),
                   ),
@@ -2678,9 +2682,8 @@ class _AccountTile extends ConsumerWidget {
               primaryLabel,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: foreground.withValues(alpha: 0.94),
-                fontSize: 13,
                 height: 1.1,
                 letterSpacing: -0.3,
                 fontWeight: FontWeight.w900,
@@ -2691,9 +2694,8 @@ class _AccountTile extends ConsumerWidget {
                 secondaryLabel,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: foreground.withValues(alpha: 0.63),
-                  fontSize: 10,
                   height: 1.1,
                   fontWeight: FontWeight.w600,
                 ),
@@ -3030,27 +3032,21 @@ class CreditUtilizationWidget extends ConsumerWidget {
                         Expanded(
                           child: Text(
                             acc.name,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
                           ),
                         ),
                         if (limit > 0)
                           Text(
                             '${(util * 100).round()}%',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 18,
-                            ),
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w900),
                           )
                         else
-                          const Text(
+                          Text(
                             'N/A',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 18,
-                            ),
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w900),
                           ),
                       ],
                     ),
@@ -3070,10 +3066,8 @@ class CreditUtilizationWidget extends ConsumerWidget {
                             'Balance ${formatMoney(Money(amountMinor: balForDisplay, currency: state.preferences.displayCurrency), state.preferences.locale)}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: scheme.onSurfaceVariant,
-                            ),
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(color: scheme.onSurfaceVariant),
                           ),
                         ),
                         const SizedBox(width: AppSpacing.xs),
@@ -3083,10 +3077,8 @@ class CreditUtilizationWidget extends ConsumerWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             textAlign: TextAlign.end,
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: scheme.onSurfaceVariant,
-                            ),
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(color: scheme.onSurfaceVariant),
                           ),
                         ),
                       ],

@@ -137,9 +137,8 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                     prefs.smsCaptureEnabled
                         ? 'A notification is raised only when a real transaction is found.'
                         : 'Incoming SMS are ignored.',
-                    style: TextStyle(
+                    style: theme.textTheme.bodySmall?.copyWith(
                       color: scheme.onSurfaceVariant,
-                      fontSize: 12,
                     ),
                   ),
                 ),
@@ -364,10 +363,9 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                     ],
                     if (parsed.ignored && parsed.matchedIgnoreWord == null) ...[
                       const SizedBox(height: AppSpacing.xs),
-                      const Text(
+                      Text(
                         'Select a word from the SMS to add to triggers:',
-                        style: TextStyle(
-                          fontSize: 11,
+                        style: theme.textTheme.labelSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -858,13 +856,13 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                                                       ? 'Duplicate: already entered'
                                                       : 'Duplicate: already in review')
                                                 : 'Added to review',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w600,
-                                              color: isDuplicate
-                                                  ? scheme.tertiary
-                                                  : scheme.primary,
-                                            ),
+                                            style: theme.textTheme.labelSmall
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isDuplicate
+                                                      ? scheme.tertiary
+                                                      : scheme.primary,
+                                                ),
                                           ),
                                         ),
                                       ],
@@ -934,11 +932,11 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                                                               null
                                                       ? 'View candidate: ${matchedCandidate.merchant}'
                                                       : 'View in review queue'),
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: scheme.tertiary,
-                                            ),
+                                            style: theme.textTheme.labelMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                  color: scheme.tertiary,
+                                                ),
                                           ),
                                         ),
                                         Icon(

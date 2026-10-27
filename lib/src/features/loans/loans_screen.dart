@@ -889,13 +889,13 @@ class LoanDetailView extends ConsumerWidget {
                             const SizedBox(height: AppSpacing.xxxs),
                             Text(
                               '${accountTypeLabel(loan.type).toUpperCase()} ACCOUNT',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
                             ),
                           ],
                         ),
@@ -942,13 +942,13 @@ class LoanDetailView extends ConsumerWidget {
                                     'Paid: ${formatMoney(Money(amountMinor: paid, currency: loan.currency), state.preferences.locale)}',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                   ),
                                 ),
                                 if (projection.monthsRemaining != null) ...[
@@ -959,13 +959,15 @@ class LoanDetailView extends ConsumerWidget {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       textAlign: TextAlign.end,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                        fontWeight: FontWeight.w700,
-                                      ),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant,
+                                            fontWeight: FontWeight.w700,
+                                          ),
                                     ),
                                   ),
                                 ],
@@ -1230,9 +1232,8 @@ class _LoanCompactCard extends StatelessWidget {
                       cadenceSummary,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: scheme.onSurfaceVariant,
-                        fontSize: 13,
                       ),
                     ),
                     if (tertiaryLine != null) ...[
@@ -1241,10 +1242,9 @@ class _LoanCompactCard extends StatelessWidget {
                         tertiaryLine,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: scheme.onSurfaceVariant,
                           fontStyle: FontStyle.italic,
-                          fontSize: 13,
                         ),
                       ),
                     ],
@@ -1254,9 +1254,8 @@ class _LoanCompactCard extends StatelessWidget {
                         projection.payoffLabel,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: scheme.primary,
-                          fontSize: 12,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -1314,11 +1313,11 @@ class _LoanCompactCard extends StatelessWidget {
                             'Paid: ${formatMoney(Money(amountMinor: paid, currency: loan.currency), state.preferences.locale)}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: scheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w600,
+                                ),
                           ),
                         ),
                         if (projection.monthsRemaining != null) ...[
@@ -1329,11 +1328,11 @@ class _LoanCompactCard extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               textAlign: TextAlign.end,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: scheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                             ),
                           ),
                         ],
@@ -1377,12 +1376,14 @@ class NumberedDotPainter extends FlDotPainter {
   final String label;
   final Color color;
   final Color textColor;
+  final TextStyle? labelStyle;
   final double radius;
 
   NumberedDotPainter(
     this.label, {
     required this.color,
     required this.textColor,
+    this.labelStyle,
     this.radius = 10,
   });
 
@@ -1393,9 +1394,8 @@ class NumberedDotPainter extends FlDotPainter {
 
     final textSpan = TextSpan(
       text: label,
-      style: TextStyle(
+      style: (labelStyle ?? const TextStyle()).copyWith(
         color: textColor,
-        fontSize: radius * 1.2,
         fontWeight: FontWeight.bold,
       ),
     );
@@ -1427,7 +1427,7 @@ class NumberedDotPainter extends FlDotPainter {
   }
 
   @override
-  List<Object?> get props => [label, color, textColor, radius];
+  List<Object?> get props => [label, color, textColor, labelStyle, radius];
 }
 
 class DynamicForecastLineChart extends StatefulWidget {
@@ -1700,13 +1700,13 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                               children: [
                                 TextSpan(
                                   text: dateStr,
-                                  style: TextStyle(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.normal,
-                                  ),
+                                  style: Theme.of(context).textTheme.labelSmall
+                                      ?.copyWith(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                        fontWeight: FontWeight.normal,
+                                      ),
                                 ),
                               ],
                             );
@@ -1728,11 +1728,11 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                               bottom: AppSpacing.xl,
                               left: AppSpacing.xxs,
                             ),
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
                             labelResolver: (_) => "Today",
                           ),
                         ),
@@ -1753,11 +1753,11 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                                 bottom: AppSpacing.xxs,
                                 left: AppSpacing.xxs,
                               ),
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: payoffColor,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    color: payoffColor,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                               labelResolver: (_) => dateStr,
                             ),
                           );
@@ -1797,6 +1797,9 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                                 label,
                                 color: payoffColor,
                                 textColor: onPayoffColor,
+                                labelStyle: Theme.of(
+                                  context,
+                                ).textTheme.labelMedium,
                               );
                             }
                             return FlDotCirclePainter(
@@ -1839,7 +1842,7 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                               ),
                               child: Text(
                                 dateStr,
-                                style: const TextStyle(fontSize: 10),
+                                style: Theme.of(context).textTheme.labelSmall,
                               ),
                             );
                           },
@@ -1861,10 +1864,8 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                                     ? maskAmountDigits(formatted)
                                     : formatted,
                                 textAlign: TextAlign.right,
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(fontWeight: FontWeight.w600),
                               ),
                             );
                           },
@@ -2183,7 +2184,7 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
                                 child: Text(
                                   str,
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(fontSize: 10),
+                                  style: Theme.of(context).textTheme.labelSmall,
                                 ),
                               );
                             }
@@ -2207,10 +2208,8 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
                                     ? maskAmountDigits(formatted)
                                     : formatted,
                                 textAlign: TextAlign.right,
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(fontWeight: FontWeight.w600),
                               ),
                             );
                           },
@@ -2702,8 +2701,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'Extra cash toward loans',
-                    style: TextStyle(
-                      fontSize: 13,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: scheme.onSurfaceVariant,
                     ),
@@ -2743,8 +2741,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                   _allocationHint(
                     _snapAllocation(_debouncedExtraAllocationPercent),
                   ),
-                  style: TextStyle(
-                    fontSize: 11,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: scheme.onSurfaceVariant,
                   ),
                 ),
@@ -2840,11 +2837,11 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                           backgroundColor: scheme.primary,
                           child: Text(
                             '${index + 1}',
-                            style: TextStyle(
-                              color: scheme.onPrimary,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(
+                                  color: scheme.onPrimary,
+                                  fontWeight: FontWeight.bold,
+                                ),
                           ),
                         ),
                       ),

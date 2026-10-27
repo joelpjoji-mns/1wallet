@@ -721,9 +721,11 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
             ),
             const SizedBox(height: AppSpacing.md),
             if (!isBusy) ...[
-              const Text(
+              Text(
                 'Type DELETE below to confirm:',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               const SizedBox(height: AppSpacing.xs),
               TextField(
@@ -763,9 +765,8 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
                 ),
                 child: Text(
                   deletionState.errorMessage!,
-                  style: TextStyle(
+                  style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onErrorContainer,
-                    fontSize: 12,
                   ),
                 ),
               ),

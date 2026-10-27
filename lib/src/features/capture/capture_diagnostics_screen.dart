@@ -248,7 +248,7 @@ class _DiagnosticEventTile extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: scheme.onSurfaceVariant,
-                  fontFamily: 'monospace',
+                  fontFamily: AppFonts.mono,
                   height: 1.35,
                 ),
               ),

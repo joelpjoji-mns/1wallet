@@ -95,13 +95,12 @@ class AddRecordTypeTabPill extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: selected
                       ? color
                       : Theme.of(
                           context,
                         ).colorScheme.onSurface.withAlphaFactor(0.7),
-                  fontSize: 11.5,
                   fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                 ),
               ),
@@ -254,9 +253,8 @@ class AddRecordSelectorBox extends StatelessWidget {
                   children: [
                     Text(
                       label,
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontSize: 10,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -264,9 +262,8 @@ class AddRecordSelectorBox extends StatelessWidget {
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurface,
-                        fontSize: 13,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -275,11 +272,10 @@ class AddRecordSelectorBox extends StatelessWidget {
                         subtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: Theme.of(
                             context,
                           ).colorScheme.onSurfaceVariant.withAlphaFactor(0.75),
-                          fontSize: 10,
                         ),
                       ),
                   ],
@@ -468,9 +464,8 @@ class _AddRecordCalcKeyState extends State<AddRecordCalcKey> {
                   )
                 : Text(
                     widget.label,
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       color: widget.foregroundColor,
-                      fontSize: 26,
                       fontWeight: FontWeight.w600,
                       letterSpacing: -0.5,
                     ),
@@ -525,10 +520,9 @@ class AddRecordTappableDetailField extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
               Icon(

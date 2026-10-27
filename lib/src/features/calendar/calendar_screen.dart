@@ -883,13 +883,15 @@ class _DayCell extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '${date.day}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 12,
-                    color: scheme.onSurface.withAlphaFactor(
-                      inMonth ? 1.0 : 0.42,
+                Flexible(
+                  child: Text(
+                    '${date.day}',
+                    maxLines: 1,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: scheme.onSurface.withAlphaFactor(
+                        inMonth ? 1.0 : 0.42,
+                      ),
                     ),
                   ),
                 ),
@@ -901,33 +903,47 @@ class _DayCell extends StatelessWidget {
                   ),
               ],
             ),
-            const Spacer(),
-            if (income > 0)
-              PrivacyText(
-                '+${formatCompactMoney(convertMoneyForDisplay(state, Money(amountMinor: income, currency: state.preferences.baseCurrency)), state.preferences.locale)}',
-                maxLines: 1,
-                style: TextStyle(
-                  fontSize: 9,
-                  color: amountColor(
-                    context,
-                    income,
-                  ).withAlphaFactor(inMonth ? 1.0 : 0.42),
-                  fontWeight: FontWeight.w800,
+            // Day cells are fixed-size; scale the amounts down so they stay
+            // whole instead of clipping or overflowing the cell.
+            Expanded(
+              child: Align(
+                alignment: AlignmentDirectional.bottomStart,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.bottomStart,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (income > 0)
+                        PrivacyText(
+                          '+${formatCompactMoney(convertMoneyForDisplay(state, Money(amountMinor: income, currency: state.preferences.baseCurrency)), state.preferences.locale)}',
+                          maxLines: 1,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: amountColor(
+                              context,
+                              income,
+                            ).withAlphaFactor(inMonth ? 1.0 : 0.42),
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      if (expense > 0)
+                        PrivacyText(
+                          '-${formatCompactMoney(convertMoneyForDisplay(state, Money(amountMinor: expense, currency: state.preferences.baseCurrency)), state.preferences.locale)}',
+                          maxLines: 1,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: amountColor(
+                              context,
+                              -expense,
+                            ).withAlphaFactor(inMonth ? 1.0 : 0.42),
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            if (expense > 0)
-              PrivacyText(
-                '-${formatCompactMoney(convertMoneyForDisplay(state, Money(amountMinor: expense, currency: state.preferences.baseCurrency)), state.preferences.locale)}',
-                maxLines: 1,
-                style: TextStyle(
-                  fontSize: 9,
-                  color: amountColor(
-                    context,
-                    -expense,
-                  ).withAlphaFactor(inMonth ? 1.0 : 0.42),
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+            ),
           ],
         ),
       ),

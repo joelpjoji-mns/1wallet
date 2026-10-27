@@ -378,11 +378,11 @@ class MiniFlowStat extends StatelessWidget {
         Text(
           label,
           maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.w900,
             letterSpacing: 0.5,
-            fontSize: 9,
           ),
         ),
         const SizedBox(height: AppSpacing.xxxs),
@@ -393,11 +393,9 @@ class MiniFlowStat extends StatelessWidget {
             value,
             maxLines: 1,
             softWrap: false,
-            style: TextStyle(
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
               color: color,
-              fontSize: 14,
               fontWeight: FontWeight.w900,
-              fontFamily: 'Inter',
             ),
           ),
         ),

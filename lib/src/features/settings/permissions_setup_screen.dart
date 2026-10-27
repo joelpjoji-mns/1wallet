@@ -88,12 +88,11 @@ class _PermissionsSetupScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const StaggeredFadeIn(
+                  StaggeredFadeIn(
                     child: Text(
                       'Almost\nthere.',
                       textAlign: TextAlign.left,
-                      style: TextStyle(
-                        fontSize: 48,
+                      style: theme.textTheme.displayMedium?.copyWith(
                         fontWeight: FontWeight.w900,
                         height: 1.1,
                         letterSpacing: -1,
@@ -106,9 +105,8 @@ class _PermissionsSetupScreenState
                     child: Text(
                       'To get the most out of 1Wallet, we need a few permissions to automate your expense tracking.',
                       textAlign: TextAlign.left,
-                      style: TextStyle(
+                      style: theme.textTheme.bodyLarge?.copyWith(
                         color: scheme.onSurface.withValues(alpha: 0.7),
-                        fontSize: 16,
                       ),
                     ),
                   ),
@@ -172,13 +170,7 @@ class _PermissionsSetupScreenState
                 onPressed: _requestingAll ? null : _finishSetup,
                 style: AppButtonStyles.cta,
                 icon: const Icon(Icons.check_circle_outline_rounded),
-                label: Text(
-                  _requestingAll ? 'Requesting...' : 'Finish Setup',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                label: Text(_requestingAll ? 'Requesting...' : 'Finish Setup'),
               ),
             ),
           ),
@@ -193,7 +185,8 @@ class _PermissionsSetupScreenState
     required String title,
     required String description,
   }) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Row(
@@ -214,17 +207,15 @@ class _PermissionsSetupScreenState
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
-                    fontSize: 16,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xxs),
                 Text(
                   description,
-                  style: TextStyle(
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     color: scheme.onSurfaceVariant,
-                    fontSize: 14,
                     height: 1.3,
                   ),
                 ),

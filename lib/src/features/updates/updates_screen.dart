@@ -427,7 +427,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w700,
-              fontFamily: 'monospace',
+              fontFamily: AppFonts.mono,
             ),
           ),
         ),
@@ -450,7 +450,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
             style: theme.textTheme.labelSmall?.copyWith(
               color: badgeColor,
               fontWeight: FontWeight.w800,
-              fontSize: 9,
               letterSpacing: 0.5,
             ),
           ),
@@ -629,26 +628,36 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                             : scheme.onSurfaceVariant),
                 ),
                 const SizedBox(width: AppSpacing.xs),
-                Text(
-                  'v${release.versionName}',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          'v${release.versionName}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      if (isLatest)
+                        _buildBadgePill(
+                          context,
+                          label: 'LATEST',
+                          color: scheme.primary,
+                        )
+                      else if (isInstalled)
+                        _buildBadgePill(
+                          context,
+                          label: 'INSTALLED',
+                          color: scheme.positive,
+                        ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: AppSpacing.xs),
-                if (isLatest)
-                  _buildBadgePill(
-                    context,
-                    label: 'LATEST',
-                    color: scheme.primary,
-                  )
-                else if (isInstalled)
-                  _buildBadgePill(
-                    context,
-                    label: 'INSTALLED',
-                    color: scheme.positive,
-                  ),
-                const Spacer(),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.xs,
@@ -811,38 +820,45 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                       : scheme.onSurfaceVariant.withValues(alpha: 0.6),
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          'v${release.versionName}',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              'v${release.versionName}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
-                        ),
-                        if (isInstalled) ...[
-                          const SizedBox(width: AppSpacing.xs),
-                          _buildBadgePill(
-                            context,
-                            label: 'INSTALLED',
-                            color: scheme.positive,
-                          ),
+                          if (isInstalled) ...[
+                            const SizedBox(width: AppSpacing.xs),
+                            _buildBadgePill(
+                              context,
+                              label: 'INSTALLED',
+                              color: scheme.positive,
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.xxxs),
-                    Text(
-                      publishedDate,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        fontSize: 11,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: AppSpacing.xxxs),
+                      Text(
+                        publishedDate,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const Spacer(),
+                const SizedBox(width: AppSpacing.xs),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.xs,
@@ -858,7 +874,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                     '$totalChanges changes',
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: scheme.onSurfaceVariant,
-                      fontSize: 11,
                     ),
                   ),
                 ),
@@ -955,7 +970,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
         style: theme.textTheme.labelSmall?.copyWith(
           color: color,
           fontWeight: FontWeight.w800,
-          fontSize: 9,
           letterSpacing: 0.4,
         ),
       ),
@@ -1125,7 +1139,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                           scope,
                           style: theme.textTheme.labelSmall?.copyWith(
                             fontWeight: FontWeight.w700,
-                            fontSize: 10,
                             color: scheme.onSurfaceVariant,
                           ),
                         ),
@@ -1456,9 +1469,8 @@ class _MorpheInlineText extends StatelessWidget {
               ),
               child: Text(
                 code,
-                style: effectiveStyle.copyWith(
-                  fontFamily: 'monospace',
-                  fontSize: (effectiveStyle.fontSize ?? 14) * 0.9,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontFamily: AppFonts.mono,
                   fontWeight: FontWeight.w600,
                   color: scheme.primary,
                 ),

@@ -131,9 +131,8 @@ class _NotificationCaptureScreenState
                     prefs.notificationCaptureEnabled
                         ? 'A review candidate is created when a real transaction is detected.'
                         : 'Notifications are ignored.',
-                    style: TextStyle(
+                    style: theme.textTheme.bodySmall?.copyWith(
                       color: scheme.onSurfaceVariant,
-                      fontSize: 12,
                     ),
                   ),
                 ),
@@ -330,7 +329,9 @@ class _NotificationCaptureScreenState
                 _scanOnlyTargetApps
                     ? 'Scanning $targetCount monitored app${targetCount == 1 ? '' : 's'}'
                     : 'Scanning all apps with active notifications',
-                style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -339,7 +340,9 @@ class _NotificationCaptureScreenState
               padding: const EdgeInsets.only(bottom: AppSpacing.sm),
               child: Text(
                 'No target apps selected. Will scan all active notifications.',
-                style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
             ),
           ],
@@ -665,13 +668,13 @@ class _NotificationCaptureScreenState
                                                       ? 'Duplicate: already entered'
                                                       : 'Duplicate: already in review')
                                                 : 'Added to review',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w600,
-                                              color: isDuplicate
-                                                  ? scheme.tertiary
-                                                  : scheme.primary,
-                                            ),
+                                            style: theme.textTheme.labelSmall
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isDuplicate
+                                                      ? scheme.tertiary
+                                                      : scheme.primary,
+                                                ),
                                           ),
                                         ),
                                       ],
@@ -740,11 +743,11 @@ class _NotificationCaptureScreenState
                                                               null
                                                       ? 'View candidate: ${matchedCandidate.merchant}'
                                                       : 'View in review queue'),
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: scheme.tertiary,
-                                            ),
+                                            style: theme.textTheme.labelMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                  color: scheme.tertiary,
+                                                ),
                                           ),
                                         ),
                                         Icon(

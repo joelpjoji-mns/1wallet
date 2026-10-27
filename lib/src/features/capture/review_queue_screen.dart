@@ -360,7 +360,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: scheme.onSurfaceVariant,
-                  fontFamily: 'monospace',
+                  fontFamily: AppFonts.mono,
                   height: 1.4,
                 ),
               ),
@@ -535,8 +535,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                                   ),
                                   child: Text(
                                     notification.badgeLabel!,
-                                    style: TextStyle(
-                                      fontSize: 11,
+                                    style: theme.textTheme.labelSmall?.copyWith(
                                       fontWeight: FontWeight.w700,
                                       color:
                                           notification.isOverdue ||
@@ -889,7 +888,6 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
               children: [
                 const Text(
                   'Messages matching this regex pattern will be automatically ignored.',
-                  style: TextStyle(fontSize: 14),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Text(
@@ -907,9 +905,9 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                   ),
                   child: Text(
                     rawText,
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 12,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontFamily: AppFonts.mono,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),
@@ -926,7 +924,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                     children: words.map((word) {
                       return ActionChip(
                         label: Text(word),
-                        labelStyle: const TextStyle(fontSize: 12),
+                        labelStyle: Theme.of(context).textTheme.labelMedium,
                         onPressed: () {
                           final text = controller.text;
                           controller.text = text.isEmpty
