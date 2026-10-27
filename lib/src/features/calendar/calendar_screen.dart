@@ -985,7 +985,7 @@ class _DayCell extends StatelessWidget {
                 ),
                 if (records.isNotEmpty)
                   Icon(
-                    Icons.circle,
+                    Icons.circle_rounded,
                     size: 6,
                     color: scheme.primary.withAlphaFactor(inMonth ? 1.0 : 0.42),
                   ),

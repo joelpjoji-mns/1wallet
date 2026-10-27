@@ -1110,7 +1110,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                   ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(width: 4),
-                const Icon(Icons.arrow_drop_down, size: 16),
+                const Icon(Icons.arrow_drop_down_rounded, size: 16),
               ],
             ),
           ),
@@ -1140,7 +1140,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
         if (_cashOpenings.length > 1) ...[
           const SizedBox(width: AppSpacing.xs),
           IconButton(
-            icon: const Icon(Icons.remove_circle_outline, size: 20),
+            icon: const Icon(Icons.remove_circle_outline_rounded, size: 20),
             color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
             tooltip: 'Remove ${entry.currency}',
             onPressed: () {

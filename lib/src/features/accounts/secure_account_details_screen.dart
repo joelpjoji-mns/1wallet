@@ -425,7 +425,7 @@ class _SecureAccountDetailsScreenState
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.copy),
+            icon: const Icon(Icons.copy_rounded),
             onPressed: () => _copyToClipboard(controller.text),
           ),
         ],
@@ -565,7 +565,7 @@ class _SecureAccountDetailsScreenState
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.remove_circle_outline),
+                    icon: const Icon(Icons.remove_circle_outline_rounded),
                     color: Theme.of(context).colorScheme.error,
                     onPressed: () {
                       setState(() {
@@ -580,7 +580,7 @@ class _SecureAccountDetailsScreenState
           const SizedBox(height: 16),
           OutlinedButton.icon(
             onPressed: _addCustomField,
-            icon: const Icon(Icons.add),
+            icon: const Icon(Icons.add_rounded),
             label: const Text('Add custom field'),
           ),
 

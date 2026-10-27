@@ -107,7 +107,7 @@ class _ImportStatementScreenState
             children: [
               _buildFeatureRow(
                 theme,
-                Icons.check_circle_outline,
+                Icons.check_circle_outline_rounded,
                 'Multi-strategy engine adapts to any statement or card layout',
               ),
               const SizedBox(height: AppSpacing.xs),
@@ -183,7 +183,7 @@ class _ImportStatementScreenState
                     child: MetricTile(
                       label: 'Parsed',
                       value: '${result.rows.length}',
-                      icon: Icons.check_circle_outline,
+                      icon: Icons.check_circle_outline_rounded,
                       compact: true,
                       tone: result.rows.isNotEmpty
                           ? MetricTone.positive
@@ -349,7 +349,7 @@ class _ImportStatementScreenState
         if (_rawText != null)
           OutlinedButton.icon(
             onPressed: () => setState(() => _showRawText = !_showRawText),
-            icon: Icon(_showRawText ? Icons.visibility_off : Icons.visibility),
+            icon: Icon(_showRawText ? Icons.visibility_off_rounded : Icons.visibility_rounded),
             label: Text(_showRawText ? 'Hide extracted text' : 'View extracted PDF text'),
           ),
 
@@ -425,7 +425,7 @@ class _ImportStatementScreenState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Icon(
-            Icons.check_circle_outline,
+            Icons.check_circle_outline_rounded,
             size: 48,
             color: theme.colorScheme.primary,
           ),
@@ -457,7 +457,7 @@ class _ImportStatementScreenState
                     _selectedCurrency = null;
                     _showRawText = false;
                   }),
-                  icon: const Icon(Icons.add),
+                  icon: const Icon(Icons.add_rounded),
                   label: const Text('Import another'),
                 ),
               ),
@@ -465,7 +465,7 @@ class _ImportStatementScreenState
               Expanded(
                 child: FilledButton.icon(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.done),
+                  icon: const Icon(Icons.done_rounded),
                   label: const Text('Done'),
                 ),
               ),

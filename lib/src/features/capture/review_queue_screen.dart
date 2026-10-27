@@ -887,7 +887,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: Icon(
-                                Icons.fiber_manual_record,
+                                Icons.fiber_manual_record_rounded,
                                 size: 10,
                                 color: scheme.primary,
                               ),

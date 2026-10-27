@@ -211,7 +211,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                   text: 'It contains an amount (e.g. ₹1,250 or \$40).',
                 ),
                 _RuleRow(
-                  icon: Icons.check_circle_outline,
+                  icon: Icons.check_circle_outline_rounded,
                   text:
                       'It contains a trigger word (debited, credited, spent…).',
                 ),
@@ -316,7 +316,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                             );
                             _showMessage('Removed "$word" from ignore words.');
                           },
-                          icon: const Icon(Icons.delete_outline, size: 16),
+                          icon: const Icon(Icons.delete_outline_rounded, size: 16),
                           label: Text(
                             'Remove "${parsed.matchedIgnoreWord}" from ignore list',
                           ),
@@ -349,7 +349,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                             );
                             _showMessage('Removed "$word" from trigger words.');
                           },
-                          icon: const Icon(Icons.delete_outline, size: 16),
+                          icon: const Icon(Icons.delete_outline_rounded, size: 16),
                           label: Text(
                             'Remove "${parsed.matchedTriggerWord}" from triggers',
                           ),

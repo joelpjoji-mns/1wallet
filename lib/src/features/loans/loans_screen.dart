@@ -2328,11 +2328,11 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
         ),
         Row(
           children: [
-            const Icon(Icons.zoom_out, size: 20, color: Colors.grey),
+            const Icon(Icons.zoom_out_rounded, size: 20, color: Colors.grey),
             Expanded(
               child: Slider(value: _zoomPercent, onChanged: _onSliderChange),
             ),
-            const Icon(Icons.zoom_in, size: 20, color: Colors.grey),
+            const Icon(Icons.zoom_in_rounded, size: 20, color: Colors.grey),
           ],
         ),
       ],
@@ -2652,7 +2652,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.bolt, color: Colors.white, size: 28),
+                    const Icon(Icons.bolt_rounded, color: Colors.white, size: 28),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -2992,7 +2992,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                       children: [
                         ReorderableDragStartListener(
                           index: index,
-                          child: const Icon(Icons.drag_handle),
+                          child: const Icon(Icons.drag_handle_rounded),
                         ),
                         const SizedBox(width: 8),
                         Semantics(

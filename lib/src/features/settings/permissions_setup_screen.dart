@@ -202,7 +202,7 @@ class _PermissionsSetupScreenState
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  icon: const Icon(Icons.check_circle_outline),
+                  icon: const Icon(Icons.check_circle_outline_rounded),
                   label: Text(
                     _requestingAll ? 'Requesting...' : 'Finish Setup',
                     style: const TextStyle(

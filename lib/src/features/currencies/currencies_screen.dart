@@ -37,7 +37,7 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
         if (isSelectionMode)
           IconButton(
             tooltip: 'Delete selected',
-            icon: const Icon(Icons.delete_outline),
+            icon: const Icon(Icons.delete_outline_rounded),
             color: Theme.of(context).colorScheme.error,
             onPressed: () {
               for (final c in _selectedForDeletion) {
@@ -165,7 +165,7 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                         borderRadius: BorderRadius.circular(AppRadii.lg),
                       ),
                       child: Icon(
-                        Icons.delete_outline,
+                        Icons.delete_outline_rounded,
                         color: Theme.of(context).colorScheme.onError,
                       ),
                     ),
@@ -354,7 +354,7 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
             value: currency,
             title: getCurrencyInfo(currency).fullName,
             searchText: '$currency ${getCurrencyInfo(currency).name}',
-            icon: Icons.add_circle_outline,
+            icon: Icons.add_circle_outline_rounded,
           ),
       ],
     );

@@ -232,7 +232,7 @@ class _LiveWidgetPreview extends ConsumerWidget {
               ),
               ActionChip(
                 visualDensity: VisualDensity.compact,
-                avatar: const Icon(Icons.calendar_month, size: 16),
+                avatar: const Icon(Icons.calendar_month_rounded, size: 16),
                 label: Text(homeWidgetDateLabel(datePreset)),
                 onPressed: () => _chooseDatePreset(context, ref, datePreset),
               ),

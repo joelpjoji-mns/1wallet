@@ -321,7 +321,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         subtitle: const Text(
                           'Manage camera, photos, and notification access.',
                         ),
-                        trailing: const Icon(Icons.chevron_right, size: 20),
+                        trailing: const Icon(Icons.chevron_right_rounded, size: 20),
                         onTap: () => context.push('/device-permissions'),
                       ),
                     ],
@@ -357,7 +357,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             'Delete this account\'s cloud data and its wallet on this device.',
                           ),
                           trailing: Icon(
-                            Icons.chevron_right,
+                            Icons.chevron_right_rounded,
                             size: 20,
                             color: theme.colorScheme.error,
                           ),

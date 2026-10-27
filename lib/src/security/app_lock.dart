@@ -274,7 +274,7 @@ class _AppLockGateState extends ConsumerState<AppLockGate>
                         height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.fingerprint),
+                    : const Icon(Icons.fingerprint_rounded),
                 label: Text(lock.busy ? 'Authenticating…' : 'Unlock'),
               ),
             ],

@@ -61,7 +61,7 @@ class CreditCardView extends StatelessWidget {
         onTap: () => _copyToClipboard(context, text, label),
         child: Padding(
           padding: const EdgeInsets.all(4.0),
-          child: Icon(Icons.copy, color: color, size: 16),
+          child: Icon(Icons.copy_rounded, color: color, size: 16),
         ),
       ),
     );
@@ -121,7 +121,7 @@ class CreditCardView extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Icon(
-                  type == 'bank' ? Icons.account_balance : Icons.credit_card,
+                  type == 'bank' ? Icons.account_balance_rounded : Icons.credit_card_rounded,
                   color: Colors.white,
                   size: 32,
                 ),

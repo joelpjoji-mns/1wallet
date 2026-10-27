@@ -111,7 +111,7 @@ class _CaptureDiagnosticsScreenState
       child: history.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => const EmptyState(
-          icon: Icons.error_outline,
+          icon: Icons.error_outline_rounded,
           title: 'Could not load diagnostics',
           body:
               'The original history was retained. Refresh or clear this wallet\'s history to retry.',

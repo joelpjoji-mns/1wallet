@@ -243,7 +243,7 @@ class _AppIconWidgetState extends State<AppIconWidget> {
       return const SizedBox(
         width: 40,
         height: 40,
-        child: Icon(Icons.android, size: 32),
+        child: Icon(Icons.android_rounded, size: 32),
       );
     }
 

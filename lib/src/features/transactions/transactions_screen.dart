@@ -476,7 +476,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             tagOptions: [
               const GlassDropdownOption('all', 'All tags'),
               for (final tag in allLedgerTags)
-                GlassDropdownOption(tag, tag, icon: Icons.label_outline),
+                GlassDropdownOption(tag, tag, icon: Icons.label_outline_rounded),
             ],
             onTagSelected: (value) =>
                 ref.read(transactionsTagFilterProvider.notifier).state = value,

@@ -629,7 +629,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                     labelText: 'Tags / Labels',
                                     hintText: 'Add a tag (e.g. Work, Vacation)',
                                     prefixIcon: const Icon(
-                                      Icons.label_outline,
+                                      Icons.label_outline_rounded,
                                     ),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(
@@ -682,7 +682,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                         }
                                         return ListTile(
                                           dense: true,
-                                          leading: const Icon(Icons.label_outline, size: 18),
+                                          leading: const Icon(Icons.label_outline_rounded, size: 18),
                                           title: Text('#$option'),
                                           onTap: () => onSelected(option),
                                         );
@@ -757,7 +757,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                             child: Row(
                               children: [
                                 Icon(
-                                  Icons.info_outline,
+                                  Icons.info_outline_rounded,
                                   color: Theme.of(context).colorScheme.primary,
                                   size: 18,
                                 ),
@@ -784,7 +784,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                     GlassDropdownOption(
                                       'cleared',
                                       'Cleared',
-                                      icon: Icons.check_circle_outline,
+                                      icon: Icons.check_circle_outline_rounded,
                                     ),
                                     GlassDropdownOption(
                                       'pending',

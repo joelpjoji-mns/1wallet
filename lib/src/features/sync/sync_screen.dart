@@ -168,7 +168,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                 ),
                 if (sync.error != null)
                   InfoRow(
-                    icon: Icons.error_outline,
+                    icon: Icons.error_outline_rounded,
                     label: 'Sync error',
                     value: sync.error!,
                     tone: MetricTone.warning,

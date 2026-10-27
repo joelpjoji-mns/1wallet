@@ -227,7 +227,7 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                     GlassDropdownOption(opt, opt),
                 ],
                 onChanged: _onPeriodChanged,
-                icon: Icons.calendar_month,
+                icon: Icons.calendar_month_rounded,
                 semanticLabel: 'Balance period',
               ),
             ],
@@ -1189,7 +1189,7 @@ class _BalanceTrendHomeWidgetState
         });
         _savePreference(value);
       },
-      icon: Icons.calendar_month,
+      icon: Icons.calendar_month_rounded,
       semanticLabel: 'Balance trend period',
     );
   }

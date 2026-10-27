@@ -153,7 +153,7 @@ class _OfflineModeSheetState extends ConsumerState<OfflineModeSheet> {
                         dimension: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.lock_outline),
+                    : const Icon(Icons.lock_outline_rounded),
                 label: const Text('Continue offline'),
               ),
               const SizedBox(height: AppSpacing.xs),

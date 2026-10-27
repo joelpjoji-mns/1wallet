@@ -175,7 +175,7 @@ class TransactionCommandStrip extends StatelessWidget {
                             ),
                             if (tagOptions != null && tagOptions!.length > 1)
                               FilterPill(
-                                icon: Icons.label_outline,
+                                icon: Icons.label_outline_rounded,
                                 label: tagLabel,
                                 active: tagActive,
                                 value: tagValue,
@@ -183,7 +183,7 @@ class TransactionCommandStrip extends StatelessWidget {
                                 onSelected: onTagSelected,
                               ),
                             FilterPill(
-                              icon: Icons.info_outline,
+                              icon: Icons.info_outline_rounded,
                               label: statusLabel,
                               active: statusActive,
                               value: statusValue,
@@ -192,7 +192,7 @@ class TransactionCommandStrip extends StatelessWidget {
                                 GlassDropdownOption(
                                   'cleared',
                                   'Cleared',
-                                  icon: Icons.check_circle_outline,
+                                  icon: Icons.check_circle_outline_rounded,
                                 ),
                                 GlassDropdownOption(
                                   'pending',
