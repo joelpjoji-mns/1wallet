@@ -397,40 +397,17 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     required VoidCallback onTap,
     bool prominent = true,
   }) {
-    final scheme = Theme.of(context).colorScheme;
-    final bg = prominent
-        ? scheme.primary
-        : scheme.surfaceContainerHighest.withValues(alpha: 0.65);
-    final fg = prominent ? scheme.onPrimary : scheme.primary;
-
-    return SizedBox(
-      width: double.infinity,
-      child: GlassButton.custom(
-        label: label,
-        onTap: onTap,
-        height: 50,
-        shape: const LiquidRoundedRectangle(borderRadius: AppRadii.pill),
-        useOwnLayer: true,
-        quality: GlassQuality.standard,
-        style: prominent ? GlassButtonStyle.prominent : GlassButtonStyle.filled,
-        child: Container(
-          width: double.infinity,
-          height: 50,
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: fg,
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-            ),
-          ),
-        ),
-      ),
+    if (prominent) {
+      return FilledButton(
+        onPressed: onTap,
+        style: AppButtonStyles.cta,
+        child: Text(label),
+      );
+    }
+    return FilledButton.tonal(
+      onPressed: onTap,
+      style: AppButtonStyles.cta,
+      child: Text(label),
     );
   }
 
@@ -1292,49 +1269,13 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
-              SizedBox(
-                width: double.infinity,
-                child: GlassButton.custom(
-                  label: 'Cancel Download',
-                  onTap: () => provider.cancelDownload(),
-                  height: 48,
-                  shape: const LiquidRoundedRectangle(
-                    borderRadius: AppRadii.pill,
-                  ),
-                  useOwnLayer: true,
-                  quality: GlassQuality.standard,
-                  style: GlassButtonStyle.filled,
-                  child: Container(
-                    width: double.infinity,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: scheme.surfaceContainerHighest.withValues(
-                        alpha: 0.65,
-                      ),
-                      borderRadius: BorderRadius.circular(AppRadii.pill),
-                    ),
-                    alignment: Alignment.center,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.close_rounded,
-                          size: 18,
-                          color: scheme.error,
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Text(
-                          'Cancel Download',
-                          style: TextStyle(
-                            color: scheme.error,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              OutlinedButton.icon(
+                onPressed: () => provider.cancelDownload(),
+                style: AppButtonStyles.destructiveOutlined(
+                  context,
+                ).merge(AppButtonStyles.cta),
+                icon: const Icon(Icons.close_rounded),
+                label: const Text('Cancel Download'),
               ),
             ],
           ),

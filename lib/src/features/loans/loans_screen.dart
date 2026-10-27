@@ -1037,11 +1037,7 @@ class LoanDetailView extends ConsumerWidget {
           onPressed: () => context.push('/loans/${loan.id}/edit'),
           icon: const Icon(Icons.edit_rounded),
           label: const Text('Edit loan details'),
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Theme.of(context).colorScheme.onPrimary,
-          ),
+          style: AppButtonStyles.cta,
         ),
         const Gap(AppSpacing.sm),
         Row(
@@ -1111,26 +1107,14 @@ class LoanDetailView extends ConsumerWidget {
     WidgetRef ref,
     Account loan,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Archive loan?'),
-        content: const Text(
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Archive loan?',
+      message:
           'This hides the loan if linked transactions exist, or removes it if unused.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.tonal(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Archive'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Archive',
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     await ref.read(ledgerProvider.notifier).deleteAccount(loan.id);
     if (!context.mounted) return;
     _showRouteMessage(context, 'Loan archived.');

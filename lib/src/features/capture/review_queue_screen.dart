@@ -54,28 +54,17 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
         if (!mounted) return;
         _legacyPromptShown = true;
         final owner = ref.read(ledgerProvider).userId;
-        final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Assign legacy captures?'),
-            content: const Text(
+        final confirmed = await showAppConfirmDialog(
+          context,
+          title: 'Assign legacy captures?',
+          message:
               'Older queued messages have no recorded wallet owner. '
               'Import them into the currently signed-in wallet only if they belong to it.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Keep unassigned'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Assign to this wallet'),
-              ),
-            ],
-          ),
+          cancelLabel: 'Keep unassigned',
+          confirmLabel: 'Assign to this wallet',
         );
         if (!mounted) return;
-        if (confirmed == true && ref.read(ledgerProvider).userId == owner) {
+        if (confirmed && ref.read(ledgerProvider).userId == owner) {
           await ref.read(ledgerProvider.notifier).assignLegacyCaptures();
         }
       }
@@ -408,22 +397,12 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Block: GlassIconButton (standalone, glass chrome)
-                  Tooltip(
-                    message: 'Block Pattern',
-                    child: GlassIconButton(
-                      icon: const Icon(Icons.block_rounded),
-                      onPressed: () =>
-                          _showBlockDialog(context, ref, candidate),
-                      size: 48,
-                      iconSize: 22,
-                      glowColor: scheme.error,
-                      shape: GlassIconButtonShape.roundedSquare,
-                      borderRadius: AppRadii.pill,
-                      useOwnLayer: true,
-                      quality: GlassQuality.standard,
-                      semanticLabel: 'Block Pattern',
-                    ),
+                  // Block
+                  IconButton(
+                    tooltip: 'Block Pattern',
+                    onPressed: () => _showBlockDialog(context, ref, candidate),
+                    color: scheme.error,
+                    icon: const Icon(Icons.block_rounded),
                   ),
                   const SizedBox(width: AppSpacing.sm),
 
@@ -439,13 +418,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                       ),
                       icon: const Icon(Icons.close_rounded),
                       label: const Text('Dismiss'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: scheme.error,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadii.pill),
-                        ),
-                      ),
+                      style: AppButtonStyles.destructiveText(context),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
@@ -453,7 +426,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                   // Confirm
                   Expanded(
                     flex: 3,
-                    child: FilledButton.icon(
+                    child: FilledButton.tonalIcon(
                       onPressed: () => _updateCandidateStatus(
                         context,
                         ref,
@@ -462,15 +435,6 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                       ),
                       icon: const Icon(Icons.check_rounded),
                       label: const Text('Confirm'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: colorScheme.primaryContainer,
-                        foregroundColor: colorScheme.onPrimaryContainer,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadii.pill),
-                        ),
-                        elevation: 0,
-                      ),
                     ),
                   ),
                 ],
@@ -663,14 +627,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                       onPressed: () => _dismiss(ref, notification.id),
                       icon: const Icon(Icons.close_rounded, size: 16),
                       label: const Text('Dismiss'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: scheme.onSurfaceVariant,
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 8,
-                        ),
-                      ),
+                      style: AppButtonStyles.compact(context),
                     ),
                     const Spacer(),
                     IconButton(
@@ -708,16 +665,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                       },
                       icon: const Icon(Icons.check_rounded, size: 16),
                       label: const Text('Confirm Paid'),
-                      style: FilledButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadii.pill),
-                        ),
-                      ),
+                      style: AppButtonStyles.compact(context),
                     ),
                   ],
                 ),
@@ -853,10 +801,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                     onPressed: () => _dismiss(ref, notification.id),
                     icon: const Icon(Icons.close_rounded, size: 16),
                     label: const Text('Dismiss'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: scheme.onSurfaceVariant,
-                      visualDensity: VisualDensity.compact,
-                    ),
+                    style: AppButtonStyles.compact(context),
                   ),
                   const Spacer(),
                   if (notification.actionRoute != null)
@@ -865,9 +810,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                           _openNotification(context, ref, notification),
                       icon: const Icon(Icons.arrow_forward_rounded, size: 16),
                       label: const Text('View'),
-                      style: TextButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                      ),
+                      style: AppButtonStyles.compact(context),
                     ),
                 ],
               ),
@@ -883,28 +826,16 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
     WidgetRef ref,
     List<CaptureCandidate> candidates,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Approve All?'),
-        content: Text(
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Approve All?',
+      message:
           'Are you sure you want to approve all ${candidates.length} pending items?\n\n'
           'They will be added as transactions using their suggested accounts and categories.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Approve All'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Approve All',
     );
 
-    if (confirmed == true && context.mounted) {
+    if (confirmed && context.mounted) {
       final ledger = ref.read(ledgerProvider.notifier);
       for (final candidate in candidates) {
         try {
@@ -925,27 +856,15 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
     WidgetRef ref,
     List<CaptureCandidate> candidates,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Dismiss All?'),
-        content: Text(
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Dismiss All?',
+      message:
           'Are you sure you want to dismiss all ${candidates.length} pending items?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Dismiss All'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Dismiss All',
     );
 
-    if (confirmed == true && context.mounted) {
+    if (confirmed && context.mounted) {
       final ledger = ref.read(ledgerProvider.notifier);
       await ledger.updateCaptureCandidateStatuses(
         candidates.map((c) => c.id),
@@ -973,12 +892,14 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
         .toList();
 
     try {
-      await GlassDialog.show<void>(
+      await showDialog<void>(
         context: context,
-        title: 'Block Message Pattern',
-        content: Material(
-          color: Colors.transparent,
-          child: SingleChildScrollView(
+        barrierDismissible: true,
+        builder: (_) => AlertDialog(
+          title: const Text('Block Message Pattern'),
+          // Keeps the dialog's previous width cap on wide screens.
+          constraints: const BoxConstraints(minWidth: 280, maxWidth: 420),
+          content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1045,39 +966,36 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
               ],
             ),
           ),
-        ),
-        barrierDismissible: true,
-        maxWidth: 420,
-        actions: [
-          GlassDialogAction(
-            label: 'Cancel',
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          GlassDialogAction(
-            label: 'Block Pattern',
-            isPrimary: true,
-            onPressed: () async {
-              final pattern = controller.text.trim();
-              if (pattern.isNotEmpty) {
-                final ledger = ref.read(ledgerProvider.notifier);
-                final prefs = ref.read(ledgerProvider).preferences;
-                final patterns = List<String>.from(prefs.smsBlockPatterns);
-                if (!patterns.contains(pattern)) {
-                  patterns.add(pattern);
-                  await ledger.updatePreferencesWith(
-                    (livePreferences) =>
-                        livePreferences.copyWith(smsBlockPatterns: patterns),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final pattern = controller.text.trim();
+                if (pattern.isNotEmpty) {
+                  final ledger = ref.read(ledgerProvider.notifier);
+                  final prefs = ref.read(ledgerProvider).preferences;
+                  final patterns = List<String>.from(prefs.smsBlockPatterns);
+                  if (!patterns.contains(pattern)) {
+                    patterns.add(pattern);
+                    await ledger.updatePreferencesWith(
+                      (livePreferences) =>
+                          livePreferences.copyWith(smsBlockPatterns: patterns),
+                    );
+                  }
+                  await ledger.updateCaptureCandidateStatus(
+                    candidate.id,
+                    'rejected',
                   );
                 }
-                await ledger.updateCaptureCandidateStatus(
-                  candidate.id,
-                  'rejected',
-                );
-              }
-              if (context.mounted) Navigator.of(context).pop();
-            },
-          ),
-        ],
+                if (context.mounted) Navigator.of(context).pop();
+              },
+              child: const Text('Block Pattern'),
+            ),
+          ],
+        ),
       );
     } finally {
       controller.dispose();

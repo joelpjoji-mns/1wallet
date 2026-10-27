@@ -65,13 +65,10 @@ class OfflineModeCard extends StatelessWidget {
 /// which wallet to keep when the account already has one, and never closes
 /// while the wallet is being moved.
 Future<void> showOfflineUpgradeSheet(BuildContext context) {
-  return showModalBottomSheet<void>(
+  return showAppSheet<void>(
     context: context,
-    isScrollControlled: true,
     isDismissible: false,
     enableDrag: false,
-    useSafeArea: true,
-    backgroundColor: Colors.transparent,
     builder: (_) => const OfflineUpgradeSheet(),
   );
 }
@@ -144,25 +141,13 @@ class _OfflineUpgradeSheetState extends ConsumerState<OfflineUpgradeSheet> {
     required String title,
     required String body,
     required String action,
-  }) async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(body),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(action),
-          ),
-        ],
-      ),
+  }) {
+    return showAppConfirmDialog(
+      context,
+      title: title,
+      message: body,
+      confirmLabel: action,
     );
-    return result == true;
   }
 
   @override
@@ -174,26 +159,28 @@ class _OfflineUpgradeSheetState extends ConsumerState<OfflineUpgradeSheet> {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop && !state.isBusy) _close();
       },
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: AppPanel(
-          glass: true,
-          radius: AppRadii.lg,
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Back up & sync with Google',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: AppPanel(
+            glass: true,
+            radius: AppRadii.lg,
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Back up & sync with Google',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                ..._body(context, state),
-              ],
+                  const SizedBox(height: AppSpacing.md),
+                  ..._body(context, state),
+                ],
+              ),
             ),
           ),
         ),

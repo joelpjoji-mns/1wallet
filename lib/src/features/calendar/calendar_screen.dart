@@ -601,9 +601,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 if (isDesktop) ...[
                   const SizedBox(width: AppSpacing.xs),
                   IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    visualDensity: VisualDensity.compact,
                     tooltip: 'Close',
+                    icon: const Icon(Icons.close_rounded),
                     onPressed: () => Navigator.of(modalContext).pop(),
                   ),
                 ],
@@ -660,9 +659,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       showDialog<void>(
         context: context,
         builder: (dialogContext) => Dialog(
+          // The day panel draws its own (glass/opaque) surface.
           backgroundColor: Colors.transparent,
           elevation: 0,
-          insetPadding: const EdgeInsets.all(AppSpacing.lg),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 500),
             child: buildCardContent(dialogContext),
@@ -670,12 +669,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         ),
       );
     } else {
-      showModalBottomSheet<void>(
+      showAppSheet<void>(
         context: context,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        isScrollControlled: true,
-        constraints: const BoxConstraints(maxWidth: 540),
+        maxWidth: 540,
         builder: (sheetContext) => SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.md),

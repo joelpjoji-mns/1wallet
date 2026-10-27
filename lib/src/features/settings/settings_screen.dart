@@ -703,25 +703,8 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
     final isBusy = deletionState.isBusy;
 
     return AlertDialog(
-      title: Row(
-        children: [
-          Icon(
-            Icons.warning_amber_rounded,
-            color: theme.colorScheme.error,
-            size: 28,
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              'Delete account & data?',
-              style: TextStyle(
-                color: theme.colorScheme.error,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
+      icon: Icon(Icons.warning_amber_rounded, color: theme.colorScheme.error),
+      title: const Text('Delete account & data?'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -812,10 +795,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
         ),
         FilledButton(
           onPressed: (_canDelete && !isBusy) ? _onConfirmDelete : null,
-          style: FilledButton.styleFrom(
-            backgroundColor: theme.colorScheme.error,
-            foregroundColor: theme.colorScheme.onError,
-          ),
+          style: AppButtonStyles.destructiveFilled(context),
           child: const Text('Delete everything'),
         ),
       ],

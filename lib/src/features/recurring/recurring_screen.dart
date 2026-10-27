@@ -141,31 +141,15 @@ class RecurringScreen extends ConsumerWidget {
             tooltip: 'Delete plan',
             semanticLabel: 'Delete plan',
             onPressed: () async {
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Delete plan?'),
-                  content: const Text(
+              final confirm = await showAppConfirmDialog(
+                context,
+                title: 'Delete plan?',
+                message:
                     'This will permanently delete this scheduled payment. Historical payments posted from this plan will not be deleted.',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: Text(
-                        'Delete',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                confirmLabel: 'Delete',
+                destructive: true,
               );
-              if (confirm == true) {
+              if (confirm) {
                 await ref
                     .read(ledgerProvider.notifier)
                     .deleteTransaction(selected.id);
@@ -873,10 +857,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                       width: 100,
                       child: OutlinedButton(
                         onPressed: () => _showCurrencyPicker(state),
-                        style: OutlinedButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          minimumSize: const Size.fromHeight(56),
-                        ),
+                        style: AppButtonStyles.cta,
                         child: Text(
                           _currency ?? state.preferences.baseCurrency,
                         ),
@@ -1717,9 +1698,7 @@ class RecurringDetailView extends ConsumerWidget {
             onPressed: () => _postNow(context, ref),
             icon: const Icon(Icons.check_circle_rounded),
             label: const Text('Post now'),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-            ),
+            style: AppButtonStyles.cta,
           ),
         const Gap(AppSpacing.sm),
         Row(
@@ -1729,8 +1708,8 @@ class RecurringDetailView extends ConsumerWidget {
                 onPressed: transaction.status == 'scheduled'
                     ? () => _postpone(context, ref)
                     : null,
-                style: OutlinedButton.styleFrom(padding: EdgeInsets.zero),
-                child: const Text('Postpone', style: TextStyle(fontSize: 13)),
+                style: AppButtonStyles.compact(context),
+                child: const Text('Postpone'),
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
@@ -1739,8 +1718,8 @@ class RecurringDetailView extends ConsumerWidget {
                 onPressed: transaction.status == 'scheduled'
                     ? () => _skip(context, ref)
                     : null,
-                style: OutlinedButton.styleFrom(padding: EdgeInsets.zero),
-                child: const Text('Skip next', style: TextStyle(fontSize: 13)),
+                style: AppButtonStyles.compact(context),
+                child: const Text('Skip next'),
               ),
             ),
             if (transaction.status == 'scheduled' ||
@@ -1751,15 +1730,9 @@ class RecurringDetailView extends ConsumerWidget {
                   onPressed: () => transaction.status == 'paused'
                       ? _resume(context, ref)
                       : _pause(context, ref),
-                  style: transaction.status == 'paused'
-                      ? OutlinedButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          foregroundColor: scheme.primary,
-                        )
-                      : OutlinedButton.styleFrom(padding: EdgeInsets.zero),
+                  style: AppButtonStyles.compact(context),
                   child: Text(
                     transaction.status == 'paused' ? 'Resume' : 'Pause',
-                    style: const TextStyle(fontSize: 13),
                   ),
                 ),
               ),

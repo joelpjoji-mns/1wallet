@@ -391,9 +391,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           delay: const Duration(milliseconds: 200),
           child: FilledButton(
             onPressed: _nextPage,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(56),
-            ),
+            style: AppButtonStyles.cta,
             child: const Text('Continue'),
           ),
         ),
@@ -466,9 +464,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           delay: const Duration(milliseconds: 200),
           child: FilledButton(
             onPressed: _nextPage,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(56),
-            ),
+            style: AppButtonStyles.cta,
             child: const Text('Continue'),
           ),
         ),
@@ -567,9 +563,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 _nextPage();
               }
             },
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(56),
-            ),
+            style: AppButtonStyles.cta,
             child: const Text('Save account'),
           ),
         ),
@@ -614,7 +608,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         const SizedBox(height: 32),
         FilledButton(
           onPressed: _nextPage,
-          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
+          style: AppButtonStyles.cta,
           child: const Text('Looks good'),
         ),
       ],
@@ -667,9 +661,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           delay: const Duration(milliseconds: 200),
           child: FilledButton(
             onPressed: _nextPage,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(56),
-            ),
+            style: AppButtonStyles.cta,
             child: const Text('Finish Setup'),
           ),
         ),

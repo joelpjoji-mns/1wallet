@@ -280,17 +280,8 @@ class _CardAccountTile extends ConsumerWidget {
                                 );
                           },
                           icon: const Icon(Icons.check_rounded, size: 16),
-                          label: const Text(
-                            'Confirm Paid',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                          style: TextButton.styleFrom(
-                            visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                          ),
+                          label: const Text('Confirm Paid'),
+                          style: AppButtonStyles.compact(context),
                         )
                       else
                         TextButton(
@@ -299,20 +290,12 @@ class _CardAccountTile extends ConsumerWidget {
                                 .read(ledgerProvider.notifier)
                                 .markCardBillPaid(account.id, null);
                           },
-                          style: TextButton.styleFrom(
-                            visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
+                          style: AppButtonStyles.compact(context).merge(
+                            TextButton.styleFrom(
+                              foregroundColor: scheme.onSurfaceVariant,
                             ),
                           ),
-                          child: Text(
-                            'Unmark Paid',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
+                          child: const Text('Unmark Paid'),
                         ),
                     ],
                   ),

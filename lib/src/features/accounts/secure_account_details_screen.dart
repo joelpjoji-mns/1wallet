@@ -345,30 +345,16 @@ class _SecureAccountDetailsScreenState
   }
 
   Future<void> _archiveAccount(Account account) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Close account?'),
-        content: const Text(
+    final confirm = await showAppConfirmDialog(
+      context,
+      title: 'Close account?',
+      message:
           'This account will be archived and hidden from most views, but its history will be kept.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              'Close Account',
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          ),
-        ],
-      ),
+      confirmLabel: 'Close Account',
+      destructive: true,
     );
 
-    if (confirm == true && mounted) {
+    if (confirm && mounted) {
       await ref
           .read(ledgerProvider.notifier)
           .upsertAccount(
@@ -425,6 +411,7 @@ class _SecureAccountDetailsScreenState
             ),
           ),
           IconButton(
+            tooltip: 'Copy $label',
             icon: const Icon(Icons.copy_rounded),
             onPressed: () => _copyToClipboard(controller.text),
           ),
@@ -565,6 +552,7 @@ class _SecureAccountDetailsScreenState
                     ),
                   ),
                   IconButton(
+                    tooltip: 'Remove ${_customFields[i].key}',
                     icon: const Icon(Icons.remove_circle_outline_rounded),
                     color: Theme.of(context).colorScheme.error,
                     onPressed: () {
@@ -592,10 +580,7 @@ class _SecureAccountDetailsScreenState
             onPressed: () => _archiveAccount(account),
             icon: const Icon(Icons.archive_outlined),
             label: const Text('Close Account'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
-              side: BorderSide(color: Theme.of(context).colorScheme.error),
-            ),
+            style: AppButtonStyles.destructiveOutlined(context),
           ),
 
           const SizedBox(height: 24),

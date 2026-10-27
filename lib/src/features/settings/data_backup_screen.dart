@@ -57,30 +57,16 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
   Future<void> _restoreFromAutoBackup() async {
     if (_latestAutoBackup == null || _busy) return;
     setState(() => _busy = true);
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Restore auto-backup?'),
-        content: const Text(
+    final confirm = await showAppConfirmDialog(
+      context,
+      title: 'Restore auto-backup?',
+      message:
           'This replaces the wallet on this device and, when signed in, the cloud wallet used on your other devices. '
           'The backup may be older than your current data. Continue?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              'Restore',
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          ),
-        ],
-      ),
+      confirmLabel: 'Restore',
+      destructive: true,
     );
-    if (confirm != true || !mounted) {
+    if (!confirm || !mounted) {
       if (mounted) setState(() => _busy = false);
       return;
     }
@@ -94,36 +80,19 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
       if (!mounted) return;
       if (e.toString().contains('Restore rejected')) {
         final isDifferentAccount = e.toString().contains('different account');
-        final confirmForce = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text(
-              isDifferentAccount
-                  ? 'Warning: Different Account Backup'
-                  : 'Warning: Older Backup',
-            ),
-            content: Text(
-              isDifferentAccount
-                  ? 'This backup belongs to a different user account. Restoring it will replace your current wallet and sync that data into your signed-in account. Are you sure?'
-                  : 'Your current local data is newer or has more transactions than this auto-backup. '
-                        'Are you sure you want to overwrite your current data?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: Text(
-                  'Force Restore',
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ),
-            ],
-          ),
+        final confirmForce = await showAppConfirmDialog(
+          context,
+          title: isDifferentAccount
+              ? 'Warning: Different Account Backup'
+              : 'Warning: Older Backup',
+          message: isDifferentAccount
+              ? 'This backup belongs to a different user account. Restoring it will replace your current wallet and sync that data into your signed-in account. Are you sure?'
+              : 'Your current local data is newer or has more transactions than this auto-backup. '
+                    'Are you sure you want to overwrite your current data?',
+          confirmLabel: 'Force Restore',
+          destructive: true,
         );
-        if (confirmForce == true && mounted) {
+        if (confirmForce && mounted) {
           try {
             await ref
                 .read(ledgerProvider.notifier)
@@ -191,10 +160,6 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
                 onPressed: _busy ? null : _restoreFromAutoBackup,
                 icon: const Icon(Icons.history_toggle_off_rounded),
                 label: const Text('Restore latest auto-backup'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.tertiary,
-                  foregroundColor: Theme.of(context).colorScheme.onTertiary,
-                ),
               ),
             ),
           ],
@@ -325,27 +290,15 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
           );
           if (passphrase == null || !mounted) return;
         } else {
-          final confirmed = await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Import legacy plaintext backup?'),
-              content: const Text(
+          final confirmed = await showAppConfirmDialog(
+            context,
+            title: 'Import legacy plaintext backup?',
+            message:
                 'This older backup is not encrypted. Import only a file you trust. '
                 'After validation it replaces this device\'s wallet and the cloud wallet used on other devices.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('Import'),
-                ),
-              ],
-            ),
+            confirmLabel: 'Import',
           );
-          if (confirmed != true || !mounted) return;
+          if (!confirmed || !mounted) return;
           replacementConfirmed = true;
         }
       }
@@ -362,36 +315,19 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
         final isDifferentAccount = error.toString().contains(
           'different account',
         );
-        final confirm = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text(
-              isDifferentAccount
-                  ? 'Warning: Different Account Backup'
-                  : 'Warning: Older Backup',
-            ),
-            content: Text(
-              isDifferentAccount
-                  ? 'This backup belongs to a different user account. Restoring it will replace your current wallet and sync that data into your signed-in account. Are you sure?'
-                  : 'Your current local data is newer or has more transactions than this backup. '
-                        'Are you sure you want to overwrite your current data?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: Text(
-                  'Force Restore',
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ),
-            ],
-          ),
+        final confirm = await showAppConfirmDialog(
+          context,
+          title: isDifferentAccount
+              ? 'Warning: Different Account Backup'
+              : 'Warning: Older Backup',
+          message: isDifferentAccount
+              ? 'This backup belongs to a different user account. Restoring it will replace your current wallet and sync that data into your signed-in account. Are you sure?'
+              : 'Your current local data is newer or has more transactions than this backup. '
+                    'Are you sure you want to overwrite your current data?',
+          confirmLabel: 'Force Restore',
+          destructive: true,
         );
-        if (confirm == true && mounted && fileText != null) {
+        if (confirm && mounted && fileText != null) {
           try {
             await ref
                 .read(ledgerProvider.notifier)
@@ -422,29 +358,15 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
       );
   }
 
-  Future<bool> _confirmWalletReplacement() async =>
-      await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Replace local and cloud wallet?'),
-          content: const Text(
-            'Once validation succeeds, this backup replaces the wallet on this device '
-            'and, when signed in, the cloud wallet used on your other devices. '
-            'Cancel if you only want to inspect the file.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Replace wallet'),
-            ),
-          ],
-        ),
-      ) ==
-      true;
+  Future<bool> _confirmWalletReplacement() => showAppConfirmDialog(
+    context,
+    title: 'Replace local and cloud wallet?',
+    message:
+        'Once validation succeeds, this backup replaces the wallet on this device '
+        'and, when signed in, the cloud wallet used on your other devices. '
+        'Cancel if you only want to inspect the file.',
+    confirmLabel: 'Replace wallet',
+  );
 
   Future<void> _reportRestore() async {
     if (ref.read(authControllerProvider).isLocalOnly) {

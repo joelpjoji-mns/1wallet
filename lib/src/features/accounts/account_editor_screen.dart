@@ -286,13 +286,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                               onPressed: () => _addCashCurrency(context, state),
                               icon: const Icon(Icons.add_rounded, size: 18),
                               label: const Text('Add currency'),
-                              style: TextButton.styleFrom(
-                                visualDensity: VisualDensity.compact,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: AppSpacing.sm,
-                                  vertical: AppSpacing.xs,
-                                ),
-                              ),
+                              style: AppButtonStyles.compact(context),
                             ),
                           ],
                         ),
@@ -525,39 +519,18 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                         onPressed: () => _reopenAccount(state, account),
                         icon: const Icon(Icons.unarchive_outlined),
                         label: const Text('Reopen account'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Theme.of(
-                            context,
-                          ).colorScheme.primary,
-                          side: BorderSide(
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
                       )
                     else
                       OutlinedButton.icon(
                         onPressed: () => _closeAccount(state, account),
                         icon: const Icon(Icons.archive_outlined),
                         label: const Text('Close account'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Theme.of(
-                            context,
-                          ).colorScheme.primary,
-                          side: BorderSide(
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
                       ),
                     OutlinedButton.icon(
                       onPressed: () => _confirmDeleteAccount(state, account),
                       icon: const Icon(Icons.delete_outline_rounded),
                       label: const Text('Delete account'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Theme.of(context).colorScheme.error,
-                        side: BorderSide(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
+                      style: AppButtonStyles.destructiveOutlined(context),
                     ),
                   ],
                 ),
@@ -909,28 +882,16 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     }
 
     final hasLinkedTransactions = _accountHasLinkedTransactions(state, account);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete account?'),
-        content: Text(
-          hasLinkedTransactions
-              ? 'This will delete “${account.name}” from your active accounts. All previous transactions under this account will remain safely preserved in your history.'
-              : 'This permanently removes “${account.name}” from your wallet.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.tonal(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Delete account?',
+      message: hasLinkedTransactions
+          ? 'This will delete “${account.name}” from your active accounts. All previous transactions under this account will remain safely preserved in your history.'
+          : 'This permanently removes “${account.name}” from your wallet.',
+      confirmLabel: 'Delete',
+      destructive: true,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     try {
       await ref.read(ledgerProvider.notifier).deleteAccount(account.id);
@@ -1157,50 +1118,25 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
   }
 
   Future<void> _closeAccount(LedgerState state, Account account) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Close account?'),
-        content: const Text(
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Close account?',
+      message:
           'This account will be closed and hidden from your active wallet balances, but its history will be kept.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.tonal(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Close account'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Close account',
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     await _updateArchiveState(account, true, 'Account closed and archived.');
   }
 
   Future<void> _reopenAccount(LedgerState state, Account account) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Reopen account?'),
-        content: const Text(
-          'This account will be visible in your active wallet again.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.tonal(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Reopen'),
-          ),
-        ],
-      ),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Reopen account?',
+      message: 'This account will be visible in your active wallet again.',
+      confirmLabel: 'Reopen',
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     await _updateArchiveState(account, false, 'Account reopened.');
   }
 
@@ -1332,17 +1268,15 @@ Future<int?> showDayOfMonthPicker({
                   onPressed: () => Navigator.of(pickerContext).pop(0),
                   icon: const Icon(Icons.clear_rounded, size: 16),
                   label: const Text('Clear'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: scheme.error,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                  ),
+                  style: AppButtonStyles.destructiveText(
+                    context,
+                  ).merge(AppButtonStyles.compact(context)),
                 ),
               if (isDesktop) ...[
                 const SizedBox(width: AppSpacing.xs),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded),
-                  visualDensity: VisualDensity.compact,
                   tooltip: 'Close',
+                  icon: const Icon(Icons.close_rounded),
                   onPressed: () => Navigator.of(pickerContext).pop(),
                 ),
               ],
@@ -1444,9 +1378,9 @@ Future<int?> showDayOfMonthPicker({
     return showDialog<int?>(
       context: context,
       builder: (dialogContext) => Dialog(
+        // The picker content draws its own panel surface.
         backgroundColor: Colors.transparent,
         elevation: 0,
-        insetPadding: const EdgeInsets.all(AppSpacing.lg),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
           child: buildPickerContent(dialogContext),
@@ -1455,20 +1389,12 @@ Future<int?> showDayOfMonthPicker({
     );
   }
 
-  return showModalBottomSheet<int?>(
+  return showAppSheet<int?>(
     context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    elevation: 0,
-    constraints: const BoxConstraints(maxWidth: 460),
+    maxWidth: 460,
     builder: (sheetContext) => SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          AppSpacing.md,
-          AppSpacing.md,
-          AppSpacing.lg,
-        ),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: buildPickerContent(sheetContext),
       ),
     ),

@@ -458,11 +458,8 @@ class _NotificationCaptureScreenState
     required List<CaptureImportResult> results,
     required List<AndroidActiveNotification> notifications,
   }) {
-    showModalBottomSheet<void>(
+    showAppSheet<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      constraints: const BoxConstraints(maxWidth: 640),
       builder: (sheetContext) {
         final state = ref.watch(ledgerProvider);
         final theme = Theme.of(sheetContext);
@@ -499,6 +496,7 @@ class _NotificationCaptureScreenState
                               ),
                             ),
                             IconButton(
+                              tooltip: 'Close',
                               icon: const Icon(Icons.close_rounded),
                               onPressed: () => Navigator.of(sheetContext).pop(),
                             ),

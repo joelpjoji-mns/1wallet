@@ -6,6 +6,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../design/tokens.dart';
 import '../../startup/startup_state.dart';
+import '../../widgets/app_kit.dart';
 
 abstract final class LaunchPalette {
   static const background = Color(0xFF0F1820);
@@ -778,10 +779,9 @@ class RecoveryState extends StatelessWidget {
                 FilledButton(
                   onPressed: onAction,
                   style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(56),
                     backgroundColor: palette.primary,
                     foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                  ),
+                  ).merge(AppButtonStyles.cta),
                   child: Text(actionLabel),
                 ),
                 if (secondaryLabel != null && onSecondaryAction != null) ...[

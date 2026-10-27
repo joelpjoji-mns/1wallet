@@ -103,13 +103,9 @@ class SettingsProfileSection extends StatelessWidget {
                       children: [
                         FilledButton.tonal(
                           onPressed: offline ? onUpgrade : onSignOut,
-                          style: FilledButton.styleFrom(
-                            visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                          ),
+                          style: AppButtonStyles.compact(context),
                           child: Text(
                             offline ? 'Sync with Google' : 'Sign out',
-                            style: const TextStyle(fontSize: 12),
                           ),
                         ),
                       ],

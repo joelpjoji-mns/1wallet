@@ -1125,26 +1125,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   Future<void> _confirmDeleteSelected() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete transactions?'),
-        content: Text(
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Delete transactions?',
+      message:
           'Are you sure you want to delete ${_selectedTransactionIds.length} transaction${_selectedTransactionIds.length == 1 ? '' : 's'}? This cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Delete',
+      destructive: true,
     );
-    if (confirmed == true) {
+    if (confirmed) {
       final ids = Set<String>.from(_selectedTransactionIds);
       setState(() {
         _selectedTransactionIds.clear();
@@ -1202,11 +1191,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       currency: selectedList.first.amount.currency,
     );
 
-    await showModalBottomSheet<void>(
+    await showAppSheet<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      constraints: const BoxConstraints(maxWidth: 640),
       builder: (sheetContext) => _MergeTransactionsSheet(
         state: state,
         selectedTransactions: selectedList,
@@ -1506,6 +1492,7 @@ class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
                       ),
                     ),
                     IconButton(
+                      tooltip: 'Close',
                       icon: const Icon(Icons.close_rounded),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
@@ -1768,6 +1755,7 @@ class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
 
                     // Action buttons
                     FilledButton.icon(
+                      style: AppButtonStyles.cta,
                       onPressed: () {
                         Navigator.of(context).pop();
                         widget.onMerge(

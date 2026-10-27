@@ -57,28 +57,16 @@ class _CaptureDiagnosticsScreenState
           icon: Icons.history_rounded,
           semanticLabel: 'Clear legacy unassigned diagnostic history',
           onPressed: () async {
-            final confirmed = await showDialog<bool>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('Clear unassigned diagnostic history?'),
-                content: const Text(
+            final confirmed = await showAppConfirmDialog(
+              context,
+              title: 'Clear unassigned diagnostic history?',
+              message:
                   'Older diagnostic history has no verified owner and may '
                   'contain alerts from other wallets on this device. This clears only that '
                   'diagnostic history, not ledger records or queued captures.',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('Cancel'),
-                  ),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('Clear unassigned history'),
-                  ),
-                ],
-              ),
+              confirmLabel: 'Clear unassigned history',
             );
-            if (confirmed != true ||
+            if (!confirmed ||
                 !mounted ||
                 ref.read(ledgerProvider).userId != state.userId) {
               return;

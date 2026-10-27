@@ -458,26 +458,15 @@ class _TransactionDetailScreenState
     WidgetRef ref,
     TransactionRecord transaction,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete record?'),
-        content: const Text(
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Delete record?',
+      message:
           'This will permanently delete this record. This cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.tonal(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Delete',
+      destructive: true,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     await ref.read(ledgerProvider.notifier).deleteTransaction(transaction.id);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)

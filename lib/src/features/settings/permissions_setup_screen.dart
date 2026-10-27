@@ -173,12 +173,7 @@ class _PermissionsSetupScreenState
               delay: const Duration(milliseconds: 300),
               child: FilledButton.icon(
                 onPressed: _requestingAll ? null : _finishSetup,
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(56),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
+                style: AppButtonStyles.cta,
                 icon: const Icon(Icons.check_circle_outline_rounded),
                 label: Text(
                   _requestingAll ? 'Requesting...' : 'Finish Setup',

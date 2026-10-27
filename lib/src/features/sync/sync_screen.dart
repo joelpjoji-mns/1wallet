@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../auth/auth_controller.dart';
 import '../../cloud_sync/cloud_sync_controller.dart';
@@ -685,7 +684,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
       message: message,
       action: action,
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
     await ref.read(cloudSyncControllerProvider.notifier).useCloudCopy();
   }
 
@@ -696,32 +695,22 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
           'This replaces the cloud wallet on your other devices with this device’s complete wallet.',
       action: 'Overwrite cloud',
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
     await ref
         .read(cloudSyncControllerProvider.notifier)
         .overwriteCloudWithLocal();
   }
 
-  Future<bool?> _confirmReplacement({
+  Future<bool> _confirmReplacement({
     required String title,
     required String message,
     required String action,
-  }) => GlassDialog.show<bool>(
-    context: context,
+  }) => showAppConfirmDialog(
+    context,
     title: title,
     message: message,
+    confirmLabel: action,
     barrierDismissible: true,
-    actions: [
-      GlassDialogAction(
-        label: 'Cancel',
-        onPressed: () => Navigator.of(context).pop(false),
-      ),
-      GlassDialogAction(
-        label: action,
-        isPrimary: true,
-        onPressed: () => Navigator.of(context).pop(true),
-      ),
-    ],
   );
 
   String _phaseLabel(CloudSyncState sync) {
@@ -853,26 +842,14 @@ class ImportBatchDetailScreen extends ConsumerWidget {
     WidgetRef ref,
     ImportBatch batch,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Rollback import?'),
-        content: const Text(
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Rollback import?',
+      message:
           'This removes transactions created by this import batch from the local ledger.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.tonal(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Rollback'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Rollback',
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     final removed = await ref
         .read(ledgerProvider.notifier)
         .rollbackImportBatch(batch.id);

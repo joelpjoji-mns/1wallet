@@ -424,7 +424,7 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Cancel'),
             ),
-            FilledButton.tonal(
+            FilledButton(
               onPressed: () => Navigator.of(context).pop(controller.text),
               child: const Text('Save'),
             ),

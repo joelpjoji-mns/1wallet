@@ -147,27 +147,15 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   }
 
   Future<void> _confirmResetDefaults() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Reset categories?'),
-        content: const Text(
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Reset categories?',
+      message:
           'This will reset your categories to the 100 standard built-in categories and subcategories, clear custom category overrides, and reset merchant categorization rules.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Reset to defaults'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Reset to defaults',
     );
 
-    if (confirmed == true && mounted) {
+    if (confirmed && mounted) {
       await ref.read(ledgerProvider.notifier).resetCategoriesToDefault();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -340,29 +328,15 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   }
 
   Future<void> _deleteCategory(Category category) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete category?'),
-        content: Text('Are you sure you want to delete "${category.name}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Theme.of(context).colorScheme.onError,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirm = await showAppConfirmDialog(
+      context,
+      title: 'Delete category?',
+      message: 'Are you sure you want to delete "${category.name}"?',
+      confirmLabel: 'Delete',
+      destructive: true,
     );
 
-    if (confirm != true) return;
+    if (!confirm) return;
 
     await ref.read(ledgerProvider.notifier).deleteCategory(category.id);
   }

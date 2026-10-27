@@ -323,12 +323,9 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                           label: Text(
                             'Remove "${parsed.matchedIgnoreWord}" from ignore list',
                           ),
-                          style: TextButton.styleFrom(
-                            foregroundColor: scheme.error,
-                            padding: EdgeInsets.zero,
-                            minimumSize: const Size(50, 30),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
+                          style: AppButtonStyles.destructiveText(
+                            context,
+                          ).merge(AppButtonStyles.compact(context)),
                         ),
                       ),
                     ],
@@ -359,12 +356,9 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                           label: Text(
                             'Remove "${parsed.matchedTriggerWord}" from triggers',
                           ),
-                          style: TextButton.styleFrom(
-                            foregroundColor: scheme.error,
-                            padding: EdgeInsets.zero,
-                            minimumSize: const Size(50, 30),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
+                          style: AppButtonStyles.destructiveText(
+                            context,
+                          ).merge(AppButtonStyles.compact(context)),
                         ),
                       ),
                     ],
@@ -683,11 +677,8 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
     required int ignored,
     required List<CaptureImportResult> results,
   }) {
-    showModalBottomSheet<void>(
+    showAppSheet<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      constraints: const BoxConstraints(maxWidth: 640),
       builder: (sheetContext) {
         final state = ref.watch(ledgerProvider);
         final theme = Theme.of(sheetContext);
@@ -725,6 +716,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                               ),
                             ),
                             IconButton(
+                              tooltip: 'Close',
                               icon: const Icon(Icons.close_rounded),
                               onPressed: () => Navigator.of(sheetContext).pop(),
                             ),
