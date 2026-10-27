@@ -8,7 +8,7 @@ This directory houses the offline-first synchronization engine connecting local 
 ## 📜 Key Files
 
 - **`cloud_sync_metadata.dart`**:
-  - `CloudSyncMetadata`: Holds `lastSyncedAt`, `remoteRevision`, `deviceId`, and checksum metadata.
+  - `CloudSyncMetadata`: Holds owner/device identity, the last cloud revision/timestamp baseline, push/pull times, and sync interval. Old per-document IDs/checksums are ignored on read and no longer written.
 - **`cloud_sync_write_guard.dart`**:
   - `CloudSyncWriteGuard`: Invariant verification service ensuring an outdated local state never overwrites a newer cloud state.
   - Guards against race conditions during user login, logouts, or simultaneous edits across multiple devices.

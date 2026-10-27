@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/ledger_models.dart';
 import '../design/tokens.dart';
-import '../features/notifications/notification_engine.dart';
 import '../ledger/ledger_selectors.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -17,7 +16,6 @@ class NotificationService {
   static bool _initialized = false;
   static const androidSmallIcon = 'ic_notification';
   static const androidLargeIcon = 'ic_launcher_foreground';
-  static const _deliveredKey = 'one_wallet_flutter.native_delivered_ids.v1';
 
   /// Hook other layers (e.g. the app's router/navigator setup) can assign to
   /// receive the `route` payload carried by a tapped notification. This file
@@ -299,15 +297,6 @@ class NotificationService {
     return '${formatMoney(amount, state.preferences.locale)} is due $when.';
   }
 
-  /// Fixed 22:00–07:00 quiet-hours window, matching the range shown in
-  /// Settings. Only gates immediate/native alert delivery — the in-app
-  /// inbox is unaffected.
-  static bool _isQuietHours(LedgerState state) {
-    if (!state.preferences.quietHoursEnabled) return false;
-    final hour = DateTime.now().hour;
-    return hour >= 22 || hour < 7;
-  }
-
   static Future<void> _scheduleTimezoned({
     required int id,
     required String title,
@@ -350,44 +339,6 @@ class NotificationService {
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       payload: route,
     );
-  }
-
-  static Future<void> checkAndShowAlerts(LedgerState state) async {
-    if (!_initialized) return;
-    // Native alerts are gated by the "Device notifications" master toggle;
-    // the in-app inbox (buildNotificationInbox) already reflects the
-    // per-channel toggles and is unaffected by this early return.
-    if (!state.preferences.deviceNotificationsEnabled) return;
-
-    final notifications = buildNotificationInbox(state);
-    if (notifications.isEmpty) return;
-
-    // During quiet hours, hold off on native alerts entirely. Notifications
-    // are not marked delivered here, so they can still fire the next time
-    // this runs after quiet hours end.
-    if (_isQuietHours(state)) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    final deliveredIds = prefs.getStringList(_deliveredKey) ?? [];
-    final newDeliveredIds = List<String>.from(deliveredIds);
-    var showedAny = false;
-
-    for (final notification in notifications) {
-      if (!deliveredIds.contains(notification.id)) {
-        await showAppNotification(notification);
-        newDeliveredIds.add(notification.id);
-        showedAny = true;
-      }
-    }
-
-    if (showedAny) {
-      await prefs.setStringList(_deliveredKey, newDeliveredIds);
-    }
-  }
-
-  static Future<void> showAppNotification(AppNotification notification) async {
-    // Disabled OS-level notification popups per user preference
-    return;
   }
 
   static Future<Color> _notificationAccentColor() async {

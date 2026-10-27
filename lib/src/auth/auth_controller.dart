@@ -237,23 +237,6 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> deleteAccount() async {
-    try {
-      await _repository.deleteAccount();
-      if (!mounted) return;
-      state = state.copyWith(
-        phase: AuthPhase.signedOut,
-        user: null,
-        isSigningIn: false,
-        errorMessage: null,
-      );
-    } catch (error) {
-      if (!mounted) return;
-      state = state.copyWith(errorMessage: _friendlyError(error));
-      rethrow;
-    }
-  }
-
   Future<String> reauthenticateForDeletion() async {
     final expected = state.user?.id;
     if (expected == null) {
@@ -381,29 +364,6 @@ class AuthRepository {
       firebase_auth.FirebaseAuth.instance.signOut(),
       GoogleSignIn().signOut(),
     ]);
-  }
-
-  Future<void> deleteAccount() async {
-    final user = firebase_auth.FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    try {
-      await user.delete();
-    } on firebase_auth.FirebaseAuthException catch (e) {
-      if (e.code == 'requires-recent-login') {
-        final reauthed = await _reauthenticate(user);
-        if (reauthed) {
-          await user.delete();
-        } else {
-          throw const AuthFailure('Re-authentication was cancelled.');
-        }
-      } else {
-        rethrow;
-      }
-    } finally {
-      try {
-        await GoogleSignIn().signOut();
-      } catch (_) {}
-    }
   }
 
   Future<bool> _reauthenticate(firebase_auth.User user) async {

@@ -9,7 +9,7 @@ Wraps native platform capabilities and long-running services, primarily local sc
 
 - **`notification_service.dart`**:
   - Encapsulates initialization, channel creation (Android notification channels), icon resolution, and callback handling for `flutter_local_notifications`.
-  - Supports scheduling daily bill reminders and instant transaction alerts.
+  - Supports scheduled-payment reminders and update alerts. Capture alerts are handled by native receivers; the in-app inbox is derived separately. Do not reintroduce the disabled immediate-alert bookkeeping loop.
 
 ---
 

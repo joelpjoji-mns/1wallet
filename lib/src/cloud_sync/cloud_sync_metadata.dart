@@ -5,7 +5,6 @@ import 'package:uuid/uuid.dart';
 
 const _cloudSyncStorageKey = 'one_wallet_flutter.cloud_sync.v1';
 const _metadataUnset = Object();
-const _nullableMetadataUnset = Object();
 
 @immutable
 class CloudSyncMetadata {
@@ -15,19 +14,8 @@ class CloudSyncMetadata {
     this.userId,
     this.lastCloudRevision,
     this.lastObservedCloudUpdatedAt,
-    this.lastLocalChecksum,
-    this.lastSnapshotChecksum,
-    this.lastSnapshotPath,
     this.lastPushedAt,
     this.lastPulledAt,
-    this.lastRestoreBackupUri,
-    this.syncedAccountIds,
-    this.syncedCategoryIds,
-    this.syncedTransactionIds,
-
-    this.syncedCaptureCandidateIds,
-    this.syncedImportBatchIds,
-    this.syncedDocumentHashes,
     this.syncIntervalHours,
   });
 
@@ -45,67 +33,33 @@ class CloudSyncMetadata {
   /// synced — but before an upload attempt starts serializing it — is still
   /// correctly detected as a conflict instead of being silently clobbered.
   final String? lastObservedCloudUpdatedAt;
-  final String? lastLocalChecksum;
-  final String? lastSnapshotChecksum;
-  final String? lastSnapshotPath;
   final String? lastPushedAt;
   final String? lastPulledAt;
-  final String? lastRestoreBackupUri;
-  final List<String>? syncedAccountIds;
-  final List<String>? syncedCategoryIds;
-  final List<String>? syncedTransactionIds;
-
-  final List<String>? syncedCaptureCandidateIds;
-  final List<String>? syncedImportBatchIds;
-  final Map<String, String>? syncedDocumentHashes;
   final int? syncIntervalHours;
 
   CloudSyncMetadata copyWith({
     int? version,
     String? deviceId,
     String? userId,
-    Object? lastCloudRevision = _nullableMetadataUnset,
-    Object? lastObservedCloudUpdatedAt = _nullableMetadataUnset,
-    String? lastLocalChecksum,
-    String? lastSnapshotChecksum,
-    String? lastSnapshotPath,
+    Object? lastCloudRevision = _metadataUnset,
+    Object? lastObservedCloudUpdatedAt = _metadataUnset,
     String? lastPushedAt,
     String? lastPulledAt,
-    String? lastRestoreBackupUri,
-    List<String>? syncedAccountIds,
-    List<String>? syncedCategoryIds,
-    List<String>? syncedTransactionIds,
-
-    List<String>? syncedCaptureCandidateIds,
-    List<String>? syncedImportBatchIds,
-    Map<String, String>? syncedDocumentHashes,
     Object? syncIntervalHours = _metadataUnset,
   }) {
     return CloudSyncMetadata(
       version: version ?? this.version,
       deviceId: deviceId ?? this.deviceId,
       userId: userId ?? this.userId,
-      lastCloudRevision: identical(lastCloudRevision, _nullableMetadataUnset)
+      lastCloudRevision: identical(lastCloudRevision, _metadataUnset)
           ? this.lastCloudRevision
           : lastCloudRevision as int?,
       lastObservedCloudUpdatedAt:
-          identical(lastObservedCloudUpdatedAt, _nullableMetadataUnset)
+          identical(lastObservedCloudUpdatedAt, _metadataUnset)
           ? this.lastObservedCloudUpdatedAt
           : lastObservedCloudUpdatedAt as String?,
-      lastLocalChecksum: lastLocalChecksum ?? this.lastLocalChecksum,
-      lastSnapshotChecksum: lastSnapshotChecksum ?? this.lastSnapshotChecksum,
-      lastSnapshotPath: lastSnapshotPath ?? this.lastSnapshotPath,
       lastPushedAt: lastPushedAt ?? this.lastPushedAt,
       lastPulledAt: lastPulledAt ?? this.lastPulledAt,
-      lastRestoreBackupUri: lastRestoreBackupUri ?? this.lastRestoreBackupUri,
-      syncedAccountIds: syncedAccountIds ?? this.syncedAccountIds,
-      syncedCategoryIds: syncedCategoryIds ?? this.syncedCategoryIds,
-      syncedTransactionIds: syncedTransactionIds ?? this.syncedTransactionIds,
-
-      syncedCaptureCandidateIds:
-          syncedCaptureCandidateIds ?? this.syncedCaptureCandidateIds,
-      syncedImportBatchIds: syncedImportBatchIds ?? this.syncedImportBatchIds,
-      syncedDocumentHashes: syncedDocumentHashes ?? this.syncedDocumentHashes,
       syncIntervalHours: identical(syncIntervalHours, _metadataUnset)
           ? this.syncIntervalHours
           : syncIntervalHours as int?,
@@ -119,19 +73,8 @@ class CloudSyncMetadata {
       'userId': userId,
       'lastCloudRevision': lastCloudRevision,
       'lastObservedCloudUpdatedAt': lastObservedCloudUpdatedAt,
-      'lastLocalChecksum': lastLocalChecksum,
-      'lastSnapshotChecksum': lastSnapshotChecksum,
-      'lastSnapshotPath': lastSnapshotPath,
       'lastPushedAt': lastPushedAt,
       'lastPulledAt': lastPulledAt,
-      'lastRestoreBackupUri': lastRestoreBackupUri,
-      'syncedAccountIds': syncedAccountIds,
-      'syncedCategoryIds': syncedCategoryIds,
-      'syncedTransactionIds': syncedTransactionIds,
-
-      'syncedCaptureCandidateIds': syncedCaptureCandidateIds,
-      'syncedImportBatchIds': syncedImportBatchIds,
-      'syncedDocumentHashes': syncedDocumentHashes,
       'syncIntervalHours': syncIntervalHours,
     };
   }
@@ -143,23 +86,8 @@ class CloudSyncMetadata {
       userId: json['userId'] as String?,
       lastCloudRevision: json['lastCloudRevision'] as int?,
       lastObservedCloudUpdatedAt: json['lastObservedCloudUpdatedAt'] as String?,
-      lastLocalChecksum: json['lastLocalChecksum'] as String?,
-      lastSnapshotChecksum: json['lastSnapshotChecksum'] as String?,
-      lastSnapshotPath: json['lastSnapshotPath'] as String?,
       lastPushedAt: json['lastPushedAt'] as String?,
       lastPulledAt: json['lastPulledAt'] as String?,
-      lastRestoreBackupUri: json['lastRestoreBackupUri'] as String?,
-      syncedAccountIds: (json['syncedAccountIds'] as List?)?.cast<String>(),
-      syncedCategoryIds: (json['syncedCategoryIds'] as List?)?.cast<String>(),
-      syncedTransactionIds: (json['syncedTransactionIds'] as List?)
-          ?.cast<String>(),
-
-      syncedCaptureCandidateIds: (json['syncedCaptureCandidateIds'] as List?)
-          ?.cast<String>(),
-      syncedImportBatchIds: (json['syncedImportBatchIds'] as List?)
-          ?.cast<String>(),
-      syncedDocumentHashes: (json['syncedDocumentHashes'] as Map?)
-          ?.cast<String, String>(),
       syncIntervalHours: json.containsKey('syncIntervalHours')
           ? json['syncIntervalHours'] as int?
           : null,

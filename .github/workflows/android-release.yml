@@ -212,9 +212,16 @@ jobs:
             --output .tmp-release-notes.json \
             --markdown .tmp-release-notes.md
 
-      - name: Test update notification failure handling
+      - name: Test update and migration regressions
         if: steps.notes_source.outputs.skip_release != 'true'
-        run: flutter test --no-pub test/update_notification_failure_test.dart test/app_update_version_check_test.dart test/updates_screen_test.dart test/legacy_updater_recovery_test.dart
+        run: >-
+          flutter test --no-pub
+          test/update_notification_failure_test.dart
+          test/app_update_version_check_test.dart
+          test/updates_screen_test.dart
+          test/legacy_updater_recovery_test.dart
+          test/runtime_cleanup_test.dart
+          test/ledger_security_regressions_test.dart
 
       - name: Test release resource validator
         if: steps.notes_source.outputs.skip_release != 'true'

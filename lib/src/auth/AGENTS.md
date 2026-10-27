@@ -12,7 +12,7 @@ This directory manages user authentication state, supporting anonymous/guest mod
 - **`auth_controller.dart`**:
   - `AuthController`: A `StateNotifier<AuthState>` tracking whether the user is authenticated, unauthenticated, or in an error/loading state.
   - Listens to Firebase Auth stream (`authStateChanges()`).
-  - Exposes sign-in, sign-up, sign-out, guest login, and password reset methods.
+  - Exposes Google sign-in, QA email/password sign-in/account creation, sign-out, and fresh reauthentication for backend-managed erasure. It must not delete Firebase credentials directly; the backend deletion job owns that final step.
 
 ---
 

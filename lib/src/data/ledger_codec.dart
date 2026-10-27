@@ -272,12 +272,10 @@ Map<String, Object?> _preferencesToJson(LedgerPreferences preferences) {
     'glassInteractionStrength': preferences.glassInteractionStrength,
     'notificationInboxEnabled': preferences.notificationInboxEnabled,
     'deviceNotificationsEnabled': preferences.deviceNotificationsEnabled,
-    'quietHoursEnabled': preferences.quietHoursEnabled,
     'channelScheduledEnabled': preferences.channelScheduledEnabled,
     'readNotificationIds': preferences.readNotificationIds,
     'dismissedNotificationIds': preferences.dismissedNotificationIds,
     'privacyModeEnabled': preferences.privacyModeEnabled,
-    'biometricLockEnabled': preferences.biometricLockEnabled,
     'forecastEmergencyCashMinor': preferences.forecastEmergencyCashMinor,
     'forecastExtraAllocationPercent':
         preferences.forecastExtraAllocationPercent,
@@ -386,10 +384,6 @@ LedgerPreferences _preferencesFromJson(Map<String, dynamic> json) {
       json['deviceNotificationsEnabled'],
       fallback: fallback.deviceNotificationsEnabled,
     ),
-    quietHoursEnabled: _bool(
-      json['quietHoursEnabled'],
-      fallback: fallback.quietHoursEnabled,
-    ),
     channelScheduledEnabled: _bool(
       json['channelScheduledEnabled'],
       fallback: fallback.channelScheduledEnabled,
@@ -405,10 +399,6 @@ LedgerPreferences _preferencesFromJson(Map<String, dynamic> json) {
     privacyModeEnabled: _bool(
       json['privacyModeEnabled'],
       fallback: fallback.privacyModeEnabled,
-    ),
-    biometricLockEnabled: _bool(
-      json['biometricLockEnabled'],
-      fallback: fallback.biometricLockEnabled,
     ),
     forecastEmergencyCashMinor: _int(
       json['forecastEmergencyCashMinor'],

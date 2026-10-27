@@ -42,15 +42,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ),
   ];
 
-  static const _notificationChannels = [
-    (
-      'scheduled',
-      'Scheduled records',
-      'Upcoming and overdue payments, transfers, bills, and income.',
-      Icons.event_repeat_outlined,
-    ),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -181,7 +172,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       GlassListTile(
                         title: const Text('Device notifications'),
                         subtitle: const Text(
-                          'Updates use native alerts when permission is granted.',
+                          'Allow scheduled-payment reminders on this device.',
                         ),
                         trailing: GlassSwitch(
                           quality: GlassQuality.standard,
@@ -204,61 +195,33 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                       const GlassDivider(),
                       GlassListTile(
-                        title: const Text('Quiet hours'),
-                        subtitle: const Text('22:00 to 07:00'),
+                        leading: Icon(
+                          Icons.event_repeat_outlined,
+                          color: theme.colorScheme.primary,
+                        ),
+                        title: const Text('Scheduled records'),
+                        subtitle: const Text(
+                          'Upcoming and overdue payments, transfers, bills, and income.',
+                        ),
                         trailing: GlassSwitch(
                           quality: GlassQuality.standard,
-                          value: state.preferences.quietHoursEnabled,
+                          value: state.preferences.channelScheduledEnabled,
                           onChanged: (value) {
                             ref
                                 .read(ledgerProvider.notifier)
                                 .updatePreferencesWith(
-                                  (livePreferences) => livePreferences.copyWith(
-                                    quietHoursEnabled: value,
+                                  (current) => current.copyWith(
+                                    channelScheduledEnabled: value,
                                   ),
                                 );
                             _showMessage(
                               value
-                                  ? 'Quiet hours enabled'
-                                  : 'Quiet hours disabled',
+                                  ? 'Scheduled records enabled'
+                                  : 'Scheduled records paused',
                             );
                           },
                         ),
                       ),
-                      const GlassDivider(),
-                      for (final channel in _notificationChannels) ...[
-                        GlassListTile(
-                          leading: Icon(
-                            channel.$4,
-                            color: theme.colorScheme.primary,
-                          ),
-                          title: Text(channel.$2),
-                          subtitle: Text(channel.$3),
-                          trailing: GlassSwitch(
-                            quality: GlassQuality.standard,
-                            value: state.preferences.channelScheduledEnabled,
-                            onChanged: (value) {
-                              if (channel.$1 == 'scheduled') {
-                                ref
-                                    .read(ledgerProvider.notifier)
-                                    .updatePreferencesWith(
-                                      (livePreferences) =>
-                                          livePreferences.copyWith(
-                                            channelScheduledEnabled: value,
-                                          ),
-                                    );
-                              }
-                              _showMessage(
-                                value
-                                    ? '${channel.$2} enabled'
-                                    : '${channel.$2} paused',
-                              );
-                            },
-                          ),
-                        ),
-                        if (channel != _notificationChannels.last)
-                          const GlassDivider(),
-                      ],
                     ],
                   ),
                   const SizedBox(height: AppSpacing.md),

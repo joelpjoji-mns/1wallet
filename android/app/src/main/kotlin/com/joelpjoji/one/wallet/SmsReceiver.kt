@@ -3,7 +3,6 @@ package com.joelpjoji.one.wallet
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.provider.Telephony
 
 import android.app.Notification
@@ -55,7 +54,6 @@ class SmsReceiver : BroadcastReceiver() {
         val body = combinedBody.toString()
         if (body.isEmpty()) return
 
-        val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
 
         val captureEnabled = captureConfiguration.settings.optBoolean("smsCaptureEnabled", false)
         if (!captureEnabled) return
@@ -135,22 +133,6 @@ class SmsReceiver : BroadcastReceiver() {
                 matchedIgnoreWord = matchedIgnore
             )
         }
-    }
-
-    private fun loadWords(prefs: SharedPreferences, key: String, fallback: List<String> = emptyList()): List<String> {
-        val raw = try { prefs.getString(key, "") ?: "" } catch (e: Exception) { "" }
-        if (raw.isEmpty()) return fallback
-        return try {
-            val arr = org.json.JSONArray(raw)
-            val list = (0 until arr.length()).map { arr.getString(it).lowercase() }.filter { it.isNotBlank() }
-            if (list.isEmpty()) fallback else list
-        } catch (e: Exception) {
-            fallback
-        }
-    }
-
-    private fun containsAnyWord(lowerBody: String, words: List<String>): Boolean {
-        return findMatchingWord(lowerBody, words) != null
     }
 
     private fun findMatchingWord(lowerBody: String, words: List<String>): String? {

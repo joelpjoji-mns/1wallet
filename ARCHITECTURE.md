@@ -135,6 +135,25 @@ receipts survive restart and prevent duplicate application after an ack failure.
 Legacy preference queues migrate idempotently as unassigned entries and require
 explicit owner confirmation.
 
+Both capture sources use the same serialized ledger consumer and typed queue
+entry IDs. Filter/owner settings live in SQLite only; obsolete SharedPreferences
+mirrors and their native readers have been retired. Durable acknowledgment,
+quarantine, and pending receipt recovery remain unchanged.
+
+### 7. Retired Runtime Plumbing
+
+Sync metadata no longer serializes unused per-document ID/checksum lists from
+the pre-snapshot protocol; old stored metadata is still readable without losing
+its current conflict baseline. Credential deletion is backend-owned only, after
+the data-erasure job; authentication retains reauthentication and sign-out.
+
+The disabled immediate-alert delivery loop, its bookkeeping, and inactive
+quiet-hours control were removed. Scheduled reminders, native capture alerts,
+and update notifications remain separate supported paths. App lock is configured
+locally through its device controller, not an obsolete synced ledger flag.
+Archived-data decoders, legacy queue migration, and upgrade regression fixtures
+remain intentionally supported; synchronization alone does not retire them.
+
 ---
 
 ## 🌐 Companion PWA Architecture

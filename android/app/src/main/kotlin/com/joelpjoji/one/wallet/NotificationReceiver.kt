@@ -3,7 +3,6 @@ package com.joelpjoji.one.wallet
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.content.Context
-import android.content.SharedPreferences
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -219,7 +218,6 @@ class NotificationReceiver : NotificationListenerService() {
         val context = applicationContext
         val captureConfiguration = CaptureQueue.configuration(context) ?: return
         val captureOwner = captureConfiguration.owner
-        val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
 
         // 1. Check if notification capture is enabled (defaults to true)
         val captureEnabled = captureConfiguration.settings.optBoolean("notificationCaptureEnabled", false)
@@ -328,22 +326,6 @@ class NotificationReceiver : NotificationListenerService() {
                 matchedIgnoreWord = matchedIgnore
             )
         }
-    }
-
-    private fun loadList(prefs: SharedPreferences, key: String, fallback: List<String> = emptyList()): List<String> {
-        val raw = try { prefs.getString(key, "") ?: "" } catch (e: Exception) { "" }
-        if (raw.isEmpty()) return fallback
-        return try {
-            val arr = org.json.JSONArray(raw)
-            val list = (0 until arr.length()).map { arr.getString(it).lowercase() }.filter { it.isNotBlank() }
-            if (list.isEmpty()) fallback else list
-        } catch (e: Exception) {
-            fallback
-        }
-    }
-
-    private fun containsAnyWord(lowerText: String, words: List<String>): Boolean {
-        return findMatchingWord(lowerText, words) != null
     }
 
     private fun findMatchingWord(lowerText: String, words: List<String>): String? {

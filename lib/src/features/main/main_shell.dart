@@ -165,7 +165,6 @@ class _MainShellState extends ConsumerState<MainShell>
   @override
   Widget build(BuildContext context) {
     ref.listen<LedgerState>(ledgerProvider, (previous, next) {
-      NotificationService.checkAndShowAlerts(next);
       if (_shouldSyncScheduledNotifications(previous, next)) {
         NotificationService.syncScheduledNotifications(next);
       }

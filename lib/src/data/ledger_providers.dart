@@ -12,8 +12,6 @@ import '../auth/auth_controller.dart';
 import '../capture/capture_pipeline.dart';
 import '../capture/message_parser.dart';
 import '../features/capture/capture_diagnostics.dart';
-import '../features/capture/sms_spooler.dart';
-import '../features/capture/notification_spooler.dart';
 import '../features/capture/capture_queue.dart';
 import '../imports/wallet_csv_parser.dart';
 import '../ledger/ledger_selectors.dart';
@@ -836,10 +834,6 @@ class LedgerController extends StateNotifier<LedgerState> {
       }
     }
 
-    if (_hasWalletData(state)) {
-      unawaited(SmsSpooler.updateTriggerWords(state));
-      unawaited(NotificationSpooler.updateTriggerWords(state));
-    }
     unawaited(processSpooledSms());
     unawaited(processSpooledNotifications());
     _syncSpoolPolling();
@@ -1067,9 +1061,6 @@ class LedgerController extends StateNotifier<LedgerState> {
     });
   }
 
-  bool _isProcessingSpooledSms = false;
-  bool _isProcessingSpooledNotifications = false;
-
   Account? _applyStatementToAccount({
     required LedgerState currentState,
     required BillStatementNotice notice,
@@ -1107,31 +1098,33 @@ class LedgerController extends StateNotifier<LedgerState> {
     );
   }
 
-  Future<void> processSpooledSms() => _runMutation(() async {
-    if (_isProcessingSpooledSms) return;
-    _isProcessingSpooledSms = true;
+  Future<void> processSpooledSms() =>
+      _runMutation(() => _processQueuedCaptures('sms'));
+
+  Future<void> processSpooledNotifications() =>
+      _runMutation(() => _processQueuedCaptures('notification'));
+
+  Future<void> _processQueuedCaptures(String source) async {
     try {
       final owner = state.userId;
-      final spooled = await SmsSpooler.popSpooledMessages(owner: owner);
+      final entries = await CaptureQueue.client.pending(owner, source);
       _checkSession();
+      if (entries.isEmpty) return;
       final receivedIds = <String>[];
       final newReceipts = <String>{};
-      if (spooled.isEmpty) return;
-
       final newCandidates = <CaptureCandidate>[];
       final updatedAccounts = <String, Account>{};
 
-      for (final payload in spooled) {
-        final id = payload['_queueId'];
-        if (id is! String) {
-          throw const FormatException('Capture queue ID is missing.');
-        }
+      for (final entry in entries) {
+        final id = entry.id;
         if (state.ingressReceipts.contains(id)) {
           receivedIds.add(id);
           continue;
         }
-        if (payload['body'] is! String ||
-            (payload['body'] as String).trim().isEmpty ||
+        final payload = entry.payload;
+        final body = payload['body'];
+        if (body is! String ||
+            body.trim().isEmpty ||
             (payload['timestamp'] != null && payload['timestamp'] is! String) ||
             (payload['nativeMatchedAmount'] != null &&
                 payload['nativeMatchedAmount'] is! String) ||
@@ -1147,80 +1140,63 @@ class LedgerController extends StateNotifier<LedgerState> {
         }
         receivedIds.add(id);
         newReceipts.add(id);
-        final body = payload['body'] as String?;
-        final timestampStr = payload['timestamp'] as String?;
-        final receivedAt = timestampStr != null
-            ? DateTime.tryParse(timestampStr)
-            : null;
-        if (body != null && body.isNotEmpty) {
-          final isStatement =
-              payload['isBillStatement'] == true ||
-              isBillStatementMessage(body);
-          if (isStatement) {
-            final notice = parseBillStatementNotice(
-              body,
-              fallbackCurrency: state.preferences.baseCurrency,
-              receivedAt: receivedAt,
-            );
-            if (notice != null) {
-              final updatedAcc = _applyStatementToAccount(
-                currentState: state,
-                notice: notice,
-              );
-              if (updatedAcc != null) {
-                updatedAccounts[updatedAcc.id] = updatedAcc;
-              }
-            }
-          }
-
-          final nativeAccepted =
-              payload['nativeAccepted'] == true ||
-              payload['notificationShown'] == true ||
-              payload['nativeNotificationShown'] == true ||
-              payload['nativeSource'] != null;
-
-          final nativeMatchedAmount = payload['nativeMatchedAmount'] as String?;
-          final nativeMatchedTriggerWord =
-              payload['nativeMatchedTriggerWord'] as String?;
-
-          final result = _evaluateCaptureMessage(
-            rawText: body,
-            source: 'sms',
-            triggerWords: state.preferences.smsTriggerWords,
-            ignoreWords: state.preferences.smsIgnoreWords,
+        final timestamp = payload['timestamp'] as String?;
+        final receivedAt = timestamp == null
+            ? null
+            : DateTime.tryParse(timestamp);
+        if (payload['isBillStatement'] == true ||
+            isBillStatementMessage(body)) {
+          final notice = parseBillStatementNotice(
+            body,
+            fallbackCurrency: state.preferences.baseCurrency,
             receivedAt: receivedAt,
-            nativeAccepted: nativeAccepted || payload.isNotEmpty,
-            notificationShown: true,
-            forceQueue: true,
-            additionalCandidates: newCandidates,
-            nativeMatchedAmount: nativeMatchedAmount,
-            nativeMatchedTriggerWord: nativeMatchedTriggerWord,
           );
-
-          if (result.queued && result.candidate != null) {
-            newCandidates.add(result.candidate!);
+          if (notice != null) {
+            final account = _applyStatementToAccount(
+              currentState: state,
+              notice: notice,
+            );
+            if (account != null) updatedAccounts[account.id] = account;
           }
-          await CaptureDiagnostics.recordResult(
-            ownerId: state.userId,
-            stage: 'spool-sms',
-            result: result,
-          );
         }
+        final preferences = state.preferences;
+        final result = _evaluateCaptureMessage(
+          rawText: body,
+          source: source,
+          triggerWords: source == 'sms'
+              ? preferences.smsTriggerWords
+              : preferences.notificationTriggerWords,
+          ignoreWords: source == 'sms'
+              ? preferences.smsIgnoreWords
+              : preferences.notificationIgnoreWords,
+          receivedAt: receivedAt,
+          nativeAccepted: true,
+          notificationShown: true,
+          forceQueue: true,
+          additionalCandidates: newCandidates,
+          nativeMatchedAmount: payload['nativeMatchedAmount'] as String?,
+          nativeMatchedTriggerWord:
+              payload['nativeMatchedTriggerWord'] as String?,
+        );
+        if (result.queued && result.candidate != null) {
+          newCandidates.add(result.candidate!);
+        }
+        await CaptureDiagnostics.recordResult(
+          ownerId: owner,
+          stage: 'spool-$source',
+          result: result,
+        );
       }
 
-      var nextAccounts = state.accounts;
-      if (updatedAccounts.isNotEmpty) {
-        nextAccounts = state.accounts
-            .map((a) => updatedAccounts[a.id] ?? a)
-            .toList();
-      }
-
-      if (newCandidates.isNotEmpty ||
-          updatedAccounts.isNotEmpty ||
-          newReceipts.isNotEmpty) {
+      if (newReceipts.isNotEmpty) {
         await _commit(
           state.copyWith(
-            accounts: nextAccounts,
+            accounts: updatedAccounts.isEmpty
+                ? state.accounts
+                : [
+                    for (final account in state.accounts)
+                      updatedAccounts[account.id] ?? account,
+                  ],
             ingressReceipts: {...state.ingressReceipts, ...newReceipts},
             captureCandidates: [...newCandidates, ...state.captureCandidates],
           ),
@@ -1237,153 +1213,11 @@ class LedgerController extends StateNotifier<LedgerState> {
         await _repository.save(state);
         _checkSession();
       }
-    } catch (e) {
-      debugPrint('Error processing spooled SMS: $e');
+    } catch (error) {
+      debugPrint('Error processing queued $source captures: $error');
       rethrow;
-    } finally {
-      _isProcessingSpooledSms = false;
     }
-  });
-
-  Future<void> processSpooledNotifications() => _runMutation(() async {
-    if (_isProcessingSpooledNotifications) return;
-    _isProcessingSpooledNotifications = true;
-    try {
-      final owner = state.userId;
-      final spooled = await NotificationSpooler.popSpooledMessages(
-        owner: owner,
-      );
-      _checkSession();
-      final receivedIds = <String>[];
-      final newReceipts = <String>{};
-      if (spooled.isEmpty) return;
-
-      final newCandidates = <CaptureCandidate>[];
-      final updatedAccounts = <String, Account>{};
-
-      for (final payload in spooled) {
-        final id = payload['_queueId'];
-        if (id is! String) {
-          throw const FormatException('Capture queue ID is missing.');
-        }
-        if (state.ingressReceipts.contains(id)) {
-          receivedIds.add(id);
-          continue;
-        }
-        if (payload['body'] is! String ||
-            (payload['body'] as String).trim().isEmpty ||
-            (payload['timestamp'] != null && payload['timestamp'] is! String) ||
-            (payload['nativeMatchedAmount'] != null &&
-                payload['nativeMatchedAmount'] is! String) ||
-            (payload['nativeMatchedTriggerWord'] != null &&
-                payload['nativeMatchedTriggerWord'] is! String)) {
-          await CaptureQueue.client.quarantine(
-            owner,
-            id,
-            'Invalid capture payload types.',
-          );
-          _checkSession();
-          continue;
-        }
-        receivedIds.add(id);
-        newReceipts.add(id);
-        final body = payload['body'] as String?;
-        final timestampStr = payload['timestamp'] as String?;
-        final receivedAt = timestampStr != null
-            ? DateTime.tryParse(timestampStr)
-            : null;
-        if (body != null && body.isNotEmpty) {
-          final isStatement =
-              payload['isBillStatement'] == true ||
-              isBillStatementMessage(body);
-          if (isStatement) {
-            final notice = parseBillStatementNotice(
-              body,
-              fallbackCurrency: state.preferences.baseCurrency,
-              receivedAt: receivedAt,
-            );
-            if (notice != null) {
-              final updatedAcc = _applyStatementToAccount(
-                currentState: state,
-                notice: notice,
-              );
-              if (updatedAcc != null) {
-                updatedAccounts[updatedAcc.id] = updatedAcc;
-              }
-            }
-          }
-
-          final nativeAccepted =
-              payload['nativeAccepted'] == true ||
-              payload['notificationShown'] == true ||
-              payload['nativeNotificationShown'] == true ||
-              payload['nativeSource'] != null;
-
-          final nativeMatchedAmount = payload['nativeMatchedAmount'] as String?;
-          final nativeMatchedTriggerWord =
-              payload['nativeMatchedTriggerWord'] as String?;
-
-          final result = _evaluateCaptureMessage(
-            rawText: body,
-            source: 'notification',
-            triggerWords: state.preferences.notificationTriggerWords,
-            ignoreWords: state.preferences.notificationIgnoreWords,
-            receivedAt: receivedAt,
-            nativeAccepted: nativeAccepted || payload.isNotEmpty,
-            notificationShown: true,
-            forceQueue: true,
-            additionalCandidates: newCandidates,
-            nativeMatchedAmount: nativeMatchedAmount,
-            nativeMatchedTriggerWord: nativeMatchedTriggerWord,
-          );
-
-          if (result.queued && result.candidate != null) {
-            newCandidates.add(result.candidate!);
-          }
-          await CaptureDiagnostics.recordResult(
-            ownerId: state.userId,
-            stage: 'spool-notification',
-            result: result,
-          );
-        }
-      }
-
-      var nextAccounts = state.accounts;
-      if (updatedAccounts.isNotEmpty) {
-        nextAccounts = state.accounts
-            .map((a) => updatedAccounts[a.id] ?? a)
-            .toList();
-      }
-
-      if (newCandidates.isNotEmpty ||
-          updatedAccounts.isNotEmpty ||
-          newReceipts.isNotEmpty) {
-        await _commit(
-          state.copyWith(
-            accounts: nextAccounts,
-            ingressReceipts: {...state.ingressReceipts, ...newReceipts},
-            captureCandidates: [...newCandidates, ...state.captureCandidates],
-          ),
-        );
-      }
-      await CaptureQueue.client.acknowledge(owner, receivedIds);
-      _checkSession();
-      if (receivedIds.isNotEmpty) {
-        state = state.copyWith(
-          ingressReceipts: state.ingressReceipts.difference(
-            receivedIds.toSet(),
-          ),
-        );
-        await _repository.save(state);
-        _checkSession();
-      }
-    } catch (e) {
-      debugPrint('Error processing spooled notifications: $e');
-      rethrow;
-    } finally {
-      _isProcessingSpooledNotifications = false;
-    }
-  });
+  }
 
   Future<void> createStarterWallet({
     required String userId,
@@ -1602,10 +1436,6 @@ class LedgerController extends StateNotifier<LedgerState> {
     );
     if (_capturePreferencesChanged(before, preferences)) {
       await _publishCaptureConfiguration();
-      _checkSession();
-      await SmsSpooler.updateTriggerWords(state);
-      _checkSession();
-      await NotificationSpooler.updateTriggerWords(state);
       _checkSession();
       _syncSpoolPolling();
     }
@@ -3571,10 +3401,6 @@ class LedgerController extends StateNotifier<LedgerState> {
 
     if (capturePrefsChanged) {
       await _publishCaptureConfiguration();
-      _checkSession();
-      await SmsSpooler.updateTriggerWords(normalized);
-      _checkSession();
-      await NotificationSpooler.updateTriggerWords(normalized);
       _checkSession();
       _syncSpoolPolling();
     }

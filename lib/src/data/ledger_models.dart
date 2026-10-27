@@ -299,12 +299,10 @@ class LedgerPreferences {
     this.glassInteractionStrength = 0.35,
     this.notificationInboxEnabled = true,
     this.deviceNotificationsEnabled = false,
-    this.quietHoursEnabled = false,
     this.channelScheduledEnabled = true,
     this.readNotificationIds = const [],
     this.dismissedNotificationIds = const [],
     this.privacyModeEnabled = false,
-    this.biometricLockEnabled = false,
     this.forecastEmergencyCashMinor = 100000,
     this.forecastExtraAllocationPercent = 0.5,
     this.loanPriorityIds = const [],
@@ -342,12 +340,10 @@ class LedgerPreferences {
   final double glassInteractionStrength;
   final bool notificationInboxEnabled;
   final bool deviceNotificationsEnabled;
-  final bool quietHoursEnabled;
   final bool channelScheduledEnabled;
   final List<String> readNotificationIds;
   final List<String> dismissedNotificationIds;
   final bool privacyModeEnabled;
-  final bool biometricLockEnabled;
   final int forecastEmergencyCashMinor;
   final double forecastExtraAllocationPercent;
   final List<String> loanPriorityIds;
@@ -385,12 +381,10 @@ class LedgerPreferences {
     double? glassInteractionStrength,
     bool? notificationInboxEnabled,
     bool? deviceNotificationsEnabled,
-    bool? quietHoursEnabled,
     bool? channelScheduledEnabled,
     List<String>? readNotificationIds,
     List<String>? dismissedNotificationIds,
     bool? privacyModeEnabled,
-    bool? biometricLockEnabled,
     int? forecastEmergencyCashMinor,
     double? forecastExtraAllocationPercent,
     List<String>? loanPriorityIds,
@@ -435,14 +429,12 @@ class LedgerPreferences {
           notificationInboxEnabled ?? this.notificationInboxEnabled,
       deviceNotificationsEnabled:
           deviceNotificationsEnabled ?? this.deviceNotificationsEnabled,
-      quietHoursEnabled: quietHoursEnabled ?? this.quietHoursEnabled,
       channelScheduledEnabled:
           channelScheduledEnabled ?? this.channelScheduledEnabled,
       readNotificationIds: readNotificationIds ?? this.readNotificationIds,
       dismissedNotificationIds:
           dismissedNotificationIds ?? this.dismissedNotificationIds,
       privacyModeEnabled: privacyModeEnabled ?? this.privacyModeEnabled,
-      biometricLockEnabled: biometricLockEnabled ?? this.biometricLockEnabled,
       forecastEmergencyCashMinor:
           forecastEmergencyCashMinor ?? this.forecastEmergencyCashMinor,
       forecastExtraAllocationPercent:

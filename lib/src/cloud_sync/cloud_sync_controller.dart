@@ -204,7 +204,6 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
   LedgerController get _ledger => _ref.read(ledgerProvider.notifier);
 
   Timer? _uploadTimer;
-  Timer? _retryTimer;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
   _userDocSubscription;
   int _uploadFailureCount = 0;
@@ -427,8 +426,6 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
   void _cancelTimers() {
     _uploadTimer?.cancel();
     _uploadTimer = null;
-    _retryTimer?.cancel();
-    _retryTimer = null;
   }
 
   Future<void> updateSyncInterval(int? hours) async {
@@ -1332,8 +1329,6 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
             .toDate()
             .toUtc()
             .toIso8601String(),
-        // We no longer track individual synced IDs since the whole blob is synced
-        syncedDocumentHashes: {},
         syncIntervalHours: state.metadata == null
             ? metadata.syncIntervalHours
             : state.metadata!.syncIntervalHours,
@@ -1609,7 +1604,6 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         lastObservedCloudUpdatedAt: cloudUpdatedAt != null
             ? cloudUpdatedAt.toUtc().toIso8601String()
             : currentMetadata.lastObservedCloudUpdatedAt,
-        syncedDocumentHashes: {},
         syncIntervalHours: restoredInterval,
       );
       await newMetadata.save();

@@ -138,6 +138,11 @@ Supported legacy integer strings migrate explicitly; genuinely absent optional
 fields may use their documented fallback. The PWA rejects values outside
 JavaScript's safe integer range rather than silently changing financial values.
 
+Obsolete `quietHoursEnabled` and `biometricLockEnabled` preference keys are
+accepted as unknown legacy fields but are no longer emitted. The quiet-hours
+control belonged only to a disabled alert path; actual device app lock uses its
+separate persisted controller state and is not changed by archive restoration.
+
 ## Backup and secure-field formats
 
 - Canonical `onewallet.ledger.archive` JSON is an internal/legacy archive, not

@@ -38,17 +38,13 @@ class _Auth extends StateNotifier<AuthState> implements AuthController {
           user: AuthUser(id: 'owner-a', email: 'synthetic@example.test'),
         ),
       );
-  bool deletedCredentials = false;
+  int signOutCalls = 0;
   @override
   Future<String> reauthenticateForDeletion() async => 'synthetic-id-token';
   @override
   Future<void> signOut({bool rethrowOnError = false}) async {
+    signOutCalls++;
     state = state.copyWith(phase: AuthPhase.signedOut, user: null);
-  }
-
-  @override
-  Future<void> deleteAccount() async {
-    deletedCredentials = true;
   }
 
   @override
@@ -138,7 +134,7 @@ void main() {
     expect(state.remoteComplete && state.localComplete, isTrue);
     expect(repository.cleared, isTrue);
     expect(api.requests, 1);
-    expect(auth.deletedCredentials, isFalse);
+    expect(auth.signOutCalls, 1);
     expect(await DeletionOperation.load(), isNull);
   });
   test(
@@ -155,7 +151,7 @@ void main() {
         AccountDeletionStage.error,
       );
       expect(repository.cleared, isFalse);
-      expect(auth.deletedCredentials, isFalse);
+      expect(auth.signOutCalls, 0);
       expect(await DeletionOperation.load(), isNotNull);
     },
   );
@@ -173,7 +169,7 @@ void main() {
         isTrue,
       );
       expect(await DeletionOperation.load(), isNotNull);
-      expect(auth.deletedCredentials, isFalse);
+      expect(auth.signOutCalls, 0);
       repository.failClear = false;
       expect(await controller.deleteAccountAndAllData(), isTrue);
     },
@@ -197,7 +193,7 @@ void main() {
       );
       expect(repository.cleared, isTrue);
       expect(api.requests, 0);
-      expect(auth.deletedCredentials, isFalse);
+      expect(auth.signOutCalls, 1);
       expect(await DeletionOperation.load(), isNull);
     },
   );
