@@ -56,6 +56,21 @@ function anonDb() {
   return testEnv.unauthenticatedContext().firestore();
 }
 
+test('a deletion tombstone blocks stale owner reads and writes across wallet paths', async () => {
+  await testEnv.withSecurityRulesDisabled(async ctx => {
+    await ctx.firestore().doc(`accountDeletionJobs/${OWNER_UID}`).set({
+      uid: OWNER_UID, status: 'queued', receiptHash: 'synthetic-hash',
+    });
+  });
+  const owner = ownerDb();
+  await assertSucceeds(owner.doc(`accountDeletionJobs/${OWNER_UID}`).get());
+  await assertFails(otherDb().doc(`accountDeletionJobs/${OWNER_UID}`).get());
+  await assertFails(owner.doc(`accountDeletionJobs/${OWNER_UID}`).update({ status: 'complete' }));
+  await assertFails(owner.doc(`users/${OWNER_UID}`).set({ email: 'resurrection@example.test' }));
+  await assertFails(owner.doc(`users/${OWNER_UID}/transactions/tx`).set({ amountMinor: 1 }));
+  await assertFails(owner.doc(`users/${OWNER_UID}`).get());
+});
+
 test('owner can create their own user profile document', async () => {
   const db = ownerDb();
   await assertSucceeds(

@@ -1,5 +1,14 @@
 import 'package:flutter/material.dart';
 
+const statementMetadataKeys = {
+  'lastStatementAmountMinor',
+  'lastStatementCurrency',
+  'lastStatementMinDueMinor',
+  'lastStatementDueDate',
+  'lastStatementDate',
+  'lastStatementUpdated',
+};
+
 @immutable
 class Money {
   const Money({required this.amountMinor, required this.currency});
@@ -1045,6 +1054,9 @@ class LedgerState {
     required this.captureCandidates,
     this.importBatches = const [],
     this.exchangeRates = const [],
+    this.localRevision = 0,
+    this.ingressReceipts = const {},
+    this.hasAuthoritativeEmptyWallet = false,
   });
 
   final int version;
@@ -1056,6 +1068,9 @@ class LedgerState {
   final List<CaptureCandidate> captureCandidates;
   final List<ImportBatch> importBatches;
   final List<ExchangeRateRecord> exchangeRates;
+  final int localRevision;
+  final Set<String> ingressReceipts;
+  final bool hasAuthoritativeEmptyWallet;
 
   LedgerState copyWith({
     int? version,
@@ -1067,6 +1082,9 @@ class LedgerState {
     List<CaptureCandidate>? captureCandidates,
     List<ImportBatch>? importBatches,
     List<ExchangeRateRecord>? exchangeRates,
+    int? localRevision,
+    Set<String>? ingressReceipts,
+    bool? hasAuthoritativeEmptyWallet,
   }) {
     return LedgerState(
       version: version ?? this.version,
@@ -1078,6 +1096,10 @@ class LedgerState {
       captureCandidates: captureCandidates ?? this.captureCandidates,
       importBatches: importBatches ?? this.importBatches,
       exchangeRates: exchangeRates ?? this.exchangeRates,
+      localRevision: localRevision ?? this.localRevision,
+      ingressReceipts: ingressReceipts ?? this.ingressReceipts,
+      hasAuthoritativeEmptyWallet:
+          hasAuthoritativeEmptyWallet ?? this.hasAuthoritativeEmptyWallet,
     );
   }
 

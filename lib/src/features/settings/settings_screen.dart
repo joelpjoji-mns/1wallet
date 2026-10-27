@@ -97,8 +97,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     onChanged: (value) {
                       ref
                           .read(ledgerProvider.notifier)
-                          .updatePreferences(
-                            state.preferences.copyWith(
+                          .updatePreferencesWith(
+                            (livePreferences) => livePreferences.copyWith(
                               privacyModeEnabled: value,
                             ),
                           );
@@ -128,8 +128,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     onHideSkippedChanged: (value) {
                       ref
                           .read(ledgerProvider.notifier)
-                          .updatePreferences(
-                            state.preferences.copyWith(
+                          .updatePreferencesWith(
+                            (livePreferences) => livePreferences.copyWith(
                               hideSkippedInHistory: value,
                             ),
                           );
@@ -147,7 +147,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     preferences: state.preferences,
                     onSave: (preferences) => ref
                         .read(ledgerProvider.notifier)
-                        .updatePreferences(preferences),
+                        .updatePreferencesWith(preferences),
                   ),
                   const SizedBox(height: AppSpacing.md),
 
@@ -164,8 +164,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           onChanged: (value) {
                             ref
                                 .read(ledgerProvider.notifier)
-                                .updatePreferences(
-                                  state.preferences.copyWith(
+                                .updatePreferencesWith(
+                                  (livePreferences) => livePreferences.copyWith(
                                     notificationInboxEnabled: value,
                                   ),
                                 );
@@ -189,8 +189,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           onChanged: (value) {
                             ref
                                 .read(ledgerProvider.notifier)
-                                .updatePreferences(
-                                  state.preferences.copyWith(
+                                .updatePreferencesWith(
+                                  (livePreferences) => livePreferences.copyWith(
                                     deviceNotificationsEnabled: value,
                                   ),
                                 );
@@ -212,8 +212,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           onChanged: (value) {
                             ref
                                 .read(ledgerProvider.notifier)
-                                .updatePreferences(
-                                  state.preferences.copyWith(
+                                .updatePreferencesWith(
+                                  (livePreferences) => livePreferences.copyWith(
                                     quietHoursEnabled: value,
                                   ),
                                 );
@@ -238,14 +238,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             quality: GlassQuality.standard,
                             value: state.preferences.channelScheduledEnabled,
                             onChanged: (value) {
-                              final prefs = state.preferences;
                               if (channel.$1 == 'scheduled') {
                                 ref
                                     .read(ledgerProvider.notifier)
-                                    .updatePreferences(
-                                      prefs.copyWith(
-                                        channelScheduledEnabled: value,
-                                      ),
+                                    .updatePreferencesWith(
+                                      (livePreferences) =>
+                                          livePreferences.copyWith(
+                                            channelScheduledEnabled: value,
+                                          ),
                                     );
                               }
                               _showMessage(
@@ -276,8 +276,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           value: state.preferences.showExcludedAccounts,
                           onChanged: (value) => ref
                               .read(ledgerProvider.notifier)
-                              .updatePreferences(
-                                state.preferences.copyWith(
+                              .updatePreferencesWith(
+                                (livePreferences) => livePreferences.copyWith(
                                   showExcludedAccounts: value,
                                 ),
                               ),
@@ -294,8 +294,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           value: state.preferences.showArchivedAccounts,
                           onChanged: (value) => ref
                               .read(ledgerProvider.notifier)
-                              .updatePreferences(
-                                state.preferences.copyWith(
+                              .updatePreferencesWith(
+                                (livePreferences) => livePreferences.copyWith(
                                   showArchivedAccounts: value,
                                 ),
                               ),
@@ -381,7 +381,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ),
                         ),
                         subtitle: const Text(
-                          'Permanently wipe all local data, cloud sync backups, and your account.',
+                          'Delete this account\'s cloud data and its wallet on this device.',
                         ),
                         trailing: Icon(
                           Icons.chevron_right,
@@ -411,7 +411,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     if (!mounted) return;
     if (deleted == true) {
-      _showMessage('Account and all data have been deleted.');
+      _showMessage('Verified cloud and device account data were deleted.');
       context.go('/login');
     }
   }
@@ -531,7 +531,7 @@ class _GlassTuningSection extends StatefulWidget {
   const _GlassTuningSection({required this.preferences, required this.onSave});
 
   final LedgerPreferences preferences;
-  final ValueChanged<LedgerPreferences> onSave;
+  final ValueChanged<LedgerPreferences Function(LedgerPreferences)> onSave;
 
   @override
   State<_GlassTuningSection> createState() => _GlassTuningSectionState();
@@ -565,15 +565,22 @@ class _GlassTuningSectionState extends State<_GlassTuningSection> {
     _shine = preferences.glassSpecularOpacity.clamp(.15, 1).toDouble();
   }
 
-  void _save() => widget.onSave(
-    widget.preferences.copyWith(
-      glassBlurLevel: _blur,
-      glassBackgroundOpacity: _fill,
-      glassRefractionLevel: _refraction,
-      glassInteractionStrength: _interaction,
-      glassSpecularOpacity: _shine,
-    ),
-  );
+  void _save() {
+    final blur = _blur;
+    final fill = _fill;
+    final refraction = _refraction;
+    final interaction = _interaction;
+    final shine = _shine;
+    widget.onSave(
+      (livePreferences) => livePreferences.copyWith(
+        glassBlurLevel: blur,
+        glassBackgroundOpacity: fill,
+        glassRefractionLevel: refraction,
+        glassInteractionStrength: interaction,
+        glassSpecularOpacity: shine,
+      ),
+    );
+  }
 
   Widget _slider(
     String label,
@@ -633,26 +640,16 @@ class _GlassTuningSectionState extends State<_GlassTuningSection> {
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ),
-        _slider(
-          'Frosting',
-          '${_blur.round()}',
-          _blur,
-          18,
-          (value) {
-            setState(() => _blur = value);
-            _save();
-          },
-        ),
-        _slider(
-          'Tint strength',
-          '${(_fill * 100).round()}%',
-          _fill,
-          .5,
-          (value) {
-            setState(() => _fill = value);
-            _save();
-          },
-        ),
+        _slider('Frosting', '${_blur.round()}', _blur, 18, (value) {
+          setState(() => _blur = value);
+          _save();
+        }),
+        _slider('Tint strength', '${(_fill * 100).round()}%', _fill, .5, (
+          value,
+        ) {
+          setState(() => _fill = value);
+          _save();
+        }),
         _slider(
           'Refraction',
           '${(_refraction * 100).round()}%',
@@ -663,26 +660,16 @@ class _GlassTuningSectionState extends State<_GlassTuningSection> {
             _save();
           },
         ),
-        _slider(
-          'Bounce',
-          '${(_interaction * 100).round()}%',
-          _interaction,
-          1,
-          (value) {
-            setState(() => _interaction = value);
-            _save();
-          },
-        ),
-        _slider(
-          'Highlight',
-          '${(_shine * 100).round()}%',
-          _shine,
-          1,
-          (value) {
-            setState(() => _shine = value);
-            _save();
-          },
-        ),
+        _slider('Bounce', '${(_interaction * 100).round()}%', _interaction, 1, (
+          value,
+        ) {
+          setState(() => _interaction = value);
+          _save();
+        }),
+        _slider('Highlight', '${(_shine * 100).round()}%', _shine, 1, (value) {
+          setState(() => _shine = value);
+          _save();
+        }),
       ],
     );
   }
@@ -810,14 +797,20 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'This action is irreversible. All of your data will be permanently wiped:',
+              'This action is irreversible. It deletes this account and verifies cleanup of its data:',
               style: TextStyle(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: AppSpacing.sm),
             const Text('• Local ledger, accounts, and transactions'),
             const Text('• All cloud backups and synced data in Firebase'),
-            const Text('• Device auto-backup files and encryption keys'),
+            const Text('• This account\'s device backups and encryption keys'),
             const Text('• Account login credentials and profile'),
+            const SizedBox(height: AppSpacing.sm),
+            const Text(
+              'Other accounts, device-wide settings, older unassigned diagnostic history, '
+              'exported copies, and disconnected devices are not erased by this operation. '
+              'Unassigned history can be cleared explicitly in Capture diagnostics.',
+            ),
             const SizedBox(height: AppSpacing.md),
             if (!isBusy) ...[
               const Text(
@@ -898,4 +891,3 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
     );
   }
 }
-

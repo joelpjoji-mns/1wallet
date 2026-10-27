@@ -85,6 +85,9 @@ android {
         jniLibs {
             useLegacyPackaging = true
         }
+        testOptions {
+            unitTests.isIncludeAndroidResources = true
+        }
     }
 }
 
@@ -98,6 +101,17 @@ flutter {
     source = "../.."
 }
 
+// Host-test packaging consumes Flutter assets that AGP does not infer as an input.
+tasks.configureEach {
+    if (name.startsWith("package") && name.endsWith("UnitTestForUnitTest")) {
+        val variant = name.removePrefix("package").removeSuffix("UnitTestForUnitTest")
+        dependsOn("copyFlutterAssets$variant")
+    }
+}
+
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test:core:1.6.1")
 }

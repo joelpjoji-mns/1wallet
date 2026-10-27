@@ -14,12 +14,6 @@ import android.os.Build
 
 class SmsReceiver : BroadcastReceiver() {
     companion object {
-        // Caps the queued-capture spool so a long period without the app being
-        // opened (which pops/clears the spool) cannot grow SharedPreferences
-        // without bound. Oldest entries are dropped first (FIFO) and the drop
-        // is recorded as a diagnostic "overflow" event rather than silently lost.
-        private const val MAX_SPOOL_ENTRIES = 500
-
         private val DEFAULT_TRIGGERS = listOf(
             "debited", "credited", "spent", "paid", "received", "withdrawn",
             "deposited", "sent", "charged", "transferred", "refund"
@@ -31,10 +25,22 @@ class SmsReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context?, intent: Intent?) {
+        if (context == null || intent == null) return
+        val pending = goAsync()
+        CaptureQueue.executor.execute {
+            try { captureSms(context, intent) }
+            catch (error: Exception) { android.util.Log.e("1WalletCapture", "SMS capture failed", error) }
+            finally { pending.finish() }
+        }
+    }
+
+    private fun captureSms(context: Context?, intent: Intent?) {
         if (context == null || intent == null || intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
             return
         }
 
+        val captureConfiguration = CaptureQueue.configuration(context) ?: return
+        val captureOwner = captureConfiguration.owner
         NotificationReceiver.startBackgroundWorker(context)
 
         val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent) ?: return
@@ -51,19 +57,11 @@ class SmsReceiver : BroadcastReceiver() {
 
         val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
 
-        val captureEnabled = try {
-            if (prefs.contains("flutter.one_wallet_flutter.sms_capture_enabled")) {
-                prefs.getBoolean("flutter.one_wallet_flutter.sms_capture_enabled", true)
-            } else {
-                true
-            }
-        } catch (e: Exception) {
-            true
-        }
+        val captureEnabled = captureConfiguration.settings.optBoolean("smsCaptureEnabled", false)
         if (!captureEnabled) return
 
-        val triggers = loadWords(prefs, "flutter.one_wallet_flutter.sms_trigger_words", DEFAULT_TRIGGERS)
-        val ignores = loadWords(prefs, "flutter.one_wallet_flutter.sms_ignore_words", DEFAULT_IGNORES)
+        val triggers = CaptureQueue.words(captureConfiguration.settings, "smsTriggerWords", DEFAULT_TRIGGERS)
+        val ignores = CaptureQueue.words(captureConfiguration.settings, "smsIgnoreWords", DEFAULT_IGNORES)
         val lowerBody = body.lowercase()
 
         val builtInBillIgnores = listOf(
@@ -82,7 +80,7 @@ class SmsReceiver : BroadcastReceiver() {
                 body,
                 amount,
                 matchedBillNotice,
-                isBillStatement = true
+                isBillStatement = true, expectedOwner = captureOwner, expectedRevision = captureConfiguration.revision
             )
             val notificationShown = showBillStatementNotification(context, amount, extractLast4(body))
             appendDiagnostic(
@@ -110,7 +108,7 @@ class SmsReceiver : BroadcastReceiver() {
         val accept = amount != null && matchedTrigger != null && matchedIgnore == null
 
         if (accept) {
-            val spooled = spoolMessage(context, sender, body, amount, matchedTrigger)
+            val spooled = spoolMessage(context, sender, body, amount, matchedTrigger, expectedOwner = captureOwner, expectedRevision = captureConfiguration.revision)
             val notificationShown = if (spooled) showNotification(context, amount, extractLast4(body)) else false
             appendDiagnostic(
                 context,
@@ -195,70 +193,20 @@ class SmsReceiver : BroadcastReceiver() {
     }
 
     private fun spoolMessage(
-        context: Context,
-        sender: String,
-        body: String,
-        amount: String?,
-        matchedTrigger: String?,
-        isBillStatement: Boolean = false
+        context: Context, sender: String, body: String, amount: String?,
+        matchedTrigger: String?, isBillStatement: Boolean = false, expectedOwner: String, expectedRevision: Long
     ): Boolean {
-        val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        val spoolKey = "flutter.one_wallet_flutter.sms_spool"
-
-        val existingRaw = try { prefs.getString(spoolKey, "") ?: "" } catch (e: Exception) { "" }
-        val jsonArray = if (existingRaw.isNotEmpty()) {
-            try {
-                org.json.JSONArray(existingRaw)
-            } catch (e: Exception) {
-                org.json.JSONArray()
-            }
-        } else {
-            org.json.JSONArray()
-        }
-
         val payload = org.json.JSONObject()
         payload.put("sender", sender)
         payload.put("body", body)
         payload.put("nativeSource", "sms")
         payload.put("nativeAccepted", true)
         payload.put("notificationShown", true)
+        payload.put("timestamp", java.time.Instant.now().toString())
         if (isBillStatement) payload.put("isBillStatement", true)
         if (amount != null) payload.put("nativeMatchedAmount", amount)
         if (matchedTrigger != null) payload.put("nativeMatchedTriggerWord", matchedTrigger)
-
-        val df = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
-        df.timeZone = java.util.TimeZone.getTimeZone("UTC")
-        payload.put("timestamp", df.format(java.util.Date()))
-
-        jsonArray.put(payload.toString())
-
-        // Bound unbounded growth: if the queue overflows, drop the oldest
-        // entries (FIFO) rather than growing SharedPreferences without limit,
-        // and surface the drop via a diagnostic entry instead of silently
-        // discarding captures.
-        var droppedCount = 0
-        while (jsonArray.length() > MAX_SPOOL_ENTRIES) {
-            jsonArray.remove(0)
-            droppedCount++
-        }
-
-        val saved = try {
-            prefs.edit().putString(spoolKey, jsonArray.toString()).commit()
-        } catch (e: Exception) {
-            false
-        }
-
-        if (saved && droppedCount > 0) {
-            appendDiagnostic(
-                context,
-                source = "sms",
-                stage = "native-sms",
-                decision = "overflow",
-                reason = "dropped $droppedCount oldest queued SMS capture(s) to bound spool size at $MAX_SPOOL_ENTRIES"
-            )
-        }
-
-        return saved
+        return CaptureQueue.append(context, "sms", payload, expectedOwner, expectedRevision)
     }
 
     private fun showBillStatementNotification(context: Context, amount: String?, last4: String?): Boolean {
@@ -393,7 +341,8 @@ class SmsReceiver : BroadcastReceiver() {
     ) {
         try {
             val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            val key = "flutter.one_wallet_flutter.capture_diagnostics"
+            val owner = CaptureQueue.owner(context) ?: "unassigned"
+            val key = "flutter.one_wallet_flutter.capture_diagnostics.$owner"
             val existingRaw = try { prefs.getString(key, "") ?: "" } catch (e: Exception) { "" }
             val existing = if (existingRaw.isNotEmpty()) {
                 try { org.json.JSONArray(existingRaw) } catch (e: Exception) { org.json.JSONArray() }

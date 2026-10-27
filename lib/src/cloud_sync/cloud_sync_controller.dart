@@ -10,11 +10,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../auth/auth_controller.dart';
-import '../data/ledger_archive.dart';
+import '../config/firebase_env.dart';
 import '../data/ledger_codec.dart';
 import '../data/ledger_models.dart';
 import '../data/ledger_providers.dart';
 import '../data/ledger_defaults.dart';
+import '../features/settings/account_deletion_controller.dart';
 import 'cloud_sync_metadata.dart';
 import 'cloud_sync_write_guard.dart';
 
@@ -55,6 +56,7 @@ class CloudSyncState {
     this.isVerifyingCloud = false,
     this.cloudVerificationStatus,
     this.lastVerifiedAt,
+    this.accountDeletionPending = false,
   });
 
   final CloudSyncPhase phase;
@@ -79,6 +81,7 @@ class CloudSyncState {
   final bool isVerifyingCloud;
   final String? cloudVerificationStatus;
   final DateTime? lastVerifiedAt;
+  final bool accountDeletionPending;
 
   bool get isChecking => phase == CloudSyncPhase.checking;
   bool get isRestoring => phase == CloudSyncPhase.restoring;
@@ -106,6 +109,7 @@ class CloudSyncState {
     bool? isVerifyingCloud,
     Object? cloudVerificationStatus = _unset,
     Object? lastVerifiedAt = _unset,
+    bool? accountDeletionPending,
   }) {
     return CloudSyncState(
       phase: phase ?? this.phase,
@@ -149,7 +153,8 @@ class CloudSyncState {
       verifiedCloudChunkCount: identical(verifiedCloudChunkCount, _unset)
           ? this.verifiedCloudChunkCount
           : verifiedCloudChunkCount as int?,
-      verifiedCloudTransactionCount: identical(verifiedCloudTransactionCount, _unset)
+      verifiedCloudTransactionCount:
+          identical(verifiedCloudTransactionCount, _unset)
           ? this.verifiedCloudTransactionCount
           : verifiedCloudTransactionCount as int?,
       verifiedCloudAccountCount: identical(verifiedCloudAccountCount, _unset)
@@ -162,11 +167,32 @@ class CloudSyncState {
       lastVerifiedAt: identical(lastVerifiedAt, _unset)
           ? this.lastVerifiedAt
           : lastVerifiedAt as DateTime?,
+      accountDeletionPending:
+          accountDeletionPending ?? this.accountDeletionPending,
     );
   }
 }
 
 const _unset = Object();
+
+enum CloudWriteOutcome { uploaded, deferred, unavailable, failed }
+
+class CloudWriteResult {
+  const CloudWriteResult(
+    this.outcome, {
+    this.localRevision,
+    this.remoteRevision,
+    this.message,
+  });
+  final CloudWriteOutcome outcome;
+  final int? localRevision;
+  final int? remoteRevision;
+  final String? message;
+}
+
+class _ObsoleteSync implements Exception {
+  const _ObsoleteSync();
+}
 
 class CloudSyncController extends StateNotifier<CloudSyncState> {
   CloudSyncController(this._ref) : super(const CloudSyncState()) {
@@ -184,6 +210,104 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
   int _uploadFailureCount = 0;
   int _uploadCircuitOpenUntil = 0;
   bool _localClearInProgress = false;
+  int _syncEpoch = 0;
+  Future<CloudWriteResult>? _uploadTask;
+  Future<void>? _bootstrapTask;
+  (String, int)? _bootstrapKey;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
+  _deletionSubscription;
+  String? _watchedDeletionOwner;
+  int _deletionWatchGeneration = 0;
+  bool get _deletionBackendEnabled =>
+      FirebaseEnv.useFirebaseEmulator ||
+      FirebaseEnv.accountDeletionBaseUrl != null;
+
+  void _watchDeletion(String? uid) {
+    if (_watchedDeletionOwner == uid && _deletionSubscription != null) return;
+    final generation = ++_deletionWatchGeneration;
+    _deletionSubscription?.cancel();
+    _deletionSubscription = null;
+    _watchedDeletionOwner = uid;
+    if (uid == null) return;
+    bool current() =>
+        mounted &&
+        generation == _deletionWatchGeneration &&
+        _ref.read(authControllerProvider).user?.id == uid;
+    _deletionSubscription = _firestore
+        .doc('accountDeletionJobs/$uid')
+        .snapshots()
+        .listen(
+          (snapshot) async {
+            if (!current() ||
+                !snapshot.exists ||
+                snapshot.metadata.hasPendingWrites) {
+              return;
+            }
+            try {
+              if (!state.accountDeletionPending) {
+                _syncEpoch++;
+                _uploadTask = null;
+                _cancelTimers();
+                final previousSubscription = _userDocSubscription;
+                _userDocSubscription = null;
+                state = const CloudSyncState(
+                  accountDeletionPending: true,
+                  disabledReason: 'Account deletion is in progress.',
+                );
+                await previousSubscription?.cancel();
+                if (!current()) return;
+              }
+              await _ledger.freezeForDeletion(uid);
+              if (!current()) return;
+              if (snapshot.data()?['status'] == 'complete' &&
+                  !snapshot.metadata.isFromCache) {
+                final user = _ref.read(authControllerProvider).user!;
+                await _ref
+                    .read(accountDeletionControllerProvider.notifier)
+                    .observeCompletedDeletion(
+                      LedgerUserIdentity(
+                        userId: uid,
+                        email: user.email,
+                        displayName: user.displayName,
+                      ),
+                    );
+              }
+            } catch (error, stack) {
+              if (!current()) return;
+              developer.log(
+                'Could not finish observed account deletion',
+                error: error,
+                stackTrace: stack,
+              );
+              state = state.copyWith(
+                accountDeletionPending: true,
+                error: 'Local deletion cleanup needs attention: $error',
+              );
+            }
+          },
+          onError: (Object error, StackTrace stack) {
+            if (!current()) return;
+            developer.log(
+              'Account deletion status listener failed',
+              error: error,
+              stackTrace: stack,
+            );
+            state = state.copyWith(
+              phase: CloudSyncPhase.error,
+              error: 'Could not verify account deletion status: $error',
+            );
+          },
+        );
+  }
+
+  bool _isCurrent(String uid, int epoch) =>
+      mounted &&
+      epoch == _syncEpoch &&
+      _ref.read(authControllerProvider).user?.id == uid;
+
+  void _ensureCurrent(String uid, int epoch) {
+    if (!_isCurrent(uid, epoch)) throw const _ObsoleteSync();
+  }
 
   void _init() {
     try {
@@ -203,6 +327,13 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     });
 
     _ref.listen(authControllerProvider, (previous, next) {
+      if (previous?.user?.id != next.user?.id) {
+        _syncEpoch++;
+        _uploadTask = null;
+        _cancelTimers();
+        state = const CloudSyncState();
+      }
+      _watchDeletion(_deletionBackendEnabled ? next.user?.id : null);
       if (next.user != null) {
         final loadState = _ref.read(ledgerLoadStateProvider);
         if (!loadState.isReady) {
@@ -239,6 +370,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     });
 
     final initialUser = _ref.read(authControllerProvider).user;
+    _watchDeletion(_deletionBackendEnabled ? initialUser?.id : null);
     final loadState = _ref.read(ledgerLoadStateProvider);
     if (initialUser != null) {
       if (loadState.isReady) {
@@ -258,17 +390,25 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
   }
 
   Future<void> handleSignOut() async {
+    final epoch = ++_syncEpoch;
     _localClearInProgress = true;
+    _cancelTimers();
+    _disableSync();
     try {
       await _userDocSubscription?.cancel();
       _userDocSubscription = null;
+      if (!mounted || epoch != _syncEpoch) return;
       _cancelTimers();
       _uploadFailureCount = 0;
       _uploadCircuitOpenUntil = 0;
       await CloudSyncMetadata.clear();
+      if (!mounted || epoch != _syncEpoch) return;
       final prefs = await SharedPreferences.getInstance();
+      if (!mounted || epoch != _syncEpoch) return;
       await prefs.remove('has_unsynced_changes');
+      if (!mounted || epoch != _syncEpoch) return;
       await prefs.remove('last_local_modified_at');
+      if (!mounted || epoch != _syncEpoch) return;
       _disableSync();
     } finally {
       _localClearInProgress = false;
@@ -292,15 +432,39 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
   }
 
   Future<void> updateSyncInterval(int? hours) async {
-    var metadata = state.metadata ?? await CloudSyncMetadata.load();
-    metadata = metadata.copyWith(syncIntervalHours: hours);
-    await metadata.save();
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('has_unsynced_changes', true);
-
-    state = state.copyWith(metadata: metadata, pendingUpload: true);
-    unawaited(checkAndTriggerSync());
+    final user = _ref.read(authControllerProvider).user;
+    if (user == null) {
+      state = state.copyWith(
+        error: 'Sign in before changing cloud sync settings.',
+      );
+      return;
+    }
+    if (state.phase == CloudSyncPhase.restoring ||
+        state.phase == CloudSyncPhase.checking) {
+      state = state.copyWith(
+        error: 'Wait for wallet restoration before changing sync settings.',
+      );
+      return;
+    }
+    final epoch = _syncEpoch;
+    try {
+      var metadata = state.metadata ?? await CloudSyncMetadata.load();
+      _ensureCurrent(user.id, epoch);
+      metadata = metadata.copyWith(syncIntervalHours: hours);
+      state = state.copyWith(metadata: metadata, pendingUpload: true);
+      await _ledger.markSyncSettingsChanged();
+      _ensureCurrent(user.id, epoch);
+      await metadata.save();
+      _ensureCurrent(user.id, epoch);
+      unawaited(checkAndTriggerSync());
+    } catch (error) {
+      if (!_isCurrent(user.id, epoch)) return;
+      state = state.copyWith(
+        phase: CloudSyncPhase.error,
+        pendingUpload: true,
+        error: 'Could not save cloud sync settings: $error',
+      );
+    }
   }
 
   Future<void> checkAndTriggerSync({
@@ -309,6 +473,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
   }) async {
     final user = _ref.read(authControllerProvider).user;
     if (user == null || state.phase == CloudSyncPhase.disabled) return;
+    final epoch = _syncEpoch;
     if (_localClearInProgress) return;
     if (state.phase == CloudSyncPhase.restoring ||
         state.phase == CloudSyncPhase.checking ||
@@ -317,6 +482,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     }
 
     final prefs = await SharedPreferences.getInstance();
+    if (!_isCurrent(user.id, epoch)) return;
     final hasUnsynced = prefs.getBool('has_unsynced_changes') ?? false;
     final isPending = hasUnsynced || state.pendingUpload;
 
@@ -348,16 +514,24 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
   Future<void> fullSync({required String reason}) async {
     final user = _ref.read(authControllerProvider).user;
     if (user == null) return;
+    final epoch = _syncEpoch;
+    if (state.phase == CloudSyncPhase.checking ||
+        state.phase == CloudSyncPhase.restoring ||
+        state.phase == CloudSyncPhase.uploading) {
+      return;
+    }
 
     try {
       state = state.copyWith(phase: CloudSyncPhase.checking, error: null);
 
       final metadata = state.metadata ?? await CloudSyncMetadata.load();
+      _ensureCurrent(user.id, epoch);
 
       final userDoc = await _firestore
           .doc('users/${user.id}')
           .get()
           .timeout(cloudSyncReadTimeout);
+      _ensureCurrent(user.id, epoch);
 
       final cloudState = _cloudWriteStateFromDocData(userDoc.data());
       final lastWriterDeviceId = cloudState.lastWriterDeviceId;
@@ -367,6 +541,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       final localLedger = _ref.read(ledgerProvider);
       final localLatestTx = getLatestTransactionDate(localLedger);
       final prefs = await SharedPreferences.getInstance();
+      _ensureCurrent(user.id, epoch);
       final hasUnsyncedChanges = prefs.getBool('has_unsynced_changes') ?? false;
       final localModifiedAtStr = prefs.getString('last_local_modified_at');
       final localModifiedAt = localModifiedAtStr != null
@@ -403,6 +578,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         await uploadSnapshot(reason: reason);
       }
     } catch (e) {
+      if (!_isCurrent(user.id, epoch)) return;
       state = state.copyWith(
         phase: CloudSyncPhase.error,
         error: 'Full sync failed: $e',
@@ -416,13 +592,16 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
   /// adopt a fresh cloud baseline here, then `uploadSnapshot` checks that
   /// baseline again inside its Firestore transaction so a write racing this
   /// read is still reported as a conflict instead of being overwritten.
-  Future<void> overwriteCloudWithLocal() async {
+  Future<CloudWriteResult> overwriteCloudWithLocal() async {
     final user = _ref.read(authControllerProvider).user;
-    if (user == null || state.phase == CloudSyncPhase.disabled) return;
+    if (user == null || state.phase == CloudSyncPhase.disabled) {
+      return const CloudWriteResult(CloudWriteOutcome.unavailable);
+    }
+    final epoch = _syncEpoch;
     if (state.phase == CloudSyncPhase.checking ||
         state.phase == CloudSyncPhase.restoring ||
         state.phase == CloudSyncPhase.uploading) {
-      return;
+      return const CloudWriteResult(CloudWriteOutcome.deferred);
     }
 
     try {
@@ -435,25 +614,37 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           .doc('users/${user.id}')
           .get(const GetOptions(source: Source.server))
           .timeout(cloudSyncReadTimeout);
+      _ensureCurrent(user.id, epoch);
       final live = _cloudWriteStateFromDocData(doc.data());
       final metadata = state.metadata ?? await CloudSyncMetadata.load();
+      _ensureCurrent(user.id, epoch);
       final adopted = metadata.copyWith(
         lastCloudRevision: live.cloudRevision,
         lastObservedCloudUpdatedAt: live.updatedAt?.toUtc().toIso8601String(),
       );
       await adopted.save();
+      _ensureCurrent(user.id, epoch);
       // Keep the local replacement protected if the transactional write
       // discovers that another device wrote after the fresh server read.
       final prefs = await SharedPreferences.getInstance();
+      _ensureCurrent(user.id, epoch);
       await prefs.setBool('has_unsynced_changes', true);
+      _ensureCurrent(user.id, epoch);
       state = state.copyWith(metadata: adopted, phase: CloudSyncPhase.idle);
-      await uploadSnapshot(reason: 'user-overwrite');
+      return await uploadSnapshot(reason: 'user-overwrite');
     } catch (error) {
+      if (!_isCurrent(user.id, epoch)) {
+        return const CloudWriteResult(
+          CloudWriteOutcome.deferred,
+          message: 'Session changed.',
+        );
+      }
       state = state.copyWith(
         phase: CloudSyncPhase.error,
         pendingUpload: true,
         error: 'Could not prepare the cloud overwrite: $error',
       );
+      return CloudWriteResult(CloudWriteOutcome.failed, message: '$error');
     }
   }
 
@@ -462,21 +653,45 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
   Future<void> useCloudCopy() async {
     final user = _ref.read(authControllerProvider).user;
     if (user == null || state.phase == CloudSyncPhase.disabled) return;
+    final epoch = _syncEpoch;
+    final expectedRevision = _ledger.changeVersion;
     if (state.phase == CloudSyncPhase.checking ||
         state.phase == CloudSyncPhase.restoring ||
         state.phase == CloudSyncPhase.uploading) {
       return;
     }
-    final metadata = state.metadata ?? await CloudSyncMetadata.load();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('has_unsynced_changes', false);
-    await _restoreFromCloud(user.id, metadata);
-    if (state.phase == CloudSyncPhase.error) {
-      // A failed cloud read must never turn a local-only wallet into an
-      // apparent clean state; otherwise a later background upload might
-      // replace the cloud wallet without another explicit choice.
-      await prefs.setBool('has_unsynced_changes', true);
-      state = state.copyWith(pendingUpload: true);
+    try {
+      final metadata = state.metadata ?? await CloudSyncMetadata.load();
+      _ensureCurrent(user.id, epoch);
+      final prefs = await SharedPreferences.getInstance();
+      _ensureCurrent(user.id, epoch);
+      await _ledger.prepareCloudReplacement(expectedRevision, user.id);
+      _ensureCurrent(user.id, epoch);
+      await _restoreFromCloud(
+        user.id,
+        metadata,
+        expectedLocalRevision: expectedRevision,
+      );
+      if (!_isCurrent(user.id, epoch)) return;
+      if (state.phase == CloudSyncPhase.error) {
+        // A failed cloud read must never turn a local-only wallet into an
+        // apparent clean state; otherwise a later background upload might
+        // replace the cloud wallet without another explicit choice.
+        await prefs.setBool('has_unsynced_changes', true);
+        state = state.copyWith(pendingUpload: true);
+      }
+    } catch (error, stack) {
+      if (!_isCurrent(user.id, epoch)) return;
+      developer.log(
+        'Cloud replacement failed',
+        error: error,
+        stackTrace: stack,
+      );
+      state = state.copyWith(
+        phase: CloudSyncPhase.error,
+        pendingUpload: true,
+        error: 'Could not replace the local wallet: $error',
+      );
     }
   }
 
@@ -491,6 +706,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       return;
     }
 
+    final epoch = _syncEpoch;
     state = state.copyWith(
       isVerifyingCloud: true,
       cloudVerificationStatus: 'Contacting Google Cloud Firestore…',
@@ -501,11 +717,13 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           .doc('users/${user.id}')
           .get(const GetOptions(source: Source.server))
           .timeout(cloudSyncReadTimeout);
+      _ensureCurrent(user.id, epoch);
 
       if (!userDoc.exists) {
         state = state.copyWith(
           isVerifyingCloud: false,
-          cloudVerificationStatus: 'No cloud wallet found in Firebase for this account.',
+          cloudVerificationStatus:
+              'No cloud wallet found in Firebase for this account.',
         );
         return;
       }
@@ -524,6 +742,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           .collection('users/${user.id}/wallet_backups')
           .get(const GetOptions(source: Source.server))
           .timeout(cloudSyncReadTimeout);
+      _ensureCurrent(user.id, epoch);
 
       if (chunksSnap.docs.isEmpty) {
         state = state.copyWith(
@@ -531,7 +750,8 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           verifiedCloudRevision: cloudRevision,
           verifiedCloudUpdatedAt: cloudUpdatedAt,
           verifiedCloudChunkCount: 0,
-          cloudVerificationStatus: 'User record exists (rev #$cloudRevision), but no backup chunks found.',
+          cloudVerificationStatus:
+              'User record exists (rev #$cloudRevision), but no backup chunks found.',
         );
         return;
       }
@@ -551,7 +771,9 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         }
       }
 
-      final decompressedBytes = const GZipDecoder().decodeBytes(compressedBytes);
+      final decompressedBytes = const GZipDecoder().decodeBytes(
+        compressedBytes,
+      );
       final jsonPayload = utf8.decode(decompressedBytes);
       final data = jsonDecode(jsonPayload) as Map<String, dynamic>;
 
@@ -578,6 +800,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         lastVerifiedAt: DateTime.now(),
       );
     } catch (e) {
+      if (!_isCurrent(user.id, epoch)) return;
       debugPrint('verifyCloudBackup error: $e');
       state = state.copyWith(
         isVerifyingCloud: false,
@@ -586,19 +809,48 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     }
   }
 
-  Future<void> _bootstrap(String userId) async {
+  Future<void> _bootstrap(String userId) {
+    if (!mounted) return Future<void>.value();
+    if (state.accountDeletionPending) return Future<void>.value();
+    final key = (userId, _syncEpoch);
+    if (_bootstrapKey == key && _bootstrapTask != null) return _bootstrapTask!;
+    final task = _bootstrapForUser(userId, key.$2);
+    _bootstrapKey = key;
+    _bootstrapTask = task;
+    return task.whenComplete(() {
+      if (identical(_bootstrapTask, task)) {
+        _bootstrapTask = null;
+        _bootstrapKey = null;
+      }
+    });
+  }
+
+  Future<void> _bootstrapForUser(String userId, int epoch) async {
     if (state.bootstrappedUserId == userId) return;
     try {
+      _ensureCurrent(userId, epoch);
       state = state.copyWith(
         phase: CloudSyncPhase.checking,
         error: null,
         bootstrappedUserId: null,
+        bootstrapComplete: false,
       );
 
       await _userDocSubscription?.cancel();
+      _ensureCurrent(userId, epoch);
       _userDocSubscription = null;
 
       var metadata = await CloudSyncMetadata.load();
+      _ensureCurrent(userId, epoch);
+      final authUser = _ref.read(authControllerProvider).user!;
+      await _ledger.setActiveUser(
+        LedgerUserIdentity(
+          userId: userId,
+          email: authUser.email,
+          displayName: authUser.displayName,
+        ),
+      );
+      _ensureCurrent(userId, epoch);
       final initialLedger = _ref.read(ledgerProvider);
       final hasDifferentPreviousUser =
           (metadata.userId != null && metadata.userId != userId) ||
@@ -611,7 +863,9 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         _localClearInProgress = true;
         try {
           await _ledger.clearLocalWallet(userId: userId);
+          _ensureCurrent(userId, epoch);
           final prefs = await SharedPreferences.getInstance();
+          _ensureCurrent(userId, epoch);
           await prefs.remove('has_unsynced_changes');
           await prefs.remove('last_local_modified_at');
         } finally {
@@ -622,9 +876,11 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           userId: userId,
         );
         await metadata.save();
+        _ensureCurrent(userId, epoch);
       } else if (metadata.userId != userId) {
         metadata = metadata.copyWith(userId: userId);
         await metadata.save();
+        _ensureCurrent(userId, epoch);
       }
       state = state.copyWith(metadata: metadata);
 
@@ -635,6 +891,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
             .timeout(cloudSyncReadTimeout),
         _firestore.doc('users/$userId').get().timeout(cloudSyncReadTimeout),
       ]);
+      _ensureCurrent(userId, epoch);
       final prefsDoc = docs[0];
       final userDoc = docs[1];
 
@@ -652,10 +909,34 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       // fallback for the (practically unreachable today) case of an
       // ancient account that has legacy per-document data but somehow never
       // wrote `users/{uid}` either.
-      final walletDataExists = hasCloudWalletData(
+      var walletDataExists = hasCloudWalletData(
         userDocExists: userDoc.exists,
         legacyPreferencesDocExists: prefsDoc.exists,
       );
+      final observedCloud = _cloudWriteStateFromDocData(userDoc.data());
+      if (userDoc.exists &&
+          !prefsDoc.exists &&
+          (observedCloud.cloudRevision == null ||
+              observedCloud.cloudRevision == 0)) {
+        final presence = await Future.wait([
+          _firestore.collection('users/$userId/wallet_backups').limit(1).get(),
+          _firestore.collection('users/$userId/accounts').limit(1).get(),
+          _firestore.collection('users/$userId/transactions').limit(1).get(),
+        ]).timeout(cloudSyncReadTimeout);
+        _ensureCurrent(userId, epoch);
+        walletDataExists = presence.any((snapshot) => snapshot.docs.isNotEmpty);
+        if (!walletDataExists) {
+          metadata = metadata.copyWith(
+            lastCloudRevision: observedCloud.cloudRevision,
+            lastObservedCloudUpdatedAt: observedCloud.updatedAt
+                ?.toUtc()
+                .toIso8601String(),
+          );
+          await metadata.save();
+          _ensureCurrent(userId, epoch);
+          state = state.copyWith(metadata: metadata);
+        }
+      }
 
       state = state.copyWith(hasCloudWallet: walletDataExists);
 
@@ -669,6 +950,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         final hasUserData = _walletHasUserData(localLedger);
         final localLatestTx = getLatestTransactionDate(localLedger);
         final prefs = await SharedPreferences.getInstance();
+        _ensureCurrent(userId, epoch);
         final hasUnsyncedChanges =
             prefs.getBool('has_unsynced_changes') ?? false;
         final localModifiedAtStr = prefs.getString('last_local_modified_at');
@@ -705,6 +987,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
           // `_restoreFromCloud` itself already handles that fallback
           // regardless of whether `userDoc` exists). Restore it locally.
           await _restoreFromCloud(userId, metadata);
+          _ensureCurrent(userId, epoch);
         }
 
         if (!shouldPull && hasUnsyncedChanges) {
@@ -722,11 +1005,13 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
             (localNow.userId == userId || localNow.userId == 'local-user')) {
           // No cloud data, but we have local data. Push local to cloud.
           await uploadSnapshot(reason: 'seed');
+          _ensureCurrent(userId, epoch);
         } else {
           state = state.copyWith(phase: CloudSyncPhase.idle);
         }
       }
 
+      _ensureCurrent(userId, epoch);
       state = state.copyWith(
         phase: state.phase == CloudSyncPhase.checking
             ? CloudSyncPhase.idle
@@ -750,21 +1035,14 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
       unawaited(checkAndTriggerSync());
     } on TimeoutException catch (e) {
-      debugPrint('Cloud sync bootstrap timeout, fetching actual error...');
-      Object actualError = e;
-      try {
-        await _firestore
-            .doc('users/$userId')
-            .get(const GetOptions(source: Source.server));
-      } catch (fe) {
-        actualError = fe;
-      }
+      if (!_isCurrent(userId, epoch)) return;
       state = state.copyWith(
         phase: CloudSyncPhase.error,
-        error: 'Network timeout / Quota hit. Actual error: $actualError',
+        error: 'Cloud restore timed out: $e',
         bootstrappedUserId: null,
       );
     } catch (e) {
+      if (!_isCurrent(userId, epoch)) return;
       debugPrint('Cloud sync bootstrap error: $e');
       state = state.copyWith(
         phase: CloudSyncPhase.error,
@@ -783,9 +1061,30 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     });
   }
 
-  Future<void> uploadSnapshot({required String reason}) async {
+  Future<CloudWriteResult> uploadSnapshot({required String reason}) {
+    if (state.accountDeletionPending) {
+      return Future.value(
+        const CloudWriteResult(
+          CloudWriteOutcome.unavailable,
+          message: 'Account deletion is in progress.',
+        ),
+      );
+    }
+    final running = _uploadTask;
+    if (running != null) return running;
+    final task = _uploadSnapshot(reason: reason);
+    _uploadTask = task;
+    return task.whenComplete(() {
+      if (identical(_uploadTask, task)) _uploadTask = null;
+    });
+  }
+
+  Future<CloudWriteResult> _uploadSnapshot({required String reason}) async {
     final user = _ref.read(authControllerProvider).user;
-    if (user == null) return;
+    if (user == null) {
+      return const CloudWriteResult(CloudWriteOutcome.unavailable);
+    }
+    final epoch = _syncEpoch;
 
     // Safety guard against clobbering an existing cloud wallet from onboarding / seed
     if ((reason == 'onboarding' || reason == 'seed') && state.hasCloudWallet) {
@@ -794,35 +1093,74 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       );
       state = state.copyWith(phase: CloudSyncPhase.idle);
       unawaited(fullSync(reason: 'cloud_wallet_protection'));
-      return;
+      return const CloudWriteResult(CloudWriteOutcome.deferred);
     }
 
     final currentLedger = _ref.read(ledgerProvider);
     final isLocalEmpty =
         currentLedger.accounts.isEmpty && currentLedger.transactions.isEmpty;
-    if (isLocalEmpty && state.hasCloudWallet && reason != 'user-overwrite') {
+    final metadataBaseline = state.metadata;
+    final knownEmptyMutation = canUploadEmptyCloudSnapshot(
+      bootstrappedForUser:
+          state.bootstrapComplete &&
+          state.bootstrappedUserId == user.id &&
+          currentLedger.userId == user.id &&
+          metadataBaseline?.userId == user.id,
+      hasCloudBaseline:
+          metadataBaseline?.lastCloudRevision != null ||
+          DateTime.tryParse(
+                metadataBaseline?.lastObservedCloudUpdatedAt ?? '',
+              ) !=
+              null,
+      localRevision: currentLedger.localRevision,
+      hasAuthoritativeEmptyWallet: currentLedger.hasAuthoritativeEmptyWallet,
+    );
+    if (isLocalEmpty &&
+        !currentLedger.hasAuthoritativeEmptyWallet &&
+        reason != 'user-overwrite') {
+      state = state.copyWith(pendingUpload: true);
+      return const CloudWriteResult(
+        CloudWriteOutcome.deferred,
+        message:
+            'Finish wallet setup or explicitly confirm an empty cloud replacement.',
+      );
+    }
+    if (isLocalEmpty &&
+        state.hasCloudWallet &&
+        reason != 'user-overwrite' &&
+        !knownEmptyMutation) {
       debugPrint(
         'uploadSnapshot: blocked $reason because local ledger is empty while cloud wallet exists',
       );
       state = state.copyWith(phase: CloudSyncPhase.idle);
-      return;
+      return const CloudWriteResult(CloudWriteOutcome.deferred);
     }
 
     if (reason == 'auto') {
       if (state.phase == CloudSyncPhase.checking ||
           state.phase == CloudSyncPhase.restoring) {
         state = state.copyWith(pendingUpload: true);
-        return;
+        return const CloudWriteResult(CloudWriteOutcome.deferred);
       }
       if (DateTime.now().millisecondsSinceEpoch < _uploadCircuitOpenUntil) {
         state = state.copyWith(pendingUpload: true);
-        return;
+        return const CloudWriteResult(CloudWriteOutcome.deferred);
       }
     }
 
     try {
       final currentLedger = _ref.read(ledgerProvider);
       var metadata = state.metadata ?? await CloudSyncMetadata.load();
+      _ensureCurrent(user.id, epoch);
+      if (currentLedger.userId != user.id) {
+        state = state.copyWith(
+          phase: CloudSyncPhase.error,
+          pendingUpload: true,
+          error: 'The wallet owner changed before upload. Nothing was sent.',
+        );
+        return const CloudWriteResult(CloudWriteOutcome.deferred);
+      }
+      final uploadedRevision = currentLedger.localRevision;
 
       state = state.copyWith(
         pendingUpload: false,
@@ -852,6 +1190,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         currentLedger,
         {'syncIntervalHours': metadata.syncIntervalHours},
       ));
+      _ensureCurrent(user.id, epoch);
 
       final jsonStr = jsonEncode(encodedData);
       final bytes = utf8.encode(jsonStr);
@@ -873,6 +1212,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       final existingChunksSnapshot = await _firestore
           .collection('users/${user.id}/wallet_backups')
           .get();
+      _ensureCurrent(user.id, epoch);
       final existingChunkIndices = <int>[];
       for (final doc in existingChunksSnapshot.docs) {
         final match = RegExp(r'^chunk_(\d+)$').firstMatch(doc.id);
@@ -924,7 +1264,9 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
       final nextRevision = await _firestore
           .runTransaction<int>((transaction) async {
+            _ensureCurrent(user.id, epoch);
             final liveSnap = await transaction.get(userRef);
+            _ensureCurrent(user.id, epoch);
             final liveState = _cloudWriteStateFromDocData(liveSnap.data());
 
             if (hasCloudSyncConflict(
@@ -969,9 +1311,9 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
             return revision;
           })
           .timeout(cloudSyncReadTimeout);
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('has_unsynced_changes', false);
+      _ensureCurrent(user.id, epoch);
+      final clean = await _ledger.acknowledgeUploadedVersion(uploadedRevision);
+      _ensureCurrent(user.id, epoch);
 
       final now = DateTime.now().toIso8601String();
       metadata = metadata.copyWith(
@@ -992,16 +1334,33 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
             .toIso8601String(),
         // We no longer track individual synced IDs since the whole blob is synced
         syncedDocumentHashes: {},
+        syncIntervalHours: state.metadata == null
+            ? metadata.syncIntervalHours
+            : state.metadata!.syncIntervalHours,
       );
       await metadata.save();
+      _ensureCurrent(user.id, epoch);
 
       _uploadFailureCount = 0;
       _uploadCircuitOpenUntil = 0;
-      state = state.copyWith(phase: CloudSyncPhase.idle, metadata: metadata);
+      state = state.copyWith(
+        phase: CloudSyncPhase.idle,
+        metadata: metadata,
+        pendingUpload: !clean,
+      );
+      unawaited(checkAndTriggerSync());
       debugPrint(
         'uploadSnapshot: completed successfully! revision=$nextRevision',
       );
+      return CloudWriteResult(
+        CloudWriteOutcome.uploaded,
+        localRevision: uploadedRevision,
+        remoteRevision: nextRevision,
+      );
     } on CloudSyncConflictException catch (e) {
+      if (!_isCurrent(user.id, epoch)) {
+        return const CloudWriteResult(CloudWriteOutcome.deferred);
+      }
       debugPrint(
         'uploadSnapshot: conflict detected ($e), resolving without blind retry',
       );
@@ -1022,6 +1381,9 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         unawaited(_resolveUploadConflict(user.id));
       }
     } on CloudSyncOversizeException catch (e) {
+      if (!_isCurrent(user.id, epoch)) {
+        return const CloudWriteResult(CloudWriteOutcome.deferred);
+      }
       debugPrint('uploadSnapshot: oversize snapshot ($e)');
       // Retrying automatically cannot fix this; surface it distinctly and
       // don't schedule another attempt until the underlying data shrinks.
@@ -1031,6 +1393,9 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         error: '$e',
       );
     } on CloudSyncRevisionOverflowException catch (e) {
+      if (!_isCurrent(user.id, epoch)) {
+        return const CloudWriteResult(CloudWriteOutcome.deferred);
+      }
       debugPrint('uploadSnapshot: cloudRevision overflow ($e)');
       // Practically unreachable (2^31-1 successful syncs), but retrying
       // automatically cannot fix this either — surface it distinctly rather
@@ -1042,26 +1407,24 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         error: '$e',
       );
     } on TimeoutException catch (e) {
+      if (!_isCurrent(user.id, epoch)) {
+        return const CloudWriteResult(CloudWriteOutcome.deferred);
+      }
       debugPrint('uploadSnapshot: timeout exception, fetching actual error...');
       _uploadFailureCount++;
       if (_uploadFailureCount >= uploadFailureCircuitBreakerThreshold) {
         _uploadCircuitOpenUntil =
             DateTime.now().millisecondsSinceEpoch + uploadCircuitBreakerMs;
       }
-      Object actualError = e;
-      try {
-        await _firestore
-            .doc('users/${user.id}')
-            .get(const GetOptions(source: Source.server));
-      } catch (fe) {
-        actualError = fe;
-      }
       state = state.copyWith(
         pendingUpload: true,
         phase: CloudSyncPhase.error,
-        error: 'Network timeout / Quota hit. Actual error: $actualError',
+        error: 'Cloud upload timed out: $e',
       );
     } catch (e) {
+      if (!_isCurrent(user.id, epoch)) {
+        return const CloudWriteResult(CloudWriteOutcome.deferred);
+      }
       debugPrint('uploadSnapshot: caught error $e');
       _uploadFailureCount++;
       if (_uploadFailureCount >= uploadFailureCircuitBreakerThreshold) {
@@ -1074,6 +1437,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         error: 'Could not sync your wallet to Firebase collections: $e',
       );
     }
+    return CloudWriteResult(CloudWriteOutcome.failed, message: state.error);
   }
 
   /// Resolves an `uploadSnapshot()` conflict without ever blindly retrying
@@ -1087,18 +1451,22 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
   /// That decision has no "push again" outcome, so this method can never
   /// recurse back into `uploadSnapshot()`.
   Future<void> _resolveUploadConflict(String userId) async {
+    final epoch = _syncEpoch;
     try {
       final metadata = state.metadata ?? await CloudSyncMetadata.load();
+      _ensureCurrent(userId, epoch);
 
       final userDoc = await _firestore
           .doc('users/$userId')
           .get()
           .timeout(cloudSyncReadTimeout);
+      _ensureCurrent(userId, epoch);
       final cloudState = _cloudWriteStateFromDocData(userDoc.data());
 
       final localLedger = _ref.read(ledgerProvider);
       final localLatestTx = getLatestTransactionDate(localLedger);
       final prefs = await SharedPreferences.getInstance();
+      _ensureCurrent(userId, epoch);
       final hasUnsyncedChanges = prefs.getBool('has_unsynced_changes') ?? false;
       final localModifiedAtStr = prefs.getString('last_local_modified_at');
       final localModifiedAt = localModifiedAtStr != null
@@ -1140,6 +1508,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       // (a new local edit, app resume, or explicit user action) re-attempts
       // the sync from scratch.
     } catch (e) {
+      if (!_isCurrent(userId, epoch)) return;
       // A failure re-checking the cloud state (e.g. offline) shouldn't
       // clobber the conflict error uploadSnapshot() already surfaced —
       // leave it as-is; the next legitimate trigger will try again.
@@ -1149,8 +1518,12 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
   Future<void> _restoreFromCloud(
     String userId,
-    CloudSyncMetadata currentMetadata,
-  ) async {
+    CloudSyncMetadata currentMetadata, {
+    int? expectedLocalRevision,
+  }) async {
+    final epoch = _syncEpoch;
+    final localRevision =
+        expectedLocalRevision ?? _ref.read(ledgerProvider).localRevision;
     state = state.copyWith(phase: CloudSyncPhase.restoring, error: null);
     try {
       // Bracket the bulk chunk/legacy-collection download with two cheap
@@ -1173,6 +1546,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         },
         fetchPayload: () => _fetchCloudRestoreData(userId),
       );
+      _ensureCurrent(userId, epoch);
       final cloudUpdatedAt = verifiedVersion.updatedAt;
       final cloudRevision = verifiedVersion.cloudRevision;
 
@@ -1181,8 +1555,10 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         progress: 0.95,
       );
       final ledger = await compute(_parseCloudRestoreData, restoreData);
+      _ensureCurrent(userId, epoch);
 
       final prefs = await SharedPreferences.getInstance();
+      _ensureCurrent(userId, epoch);
       final hasUnsyncedChanges = prefs.getBool('has_unsynced_changes') ?? false;
 
       // `readCloudSyncVersionConsistent` above already positively verified
@@ -1208,66 +1584,16 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         return;
       }
 
-      final currentLedger = _ref.read(ledgerProvider);
-      final currentHasData =
-          currentLedger.accounts.isNotEmpty ||
-          currentLedger.transactions.isNotEmpty;
-      final incomingHasData =
-          ledger.accounts.isNotEmpty || ledger.transactions.isNotEmpty;
-
-      // Safety guard 1: NEVER overwrite a populated local ledger with an empty cloud snapshot!
-      if (!incomingHasData && currentHasData) {
-        debugPrint(
-          'CloudSync _restoreFromCloud: incoming cloud snapshot has 0 accounts/transactions, '
-          'but local ledger has ${currentLedger.accounts.length} accounts. '
-          'Refusing to wipe local data; healing cloud instead.',
-        );
-        state = state.copyWith(
-          phase: CloudSyncPhase.idle,
-          progress: 1.0,
-          pendingUpload: true,
-          hasCloudWallet: true,
-        );
-        await uploadSnapshot(reason: 'protect_local_from_empty_cloud');
-        return;
-      }
-
-      // Safety guard 2: NEVER silently downgrade local data if local has newer records!
       final incomingLatest = getLatestTransactionDate(ledger);
-      if (currentHasData && incomingHasData) {
-        final localLatest = getLatestTransactionDate(currentLedger);
-        if (localLatest != null &&
-            incomingLatest != null &&
-            localLatest.isAfter(incomingLatest)) {
-          debugPrint(
-            'CloudSync _restoreFromCloud: local data has newer records ($localLatest) '
-            'than cloud snapshot ($incomingLatest). Refusing to downgrade; healing cloud with local data.',
-          );
-          state = state.copyWith(
-            phase: CloudSyncPhase.idle,
-            progress: 1.0,
-            pendingUpload: true,
-            hasCloudWallet: true,
-            cloudTransactionCount: ledger.transactions.length,
-            cloudAccountCount: ledger.accounts.length,
-            cloudLatestTransactionAt: incomingLatest,
-          );
-          await uploadSnapshot(reason: 'protect_local_newer_records');
-          return;
-        }
-      }
-
-      await _ledger.restoreLedgerState(ledger);
-
-      await prefs.setBool('has_unsynced_changes', false);
-      if (cloudUpdatedAt != null) {
-        await prefs.setString(
-          'last_local_modified_at',
-          cloudUpdatedAt.toUtc().toIso8601String(),
-        );
-      } else {
-        await prefs.remove('last_local_modified_at');
-      }
+      _ensureCurrent(userId, epoch);
+      final appliedRevision = await _ledger.restoreLedgerState(
+        ledger,
+        expectedUserId: userId,
+        expectedLocalRevision: localRevision,
+      );
+      _ensureCurrent(userId, epoch);
+      final clean = await _ledger.acknowledgeUploadedVersion(appliedRevision);
+      _ensureCurrent(userId, epoch);
 
       final syncSettings = restoreData['syncSettings'] as Map<String, dynamic>?;
       int? restoredInterval = currentMetadata.syncIntervalHours;
@@ -1287,27 +1613,33 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         syncIntervalHours: restoredInterval,
       );
       await newMetadata.save();
+      _ensureCurrent(userId, epoch);
 
-      final bool hasWalletNow = incomingHasData || currentHasData;
       state = state.copyWith(
         phase: CloudSyncPhase.idle,
         metadata: newMetadata,
         progress: 1.0,
         error: null,
-        hasCloudWallet: hasWalletNow,
+        hasCloudWallet: true,
+        pendingUpload: !clean,
         cloudTransactionCount: ledger.transactions.length,
         cloudAccountCount: ledger.accounts.length,
         cloudLatestTransactionAt: incomingLatest,
       );
+      unawaited(checkAndTriggerSync());
 
       if (restoreData['_healedFromLegacyOrBackup'] == true) {
-        debugPrint('CloudSync: healing cloud with recovered legacy/backup data');
+        debugPrint(
+          'CloudSync: healing cloud with recovered legacy/backup data',
+        );
         await uploadSnapshot(reason: 'heal_cloud_from_recovery');
       }
     } on CloudSyncUnstableException catch (e) {
+      if (!_isCurrent(userId, epoch)) return;
       developer.log('Firebase restore unstable', error: e);
       state = state.copyWith(phase: CloudSyncPhase.error, error: '$e');
     } catch (e, st) {
+      if (!_isCurrent(userId, epoch)) return;
       developer.log('Firebase restore failed', error: e, stackTrace: st);
       state = state.copyWith(
         phase: CloudSyncPhase.error,
@@ -1321,11 +1653,13 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
   /// 2. Legacy uncompressed collections (users/$userId/accounts, etc.) if chunked is empty.
   /// 3. Local auto-backup file (1wallet_auto_backup.onewallet) if both cloud tiers are empty.
   Future<Map<String, dynamic>> _fetchCloudRestoreData(String userId) async {
+    final epoch = _syncEpoch;
     final backupQuery = await _firestore
         .collection('users/$userId/wallet_backups')
         .orderBy('index')
         .get()
         .timeout(cloudSyncReadTimeout);
+    _ensureCurrent(userId, epoch);
 
     Map<String, dynamic>? chunkedData;
 
@@ -1357,18 +1691,14 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
       );
       // Using compute for heavy unzipping
       final bytes = await compute(_decodeGzipBytes, compressedBytes);
+      _ensureCurrent(userId, epoch);
       final jsonStr = await compute(utf8.decode, bytes);
+      _ensureCurrent(userId, epoch);
       chunkedData = await compute(jsonDecode, jsonStr) as Map<String, dynamic>;
+      _ensureCurrent(userId, epoch);
       chunkedData['userId'] = userId;
 
-      final accounts = (chunkedData['accounts'] as List?) ?? const [];
-      final txns = (chunkedData['transactions'] as List?) ?? const [];
-      if (accounts.isNotEmpty || txns.isNotEmpty) {
-        return chunkedData;
-      }
-      debugPrint(
-        'CloudSync _fetchCloudRestoreData: chunked backup has 0 accounts and 0 transactions. Falling back to legacy collections...',
-      );
+      return chunkedData;
     }
 
     // Tier 2: Fallback to legacy uncompressed collections if no compressed backup exists,
@@ -1386,6 +1716,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         _firestore.collection('users/$userId/importBatches').get(),
         _firestore.doc('users/$userId/metadata/preferences').get(),
       ]).timeout(const Duration(seconds: 45));
+      _ensureCurrent(userId, epoch);
 
       final accountsQuery = results[0] as QuerySnapshot<Map<String, dynamic>>;
       final categoriesQuery = results[1] as QuerySnapshot<Map<String, dynamic>>;
@@ -1410,150 +1741,14 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
         };
       }
     } catch (e) {
+      if (!_isCurrent(userId, epoch)) rethrow;
       debugPrint('CloudSync _fetchCloudRestoreData legacy fetch error: $e');
+      rethrow;
     }
 
-    // Tier 3: If both chunked and legacy collections have 0 accounts/txns,
-    // check if the local device has an auto-backup file belonging to this user!
-    try {
-      final authUser = _ref.read(authControllerProvider).user;
-      final userIdentity = (authUser != null && authUser.id == userId)
-          ? LedgerUserIdentity(
-              userId: authUser.id,
-              email: authUser.email,
-              displayName: authUser.displayName,
-            )
-          : LedgerUserIdentity(userId: userId, email: '');
-      final autoBackupFile = await _ledger.getLatestAutoBackupFile(
-        userOverride: userIdentity,
-      );
-      if (autoBackupFile != null && await autoBackupFile.exists()) {
-        debugPrint(
-          'CloudSync _fetchCloudRestoreData: checking local auto-backup file: ${autoBackupFile.path}',
-        );
-        final content = await autoBackupFile.readAsString();
-        final localState = decodeLedgerArchive(content);
-        if (localState.userId == userId &&
-            (localState.accounts.isNotEmpty ||
-                localState.transactions.isNotEmpty)) {
-          debugPrint(
-            'CloudSync _fetchCloudRestoreData: recovered ${localState.accounts.length} accounts and ${localState.transactions.length} transactions from auto-backup!',
-          );
-          final autoBackupData = _encodeCloudSnapshotData((localState, null));
-          autoBackupData['userId'] = userId;
-          autoBackupData['_healedFromLegacyOrBackup'] = true;
-          return autoBackupData;
-        }
-      }
-    } catch (e) {
-      debugPrint('CloudSync _fetchCloudRestoreData auto-backup recovery error: $e');
-    }
-
-    if (chunkedData != null) {
-      return chunkedData;
-    }
-
-    return {
-      'userId': userId,
-      'accounts': const [],
-      'categories': const [],
-      'transactions': const [],
-      'captureCandidates': const [],
-      'importBatches': const [],
-    };
-  }
-
-  Future<void> deleteAllCloudData({required String userId}) async {
-    _localClearInProgress = true;
-    _cancelTimers();
-    await _userDocSubscription?.cancel();
-    _userDocSubscription = null;
-
-    try {
-      if (Firebase.apps.isNotEmpty) {
-        // 1. Delete wallets and nested snapshots/chunks if any
-        try {
-          final walletsSnap = await _firestore
-              .collection('users/$userId/wallets')
-              .get(const GetOptions(source: Source.server))
-              .timeout(cloudSyncReadTimeout);
-          for (final walletDoc in walletsSnap.docs) {
-            try {
-              final snapsSnap = await walletDoc.reference
-                  .collection('snapshots')
-                  .get(const GetOptions(source: Source.server))
-                  .timeout(cloudSyncReadTimeout);
-              for (final snapDoc in snapsSnap.docs) {
-                await _deleteCollection(snapDoc.reference.collection('chunks'));
-                await snapDoc.reference.delete();
-              }
-            } catch (e) {
-              developer.log('Error deleting snapshots for wallet ${walletDoc.id}: $e');
-            }
-            await walletDoc.reference.delete();
-          }
-        } catch (e) {
-          developer.log('Error deleting wallets: $e');
-        }
-
-        // 2. Delete all subcollections under users/$userId
-        const subcollections = [
-          'wallet_backups',
-          'accounts',
-          'categories',
-          'transactions',
-          'budgets',
-          'goals',
-          'captureCandidates',
-          'importBatches',
-          'metadata',
-        ];
-
-        for (final sub in subcollections) {
-          try {
-            await _deleteCollection(_firestore.collection('users/$userId/$sub'));
-          } catch (e) {
-            developer.log('Error deleting subcollection $sub: $e');
-          }
-        }
-
-        // 3. Delete user document itself
-        try {
-          await _firestore
-              .doc('users/$userId')
-              .delete()
-              .timeout(cloudSyncReadTimeout);
-        } catch (e) {
-          developer.log('Error deleting user doc: $e');
-        }
-      }
-    } finally {
-      await CloudSyncMetadata.clear();
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('has_unsynced_changes');
-      await prefs.remove('last_local_modified_at');
-      _disableSync();
-      _localClearInProgress = false;
-    }
-  }
-
-  Future<void> _deleteCollection(
-    CollectionReference collectionRef, {
-    int batchSize = 100,
-  }) async {
-    while (true) {
-      final snapshot = await collectionRef
-          .limit(batchSize)
-          .get(const GetOptions(source: Source.server))
-          .timeout(cloudSyncReadTimeout);
-      if (snapshot.docs.isEmpty) break;
-      final batch = _firestore.batch();
-      for (final doc in snapshot.docs) {
-        batch.delete(doc.reference);
-      }
-      await batch.commit();
-      if (snapshot.docs.length < batchSize) break;
-    }
+    throw StateError(
+      'No valid cloud snapshot was found. Restore a backup explicitly.',
+    );
   }
 
   void skipBootstrap() {
@@ -1570,6 +1765,7 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
   }
 
   void retryBootstrap() {
+    _syncEpoch++;
     _cancelTimers();
     _uploadFailureCount = 0;
     _uploadCircuitOpenUntil = 0;
@@ -1604,6 +1800,8 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
   ) async {
     final user = _ref.read(authControllerProvider).user;
     if (user == null || state.phase == CloudSyncPhase.disabled) return;
+    final epoch = _syncEpoch;
+    if (snapshot.id != user.id) return;
     if (_localClearInProgress) return;
     if (state.phase == CloudSyncPhase.restoring ||
         state.phase == CloudSyncPhase.checking ||
@@ -1627,7 +1825,9 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
     if (cloudState.updatedAt == null) return;
 
     final metadata = state.metadata ?? await CloudSyncMetadata.load();
+    if (!_isCurrent(user.id, epoch)) return;
     final prefs = await SharedPreferences.getInstance();
+    if (!_isCurrent(user.id, epoch)) return;
     final hasUnsyncedChanges = prefs.getBool('has_unsynced_changes') ?? false;
     final localModifiedAtStr = prefs.getString('last_local_modified_at');
     final localModifiedAt = localModifiedAtStr != null
@@ -1653,6 +1853,9 @@ class CloudSyncController extends StateNotifier<CloudSyncState> {
 
   @override
   void dispose() {
+    _syncEpoch++;
+    _deletionWatchGeneration++;
+    _deletionSubscription?.cancel();
     _userDocSubscription?.cancel();
     _cancelTimers();
     super.dispose();

@@ -220,7 +220,7 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> signOut() async {
+  Future<void> signOut({bool rethrowOnError = false}) async {
     try {
       await _repository.signOut();
       if (!mounted) return;
@@ -233,6 +233,7 @@ class AuthController extends StateNotifier<AuthState> {
     } catch (error) {
       if (!mounted) return;
       state = state.copyWith(errorMessage: _friendlyError(error));
+      if (rethrowOnError) rethrow;
     }
   }
 
@@ -253,6 +254,18 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
+  Future<String> reauthenticateForDeletion() async {
+    final expected = state.user?.id;
+    if (expected == null) {
+      throw const AuthFailure('Sign in before deleting your account.');
+    }
+    final token = await _repository.reauthenticateForDeletion();
+    if (!mounted || state.user?.id != expected) {
+      throw const AuthFailure('The signed-in account changed.');
+    }
+    return token;
+  }
+
   @override
   void dispose() {
     _subscription?.cancel();
@@ -261,6 +274,34 @@ class AuthController extends StateNotifier<AuthState> {
 }
 
 class AuthRepository {
+  Future<String> reauthenticateForDeletion() async {
+    final user = firebase_auth.FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw const AuthFailure('Sign in before deleting your account.');
+    }
+    final google = user.providerData.any(
+      (provider) => provider.providerId == 'google.com',
+    );
+    if (google && !await _reauthenticate(user)) {
+      throw const AuthFailure('Re-authentication was cancelled.');
+    }
+    if (!google) {
+      final signedInAt = user.metadata.lastSignInTime;
+      if (signedInAt == null ||
+          DateTime.now().difference(signedInAt) > const Duration(minutes: 5)) {
+        throw const AuthFailure(
+          'Sign in again before requesting account deletion.',
+        );
+      }
+    }
+    final token = await user.getIdToken(true);
+    if (token == null ||
+        firebase_auth.FirebaseAuth.instance.currentUser?.uid != user.uid) {
+      throw const AuthFailure('Could not verify the account for deletion.');
+    }
+    return token;
+  }
+
   AuthAvailability get availability {
     if (Firebase.apps.isEmpty) {
       return AuthAvailability.unavailable(FirebaseEnv.configurationSummary());
@@ -366,9 +407,7 @@ class AuthRepository {
   }
 
   Future<bool> _reauthenticate(firebase_auth.User user) async {
-    final isGoogle = user.providerData.any(
-      (p) => p.providerId == 'google.com',
-    );
+    final isGoogle = user.providerData.any((p) => p.providerId == 'google.com');
     if (isGoogle) {
       final googleSignIn = GoogleSignIn(
         scopes: const ['email', 'profile'],

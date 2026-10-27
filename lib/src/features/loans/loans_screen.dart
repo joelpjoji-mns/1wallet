@@ -996,8 +996,9 @@ class LoanDetailView extends ConsumerWidget {
                     Builder(
                       builder: (context) {
                         final principal = details.principal!.amountMinor.abs();
-                        final remaining =
-                            balance.amountMinor < 0 ? -balance.amountMinor : 0;
+                        final remaining = balance.amountMinor < 0
+                            ? -balance.amountMinor
+                            : 0;
                         final paid = (principal - remaining).clamp(
                           0,
                           principal,
@@ -1409,8 +1410,9 @@ class _LoanCompactCard extends StatelessWidget {
                   Builder(
                     builder: (context) {
                       final principal = details.principal!.amountMinor.abs();
-                      final remaining =
-                          balance.amountMinor < 0 ? -balance.amountMinor : 0;
+                      final remaining = balance.amountMinor < 0
+                          ? -balance.amountMinor
+                          : 0;
                       final paid = (principal - remaining).clamp(0, principal);
                       final progress = principal > 0
                           ? (paid / principal).clamp(0.0, 1.0)
@@ -1762,212 +1764,225 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
               ),
               child: RepaintBoundary(
                 child: LineChart(
-                LineChartData(
-                  minY: _currentMinY,
-                  maxY: _currentMaxY,
-                  minX: _currentMinX,
-                  maxX: _currentMaxX,
-                  clipData: const FlClipData.all(),
-                  lineTouchData: LineTouchData(
-                    touchTooltipData: LineTouchTooltipData(
-                      getTooltipColor: (spot) =>
-                          Theme.of(context).colorScheme.surfaceContainerHigh,
-                      getTooltipItems: (touchedSpots) {
-                        return touchedSpots.map((spot) {
-                          final now = DateTime.now();
-                          final today = DateTime(now.year, now.month, now.day);
-                          final date = today.add(
-                            Duration(days: spot.x.toInt()),
-                          );
-                          final dateStr = DateFormat(
-                            'dd MMM yyyy',
-                          ).format(date);
+                  LineChartData(
+                    minY: _currentMinY,
+                    maxY: _currentMaxY,
+                    minX: _currentMinX,
+                    maxX: _currentMaxX,
+                    clipData: const FlClipData.all(),
+                    lineTouchData: LineTouchData(
+                      touchTooltipData: LineTouchTooltipData(
+                        getTooltipColor: (spot) =>
+                            Theme.of(context).colorScheme.surfaceContainerHigh,
+                        getTooltipItems: (touchedSpots) {
+                          return touchedSpots.map((spot) {
+                            final now = DateTime.now();
+                            final today = DateTime(
+                              now.year,
+                              now.month,
+                              now.day,
+                            );
+                            final date = today.add(
+                              Duration(days: spot.x.toInt()),
+                            );
+                            final dateStr = DateFormat(
+                              'dd MMM yyyy',
+                            ).format(date);
 
-                          final amt = NumberFormat.decimalPattern(
-                            widget.locale,
-                          ).format(spot.y);
-                          final rawMoneyStr = '${widget.currencySymbol}$amt';
-                          final moneyStr = widget.isPrivate
-                              ? maskAmountDigits(rawMoneyStr)
-                              : rawMoneyStr;
+                            final amt = NumberFormat.decimalPattern(
+                              widget.locale,
+                            ).format(spot.y);
+                            final rawMoneyStr = '${widget.currencySymbol}$amt';
+                            final moneyStr = widget.isPrivate
+                                ? maskAmountDigits(rawMoneyStr)
+                                : rawMoneyStr;
 
-                          return LineTooltipItem(
-                            '$moneyStr\n',
-                            TextStyle(
+                            return LineTooltipItem(
+                              '$moneyStr\n',
+                              TextStyle(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: dateStr,
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.normal,
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList();
+                        },
+                      ),
+                    ),
+                    extraLinesData: ExtraLinesData(
+                      verticalLines: [
+                        VerticalLine(
+                          x: 0,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.5),
+                          dashArray: [5, 5],
+                          label: VerticalLineLabel(
+                            show: true,
+                            padding: const EdgeInsets.only(bottom: 24, left: 4),
+                            style: TextStyle(
+                              fontSize: 10,
                               color: Theme.of(context).colorScheme.primary,
                               fontWeight: FontWeight.bold,
                             ),
-                            children: [
-                              TextSpan(
-                                text: dateStr,
-                                style: TextStyle(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.normal,
-                                ),
-                              ),
-                            ],
-                          );
-                        }).toList();
-                      },
-                    ),
-                  ),
-                  extraLinesData: ExtraLinesData(
-                    verticalLines: [
-                      VerticalLine(
-                        x: 0,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.primary.withValues(alpha: 0.5),
-                        dashArray: [5, 5],
-                        label: VerticalLineLabel(
-                          show: true,
-                          padding: const EdgeInsets.only(bottom: 24, left: 4),
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.bold,
+                            labelResolver: (_) => "Today",
                           ),
-                          labelResolver: (_) => "Today",
                         ),
-                      ),
-                      ...widget.payoffDots.keys.map((x) {
-                        final now = DateTime.now();
-                        final today = DateTime(now.year, now.month, now.day);
-                        final date = today.add(Duration(days: x.toInt()));
-                        final dateStr = DateFormat('dd MMM yy').format(date);
-
-                        return VerticalLine(
-                          x: x,
-                          color: payoffColor.withValues(alpha: 0.5),
-                          strokeWidth: 1,
-                          dashArray: [3, 3],
-                          label: VerticalLineLabel(
-                            show: true,
-                            padding: const EdgeInsets.only(bottom: 4, left: 4),
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: payoffColor,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            labelResolver: (_) => dateStr,
-                          ),
-                        );
-                      }),
-                    ],
-                  ),
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: widget.spots,
-                      isCurved: true,
-                      color: widget.lineColor,
-                      barWidth: 4,
-                      shadow: BoxShadow(
-                        color: widget.lineColor.withValues(alpha: 0.5),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        cutOffY: _currentMinY,
-                        gradient: LinearGradient(
-                          colors: [
-                            widget.lineColor.withValues(alpha: 0.5),
-                            widget.lineColor.withValues(alpha: 0.0),
-                          ],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                      ),
-                      dotData: FlDotData(
-                        checkToShowDot: (spot, barData) =>
-                            widget.payoffDots.containsKey(spot.x),
-                        getDotPainter: (spot, percent, barData, index) {
-                          final label = widget.payoffDots[spot.x];
-                          if (label != null) {
-                            return NumberedDotPainter(
-                              label,
-                              color: payoffColor,
-                              textColor: onPayoffColor,
-                            );
-                          }
-                          return FlDotCirclePainter(
-                            radius: 0,
-                            color: Colors.transparent,
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                  titlesData: FlTitlesData(
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 30,
-                        interval: _xInterval,
-                        getTitlesWidget: (value, meta) {
+                        ...widget.payoffDots.keys.map((x) {
                           final now = DateTime.now();
                           final today = DateTime(now.year, now.month, now.day);
-                          final date = today.add(Duration(days: value.toInt()));
+                          final date = today.add(Duration(days: x.toInt()));
+                          final dateStr = DateFormat('dd MMM yy').format(date);
 
-                          final range = _currentMaxX - _currentMinX;
-                          String dateStr;
-                          if (range <= 60) {
-                            dateStr = DateFormat('dd MMM').format(date);
-                          } else if (range <= 365) {
-                            dateStr = DateFormat('MMM yy').format(date);
-                          } else {
-                            dateStr = DateFormat('yyyy').format(date);
-                          }
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              dateStr,
-                              style: const TextStyle(fontSize: 10),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 50,
-                        interval: yInterval,
-                        getTitlesWidget: (value, meta) {
-                          final formatted = numberFormat.format(value);
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8.0),
-                            child: Text(
-                              widget.isPrivate
-                                  ? maskAmountDigits(formatted)
-                                  : formatted,
-                              textAlign: TextAlign.right,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
+                          return VerticalLine(
+                            x: x,
+                            color: payoffColor.withValues(alpha: 0.5),
+                            strokeWidth: 1,
+                            dashArray: [3, 3],
+                            label: VerticalLineLabel(
+                              show: true,
+                              padding: const EdgeInsets.only(
+                                bottom: 4,
+                                left: 4,
                               ),
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: payoffColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              labelResolver: (_) => dateStr,
                             ),
                           );
-                        },
-                      ),
+                        }),
+                      ],
                     ),
-                    topTitles: const AxisTitles(),
-                    rightTitles: const AxisTitles(),
+                    lineBarsData: [
+                      LineChartBarData(
+                        spots: widget.spots,
+                        isCurved: true,
+                        color: widget.lineColor,
+                        barWidth: 4,
+                        shadow: BoxShadow(
+                          color: widget.lineColor.withValues(alpha: 0.5),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                        belowBarData: BarAreaData(
+                          show: true,
+                          cutOffY: _currentMinY,
+                          gradient: LinearGradient(
+                            colors: [
+                              widget.lineColor.withValues(alpha: 0.5),
+                              widget.lineColor.withValues(alpha: 0.0),
+                            ],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                          ),
+                        ),
+                        dotData: FlDotData(
+                          checkToShowDot: (spot, barData) =>
+                              widget.payoffDots.containsKey(spot.x),
+                          getDotPainter: (spot, percent, barData, index) {
+                            final label = widget.payoffDots[spot.x];
+                            if (label != null) {
+                              return NumberedDotPainter(
+                                label,
+                                color: payoffColor,
+                                textColor: onPayoffColor,
+                              );
+                            }
+                            return FlDotCirclePainter(
+                              radius: 0,
+                              color: Colors.transparent,
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                    titlesData: FlTitlesData(
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 30,
+                          interval: _xInterval,
+                          getTitlesWidget: (value, meta) {
+                            final now = DateTime.now();
+                            final today = DateTime(
+                              now.year,
+                              now.month,
+                              now.day,
+                            );
+                            final date = today.add(
+                              Duration(days: value.toInt()),
+                            );
+
+                            final range = _currentMaxX - _currentMinX;
+                            String dateStr;
+                            if (range <= 60) {
+                              dateStr = DateFormat('dd MMM').format(date);
+                            } else if (range <= 365) {
+                              dateStr = DateFormat('MMM yy').format(date);
+                            } else {
+                              dateStr = DateFormat('yyyy').format(date);
+                            }
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(
+                                dateStr,
+                                style: const TextStyle(fontSize: 10),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 50,
+                          interval: yInterval,
+                          getTitlesWidget: (value, meta) {
+                            final formatted = numberFormat.format(value);
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: Text(
+                                widget.isPrivate
+                                    ? maskAmountDigits(formatted)
+                                    : formatted,
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      topTitles: const AxisTitles(),
+                      rightTitles: const AxisTitles(),
+                    ),
+                    gridData: FlGridData(
+                      verticalInterval: _xInterval,
+                      horizontalInterval: yInterval,
+                    ),
+                    borderData: FlBorderData(show: false),
                   ),
-                  gridData: FlGridData(
-                    verticalInterval: _xInterval,
-                    horizontalInterval: yInterval,
-                  ),
-                  borderData: FlBorderData(show: false),
+                  duration: Duration.zero,
                 ),
-                duration: Duration.zero,
               ),
             ),
           ),
-        ),
         ),
         Positioned(
           right: 6,
@@ -2237,88 +2252,85 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
               ),
               child: RepaintBoundary(
                 child: BarChart(
-                BarChartData(
-                  minY: _currentMinY,
-                  maxY: _currentMaxY,
-                  barGroups: updatedVisibleGroups,
-                  titlesData: FlTitlesData(
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 36,
-                        interval: _xInterval,
-                        getTitlesWidget: (value, meta) {
-                          final idx = value.toInt();
-                          if (idx >= 0 && idx < widget.timeKeys.length) {
-                            final date = widget.timeKeys[idx];
-                            final range = _currentMaxX - _currentMinX;
-                            String str;
-                            if (range <= 12) {
-                              str = DateFormat('dd MMM').format(date);
-                            } else if (range <= 52) {
-                              str = DateFormat('MMM yy').format(date);
-                            } else {
-                              str = DateFormat('yyyy').format(date);
+                  BarChartData(
+                    minY: _currentMinY,
+                    maxY: _currentMaxY,
+                    barGroups: updatedVisibleGroups,
+                    titlesData: FlTitlesData(
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 36,
+                          interval: _xInterval,
+                          getTitlesWidget: (value, meta) {
+                            final idx = value.toInt();
+                            if (idx >= 0 && idx < widget.timeKeys.length) {
+                              final date = widget.timeKeys[idx];
+                              final range = _currentMaxX - _currentMinX;
+                              String str;
+                              if (range <= 12) {
+                                str = DateFormat('dd MMM').format(date);
+                              } else if (range <= 52) {
+                                str = DateFormat('MMM yy').format(date);
+                              } else {
+                                str = DateFormat('yyyy').format(date);
+                              }
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 8.0),
+                                child: Text(
+                                  str,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(fontSize: 10),
+                                ),
+                              );
                             }
+                            return const SizedBox.shrink();
+                          },
+                        ),
+                      ),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 50,
+                          interval: yInterval,
+                          getTitlesWidget: (value, meta) {
+                            final formatted = numberFormat.format(value);
                             return Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
+                              padding: const EdgeInsets.only(right: 8.0),
                               child: Text(
-                                str,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(fontSize: 10),
+                                widget.isPrivate
+                                    ? maskAmountDigits(formatted)
+                                    : formatted,
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             );
-                          }
-                          return const SizedBox.shrink();
-                        },
+                          },
+                        ),
                       ),
+                      topTitles: const AxisTitles(),
+                      rightTitles: const AxisTitles(),
                     ),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 50,
-                        interval: yInterval,
-                        getTitlesWidget: (value, meta) {
-                          final formatted = numberFormat.format(value);
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8.0),
-                            child: Text(
-                              widget.isPrivate
-                                  ? maskAmountDigits(formatted)
-                                  : formatted,
-                              textAlign: TextAlign.right,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                    gridData: FlGridData(
+                      drawVerticalLine: false,
+                      horizontalInterval: yInterval,
                     ),
-                    topTitles: const AxisTitles(),
-                    rightTitles: const AxisTitles(),
+                    borderData: FlBorderData(show: false),
                   ),
-                  gridData: FlGridData(
-                    drawVerticalLine: false,
-                    horizontalInterval: yInterval,
-                  ),
-                  borderData: FlBorderData(show: false),
+                  duration: Duration.zero,
                 ),
-                duration: Duration.zero,
               ),
             ),
           ),
-        ),
         ),
         Row(
           children: [
             const Icon(Icons.zoom_out, size: 20, color: Colors.grey),
             Expanded(
-              child: Slider(
-                value: _zoomPercent,
-                onChanged: _onSliderChange,
-              ),
+              child: Slider(value: _zoomPercent, onChanged: _onSliderChange),
             ),
             const Icon(Icons.zoom_in, size: 20, color: Colors.grey),
           ],
@@ -2429,10 +2441,11 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
       _emergencyController.text,
       widget.state.preferences.baseCurrency,
     ).abs();
-    ref.read(ledgerProvider.notifier).updatePreferences(
-          widget.state.preferences.copyWith(
-            forecastEmergencyCashMinor: newMinor,
-          ),
+    ref
+        .read(ledgerProvider.notifier)
+        .updatePreferencesWith(
+          (livePreferences) =>
+              livePreferences.copyWith(forecastEmergencyCashMinor: newMinor),
         );
   }
 
@@ -2562,7 +2575,8 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
       final computedPayoffDots = <double, String>{};
       for (final event in computedResult.payoffEvents) {
         final eventX =
-            (event.payoffDate.millisecondsSinceEpoch - todayMillis) / 86400000.0;
+            (event.payoffDate.millisecondsSinceEpoch - todayMillis) /
+            86400000.0;
         final number = loanNumberMap[event.loan.id]?.toString() ?? '';
 
         double closestX = 0;
@@ -2643,10 +2657,11 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                     Expanded(
                       child: Text(
                         'Accelerated Impact',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
                     ),
                   ],
@@ -2717,8 +2732,8 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                       child: Text(
                         'Emergency Fund / Savings Buffer',
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
@@ -2745,8 +2760,8 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                           if (!mounted) return;
                           ref
                               .read(ledgerProvider.notifier)
-                              .updatePreferences(
-                                widget.state.preferences.copyWith(
+                              .updatePreferencesWith(
+                                (livePreferences) => livePreferences.copyWith(
                                   forecastEmergencyCashMinor: newMinor,
                                 ),
                               );
@@ -2784,8 +2799,8 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                       if (val != null) {
                         ref
                             .read(ledgerProvider.notifier)
-                            .updatePreferences(
-                              widget.state.preferences.copyWith(
+                            .updatePreferencesWith(
+                              (livePreferences) => livePreferences.copyWith(
                                 loanPayoffDelayDays: val,
                               ),
                             );
@@ -2825,8 +2840,8 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                         });
                         ref
                             .read(ledgerProvider.notifier)
-                            .updatePreferences(
-                              widget.state.preferences.copyWith(
+                            .updatePreferencesWith(
+                              (livePreferences) => livePreferences.copyWith(
                                 forecastExtraAllocationPercent: val,
                               ),
                             );
@@ -2942,8 +2957,8 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                     if (mounted) {
                       ref
                           .read(ledgerProvider.notifier)
-                          .updatePreferences(
-                            widget.state.preferences.copyWith(
+                          .updatePreferencesWith(
+                            (livePreferences) => livePreferences.copyWith(
                               loanPriorityIds: newOrder,
                             ),
                           );
@@ -2961,8 +2976,9 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                       : ' · No payoff date (check EMI)';
                   final rawBal = accountBalance(widget.state, loan);
                   final outstandingBal = rawBal.copyWith(
-                    amountMinor:
-                        rawBal.amountMinor < 0 ? -rawBal.amountMinor : 0,
+                    amountMinor: rawBal.amountMinor < 0
+                        ? -rawBal.amountMinor
+                        : 0,
                   );
                   final balStr = maskMoneyIfPrivate(
                     widget.state,

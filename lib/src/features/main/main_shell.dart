@@ -51,7 +51,10 @@ class _MainShellState extends ConsumerState<MainShell>
     _screens = [
       _KeepAliveWrapper(
         key: const PageStorageKey<String>('main-shell-tab-0'),
-        child: HomeScreen(onMenuPressed: _openDrawer, onTabSelected: _selectTab),
+        child: HomeScreen(
+          onMenuPressed: _openDrawer,
+          onTabSelected: _selectTab,
+        ),
       ),
       _KeepAliveWrapper(
         key: const PageStorageKey<String>('main-shell-tab-1'),
@@ -665,9 +668,10 @@ class _DrawerPrivacyToggle extends ConsumerWidget {
     );
     void toggle() {
       final notifier = ref.read(ledgerProvider.notifier);
-      final prefs = ref.read(ledgerProvider).preferences;
-      notifier.updatePreferences(
-        prefs.copyWith(privacyModeEnabled: !prefs.privacyModeEnabled),
+      notifier.updatePreferencesWith(
+        (livePreferences) => livePreferences.copyWith(
+          privacyModeEnabled: !livePreferences.privacyModeEnabled,
+        ),
       );
     }
 

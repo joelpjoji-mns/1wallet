@@ -90,16 +90,50 @@ This guarantees balance integrity across accounts without maintaining divergent 
 
 ### 4. Offline-First Cloud Synchronization
 Synchronization with Firebase Firestore follows an optimistic document snapshot strategy:
-1. Local edits update in-memory `LedgerState` and persist to disk immediately with `unsyncedChanges = true`.
-2. `CloudSyncController` detects connectivity and invokes `CloudSyncWriteGuard`.
-3. The guard compares local timestamps and remote revision metadata (`updatedAt`, `schemaVersion`).
-4. If valid, the serialized and compressed payload is written to `users/{uid}` in Cloud Firestore.
-5. If remote revisions conflict, a merge or user resolution dialog is triggered without destroying data.
+1. A serialized ledger lane derives edits from current state, records the dirty
+   marker before notification, advances the local revision at publication, and
+   persists a versioned local envelope. Preference disk work remains debounced.
+2. Session generations fence queued work, account changes, async completions,
+   listeners, and teardown. A late save cannot recreate a cleared session.
+3. Upload captures one ledger/local revision and compares the remote
+   `cloudRevision`/`updatedAt` baseline inside a Firestore transaction.
+4. Metadata plus compressed `wallet_backups/chunk_N` writes/deletes commit
+   atomically. Completion acknowledges only the exact uploaded local revision;
+   newer local edits remain dirty and trigger another check.
+5. A version-consistent modern restore is authoritative even when empty.
+   Transaction dates/counts cannot veto legitimate remote deletions. Missing or
+   invalid snapshots are distinct from an intentionally cleared wallet.
+6. Canonical cloud JSON is not the local persistence envelope or an encrypted
+   portable backup. See [the schema and format boundaries](doc/SCHEMA.md).
 
 ### 5. Multi-Layer Security Architecture
-- **Biometric Gate (`AppLockGate`)**: Wraps the root navigation tree. Screen contents are obfuscated when the OS app switcher is invoked.
-- **Hardware-Backed KeyStore**: Master encryption keys are stored via `flutter_secure_storage` using Android Keystore and iOS Keychain.
-- **Export Encryption**: Wallet backup files are encrypted using `AES-256-GCM` with cryptographic keys derived via `PBKDF2` (100,000+ iterations with unique salt and initialization vector).
+- **Biometric Gate (`AppLockGate`)**: Wraps navigation, obscures on inactivity,
+  relocks on actual background transitions, and rejects stale authentication
+  results. OS snapshot and biometric-prompt behavior still require device tests.
+- **OS Key Store**: Owner/purpose-scoped AES keys use OS secure storage. Hardware
+  backing depends on the platform. Legacy shared keys remain read-compatible.
+- **Automatic Backups**: Authenticated device-key encryption in the app-specific
+  application-support directory. No automatic public Downloads/Documents
+  mirrors; old locations remain discoverable for explicit recovery and cleanup.
+- **Portable Backups**: AES-256-GCM with a fresh 96-bit nonce and 128-bit salt,
+  PBKDF2-HMAC-SHA256 at the versioned 600,000-iteration profile, and authenticated
+  format metadata. Native KDF work runs off the UI isolate. Secure fields are rewrapped
+  for cross-device import rather than depending on the exporting device key.
+- **Deletion**: A backend job fences writes, removes the owner's complete
+  Firestore subtree, and deletes Auth last. The app verifies remote completion
+  separately from strict local cleanup; an opaque receipt supports recovery.
+  See [the deployment and failure runbook](firebase/functions/README.md).
+
+### 6. Durable Android Capture
+
+SMS and notification producers append to one app-private SQLite queue on a
+background executor. Owner and filtering configuration are revisioned together;
+an append from an obsolete configuration is rejected. Signed-out capture pauses.
+Consumers read without deleting, validate/quarantine individual entries, commit
+the ledger with durable local ingress receipts, then acknowledge IDs. Pending
+receipts survive restart and prevent duplicate application after an ack failure.
+Legacy preference queues migrate idempotently as unassigned entries and require
+explicit owner confirmation.
 
 ---
 

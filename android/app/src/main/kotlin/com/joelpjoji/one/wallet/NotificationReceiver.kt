@@ -12,11 +12,6 @@ import android.os.Build
 
 class NotificationReceiver : NotificationListenerService() {
     companion object {
-        // See SmsReceiver.MAX_SPOOL_ENTRIES for rationale: bounds unbounded
-        // spool growth while surfacing drops as diagnostics instead of
-        // silently discarding queued captures.
-        private const val MAX_SPOOL_ENTRIES = 500
-
         @Volatile
         var instance: NotificationReceiver? = null
 
@@ -209,26 +204,27 @@ class NotificationReceiver : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
+        CaptureQueue.executor.execute {
+            try { captureNotification(sbn) }
+            catch (error: Exception) { android.util.Log.e("1WalletCapture", "Notification capture failed", error) }
+        }
+    }
+
+    private fun captureNotification(sbn: StatusBarNotification?) {
         if (sbn == null) return
 
         val context = applicationContext
+        val captureConfiguration = CaptureQueue.configuration(context) ?: return
+        val captureOwner = captureConfiguration.owner
         val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
 
         // 1. Check if notification capture is enabled (defaults to true)
-        val captureEnabled = try {
-            if (prefs.contains("flutter.one_wallet_flutter.notification_capture_enabled")) {
-                prefs.getBoolean("flutter.one_wallet_flutter.notification_capture_enabled", true)
-            } else {
-                true
-            }
-        } catch (e: Exception) {
-            true
-        }
+        val captureEnabled = captureConfiguration.settings.optBoolean("notificationCaptureEnabled", false)
         if (!captureEnabled) return
 
         // 2. Check if the package is in the target whitelist
         val packageName = sbn.packageName ?: return
-        val targetPackages = loadList(prefs, "flutter.one_wallet_flutter.notification_target_packages", DEFAULT_PACKAGES)
+        val targetPackages = CaptureQueue.words(captureConfiguration.settings, "notificationTargetPackages", DEFAULT_PACKAGES)
         if (!targetPackages.contains(packageName.lowercase())) {
             return
         }
@@ -256,8 +252,8 @@ class NotificationReceiver : NotificationListenerService() {
 
         if (combinedText.isEmpty()) return
 
-        val triggers = loadList(prefs, "flutter.one_wallet_flutter.notification_trigger_words", DEFAULT_TRIGGERS)
-        val ignores = loadList(prefs, "flutter.one_wallet_flutter.notification_ignore_words", DEFAULT_IGNORES)
+        val triggers = CaptureQueue.words(captureConfiguration.settings, "notificationTriggerWords", DEFAULT_TRIGGERS)
+        val ignores = CaptureQueue.words(captureConfiguration.settings, "notificationIgnoreWords", DEFAULT_IGNORES)
         val lowerText = combinedText.lowercase()
 
         val builtInBillIgnores = listOf(
@@ -276,7 +272,7 @@ class NotificationReceiver : NotificationListenerService() {
                 combinedText,
                 amount,
                 matchedBillNotice,
-                isBillStatement = true
+                isBillStatement = true, expectedOwner = captureOwner, expectedRevision = captureConfiguration.revision
             )
             val notificationShown = showBillStatementNotification(context, amount, extractLast4(combinedText))
             appendDiagnostic(
@@ -302,7 +298,7 @@ class NotificationReceiver : NotificationListenerService() {
         val accept = amount != null && matchedTrigger != null && matchedIgnore == null
 
         if (accept) {
-            val spooled = spoolMessage(context, title.ifEmpty { "Notification" }, combinedText, amount, matchedTrigger)
+            val spooled = spoolMessage(context, title.ifEmpty { "Notification" }, combinedText, amount, matchedTrigger, expectedOwner = captureOwner, expectedRevision = captureConfiguration.revision)
             val notificationShown = if (spooled) showNotification(context, amount, extractLast4(combinedText)) else false
             appendDiagnostic(
                 context,
@@ -387,69 +383,20 @@ class NotificationReceiver : NotificationListenerService() {
     }
 
     private fun spoolMessage(
-        context: Context,
-        sender: String,
-        body: String,
-        amount: String?,
-        matchedTrigger: String?,
-        isBillStatement: Boolean = false
+        context: Context, sender: String, body: String, amount: String?,
+        matchedTrigger: String?, isBillStatement: Boolean = false, expectedOwner: String, expectedRevision: Long
     ): Boolean {
-        val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        val spoolKey = "flutter.one_wallet_flutter.notification_spool"
-
-        val existingRaw = try { prefs.getString(spoolKey, "") ?: "" } catch (e: Exception) { "" }
-        val jsonArray = if (existingRaw.isNotEmpty()) {
-            try {
-                org.json.JSONArray(existingRaw)
-            } catch (e: Exception) {
-                org.json.JSONArray()
-            }
-        } else {
-            org.json.JSONArray()
-        }
-
         val payload = org.json.JSONObject()
         payload.put("sender", sender)
         payload.put("body", body)
         payload.put("nativeSource", "notification")
         payload.put("nativeAccepted", true)
         payload.put("notificationShown", true)
+        payload.put("timestamp", java.time.Instant.now().toString())
         if (isBillStatement) payload.put("isBillStatement", true)
         if (amount != null) payload.put("nativeMatchedAmount", amount)
         if (matchedTrigger != null) payload.put("nativeMatchedTriggerWord", matchedTrigger)
-
-        val df = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
-        df.timeZone = java.util.TimeZone.getTimeZone("UTC")
-        payload.put("timestamp", df.format(java.util.Date()))
-
-        jsonArray.put(payload.toString())
-
-        // Bound unbounded growth: drop oldest entries (FIFO) rather than
-        // growing SharedPreferences without limit, and surface the drop via
-        // a diagnostic entry instead of silently discarding captures.
-        var droppedCount = 0
-        while (jsonArray.length() > MAX_SPOOL_ENTRIES) {
-            jsonArray.remove(0)
-            droppedCount++
-        }
-
-        val saved = try {
-            prefs.edit().putString(spoolKey, jsonArray.toString()).commit()
-        } catch (e: Exception) {
-            false
-        }
-
-        if (saved && droppedCount > 0) {
-            appendDiagnostic(
-                context,
-                source = "notification",
-                stage = "native-notification",
-                decision = "overflow",
-                reason = "dropped $droppedCount oldest queued notification capture(s) to bound spool size at $MAX_SPOOL_ENTRIES"
-            )
-        }
-
-        return saved
+        return CaptureQueue.append(context, "notification", payload, expectedOwner, expectedRevision)
     }
 
     private fun showBillStatementNotification(context: Context, amount: String?, last4: String?): Boolean {
@@ -584,7 +531,8 @@ class NotificationReceiver : NotificationListenerService() {
     ) {
         try {
             val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            val key = "flutter.one_wallet_flutter.capture_diagnostics"
+            val owner = CaptureQueue.owner(context) ?: "unassigned"
+            val key = "flutter.one_wallet_flutter.capture_diagnostics.$owner"
             val existingRaw = try { prefs.getString(key, "") ?: "" } catch (e: Exception) { "" }
             val existing = if (existingRaw.isNotEmpty()) {
                 try { org.json.JSONArray(existingRaw) } catch (e: Exception) { org.json.JSONArray() }

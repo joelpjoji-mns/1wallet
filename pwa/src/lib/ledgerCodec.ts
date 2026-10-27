@@ -3,7 +3,7 @@
 // per-model `*ToJson` / `*FromJson` functions) so the PWA can safely read and
 // write the same GZip snapshot blob the Flutter app uses.
 //
-// Every parser is defensive: unexpected shapes fall back to sane defaults
+// Optional legacy fields are defensive: unexpected shapes fall back to defaults
 // (matching the Dart helpers `_string`/`_int`/`_bool`/`_date`/...) instead of
 // throwing, and any keys we don't explicitly model are preserved verbatim so
 // round-tripping through the web app never silently destroys data written by
@@ -127,9 +127,20 @@ export function moneyToJson(money: Money): Record<string, unknown> {
 }
 
 export function moneyFromJson(value: unknown, fallback?: Money): Money {
-  const json = isPlainObject(value) ? value : {};
+  if (value == null && fallback) return { ...fallback };
+  if (!isPlainObject(value)) throw new Error('Money must be an object.');
+  const json = value;
+  const raw = json.amountMinor;
+  const minor = raw == null && fallback ? fallback.amountMinor
+    : typeof raw === 'string' && /^-?\d+$/.test(raw) ? Number(raw) : raw;
+  if (typeof minor !== 'number' || !Number.isSafeInteger(minor)) {
+    throw new Error('Money.amountMinor must be a safe integer.');
+  }
+  if (json.currency != null && (typeof json.currency !== 'string' || !json.currency.trim())) {
+    throw new Error('Money.currency must be a non-empty string.');
+  }
   return {
-    amountMinor: int_(json.amountMinor, fallback?.amountMinor ?? 0),
+    amountMinor: minor,
     currency: str(json.currency, fallback?.currency ?? DEFAULT_CURRENCY),
   };
 }

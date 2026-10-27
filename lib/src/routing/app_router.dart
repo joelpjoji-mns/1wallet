@@ -12,7 +12,9 @@ import '../features/capture/capture_settings_screen.dart';
 import '../features/capture/notification_capture_screen.dart';
 import '../features/capture/notification_apps_screen.dart';
 import '../startup/startup_state.dart';
+import '../auth/auth_controller.dart';
 import '../widgets/app_glass_page.dart';
+import '../features/settings/account_deletion_screen.dart';
 
 class _RouterRefreshNotifier extends ChangeNotifier {
   void notify() => notifyListeners();
@@ -33,6 +35,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StartupDestination.onboarding => '/onboarding',
           StartupDestination.home => '/',
           StartupDestination.launch => '/launch',
+          StartupDestination.deletion => '/account-deletion',
         };
   final router = GoRouter(
     initialLocation: initialLocation,
@@ -46,10 +49,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isOnboarding = location == '/onboarding';
 
       if (startup.isPending || startup.isRecoverableError) {
+        if (startup.isRecoverableError &&
+            location == '/data-backup' &&
+            ref.read(authControllerProvider).isAuthenticated) {
+          return null;
+        }
         return isLaunch ? null : '/launch';
       }
 
       return switch (startup.destination) {
+        StartupDestination.deletion =>
+          location == '/account-deletion' ? null : '/account-deletion',
         StartupDestination.login => isLogin ? null : '/login',
         StartupDestination.permissions =>
           isPermissions ? null : '/permissions-setup',
@@ -60,6 +70,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       };
     },
     routes: [
+      GoRoute(
+        path: '/account-deletion',
+        builder: (context, state) => const AccountDeletionScreen(),
+      ),
       GoRoute(
         path: '/launch',
         builder: (context, state) => const AppGlassPage(child: LaunchScreen()),

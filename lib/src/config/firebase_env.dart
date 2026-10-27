@@ -73,6 +73,8 @@ abstract final class FirebaseEnv {
   }
 
   static bool get useFirebaseEmulator => _bool('FIREBASE_USE_EMULATOR');
+  static String? get accountDeletionBaseUrl =>
+      _value('ACCOUNT_DELETION_BASE_URL');
 
   static String get firebaseEmulatorHost {
     return _value('FIREBASE_EMULATOR_HOST') ?? '10.0.2.2';

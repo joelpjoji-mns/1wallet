@@ -298,10 +298,7 @@ class _LiveWidgetPreview extends ConsumerWidget {
         for (final preset in allowedDatePresetsForHomeWidget(
           widgetId.storageKey,
         ))
-          PickerOption(
-            value: preset,
-            title: homeWidgetDateLabel(preset),
-          ),
+          PickerOption(value: preset, title: homeWidgetDateLabel(preset)),
       ],
     );
     if (next != null && next != datePreset) {
@@ -309,7 +306,10 @@ class _LiveWidgetPreview extends ConsumerWidget {
       filters[widgetId.storageKey] = next;
       await ref
           .read(ledgerProvider.notifier)
-          .updatePreferences(preferences.copyWith(homeWidgetFilters: filters));
+          .updatePreferencesWith(
+            (livePreferences) =>
+                livePreferences.copyWith(homeWidgetFilters: filters),
+          );
     }
   }
 
@@ -323,8 +323,8 @@ class _LiveWidgetPreview extends ConsumerWidget {
     );
     ref
         .read(ledgerProvider.notifier)
-        .updatePreferences(
-          preferences.copyWith(
+        .updatePreferencesWith(
+          (livePreferences) => livePreferences.copyWith(
             homeWidgetHidden: hidden,
             homeWidgetOrder: order,
           ),
@@ -338,6 +338,9 @@ class _LiveWidgetPreview extends ConsumerWidget {
     }
     ref
         .read(ledgerProvider.notifier)
-        .updatePreferences(preferences.copyWith(homeWidgetHidden: hidden));
+        .updatePreferencesWith(
+          (livePreferences) =>
+              livePreferences.copyWith(homeWidgetHidden: hidden),
+        );
   }
 }

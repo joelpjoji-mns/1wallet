@@ -55,6 +55,9 @@ jobs:
       - name: Run Tests
         run: flutter test
 
+      - name: Android queue tests and debug build
+        run: bash android/gradlew -p android :app:testDebugUnitTest :app:assembleDebug
+
   validate-pwa:
     name: PWA Lint, Typecheck, and Build
     runs-on: ubuntu-24.04
@@ -99,7 +102,7 @@ jobs:
         run: npm run build
 
   validate-firestore-rules:
-    name: Firestore Security Rules Tests
+    name: Rules and Account Deletion Backend Tests
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -114,12 +117,22 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           cache: npm
-          cache-dependency-path: firebase/package-lock.json
+          cache-dependency-path: |
+            firebase/package-lock.json
+            firebase/functions/package-lock.json
 
       - name: Install Firebase rules test dependencies
         run: npm ci --prefix firebase
 
-      - name: Run Firestore rules tests in the emulator
-        run: npx --yes firebase-tools emulators:exec --only firestore --project demo-1wallet-rules "npm --prefix firebase test"
+      - name: Install deletion backend dependencies
+        run: npm ci --prefix firebase/functions
+
+      - name: Build and test deletion protocol
+        run: npm --prefix firebase/functions test
+
+      - name: Run deletion and rules integration tests
+        env:
+          FUNCTIONS_REGION: us-central1
+        run: npx --yes firebase-tools@15.19.0 emulators:exec --only auth,firestore,functions --project demo-1wallet-rules "npm --prefix firebase/functions run test:emulator && npm --prefix firebase test"

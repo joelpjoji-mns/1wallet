@@ -11,6 +11,7 @@ import 'package:one_wallet_flutter/src/features/onboarding/onboarding_controller
 import 'package:one_wallet_flutter/src/features/settings/permission_setup_controller.dart';
 import 'package:one_wallet_flutter/src/startup/startup_state.dart';
 import 'package:one_wallet_flutter/src/theme/theme_controller.dart';
+import 'package:one_wallet_flutter/src/features/settings/account_deletion_controller.dart';
 
 class _FakeThemeController extends StateNotifier<AppThemeState>
     implements ThemeController {
@@ -59,6 +60,9 @@ void main() {
   test('startupState routes to home when local ledger has wallet data', () {
     final container = ProviderContainer(
       overrides: [
+        accountDeletionControllerProvider.overrideWith(
+          (ref) => AccountDeletionController(ref, pending: false),
+        ),
         themeControllerProvider.overrideWith(
           (ref) => _FakeThemeController(const AppThemeState(isLoaded: true)),
         ),
@@ -98,195 +102,219 @@ void main() {
     expect(startup.destination, StartupDestination.home);
   });
 
-  test('startupState routes to home when onboarding is already completed, even if ledger is empty', () {
-    final container = ProviderContainer(
-      overrides: [
-        themeControllerProvider.overrideWith(
-          (ref) => _FakeThemeController(const AppThemeState(isLoaded: true)),
-        ),
-        authControllerProvider.overrideWith(
-          (ref) => _FakeAuthController(authenticatedState),
-        ),
-        ledgerLoadStateProvider.overrideWith(
-          (ref) => const LedgerLoadState.ready(hasPersistedLedger: false),
-        ),
-        ledgerProvider.overrideWith(
-          (ref) => _FakeLedgerController(emptyLedgerState()),
-        ),
-        permissionSetupControllerProvider.overrideWith(
-          (ref) => PermissionSetupController()
-            ..state = const PermissionSetupState(
-              userId: testUserId,
-              completed: true,
-            ),
-        ),
-        cloudSyncControllerProvider.overrideWith(
-          (ref) => _FakeCloudSyncController(
-            const CloudSyncState(
-              phase: CloudSyncPhase.idle,
-              bootstrapComplete: true,
-              bootstrappedUserId: testUserId,
-              hasCloudWallet: false,
+  test(
+    'startupState routes to home when onboarding is already completed, even if ledger is empty',
+    () {
+      final container = ProviderContainer(
+        overrides: [
+          accountDeletionControllerProvider.overrideWith(
+            (ref) => AccountDeletionController(ref, pending: false),
+          ),
+          themeControllerProvider.overrideWith(
+            (ref) => _FakeThemeController(const AppThemeState(isLoaded: true)),
+          ),
+          authControllerProvider.overrideWith(
+            (ref) => _FakeAuthController(authenticatedState),
+          ),
+          ledgerLoadStateProvider.overrideWith(
+            (ref) => const LedgerLoadState.ready(hasPersistedLedger: false),
+          ),
+          ledgerProvider.overrideWith(
+            (ref) => _FakeLedgerController(emptyLedgerState()),
+          ),
+          permissionSetupControllerProvider.overrideWith(
+            (ref) => PermissionSetupController()
+              ..state = const PermissionSetupState(
+                userId: testUserId,
+                completed: true,
+              ),
+          ),
+          cloudSyncControllerProvider.overrideWith(
+            (ref) => _FakeCloudSyncController(
+              const CloudSyncState(
+                phase: CloudSyncPhase.idle,
+                bootstrapComplete: true,
+                bootstrappedUserId: testUserId,
+                hasCloudWallet: false,
+              ),
             ),
           ),
-        ),
-        onboardingControllerProvider.overrideWith(
-          (ref) => OnboardingController()
-            ..state = const OnboardingState(
-              userId: testUserId,
-              completed: true,
-            ),
-        ),
-      ],
-    );
-    addTearDown(container.dispose);
+          onboardingControllerProvider.overrideWith(
+            (ref) => OnboardingController()
+              ..state = const OnboardingState(
+                userId: testUserId,
+                completed: true,
+              ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
 
-    final startup = container.read(startupStateProvider);
-    expect(startup.destination, StartupDestination.home);
-  });
+      final startup = container.read(startupStateProvider);
+      expect(startup.destination, StartupDestination.home);
+    },
+  );
 
-  test('startupState NEVER routes to onboarding when cloud wallet exists in Firebase', () {
-    final container = ProviderContainer(
-      overrides: [
-        themeControllerProvider.overrideWith(
-          (ref) => _FakeThemeController(const AppThemeState(isLoaded: true)),
-        ),
-        authControllerProvider.overrideWith(
-          (ref) => _FakeAuthController(authenticatedState),
-        ),
-        ledgerLoadStateProvider.overrideWith(
-          (ref) => const LedgerLoadState.ready(hasPersistedLedger: false),
-        ),
-        ledgerProvider.overrideWith(
-          (ref) => _FakeLedgerController(emptyLedgerState()),
-        ),
-        permissionSetupControllerProvider.overrideWith(
-          (ref) => PermissionSetupController()
-            ..state = const PermissionSetupState(
-              userId: testUserId,
-              completed: true,
-            ),
-        ),
-        cloudSyncControllerProvider.overrideWith(
-          (ref) => _FakeCloudSyncController(
-            const CloudSyncState(
-              phase: CloudSyncPhase.idle,
-              bootstrapComplete: true,
-              bootstrappedUserId: testUserId,
-              hasCloudWallet: true, // Existing cloud backup detected!
+  test(
+    'startupState NEVER routes to onboarding when cloud wallet exists in Firebase',
+    () {
+      final container = ProviderContainer(
+        overrides: [
+          accountDeletionControllerProvider.overrideWith(
+            (ref) => AccountDeletionController(ref, pending: false),
+          ),
+          themeControllerProvider.overrideWith(
+            (ref) => _FakeThemeController(const AppThemeState(isLoaded: true)),
+          ),
+          authControllerProvider.overrideWith(
+            (ref) => _FakeAuthController(authenticatedState),
+          ),
+          ledgerLoadStateProvider.overrideWith(
+            (ref) => const LedgerLoadState.ready(hasPersistedLedger: false),
+          ),
+          ledgerProvider.overrideWith(
+            (ref) => _FakeLedgerController(emptyLedgerState()),
+          ),
+          permissionSetupControllerProvider.overrideWith(
+            (ref) => PermissionSetupController()
+              ..state = const PermissionSetupState(
+                userId: testUserId,
+                completed: true,
+              ),
+          ),
+          cloudSyncControllerProvider.overrideWith(
+            (ref) => _FakeCloudSyncController(
+              const CloudSyncState(
+                phase: CloudSyncPhase.idle,
+                bootstrapComplete: true,
+                bootstrappedUserId: testUserId,
+                hasCloudWallet: true, // Existing cloud backup detected!
+              ),
             ),
           ),
-        ),
-        onboardingControllerProvider.overrideWith(
-          (ref) => OnboardingController()
-            ..state = const OnboardingState(
-              userId: testUserId,
-              completed: false,
-            ),
-        ),
-      ],
-    );
-    addTearDown(container.dispose);
+          onboardingControllerProvider.overrideWith(
+            (ref) => OnboardingController()
+              ..state = const OnboardingState(
+                userId: testUserId,
+                completed: false,
+              ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
 
-    final startup = container.read(startupStateProvider);
-    // Destination must NEVER be onboarding!
-    expect(startup.destination, isNot(StartupDestination.onboarding));
-    expect(startup.isRecoverableError, isTrue);
-    expect(startup.title, contains('Cloud wallet found'));
-  });
+      final startup = container.read(startupStateProvider);
+      // Destination must NEVER be onboarding!
+      expect(startup.destination, isNot(StartupDestination.onboarding));
+      expect(startup.isRecoverableError, isTrue);
+      expect(startup.title, contains('Cloud wallet found'));
+    },
+  );
 
-  test('startupState routes to onboarding only for genuine fresh users without cloud wallet', () {
-    final container = ProviderContainer(
-      overrides: [
-        themeControllerProvider.overrideWith(
-          (ref) => _FakeThemeController(const AppThemeState(isLoaded: true)),
-        ),
-        authControllerProvider.overrideWith(
-          (ref) => _FakeAuthController(authenticatedState),
-        ),
-        ledgerLoadStateProvider.overrideWith(
-          (ref) => const LedgerLoadState.ready(hasPersistedLedger: false),
-        ),
-        ledgerProvider.overrideWith(
-          (ref) => _FakeLedgerController(emptyLedgerState()),
-        ),
-        permissionSetupControllerProvider.overrideWith(
-          (ref) => PermissionSetupController()
-            ..state = const PermissionSetupState(
-              userId: testUserId,
-              completed: true,
-            ),
-        ),
-        cloudSyncControllerProvider.overrideWith(
-          (ref) => _FakeCloudSyncController(
-            const CloudSyncState(
-              phase: CloudSyncPhase.idle,
-              bootstrapComplete: true,
-              bootstrappedUserId: testUserId,
-              hasCloudWallet: false, // Truly fresh account
+  test(
+    'startupState routes to onboarding only for genuine fresh users without cloud wallet',
+    () {
+      final container = ProviderContainer(
+        overrides: [
+          accountDeletionControllerProvider.overrideWith(
+            (ref) => AccountDeletionController(ref, pending: false),
+          ),
+          themeControllerProvider.overrideWith(
+            (ref) => _FakeThemeController(const AppThemeState(isLoaded: true)),
+          ),
+          authControllerProvider.overrideWith(
+            (ref) => _FakeAuthController(authenticatedState),
+          ),
+          ledgerLoadStateProvider.overrideWith(
+            (ref) => const LedgerLoadState.ready(hasPersistedLedger: false),
+          ),
+          ledgerProvider.overrideWith(
+            (ref) => _FakeLedgerController(emptyLedgerState()),
+          ),
+          permissionSetupControllerProvider.overrideWith(
+            (ref) => PermissionSetupController()
+              ..state = const PermissionSetupState(
+                userId: testUserId,
+                completed: true,
+              ),
+          ),
+          cloudSyncControllerProvider.overrideWith(
+            (ref) => _FakeCloudSyncController(
+              const CloudSyncState(
+                phase: CloudSyncPhase.idle,
+                bootstrapComplete: true,
+                bootstrappedUserId: testUserId,
+                hasCloudWallet: false, // Truly fresh account
+              ),
             ),
           ),
-        ),
-        onboardingControllerProvider.overrideWith(
-          (ref) => OnboardingController()
-            ..state = const OnboardingState(
-              userId: testUserId,
-              completed: false,
-            ),
-        ),
-      ],
-    );
-    addTearDown(container.dispose);
+          onboardingControllerProvider.overrideWith(
+            (ref) => OnboardingController()
+              ..state = const OnboardingState(
+                userId: testUserId,
+                completed: false,
+              ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
 
-    final startup = container.read(startupStateProvider);
-    expect(startup.destination, StartupDestination.onboarding);
-  });
+      final startup = container.read(startupStateProvider);
+      expect(startup.destination, StartupDestination.onboarding);
+    },
+  );
 
-  test('startupState routes to home when onboarding is completed even if hasCloudWallet is true', () {
-    final container = ProviderContainer(
-      overrides: [
-        themeControllerProvider.overrideWith(
-          (ref) => _FakeThemeController(const AppThemeState(isLoaded: true)),
-        ),
-        authControllerProvider.overrideWith(
-          (ref) => _FakeAuthController(authenticatedState),
-        ),
-        ledgerLoadStateProvider.overrideWith(
-          (ref) => const LedgerLoadState.ready(hasPersistedLedger: false),
-        ),
-        ledgerProvider.overrideWith(
-          (ref) => _FakeLedgerController(emptyLedgerState()),
-        ),
-        permissionSetupControllerProvider.overrideWith(
-          (ref) => PermissionSetupController()
-            ..state = const PermissionSetupState(
-              userId: testUserId,
-              completed: true,
-            ),
-        ),
-        cloudSyncControllerProvider.overrideWith(
-          (ref) => _FakeCloudSyncController(
-            const CloudSyncState(
-              phase: CloudSyncPhase.idle,
-              bootstrapComplete: true,
-              bootstrappedUserId: testUserId,
-              hasCloudWallet: true,
+  test(
+    'startupState routes to home when onboarding is completed even if hasCloudWallet is true',
+    () {
+      final container = ProviderContainer(
+        overrides: [
+          accountDeletionControllerProvider.overrideWith(
+            (ref) => AccountDeletionController(ref, pending: false),
+          ),
+          themeControllerProvider.overrideWith(
+            (ref) => _FakeThemeController(const AppThemeState(isLoaded: true)),
+          ),
+          authControllerProvider.overrideWith(
+            (ref) => _FakeAuthController(authenticatedState),
+          ),
+          ledgerLoadStateProvider.overrideWith(
+            (ref) => const LedgerLoadState.ready(hasPersistedLedger: false),
+          ),
+          ledgerProvider.overrideWith(
+            (ref) => _FakeLedgerController(emptyLedgerState()),
+          ),
+          permissionSetupControllerProvider.overrideWith(
+            (ref) => PermissionSetupController()
+              ..state = const PermissionSetupState(
+                userId: testUserId,
+                completed: true,
+              ),
+          ),
+          cloudSyncControllerProvider.overrideWith(
+            (ref) => _FakeCloudSyncController(
+              const CloudSyncState(
+                phase: CloudSyncPhase.idle,
+                bootstrapComplete: true,
+                bootstrappedUserId: testUserId,
+                hasCloudWallet: true,
+              ),
             ),
           ),
-        ),
-        onboardingControllerProvider.overrideWith(
-          (ref) => OnboardingController()
-            ..state = const OnboardingState(
-              userId: testUserId,
-              completed: true,
-            ),
-        ),
-      ],
-    );
-    addTearDown(container.dispose);
+          onboardingControllerProvider.overrideWith(
+            (ref) => OnboardingController()
+              ..state = const OnboardingState(
+                userId: testUserId,
+                completed: true,
+              ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
 
-    final startup = container.read(startupStateProvider);
-    expect(startup.destination, StartupDestination.home);
-    expect(startup.isRecoverableError, isFalse);
-  });
+      final startup = container.read(startupStateProvider);
+      expect(startup.destination, StartupDestination.home);
+      expect(startup.isRecoverableError, isFalse);
+    },
+  );
 }

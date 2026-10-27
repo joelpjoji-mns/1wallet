@@ -11,6 +11,7 @@ import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/privacy_text.dart';
 import '../notifications/notification_engine.dart';
+import 'capture_queue.dart';
 
 class ReviewQueueScreen extends ConsumerStatefulWidget {
   const ReviewQueueScreen({super.key});
@@ -21,6 +22,8 @@ class ReviewQueueScreen extends ConsumerStatefulWidget {
 
 class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
     with WidgetsBindingObserver {
+  bool _legacyPromptShown = false;
+  int _reportedQuarantineCount = 0;
   @override
   void initState() {
     super.initState();
@@ -46,10 +49,66 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
   Future<void> _refreshSpooled() async {
     if (!mounted) return;
     try {
+      if (!_legacyPromptShown && await CaptureQueue.client.unassigned() > 0) {
+        if (!mounted) return;
+        _legacyPromptShown = true;
+        final owner = ref.read(ledgerProvider).userId;
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Assign legacy captures?'),
+            content: const Text(
+              'Older queued messages have no recorded wallet owner. '
+              'Import them into the currently signed-in wallet only if they belong to it.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Keep unassigned'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Assign to this wallet'),
+              ),
+            ],
+          ),
+        );
+        if (!mounted) return;
+        if (confirmed == true && ref.read(ledgerProvider).userId == owner) {
+          await ref.read(ledgerProvider.notifier).assignLegacyCaptures();
+        }
+      }
+      if (!mounted) return;
       await ref.read(ledgerProvider.notifier).processSpooledSms();
       if (!mounted) return;
       await ref.read(ledgerProvider.notifier).processSpooledNotifications();
-    } catch (_) {}
+      if (!mounted) return;
+      final count = await CaptureQueue.client.quarantineCount(
+        ref.read(ledgerProvider).userId,
+      );
+      if (mounted && count > _reportedQuarantineCount) {
+        _reportedQuarantineCount = count;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '$count invalid capture item(s) were retained in quarantine, not imported.',
+            ),
+          ),
+        );
+      }
+    } catch (error, stack) {
+      debugPrint('Queued capture processing failed: $error');
+      debugPrintStack(stackTrace: stack);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Queued captures could not be processed. Unacknowledged items were retained for retry.',
+            ),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -144,7 +203,12 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                       if (item is CaptureCandidate) {
                         return _buildCandidateCard(context, ref, state, item);
                       } else if (item is AppNotification) {
-                        return _buildNotificationCard(context, ref, state, item);
+                        return _buildNotificationCard(
+                          context,
+                          ref,
+                          state,
+                          item,
+                        );
                       }
                       return const SizedBox();
                     },
@@ -179,10 +243,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
             decoration: BoxDecoration(
               color: AppColors.amoledBackground,
               borderRadius: BorderRadius.circular(AppRadii.lg),
-              border: Border.all(
-                color: Colors.white.withAlpha(24),
-                width: 0.8,
-              ),
+              border: Border.all(color: Colors.white.withAlpha(24), width: 0.8),
             ),
             child: content,
           ),
@@ -307,16 +368,15 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                   children: [
                     if (candidate.suggestedAccountId != null)
                       GlassChip(
-                        label: state.accounts
+                        label:
+                            state.accounts
                                 .where(
                                   (a) => a.id == candidate.suggestedAccountId,
                                 )
                                 .firstOrNull
                                 ?.name ??
                             'Account',
-                        icon: const Icon(
-                          Icons.account_balance_wallet_rounded,
-                        ),
+                        icon: const Icon(Icons.account_balance_wallet_rounded),
                         iconSize: 13,
                         iconColor: scheme.primary,
                         labelStyle: theme.textTheme.bodySmall?.copyWith(
@@ -430,8 +490,9 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                             foregroundColor: scheme.error,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(AppRadii.pill),
+                              borderRadius: BorderRadius.circular(
+                                AppRadii.pill,
+                              ),
                             ),
                           ),
                         ),
@@ -455,8 +516,9 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                             foregroundColor: colorScheme.onPrimaryContainer,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(AppRadii.pill),
+                              borderRadius: BorderRadius.circular(
+                                AppRadii.pill,
+                              ),
                             ),
                             elevation: 0,
                           ),
@@ -500,10 +562,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
           ),
           alignment: Alignment.centerRight,
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Icon(
-            Icons.archive_outlined,
-            color: scheme.onErrorContainer,
-          ),
+          child: Icon(Icons.archive_outlined, color: scheme.onErrorContainer),
         ),
         child: Material(
           color: notification.read
@@ -556,10 +615,8 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                                     account.name,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style:
-                                        theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                    ),
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w800),
                                   ),
                                 ),
                                 if (notification.badgeLabel != null) ...[
@@ -570,11 +627,12 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: (notification.isOverdue ||
-                                              notification.isDueSoon
-                                              ? scheme.error
-                                              : scheme.primary)
-                                          .withValues(alpha: 0.15),
+                                      color:
+                                          (notification.isOverdue ||
+                                                      notification.isDueSoon
+                                                  ? scheme.error
+                                                  : scheme.primary)
+                                              .withValues(alpha: 0.15),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
@@ -582,7 +640,8 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,
-                                        color: notification.isOverdue ||
+                                        color:
+                                            notification.isOverdue ||
                                                 notification.isDueSoon
                                             ? scheme.error
                                             : scheme.primary,
@@ -634,8 +693,9 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                   ),
                 ),
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                  ),
                   child: Text(
                     notification.body,
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -689,8 +749,9 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content:
-                                    Text('Marked ${account.name} bill as paid'),
+                                content: Text(
+                                  'Marked ${account.name} bill as paid',
+                                ),
                                 behavior: SnackBarBehavior.floating,
                                 action: SnackBarAction(
                                   label: 'Undo',
@@ -1066,8 +1127,9 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                 final patterns = List<String>.from(prefs.smsBlockPatterns);
                 if (!patterns.contains(pattern)) {
                   patterns.add(pattern);
-                  await ledger.updatePreferences(
-                    prefs.copyWith(smsBlockPatterns: patterns),
+                  await ledger.updatePreferencesWith(
+                    (livePreferences) =>
+                        livePreferences.copyWith(smsBlockPatterns: patterns),
                   );
                 }
                 await ledger.updateCaptureCandidateStatus(
@@ -1133,8 +1195,10 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
     }
     await ref
         .read(ledgerProvider.notifier)
-        .updatePreferences(
-          prefs.copyWith(readNotificationIds: nextRead.toList()..sort()),
+        .updatePreferencesWith(
+          (livePreferences) => livePreferences.copyWith(
+            readNotificationIds: nextRead.toList()..sort(),
+          ),
         );
   }
 
@@ -1145,8 +1209,8 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
     final nextRead = Set<String>.from(prefs.readNotificationIds)..remove(id);
     await ref
         .read(ledgerProvider.notifier)
-        .updatePreferences(
-          prefs.copyWith(
+        .updatePreferencesWith(
+          (livePreferences) => livePreferences.copyWith(
             dismissedNotificationIds: nextDismissed.toList()..sort(),
             readNotificationIds: nextRead.toList()..sort(),
           ),
@@ -1162,8 +1226,10 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
       ..addAll(notifications.map((notification) => notification.id));
     await ref
         .read(ledgerProvider.notifier)
-        .updatePreferences(
-          prefs.copyWith(readNotificationIds: nextRead.toList()..sort()),
+        .updatePreferencesWith(
+          (livePreferences) => livePreferences.copyWith(
+            readNotificationIds: nextRead.toList()..sort(),
+          ),
         );
   }
 

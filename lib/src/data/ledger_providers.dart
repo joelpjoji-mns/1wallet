@@ -14,6 +14,7 @@ import '../capture/message_parser.dart';
 import '../features/capture/capture_diagnostics.dart';
 import '../features/capture/sms_spooler.dart';
 import '../features/capture/notification_spooler.dart';
+import '../features/capture/capture_queue.dart';
 import '../imports/wallet_csv_parser.dart';
 import '../ledger/ledger_selectors.dart';
 import '../theme/theme_controller.dart';
@@ -22,6 +23,8 @@ import 'ledger_archive.dart';
 import 'ledger_codec.dart';
 import 'ledger_defaults.dart';
 import 'ledger_models.dart';
+import 'local_ledger_snapshot.dart';
+import 'backup_codec.dart';
 
 const _ledgerStorageKey = 'one_wallet_flutter.ledger.v1';
 const _lastActiveUserIdKey = 'last_active_user_id';
@@ -240,6 +243,13 @@ final ledgerProvider = StateNotifierProvider<LedgerController, LedgerState>((
   return controller;
 });
 
+class StaleLedgerSessionException implements Exception {
+  const StaleLedgerSessionException();
+
+  @override
+  String toString() => 'The wallet session changed during this operation.';
+}
+
 class LedgerLoadState {
   const LedgerLoadState._({
     required this.isReady,
@@ -262,7 +272,8 @@ class LedgerLoadState {
 }
 
 class LedgerRepository {
-  const LedgerRepository();
+  const LedgerRepository({this.localFile});
+  final Future<File?> Function()? localFile;
 
   static File? _cachedLocalLedgerFile;
 
@@ -283,7 +294,7 @@ class LedgerRepository {
     final payload = preferences.getString(_ledgerStorageKey);
     if (payload != null && payload.trim().isNotEmpty) {
       try {
-        return decodeLedgerState(payload);
+        return decodeLocalLedgerSnapshot(payload);
       } catch (e) {
         debugPrint('Failed to decode ledger synchronously: $e');
       }
@@ -294,66 +305,80 @@ class LedgerRepository {
   Future<LedgerState?> load() async {
     final preferences = await SharedPreferences.getInstance();
     final payload = preferences.getString(_ledgerStorageKey);
-    LedgerState? fallback;
+    Object? failure;
     if (payload != null && payload.trim().isNotEmpty) {
       try {
-        final decoded = await foundation.compute(decodeLedgerState, payload);
-        if (_hasWalletData(decoded)) {
-          return decoded;
-        }
-        fallback = decoded;
+        final decoded = await foundation.compute(
+          decodeLocalLedgerSnapshot,
+          payload,
+        );
+        return decoded;
       } catch (e) {
+        failure = e;
         debugPrint('Failed to decode ledger from SharedPreferences: $e');
       }
     }
 
     // Secondary source of truth: atomic file on device storage
-    final file = await _getLocalLedgerFile();
+    final file = await (localFile?.call() ?? _getLocalLedgerFile());
     if (file != null && await file.exists()) {
       try {
         final content = await file.readAsString();
         if (content.trim().isNotEmpty) {
-          final decoded = await foundation.compute(decodeLedgerState, content);
-          if (_hasWalletData(decoded)) {
-            // Restore SharedPreferences from file cache
-            await preferences.setString(_ledgerStorageKey, content);
-            return decoded;
+          final decoded = await foundation.compute(
+            decodeLocalLedgerSnapshot,
+            content,
+          );
+          if (!await preferences.setString(_ledgerStorageKey, content)) {
+            throw StateError('Could not recover the local wallet cache.');
           }
-          fallback ??= decoded;
+          return decoded;
         }
       } catch (e) {
+        failure = e;
         debugPrint('Failed to load ledger from local file: $e');
       }
     }
-    return fallback;
+    if (failure != null) {
+      throw StateError('The local wallet could not be decoded: $failure');
+    }
+    return null;
   }
 
   Future<void> save(LedgerState state) async {
     final preferences = await SharedPreferences.getInstance();
-    final payload = await foundation.compute(encodeLedgerState, state);
-    await preferences.setString(_ledgerStorageKey, payload);
+    final payload = await foundation.compute(encodeLocalLedgerSnapshot, state);
+    if (!await preferences.setString(_ledgerStorageKey, payload)) {
+      throw StateError('Could not persist the local wallet.');
+    }
 
     // Also persist atomically to file
-    final file = await _getLocalLedgerFile();
+    final file = await (localFile?.call() ?? _getLocalLedgerFile());
     if (file != null) {
       try {
         final tempFile = File('${file.path}.tmp');
-        await tempFile.writeAsString(payload);
+        await tempFile.writeAsString(payload, flush: true);
         await tempFile.rename(file.path);
       } catch (e) {
         debugPrint('Failed to write atomic local ledger file: $e');
+        rethrow;
       }
     }
   }
 
   Future<void> clear() async {
     final preferences = await SharedPreferences.getInstance();
-    await preferences.remove(_ledgerStorageKey);
-    final file = await _getLocalLedgerFile();
+    if (!await preferences.remove(_ledgerStorageKey)) {
+      throw StateError('Could not clear the local wallet.');
+    }
+    final file = await (localFile?.call() ?? _getLocalLedgerFile());
     if (file != null && await file.exists()) {
       try {
         await file.delete();
-      } catch (_) {}
+      } catch (error) {
+        debugPrint('Could not delete the local wallet file: $error');
+        rethrow;
+      }
     }
   }
 }
@@ -531,7 +556,10 @@ class LedgerController extends StateNotifier<LedgerState> {
     this.preloadedFromPrefs = false,
   }) : _setLoadState = setLoadState ?? _ignoreLoadState,
        _activeUser = initialUser,
-       super(initialState ?? emptyLedgerState(userId: initialUser?.userId ?? 'local-user')) {
+       super(
+         initialState ??
+             emptyLedgerState(userId: initialUser?.userId ?? 'local-user'),
+       ) {
     unawaited(_loadPersistedLedger());
   }
 
@@ -540,9 +568,168 @@ class LedgerController extends StateNotifier<LedgerState> {
   LedgerUserIdentity? _activeUser;
   final bool preloadedFromPrefs;
   int _sessionEpoch = 0;
+  int? _runningEpoch;
+  Future<void> _writeTail = Future<void>.value();
+  String? _deletingOwner;
   Timer? _spoolPollTimer;
 
+  int get changeVersion => state.localRevision;
+  int get sessionGeneration => _sessionEpoch;
+  bool get isDeletionPending => _deletingOwner == state.userId;
+
+  void _checkSession() {
+    if (!mounted || (_runningEpoch != null && _runningEpoch != _sessionEpoch)) {
+      throw const StaleLedgerSessionException();
+    }
+  }
+
+  Future<T> _runMutation<T>(
+    Future<T> Function() action, {
+    bool allowDuringDeletion = false,
+  }) {
+    final epoch = _sessionEpoch;
+    final result = _writeTail.then((_) async {
+      if (!mounted || epoch != _sessionEpoch) {
+        throw const StaleLedgerSessionException();
+      }
+      if (!allowDuringDeletion && _deletingOwner == state.userId) {
+        throw StateError('This wallet is being deleted.');
+      }
+      _runningEpoch = epoch;
+      try {
+        return await action();
+      } finally {
+        _runningEpoch = null;
+      }
+    });
+    _writeTail = result.then<void>(
+      (_) {},
+      onError: (Object error, StackTrace stack) {
+        if (error is StaleLedgerSessionException) return;
+        debugPrint('Wallet operation failed: $error');
+        debugPrintStack(stackTrace: stack);
+      },
+    );
+    return result;
+  }
+
+  void invalidatePendingOperations() {
+    _sessionEpoch++;
+    _spoolPollTimer?.cancel();
+    _prefsSaveTimer?.cancel();
+    _autoBackupTimer?.cancel();
+  }
+
+  Future<void> freezeForDeletion(String owner) async {
+    if (state.userId != owner && _activeUser?.userId != owner) return;
+    if (_deletingOwner == owner) {
+      await CaptureQueue.client.configure(null);
+      return;
+    }
+    invalidatePendingOperations();
+    _deletingOwner = owner;
+    await CaptureQueue.client.configure(null);
+  }
+
+  Future<void> flushPendingWrites() => _runMutation(() async {
+    _prefsSaveTimer?.cancel();
+    await _repository.save(state);
+    _checkSession();
+  });
+
+  Future<bool> acknowledgeUploadedVersion(int revision) =>
+      _runMutation(() async {
+        if (state.localRevision != revision) return false;
+        final prefs = await SharedPreferences.getInstance();
+        _checkSession();
+        if (!await prefs.setBool('has_unsynced_changes', false)) {
+          throw StateError('Could not acknowledge the uploaded wallet.');
+        }
+        _checkSession();
+        if (state.accounts.isEmpty &&
+            state.transactions.isEmpty &&
+            !state.hasAuthoritativeEmptyWallet) {
+          state = state.copyWith(hasAuthoritativeEmptyWallet: true);
+          await _repository.save(state);
+          _checkSession();
+        }
+        return true;
+      });
+
+  Future<void> prepareCloudReplacement(int revision, String owner) =>
+      _runMutation(() async {
+        if (state.localRevision != revision ||
+            state.userId != owner ||
+            _activeUser?.userId != owner) {
+          throw StateError(
+            'The wallet changed after cloud replacement was confirmed.',
+          );
+        }
+        final prefs = await SharedPreferences.getInstance();
+        _checkSession();
+        if (!await prefs.setBool('has_unsynced_changes', false)) {
+          throw StateError('Could not prepare cloud replacement.');
+        }
+        _checkSession();
+      });
+
+  Future<void> markSyncSettingsChanged() => _runMutation(() => _commit(state));
+
   LedgerUserIdentity? get activeUser => _activeUser;
+
+  bool _capturePreferencesChanged(
+    LedgerPreferences before,
+    LedgerPreferences after,
+  ) =>
+      before.smsCaptureEnabled != after.smsCaptureEnabled ||
+      before.notificationCaptureEnabled != after.notificationCaptureEnabled ||
+      !foundation.listEquals(before.smsTriggerWords, after.smsTriggerWords) ||
+      !foundation.listEquals(before.smsIgnoreWords, after.smsIgnoreWords) ||
+      !foundation.listEquals(
+        before.notificationTriggerWords,
+        after.notificationTriggerWords,
+      ) ||
+      !foundation.listEquals(
+        before.notificationIgnoreWords,
+        after.notificationIgnoreWords,
+      ) ||
+      !foundation.listEquals(
+        before.notificationTargetPackages,
+        after.notificationTargetPackages,
+      );
+
+  Future<void> _publishCaptureConfiguration() {
+    final active = _activeUser;
+    final preferences = state.preferences;
+    return CaptureQueue.client.configure(
+      active != null &&
+              active.isAuthenticated &&
+              state.userId == active.userId &&
+              _deletingOwner != active.userId
+          ? active.userId
+          : null,
+      settings: {
+        'smsCaptureEnabled': preferences.smsCaptureEnabled,
+        'smsTriggerWords': preferences.smsTriggerWords,
+        'smsIgnoreWords': preferences.smsIgnoreWords,
+        'notificationCaptureEnabled': preferences.notificationCaptureEnabled,
+        'notificationTriggerWords': preferences.notificationTriggerWords,
+        'notificationIgnoreWords': preferences.notificationIgnoreWords,
+        'notificationTargetPackages': preferences.notificationTargetPackages,
+      },
+    );
+  }
+
+  Future<void> assignLegacyCaptures() => _runMutation(() async {
+    final owner = _activeUser;
+    if (owner == null ||
+        !owner.isAuthenticated ||
+        state.userId != owner.userId) {
+      throw StateError('Sign in before assigning legacy captures.');
+    }
+    await CaptureQueue.client.assignLegacy(owner.userId);
+    _checkSession();
+  });
 
   String defaultManualBackupFileName() {
     return buildManualBackupFileName(
@@ -554,13 +741,14 @@ class LedgerController extends StateNotifier<LedgerState> {
 
   @override
   void dispose() {
+    _sessionEpoch++;
     _spoolPollTimer?.cancel();
     _prefsSaveTimer?.cancel();
     _autoBackupTimer?.cancel();
     super.dispose();
   }
 
-  Future<void> _loadPersistedLedger() async {
+  Future<void> _loadPersistedLedger() => _runMutation(() async {
     final loadEpoch = _sessionEpoch;
     try {
       if (preloadedFromPrefs) {
@@ -596,9 +784,7 @@ class LedgerController extends StateNotifier<LedgerState> {
           await prefs.setString(_lastActiveUserIdKey, active.userId);
           if (!mounted || loadEpoch != _sessionEpoch) return;
           state = emptyLedgerState(userId: active.userId);
-          _setLoadState(
-            const LedgerLoadState.ready(hasPersistedLedger: false),
-          );
+          _setLoadState(const LedgerLoadState.ready(hasPersistedLedger: false));
         } else {
           final stamped =
               (active != null &&
@@ -611,7 +797,8 @@ class LedgerController extends StateNotifier<LedgerState> {
             unawaited(prefs.setString(_lastActiveUserIdKey, active.userId));
           }
           if (stamped.userId != restored.userId) {
-            unawaited(_repository.save(stamped));
+            await _repository.save(stamped);
+            _checkSession();
           }
           _setLoadState(
             LedgerLoadState.ready(hasPersistedLedger: _hasWalletData(state)),
@@ -619,9 +806,6 @@ class LedgerController extends StateNotifier<LedgerState> {
           unawaited(_runBackgroundStartupMaintenance(stamped, loadEpoch));
         }
       } else {
-        if (!_hasWalletData(state)) {
-          state = emptyLedgerState(userId: _activeUser?.userId ?? 'local-user');
-        }
         _setLoadState(
           LedgerLoadState.ready(hasPersistedLedger: _hasWalletData(state)),
         );
@@ -629,41 +813,26 @@ class LedgerController extends StateNotifier<LedgerState> {
       }
     } catch (error) {
       if (!mounted || loadEpoch != _sessionEpoch) return;
-      // Also try user-scoped backup recovery on error
-      try {
-        final backupFile = await getLatestAutoBackupFile();
-        if (backupFile != null && await backupFile.exists()) {
-          final content = await backupFile.readAsString();
-          final recovered = decodeLedgerArchive(content);
-          if (_hasWalletData(recovered)) {
-            state = recovered;
-            unawaited(_repository.save(recovered));
-            _setLoadState(
-              const LedgerLoadState.ready(hasPersistedLedger: true),
-            );
-            return;
-          }
-        }
-      } catch (_) {}
       _setLoadState(
         LedgerLoadState.failed('Unable to restore local wallet: $error'),
       );
     }
-  }
+  });
 
   Future<void> _runBackgroundStartupMaintenance(
     LedgerState baseState,
     int loadEpoch,
-  ) async {
+  ) => _runMutation(() async {
     await null;
     if (!mounted || loadEpoch != _sessionEpoch) return;
-
-    if (baseState.transactions.isNotEmpty) {
-      final fixed = fixStaleScheduledTransactions(baseState);
+    await _publishCaptureConfiguration();
+    _checkSession();
+    final current = state;
+    if (current.transactions.isNotEmpty) {
+      final fixed = fixStaleScheduledTransactions(current);
       if (!mounted || loadEpoch != _sessionEpoch) return;
-      if (!identical(fixed, baseState)) {
-        state = fixed;
-        unawaited(_repository.save(fixed));
+      if (!identical(fixed, current)) {
+        await _commit(fixed);
       }
     }
 
@@ -674,15 +843,26 @@ class LedgerController extends StateNotifier<LedgerState> {
     unawaited(processSpooledSms());
     unawaited(processSpooledNotifications());
     _syncSpoolPolling();
+  });
+
+  Future<void> setActiveUser(LedgerUserIdentity user) {
+    if (_activeUser?.userId != user.userId) invalidatePendingOperations();
+    return _runMutation(() async {
+      await _setActiveUser(user);
+      _checkSession();
+      await _publishCaptureConfiguration();
+      _checkSession();
+    }, allowDuringDeletion: true);
   }
 
-  Future<void> setActiveUser(LedgerUserIdentity user) async {
+  Future<void> _setActiveUser(LedgerUserIdentity user) async {
     final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
+    _checkSession();
 
     if (_activeUser?.userId == user.userId) {
       _activeUser = user;
       await prefs.setString(_lastActiveUserIdKey, user.userId);
+      _checkSession();
       if (user.isAuthenticated &&
           (state.userId.isEmpty || state.userId == 'local-user')) {
         state = state.copyWith(userId: user.userId);
@@ -711,8 +891,8 @@ class LedgerController extends StateNotifier<LedgerState> {
           prevState.userId == prevUser.userId &&
           !LedgerProvidersConfig.disableAutoBackup) {
         await _performAutoBackup(prevState, userOverride: prevUser);
+        _checkSession();
       }
-      _sessionEpoch++;
       _spoolPollTimer?.cancel();
       _spoolPollTimer = null;
       _prefsSaveTimer?.cancel();
@@ -722,9 +902,11 @@ class LedgerController extends StateNotifier<LedgerState> {
       _activeUser = user;
       state = emptyLedgerState(userId: user.userId);
       await _repository.clear();
+      _checkSession();
       await prefs.remove('has_unsynced_changes');
       await prefs.remove('last_local_modified_at');
       await prefs.setString(_lastActiveUserIdKey, user.userId);
+      _checkSession();
       _setLoadState(const LedgerLoadState.ready(hasPersistedLedger: false));
       return;
     }
@@ -732,16 +914,25 @@ class LedgerController extends StateNotifier<LedgerState> {
     _activeUser = user;
     if (user.isAuthenticated) {
       await prefs.setString(_lastActiveUserIdKey, user.userId);
+      _checkSession();
       if (state.userId.isEmpty || state.userId == 'local-user') {
         state = state.copyWith(userId: user.userId);
+        await _publishCaptureConfiguration();
+        _checkSession();
         if (_hasWalletData(state)) {
-          unawaited(_repository.save(state));
+          await _repository.save(state);
+          _checkSession();
         }
       }
     }
   }
 
   Future<void> flushAutoBackupBeforeSignOut() async {
+    final epoch = _sessionEpoch;
+    await flushPendingWrites();
+    if (!mounted || epoch != _sessionEpoch) {
+      throw const StaleLedgerSessionException();
+    }
     _autoBackupTimer?.cancel();
     _autoBackupTimer = null;
     if (!LedgerProvidersConfig.disableAutoBackup && _hasWalletData(state)) {
@@ -749,8 +940,14 @@ class LedgerController extends StateNotifier<LedgerState> {
     }
   }
 
-  Future<void> clearSessionOnSignOut() async {
-    _sessionEpoch++;
+  Future<void> clearSessionOnSignOut() {
+    invalidatePendingOperations();
+    return _runMutation(_clearSessionOnSignOut, allowDuringDeletion: true);
+  }
+
+  Future<void> _clearSessionOnSignOut() async {
+    await CaptureQueue.client.configure(null);
+    _checkSession();
     _spoolPollTimer?.cancel();
     _spoolPollTimer = null;
     _prefsSaveTimer?.cancel();
@@ -763,22 +960,32 @@ class LedgerController extends StateNotifier<LedgerState> {
       _autoBackupTimer?.cancel();
       _autoBackupTimer = null;
       await _performAutoBackup(previousState, userOverride: previousUser);
+      _checkSession();
     } else {
       _autoBackupTimer?.cancel();
       _autoBackupTimer = null;
     }
-    _activeUser = null;
-    state = emptyLedgerState();
     await _repository.clear();
+    _checkSession();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('has_unsynced_changes');
     await prefs.remove('last_local_modified_at');
     await prefs.remove(_lastActiveUserIdKey);
+    _checkSession();
+    _activeUser = null;
+    state = emptyLedgerState();
     _setLoadState(const LedgerLoadState.ready(hasPersistedLedger: false));
   }
 
-  Future<void> clearLocalWallet({String userId = 'local-user'}) async {
-    _sessionEpoch++;
+  Future<void> clearLocalWallet({String userId = 'local-user'}) {
+    invalidatePendingOperations();
+    return _runMutation(
+      () => _clearLocalWallet(userId),
+      allowDuringDeletion: true,
+    );
+  }
+
+  Future<void> _clearLocalWallet(String userId) async {
     final effectiveUserId =
         userId == 'local-user' && (_activeUser?.isAuthenticated ?? false)
         ? _activeUser!.userId
@@ -788,12 +995,30 @@ class LedgerController extends StateNotifier<LedgerState> {
     await _repository.clear();
   }
 
-  Future<void> purgeAllLocalData() async {
-    _sessionEpoch++;
+  Future<void> purgeAllLocalData({LedgerUserIdentity? userOverride}) {
+    if (userOverride == null ||
+        state.userId == userOverride.userId ||
+        _activeUser?.userId == userOverride.userId) {
+      invalidatePendingOperations();
+    }
+    return _runMutation(
+      () => _purgeAllLocalData(userOverride),
+      allowDuringDeletion: true,
+    );
+  }
+
+  Future<void> _purgeAllLocalData(LedgerUserIdentity? owner) async {
     _spoolPollTimer?.cancel();
     _prefsSaveTimer?.cancel();
     _autoBackupTimer?.cancel();
-    await deleteAllAutoBackupFiles(userOverride: _activeUser);
+    await _backupTail;
+    _checkSession();
+    await deleteAllAutoBackupFiles(userOverride: owner ?? _activeUser);
+    final target = owner?.userId ?? _activeUser?.userId ?? state.userId;
+    await CaptureQueue.client.purge(target);
+    await CaptureDiagnostics.clear(ownerId: target);
+    _checkSession();
+    if (state.userId != target && _activeUser?.userId != target) return;
     _activeUser = null;
     await _repository.clear();
     state = emptyLedgerState();
@@ -810,6 +1035,7 @@ class LedgerController extends StateNotifier<LedgerState> {
 
   void resumeSpoolPolling() {
     _isSpoolPollingPaused = false;
+    if (isDeletionPending || !(_activeUser?.isAuthenticated ?? false)) return;
     unawaited(processSpooledSms());
     unawaited(processSpooledNotifications());
     _syncSpoolPolling();
@@ -818,7 +1044,12 @@ class LedgerController extends StateNotifier<LedgerState> {
   void _syncSpoolPolling() {
     _spoolPollTimer?.cancel();
     _spoolPollTimer = null;
-    if (_isSpoolPollingPaused || !mounted) return;
+    if (_isSpoolPollingPaused ||
+        !mounted ||
+        isDeletionPending ||
+        !(_activeUser?.isAuthenticated ?? false)) {
+      return;
+    }
     if (foundation.kIsWeb ||
         !Platform.isAndroid ||
         Platform.environment.containsKey('FLUTTER_TEST')) {
@@ -826,7 +1057,11 @@ class LedgerController extends StateNotifier<LedgerState> {
     }
 
     _spoolPollTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-      if (!mounted) return;
+      if (!mounted ||
+          isDeletionPending ||
+          !(_activeUser?.isAuthenticated ?? false)) {
+        return;
+      }
       unawaited(processSpooledSms());
       unawaited(processSpooledNotifications());
     });
@@ -848,13 +1083,13 @@ class LedgerController extends StateNotifier<LedgerState> {
       targetAccount.encryptedDetails ?? const {},
     );
     if (notice.amount != null) {
-      details['lastStatementAmountMinor'] =
-          notice.amount!.amountMinor.toString();
+      details['lastStatementAmountMinor'] = notice.amount!.amountMinor
+          .toString();
       details['lastStatementCurrency'] = notice.amount!.currency;
     }
     if (notice.minAmountDue != null) {
-      details['lastStatementMinDueMinor'] =
-          notice.minAmountDue!.amountMinor.toString();
+      details['lastStatementMinDueMinor'] = notice.minAmountDue!.amountMinor
+          .toString();
     }
     if (notice.dueDate != null) {
       details['lastStatementDueDate'] = notice.dueDate!.toIso8601String();
@@ -872,24 +1107,54 @@ class LedgerController extends StateNotifier<LedgerState> {
     );
   }
 
-  Future<void> processSpooledSms() async {
+  Future<void> processSpooledSms() => _runMutation(() async {
     if (_isProcessingSpooledSms) return;
     _isProcessingSpooledSms = true;
     try {
-      final spooled = await SmsSpooler.popSpooledMessages();
+      final owner = state.userId;
+      final spooled = await SmsSpooler.popSpooledMessages(owner: owner);
+      _checkSession();
+      final receivedIds = <String>[];
+      final newReceipts = <String>{};
       if (spooled.isEmpty) return;
 
       final newCandidates = <CaptureCandidate>[];
       final updatedAccounts = <String, Account>{};
 
       for (final payload in spooled) {
+        final id = payload['_queueId'];
+        if (id is! String) {
+          throw const FormatException('Capture queue ID is missing.');
+        }
+        if (state.ingressReceipts.contains(id)) {
+          receivedIds.add(id);
+          continue;
+        }
+        if (payload['body'] is! String ||
+            (payload['body'] as String).trim().isEmpty ||
+            (payload['timestamp'] != null && payload['timestamp'] is! String) ||
+            (payload['nativeMatchedAmount'] != null &&
+                payload['nativeMatchedAmount'] is! String) ||
+            (payload['nativeMatchedTriggerWord'] != null &&
+                payload['nativeMatchedTriggerWord'] is! String)) {
+          await CaptureQueue.client.quarantine(
+            owner,
+            id,
+            'Invalid capture payload types.',
+          );
+          _checkSession();
+          continue;
+        }
+        receivedIds.add(id);
+        newReceipts.add(id);
         final body = payload['body'] as String?;
         final timestampStr = payload['timestamp'] as String?;
         final receivedAt = timestampStr != null
             ? DateTime.tryParse(timestampStr)
             : null;
         if (body != null && body.isNotEmpty) {
-          final isStatement = payload['isBillStatement'] == true ||
+          final isStatement =
+              payload['isBillStatement'] == true ||
               isBillStatementMessage(body);
           if (isStatement) {
             final notice = parseBillStatementNotice(
@@ -915,7 +1180,8 @@ class LedgerController extends StateNotifier<LedgerState> {
               payload['nativeSource'] != null;
 
           final nativeMatchedAmount = payload['nativeMatchedAmount'] as String?;
-          final nativeMatchedTriggerWord = payload['nativeMatchedTriggerWord'] as String?;
+          final nativeMatchedTriggerWord =
+              payload['nativeMatchedTriggerWord'] as String?;
 
           final result = _evaluateCaptureMessage(
             rawText: body,
@@ -934,7 +1200,11 @@ class LedgerController extends StateNotifier<LedgerState> {
           if (result.queued && result.candidate != null) {
             newCandidates.add(result.candidate!);
           }
-          await CaptureDiagnostics.recordResult(stage: 'spool-sms', result: result);
+          await CaptureDiagnostics.recordResult(
+            ownerId: state.userId,
+            stage: 'spool-sms',
+            result: result,
+          );
         }
       }
 
@@ -945,39 +1215,86 @@ class LedgerController extends StateNotifier<LedgerState> {
             .toList();
       }
 
-      if (newCandidates.isNotEmpty || updatedAccounts.isNotEmpty) {
+      if (newCandidates.isNotEmpty ||
+          updatedAccounts.isNotEmpty ||
+          newReceipts.isNotEmpty) {
         await _commit(
           state.copyWith(
             accounts: nextAccounts,
+            ingressReceipts: {...state.ingressReceipts, ...newReceipts},
             captureCandidates: [...newCandidates, ...state.captureCandidates],
           ),
         );
       }
+      await CaptureQueue.client.acknowledge(owner, receivedIds);
+      _checkSession();
+      if (receivedIds.isNotEmpty) {
+        state = state.copyWith(
+          ingressReceipts: state.ingressReceipts.difference(
+            receivedIds.toSet(),
+          ),
+        );
+        await _repository.save(state);
+        _checkSession();
+      }
     } catch (e) {
       debugPrint('Error processing spooled SMS: $e');
+      rethrow;
     } finally {
       _isProcessingSpooledSms = false;
     }
-  }
+  });
 
-  Future<void> processSpooledNotifications() async {
+  Future<void> processSpooledNotifications() => _runMutation(() async {
     if (_isProcessingSpooledNotifications) return;
     _isProcessingSpooledNotifications = true;
     try {
-      final spooled = await NotificationSpooler.popSpooledMessages();
+      final owner = state.userId;
+      final spooled = await NotificationSpooler.popSpooledMessages(
+        owner: owner,
+      );
+      _checkSession();
+      final receivedIds = <String>[];
+      final newReceipts = <String>{};
       if (spooled.isEmpty) return;
 
       final newCandidates = <CaptureCandidate>[];
       final updatedAccounts = <String, Account>{};
 
       for (final payload in spooled) {
+        final id = payload['_queueId'];
+        if (id is! String) {
+          throw const FormatException('Capture queue ID is missing.');
+        }
+        if (state.ingressReceipts.contains(id)) {
+          receivedIds.add(id);
+          continue;
+        }
+        if (payload['body'] is! String ||
+            (payload['body'] as String).trim().isEmpty ||
+            (payload['timestamp'] != null && payload['timestamp'] is! String) ||
+            (payload['nativeMatchedAmount'] != null &&
+                payload['nativeMatchedAmount'] is! String) ||
+            (payload['nativeMatchedTriggerWord'] != null &&
+                payload['nativeMatchedTriggerWord'] is! String)) {
+          await CaptureQueue.client.quarantine(
+            owner,
+            id,
+            'Invalid capture payload types.',
+          );
+          _checkSession();
+          continue;
+        }
+        receivedIds.add(id);
+        newReceipts.add(id);
         final body = payload['body'] as String?;
         final timestampStr = payload['timestamp'] as String?;
         final receivedAt = timestampStr != null
             ? DateTime.tryParse(timestampStr)
             : null;
         if (body != null && body.isNotEmpty) {
-          final isStatement = payload['isBillStatement'] == true ||
+          final isStatement =
+              payload['isBillStatement'] == true ||
               isBillStatementMessage(body);
           if (isStatement) {
             final notice = parseBillStatementNotice(
@@ -1003,7 +1320,8 @@ class LedgerController extends StateNotifier<LedgerState> {
               payload['nativeSource'] != null;
 
           final nativeMatchedAmount = payload['nativeMatchedAmount'] as String?;
-          final nativeMatchedTriggerWord = payload['nativeMatchedTriggerWord'] as String?;
+          final nativeMatchedTriggerWord =
+              payload['nativeMatchedTriggerWord'] as String?;
 
           final result = _evaluateCaptureMessage(
             rawText: body,
@@ -1023,6 +1341,7 @@ class LedgerController extends StateNotifier<LedgerState> {
             newCandidates.add(result.candidate!);
           }
           await CaptureDiagnostics.recordResult(
+            ownerId: state.userId,
             stage: 'spool-notification',
             result: result,
           );
@@ -1036,20 +1355,35 @@ class LedgerController extends StateNotifier<LedgerState> {
             .toList();
       }
 
-      if (newCandidates.isNotEmpty || updatedAccounts.isNotEmpty) {
+      if (newCandidates.isNotEmpty ||
+          updatedAccounts.isNotEmpty ||
+          newReceipts.isNotEmpty) {
         await _commit(
           state.copyWith(
             accounts: nextAccounts,
+            ingressReceipts: {...state.ingressReceipts, ...newReceipts},
             captureCandidates: [...newCandidates, ...state.captureCandidates],
           ),
         );
       }
+      await CaptureQueue.client.acknowledge(owner, receivedIds);
+      _checkSession();
+      if (receivedIds.isNotEmpty) {
+        state = state.copyWith(
+          ingressReceipts: state.ingressReceipts.difference(
+            receivedIds.toSet(),
+          ),
+        );
+        await _repository.save(state);
+        _checkSession();
+      }
     } catch (e) {
       debugPrint('Error processing spooled notifications: $e');
+      rethrow;
     } finally {
       _isProcessingSpooledNotifications = false;
     }
-  }
+  });
 
   Future<void> createStarterWallet({
     required String userId,
@@ -1058,7 +1392,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     required Color accountColor,
     String accountType = 'bank',
     int openingBalanceMinor = 0,
-  }) async {
+  }) => _runMutation(() async {
     if (_hasWalletData(state)) {
       return;
     }
@@ -1088,14 +1422,28 @@ class LedgerController extends StateNotifier<LedgerState> {
       sortOrder: 1,
     );
     await _commit(starter.copyWith(accounts: [account]));
-  }
+  });
 
   String exportArchive({String source = 'flutter-local'}) {
     return encodeLedgerArchive(state, source: source);
   }
 
-  Future<void> importArchive(String archiveSource, {bool force = false}) async {
-    final incoming = await foundation.compute(decodeLedgerArchive, archiveSource);
+  Future<String> exportPortableBackup(String passphrase) =>
+      encodePortableBackup(state, passphrase);
+
+  Future<void> importArchive(
+    String archiveSource, {
+    bool force = false,
+    String? passphrase,
+  }) => _runMutation(() async {
+    final incoming = await decodeBackup(
+      archiveSource,
+      passphrase: passphrase,
+      targetUserId: _activeUser?.userId ?? state.userId,
+      allowLegacy: true,
+      rewrapForImport: true,
+    );
+    _checkSession();
     final active = _activeUser;
     if (!force &&
         active != null &&
@@ -1118,26 +1466,55 @@ class LedgerController extends StateNotifier<LedgerState> {
     final stamped = (active != null && active.isAuthenticated)
         ? incoming.copyWith(userId: active.userId)
         : incoming;
-    await _commit(stamped);
-  }
+    await _commit(
+      stamped.copyWith(
+        hasAuthoritativeEmptyWallet:
+            stamped.accounts.isEmpty && stamped.transactions.isEmpty,
+      ),
+    );
+    _setLoadState(
+      LedgerLoadState.ready(hasPersistedLedger: _hasWalletData(state)),
+    );
+  });
 
   bool _isRestoring = false;
 
-  Future<void> restoreLedgerState(LedgerState next) async {
+  Future<int> restoreLedgerState(
+    LedgerState next, {
+    String? expectedUserId,
+    int? expectedLocalRevision,
+  }) => _runMutation(() async {
+    if (expectedUserId != null && _activeUser?.userId != expectedUserId) {
+      throw const StaleLedgerSessionException();
+    }
+    if (expectedLocalRevision != null &&
+        state.localRevision != expectedLocalRevision) {
+      throw StateError('The local wallet changed during cloud restore.');
+    }
+    final prefs = await SharedPreferences.getInstance();
+    _checkSession();
+    if (expectedUserId != null &&
+        (prefs.getBool('has_unsynced_changes') ?? false)) {
+      throw StateError('Local changes are waiting to be uploaded.');
+    }
     _isRestoring = true;
     try {
       await _commit(next.copyWith(version: currentLedgerStateVersion));
+      _setLoadState(
+        LedgerLoadState.ready(hasPersistedLedger: _hasWalletData(state)),
+      );
+      return state.localRevision;
     } finally {
       _isRestoring = false;
     }
-  }
+  });
 
   Future<void> setHomeWidgetPreferences({
     List<String>? order,
     List<String>? hidden,
     Map<String, String>? sizes,
     Map<String, String>? filters,
-  }) async {
+  }) => _runMutation(() async {
     final preferences = state.preferences;
     await _commit(
       state.copyWith(
@@ -1157,13 +1534,13 @@ class LedgerController extends StateNotifier<LedgerState> {
         ),
       ),
     );
-  }
+  });
 
   Future<void> setHomeWidgetOrder(List<String> order) async {
     await setHomeWidgetPreferences(order: order);
   }
 
-  Future<void> resetHomeWidgetOrder() async {
+  Future<void> resetHomeWidgetOrder() => _runMutation(() async {
     const defaults = LedgerPreferences();
     await _commit(
       state.copyWith(
@@ -1175,27 +1552,46 @@ class LedgerController extends StateNotifier<LedgerState> {
         ),
       ),
     );
-  }
+  });
 
-  Future<void> setLocale(String locale) async {
+  Future<void> setLocale(String locale) => _runMutation(() async {
     await _commit(
       state.copyWith(preferences: state.preferences.copyWith(locale: locale)),
     );
-  }
+  });
 
-  Future<void> setStartDayOfMonth(int day) async {
+  Future<void> setStartDayOfMonth(int day) => _runMutation(() async {
     await _commit(
       state.copyWith(
         preferences: state.preferences.copyWith(startDayOfMonth: day),
       ),
     );
-  }
+  });
 
   Timer? _prefsSaveTimer;
 
-  Future<void> updatePreferences(LedgerPreferences preferences) async {
+  /// Replaces a complete snapshot. Field edits should use [updatePreferencesWith].
+  Future<void> updatePreferences(LedgerPreferences preferences) =>
+      updatePreferencesWith((_) => preferences);
+
+  Future<void> updatePreferencesWith(
+    LedgerPreferences Function(LedgerPreferences) update,
+  ) => _runMutation(() async {
+    final before = state.preferences;
+    final preferences = update(before);
     final active = _activeUser;
+    final prefs = await SharedPreferences.getInstance();
+    _checkSession();
+    if (!await prefs.setBool('has_unsynced_changes', true) ||
+        !await prefs.setString(
+          'last_local_modified_at',
+          DateTime.now().toUtc().toIso8601String(),
+        )) {
+      throw StateError('Could not record the preference edit.');
+    }
+    _checkSession();
     state = state.copyWith(
+      localRevision: state.localRevision + 1,
       userId:
           (active != null &&
               active.isAuthenticated &&
@@ -1204,23 +1600,31 @@ class LedgerController extends StateNotifier<LedgerState> {
           : state.userId,
       preferences: preferences,
     );
-    unawaited(SmsSpooler.updateTriggerWords(state));
-    unawaited(NotificationSpooler.updateTriggerWords(state));
+    if (_capturePreferencesChanged(before, preferences)) {
+      await _publishCaptureConfiguration();
+      _checkSession();
+      await SmsSpooler.updateTriggerWords(state);
+      _checkSession();
+      await NotificationSpooler.updateTriggerWords(state);
+      _checkSession();
+      _syncSpoolPolling();
+    }
 
     // Debounce the heavy disk/cloud save to avoid OutOfMemory / extreme jank during slider drags
     _prefsSaveTimer?.cancel();
-    _prefsSaveTimer = Timer(const Duration(milliseconds: 500), () async {
-      await _repository.save(state);
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('has_unsynced_changes', true);
-      await prefs.setString(
-        'last_local_modified_at',
-        DateTime.now().toUtc().toIso8601String(),
+    final epoch = _sessionEpoch;
+    _prefsSaveTimer = Timer(const Duration(milliseconds: 500), () {
+      if (!mounted || epoch != _sessionEpoch) return;
+      unawaited(
+        _runMutation(() async {
+          await _repository.save(state);
+          _checkSession();
+        }),
       );
     });
-  }
+  });
 
-  Future<void> setDisplayCurrency(String currency) async {
+  Future<void> setDisplayCurrency(String currency) => _runMutation(() async {
     final normalized = currency.trim().toUpperCase();
     if (normalized.isEmpty) return;
     final enabled = <String>{
@@ -1238,7 +1642,7 @@ class LedgerController extends StateNotifier<LedgerState> {
         ),
       ),
     );
-  }
+  });
 
   Future<void> addTransaction({
     required String type,
@@ -1270,6 +1674,70 @@ class LedgerController extends StateNotifier<LedgerState> {
   }
 
   Future<TransactionRecord> upsertTransaction({
+    String? id,
+    required String type,
+    required String accountId,
+    required int amountMinor,
+    String status = 'cleared',
+    String source = 'manual',
+    String? counterAccountId,
+    int? counterAmountMinor,
+    int? originalAmountMinor,
+    String? originalCurrency,
+    String? categoryId,
+    String? paymentMethod,
+    String? locationLabel,
+    String? name,
+    String? notes,
+    List<String>? tags,
+    DateTime? occurredAt,
+    String? recurrenceFrequency,
+    int? recurrenceInterval,
+    List<int>? recurrenceDaysOfWeek,
+    List<int>? recurrenceDaysOfMonth,
+    DateTime? recurrenceEndDate,
+    int? recurrenceLimit,
+    bool clearRecurrenceEndDate = false,
+    bool clearRecurrenceLimit = false,
+    bool clearOriginalAmount = false,
+    bool? isExcludedFromReports,
+    String? originalTransactionId,
+    String? postMode,
+  }) => _runMutation(
+    () => _upsertTransaction(
+      id: id,
+      type: type,
+      accountId: accountId,
+      amountMinor: amountMinor,
+      status: status,
+      source: source,
+      counterAccountId: counterAccountId,
+      counterAmountMinor: counterAmountMinor,
+      originalAmountMinor: originalAmountMinor,
+      originalCurrency: originalCurrency,
+      categoryId: categoryId,
+      paymentMethod: paymentMethod,
+      locationLabel: locationLabel,
+      name: name,
+      notes: notes,
+      tags: tags,
+      occurredAt: occurredAt,
+      recurrenceFrequency: recurrenceFrequency,
+      recurrenceInterval: recurrenceInterval,
+      recurrenceDaysOfWeek: recurrenceDaysOfWeek,
+      recurrenceDaysOfMonth: recurrenceDaysOfMonth,
+      recurrenceEndDate: recurrenceEndDate,
+      recurrenceLimit: recurrenceLimit,
+      clearRecurrenceEndDate: clearRecurrenceEndDate,
+      clearRecurrenceLimit: clearRecurrenceLimit,
+      clearOriginalAmount: clearOriginalAmount,
+      isExcludedFromReports: isExcludedFromReports,
+      originalTransactionId: originalTransactionId,
+      postMode: postMode,
+    ),
+  );
+
+  Future<TransactionRecord> _upsertTransaction({
     String? id,
     required String type,
     required String accountId,
@@ -1361,7 +1829,8 @@ class LedgerController extends StateNotifier<LedgerState> {
     if (counterAmount != null &&
         counterAmount.currency.toUpperCase() != amount.currency.toUpperCase() &&
         amount.amountMinor != 0) {
-      final counterMajor = counterAmount.amountMinor /
+      final counterMajor =
+          counterAmount.amountMinor /
           math.pow(10, minorUnits(counterAmount.currency));
       final sourceMajor =
           amount.amountMinor / math.pow(10, minorUnits(amount.currency));
@@ -1377,7 +1846,8 @@ class LedgerController extends StateNotifier<LedgerState> {
         originalAmount.amountMinor != 0) {
       final sourceMajor =
           amount.amountMinor / math.pow(10, minorUnits(amount.currency));
-      final originalMajor = originalAmount.amountMinor /
+      final originalMajor =
+          originalAmount.amountMinor /
           math.pow(10, minorUnits(originalAmount.currency));
       if (originalMajor != 0) {
         originalFxRate = sourceMajor / originalMajor;
@@ -1474,10 +1944,18 @@ class LedgerController extends StateNotifier<LedgerState> {
     String id,
     String status, {
     DateTime? occurredAt,
+  }) => _runMutation(
+    () => _updateTransactionStatus(id, status, occurredAt: occurredAt),
+  );
+
+  Future<TransactionRecord> _updateTransactionStatus(
+    String id,
+    String status, {
+    DateTime? occurredAt,
   }) async {
     final existing = _transactionById(state, id);
     if (existing == null) throw StateError('Transaction not found.');
-    return upsertTransaction(
+    return _upsertTransaction(
       id: existing.id,
       type: existing.type,
       accountId: existing.accountId,
@@ -1500,16 +1978,18 @@ class LedgerController extends StateNotifier<LedgerState> {
     );
   }
 
-  Future<TransactionRecord> postponeTransaction(
-    String id,
-    DateTime newDate,
-  ) async {
-    final existing = _transactionById(state, id);
-    if (existing == null) throw StateError('Transaction not found.');
-    return updateTransactionStatus(id, existing.status, occurredAt: newDate);
-  }
+  Future<TransactionRecord> postponeTransaction(String id, DateTime newDate) =>
+      _runMutation(() async {
+        final existing = _transactionById(state, id);
+        if (existing == null) throw StateError('Transaction not found.');
+        return _updateTransactionStatus(
+          id,
+          existing.status,
+          occurredAt: newDate,
+        );
+      });
 
-  Future<void> deleteTransaction(String id) async {
+  Future<void> deleteTransaction(String id) => _runMutation(() async {
     await _commit(
       state.copyWith(
         transactions: state.transactions
@@ -1517,9 +1997,9 @@ class LedgerController extends StateNotifier<LedgerState> {
             .toList(),
       ),
     );
-  }
+  });
 
-  Future<void> deleteTransactions(Set<String> ids) async {
+  Future<void> deleteTransactions(Set<String> ids) => _runMutation(() async {
     await _commit(
       state.copyWith(
         transactions: state.transactions
@@ -1527,7 +2007,7 @@ class LedgerController extends StateNotifier<LedgerState> {
             .toList(),
       ),
     );
-  }
+  });
 
   /// Merges multiple transactions from the same account into a single transaction.
   /// The amounts are summed up, notes are merged, and the original transactions
@@ -1537,7 +2017,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     String? categoryId,
     String? name,
     String? notes,
-  }) async {
+  }) => _runMutation(() async {
     if (transactionIds.length < 2) {
       throw ArgumentError('At least 2 transactions are required to merge.');
     }
@@ -1556,7 +2036,9 @@ class LedgerController extends StateNotifier<LedgerState> {
 
     // Constraint 1: Must be from the same account
     final firstAccountId = targetList.first.accountId;
-    final allSameAccount = targetList.every((t) => t.accountId == firstAccountId);
+    final allSameAccount = targetList.every(
+      (t) => t.accountId == firstAccountId,
+    );
     if (!allSameAccount) {
       throw ArgumentError(
         'All transactions must belong to the same account to be merged.',
@@ -1575,7 +2057,9 @@ class LedgerController extends StateNotifier<LedgerState> {
     for (final t in targetList) {
       final delta = sourceDelta(t);
       netDeltaMinor += delta;
-      netBaseDeltaMinor += (delta >= 0 ? t.baseAmount.amountMinor : -t.baseAmount.amountMinor);
+      netBaseDeltaMinor += (delta >= 0
+          ? t.baseAmount.amountMinor
+          : -t.baseAmount.amountMinor);
     }
 
     final String mergedType;
@@ -1596,7 +2080,8 @@ class LedgerController extends StateNotifier<LedgerState> {
         : netBaseDeltaMinor.abs();
 
     // Determine category: if passed explicitly, use it; else if all have same categoryId, use that
-    final effectiveCategoryId = categoryId ??
+    final effectiveCategoryId =
+        categoryId ??
         (targetList.every((t) => t.categoryId == targetList.first.categoryId)
             ? targetList.first.categoryId
             : null);
@@ -1604,8 +2089,12 @@ class LedgerController extends StateNotifier<LedgerState> {
     // Default name if not provided
     final effectiveName = (name != null && name.trim().isNotEmpty)
         ? name.trim()
-        : (targetList.firstWhereOrNull((t) => t.name != null && t.name!.trim().isNotEmpty)?.name ??
-            'Merged transaction');
+        : (targetList
+                  .firstWhereOrNull(
+                    (t) => t.name != null && t.name!.trim().isNotEmpty,
+                  )
+                  ?.name ??
+              'Merged transaction');
 
     // Default notes if not provided: include source transactions info
     final effectiveNotes = (notes != null && notes.trim().isNotEmpty)
@@ -1615,7 +2104,9 @@ class LedgerController extends StateNotifier<LedgerState> {
     final mergedTx = TransactionRecord(
       id: _newId('tx'),
       type: mergedType,
-      status: targetList.any((t) => t.status == 'cleared') ? 'cleared' : targetList.first.status,
+      status: targetList.any((t) => t.status == 'cleared')
+          ? 'cleared'
+          : targetList.first.status,
       source: 'manual',
       accountId: firstAccountId,
       amount: Money(
@@ -1630,9 +2121,7 @@ class LedgerController extends StateNotifier<LedgerState> {
       occurredAt: latestTx.occurredAt,
       name: effectiveName,
       notes: effectiveNotes,
-      attachments: [
-        for (final t in targetList) ...t.attachments,
-      ],
+      attachments: [for (final t in targetList) ...t.attachments],
     );
 
     // Remove old transactions and prepend merged transaction
@@ -1641,18 +2130,16 @@ class LedgerController extends StateNotifier<LedgerState> {
         .toList();
 
     await _commit(
-      state.copyWith(
-        transactions: [mergedTx, ...remainingTransactions],
-      ),
+      state.copyWith(transactions: [mergedTx, ...remainingTransactions]),
     );
 
     return mergedTx;
-  }
+  });
 
   Future<void> addAttachment(
     String transactionId,
     TransactionAttachment attachment,
-  ) async {
+  ) => _runMutation(() async {
     final transactions = [...state.transactions];
     final index = transactions.indexWhere((item) => item.id == transactionId);
     if (index == -1) throw StateError('Transaction not found.');
@@ -1688,7 +2175,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     );
     transactions[index] = updated;
     await _commit(state.copyWith(transactions: transactions));
-  }
+  });
 
   Future<Account> upsertAccount({
     String? id,
@@ -1714,37 +2201,37 @@ class LedgerController extends StateNotifier<LedgerState> {
     bool includeInNetWorth = true,
     bool showOnHome = true,
     bool isArchived = false,
-  }) async {
+  }) => _runMutation(() async {
     final existing = accountById(state, id);
     final isCash = type == 'cash';
     final resolvedOpeningBalances =
         openingBalances ?? existing?.openingBalances ?? const [];
     final effectiveCurrency = isCash
         ? (resolvedOpeningBalances.isNotEmpty
-            ? resolvedOpeningBalances.first.currency
-            : (currency.isNotEmpty
-                ? currency
-                : existing?.currency ?? state.preferences.baseCurrency))
+              ? resolvedOpeningBalances.first.currency
+              : (currency.isNotEmpty
+                    ? currency
+                    : existing?.currency ?? state.preferences.baseCurrency))
         : (currency.isNotEmpty
-            ? currency
-            : existing?.currency ?? state.preferences.baseCurrency);
+              ? currency
+              : existing?.currency ?? state.preferences.baseCurrency);
     final effectiveOpeningBalance = isCash
         ? (resolvedOpeningBalances.isNotEmpty
-            ? resolvedOpeningBalances.first
-            : (openingBalanceMinor == null
-                ? existing?.openingBalance ??
-                    Money(amountMinor: 0, currency: effectiveCurrency)
-                : Money(
-                    amountMinor: openingBalanceMinor,
-                    currency: effectiveCurrency,
-                  )))
+              ? resolvedOpeningBalances.first
+              : (openingBalanceMinor == null
+                    ? existing?.openingBalance ??
+                          Money(amountMinor: 0, currency: effectiveCurrency)
+                    : Money(
+                        amountMinor: openingBalanceMinor,
+                        currency: effectiveCurrency,
+                      )))
         : (openingBalanceMinor == null
-            ? existing?.openingBalance ??
-                Money(amountMinor: 0, currency: effectiveCurrency)
-            : Money(
-                amountMinor: openingBalanceMinor,
-                currency: effectiveCurrency,
-              ));
+              ? existing?.openingBalance ??
+                    Money(amountMinor: 0, currency: effectiveCurrency)
+              : Money(
+                  amountMinor: openingBalanceMinor,
+                  currency: effectiveCurrency,
+                ));
     final account = Account(
       id: existing?.id ?? id ?? _newId('acc'),
       name: name.trim().isEmpty ? 'New account' : name.trim(),
@@ -1797,23 +2284,23 @@ class LedgerController extends StateNotifier<LedgerState> {
       state.copyWith(accounts: accounts, transactions: transactions),
     );
     return account;
-  }
+  });
 
-  Future<void> markCardBillPaid(String accountId, String? cycleMonth) async {
-    final account = accountById(state, accountId);
-    if (account == null) return;
-    final updated = account.copyWith(
-      lastPaidBillMonth: cycleMonth,
-      clearLastPaidBillMonth: cycleMonth == null,
-    );
-    final accounts = [
-      for (final a in state.accounts)
-        a.id == accountId ? updated : a,
-    ];
-    await _commit(state.copyWith(accounts: accounts));
-  }
+  Future<void> markCardBillPaid(String accountId, String? cycleMonth) =>
+      _runMutation(() async {
+        final account = accountById(state, accountId);
+        if (account == null) return;
+        final updated = account.copyWith(
+          lastPaidBillMonth: cycleMonth,
+          clearLastPaidBillMonth: cycleMonth == null,
+        );
+        final accounts = [
+          for (final a in state.accounts) a.id == accountId ? updated : a,
+        ];
+        await _commit(state.copyWith(accounts: accounts));
+      });
 
-  Future<void> deleteAccount(String id) async {
+  Future<void> deleteAccount(String id) => _runMutation(() async {
     final isUsed = state.transactions.any(
       (transaction) =>
           transaction.accountId == id || transaction.counterAccountId == id,
@@ -1856,18 +2343,20 @@ class LedgerController extends StateNotifier<LedgerState> {
         transactions: transactions,
       ),
     );
-  }
+  });
 
-  Future<void> reorderAccounts(List<String> orderedIds) async {
-    final updated = <Account>[];
-    for (final account in state.accounts) {
-      final index = orderedIds.indexOf(account.id);
-      updated.add(
-        account.copyWith(sortOrder: index == -1 ? account.sortOrder : index),
-      );
-    }
-    await _commit(state.copyWith(accounts: updated));
-  }
+  Future<void> reorderAccounts(List<String> orderedIds) => _runMutation(
+    () async {
+      final updated = <Account>[];
+      for (final account in state.accounts) {
+        final index = orderedIds.indexOf(account.id);
+        updated.add(
+          account.copyWith(sortOrder: index == -1 ? account.sortOrder : index),
+        );
+      }
+      await _commit(state.copyWith(accounts: updated));
+    },
+  );
 
   Future<void> upsertCategory({
     String? id,
@@ -1876,7 +2365,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     String? parentId,
     bool isArchived = false,
     Color? color,
-  }) async {
+  }) => _runMutation(() async {
     final existing = categoryById(state, id);
     final normalizedParentId = _blankToNull(parentId);
     final parent = categoryById(state, normalizedParentId);
@@ -1901,32 +2390,34 @@ class LedgerController extends StateNotifier<LedgerState> {
       categories[index] = category;
     }
     await _commit(state.copyWith(categories: categories));
-  }
+  });
 
-  Future<void> archiveCategory(String id, {required bool archived}) async {
-    final idsToUpdate = <String>{id};
-    if (archived) {
-      void collectDescendants(String parentId) {
-        for (final c in state.categories) {
-          if (c.parentId == parentId && !idsToUpdate.contains(c.id)) {
-            idsToUpdate.add(c.id);
-            collectDescendants(c.id);
+  Future<void> archiveCategory(String id, {required bool archived}) =>
+      _runMutation(() async {
+        final idsToUpdate = <String>{id};
+        if (archived) {
+          void collectDescendants(String parentId) {
+            for (final c in state.categories) {
+              if (c.parentId == parentId && !idsToUpdate.contains(c.id)) {
+                idsToUpdate.add(c.id);
+                collectDescendants(c.id);
+              }
+            }
           }
+
+          collectDescendants(id);
         }
-      }
-      collectDescendants(id);
-    }
 
-    final categories = [
-      for (final category in state.categories)
-        idsToUpdate.contains(category.id)
-            ? category.copyWith(isArchived: archived)
-            : category,
-    ];
-    await _commit(state.copyWith(categories: categories));
-  }
+        final categories = [
+          for (final category in state.categories)
+            idsToUpdate.contains(category.id)
+                ? category.copyWith(isArchived: archived)
+                : category,
+        ];
+        await _commit(state.copyWith(categories: categories));
+      });
 
-  Future<void> deleteCategory(String id) async {
+  Future<void> deleteCategory(String id) => _runMutation(() async {
     final isUsedInTx = state.transactions.any((t) => t.categoryId == id);
     final isUsedInRules =
         state.preferences.futureGenerationRules?.any(
@@ -1948,39 +2439,35 @@ class LedgerController extends StateNotifier<LedgerState> {
           .toList();
       await _commit(state.copyWith(categories: categories));
     }
-  }
+  });
 
-  Future<void> resetCategoriesToDefault({
-    bool resetMerchantRules = true,
-  }) async {
-    final defaults = defaultCategories();
-    var preferences = state.preferences;
-    if (resetMerchantRules) {
-      preferences = preferences.copyWith(merchantCategoryRules: const {});
-    }
-    final normalized = normalizeLedgerState(
-      state.copyWith(
-        categories: defaults,
-        preferences: preferences,
-      ),
-      forceFullCategoryReferenceScan: true,
-    );
-    state = normalized;
-    await _repository.save(normalized);
-  }
+  Future<void> resetCategoriesToDefault({bool resetMerchantRules = true}) =>
+      _runMutation(() async {
+        final defaults = defaultCategories();
+        var preferences = state.preferences;
+        if (resetMerchantRules) {
+          preferences = preferences.copyWith(merchantCategoryRules: const {});
+        }
+        final normalized = normalizeLedgerState(
+          state.copyWith(categories: defaults, preferences: preferences),
+          forceFullCategoryReferenceScan: true,
+        );
+        await _commit(normalized);
+      });
 
-  Future<void> updateCaptureCandidateStatus(String id, String status) async {
-    final candidates = [
-      for (final candidate in state.captureCandidates)
-        candidate.id == id ? candidate.copyWith(status: status) : candidate,
-    ];
-    await _commit(state.copyWith(captureCandidates: candidates));
-  }
+  Future<void> updateCaptureCandidateStatus(String id, String status) =>
+      _runMutation(() async {
+        final candidates = [
+          for (final candidate in state.captureCandidates)
+            candidate.id == id ? candidate.copyWith(status: status) : candidate,
+        ];
+        await _commit(state.copyWith(captureCandidates: candidates));
+      });
 
   Future<void> updateCaptureCandidateStatuses(
     Iterable<String> ids,
     String status,
-  ) async {
+  ) => _runMutation(() async {
     final idSet = ids.toSet();
     final candidates = [
       for (final candidate in state.captureCandidates)
@@ -1989,81 +2476,83 @@ class LedgerController extends StateNotifier<LedgerState> {
             : candidate,
     ];
     await _commit(state.copyWith(captureCandidates: candidates));
-  }
+  });
 
-  Future<TransactionRecord> approveCaptureCandidate(String id) async {
-    final candidate = _candidateById(state, id);
-    if (candidate == null) {
-      throw StateError('Capture candidate not found.');
-    }
-    if (candidate.parsedAmount == null) {
-      throw StateError('Candidate has no parsed amount to post.');
-    }
-    final account =
-        accountById(state, candidate.suggestedAccountId) ??
-        state.accounts.where((account) => !account.isArchived).firstOrNull ??
-        (state.accounts.isEmpty ? null : state.accounts.first);
-    if (account == null) {
-      throw StateError('Create an account before confirming captures.');
-    }
-    final type = candidate.transactionType == 'income' ? 'income' : 'expense';
-    final category =
-        categoryById(state, candidate.suggestedCategoryId) ??
-        _matchCategory(state, candidate.merchant, type);
-    Money amount;
-    Money? originalAmount;
-    final parsedCurrency = candidate.parsedAmount!.currency.toUpperCase();
-    final accountCurrency = account.currency.toUpperCase();
-    if (parsedCurrency != accountCurrency) {
-      originalAmount = candidate.parsedAmount!;
-      amount = convertMoneyForDisplay(
+  Future<TransactionRecord> approveCaptureCandidate(String id) => _runMutation(
+    () async {
+      final candidate = _candidateById(state, id);
+      if (candidate == null) {
+        throw StateError('Capture candidate not found.');
+      }
+      if (candidate.parsedAmount == null) {
+        throw StateError('Candidate has no parsed amount to post.');
+      }
+      final account =
+          accountById(state, candidate.suggestedAccountId) ??
+          state.accounts.where((account) => !account.isArchived).firstOrNull ??
+          (state.accounts.isEmpty ? null : state.accounts.first);
+      if (account == null) {
+        throw StateError('Create an account before confirming captures.');
+      }
+      final type = candidate.transactionType == 'income' ? 'income' : 'expense';
+      final category =
+          categoryById(state, candidate.suggestedCategoryId) ??
+          _matchCategory(state, candidate.merchant, type);
+      Money amount;
+      Money? originalAmount;
+      final parsedCurrency = candidate.parsedAmount!.currency.toUpperCase();
+      final accountCurrency = account.currency.toUpperCase();
+      if (parsedCurrency != accountCurrency) {
+        originalAmount = candidate.parsedAmount!;
+        amount = convertMoneyForDisplay(
+          state,
+          candidate.parsedAmount!,
+          account.currency,
+        );
+      } else {
+        amount = candidate.parsedAmount!;
+      }
+      final baseAmount = convertMoneyForDisplay(
         state,
-        candidate.parsedAmount!,
-        account.currency,
+        amount,
+        state.preferences.baseCurrency,
       );
-    } else {
-      amount = candidate.parsedAmount!;
-    }
-    final baseAmount = convertMoneyForDisplay(
-      state,
-      amount,
-      state.preferences.baseCurrency,
-    );
-    final transaction = TransactionRecord(
-      id: _newId('cap-tx'),
-      type: type,
-      status: 'cleared',
-      source: candidate.source,
-      accountId: account.id,
-      amount: amount,
-      baseAmount: baseAmount,
-      originalAmount: originalAmount,
-      categoryId: category?.id,
-      name: _blankToNull(candidate.merchant),
-      occurredAt: candidate.createdAt,
-      paymentMethod: candidate.source.toUpperCase(),
-      notes: (candidate.rawText?.trim().isNotEmpty == true)
-          ? candidate.rawText!.trim()
-          : _blankToNull(candidate.merchant),
-    );
-    final candidates = [
-      for (final item in state.captureCandidates)
-        item.id == id ? item.copyWith(status: 'approved') : item,
-    ];
-    final preferences = _preferencesRememberingCategory(
-      state,
-      candidate.merchant,
-      category?.id,
-    );
-    await _commit(
-      state.copyWith(
-        preferences: preferences,
-        transactions: [transaction, ...state.transactions],
-        captureCandidates: candidates,
-      ),
-    );
-    return transaction;
-  }
+      final transaction = TransactionRecord(
+        id: _newId('cap-tx'),
+        type: type,
+        status: 'cleared',
+        source: candidate.source,
+        accountId: account.id,
+        amount: amount,
+        baseAmount: baseAmount,
+        originalAmount: originalAmount,
+        categoryId: category?.id,
+        name: _blankToNull(candidate.merchant),
+        occurredAt: candidate.createdAt,
+        paymentMethod: candidate.source.toUpperCase(),
+        notes: (candidate.rawText?.trim().isNotEmpty == true)
+            ? candidate.rawText!.trim()
+            : _blankToNull(candidate.merchant),
+      );
+      final candidates = [
+        for (final item in state.captureCandidates)
+          item.id == id ? item.copyWith(status: 'approved') : item,
+      ];
+      final preferences = _preferencesRememberingCategory(
+        state,
+        candidate.merchant,
+        category?.id,
+      );
+      await _commit(
+        state.copyWith(
+          preferences: preferences,
+          transactions: [transaction, ...state.transactions],
+          captureCandidates: candidates,
+        ),
+      );
+      return transaction;
+    },
+  );
 
   Future<void> updateCaptureCandidateDetails({
     required String id,
@@ -2072,7 +2561,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     required String transactionType,
     required String? suggestedAccountId,
     required String? suggestedCategoryId,
-  }) async {
+  }) => _runMutation(() async {
     final candidates = [
       for (final candidate in state.captureCandidates)
         candidate.id == id
@@ -2103,12 +2592,12 @@ class LedgerController extends StateNotifier<LedgerState> {
             : candidate,
     ];
     await _commit(state.copyWith(captureCandidates: candidates));
-  }
+  });
 
   Future<void> rememberMerchantCategory({
     required String? merchant,
     required String? categoryId,
-  }) async {
+  }) => _runMutation(() async {
     final preferences = _preferencesRememberingCategory(
       state,
       merchant,
@@ -2116,10 +2605,10 @@ class LedgerController extends StateNotifier<LedgerState> {
     );
     if (identical(preferences, state.preferences)) return;
     await _commit(state.copyWith(preferences: preferences));
-  }
+  });
 
   ({_CaptureDuplicateKind kind, String? matchedId, String? matchedType})?
-      _captureDuplicateKind({
+  _captureDuplicateKind({
     required LedgerState state,
     required ParsedTransactionMessage parsed,
     required DateTime receivedAt,
@@ -2185,7 +2674,8 @@ class LedgerController extends StateNotifier<LedgerState> {
           final cMerch = c.merchant!.trim().toLowerCase();
           final pMerch = parsed.merchant!.trim().toLowerCase();
           if (cMerch.isNotEmpty && pMerch.isNotEmpty) {
-            final isSimilar = cMerch == pMerch ||
+            final isSimilar =
+                cMerch == pMerch ||
                 (cMerch.length > 3 && pMerch.contains(cMerch)) ||
                 (pMerch.length > 3 && cMerch.contains(pMerch));
             if (isSimilar) {
@@ -2260,8 +2750,7 @@ class LedgerController extends StateNotifier<LedgerState> {
 
       // Amount must match.
       if (tx.amount.amountMinor != amount.amountMinor ||
-          tx.amount.currency.toUpperCase() !=
-              amount.currency.toUpperCase()) {
+          tx.amount.currency.toUpperCase() != amount.currency.toUpperCase()) {
         continue;
       }
 
@@ -2279,7 +2768,8 @@ class LedgerController extends StateNotifier<LedgerState> {
         final txName = tx.name!.trim().toLowerCase();
         final smsMerchant = parsed.merchant!.trim().toLowerCase();
         if (txName.isNotEmpty && smsMerchant.isNotEmpty) {
-          final isSimilar = txName == smsMerchant ||
+          final isSimilar =
+              txName == smsMerchant ||
               (txName.length > 3 && smsMerchant.contains(txName)) ||
               (smsMerchant.length > 3 && txName.contains(smsMerchant));
           if (isSimilar) {
@@ -2394,7 +2884,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     bool nativeAccepted = false,
     bool notificationShown = false,
     bool forceQueue = false,
-  }) async {
+  }) => _runMutation(() async {
     final result = _evaluateCaptureMessage(
       rawText: rawText,
       source: source,
@@ -2435,9 +2925,13 @@ class LedgerController extends StateNotifier<LedgerState> {
       );
     }
 
-    await CaptureDiagnostics.recordResult(stage: stage, result: result);
+    await CaptureDiagnostics.recordResult(
+      stage: stage,
+      result: result,
+      ownerId: state.userId,
+    );
     return result;
-  }
+  });
 
   CaptureImportResult _evaluateCaptureMessage({
     required String rawText,
@@ -2540,20 +3034,23 @@ class LedgerController extends StateNotifier<LedgerState> {
       rawText: parsed.rawText.isNotEmpty ? parsed.rawText : rawText,
       ignored: statementNotice != null ? false : parsed.ignored,
       hasAmount: parsedAmount != null,
-      hasTriggerWord: statementNotice != null ||
+      hasTriggerWord:
+          statementNotice != null ||
           parsed.hasTriggerWord ||
           nativeMatchedTriggerWord != null,
       amount: parsedAmount,
       merchant: statementMerchant ?? parsed.merchant,
-      transactionType:
-          statementNotice != null ? 'expense' : parsed.transactionType,
+      transactionType: statementNotice != null
+          ? 'expense'
+          : parsed.transactionType,
       last4: statementNotice?.last4 ?? parsed.last4,
       institutionName: statementNotice?.institution ?? parsed.institutionName,
       matchedTriggerWord: statementNotice != null
           ? 'bill'
           : (parsed.matchedTriggerWord ?? nativeMatchedTriggerWord),
-      matchedIgnoreWord:
-          statementNotice != null ? null : parsed.matchedIgnoreWord,
+      matchedIgnoreWord: statementNotice != null
+          ? null
+          : parsed.matchedIgnoreWord,
     );
 
     matchedAccountId ??= _matchAccountToSms(state, effectiveParsed);
@@ -2580,19 +3077,25 @@ class LedgerController extends StateNotifier<LedgerState> {
       );
     }
 
-    final type = effectiveParsed.transactionType == 'income' ? 'income' : 'expense';
+    final type = effectiveParsed.transactionType == 'income'
+        ? 'income'
+        : 'expense';
     final category = _suggestCategory(
       state,
       effectiveParsed.merchant ?? effectiveParsed.rawText,
       type,
-      isMerchant: effectiveParsed.merchant != null && effectiveParsed.merchant!.isNotEmpty,
+      isMerchant:
+          effectiveParsed.merchant != null &&
+          effectiveParsed.merchant!.isNotEmpty,
     );
     final candidate = CaptureCandidate(
       id: _newId('cap'),
       source: source,
       status: 'pending',
       createdAt: actualReceivedAt,
-      rawText: effectiveParsed.rawText.isNotEmpty ? effectiveParsed.rawText : rawText,
+      rawText: effectiveParsed.rawText.isNotEmpty
+          ? effectiveParsed.rawText
+          : rawText,
       parsedAmount: parsedAmount,
       merchant: effectiveParsed.merchant,
       transactionType: type,
@@ -2616,7 +3119,7 @@ class LedgerController extends StateNotifier<LedgerState> {
 
   Future<List<CaptureImportResult>> importSmsMessagesBatchDetailed(
     List<({String text, DateTime receivedAt})> messages,
-  ) async {
+  ) => _runMutation(() async {
     final results = <CaptureImportResult>[];
     final newCandidates = <CaptureCandidate>[];
     final updatedAccounts = <String, Account>{};
@@ -2671,7 +3174,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     }
 
     return results;
-  }
+  });
 
   Future<List<CaptureCandidate>> importSmsMessagesBatch(
     List<({String text, DateTime receivedAt})> messages,
@@ -2686,7 +3189,7 @@ class LedgerController extends StateNotifier<LedgerState> {
 
   Future<List<CaptureImportResult>> importNotificationsBatchDetailed(
     List<({String text, DateTime receivedAt, String? sender})> notifications,
-  ) async {
+  ) => _runMutation(() async {
     final results = <CaptureImportResult>[];
     final newCandidates = <CaptureCandidate>[];
     final updatedAccounts = <String, Account>{};
@@ -2722,6 +3225,7 @@ class LedgerController extends StateNotifier<LedgerState> {
       }
       results.add(result);
       await CaptureDiagnostics.recordResult(
+        ownerId: state.userId,
         stage: 'scan-notification',
         result: result,
       );
@@ -2744,7 +3248,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     }
 
     return results;
-  }
+  });
 
   Future<List<CaptureCandidate>> importNotificationsBatch(
     List<({String text, DateTime receivedAt, String? sender})> notifications,
@@ -2757,7 +3261,9 @@ class LedgerController extends StateNotifier<LedgerState> {
         .toList();
   }
 
-  Future<int> importWalletCsvRows(List<ParsedWalletCsvRow> rows) async {
+  Future<int> importWalletCsvRows(
+    List<ParsedWalletCsvRow> rows,
+  ) => _runMutation(() async {
     if (rows.isEmpty) return 0;
     if (state.accounts.isEmpty) {
       throw StateError('Create an account before importing CSV rows.');
@@ -2812,9 +3318,9 @@ class LedgerController extends StateNotifier<LedgerState> {
       ),
     );
     return imported.length;
-  }
+  });
 
-  Future<int> rollbackImportBatch(String batchId) async {
+  Future<int> rollbackImportBatch(String batchId) => _runMutation(() async {
     final batch = _importBatchById(state, batchId);
     if (batch == null) throw StateError('Import batch not found.');
     if (batch.status == 'rolled_back') return 0;
@@ -2831,9 +3337,9 @@ class LedgerController extends StateNotifier<LedgerState> {
       state.copyWith(transactions: transactions, importBatches: batches),
     );
     return removed;
-  }
+  });
 
-  Future<void> addEnabledCurrency(String currency) async {
+  Future<void> addEnabledCurrency(String currency) => _runMutation(() async {
     final normalized = currency.trim().toUpperCase();
     if (normalized.isEmpty) return;
     if (state.preferences.enabledCurrencies.contains(normalized)) return;
@@ -2846,9 +3352,9 @@ class LedgerController extends StateNotifier<LedgerState> {
         preferences: state.preferences.copyWith(enabledCurrencies: enabled),
       ),
     );
-  }
+  });
 
-  Future<void> removeEnabledCurrency(String currency) async {
+  Future<void> removeEnabledCurrency(String currency) => _runMutation(() async {
     final normalized = currency.trim().toUpperCase();
     if (normalized == state.preferences.baseCurrency.toUpperCase()) return;
     final enabled = state.preferences.enabledCurrencies
@@ -2875,13 +3381,13 @@ class LedgerController extends StateNotifier<LedgerState> {
         exchangeRates: newRates,
       ),
     );
-  }
+  });
 
   Future<void> setExchangeRate({
     required String base,
     required String quote,
     required double rate,
-  }) async {
+  }) => _runMutation(() async {
     final normalizedBase = base.trim().toUpperCase();
     final normalizedQuote = quote.trim().toUpperCase();
     if (normalizedBase == normalizedQuote) return;
@@ -2907,13 +3413,15 @@ class LedgerController extends StateNotifier<LedgerState> {
       rates.add(record);
     }
     await _commit(state.copyWith(exchangeRates: rates));
-  }
+  });
 
-  Future<void> setExchangeRatesDirectly(List<ExchangeRateRecord> rates) async {
-    await _commit(state.copyWith(exchangeRates: rates));
-  }
+  Future<void> setExchangeRatesDirectly(List<ExchangeRateRecord> rates) =>
+      _runMutation(() async {
+        await _commit(state.copyWith(exchangeRates: rates));
+      });
 
   Timer? _autoBackupTimer;
+  Future<void> _backupTail = Future<void>.value();
 
   /// Auto-archives loan accounts whose current balance has reached
   /// zero (fully paid off) and pauses their associated scheduled EMIs.
@@ -2989,7 +3497,27 @@ class LedgerController extends StateNotifier<LedgerState> {
     // already taxonomy-normalized. This keeps `_commit` (called on every
     // user edit) cheap while still fully migrating+normalizing genuinely
     // legacy/out-of-date states.
-    final normalized = normalizeLedgerState(withAutoArchived);
+    final normalized = normalizeLedgerState(withAutoArchived).copyWith(
+      localRevision: state.localRevision + 1,
+      ingressReceipts: Set<String>.unmodifiable({
+        ...state.ingressReceipts,
+        ...withAutoArchived.ingressReceipts,
+      }),
+      hasAuthoritativeEmptyWallet:
+          withAutoArchived.accounts.isEmpty &&
+          withAutoArchived.transactions.isEmpty &&
+          (_isRestoring ||
+              state.hasAuthoritativeEmptyWallet ||
+              withAutoArchived.hasAuthoritativeEmptyWallet ||
+              state.accounts.isNotEmpty ||
+              state.transactions.isNotEmpty),
+    );
+    _checkSession();
+    if (active != null &&
+        active.isAuthenticated &&
+        normalized.userId != active.userId) {
+      throw StateError('The wallet belongs to a different session.');
+    }
 
     // Mark this edit unsynced *before* mutating `state` (and before the
     // `await _repository.save(...)` below) — not after both, as an earlier
@@ -3009,32 +3537,45 @@ class LedgerController extends StateNotifier<LedgerState> {
     // and `state` already updated.
     if (!_isRestoring) {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('has_unsynced_changes', true);
-      await prefs.setString(
+      _checkSession();
+      if (!await prefs.setBool('has_unsynced_changes', true)) {
+        throw StateError('Could not mark the wallet unsynced.');
+      }
+      _checkSession();
+      if (!await prefs.setString(
         'last_local_modified_at',
         DateTime.now().toUtc().toIso8601String(),
-      );
+      )) {
+        throw StateError('Could not record the wallet edit.');
+      }
+      _checkSession();
       if (active != null && active.isAuthenticated) {
-        await prefs.setString(_lastActiveUserIdKey, active.userId);
+        if (!await prefs.setString(_lastActiveUserIdKey, active.userId)) {
+          throw StateError('Could not persist wallet ownership.');
+        }
+        _checkSession();
       }
     }
 
+    _checkSession();
     final prevPrefs = state.preferences;
     final nextPrefs = normalized.preferences;
-    final capturePrefsChanged =
-        prevPrefs.smsCaptureEnabled != nextPrefs.smsCaptureEnabled ||
-        prevPrefs.notificationCaptureEnabled != nextPrefs.notificationCaptureEnabled ||
-        !foundation.listEquals(prevPrefs.smsTriggerWords, nextPrefs.smsTriggerWords) ||
-        !foundation.listEquals(prevPrefs.smsIgnoreWords, nextPrefs.smsIgnoreWords) ||
-        !foundation.listEquals(prevPrefs.notificationTriggerWords, nextPrefs.notificationTriggerWords) ||
-        !foundation.listEquals(prevPrefs.notificationIgnoreWords, nextPrefs.notificationIgnoreWords);
+    final capturePrefsChanged = _capturePreferencesChanged(
+      prevPrefs,
+      nextPrefs,
+    );
 
     state = normalized;
     await _repository.save(normalized);
+    _checkSession();
 
     if (capturePrefsChanged) {
-      unawaited(SmsSpooler.updateTriggerWords(normalized));
-      unawaited(NotificationSpooler.updateTriggerWords(normalized));
+      await _publishCaptureConfiguration();
+      _checkSession();
+      await SmsSpooler.updateTriggerWords(normalized);
+      _checkSession();
+      await NotificationSpooler.updateTriggerWords(normalized);
+      _checkSession();
       _syncSpoolPolling();
     }
 
@@ -3052,66 +3593,60 @@ class LedgerController extends StateNotifier<LedgerState> {
   Future<void> _performAutoBackup(
     LedgerState ledger, {
     LedgerUserIdentity? userOverride,
+  }) {
+    final epoch = _sessionEpoch;
+    final task = _backupTail.then(
+      (_) => _writeAutoBackupSnapshot(
+        ledger,
+        userOverride: userOverride,
+        epoch: epoch,
+      ),
+    );
+    _backupTail = task.then<void>(
+      (_) {},
+      onError: (Object error, StackTrace stack) {
+        if (error is StaleLedgerSessionException) return;
+        debugPrint('Automatic backup failed: $error');
+        debugPrintStack(stackTrace: stack);
+      },
+    );
+    return task;
+  }
+
+  void _checkBackupSession(int epoch) {
+    if (!mounted || epoch != _sessionEpoch) {
+      throw const StaleLedgerSessionException();
+    }
+  }
+
+  Future<void> _writeAutoBackupSnapshot(
+    LedgerState ledger, {
+    LedgerUserIdentity? userOverride,
+    required int epoch,
   }) async {
     if (foundation.kIsWeb) return;
     try {
+      _checkBackupSession(epoch);
       final user = userOverride ?? _activeUser;
       final suffix = buildUserBackupFileSuffix(
         displayName: user?.displayName,
         email: user?.email,
         userId: user?.userId ?? ledger.userId,
       );
-      final archive = await foundation.compute(_encodeForBackup, ledger);
+      final archive = await encodeDeviceBackup(ledger);
+      _checkBackupSession(epoch);
 
-      // 1. App documents directory -> 1Wallet subfolder
-      final docsDir = await getApplicationDocumentsDirectory();
+      final docsDir = await getApplicationSupportDirectory();
+      _checkBackupSession(epoch);
       await _writeAutoBackupToDirectory(
         Directory('${docsDir.path}/1Wallet'),
         archive,
         ledger,
         suffix: suffix,
       );
-
-      // 2. App external storage directory -> 1Wallet subfolder (Android only)
-      if (!foundation.kIsWeb && Platform.isAndroid) {
-        final extDir = await getExternalStorageDirectory();
-        if (extDir != null) {
-          await _writeAutoBackupToDirectory(
-            Directory('${extDir.path}/1Wallet'),
-            archive,
-            ledger,
-            suffix: suffix,
-          );
-        }
-
-        // 3. Public Download directory -> 1Wallet subfolder (best-effort)
-        try {
-          final downloadDir = Directory('/storage/emulated/0/Download');
-          if (await downloadDir.exists()) {
-            await _writeAutoBackupToDirectory(
-              Directory('${downloadDir.path}/1Wallet'),
-              archive,
-              ledger,
-              suffix: suffix,
-            );
-          }
-        } catch (_) {}
-
-        // 4. Public Documents directory -> 1Wallet subfolder (best-effort)
-        try {
-          final documentsDir = Directory('/storage/emulated/0/Documents');
-          if (await documentsDir.exists()) {
-            await _writeAutoBackupToDirectory(
-              Directory('${documentsDir.path}/1Wallet'),
-              archive,
-              ledger,
-              suffix: suffix,
-            );
-          }
-        } catch (_) {}
-      }
     } catch (e) {
       debugPrint('Auto backup failed: $e');
+      rethrow;
     }
   }
 
@@ -3138,10 +3673,12 @@ class LedgerController extends StateNotifier<LedgerState> {
     if (await mainFile.exists()) {
       try {
         final existingContent = await mainFile.readAsString();
-        final isSafer = await foundation.compute(
-          _isIncomingBackupSafer,
-          (existingContent, ledger),
+        final existing = await decodeBackup(
+          existingContent,
+          targetUserId: ledger.userId,
+          allowLegacy: true,
         );
+        final isSafer = LedgerState.isIncomingLedgerSafer(existing, ledger);
         // If the existing backup has more transactions or newer records than the current ledger,
         // protect it from being lost by saving it as a safety backup!
         if (!isSafer) {
@@ -3155,7 +3692,9 @@ class LedgerController extends StateNotifier<LedgerState> {
         } catch (_) {}
       }
     }
-    await mainFile.writeAsString(archive);
+    final temporary = File('${mainFile.path}.tmp');
+    await temporary.writeAsString(archive, flush: true);
+    await temporary.rename(mainFile.path);
   }
 
   @foundation.visibleForTesting
@@ -3170,14 +3709,23 @@ class LedgerController extends StateNotifier<LedgerState> {
       email: user?.email,
       userId: user?.userId ?? ledger.userId,
     );
-    final archive = _encodeForBackup(ledger);
+    final archive = await encodeDeviceBackup(ledger);
     await _writeAutoBackupToDirectory(dir, archive, ledger, suffix: suffix);
   }
 
-  Future<List<String>> _autoBackupSearchDirectories({
-    Duration? timeout,
-  }) async {
+  Future<List<String>> _autoBackupSearchDirectories({Duration? timeout}) async {
     final dirs = <String>[];
+    try {
+      final support = getApplicationSupportDirectory();
+      final directory = timeout == null
+          ? await support
+          : await support.timeout(timeout);
+      dirs.add('${directory.path}/1Wallet');
+    } catch (error) {
+      debugPrint(
+        'Application support backup directory unavailable: ${error.runtimeType}',
+      );
+    }
     try {
       final docsFuture = getApplicationDocumentsDirectory();
       final docsDir = timeout != null
@@ -3262,7 +3810,11 @@ class LedgerController extends StateNotifier<LedgerState> {
           final LedgerState decodedState;
           try {
             final content = await file.readAsString();
-            decodedState = await foundation.compute(decodeLedgerArchive, content);
+            decodedState = await decodeBackup(
+              content,
+              targetUserId: user?.userId ?? state.userId,
+              allowLegacy: true,
+            );
           } catch (_) {
             continue;
           }
@@ -3302,7 +3854,8 @@ class LedgerController extends StateNotifier<LedgerState> {
               bestFile = file;
               bestState = decodedState;
               newestTime = stat.modified;
-            } else if (newestTime == null || stat.modified.isAfter(newestTime)) {
+            } else if (newestTime == null ||
+                stat.modified.isAfter(newestTime)) {
               bestFile = file;
               bestState = decodedState;
               newestTime = stat.modified;
@@ -3367,21 +3920,26 @@ class LedgerController extends StateNotifier<LedgerState> {
       final file = candidate.file;
       try {
         if (await file.exists()) {
-          if (candidate.isLegacyUnsuffixed && isAuthenticatedUser) {
-            try {
-              final content = await file.readAsString();
-              final decoded = await foundation.compute(decodeLedgerArchive, content);
-              if (decoded.userId.isNotEmpty &&
-                  decoded.userId != 'local-user' &&
-                  decoded.userId != user.userId) {
-                continue;
-              }
-            } catch (_) {}
+          if (isAuthenticatedUser) {
+            final content = await file.readAsString();
+            final decoded = await decodeBackup(
+              content,
+              targetUserId: user.userId,
+              allowLegacy: true,
+            );
+            if (decoded.userId.isEmpty || decoded.userId == 'local-user') {
+              throw StateError(
+                'A legacy backup has no verified owner. '
+                'Review it before claiming deletion is complete.',
+              );
+            }
+            if (decoded.userId != user.userId) continue;
           }
           await file.delete();
         }
       } catch (e) {
         debugPrint('Error deleting backup file ${file.path}: $e');
+        rethrow;
       }
     }
   }
@@ -3913,15 +4471,6 @@ extension _FirstOrNull<T> on Iterable<T> {
 }
 
 void _ignoreLoadState(LedgerLoadState _) {}
-
-String _encodeForBackup(LedgerState state) {
-  return encodeLedgerArchive(state);
-}
-
-bool _isIncomingBackupSafer((String, LedgerState) args) {
-  final existingLedger = decodeLedgerArchive(args.$1);
-  return LedgerState.isIncomingLedgerSafer(existingLedger, args.$2);
-}
 
 enum _CaptureDuplicateKind {
   pendingText,

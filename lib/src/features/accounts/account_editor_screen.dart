@@ -40,7 +40,7 @@ class AccountEditorScreen extends ConsumerStatefulWidget {
 
 class _CashOpeningDraft {
   _CashOpeningDraft({required this.currency, required String amount})
-      : controller = TextEditingController(text: amount);
+    : controller = TextEditingController(text: amount);
 
   String currency;
   final TextEditingController controller;
@@ -256,9 +256,9 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                       color: Theme.of(context).cardColor.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(AppRadii.lg),
                       border: Border.all(
-                        color: Theme.of(context)
-                            .dividerColor
-                            .withValues(alpha: 0.15),
+                        color: Theme.of(
+                          context,
+                        ).dividerColor.withValues(alpha: 0.15),
                       ),
                     ),
                     child: Column(
@@ -276,20 +276,16 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                                     style: Theme.of(context)
                                         .textTheme
                                         .titleSmall
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                        ?.copyWith(fontWeight: FontWeight.w600),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
                                     'Initial cash in each currency you hold',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
+                                    style: Theme.of(context).textTheme.bodySmall
                                         ?.copyWith(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onSurfaceVariant,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
                                           fontSize: 12,
                                         ),
                                   ),
@@ -398,22 +394,31 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                           ),
                           selectedItemBuilder: (context) {
                             return [
-                              const Text('Not set', style: TextStyle(color: Colors.grey)),
+                              const Text(
+                                'Not set',
+                                style: TextStyle(color: Colors.grey),
+                              ),
                               for (int d = 1; d <= 31; d++)
-                                Text('Day $d', style: const TextStyle(fontWeight: FontWeight.w700)),
+                                Text(
+                                  'Day $d',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
                             ];
                           },
                           items: [
-                            const DropdownMenuItem(
-                              child: Text('Not set'),
-                            ),
+                            const DropdownMenuItem(child: Text('Not set')),
                             for (int d = 1; d <= 31; d++)
                               DropdownMenuItem(
                                 value: d,
-                                child: Text('Day $d (${daySuffix(d)} of month)'),
+                                child: Text(
+                                  'Day $d (${daySuffix(d)} of month)',
+                                ),
                               ),
                           ],
-                          onChanged: (val) => setState(() => _statementDay = val),
+                          onChanged: (val) =>
+                              setState(() => _statementDay = val),
                         ),
                       ),
                       const SizedBox(width: AppSpacing.sm),
@@ -427,19 +432,27 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                           ),
                           selectedItemBuilder: (context) {
                             return [
-                              const Text('Not set', style: TextStyle(color: Colors.grey)),
+                              const Text(
+                                'Not set',
+                                style: TextStyle(color: Colors.grey),
+                              ),
                               for (int d = 1; d <= 31; d++)
-                                Text('Day $d', style: const TextStyle(fontWeight: FontWeight.w700)),
+                                Text(
+                                  'Day $d',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
                             ];
                           },
                           items: [
-                            const DropdownMenuItem(
-                              child: Text('Not set'),
-                            ),
+                            const DropdownMenuItem(child: Text('Not set')),
                             for (int d = 1; d <= 31; d++)
                               DropdownMenuItem(
                                 value: d,
-                                child: Text('Day $d (${daySuffix(d)} of month)'),
+                                child: Text(
+                                  'Day $d (${daySuffix(d)} of month)',
+                                ),
                               ),
                           ],
                           onChanged: (val) => setState(() => _dueDay = val),
@@ -567,42 +580,48 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
   }
 
   Future<void> _unlockCardInline(Account account) async {
+    final owner = ref.read(ledgerProvider).userId;
     final auth = LocalAuthentication();
     try {
       final authenticated = await auth.authenticate(
         localizedReason: 'Authenticate to view secure details',
       );
-      if (authenticated && mounted) {
-        if (account.encryptedDetails != null) {
+      if (authenticated &&
+          mounted &&
+          ref.read(ledgerProvider).userId == owner) {
+        final latest = accountById(ref.read(ledgerProvider), account.id);
+        if (latest == null) throw StateError('The account no longer exists.');
+        if (latest.encryptedDetails != null) {
           String uNum = '';
           String uExp = '';
           String uCcv = '';
           final Map<String, String> uCustom = {};
 
-          try {
-            final details = account.encryptedDetails!;
-            for (final entry in details.entries) {
-              try {
-                final decrypted = await SecureKeyStore.decrypt(entry.value);
-                final k = entry.key;
-                if (k == 'number' || k == 'account_number') {
-                  uNum = decrypted;
-                } else if (k == 'expiry') {
-                  uExp = decrypted;
-                } else if (k == 'ccv') {
-                  uCcv = decrypted;
-                } else if (k == 'routing_number') {
-                  // Legacy support: convert to custom field
-                  uCustom['Routing Number'] = decrypted;
-                } else if (k != 'name' && k != 'bank_name') {
-                  uCustom[k] = decrypted;
-                }
-              } catch (e) {
-                debugPrint('Decryption error on key ${entry.key}: $e');
-              }
+          final details = latest.encryptedDetails!;
+          for (final entry in details.entries) {
+            if (statementMetadataKeys.contains(entry.key)) continue;
+            final versioned = entry.value.startsWith('v2:');
+            final decrypted = await SecureKeyStore.decrypt(
+              entry.value,
+              userId: versioned ? owner : null,
+              context: versioned
+                  ? SecureKeyStore.fieldContext(latest.id, entry.key)
+                  : null,
+            );
+            if (!mounted || ref.read(ledgerProvider).userId != owner) return;
+            final k = entry.key;
+            if (k == 'number' || k == 'account_number') {
+              uNum = decrypted;
+            } else if (k == 'expiry') {
+              uExp = decrypted;
+            } else if (k == 'ccv') {
+              uCcv = decrypted;
+            } else if (k == 'routing_number') {
+              // Legacy support: convert to custom field
+              uCustom['Routing Number'] = decrypted;
+            } else if (k != 'name' && k != 'bank_name') {
+              uCustom[k] = decrypted;
             }
-          } catch (e) {
-            debugPrint('Decryption error: $e');
           }
 
           if (mounted) {
@@ -621,8 +640,18 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
           });
         }
       }
-    } catch (e) {
-      debugPrint('Auth error: $e');
+    } catch (e, stack) {
+      debugPrint('Secure card access failed: ${e.runtimeType}');
+      debugPrintStack(stackTrace: stack);
+      if (mounted && ref.read(ledgerProvider).userId == owner) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Secure details could not be unlocked. Original data was preserved.',
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -706,16 +735,16 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     if (account != null && account.effectiveOpeningBalances.isNotEmpty) {
       for (final op in account.effectiveOpeningBalances) {
         final amt = op.amountMinor / math.pow(10, minorUnits(op.currency));
-        final text =
-            amt == 0 ? '' : amt.toStringAsFixed(minorUnits(op.currency));
-        _cashOpenings.add(_CashOpeningDraft(currency: op.currency, amount: text));
+        final text = amt == 0
+            ? ''
+            : amt.toStringAsFixed(minorUnits(op.currency));
+        _cashOpenings.add(
+          _CashOpeningDraft(currency: op.currency, amount: text),
+        );
       }
     }
     if (_cashOpenings.isEmpty) {
-      _cashOpenings.add(_CashOpeningDraft(
-        currency: baseCurr,
-        amount: '',
-      ));
+      _cashOpenings.add(_CashOpeningDraft(currency: baseCurr, amount: ''));
     }
 
     _includeInTotals = account?.includeInTotals ?? true;
@@ -859,12 +888,15 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
 
   Future<void> _confirmDeleteAccount(LedgerState state, Account account) async {
     // 1. Check if the account is currently tied to any active plans / scheduled transactions
-    final activePlans = state.transactions.where(
-      (transaction) =>
-          (transaction.accountId == account.id ||
-              transaction.counterAccountId == account.id) &&
-          (transaction.status == 'scheduled' || transaction.status == 'paused'),
-    ).toList();
+    final activePlans = state.transactions
+        .where(
+          (transaction) =>
+              (transaction.accountId == account.id ||
+                  transaction.counterAccountId == account.id) &&
+              (transaction.status == 'scheduled' ||
+                  transaction.status == 'paused'),
+        )
+        .toList();
 
     if (activePlans.isNotEmpty) {
       final planCount = activePlans.length;
@@ -974,17 +1006,22 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
         _selectedType = next;
         if (next == 'cash') {
           if (_cashOpenings.isEmpty) {
-            _cashOpenings.add(_CashOpeningDraft(
-              currency: _selectedCurrency ?? 'USD',
-              amount: _openingBalanceController.text.trim(),
-            ));
+            _cashOpenings.add(
+              _CashOpeningDraft(
+                currency: _selectedCurrency ?? 'USD',
+                amount: _openingBalanceController.text.trim(),
+              ),
+            );
           }
         } else {
           if (_cashOpenings.isNotEmpty) {
             _selectedCurrency = _cashOpenings.first.currency;
             if (_cashOpenings.first.controller.text.trim().isNotEmpty) {
-              _openingBalanceController.text =
-                  _cashOpenings.first.controller.text.trim();
+              _openingBalanceController.text = _cashOpenings
+                  .first
+                  .controller
+                  .text
+                  .trim();
             }
           }
         }
@@ -1016,8 +1053,9 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
   ) {
     final entry = _cashOpenings[index];
     final currencyInfo = getCurrencyInfo(entry.currency);
-    final symbol =
-        NumberFormat.simpleCurrency(name: entry.currency).currencySymbol;
+    final symbol = NumberFormat.simpleCurrency(
+      name: entry.currency,
+    ).currencySymbol;
 
     return Row(
       children: [
@@ -1043,10 +1081,9 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
               vertical: AppSpacing.sm,
             ),
             decoration: BoxDecoration(
-              color: Theme.of(context)
-                  .colorScheme
-                  .surfaceContainerHighest
-                  .withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(AppRadii.md),
               border: Border.all(
                 color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
@@ -1068,9 +1105,9 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                 ],
                 Text(
                   entry.currency,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(width: 4),
                 const Icon(Icons.arrow_drop_down, size: 16),
@@ -1265,8 +1302,7 @@ Future<int?> showDayOfMonthPicker({
 }) async {
   final theme = Theme.of(context);
   final scheme = theme.colorScheme;
-  final isAmoled =
-      theme.scaffoldBackgroundColor == AppColors.amoledBackground;
+  final isAmoled = theme.scaffoldBackgroundColor == AppColors.amoledBackground;
   final isDesktop = AppResponsiveLayout.isDesktop(context);
 
   Widget buildPickerContent(BuildContext pickerContext) {
@@ -1356,8 +1392,7 @@ Future<int?> showDayOfMonthPicker({
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate:
-                const SliverGridDelegateWithFixedCrossAxisCount(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 7,
               mainAxisSpacing: 8,
               crossAxisSpacing: 8,
@@ -1377,24 +1412,25 @@ Future<int?> showDayOfMonthPicker({
                       color: isSelected
                           ? scheme.primary
                           : (isAmoled
-                              ? AppColors.amoledBackground
-                              : scheme.surfaceContainerHighest
-                                  .withValues(alpha: 0.5)),
+                                ? AppColors.amoledBackground
+                                : scheme.surfaceContainerHighest.withValues(
+                                    alpha: 0.5,
+                                  )),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: isSelected
                             ? scheme.primary
                             : (isAmoled
-                                ? Colors.white.withAlpha(24)
-                                : scheme.outlineVariant
-                                    .withValues(alpha: 0.5)),
+                                  ? Colors.white.withAlpha(24)
+                                  : scheme.outlineVariant.withValues(
+                                      alpha: 0.5,
+                                    )),
                         width: isSelected ? 2.0 : 1.0,
                       ),
                       boxShadow: isSelected
                           ? [
                               BoxShadow(
-                                color: scheme.primary
-                                    .withValues(alpha: 0.35),
+                                color: scheme.primary.withValues(alpha: 0.35),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -1408,9 +1444,7 @@ Future<int?> showDayOfMonthPicker({
                         fontWeight: isSelected
                             ? FontWeight.w900
                             : FontWeight.w600,
-                        color: isSelected
-                            ? scheme.onPrimary
-                            : scheme.onSurface,
+                        color: isSelected ? scheme.onPrimary : scheme.onSurface,
                         fontSize: 15,
                       ),
                     ),
@@ -1428,10 +1462,7 @@ Future<int?> showDayOfMonthPicker({
         decoration: BoxDecoration(
           color: AppColors.amoledBackground,
           borderRadius: BorderRadius.circular(AppRadii.xl),
-          border: Border.all(
-            color: Colors.white.withAlpha(24),
-            width: 0.8,
-          ),
+          border: Border.all(color: Colors.white.withAlpha(24), width: 0.8),
         ),
         child: inner,
       );

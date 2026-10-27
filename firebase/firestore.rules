@@ -3,7 +3,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
+      return request.auth != null && request.auth.uid == userId &&
+        !exists(/databases/$(database)/documents/accountDeletionJobs/$(userId));
+    }
+
+    match /accountDeletionJobs/{userId} {
+      allow get: if request.auth != null && request.auth.uid == userId;
+      allow list, create, update, delete: if false;
     }
 
     function isStringOrNull(value) {

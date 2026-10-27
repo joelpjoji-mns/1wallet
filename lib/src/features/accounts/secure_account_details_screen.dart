@@ -34,11 +34,14 @@ class _SecureAccountDetailsScreenState
 
   // Custom fields
   final List<MapEntry<String, TextEditingController>> _customFields = [];
+  bool _decryptionFailed = false;
+  bool _saving = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
       final state = ref.read(ledgerProvider);
       final account = state.accounts.firstWhereOrNull(
         (a) => a.id == widget.accountId,
@@ -52,15 +55,28 @@ class _SecureAccountDetailsScreenState
           bool hasLegacy = false;
 
           for (final entry in details.entries) {
+            if (statementMetadataKeys.contains(entry.key)) continue;
             try {
-              final decrypted = await SecureKeyStore.decrypt(entry.value);
+              final versioned = entry.value.startsWith('v2:');
+              final decrypted = await SecureKeyStore.decrypt(
+                entry.value,
+                userId: versioned ? state.userId : null,
+                context: versioned
+                    ? SecureKeyStore.fieldContext(account.id, entry.key)
+                    : null,
+              );
+              if (!mounted || ref.read(ledgerProvider).userId != state.userId) {
+                return;
+              }
               decryptedEntries[entry.key] = decrypted;
               if (SecureKeyStore.isLegacyFormat(entry.value)) hasLegacy = true;
             } catch (e) {
-              debugPrint('Decryption error on key ${entry.key}: $e');
+              _decryptionFailed = true;
+              debugPrint('Secure details unavailable: ${e.runtimeType}');
             }
           }
 
+          if (!mounted) return;
           decryptedEntries.forEach((k, decrypted) {
             if (k == 'number' || k == 'account_number') {
               if (account.type == 'card' || account.type == 'credit_card') {
@@ -87,11 +103,20 @@ class _SecureAccountDetailsScreenState
           });
 
           // Silently migrate legacy-format values to the new secure format.
-          if (hasLegacy && mounted) {
+          if (hasLegacy && mounted && !_decryptionFailed) {
             unawaited(_saveSecureDetails(account, silent: true));
           }
 
           if (mounted) setState(() {});
+          if (_decryptionFailed && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Some secure fields cannot be decrypted on this device. Original data was preserved; saving is disabled.',
+                ),
+              ),
+            );
+          }
         } catch (e) {
           debugPrint('Decryption error: $e');
         }
@@ -164,6 +189,30 @@ class _SecureAccountDetailsScreenState
       ),
     );
 
+    if (result == true &&
+        mounted &&
+        (statementMetadataKeys.contains(nameCtrl.text) ||
+            const {
+              'number',
+              'account_number',
+              'expiry',
+              'ccv',
+              'routing_number',
+              'name',
+              'bank_name',
+            }.contains(nameCtrl.text) ||
+            _customFields.any((field) => field.key == nameCtrl.text))) {
+      valueCtrl.dispose();
+      nameCtrl.dispose();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'That field name is reserved or already in use. Choose another name.',
+          ),
+        ),
+      );
+      return;
+    }
     if (result == true && nameCtrl.text.isNotEmpty && mounted) {
       setState(() {
         _customFields.add(MapEntry(nameCtrl.text, valueCtrl));
@@ -180,52 +229,77 @@ class _SecureAccountDetailsScreenState
     Account account, {
     bool silent = false,
   }) async {
-    final Map<String, String> newEncrypted = {};
-    final isCard = account.type == 'card' || account.type == 'credit_card';
-    String? newCardLast4 = account.cardLast4;
-    String? newAccountLast4 = account.accountLast4;
-
-    if (isCard) {
-      if (_cardNumberController.text.isNotEmpty) {
-        newEncrypted['number'] = await SecureKeyStore.encrypt(
-          _cardNumberController.text,
-        );
-      }
-      if (_expiryController.text.isNotEmpty) {
-        newEncrypted['expiry'] = await SecureKeyStore.encrypt(
-          _expiryController.text,
-        );
-      }
-      if (_ccvController.text.isNotEmpty) {
-        newEncrypted['ccv'] = await SecureKeyStore.encrypt(_ccvController.text);
-      }
-      if (_cardNumberController.text.length >= 4) {
-        newCardLast4 = _cardNumberController.text.substring(
-          _cardNumberController.text.length - 4,
-        );
-      }
-    } else {
-      if (_accountNumberController.text.isNotEmpty) {
-        newEncrypted['account_number'] = await SecureKeyStore.encrypt(
-          _accountNumberController.text,
-        );
-      }
-      if (_accountNumberController.text.length >= 4) {
-        newAccountLast4 = _accountNumberController.text.substring(
-          _accountNumberController.text.length - 4,
-        );
-      }
-    }
-
-    for (final field in _customFields) {
-      if (field.value.text.isNotEmpty) {
-        newEncrypted[field.key] = await SecureKeyStore.encrypt(
-          field.value.text,
-        );
-      }
-    }
-
+    if (_saving || _decryptionFailed || !mounted) return;
+    _saving = true;
+    final owner = ref.read(ledgerProvider).userId;
+    final cardNumber = _cardNumberController.text;
+    final expiry = _expiryController.text;
+    final ccv = _ccvController.text;
+    final accountNumber = _accountNumberController.text;
+    final fields = [
+      for (final field in _customFields) MapEntry(field.key, field.value.text),
+    ];
+    final Map<String, String> newEncrypted = {
+      for (final entry
+          in (account.encryptedDetails ?? const <String, String>{}).entries)
+        if (statementMetadataKeys.contains(entry.key)) entry.key: entry.value,
+    };
     try {
+      final isCard = account.type == 'card' || account.type == 'credit_card';
+      String? newCardLast4 = account.cardLast4;
+      String? newAccountLast4 = account.accountLast4;
+
+      if (isCard) {
+        if (cardNumber.isNotEmpty) {
+          newEncrypted['number'] = await SecureKeyStore.encrypt(
+            cardNumber,
+            userId: owner,
+            context: SecureKeyStore.fieldContext(account.id, 'number'),
+          );
+        }
+        if (expiry.isNotEmpty) {
+          newEncrypted['expiry'] = await SecureKeyStore.encrypt(
+            expiry,
+            userId: owner,
+            context: SecureKeyStore.fieldContext(account.id, 'expiry'),
+          );
+        }
+        if (ccv.isNotEmpty) {
+          newEncrypted['ccv'] = await SecureKeyStore.encrypt(
+            ccv,
+            userId: owner,
+            context: SecureKeyStore.fieldContext(account.id, 'ccv'),
+          );
+        }
+        if (cardNumber.length >= 4) {
+          newCardLast4 = cardNumber.substring(cardNumber.length - 4);
+        }
+      } else {
+        if (accountNumber.isNotEmpty) {
+          newEncrypted['account_number'] = await SecureKeyStore.encrypt(
+            accountNumber,
+            userId: owner,
+            context: SecureKeyStore.fieldContext(account.id, 'account_number'),
+          );
+        }
+        if (accountNumber.length >= 4) {
+          newAccountLast4 = accountNumber.substring(accountNumber.length - 4);
+        }
+      }
+
+      for (final field in fields) {
+        if (field.value.isNotEmpty) {
+          newEncrypted[field.key] = await SecureKeyStore.encrypt(
+            field.value,
+            userId: owner,
+            context: SecureKeyStore.fieldContext(account.id, field.key),
+          );
+        }
+      }
+
+      if (!mounted || ref.read(ledgerProvider).userId != owner) {
+        throw const StaleLedgerSessionException();
+      }
       await ref
           .read(ledgerProvider.notifier)
           .upsertAccount(
@@ -235,6 +309,7 @@ class _SecureAccountDetailsScreenState
             currency: account.currency,
             color: account.color,
             institution: account.institution,
+            groupName: account.groupName,
             cardLast4: newCardLast4,
             accountLast4: newAccountLast4,
             includeInTotals: account.includeInTotals,
@@ -254,7 +329,18 @@ class _SecureAccountDetailsScreenState
         );
       }
     } catch (e) {
-      debugPrint('Save error: $e');
+      debugPrint('Secure details save failed: ${e.runtimeType}');
+      if (mounted && !silent) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Secure details could not be persisted. Review this wallet and retry.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      _saving = false;
     }
   }
 

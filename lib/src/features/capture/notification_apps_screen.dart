@@ -173,10 +173,12 @@ class _NotificationAppsScreenState
                               }
                               ref
                                   .read(ledgerProvider.notifier)
-                                  .updatePreferences(
-                                    prefs.copyWith(
-                                      notificationTargetPackages: next.toList(),
-                                    ),
+                                  .updatePreferencesWith(
+                                    (livePreferences) =>
+                                        livePreferences.copyWith(
+                                          notificationTargetPackages: next
+                                              .toList(),
+                                        ),
                                   );
                             },
                           );

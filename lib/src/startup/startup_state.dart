@@ -7,6 +7,7 @@ import '../data/ledger_models.dart';
 import '../data/ledger_providers.dart';
 import '../features/onboarding/onboarding_controller.dart';
 import '../features/settings/permission_setup_controller.dart';
+import '../features/settings/account_deletion_controller.dart';
 import '../theme/theme_controller.dart';
 
 final startupStateProvider = Provider<StartupState>((ref) {
@@ -14,7 +15,11 @@ final startupStateProvider = Provider<StartupState>((ref) {
   final ledgerLoad = ref.watch(ledgerLoadStateProvider);
   final ledgerSummary = ref.watch(
     ledgerProvider.select(
-      (s) => (userId: s.userId, hasWalletData: _hasWalletData(s)),
+      (s) => (
+        userId: s.userId,
+        hasWalletData: _hasWalletData(s),
+        authoritativeEmpty: s.hasAuthoritativeEmptyWallet,
+      ),
     ),
   );
   final onboarding = ref.watch(onboardingControllerProvider);
@@ -23,6 +28,10 @@ final startupStateProvider = Provider<StartupState>((ref) {
     themeControllerProvider.select((s) => s.isLoaded),
   );
   final cloudSync = ref.watch(cloudSyncControllerProvider);
+  final deletion = ref.watch(accountDeletionControllerProvider);
+  if (deletion.operationPending || cloudSync.accountDeletionPending) {
+    return const StartupState.ready(destination: StartupDestination.deletion);
+  }
 
   if (!isThemeLoaded || auth.phase == AuthPhase.initializing) {
     return const StartupState.pending(
@@ -55,7 +64,8 @@ final startupStateProvider = Provider<StartupState>((ref) {
   }
 
   final hasWalletData =
-      (ledgerSummary.userId == userId || ledgerSummary.userId == 'local-user') &&
+      (ledgerSummary.userId == userId ||
+          ledgerSummary.userId == 'local-user') &&
       ledgerSummary.hasWalletData;
 
   if (permissionSetup.userId != userId && !permissionSetup.isLoading) {
@@ -91,7 +101,12 @@ final startupStateProvider = Provider<StartupState>((ref) {
   // Existing local/restored data is authoritative for startup routing. Do not
   // keep the user on onboarding or a sync splash while usable wallet data is
   // already present; cloud sync can finish in the background.
-  if (hasWalletData) {
+  final hasVerifiedLocalEmptyWallet =
+      ledgerSummary.userId == userId &&
+      ledgerSummary.authoritativeEmpty &&
+      cloudSync.metadata?.userId == userId &&
+      cloudSync.metadata?.lastPulledAt != null;
+  if (hasWalletData || hasVerifiedLocalEmptyWallet) {
     if (!onboarding.completed || onboarding.userId != userId) {
       Future.microtask(() {
         ref
@@ -159,6 +174,11 @@ final startupStateProvider = Provider<StartupState>((ref) {
   // The user already has an established wallet in Firebase. Clobbering it with a
   // fresh onboarding setup must never be allowed.
   if (cloudSync.hasCloudWallet) {
+    if (cloudSync.bootstrapComplete &&
+        cloudSync.bootstrappedUserId == userId &&
+        cloudSync.metadata?.lastPulledAt != null) {
+      return const StartupState.ready(destination: StartupDestination.home);
+    }
     return const StartupState.recoverableError(
       title: 'Cloud wallet found',
       message:
@@ -176,7 +196,14 @@ bool _hasWalletData(LedgerState ledger) {
 
 enum StartupStage { session, wallet, ready }
 
-enum StartupDestination { launch, login, permissions, onboarding, home }
+enum StartupDestination {
+  launch,
+  login,
+  permissions,
+  onboarding,
+  home,
+  deletion,
+}
 
 @immutable
 class StartupState {

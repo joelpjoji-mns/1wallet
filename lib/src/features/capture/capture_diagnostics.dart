@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -114,39 +115,51 @@ class CaptureDiagnostics {
   static const _key = 'one_wallet_flutter.capture_diagnostics';
   static const _maxEvents = 150;
 
-  static Future<List<CaptureDiagnosticEvent>> recentEvents() async {
+  static Future<List<CaptureDiagnosticEvent>> recentEvents({
+    String ownerId = 'local-user',
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload();
-    final raw = prefs.getString(_key);
+    final raw = prefs.getString('$_key.$ownerId');
     if (raw == null || raw.trim().isEmpty) return const [];
     try {
       final decoded = jsonDecode(raw);
-      if (decoded is! List) return const [];
+      if (decoded is! List) {
+        throw const FormatException('Diagnostic history must be a list.');
+      }
       final events = decoded
           .map(CaptureDiagnosticEvent.fromJson)
           .whereType<CaptureDiagnosticEvent>()
           .toList();
       events.sort((a, b) => b.timestamp.compareTo(a.timestamp));
       return events;
-    } catch (_) {
-      return const [];
+    } catch (error, stack) {
+      debugPrint('Capture diagnostic history is invalid: ${error.runtimeType}');
+      debugPrintStack(stackTrace: stack);
+      rethrow;
     }
   }
 
-  static Future<void> recordEvent(CaptureDiagnosticEvent event) async {
+  static Future<void> recordEvent(
+    CaptureDiagnosticEvent event, {
+    String ownerId = 'local-user',
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload();
-    final events = await recentEvents();
+    final events = await recentEvents(ownerId: ownerId);
     final next = [
       event,
       ...events,
     ].take(_maxEvents).map((item) => jsonEncode(item.toJson())).toList();
-    await prefs.setString(_key, jsonEncode(next));
+    if (!await prefs.setString('$_key.$ownerId', jsonEncode(next))) {
+      throw StateError('Could not persist capture diagnostics.');
+    }
   }
 
   static Future<void> recordResult({
     required String stage,
     required CaptureImportResult result,
+    String ownerId = 'local-user',
   }) {
     return recordEvent(
       CaptureDiagnosticEvent(
@@ -167,11 +180,21 @@ class CaptureDiagnostics {
         nativeAccepted: result.nativeAccepted,
         errorMessage: result.errorMessage,
       ),
+      ownerId: ownerId,
     );
   }
 
-  static Future<void> clear() async {
+  static Future<void> clear({String ownerId = 'local-user'}) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_key);
+    if (!await prefs.remove('$_key.$ownerId')) {
+      throw StateError('Could not clear account diagnostics.');
+    }
+  }
+
+  static Future<void> clearLegacy() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!await prefs.remove(_key) || !await prefs.remove('$_key.unassigned')) {
+      throw StateError('Could not clear unassigned diagnostic history.');
+    }
   }
 }

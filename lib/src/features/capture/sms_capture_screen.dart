@@ -61,8 +61,8 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
 
   LedgerPreferences get _prefs => ref.read(ledgerProvider).preferences;
 
-  void _updatePrefs(LedgerPreferences next) {
-    ref.read(ledgerProvider.notifier).updatePreferences(next);
+  void _updatePrefs(LedgerPreferences Function(LedgerPreferences) next) {
+    ref.read(ledgerProvider.notifier).updatePreferencesWith(next);
   }
 
   @override
@@ -127,7 +127,10 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                   contentPadding: EdgeInsets.zero,
                   value: prefs.smsCaptureEnabled,
                   onChanged: (value) {
-                    _updatePrefs(prefs.copyWith(smsCaptureEnabled: value));
+                    _updatePrefs(
+                      (livePreferences) =>
+                          livePreferences.copyWith(smsCaptureEnabled: value),
+                    );
                   },
                   title: const Text('Enable SMS capture'),
                   subtitle: Text(
@@ -229,10 +232,14 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                 'Any of these signals a real transaction. Add words your bank uses.',
             words: prefs.smsTriggerWords,
             accent: scheme.primary,
-            onChanged: (words) =>
-                _updatePrefs(prefs.copyWith(smsTriggerWords: words)),
+            onChanged: (words) => _updatePrefs(
+              (livePreferences) =>
+                  livePreferences.copyWith(smsTriggerWords: words),
+            ),
             onReset: () => _updatePrefs(
-              prefs.copyWith(smsTriggerWords: kDefaultSmsTriggerWords),
+              (livePreferences) => livePreferences.copyWith(
+                smsTriggerWords: kDefaultSmsTriggerWords,
+              ),
             ),
           ),
           const Gap(AppSpacing.lg),
@@ -244,10 +251,14 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                 'If any of these appear the message is never queued or notified.',
             words: prefs.smsIgnoreWords,
             accent: scheme.error,
-            onChanged: (words) =>
-                _updatePrefs(prefs.copyWith(smsIgnoreWords: words)),
+            onChanged: (words) => _updatePrefs(
+              (livePreferences) =>
+                  livePreferences.copyWith(smsIgnoreWords: words),
+            ),
             onReset: () => _updatePrefs(
-              prefs.copyWith(smsIgnoreWords: kDefaultSmsIgnoreWords),
+              (livePreferences) => livePreferences.copyWith(
+                smsIgnoreWords: kDefaultSmsIgnoreWords,
+              ),
             ),
           ),
           const Gap(AppSpacing.lg),
@@ -299,7 +310,9 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                                 )
                                 .toList();
                             _updatePrefs(
-                              prefs.copyWith(smsIgnoreWords: nextIgnores),
+                              (livePreferences) => livePreferences.copyWith(
+                                smsIgnoreWords: nextIgnores,
+                              ),
                             );
                             _showMessage('Removed "$word" from ignore words.');
                           },
@@ -330,7 +343,9 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                                 )
                                 .toList();
                             _updatePrefs(
-                              prefs.copyWith(smsTriggerWords: nextTriggers),
+                              (livePreferences) => livePreferences.copyWith(
+                                smsTriggerWords: nextTriggers,
+                              ),
                             );
                             _showMessage('Removed "$word" from trigger words.');
                           },
@@ -374,7 +389,9 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                                   word,
                                 ];
                                 _updatePrefs(
-                                  prefs.copyWith(smsTriggerWords: nextTriggers),
+                                  (livePreferences) => livePreferences.copyWith(
+                                    smsTriggerWords: nextTriggers,
+                                  ),
                                 );
                                 _showMessage('Added "$word" to trigger words.');
                               },
@@ -670,9 +687,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
         final theme = Theme.of(sheetContext);
         final scheme = theme.colorScheme;
         final txMap = {for (final tx in state.transactions) tx.id: tx};
-        final candidateMap = {
-          for (final c in state.captureCandidates) c.id: c,
-        };
+        final candidateMap = {for (final c in state.captureCandidates) c.id: c};
 
         return DraggableScrollableSheet(
           initialChildSize: 0.65,
@@ -785,7 +800,10 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                         }
 
                         final amountText = parsed.amount != null
-                            ? formatMoney(parsed.amount!, state.preferences.locale)
+                            ? formatMoney(
+                                parsed.amount!,
+                                state.preferences.locale,
+                              )
                             : null;
 
                         return Card(
@@ -832,14 +850,17 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                                               Flexible(
                                                 child: Text(
                                                   parsed.merchant ??
-                                                      (parsed.transactionType == 'income'
+                                                      (parsed.transactionType ==
+                                                              'income'
                                                           ? 'Incoming payment'
                                                           : 'Payment'),
                                                   style: theme
-                                                      .textTheme.titleSmall
+                                                      .textTheme
+                                                      .titleSmall
                                                       ?.copyWith(
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
                                                   overflow:
                                                       TextOverflow.ellipsis,
                                                 ),
@@ -848,14 +869,17 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                                                 Text(
                                                   amountText,
                                                   style: theme
-                                                      .textTheme.titleSmall
+                                                      .textTheme
+                                                      .titleSmall
                                                       ?.copyWith(
-                                                    fontWeight: FontWeight.bold,
-                                                    color: parsed.transactionType ==
-                                                            'income'
-                                                        ? scheme.primary
-                                                        : scheme.error,
-                                                  ),
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color:
+                                                            parsed.transactionType ==
+                                                                'income'
+                                                            ? scheme.primary
+                                                            : scheme.error,
+                                                      ),
                                                 ),
                                             ],
                                           ),
@@ -867,20 +891,22 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                                             ),
                                             decoration: BoxDecoration(
                                               color: isDuplicate
-                                                  ? scheme.tertiary
-                                                      .withAlpha(35)
-                                                  : scheme.primary
-                                                      .withAlpha(30),
+                                                  ? scheme.tertiary.withAlpha(
+                                                      35,
+                                                    )
+                                                  : scheme.primary.withAlpha(
+                                                      30,
+                                                    ),
                                               borderRadius:
                                                   BorderRadius.circular(4),
                                             ),
                                             child: Text(
                                               isDuplicate
                                                   ? (item.reason ==
-                                                          CaptureBlockReason
-                                                              .duplicatePosted
-                                                      ? 'Duplicate: already entered'
-                                                      : 'Duplicate: already in review')
+                                                            CaptureBlockReason
+                                                                .duplicatePosted
+                                                        ? 'Duplicate: already entered'
+                                                        : 'Duplicate: already in review')
                                                   : 'Added to review',
                                               style: TextStyle(
                                                 fontSize: 11,
@@ -909,8 +935,9 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                                 if (isDuplicate && dupId != null) ...[
                                   const SizedBox(height: AppSpacing.sm),
                                   InkWell(
-                                    borderRadius:
-                                        BorderRadius.circular(AppRadii.sm),
+                                    borderRadius: BorderRadius.circular(
+                                      AppRadii.sm,
+                                    ),
                                     onTap: () {
                                       Navigator.of(sheetContext).pop();
                                       if (dupType == 'transaction') {
@@ -926,8 +953,9 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                                       ),
                                       decoration: BoxDecoration(
                                         color: scheme.tertiary.withAlpha(20),
-                                        borderRadius:
-                                            BorderRadius.circular(AppRadii.sm),
+                                        borderRadius: BorderRadius.circular(
+                                          AppRadii.sm,
+                                        ),
                                         border: Border.all(
                                           color: scheme.tertiary.withAlpha(60),
                                         ),
@@ -944,11 +972,14 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                                             child: Text(
                                               dupType == 'transaction'
                                                   ? (matchedTx != null
-                                                      ? 'View transaction: ${matchedTx.name ?? formatMoney(matchedTx.amount, state.preferences.locale)}'
-                                                      : 'View matched transaction')
-                                                  : (matchedCandidate != null && matchedCandidate.merchant != null
-                                                      ? 'View candidate: ${matchedCandidate.merchant}'
-                                                      : 'View in review queue'),
+                                                        ? 'View transaction: ${matchedTx.name ?? formatMoney(matchedTx.amount, state.preferences.locale)}'
+                                                        : 'View matched transaction')
+                                                  : (matchedCandidate != null &&
+                                                            matchedCandidate
+                                                                    .merchant !=
+                                                                null
+                                                        ? 'View candidate: ${matchedCandidate.merchant}'
+                                                        : 'View in review queue'),
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w600,

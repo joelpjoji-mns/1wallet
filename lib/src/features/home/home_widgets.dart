@@ -28,11 +28,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 final _homeScheduledTransactionsProvider =
     Provider.autoDispose<List<TransactionRecord>>((ref) {
-      ref.watch(
-        ledgerProvider.select(
-          (s) => (s.transactions, s.accounts),
-        ),
-      );
+      ref.watch(ledgerProvider.select((s) => (s.transactions, s.accounts)));
       final state = ref.read(ledgerProvider);
       return scheduledTransactions(state);
     });
@@ -126,8 +122,11 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
       widget.state.preferences.homeWidgetFilters,
     );
     newFilters['balanceHero'] = value;
-    ref.read(ledgerProvider.notifier).updatePreferences(
-          widget.state.preferences.copyWith(homeWidgetFilters: newFilters),
+    ref
+        .read(ledgerProvider.notifier)
+        .updatePreferencesWith(
+          (livePreferences) =>
+              livePreferences.copyWith(homeWidgetFilters: newFilters),
         );
   }
 
@@ -176,7 +175,8 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
         .toList();
 
     final theme = Theme.of(context);
-    final isAmoled = theme.scaffoldBackgroundColor == AppColors.amoledBackground;
+    final isAmoled =
+        theme.scaffoldBackgroundColor == AppColors.amoledBackground;
     final isDark = theme.brightness == Brightness.dark;
 
     return Container(
@@ -189,8 +189,8 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
           color: isAmoled
               ? Colors.white.withAlpha(24)
               : (isDark
-                  ? scheme.outlineVariant.withAlpha(50)
-                  : scheme.outlineVariant),
+                    ? scheme.outlineVariant.withAlpha(50)
+                    : scheme.outlineVariant),
           width: 0.8,
         ),
       ),
@@ -468,8 +468,11 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
           state.preferences.homeWidgetFilters,
         );
         newFilters['recentRecords'] = value;
-        ref.read(ledgerProvider.notifier).updatePreferences(
-              state.preferences.copyWith(homeWidgetFilters: newFilters),
+        ref
+            .read(ledgerProvider.notifier)
+            .updatePreferencesWith(
+              (livePreferences) =>
+                  livePreferences.copyWith(homeWidgetFilters: newFilters),
             );
       },
       child: recent.isEmpty
@@ -547,8 +550,11 @@ class _BalanceTrendHomeWidgetState
       widget.state.preferences.homeWidgetFilters,
     );
     newFilters['balanceTrend'] = value;
-    await ref.read(ledgerProvider.notifier).updatePreferences(
-          widget.state.preferences.copyWith(homeWidgetFilters: newFilters),
+    await ref
+        .read(ledgerProvider.notifier)
+        .updatePreferencesWith(
+          (livePreferences) =>
+              livePreferences.copyWith(homeWidgetFilters: newFilters),
         );
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('balance_trend_period', value);
@@ -868,248 +874,261 @@ class _BalanceTrendHomeWidgetState
                   height: _chartHeight,
                   child: RepaintBoundary(
                     child: LineChart(
-                    LineChartData(
-                      clipData: const FlClipData.all(),
-                      gridData: FlGridData(
-                        horizontalInterval: niceInterval,
-                        verticalInterval: niceXInterval,
-                        getDrawingHorizontalLine: (value) => FlLine(
-                          color: scheme.outlineVariant.withAlphaFactor(0.25),
-                          strokeWidth: 0.5,
-                          dashArray: [3, 5],
-                        ),
-                        getDrawingVerticalLine: (value) => FlLine(
-                          color: scheme.outlineVariant.withAlphaFactor(0.25),
-                          strokeWidth: 0.5,
-                          dashArray: [3, 5],
-                        ),
-                      ),
-                      titlesData: FlTitlesData(
-                        topTitles: const AxisTitles(),
-                        rightTitles: const AxisTitles(),
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 52,
-                            interval: niceInterval,
-                            getTitlesWidget: (value, meta) {
-                              return PrivacyText(
-                                formatCompact(value),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: scheme.onSurfaceVariant,
-                                ),
-                              );
-                            },
+                      LineChartData(
+                        clipData: const FlClipData.all(),
+                        gridData: FlGridData(
+                          horizontalInterval: niceInterval,
+                          verticalInterval: niceXInterval,
+                          getDrawingHorizontalLine: (value) => FlLine(
+                            color: scheme.outlineVariant.withAlphaFactor(0.25),
+                            strokeWidth: 0.5,
+                            dashArray: [3, 5],
+                          ),
+                          getDrawingVerticalLine: (value) => FlLine(
+                            color: scheme.outlineVariant.withAlphaFactor(0.25),
+                            strokeWidth: 0.5,
+                            dashArray: [3, 5],
                           ),
                         ),
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 32,
-                            interval: niceXInterval,
-                            getTitlesWidget: (value, meta) {
-                              final idx = value.toInt();
-                              if (idx < 0 || idx >= totalN) {
-                                return const SizedBox.shrink();
-                              }
+                        titlesData: FlTitlesData(
+                          topTitles: const AxisTitles(),
+                          rightTitles: const AxisTitles(),
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: 52,
+                              interval: niceInterval,
+                              getTitlesWidget: (value, meta) {
+                                return PrivacyText(
+                                  formatCompact(value),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: 32,
+                              interval: niceXInterval,
+                              getTitlesWidget: (value, meta) {
+                                final idx = value.toInt();
+                                if (idx < 0 || idx >= totalN) {
+                                  return const SizedBox.shrink();
+                                }
 
-                              if (idx == nowIndex) {
+                                if (idx == nowIndex) {
+                                  return SideTitleWidget(
+                                    meta: meta,
+                                    child: Text(
+                                      'Now',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: scheme.primary,
+                                      ),
+                                      softWrap: false,
+                                    ),
+                                  );
+                                }
+
+                                final date = pastTrend.isNotEmpty
+                                    ? pastTrend.first.date.add(
+                                        Duration(days: idx),
+                                      )
+                                    : nowRounded.add(
+                                        Duration(days: idx - nowIndex),
+                                      );
+
                                 return SideTitleWidget(
                                   meta: meta,
                                   child: Text(
-                                    'Now',
+                                    _shortDate(
+                                      date,
+                                      widget.state.preferences.locale,
+                                    ),
                                     style: TextStyle(
                                       fontSize: 9,
-                                      fontWeight: FontWeight.bold,
-                                      color: scheme.primary,
+                                      color: scheme.onSurfaceVariant,
                                     ),
                                     softWrap: false,
                                   ),
                                 );
-                              }
-
-                              final date = pastTrend.isNotEmpty
-                                  ? pastTrend.first.date.add(
-                                      Duration(days: idx),
-                                    )
-                                  : nowRounded.add(
-                                      Duration(days: idx - nowIndex),
-                                    );
-
-                              return SideTitleWidget(
-                                meta: meta,
-                                child: Text(
-                                  _shortDate(
-                                    date,
-                                    widget.state.preferences.locale,
-                                  ),
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                                  softWrap: false,
-                                ),
-                              );
-                            },
+                              },
+                            ),
                           ),
                         ),
-                      ),
-                      borderData: FlBorderData(show: false),
-                      minX: viewLeft,
-                      maxX: viewRight,
-                      minY: minY,
-                      maxY: maxY,
-                      extraLinesData: ExtraLinesData(
-                        horizontalLines: [
-                          HorizontalLine(
-                            y: 0,
-                            color: scheme.onSurfaceVariant.withAlphaFactor(0.3),
-                            strokeWidth: 1,
-                          ),
-                        ],
-                        verticalLines: [
-                          if (nowX >= viewLeft && nowX <= viewRight)
-                            VerticalLine(
-                              x: nowX,
-                              color: scheme.primary.withAlphaFactor(0.4),
-                              strokeWidth: 1.0,
-                              dashArray: [4, 4],
-                              label: VerticalLineLabel(),
-                            ),
-                        ],
-                      ),
-                      lineBarsData: [
-                        // Past line — full colour
-                        if (pastSpots.length > 1)
-                          LineChartBarData(
-                            spots: pastSpots,
-                            curveSmoothness: 0.3,
-                            color: scheme.primary,
-                            barWidth: 1.2,
-                            isStrokeCapRound: true,
-                            shadow: Shadow(
-                              color: scheme.primary.withAlphaFactor(0.25),
-                              blurRadius: 6,
-                              offset: const Offset(0, 3),
-                            ),
-                            dotData: FlDotData(
-                              checkToShowDot: (spot, barData) =>
-                                  spot.x == barData.spots.last.x,
-                              getDotPainter: (spot, percent, barData, index) =>
-                                  FlDotCirclePainter(
-                                    radius: 4,
-                                    color: scheme.primary,
-                                    strokeWidth: 2,
-                                    strokeColor: scheme.surface,
-                                  ),
-                            ),
-                            belowBarData: BarAreaData(
-                              show: true,
-                              cutOffY: minY,
-                              gradient: LinearGradient(
-                                colors: [
-                                  scheme.primary.withAlphaFactor(0.35),
-                                  scheme.primary.withAlphaFactor(0.0),
-                                ],
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
+                        borderData: FlBorderData(show: false),
+                        minX: viewLeft,
+                        maxX: viewRight,
+                        minY: minY,
+                        maxY: maxY,
+                        extraLinesData: ExtraLinesData(
+                          horizontalLines: [
+                            HorizontalLine(
+                              y: 0,
+                              color: scheme.onSurfaceVariant.withAlphaFactor(
+                                0.3,
                               ),
+                              strokeWidth: 1,
                             ),
-                          ),
-                        // Future line — muted/greyed out
-                        if (futureSpots.length > 1)
-                          LineChartBarData(
-                            spots: futureSpots,
-                            color: scheme.onSurfaceVariant.withAlphaFactor(
-                              0.45,
-                            ),
-                            barWidth: 1.0,
-                            isStrokeCapRound: true,
-                            dashArray: [6, 4],
-                            dotData: FlDotData(
-                              checkToShowDot: (spot, barData) =>
-                                  spot.x == barData.spots.last.x,
-                              getDotPainter: (spot, percent, barData, index) =>
-                                  FlDotCirclePainter(
-                                    radius: 3,
-                                    color: scheme.onSurfaceVariant
-                                        .withAlphaFactor(0.5),
-                                    strokeWidth: 1,
-                                    strokeColor: scheme.surface,
-                                  ),
-                            ),
-                            belowBarData: BarAreaData(
-                              show: true,
-                              cutOffY: minY,
-                              gradient: LinearGradient(
-                                colors: [
-                                  scheme.onSurfaceVariant.withAlphaFactor(0.12),
-                                  scheme.onSurfaceVariant.withAlphaFactor(0.0),
-                                ],
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
+                          ],
+                          verticalLines: [
+                            if (nowX >= viewLeft && nowX <= viewRight)
+                              VerticalLine(
+                                x: nowX,
+                                color: scheme.primary.withAlphaFactor(0.4),
+                                strokeWidth: 1.0,
+                                dashArray: [4, 4],
+                                label: VerticalLineLabel(),
                               ),
-                            ),
-                          ),
-                      ],
-                      lineTouchData: LineTouchData(
-                        getTouchedSpotIndicator:
-                            (LineChartBarData barData, List<int> spotIndexes) {
-                              return spotIndexes.map((index) {
-                                return TouchedSpotIndicatorData(
-                                  FlLine(
-                                    color: scheme.primary.withAlphaFactor(0.4),
-                                    strokeWidth: 1.5,
-                                    dashArray: [4, 4],
-                                  ),
-                                  FlDotData(
-                                    getDotPainter:
-                                        (spot, percent, barData, index) =>
-                                            FlDotCirclePainter(
-                                              radius: 4,
-                                              color: scheme.primary,
-                                              strokeWidth: 2,
-                                              strokeColor: scheme.surface,
-                                            ),
-                                  ),
-                                );
-                              }).toList();
-                            },
-                        touchTooltipData: LineTouchTooltipData(
-                          getTooltipColor: (touchedSpot) => scheme.onSurface,
-                          getTooltipItems: (touchedSpots) {
-                            return touchedSpots
-                                .map(
-                                  (spot) => LineTooltipItem(
-                                    maskMoneyIfPrivate(
-                                      widget.state,
-                                      formatMoney(
-                                        Money(
-                                          amountMinor: spot.y.toInt(),
-                                          currency: widget
-                                              .state
-                                              .preferences
-                                              .displayCurrency,
+                          ],
+                        ),
+                        lineBarsData: [
+                          // Past line — full colour
+                          if (pastSpots.length > 1)
+                            LineChartBarData(
+                              spots: pastSpots,
+                              curveSmoothness: 0.3,
+                              color: scheme.primary,
+                              barWidth: 1.2,
+                              isStrokeCapRound: true,
+                              shadow: Shadow(
+                                color: scheme.primary.withAlphaFactor(0.25),
+                                blurRadius: 6,
+                                offset: const Offset(0, 3),
+                              ),
+                              dotData: FlDotData(
+                                checkToShowDot: (spot, barData) =>
+                                    spot.x == barData.spots.last.x,
+                                getDotPainter:
+                                    (spot, percent, barData, index) =>
+                                        FlDotCirclePainter(
+                                          radius: 4,
+                                          color: scheme.primary,
+                                          strokeWidth: 2,
+                                          strokeColor: scheme.surface,
                                         ),
-                                        widget.state.preferences.locale,
+                              ),
+                              belowBarData: BarAreaData(
+                                show: true,
+                                cutOffY: minY,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    scheme.primary.withAlphaFactor(0.35),
+                                    scheme.primary.withAlphaFactor(0.0),
+                                  ],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                ),
+                              ),
+                            ),
+                          // Future line — muted/greyed out
+                          if (futureSpots.length > 1)
+                            LineChartBarData(
+                              spots: futureSpots,
+                              color: scheme.onSurfaceVariant.withAlphaFactor(
+                                0.45,
+                              ),
+                              barWidth: 1.0,
+                              isStrokeCapRound: true,
+                              dashArray: [6, 4],
+                              dotData: FlDotData(
+                                checkToShowDot: (spot, barData) =>
+                                    spot.x == barData.spots.last.x,
+                                getDotPainter:
+                                    (spot, percent, barData, index) =>
+                                        FlDotCirclePainter(
+                                          radius: 3,
+                                          color: scheme.onSurfaceVariant
+                                              .withAlphaFactor(0.5),
+                                          strokeWidth: 1,
+                                          strokeColor: scheme.surface,
+                                        ),
+                              ),
+                              belowBarData: BarAreaData(
+                                show: true,
+                                cutOffY: minY,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    scheme.onSurfaceVariant.withAlphaFactor(
+                                      0.12,
+                                    ),
+                                    scheme.onSurfaceVariant.withAlphaFactor(
+                                      0.0,
+                                    ),
+                                  ],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                ),
+                              ),
+                            ),
+                        ],
+                        lineTouchData: LineTouchData(
+                          getTouchedSpotIndicator:
+                              (
+                                LineChartBarData barData,
+                                List<int> spotIndexes,
+                              ) {
+                                return spotIndexes.map((index) {
+                                  return TouchedSpotIndicatorData(
+                                    FlLine(
+                                      color: scheme.primary.withAlphaFactor(
+                                        0.4,
+                                      ),
+                                      strokeWidth: 1.5,
+                                      dashArray: [4, 4],
+                                    ),
+                                    FlDotData(
+                                      getDotPainter:
+                                          (spot, percent, barData, index) =>
+                                              FlDotCirclePainter(
+                                                radius: 4,
+                                                color: scheme.primary,
+                                                strokeWidth: 2,
+                                                strokeColor: scheme.surface,
+                                              ),
+                                    ),
+                                  );
+                                }).toList();
+                              },
+                          touchTooltipData: LineTouchTooltipData(
+                            getTooltipColor: (touchedSpot) => scheme.onSurface,
+                            getTooltipItems: (touchedSpots) {
+                              return touchedSpots
+                                  .map(
+                                    (spot) => LineTooltipItem(
+                                      maskMoneyIfPrivate(
+                                        widget.state,
+                                        formatMoney(
+                                          Money(
+                                            amountMinor: spot.y.toInt(),
+                                            currency: widget
+                                                .state
+                                                .preferences
+                                                .displayCurrency,
+                                          ),
+                                          widget.state.preferences.locale,
+                                        ),
+                                      ),
+                                      TextStyle(
+                                        color: scheme.surface,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
                                       ),
                                     ),
-                                    TextStyle(
-                                      color: scheme.surface,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                )
-                                .toList();
-                          },
+                                  )
+                                  .toList();
+                            },
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
               ),
               // Legend row
               Padding(
@@ -1615,8 +1634,9 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
         newFilters['upcomingScheduled'] = value;
         ref
             .read(ledgerProvider.notifier)
-            .updatePreferences(
-              state.preferences.copyWith(homeWidgetFilters: newFilters),
+            .updatePreferencesWith(
+              (livePreferences) =>
+                  livePreferences.copyWith(homeWidgetFilters: newFilters),
             );
       },
       child: Column(
@@ -1685,13 +1705,10 @@ class LoansAndEmisHomeWidget extends ConsumerWidget {
           (account) => account.type == 'loan' || account.type == 'overdraft',
         )
         .toList();
-    final remaining = loans.fold<int>(
-      0,
-      (sum, account) {
-        final bal = _displayAccountBalanceMinor(state, account);
-        return sum + (bal < 0 ? -bal : 0);
-      },
-    );
+    final remaining = loans.fold<int>(0, (sum, account) {
+      final bal = _displayAccountBalanceMinor(state, account);
+      return sum + (bal < 0 ? -bal : 0);
+    });
     final period = getHomeWidgetFilter(
       state.preferences.homeWidgetFilters,
       'emiTracker',
@@ -1731,8 +1748,11 @@ class LoansAndEmisHomeWidget extends ConsumerWidget {
           state.preferences.homeWidgetFilters,
         );
         newFilters['emiTracker'] = val;
-        ref.read(ledgerProvider.notifier).updatePreferences(
-              state.preferences.copyWith(homeWidgetFilters: newFilters),
+        ref
+            .read(ledgerProvider.notifier)
+            .updatePreferencesWith(
+              (livePreferences) =>
+                  livePreferences.copyWith(homeWidgetFilters: newFilters),
             );
       },
       child: Column(
@@ -1829,8 +1849,11 @@ class PlannedPaymentsHomeWidget extends ConsumerWidget {
           state.preferences.homeWidgetFilters,
         );
         newFilters['plannedPaymentsTile'] = val;
-        ref.read(ledgerProvider.notifier).updatePreferences(
-              state.preferences.copyWith(homeWidgetFilters: newFilters),
+        ref
+            .read(ledgerProvider.notifier)
+            .updatePreferencesWith(
+              (livePreferences) =>
+                  livePreferences.copyWith(homeWidgetFilters: newFilters),
             );
       },
       child: HomeMetricTile(
@@ -1856,13 +1879,10 @@ class LoansHomeWidget extends ConsumerWidget {
           (account) => account.type == 'loan' || account.type == 'overdraft',
         )
         .toList();
-    final remaining = loans.fold<int>(
-      0,
-      (sum, account) {
-        final bal = _displayAccountBalanceMinor(state, account);
-        return sum + (bal < 0 ? -bal : 0);
-      },
-    );
+    final remaining = loans.fold<int>(0, (sum, account) {
+      final bal = _displayAccountBalanceMinor(state, account);
+      return sum + (bal < 0 ? -bal : 0);
+    });
     final period = getHomeWidgetFilter(
       state.preferences.homeWidgetFilters,
       'emiTracker',
@@ -1895,8 +1915,11 @@ class LoansHomeWidget extends ConsumerWidget {
           state.preferences.homeWidgetFilters,
         );
         newFilters['emiTracker'] = val;
-        ref.read(ledgerProvider.notifier).updatePreferences(
-              state.preferences.copyWith(homeWidgetFilters: newFilters),
+        ref
+            .read(ledgerProvider.notifier)
+            .updatePreferencesWith(
+              (livePreferences) =>
+                  livePreferences.copyWith(homeWidgetFilters: newFilters),
             );
       },
       child: Column(
@@ -1975,17 +1998,11 @@ class CardsHomeWidget extends ConsumerWidget {
         )
         .toList();
     int cardDebt(Account card) {
-      final bal = _displayAccountBalanceMinor(
-        state,
-        card,
-        balances: balances,
-      );
+      final bal = _displayAccountBalanceMinor(state, card, balances: balances);
       return bal < 0 ? -bal : 0;
     }
-    final debt = cards.fold<int>(
-      0,
-      (sum, account) => sum + cardDebt(account),
-    );
+
+    final debt = cards.fold<int>(0, (sum, account) => sum + cardDebt(account));
     Account? highest;
     int highestDebt = 0;
     for (final card in cards) {
@@ -2021,8 +2038,11 @@ class CardsHomeWidget extends ConsumerWidget {
           state.preferences.homeWidgetFilters,
         );
         newFilters['cardDebt'] = val;
-        ref.read(ledgerProvider.notifier).updatePreferences(
-              state.preferences.copyWith(homeWidgetFilters: newFilters),
+        ref
+            .read(ledgerProvider.notifier)
+            .updatePreferencesWith(
+              (livePreferences) =>
+                  livePreferences.copyWith(homeWidgetFilters: newFilters),
             );
       },
       child: Column(
@@ -2162,8 +2182,11 @@ class TopCategoriesHomeWidget extends ConsumerWidget {
           state.preferences.homeWidgetFilters,
         );
         newFilters['topCategories'] = val;
-        ref.read(ledgerProvider.notifier).updatePreferences(
-              state.preferences.copyWith(homeWidgetFilters: newFilters),
+        ref
+            .read(ledgerProvider.notifier)
+            .updatePreferencesWith(
+              (livePreferences) =>
+                  livePreferences.copyWith(homeWidgetFilters: newFilters),
             );
       },
     );
@@ -2194,7 +2217,8 @@ class _CategoryListWidget extends ConsumerStatefulWidget {
   final ValueChanged<String> onPeriodChanged;
 
   @override
-  ConsumerState<_CategoryListWidget> createState() => _CategoryListWidgetState();
+  ConsumerState<_CategoryListWidget> createState() =>
+      _CategoryListWidgetState();
 }
 
 class _CategoryListWidgetState extends ConsumerState<_CategoryListWidget> {
@@ -2207,7 +2231,10 @@ class _CategoryListWidgetState extends ConsumerState<_CategoryListWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final total = widget.items.fold<int>(0, (sum, item) => sum + item.amountMinor);
+    final total = widget.items.fold<int>(
+      0,
+      (sum, item) => sum + item.amountMinor,
+    );
     return RepaintBoundary(
       child: HomeWidgetCard(
         title: widget.title,
@@ -2236,7 +2263,9 @@ class _CategoryListWidgetState extends ConsumerState<_CategoryListWidget> {
                       item: item,
                       totalSpend: total,
                       state: widget.state,
-                      isExpanded: _expandedCategoryIds.contains(item.categoryId),
+                      isExpanded: _expandedCategoryIds.contains(
+                        item.categoryId,
+                      ),
                       onToggleExpand: () {
                         setState(() {
                           if (_expandedCategoryIds.contains(item.categoryId)) {
@@ -2280,14 +2309,17 @@ class _CategoryItemWidget extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final hasChildren = item.subcategories.isNotEmpty;
     final color = item.color ?? scheme.error;
-    final progress =
-        totalSpend == 0 ? 0.0 : (item.amountMinor / totalSpend).clamp(0.0, 1.0);
+    final progress = totalSpend == 0
+        ? 0.0
+        : (item.amountMinor / totalSpend).clamp(0.0, 1.0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         InkWell(
-          onTap: hasChildren ? onToggleExpand : () => onSelectCategory(item.allCategoryIds),
+          onTap: hasChildren
+              ? onToggleExpand
+              : () => onSelectCategory(item.allCategoryIds),
           borderRadius: BorderRadius.circular(10),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
@@ -2310,7 +2342,10 @@ class _CategoryItemWidget extends StatelessWidget {
                         item.label,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
@@ -2319,7 +2354,10 @@ class _CategoryItemWidget extends StatelessWidget {
                         _displayBaseMoney(state, item.amountMinor),
                         state.preferences.locale,
                       ),
-                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 13,
+                      ),
                     ),
                     if (hasChildren) ...[
                       const SizedBox(width: 4),
@@ -2360,10 +2398,7 @@ class _CategoryItemWidget extends StatelessWidget {
             padding: const EdgeInsets.only(left: 10),
             decoration: BoxDecoration(
               border: Border(
-                left: BorderSide(
-                  color: color.withAlphaFactor(0.35),
-                  width: 2,
-                ),
+                left: BorderSide(color: color.withAlphaFactor(0.35), width: 2),
               ),
             ),
             child: Column(
@@ -2373,10 +2408,17 @@ class _CategoryItemWidget extends StatelessWidget {
                   onTap: () => onSelectCategory(item.allCategoryIds),
                   borderRadius: BorderRadius.circular(8),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 4,
+                      horizontal: 4,
+                    ),
                     child: Row(
                       children: [
-                        Icon(Icons.filter_list_rounded, size: 14, color: scheme.primary),
+                        Icon(
+                          Icons.filter_list_rounded,
+                          size: 14,
+                          color: scheme.primary,
+                        ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
@@ -2388,7 +2430,11 @@ class _CategoryItemWidget extends StatelessWidget {
                             ),
                           ),
                         ),
-                        Icon(Icons.chevron_right_rounded, size: 16, color: scheme.primary),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 16,
+                          color: scheme.primary,
+                        ),
                       ],
                     ),
                   ),
@@ -2398,7 +2444,10 @@ class _CategoryItemWidget extends StatelessWidget {
                     onTap: () => onSelectCategory(sub.allCategoryIds),
                     borderRadius: BorderRadius.circular(8),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 4,
+                        horizontal: 4,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -2431,13 +2480,18 @@ class _CategoryItemWidget extends StatelessWidget {
                                   _displayBaseMoney(state, sub.amountMinor),
                                   state.preferences.locale,
                                 ),
-                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12,
+                                ),
                               ),
                               const SizedBox(width: 4),
                               Icon(
                                 Icons.chevron_right_rounded,
                                 size: 16,
-                                color: scheme.onSurfaceVariant.withAlphaFactor(0.5),
+                                color: scheme.onSurfaceVariant.withAlphaFactor(
+                                  0.5,
+                                ),
                               ),
                             ],
                           ),
@@ -2448,10 +2502,13 @@ class _CategoryItemWidget extends StatelessWidget {
                               minHeight: 3,
                               value: item.amountMinor == 0
                                   ? 0.0
-                                  : (sub.amountMinor / item.amountMinor).clamp(0.0, 1.0),
+                                  : (sub.amountMinor / item.amountMinor).clamp(
+                                      0.0,
+                                      1.0,
+                                    ),
                               color: (sub.color ?? color).withAlphaFactor(0.8),
-                              backgroundColor:
-                                  scheme.surfaceContainerHighest.withAlphaFactor(0.5),
+                              backgroundColor: scheme.surfaceContainerHighest
+                                  .withAlphaFactor(0.5),
                             ),
                           ),
                         ],
@@ -2712,11 +2769,7 @@ List<_AccountGroupSummary> _accountGroupSummaries(LedgerState state) {
 }
 
 class _CategoryBucket {
-  _CategoryBucket({
-    required this.id,
-    required this.label,
-    this.color,
-  });
+  _CategoryBucket({required this.id, required this.label, this.color});
 
   final String id;
   final String label;
@@ -2779,11 +2832,7 @@ List<_CategoryTotal> _categoryTotals(
       final root = rootCategoryFor(state, category);
       final bucket = rootBuckets.putIfAbsent(
         root.id,
-        () => _CategoryBucket(
-          id: root.id,
-          label: root.name,
-          color: root.color,
-        ),
+        () => _CategoryBucket(id: root.id, label: root.name, color: root.color),
       );
       bucket.totalAmountMinor += amount;
       bucket.categoryIds.add(root.id);
@@ -2812,34 +2861,40 @@ List<_CategoryTotal> _categoryTotals(
     final subList = <_CategoryTotal>[];
     if (b.subTotals.isNotEmpty) {
       for (final sub in b.subTotals.values) {
-        subList.add(_CategoryTotal(
-          categoryId: sub.id,
-          label: sub.label,
-          amountMinor: sub.amountMinor,
-          color: sub.color,
-          allCategoryIds: {sub.id},
-        ));
+        subList.add(
+          _CategoryTotal(
+            categoryId: sub.id,
+            label: sub.label,
+            amountMinor: sub.amountMinor,
+            color: sub.color,
+            allCategoryIds: {sub.id},
+          ),
+        );
       }
       if (b.directAmountMinor > 0) {
-        subList.add(_CategoryTotal(
-          categoryId: b.id,
-          label: '${b.label} (Direct)',
-          amountMinor: b.directAmountMinor,
-          color: b.color,
-          allCategoryIds: {b.id},
-        ));
+        subList.add(
+          _CategoryTotal(
+            categoryId: b.id,
+            label: '${b.label} (Direct)',
+            amountMinor: b.directAmountMinor,
+            color: b.color,
+            allCategoryIds: {b.id},
+          ),
+        );
       }
       subList.sort((a, b) => b.amountMinor.compareTo(a.amountMinor));
     }
 
-    items.add(_CategoryTotal(
-      categoryId: b.id,
-      label: b.label,
-      amountMinor: b.totalAmountMinor,
-      color: b.color,
-      subcategories: subList,
-      allCategoryIds: b.categoryIds,
-    ));
+    items.add(
+      _CategoryTotal(
+        categoryId: b.id,
+        label: b.label,
+        amountMinor: b.totalAmountMinor,
+        color: b.color,
+        subcategories: subList,
+        allCategoryIds: b.categoryIds,
+      ),
+    );
   }
 
   items.sort((left, right) => right.amountMinor.compareTo(left.amountMinor));
@@ -2894,7 +2949,8 @@ class DashboardCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isAmoled = theme.scaffoldBackgroundColor == AppColors.amoledBackground;
+    final isAmoled =
+        theme.scaffoldBackgroundColor == AppColors.amoledBackground;
     final inner = Material(
       color: Colors.transparent,
       child: InkWell(
@@ -2910,10 +2966,7 @@ class DashboardCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.amoledBackground,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Colors.white.withAlpha(24),
-            width: 0.8,
-          ),
+          border: Border.all(color: Colors.white.withAlpha(24), width: 0.8),
         ),
         child: inner,
       );

@@ -11,6 +11,11 @@ import '../../widgets/privacy_text.dart';
 import '../common/route_scaffold.dart';
 import 'capture_diagnostics.dart';
 
+final captureDiagnosticEventsProvider = FutureProvider.autoDispose
+    .family<List<CaptureDiagnosticEvent>, String>(
+      (ref, owner) => CaptureDiagnostics.recentEvents(ownerId: owner),
+    );
+
 class CaptureDiagnosticsScreen extends ConsumerStatefulWidget {
   const CaptureDiagnosticsScreen({super.key});
 
@@ -21,21 +26,16 @@ class CaptureDiagnosticsScreen extends ConsumerStatefulWidget {
 
 class _CaptureDiagnosticsScreenState
     extends ConsumerState<CaptureDiagnosticsScreen> {
-  late Future<List<CaptureDiagnosticEvent>> _eventsFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _eventsFuture = CaptureDiagnostics.recentEvents();
-  }
-
   void _refresh() {
-    setState(() => _eventsFuture = CaptureDiagnostics.recentEvents());
+    ref.invalidate(
+      captureDiagnosticEventsProvider(ref.read(ledgerProvider).userId),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(ledgerProvider);
+    final history = ref.watch(captureDiagnosticEventsProvider(state.userId));
     return RouteScaffold(
       title: 'Capture diagnostics',
       actions: [
@@ -48,25 +48,81 @@ class _CaptureDiagnosticsScreenState
           icon: Icons.delete_sweep_outlined,
           semanticLabel: 'Clear diagnostics',
           onPressed: () async {
-            await CaptureDiagnostics.clear();
+            await CaptureDiagnostics.clear(ownerId: state.userId);
             if (!mounted) return;
             _refresh();
           },
         ),
+        HeaderIconButton(
+          icon: Icons.history_rounded,
+          semanticLabel: 'Clear legacy unassigned diagnostic history',
+          onPressed: () async {
+            final confirmed = await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Clear unassigned diagnostic history?'),
+                content: const Text(
+                  'Older diagnostic history has no verified owner and may '
+                  'contain alerts from other wallets on this device. This clears only that '
+                  'diagnostic history, not ledger records or queued captures.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Clear unassigned history'),
+                  ),
+                ],
+              ),
+            );
+            if (confirmed != true ||
+                !mounted ||
+                ref.read(ledgerProvider).userId != state.userId) {
+              return;
+            }
+            try {
+              await CaptureDiagnostics.clearLegacy();
+              if (mounted && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Unassigned diagnostic history cleared.'),
+                  ),
+                );
+              }
+            } catch (error, stack) {
+              debugPrint(
+                'Could not clear unassigned history: ${error.runtimeType}',
+              );
+              debugPrintStack(stackTrace: stack);
+              if (mounted && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Unassigned history could not be cleared.'),
+                  ),
+                );
+              }
+            }
+          },
+        ),
       ],
-      child: FutureBuilder<List<CaptureDiagnosticEvent>>(
-        future: _eventsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final events = snapshot.data ?? const [];
+      child: history.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => const EmptyState(
+          icon: Icons.error_outline,
+          title: 'Could not load diagnostics',
+          body:
+              'The original history was retained. Refresh or clear this wallet\'s history to retry.',
+        ),
+        data: (events) {
           if (events.isEmpty) {
             return const EmptyState(
               icon: Icons.bug_report_outlined,
               title: 'No capture diagnostics yet',
               body:
-                  'Live SMS, Scan Inbox, Test message, notifications, and queue decisions will appear here.',
+                  'Decisions for this wallet appear here. Older unassigned history is not shown automatically.',
             );
           }
           return Column(

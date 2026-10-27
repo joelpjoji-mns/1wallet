@@ -210,12 +210,31 @@ Map<String, Object?> _moneyToJson(Money money) {
 }
 
 Money _moneyFromJson(Object? value, {Money? fallback}) {
-  final json = _map(value);
+  if (value == null && fallback != null) return fallback;
+  if (value is! Map<String, dynamic>) {
+    throw const FormatException('Money must be an object.');
+  }
+  final json = value;
+  final rawMinor = json['amountMinor'];
+  final int minor;
+  if (rawMinor is int) {
+    minor = rawMinor;
+  } else if (rawMinor is String &&
+      RegExp(r'^-?\d+$').hasMatch(rawMinor) &&
+      int.tryParse(rawMinor) != null) {
+    minor = int.parse(rawMinor);
+  } else if (rawMinor == null && fallback != null) {
+    minor = fallback.amountMinor;
+  } else {
+    throw const FormatException('Money.amountMinor must be an integer.');
+  }
+  final rawCurrency = json['currency'];
+  if (rawCurrency != null &&
+      (rawCurrency is! String || rawCurrency.trim().isEmpty)) {
+    throw const FormatException('Money.currency must be a non-empty string.');
+  }
   return Money(
-    amountMinor: _int(
-      json['amountMinor'],
-      fallback: fallback?.amountMinor ?? 0,
-    ),
+    amountMinor: minor,
     currency: _string(
       json['currency'],
       fallback: fallback?.currency ?? kDefaultCurrency,
@@ -586,7 +605,8 @@ Account _accountFromJson(Map<String, dynamic> json) {
       json['openingBalance'],
       fallback: Money(amountMinor: 0, currency: currency),
     ),
-    openingBalances: (json['openingBalances'] as List<dynamic>?)
+    openingBalances:
+        (json['openingBalances'] as List<dynamic>?)
             ?.whereType<Map<String, dynamic>>()
             .map(
               (m) => _moneyFromJson(

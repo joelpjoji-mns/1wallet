@@ -1,4 +1,11 @@
-# Firebase (Firestore rules)
+# Firebase rules and account deletion
+
+Backend-managed erasure is implemented in [functions/](./functions/README.md).
+The authenticated request creates an immutable owner job/tombstone outside the
+wallet subtree; a leased task worker removes nested Firestore data and Auth last.
+Owner wallet access is fenced while a deletion tombstone exists, including for
+older clients. Only the server can write jobs. Local testing and the separate,
+explicit deployment/IAM/billing checklist are documented in the backend guide.
 
 This folder owns the Firestore security rules (`firestore.rules`) that gate
 every read/write the 1Wallet clients (Flutter mobile/desktop and the web PWA

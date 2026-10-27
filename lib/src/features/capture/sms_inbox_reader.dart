@@ -132,12 +132,29 @@ Future<String?> getInitialSmsRoute() async {
   }
 }
 
-void listenForSmsRoute(void Function(String route) onRoute) {
+Object? _routeListenerToken;
+
+void Function() listenForSmsRoute(void Function(String route) onRoute) {
+  final token = Object();
+  _routeListenerToken = token;
   _channel.setMethodCallHandler((call) async {
-    if (call.method == 'onRoute') {
-      onRoute(call.arguments as String);
+    if (call.method == 'onRoute' && identical(_routeListenerToken, token)) {
+      final route = call.arguments;
+      if (route is! String) {
+        throw PlatformException(
+          code: 'INVALID_ROUTE',
+          message: 'SMS route must be a string.',
+        );
+      }
+      onRoute(route);
     }
   });
+  return () {
+    if (identical(_routeListenerToken, token)) {
+      _routeListenerToken = null;
+      _channel.setMethodCallHandler(null);
+    }
+  };
 }
 
 Future<bool> getAndroidNotificationPermissionState() async {
@@ -227,13 +244,11 @@ Future<List<AndroidActiveNotification>> readActiveAndroidNotifications({
   List<String>? packageNames,
 }) async {
   try {
-    final result = await _channel.invokeMethod<String>(
-      'readActiveNotifications',
-      {
-        if (packageNames != null && packageNames.isNotEmpty)
-          'packageNames': packageNames,
-      },
-    );
+    final result = await _channel
+        .invokeMethod<String>('readActiveNotifications', {
+          if (packageNames != null && packageNames.isNotEmpty)
+            'packageNames': packageNames,
+        });
     if (result == null) return [];
 
     final List<dynamic> parsed = jsonDecode(result);
@@ -272,4 +287,3 @@ Future<List<AndroidActiveNotification>> readActiveAndroidNotifications({
     throw Exception('Could not read active notifications: $e');
   }
 }
-

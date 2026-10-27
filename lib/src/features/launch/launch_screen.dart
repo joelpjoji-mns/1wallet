@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../auth/auth_controller.dart';
 import '../../cloud_sync/cloud_sync_controller.dart';
@@ -10,10 +11,11 @@ import '../../startup/startup_state.dart';
 import '../onboarding/onboarding_controller.dart';
 import 'brand_widgets.dart';
 
-final latestAutoBackupFileProvider =
-    FutureProvider.autoDispose<File?>((ref) async {
-      return ref.read(ledgerProvider.notifier).getLatestAutoBackupFile();
-    });
+final latestAutoBackupFileProvider = FutureProvider.autoDispose<File?>((
+  ref,
+) async {
+  return ref.read(ledgerProvider.notifier).getLatestAutoBackupFile();
+});
 
 class LaunchScreen extends ConsumerWidget {
   const LaunchScreen({super.key});
@@ -31,27 +33,8 @@ class LaunchScreen extends ConsumerWidget {
           title: startup.title ?? 'Unable to open wallet',
           body:
               startup.message ?? 'Something went wrong while starting 1wallet.',
-          actionLabel: 'Restore latest auto-backup',
-          onAction: () async {
-            try {
-              await ref
-                  .read(ledgerProvider.notifier)
-                  .restoreFromAutoBackup(autoBackupFile, force: true);
-              final user = ref.read(authControllerProvider).user;
-              if (user != null) {
-                await ref
-                    .read(onboardingControllerProvider.notifier)
-                    .setCompleted(user.id, true);
-              }
-              ref.read(cloudSyncControllerProvider.notifier).skipBootstrap();
-              await ref
-                  .read(cloudSyncControllerProvider.notifier)
-                  .uploadSnapshot(reason: 'restore_auto_backup');
-              ref.invalidate(ledgerProvider);
-            } catch (e) {
-              debugPrint('Failed to restore from auto backup: $e');
-            }
-          },
+          actionLabel: 'Review local backup restore',
+          onAction: () => context.push('/data-backup'),
           secondaryLabel: 'Retry cloud sync',
           onSecondaryAction: () {
             ref.read(cloudSyncControllerProvider.notifier).retryBootstrap();
@@ -78,16 +61,8 @@ class LaunchScreen extends ConsumerWidget {
           ref.read(cloudSyncControllerProvider.notifier).retryBootstrap();
           ref.invalidate(ledgerProvider);
         },
-        secondaryLabel: 'Open wallet anyway',
-        onSecondaryAction: () {
-          final user = ref.read(authControllerProvider).user;
-          if (user != null) {
-            ref
-                .read(onboardingControllerProvider.notifier)
-                .setCompleted(user.id, true);
-          }
-          ref.read(cloudSyncControllerProvider.notifier).skipBootstrap();
-        },
+        secondaryLabel: 'Import a backup file',
+        onSecondaryAction: () => context.push('/data-backup'),
         tertiaryLabel: 'Reset local wallet',
         onTertiaryAction: () async {
           ref.read(cloudSyncControllerProvider.notifier).retryBootstrap();

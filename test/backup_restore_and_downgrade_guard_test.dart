@@ -26,76 +26,88 @@ TransactionRecord _createTx({
 }
 
 void main() {
-  group('Anti-downgrade safeguard in shouldPullCloudSnapshot', () {
-    test('refuses to pull cloud snapshot when local transactions are newer', () {
-      final now = DateTime.now();
-      final localLatest = now;
-      final cloudLatest = now.subtract(const Duration(days: 30)); // e.g. June 19th vs today
+  group('Revision authority in shouldPullCloudSnapshot', () {
+    test(
+      'pulls a newer cloud revision even when its latest transaction was deleted',
+      () {
+        final now = DateTime.now();
+        final localLatest = now;
+        final cloudLatest = now.subtract(
+          const Duration(days: 30),
+        ); // e.g. June 19th vs today
 
-      final shouldPull = shouldPullCloudSnapshot(
-        hasLocalUserData: true,
-        hasUnsyncedLocalChanges: false,
-        cloudUpdatedAt: now,
-        localModifiedAt: now.subtract(const Duration(days: 1)),
-        cloudRevision: 5,
-        lastKnownCloudRevision: 2,
-        cloudLastWriterDeviceId: 'other-device',
-        localDeviceId: 'this-device',
-        cloudLatestTransactionAt: cloudLatest,
-        localLatestTransactionAt: localLatest,
-      );
+        final shouldPull = shouldPullCloudSnapshot(
+          hasLocalUserData: true,
+          hasUnsyncedLocalChanges: false,
+          cloudUpdatedAt: now,
+          localModifiedAt: now.subtract(const Duration(days: 1)),
+          cloudRevision: 5,
+          lastKnownCloudRevision: 2,
+          cloudLastWriterDeviceId: 'other-device',
+          localDeviceId: 'this-device',
+          cloudLatestTransactionAt: cloudLatest,
+          localLatestTransactionAt: localLatest,
+        );
 
-      expect(
-        shouldPull,
-        isFalse,
-        reason: 'Cloud has older transactions than local; pulling would downgrade user data.',
-      );
-    });
+        expect(
+          shouldPull,
+          isTrue,
+          reason:
+              'Transaction dates do not override an authoritative newer cloud revision.',
+        );
+      },
+    );
 
-    test('permits pull when cloud snapshot transactions are newer or equal', () {
-      final now = DateTime.now();
-      final localLatest = now.subtract(const Duration(days: 5));
-      final cloudLatest = now;
+    test(
+      'permits pull when cloud snapshot transactions are newer or equal',
+      () {
+        final now = DateTime.now();
+        final localLatest = now.subtract(const Duration(days: 5));
+        final cloudLatest = now;
 
-      final shouldPull = shouldPullCloudSnapshot(
-        hasLocalUserData: true,
-        hasUnsyncedLocalChanges: false,
-        cloudUpdatedAt: now,
-        localModifiedAt: now.subtract(const Duration(days: 10)),
-        cloudRevision: 5,
-        lastKnownCloudRevision: 2,
-        cloudLastWriterDeviceId: 'other-device',
-        localDeviceId: 'this-device',
-        cloudLatestTransactionAt: cloudLatest,
-        localLatestTransactionAt: localLatest,
-      );
+        final shouldPull = shouldPullCloudSnapshot(
+          hasLocalUserData: true,
+          hasUnsyncedLocalChanges: false,
+          cloudUpdatedAt: now,
+          localModifiedAt: now.subtract(const Duration(days: 10)),
+          cloudRevision: 5,
+          lastKnownCloudRevision: 2,
+          cloudLastWriterDeviceId: 'other-device',
+          localDeviceId: 'this-device',
+          cloudLatestTransactionAt: cloudLatest,
+          localLatestTransactionAt: localLatest,
+        );
 
-      expect(shouldPull, isTrue);
-    });
+        expect(shouldPull, isTrue);
+      },
+    );
 
-    test('permits pull when local ledger has no user data regardless of dates', () {
-      final now = DateTime.now();
-      final cloudLatest = now.subtract(const Duration(days: 100));
+    test(
+      'permits pull when local ledger has no user data regardless of dates',
+      () {
+        final now = DateTime.now();
+        final cloudLatest = now.subtract(const Duration(days: 100));
 
-      final shouldPull = shouldPullCloudSnapshot(
-        hasLocalUserData: false,
-        hasUnsyncedLocalChanges: false,
-        cloudUpdatedAt: now,
-        localModifiedAt: null,
-        cloudRevision: 1,
-        lastKnownCloudRevision: null,
-        cloudLastWriterDeviceId: 'other-device',
-        localDeviceId: 'this-device',
-        cloudLatestTransactionAt: cloudLatest,
-        localLatestTransactionAt: null,
-      );
+        final shouldPull = shouldPullCloudSnapshot(
+          hasLocalUserData: false,
+          hasUnsyncedLocalChanges: false,
+          cloudUpdatedAt: now,
+          localModifiedAt: null,
+          cloudRevision: 1,
+          lastKnownCloudRevision: null,
+          cloudLastWriterDeviceId: 'other-device',
+          localDeviceId: 'this-device',
+          cloudLatestTransactionAt: cloudLatest,
+          localLatestTransactionAt: null,
+        );
 
-      expect(
-        shouldPull,
-        isTrue,
-        reason: 'Empty local ledger should pull existing cloud wallet.',
-      );
-    });
+        expect(
+          shouldPull,
+          isTrue,
+          reason: 'Empty local ledger should pull existing cloud wallet.',
+        );
+      },
+    );
   });
 
   group('getLatestTransactionDate helper', () {
@@ -154,23 +166,26 @@ void main() {
       expect(LedgerState.isIncomingLedgerSafer(current, incoming), isTrue);
     });
 
-    test('incoming ledger with fewer transactions and older date is NOT safer', () {
-      final olderDate = DateTime(2026, 6, 19);
-      final newerDate = DateTime(2026, 9, 29);
+    test(
+      'incoming ledger with fewer transactions and older date is NOT safer',
+      () {
+        final olderDate = DateTime(2026, 6, 19);
+        final newerDate = DateTime(2026, 9, 29);
 
-      final current = emptyLedgerState().copyWith(
-        transactions: [
-          _createTx(id: 't1', occurredAt: newerDate),
-          _createTx(id: 't2', occurredAt: newerDate),
-        ],
-      );
+        final current = emptyLedgerState().copyWith(
+          transactions: [
+            _createTx(id: 't1', occurredAt: newerDate),
+            _createTx(id: 't2', occurredAt: newerDate),
+          ],
+        );
 
-      final incoming = emptyLedgerState().copyWith(
-        transactions: [_createTx(id: 't0', occurredAt: olderDate)],
-      );
+        final incoming = emptyLedgerState().copyWith(
+          transactions: [_createTx(id: 't0', occurredAt: olderDate)],
+        );
 
-      expect(LedgerState.isIncomingLedgerSafer(current, incoming), isFalse);
-    });
+        expect(LedgerState.isIncomingLedgerSafer(current, incoming), isFalse);
+      },
+    );
   });
 
   group('decodePickedTextFile', () {
@@ -192,22 +207,25 @@ void main() {
       expect(result.name, equals('my_wallet.onewallet'));
     });
 
-    test('decodes valid JSON even if file extension is missing or unexpected', () {
-      final jsonPayload = jsonEncode({
-        'version': 1,
-        'accounts': [],
-        'transactions': [],
-      });
-      final bytes = Uint8List.fromList(utf8.encode(jsonPayload));
+    test(
+      'decodes valid JSON even if file extension is missing or unexpected',
+      () {
+        final jsonPayload = jsonEncode({
+          'version': 1,
+          'accounts': [],
+          'transactions': [],
+        });
+        final bytes = Uint8List.fromList(utf8.encode(jsonPayload));
 
-      final result = decodePickedTextFile(
-        name: 'backup_file_without_ext',
-        bytes: bytes,
-        allowedExtensions: const ['onewallet', 'json'],
-      );
+        final result = decodePickedTextFile(
+          name: 'backup_file_without_ext',
+          bytes: bytes,
+          allowedExtensions: const ['onewallet', 'json'],
+        );
 
-      expect(result.text, equals(jsonPayload));
-    });
+        expect(result.text, equals(jsonPayload));
+      },
+    );
 
     test('rejects non-json content with unexpected extension', () {
       final bytes = Uint8List.fromList(utf8.encode('hello world raw text'));

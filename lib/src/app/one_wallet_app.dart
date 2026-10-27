@@ -23,6 +23,8 @@ class OneWalletApp extends ConsumerStatefulWidget {
 
 class _OneWalletAppState extends ConsumerState<OneWalletApp> {
   late final AppLifecycleListener _listener;
+  late final void Function() _cancelSmsRoute;
+  late final void Function(String) _notificationRouteHandler;
 
   String? _pendingSmsRoute;
   String? _pendingNotificationRoute;
@@ -33,7 +35,9 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     super.initState();
     _listener = AppLifecycleListener(onStateChange: _onStateChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
       final route = await getInitialSmsRoute();
+      if (!mounted) return;
       if (route != null && mounted) {
         _pendingSmsRoute = route;
         _tryPushPendingRoute();
@@ -44,20 +48,23 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
           _tryPushPendingRoute();
         }
       });
-      await ref.read(cloudSyncControllerProvider.notifier).checkAndTriggerSync();
+      await ref
+          .read(cloudSyncControllerProvider.notifier)
+          .checkAndTriggerSync();
     });
-    listenForSmsRoute((route) {
+    _cancelSmsRoute = listenForSmsRoute((route) {
       if (mounted) {
         _pendingSmsRoute = route;
         _tryPushPendingRoute();
       }
     });
-    NotificationService.onNotificationTapped = (route) {
+    _notificationRouteHandler = (route) {
       if (mounted) {
         _pendingNotificationRoute = route;
         _tryPushPendingRoute();
       }
     };
+    NotificationService.onNotificationTapped = _notificationRouteHandler;
   }
 
   void _tryPushPendingRoute() {
@@ -81,12 +88,26 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     if (_processingSpooledForRoute) return;
     _processingSpooledForRoute = true;
     try {
-      await ref.read(ledgerProvider.notifier).processSpooledSms();
-      await ref.read(ledgerProvider.notifier).processSpooledNotifications();
+      final ledger = ref.read(ledgerProvider.notifier);
+      final generation = ledger.sessionGeneration;
+      await ledger.processSpooledSms();
+      if (!mounted ||
+          !identical(ref.read(ledgerProvider.notifier), ledger) ||
+          ledger.sessionGeneration != generation) {
+        return;
+      }
+      await ledger.processSpooledNotifications();
+      if (!mounted || ledger.sessionGeneration != generation) return;
+    } on StaleLedgerSessionException {
+      return;
     } finally {
       _processingSpooledForRoute = false;
     }
     if (!mounted) return;
+    final startup = ref.read(startupStateProvider);
+    if (startup.isPending || startup.destination != StartupDestination.home) {
+      return;
+    }
     final router = ref.read(appRouterProvider);
     final currentLoc = router.routerDelegate.currentConfiguration.uri.path;
     if (currentLoc != route) {
@@ -96,12 +117,19 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
 
   @override
   void dispose() {
-    NotificationService.onNotificationTapped = null;
+    _cancelSmsRoute();
+    if (identical(
+      NotificationService.onNotificationTapped,
+      _notificationRouteHandler,
+    )) {
+      NotificationService.onNotificationTapped = null;
+    }
     _listener.dispose();
     super.dispose();
   }
 
   void _onStateChanged(AppLifecycleState state) {
+    if (ref.read(ledgerProvider.notifier).isDeletionPending) return;
     if (state == AppLifecycleState.resumed) {
       ref.read(ledgerProvider.notifier).resumeSpoolPolling();
       // If there's a pending navigation route (e.g. tapping the auto-capture
@@ -169,7 +197,12 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
           settings: GlassThemeSettings(
             thickness: 20,
             blur: blur,
-            glassColor: Color.fromRGBO(16, 16, 16, (fill * 0.75).clamp(0.12, 0.45)),
+            glassColor: Color.fromRGBO(
+              16,
+              16,
+              16,
+              (fill * 0.75).clamp(0.12, 0.45),
+            ),
             visibility: glass.visibility.clamp(0.15, 1.0),
             saturation: glass.saturation.clamp(0.0, 2.0),
             refractiveIndex: 1.0 + glass.refraction.clamp(0.0, 1.0) * 0.25,

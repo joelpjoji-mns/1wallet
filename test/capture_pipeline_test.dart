@@ -198,68 +198,86 @@ void main() {
       expect(controller.state.captureCandidates.first.source, 'notification');
 
       // Verify diagnostics recorded
-      final events = await CaptureDiagnostics.recentEvents();
-      final scanEvents = events.where((e) => e.stage == 'scan-notification').toList();
+      final events = await CaptureDiagnostics.recentEvents(
+        ownerId: controller.state.userId,
+      );
+      final scanEvents = events
+          .where((e) => e.stage == 'scan-notification')
+          .toList();
       expect(scanEvents, hasLength(3));
     },
   );
 
-  test('readActiveAndroidNotifications invokes method channel and parses notifications', () async {
-    const channel = MethodChannel('com.joelpjoji.one.wallet/sms');
-    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  test(
+    'readActiveAndroidNotifications invokes method channel and parses notifications',
+    () async {
+      const channel = MethodChannel('com.joelpjoji.one.wallet/sms');
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 
-    messenger.setMockMethodCallHandler(channel, (call) async {
-      if (call.method == 'readActiveNotifications') {
-        return jsonEncode([
-          {
-            'id': 'sbn_1',
-            'packageName': 'com.google.android.apps.nbu.paisa.user',
-            'appName': 'Google Pay',
-            'title': 'Paid to Starbucks',
-            'text': 'INR 250.00 debited from bank account',
-            'bigText': 'Ref no 123456789',
-            'body': 'Paid to Starbucks INR 250.00 debited from bank account',
-            'date': 1700000000000,
-          },
-          {
-            'id': 'sbn_2',
-            'packageName': 'com.whatsapp',
-            'appName': 'WhatsApp',
-            'title': 'Alice',
-            'text': 'See you at 5pm!',
-            'bigText': '',
-            'body': 'Alice See you at 5pm!',
-            'date': 1700000010000,
-          },
-        ]);
-      }
-      return null;
-    });
-    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'readActiveNotifications') {
+          return jsonEncode([
+            {
+              'id': 'sbn_1',
+              'packageName': 'com.google.android.apps.nbu.paisa.user',
+              'appName': 'Google Pay',
+              'title': 'Paid to Starbucks',
+              'text': 'INR 250.00 debited from bank account',
+              'bigText': 'Ref no 123456789',
+              'body': 'Paid to Starbucks INR 250.00 debited from bank account',
+              'date': 1700000000000,
+            },
+            {
+              'id': 'sbn_2',
+              'packageName': 'com.whatsapp',
+              'appName': 'WhatsApp',
+              'title': 'Alice',
+              'text': 'See you at 5pm!',
+              'bigText': '',
+              'body': 'Alice See you at 5pm!',
+              'date': 1700000010000,
+            },
+          ]);
+        }
+        return null;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
 
-    final notifications = await readActiveAndroidNotifications();
-    expect(notifications, hasLength(2));
-    expect(notifications[0].id, 'sbn_1');
-    expect(notifications[0].appName, 'Google Pay');
-    expect(notifications[0].packageName, 'com.google.android.apps.nbu.paisa.user');
-    expect(notifications[0].body, 'Paid to Starbucks INR 250.00 debited from bank account');
-    expect(notifications[1].appName, 'WhatsApp');
-  });
+      final notifications = await readActiveAndroidNotifications();
+      expect(notifications, hasLength(2));
+      expect(notifications[0].id, 'sbn_1');
+      expect(notifications[0].appName, 'Google Pay');
+      expect(
+        notifications[0].packageName,
+        'com.google.android.apps.nbu.paisa.user',
+      );
+      expect(
+        notifications[0].body,
+        'Paid to Starbucks INR 250.00 debited from bank account',
+      );
+      expect(notifications[1].appName, 'WhatsApp');
+    },
+  );
 
-  test('approveCaptureCandidate captures the full SMS or notification body in transaction notes', () async {
-    final controller = await controllerWithAccount();
-    addTearDown(controller.dispose);
+  test(
+    'approveCaptureCandidate captures the full SMS or notification body in transaction notes',
+    () async {
+      final controller = await controllerWithAccount();
+      addTearDown(controller.dispose);
 
-    const fullMessage = 'HDFC Bank: Rs 550.00 debited from a/c **1234 on 26-Oct at Starbucks Coffee Pvt Ltd. Ref: 987654321.';
-    final result = await controller.importSmsMessageDetailed(
-      fullMessage,
-      stage: 'test-notes',
-    );
+      const fullMessage =
+          'HDFC Bank: Rs 550.00 debited from a/c **1234 on 26-Oct at Starbucks Coffee Pvt Ltd. Ref: 987654321.';
+      final result = await controller.importSmsMessageDetailed(
+        fullMessage,
+        stage: 'test-notes',
+      );
 
-    expect(result.status, CaptureImportStatus.queued);
-    final candidateId = result.candidate!.id;
+      expect(result.status, CaptureImportStatus.queued);
+      final candidateId = result.candidate!.id;
 
-    final tx = await controller.approveCaptureCandidate(candidateId);
-    expect(tx.notes, fullMessage);
-  });
+      final tx = await controller.approveCaptureCandidate(candidateId);
+      expect(tx.notes, fullMessage);
+    },
+  );
 }

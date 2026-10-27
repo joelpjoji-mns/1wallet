@@ -97,6 +97,7 @@ export function WalletDataProvider({ children }: { children: ReactNode }) {
   const snapshotRef = useRef(snapshot);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savingSelfRef = useRef(false);
+  const deletionPendingRef = useRef(false);
 
   // Binds every debounced save to the uid that was active when it was
   // scheduled, so switching users (sign-out / sign-in as someone else)
@@ -291,8 +292,24 @@ export function WalletDataProvider({ children }: { children: ReactNode }) {
   // in `walletSyncGuards.ts` and `pendingSaveRaceGuard.test.ts` for the
   // regression this specifically guards against.
   useEffect(() => {
+    deletionPendingRef.current = false;
     if (!user) return;
     const uid = user.uid;
+    const deletionUnsub = import.meta.env?.VITE_ACCOUNT_DELETION_ENABLED === 'true'
+      ? onSnapshot(doc(db, 'accountDeletionJobs', uid), (job) => {
+      if (activeUidRef.current !== uid || !job.exists() || job.metadata.hasPendingWrites) return;
+      deletionPendingRef.current = true;
+      loadGenerationRef.current++;
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveGuardRef.current.clear();
+      const empty = emptyLedgerSnapshot();
+      snapshotRef.current = empty;
+      setSnapshot(empty);
+      setPhase('error');
+      setError('Account deletion is in progress. Wallet writes are disabled.');
+    }, (failure) => {
+      if (activeUidRef.current === uid) setError(`Could not check account deletion: ${failure.message}`);
+    }) : () => {};
     const unsub = onSnapshot(doc(db, 'users', uid), (snap) => {
       if (activeUidRef.current !== uid) return; // stale listener from a previous user
       if (!snap.exists()) return;
@@ -311,11 +328,15 @@ export function WalletDataProvider({ children }: { children: ReactNode }) {
         startLoad(uid);
       }
     });
-    return () => unsub();
+    return () => { deletionUnsub(); unsub(); };
   }, [user, startLoad]);
 
   const persist = useCallback(
     async (uid: string, next: LedgerSnapshot, profile: PendingSavePayload['profile']) => {
+      if (deletionPendingRef.current) {
+        setError('Account deletion is in progress. Wallet writes are disabled.');
+        return;
+      }
       setPhase('saving');
       setError(null);
       try {
@@ -437,6 +458,11 @@ export function WalletDataProvider({ children }: { children: ReactNode }) {
   const scheduleSave = useCallback(
     (next: LedgerSnapshot) => {
       if (!user) return; // no signed-in user to bind this save to; drop it
+      if (deletionPendingRef.current) {
+        const message = 'Account deletion is in progress. Wallet writes are disabled.';
+        setError(message);
+        throw new Error(message);
+      }
       commitSnapshot(next);
       saveGuardRef.current.schedule(user.uid, {
         snapshot: next,

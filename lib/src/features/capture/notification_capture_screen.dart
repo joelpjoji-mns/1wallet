@@ -55,8 +55,8 @@ class _NotificationCaptureScreenState
     });
   }
 
-  void _updatePrefs(LedgerPreferences next) {
-    ref.read(ledgerProvider.notifier).updatePreferences(next);
+  void _updatePrefs(LedgerPreferences Function(LedgerPreferences) next) {
+    ref.read(ledgerProvider.notifier).updatePreferencesWith(next);
   }
 
   @override
@@ -121,7 +121,9 @@ class _NotificationCaptureScreenState
                   value: prefs.notificationCaptureEnabled,
                   onChanged: (value) {
                     _updatePrefs(
-                      prefs.copyWith(notificationCaptureEnabled: value),
+                      (livePreferences) => livePreferences.copyWith(
+                        notificationCaptureEnabled: value,
+                      ),
                     );
                   },
                   title: const Text('Enable notification capture'),
@@ -210,10 +212,14 @@ class _NotificationCaptureScreenState
                 'Any of these signals a real transaction. Add words your bank uses.',
             words: prefs.notificationTriggerWords,
             accent: scheme.primary,
-            onChanged: (words) =>
-                _updatePrefs(prefs.copyWith(notificationTriggerWords: words)),
+            onChanged: (words) => _updatePrefs(
+              (livePreferences) =>
+                  livePreferences.copyWith(notificationTriggerWords: words),
+            ),
             onReset: () => _updatePrefs(
-              prefs.copyWith(notificationTriggerWords: kDefaultSmsTriggerWords),
+              (livePreferences) => livePreferences.copyWith(
+                notificationTriggerWords: kDefaultSmsTriggerWords,
+              ),
             ),
           ),
           const Gap(AppSpacing.lg),
@@ -224,10 +230,14 @@ class _NotificationCaptureScreenState
                 'If any of these appear the notification is never queued.',
             words: prefs.notificationIgnoreWords,
             accent: scheme.error,
-            onChanged: (words) =>
-                _updatePrefs(prefs.copyWith(notificationIgnoreWords: words)),
+            onChanged: (words) => _updatePrefs(
+              (livePreferences) =>
+                  livePreferences.copyWith(notificationIgnoreWords: words),
+            ),
             onReset: () => _updatePrefs(
-              prefs.copyWith(notificationIgnoreWords: kDefaultSmsIgnoreWords),
+              (livePreferences) => livePreferences.copyWith(
+                notificationIgnoreWords: kDefaultSmsIgnoreWords,
+              ),
             ),
           ),
           const Gap(AppSpacing.lg),
@@ -320,10 +330,7 @@ class _NotificationCaptureScreenState
                 _scanOnlyTargetApps
                     ? 'Scanning $targetCount monitored app${targetCount == 1 ? '' : 's'}'
                     : 'Scanning all apps with active notifications',
-                style: TextStyle(
-                  color: scheme.onSurfaceVariant,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
               ),
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -332,10 +339,7 @@ class _NotificationCaptureScreenState
               padding: const EdgeInsets.only(bottom: AppSpacing.sm),
               child: Text(
                 'No target apps selected. Will scan all active notifications.',
-                style: TextStyle(
-                  color: scheme.onSurfaceVariant,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
               ),
             ),
           ],
@@ -351,7 +355,9 @@ class _NotificationCaptureScreenState
                     ),
                   )
                 : const Icon(Icons.manage_search_rounded),
-            label: Text(_isScanning ? 'Scanning…' : 'Scan active notifications'),
+            label: Text(
+              _isScanning ? 'Scanning…' : 'Scan active notifications',
+            ),
           ),
         ],
       ),
@@ -369,8 +375,10 @@ class _NotificationCaptureScreenState
 
     setState(() => _isScanning = true);
     try {
-      final targetPkgs =
-          ref.read(ledgerProvider).preferences.notificationTargetPackages;
+      final targetPkgs = ref
+          .read(ledgerProvider)
+          .preferences
+          .notificationTargetPackages;
       final filterPackages = (_scanOnlyTargetApps && targetPkgs.isNotEmpty)
           ? targetPkgs
           : null;
@@ -408,8 +416,9 @@ class _NotificationCaptureScreenState
 
       if (!mounted) return;
 
-      final interestingResults =
-          results.where((r) => r.queued || r.duplicate).toList();
+      final interestingResults = results
+          .where((r) => r.queued || r.duplicate)
+          .toList();
 
       if (interestingResults.isEmpty) {
         _showMessage(
@@ -459,9 +468,7 @@ class _NotificationCaptureScreenState
         final theme = Theme.of(sheetContext);
         final scheme = theme.colorScheme;
         final txMap = {for (final tx in state.transactions) tx.id: tx};
-        final candidateMap = {
-          for (final c in state.captureCandidates) c.id: c,
-        };
+        final candidateMap = {for (final c in state.captureCandidates) c.id: c};
 
         return DraggableScrollableSheet(
           initialChildSize: 0.65,
@@ -589,9 +596,9 @@ class _NotificationCaptureScreenState
                             (matchingNotif?.appName.isNotEmpty ?? false)
                             ? matchingNotif!.appName
                             : (parsed.merchant ??
-                                (parsed.transactionType == 'income'
-                                    ? 'Incoming payment'
-                                    : 'Payment'));
+                                  (parsed.transactionType == 'income'
+                                      ? 'Incoming payment'
+                                      : 'Payment'));
 
                         return Card(
                           margin: EdgeInsets.zero,
@@ -634,7 +641,8 @@ class _NotificationCaptureScreenState
                                       Icon(
                                         isDuplicate
                                             ? Icons.copy_rounded
-                                            : Icons.notifications_active_outlined,
+                                            : Icons
+                                                  .notifications_active_outlined,
                                         size: 20,
                                         color: isDuplicate
                                             ? scheme.tertiary
@@ -654,10 +662,12 @@ class _NotificationCaptureScreenState
                                                 child: Text(
                                                   appTitle,
                                                   style: theme
-                                                      .textTheme.titleSmall
+                                                      .textTheme
+                                                      .titleSmall
                                                       ?.copyWith(
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
                                                   overflow:
                                                       TextOverflow.ellipsis,
                                                 ),
@@ -666,22 +676,23 @@ class _NotificationCaptureScreenState
                                                 Text(
                                                   amountText,
                                                   style: theme
-                                                      .textTheme.titleSmall
+                                                      .textTheme
+                                                      .titleSmall
                                                       ?.copyWith(
-                                                    fontWeight: FontWeight.bold,
-                                                    color:
-                                                        parsed.transactionType ==
-                                                            'income'
-                                                        ? scheme.primary
-                                                        : scheme.error,
-                                                  ),
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color:
+                                                            parsed.transactionType ==
+                                                                'income'
+                                                            ? scheme.primary
+                                                            : scheme.error,
+                                                      ),
                                                 ),
                                             ],
                                           ),
                                           const SizedBox(height: 2),
                                           Container(
-                                            padding: const EdgeInsets
-                                                .symmetric(
+                                            padding: const EdgeInsets.symmetric(
                                               horizontal: 6,
                                               vertical: 2,
                                             ),
@@ -699,10 +710,10 @@ class _NotificationCaptureScreenState
                                             child: Text(
                                               isDuplicate
                                                   ? (item.reason ==
-                                                          CaptureBlockReason
-                                                              .duplicatePosted
-                                                      ? 'Duplicate: already entered'
-                                                      : 'Duplicate: already in review')
+                                                            CaptureBlockReason
+                                                                .duplicatePosted
+                                                        ? 'Duplicate: already entered'
+                                                        : 'Duplicate: already in review')
                                                   : 'Added to review',
                                               style: TextStyle(
                                                 fontSize: 11,
@@ -767,14 +778,14 @@ class _NotificationCaptureScreenState
                                             child: Text(
                                               dupType == 'transaction'
                                                   ? (matchedTx != null
-                                                      ? 'View transaction: ${matchedTx.name ?? formatMoney(matchedTx.amount, state.preferences.locale)}'
-                                                      : 'View matched transaction')
+                                                        ? 'View transaction: ${matchedTx.name ?? formatMoney(matchedTx.amount, state.preferences.locale)}'
+                                                        : 'View matched transaction')
                                                   : (matchedCandidate != null &&
-                                                          matchedCandidate
-                                                                  .merchant !=
-                                                              null
-                                                      ? 'View candidate: ${matchedCandidate.merchant}'
-                                                      : 'View in review queue'),
+                                                            matchedCandidate
+                                                                    .merchant !=
+                                                                null
+                                                        ? 'View candidate: ${matchedCandidate.merchant}'
+                                                        : 'View in review queue'),
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w600,

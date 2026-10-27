@@ -98,6 +98,31 @@ class MainActivity : FlutterFragmentActivity() {
 
 	override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
 		super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger,
+            "com.joelpjoji.one.wallet/capture_queue").setMethodCallHandler { call, result ->
+            CaptureQueue.executor.execute {
+                try {
+                    val owner = call.argument<String>("owner")
+                    val value: Any? = when (call.method) {
+                        "configure" -> { CaptureQueue.configure(this, owner, call.argument<String>("settings")); null }
+                        "pending" -> CaptureQueue.pending(this, requireNotNull(call.argument<String>("source")), requireNotNull(owner))
+                        "acknowledge" -> { CaptureQueue.acknowledge(this, requireNotNull(owner), requireNotNull(call.argument<List<String>>("ids"))); null }
+                        "quarantine" -> { CaptureQueue.quarantine(this, requireNotNull(owner), requireNotNull(call.argument<String>("id")), requireNotNull(call.argument<String>("reason"))); null }
+                        "unassigned" -> CaptureQueue.unassigned(this)
+                        "quarantined" -> CaptureQueue.quarantined(this, requireNotNull(owner))
+                        "assignLegacy" -> { CaptureQueue.assignLegacy(this, requireNotNull(owner)); null }
+                        "purge" -> { CaptureQueue.purge(this, requireNotNull(owner)); null }
+                        "append" -> CaptureQueue.append(this, requireNotNull(call.argument<String>("source")),
+                            JSONObject(requireNotNull(call.argument<String>("payload"))), requireNotNull(owner))
+                        else -> throw IllegalArgumentException("Unknown capture queue operation")
+                    }
+                    runOnUiThread { result.success(value) }
+                } catch (error: Exception) {
+                    android.util.Log.e("1WalletCapture", "Queue operation failed", error)
+                    runOnUiThread { result.error("CAPTURE_QUEUE", error.message, null) }
+                }
+            }
+        }
 		if (!flutterEngine.plugins.has(FlutterFirebaseFirestorePlugin::class.java)) {
 			flutterEngine.plugins.add(FlutterFirebaseFirestorePlugin())
 		}

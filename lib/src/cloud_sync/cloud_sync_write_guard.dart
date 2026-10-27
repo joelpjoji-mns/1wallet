@@ -424,14 +424,6 @@ bool shouldPullCloudSnapshot({
   DateTime? localLatestTransactionAt,
   DateTime? cloudLatestTransactionAt,
 }) {
-  // Anti-downgrade safeguard: if local wallet has transactions strictly newer
-  // than the cloud's latest transaction, NEVER pull down an older cloud snapshot!
-  if (localLatestTransactionAt != null &&
-      cloudLatestTransactionAt != null &&
-      localLatestTransactionAt.isAfter(cloudLatestTransactionAt)) {
-    return false;
-  }
-
   final isCloudNewer =
       cloudUpdatedAt != null &&
       localModifiedAt != null &&
@@ -479,6 +471,17 @@ bool shouldPullCloudSnapshot({
 bool shouldAcceptCloudRestore({required bool hasUnsyncedLocalChanges}) {
   return !hasUnsyncedLocalChanges;
 }
+
+bool canUploadEmptyCloudSnapshot({
+  required bool bootstrappedForUser,
+  required bool hasCloudBaseline,
+  required int localRevision,
+  required bool hasAuthoritativeEmptyWallet,
+}) =>
+    bootstrappedForUser &&
+    hasCloudBaseline &&
+    localRevision > 0 &&
+    hasAuthoritativeEmptyWallet;
 
 /// The three outcomes `uploadSnapshot()`'s `CloudSyncConflictException`
 /// handler can resolve to once it has re-read the live cloud state.
