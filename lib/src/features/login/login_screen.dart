@@ -231,24 +231,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                                   ),
                                                 ),
                                               const SizedBox(width: 14),
-                                              Text(
-                                                auth.isSigningIn
-                                                    ? 'Connecting...'
-                                                    : 'Continue with Google',
-                                                style: TextStyle(
-                                                  fontFamily: 'Inter',
-                                                  fontSize: 17,
-                                                  fontWeight: FontWeight.w600,
-                                                  color:
-                                                      Theme.of(
-                                                            context,
-                                                          ).brightness ==
-                                                          Brightness.dark
-                                                      ? Colors.white.withValues(
-                                                          alpha: 0.87,
-                                                        )
-                                                      : const Color(0xFF3C4043),
-                                                  letterSpacing: 0.1,
+                                              Flexible(
+                                                child: FittedBox(
+                                                  fit: BoxFit.scaleDown,
+                                                  child: Text(
+                                                    auth.isSigningIn
+                                                        ? 'Connecting...'
+                                                        : 'Continue with Google',
+                                                    maxLines: 1,
+                                                    // Google sign-in branding:
+                                                    // fixed 17sp Inter label.
+                                                    style: TextStyle(
+                                                      fontFamily: 'Inter',
+                                                      fontSize: 17,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color:
+                                                          Theme.of(
+                                                                context,
+                                                              ).brightness ==
+                                                              Brightness.dark
+                                                          ? Colors.white
+                                                                .withValues(
+                                                                  alpha: 0.87,
+                                                                )
+                                                          : const Color(
+                                                              0xFF3C4043,
+                                                            ),
+                                                      letterSpacing: 0.1,
+                                                    ),
+                                                  ),
                                                 ),
                                               ),
                                             ],

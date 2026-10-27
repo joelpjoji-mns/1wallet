@@ -193,7 +193,9 @@ class RecurringScreen extends ConsumerWidget {
               child: GlassCard(
                 margin: EdgeInsets.zero,
                 padding: EdgeInsets.zero,
-                shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+                shape: const LiquidRoundedSuperellipse(
+                  borderRadius: AppRadii.md,
+                ),
                 quality: GlassQuality.standard,
                 child: Material(
                   color: Colors.transparent,
@@ -430,9 +432,8 @@ class _RecurringCompactCard extends StatelessWidget {
       transaction.occurredAt.day,
     );
     final daysUntilDue = dueDay.difference(today).inDays;
-    final isUrgent = !historyMode &&
-        transaction.status == 'scheduled' &&
-        daysUntilDue < 3;
+    final isUrgent =
+        !historyMode && transaction.status == 'scheduled' && daysUntilDue < 3;
     final isOverdue = isUrgent && daysUntilDue < 0;
     final isDueToday = isUrgent && daysUntilDue == 0;
     final urgentBorderColor = isDueToday || isOverdue
@@ -454,258 +455,282 @@ class _RecurringCompactCard extends StatelessWidget {
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          onTap: onTap,
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              isUrgent ? AppSpacing.sm : AppSpacing.md,
-              12,
-              AppSpacing.md,
-              12,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _RoundRecurringIcon(
-                      icon: category != null
-                          ? categoryIcon(category)
-                          : transactionIcon(transaction),
-                      color: categoryColor(category, context),
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                  onTap: onTap,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      isUrgent ? AppSpacing.sm : AppSpacing.md,
+                      12,
+                      AppSpacing.md,
+                      12,
                     ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  primaryTitle,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _RoundRecurringIcon(
+                              icon: category != null
+                                  ? categoryIcon(category)
+                                  : transactionIcon(transaction),
+                              color: categoryColor(category, context),
+                            ),
+                            const SizedBox(width: AppSpacing.md),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          primaryTitle,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                        ),
+                                      ),
+                                      if (isOverdue) ...[
+                                        const SizedBox(width: AppSpacing.xs),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 7,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: scheme.errorContainer,
+                                            borderRadius: BorderRadius.circular(
+                                              AppRadii.pill,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'OVERDUE',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w900,
+                                              letterSpacing: 0.8,
+                                              color: scheme.onErrorContainer,
+                                            ),
+                                          ),
+                                        ),
+                                      ] else if (isDueToday) ...[
+                                        const SizedBox(width: AppSpacing.xs),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 7,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: scheme.errorContainer,
+                                            borderRadius: BorderRadius.circular(
+                                              AppRadii.pill,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'TODAY',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w900,
+                                              letterSpacing: 0.8,
+                                              color: scheme.onErrorContainer,
+                                            ),
+                                          ),
+                                        ),
+                                      ] else if (isUrgent) ...[
+                                        const SizedBox(width: AppSpacing.xs),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 7,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: scheme.errorContainer
+                                                .withAlphaFactor(0.6),
+                                            borderRadius: BorderRadius.circular(
+                                              AppRadii.pill,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            '${daysUntilDue}D',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w900,
+                                              letterSpacing: 0.5,
+                                              color: scheme.onErrorContainer,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  if (categorySubtitle != null) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      categorySubtitle,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: scheme.onSurfaceVariant,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    recurrence,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: scheme.onSurfaceVariant,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  if (extraLine != null) ...[
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      extraLine,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: scheme.onSurfaceVariant,
+                                        fontStyle: FontStyle.italic,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.md),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  amountText,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: Theme.of(context).textTheme.titleMedium
-                                      ?.copyWith(fontWeight: FontWeight.w800),
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w900,
+                                        color:
+                                            (transaction.status == 'void' ||
+                                                transaction.status == 'paused')
+                                            ? scheme.outline
+                                            : _recurringAmountColor(
+                                                context,
+                                                transaction,
+                                              ),
+                                        decoration: transaction.status == 'void'
+                                            ? TextDecoration.lineThrough
+                                            : null,
+                                      ),
                                 ),
-                              ),
-                              if (isOverdue) ...[
-                                const SizedBox(width: AppSpacing.xs),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 7,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: scheme.errorContainer,
-                                    borderRadius: BorderRadius.circular(AppRadii.pill),
-                                  ),
-                                  child: Text(
-                                    'OVERDUE',
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 0.8,
-                                      color: scheme.onErrorContainer,
+                                const SizedBox(height: 4),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Icon(
+                                      status.icon,
+                                      color: status.color,
+                                      size: 14,
                                     ),
-                                  ),
-                                ),
-                              ] else if (isDueToday) ...[
-                                const SizedBox(width: AppSpacing.xs),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 7,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: scheme.errorContainer,
-                                    borderRadius: BorderRadius.circular(AppRadii.pill),
-                                  ),
-                                  child: Text(
-                                    'TODAY',
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 0.8,
-                                      color: scheme.onErrorContainer,
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      status.label,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: status.color,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     ),
-                                  ),
-                                ),
-                              ] else if (isUrgent) ...[
-                                const SizedBox(width: AppSpacing.xs),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 7,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: scheme.errorContainer.withAlphaFactor(0.6),
-                                    borderRadius: BorderRadius.circular(AppRadii.pill),
-                                  ),
-                                  child: Text(
-                                    '${daysUntilDue}D',
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 0.5,
-                                      color: scheme.onErrorContainer,
-                                    ),
-                                  ),
+                                  ],
                                 ),
                               ],
-                            ],
-                          ),
-                          if (categorySubtitle != null) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              categorySubtitle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: scheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                              ),
                             ),
                           ],
-                          const SizedBox(height: 2),
-                          Text(
-                            recurrence,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: scheme.onSurfaceVariant,
-                              fontSize: 13,
-                            ),
-                          ),
-                          if (extraLine != null) ...[
-                            const SizedBox(height: 6),
-                            Text(
-                              extraLine,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: scheme.onSurfaceVariant,
-                                fontStyle: FontStyle.italic,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          amountText,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.w900,
-                                color:
-                                    (transaction.status == 'void' ||
-                                        transaction.status == 'paused')
-                                    ? scheme.outline
-                                    : _recurringAmountColor(
-                                        context,
-                                        transaction,
+                        ),
+                        if (!historyMode &&
+                            (account?.loanDetails != null ||
+                                counter?.loanDetails != null))
+                          Builder(
+                            builder: (context) {
+                              final loanAccount = account?.loanDetails != null
+                                  ? account
+                                  : counter;
+                              final total =
+                                  loanAccount?.loanDetails?.repaymentCount;
+                              if (total == null || total <= 0) {
+                                return const SizedBox();
+                              }
+                              final postedCount = state.transactions
+                                  .where(
+                                    (t) =>
+                                        (t.status == 'posted' ||
+                                            t.status == 'cleared') &&
+                                        (t.accountId == loanAccount!.id ||
+                                            t.counterAccountId ==
+                                                loanAccount.id) &&
+                                        t.type == 'loan_repayment',
+                                  )
+                                  .length;
+                              final progress = (postedCount / total).clamp(
+                                0.0,
+                                1.0,
+                              );
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  const SizedBox(height: AppSpacing.md),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Payment $postedCount of $total',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: scheme.onSurfaceVariant,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
-                                decoration: transaction.status == 'void'
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                              ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Icon(status.icon, color: status.color, size: 14),
-                            const SizedBox(width: 4),
-                            Text(
-                              status.label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: status.color,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
+                                      Text(
+                                        '${total - postedCount} left',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: scheme.onSurfaceVariant,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  LinearProgressIndicator(
+                                    value: progress,
+                                    backgroundColor:
+                                        scheme.surfaceContainerHighest,
+                                    color: scheme.primary,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
                       ],
                     ),
-                  ],
-                ),
-                if (!historyMode &&
-                    (account?.loanDetails != null ||
-                        counter?.loanDetails != null))
-                  Builder(
-                    builder: (context) {
-                      final loanAccount = account?.loanDetails != null
-                          ? account
-                          : counter;
-                      final total = loanAccount?.loanDetails?.repaymentCount;
-                      if (total == null || total <= 0) return const SizedBox();
-                      final postedCount = state.transactions
-                          .where(
-                            (t) =>
-                                (t.status == 'posted' ||
-                                    t.status == 'cleared') &&
-                                (t.accountId == loanAccount!.id ||
-                                    t.counterAccountId == loanAccount.id) &&
-                                t.type == 'loan_repayment',
-                          )
-                          .length;
-                      final progress = (postedCount / total).clamp(0.0, 1.0);
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const SizedBox(height: AppSpacing.md),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Payment $postedCount of $total',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: scheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              Text(
-                                '${total - postedCount} left',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: scheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          LinearProgressIndicator(
-                            value: progress,
-                            backgroundColor: scheme.surfaceContainerHighest,
-                            color: scheme.primary,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ],
-                      );
-                    },
                   ),
-              ],
-            ),
-          ),
+                ),
               ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -790,347 +815,361 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
         HeaderSaveAction(onPressed: () => _saveRecurring(state, record)),
       ],
       child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SectionCard(
-          title: record == null ? 'Recurring rule' : 'Edit recurring rule',
-          subtitle:
-              'Creates a scheduled ledger record for the next occurrence.',
-          child: Column(
-            children: [
-              PremiumRow(
-                icon: transactionIcon(
-                  TransactionRecord(
-                    id: 'draft',
-                    type: _type,
-                    status: 'scheduled',
-                    source: 'recurring',
-                    accountId: _accountId ?? '',
-                    amount: Money(
-                      amountMinor: 0,
-                      currency: _currency ?? state.preferences.baseCurrency,
-                    ),
-                    baseAmount: Money(
-                      amountMinor: 0,
-                      currency: _currency ?? state.preferences.baseCurrency,
-                    ),
-                    occurredAt: _nextDate,
-                  ),
-                ),
-                title: 'Type',
-                subtitle: transactionTypeLabel(_type),
-                onTap: _showRecurringTypePicker,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              TextFormField(
-                controller: _nameController,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(
-                  labelText: 'Plan Name (optional)',
-                  prefixIcon: Icon(Icons.title_outlined),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _amountController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: [
-                        ThousandsSeparatorInputFormatter(
-                          state.preferences.locale,
-                        ),
-                      ],
-                      decoration: const InputDecoration(
-                        labelText: 'Amount',
-                        prefixIcon: Icon(Icons.payments_outlined),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  SizedBox(
-                    width: 100,
-                    child: OutlinedButton(
-                      onPressed: () => _showCurrencyPicker(state),
-                      style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size.fromHeight(56),
-                      ),
-                      child: Text(_currency ?? state.preferences.baseCurrency),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              PremiumRow(
-                icon: account == null
-                    ? Icons.wallet_outlined
-                    : accountIcon(account),
-                title: _type == 'transfer' ? 'From account' : 'Account',
-                subtitle: account?.name ?? 'Choose account',
-                iconColor: account?.color,
-                onTap: () => _showRecurringAccountPicker(state, counter: false),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              if (_needsCounterAccount)
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SectionCard(
+            title: record == null ? 'Recurring rule' : 'Edit recurring rule',
+            subtitle:
+                'Creates a scheduled ledger record for the next occurrence.',
+            child: Column(
+              children: [
                 PremiumRow(
-                  icon: counterAccount == null
-                      ? Icons.swap_horiz_rounded
-                      : accountIcon(counterAccount),
-                  title: _type == 'transfer' ? 'To account' : 'Linked account',
-                  subtitle: counterAccount?.name ?? 'Choose destination',
-                  iconColor: counterAccount?.color,
-                  onTap: () =>
-                      _showRecurringAccountPicker(state, counter: true),
-                )
-              else
-                PremiumRow(
-                  icon: categoryIcon(category),
-                  title: 'Category',
-                  subtitle: category == null
-                      ? 'Choose category'
-                      : categoryPath(state, category),
-                  iconColor: categoryColor(category, context),
-                  onTap: () => _showRecurringCategoryPicker(state),
-                ),
-            ],
-          ),
-        ),
-        const Gap(AppSpacing.lg),
-        SectionCard(
-          title: 'Schedule',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              DropdownButtonFormField<String>(
-                initialValue: _postMode == 'auto' ? 'auto' : 'manual',
-                decoration: const InputDecoration(
-                  labelText: 'Automation',
-                  prefixIcon: Icon(Icons.smart_toy_outlined),
-                ),
-                items: const [
-                  DropdownMenuItem(
-                    value: 'manual',
-                    child: Text('Manual review (Require confirmation)'),
+                  icon: transactionIcon(
+                    TransactionRecord(
+                      id: 'draft',
+                      type: _type,
+                      status: 'scheduled',
+                      source: 'recurring',
+                      accountId: _accountId ?? '',
+                      amount: Money(
+                        amountMinor: 0,
+                        currency: _currency ?? state.preferences.baseCurrency,
+                      ),
+                      baseAmount: Money(
+                        amountMinor: 0,
+                        currency: _currency ?? state.preferences.baseCurrency,
+                      ),
+                      occurredAt: _nextDate,
+                    ),
                   ),
-                  DropdownMenuItem(
-                    value: 'auto',
-                    child: Text('Auto-post payment on date'),
-                  ),
-                ],
-                onChanged: (value) =>
-                    setState(() => _postMode = value == 'auto' ? 'auto' : null),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              DropdownButtonFormField<String>(
-                initialValue:
-                    const [
-                      'once',
-                      'daily',
-                      'weekly',
-                      'monthly',
-                      'yearly',
-                    ].contains(_frequency)
-                    ? _frequency
-                    : 'monthly',
-                decoration: const InputDecoration(
-                  labelText: 'Frequency',
-                  prefixIcon: Icon(Icons.repeat_outlined),
+                  title: 'Type',
+                  subtitle: transactionTypeLabel(_type),
+                  onTap: _showRecurringTypePicker,
                 ),
-                items: const [
-                  DropdownMenuItem(
-                    value: 'once',
-                    child: Text('Once (Does not repeat)'),
-                  ),
-                  DropdownMenuItem(value: 'daily', child: Text('Daily')),
-                  DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
-                  DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
-                  DropdownMenuItem(value: 'yearly', child: Text('Yearly')),
-                ],
-                onChanged: (value) =>
-                    setState(() => _frequency = value ?? 'monthly'),
-              ),
-              if (_frequency != 'once') ...[
                 const SizedBox(height: AppSpacing.sm),
                 TextFormField(
-                  initialValue: _interval.toString(),
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText:
-                        'Every X ${_frequency == 'daily' ? 'day' : _frequency.replaceAll('ly', '')}s',
-                    prefixIcon: const Icon(Icons.timer_outlined),
+                  controller: _nameController,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'Plan Name (optional)',
+                    prefixIcon: Icon(Icons.title_outlined),
                   ),
-                  onChanged: (value) => _interval = int.tryParse(value) ?? 1,
                 ),
-              ],
-              if (_frequency == 'weekly') ...[
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  'On these days:',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Wrap(
-                  spacing: 8,
+                const SizedBox(height: AppSpacing.sm),
+                Row(
                   children: [
-                    for (var i = 1; i <= 7; i++)
-                      FilterChip(
-                        label: Text(['', 'M', 'T', 'W', 'T', 'F', 'S', 'S'][i]),
-                        selected: _daysOfWeek.contains(i),
-                        onSelected: (selected) {
-                          setState(() {
-                            if (selected) {
-                              _daysOfWeek.add(i);
-                              _updateNextDateToMatchRecurrence();
-                            } else {
-                              _daysOfWeek.remove(i);
-                              _updateNextDateToMatchRecurrence();
-                            }
-                          });
-                        },
+                    Expanded(
+                      child: TextFormField(
+                        controller: _amountController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        inputFormatters: [
+                          ThousandsSeparatorInputFormatter(
+                            state.preferences.locale,
+                          ),
+                        ],
+                        decoration: const InputDecoration(
+                          labelText: 'Amount',
+                          prefixIcon: Icon(Icons.payments_outlined),
+                        ),
                       ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    SizedBox(
+                      width: 100,
+                      child: OutlinedButton(
+                        onPressed: () => _showCurrencyPicker(state),
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size.fromHeight(56),
+                        ),
+                        child: Text(
+                          _currency ?? state.preferences.baseCurrency,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-              ],
-              if (_frequency == 'monthly') ...[
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  'On these days of the month:',
-                  style: Theme.of(context).textTheme.bodySmall,
+                const SizedBox(height: AppSpacing.sm),
+                PremiumRow(
+                  icon: account == null
+                      ? Icons.wallet_outlined
+                      : accountIcon(account),
+                  title: _type == 'transfer' ? 'From account' : 'Account',
+                  subtitle: account?.name ?? 'Choose account',
+                  iconColor: account?.color,
+                  onTap: () =>
+                      _showRecurringAccountPicker(state, counter: false),
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    for (var i = 1; i <= 31; i++)
+                const SizedBox(height: AppSpacing.sm),
+                if (_needsCounterAccount)
+                  PremiumRow(
+                    icon: counterAccount == null
+                        ? Icons.swap_horiz_rounded
+                        : accountIcon(counterAccount),
+                    title: _type == 'transfer'
+                        ? 'To account'
+                        : 'Linked account',
+                    subtitle: counterAccount?.name ?? 'Choose destination',
+                    iconColor: counterAccount?.color,
+                    onTap: () =>
+                        _showRecurringAccountPicker(state, counter: true),
+                  )
+                else
+                  PremiumRow(
+                    icon: categoryIcon(category),
+                    title: 'Category',
+                    subtitle: category == null
+                        ? 'Choose category'
+                        : categoryPath(state, category),
+                    iconColor: categoryColor(category, context),
+                    onTap: () => _showRecurringCategoryPicker(state),
+                  ),
+              ],
+            ),
+          ),
+          const Gap(AppSpacing.lg),
+          SectionCard(
+            title: 'Schedule',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  initialValue: _postMode == 'auto' ? 'auto' : 'manual',
+                  decoration: const InputDecoration(
+                    labelText: 'Automation',
+                    prefixIcon: Icon(Icons.smart_toy_outlined),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'manual',
+                      child: Text('Manual review (Require confirmation)'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'auto',
+                      child: Text('Auto-post payment on date'),
+                    ),
+                  ],
+                  onChanged: (value) => setState(
+                    () => _postMode = value == 'auto' ? 'auto' : null,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  initialValue:
+                      const [
+                        'once',
+                        'daily',
+                        'weekly',
+                        'monthly',
+                        'yearly',
+                      ].contains(_frequency)
+                      ? _frequency
+                      : 'monthly',
+                  decoration: const InputDecoration(
+                    labelText: 'Frequency',
+                    prefixIcon: Icon(Icons.repeat_outlined),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'once',
+                      child: Text('Once (Does not repeat)'),
+                    ),
+                    DropdownMenuItem(value: 'daily', child: Text('Daily')),
+                    DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
+                    DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
+                    DropdownMenuItem(value: 'yearly', child: Text('Yearly')),
+                  ],
+                  onChanged: (value) =>
+                      setState(() => _frequency = value ?? 'monthly'),
+                ),
+                if (_frequency != 'once') ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  TextFormField(
+                    initialValue: _interval.toString(),
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText:
+                          'Every X ${_frequency == 'daily' ? 'day' : _frequency.replaceAll('ly', '')}s',
+                      prefixIcon: const Icon(Icons.timer_outlined),
+                    ),
+                    onChanged: (value) => _interval = int.tryParse(value) ?? 1,
+                  ),
+                ],
+                if (_frequency == 'weekly') ...[
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    'On these days:',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      for (var i = 1; i <= 7; i++)
+                        FilterChip(
+                          label: Text(
+                            ['', 'M', 'T', 'W', 'T', 'F', 'S', 'S'][i],
+                          ),
+                          selected: _daysOfWeek.contains(i),
+                          onSelected: (selected) {
+                            setState(() {
+                              if (selected) {
+                                _daysOfWeek.add(i);
+                                _updateNextDateToMatchRecurrence();
+                              } else {
+                                _daysOfWeek.remove(i);
+                                _updateNextDateToMatchRecurrence();
+                              }
+                            });
+                          },
+                        ),
+                    ],
+                  ),
+                ],
+                if (_frequency == 'monthly') ...[
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    'On these days of the month:',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      for (var i = 1; i <= 31; i++)
+                        FilterChip(
+                          label: Text('$i'),
+                          padding: EdgeInsets.zero,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          selected: _daysOfMonth.contains(i),
+                          onSelected: (selected) {
+                            setState(() {
+                              if (selected) {
+                                _daysOfMonth.add(i);
+                                _updateNextDateToMatchRecurrence();
+                              } else {
+                                _daysOfMonth.remove(i);
+                                _updateNextDateToMatchRecurrence();
+                              }
+                            });
+                          },
+                        ),
                       FilterChip(
-                        label: Text('$i'),
-                        padding: EdgeInsets.zero,
+                        label: const Text('Last day of month'),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        selected: _daysOfMonth.contains(i),
+                        selected: _daysOfMonth.contains(32),
                         onSelected: (selected) {
                           setState(() {
                             if (selected) {
-                              _daysOfMonth.add(i);
+                              _daysOfMonth.add(32);
                               _updateNextDateToMatchRecurrence();
                             } else {
-                              _daysOfMonth.remove(i);
+                              _daysOfMonth.remove(32);
                               _updateNextDateToMatchRecurrence();
                             }
                           });
                         },
                       ),
-                    FilterChip(
-                      label: const Text('Last day of month'),
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      selected: _daysOfMonth.contains(32),
-                      onSelected: (selected) {
-                        setState(() {
-                          if (selected) {
-                            _daysOfMonth.add(32);
-                            _updateNextDateToMatchRecurrence();
-                          } else {
-                            _daysOfMonth.remove(32);
-                            _updateNextDateToMatchRecurrence();
-                          }
-                        });
+                    ],
+                  ),
+                ],
+                if (_frequency != 'once') ...[
+                  const SizedBox(height: AppSpacing.md),
+                  DropdownButtonFormField<String>(
+                    initialValue:
+                        const [
+                          'never',
+                          'date',
+                          'occurrences',
+                        ].contains(_recurrenceEnds)
+                        ? _recurrenceEnds
+                        : 'never',
+                    decoration: const InputDecoration(
+                      labelText: 'Ends',
+                      prefixIcon: Icon(Icons.event_busy_outlined),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'never', child: Text('Never')),
+                      DropdownMenuItem(value: 'date', child: Text('On Date')),
+                      DropdownMenuItem(
+                        value: 'occurrences',
+                        child: Text('After Occurrences'),
+                      ),
+                    ],
+                    onChanged: (value) =>
+                        setState(() => _recurrenceEnds = value ?? 'never'),
+                  ),
+                  if (_recurrenceEnds == 'date') ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    PremiumRow(
+                      icon: Icons.event_outlined,
+                      title: 'End date',
+                      subtitle: _recurrenceEndDate == null
+                          ? 'Choose date'
+                          : formatLedgerDate(
+                              _recurrenceEndDate!,
+                              state.preferences.locale,
+                            ),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate:
+                              _recurrenceEndDate ??
+                              _nextDate.add(const Duration(days: 30)),
+                          firstDate: _nextDate,
+                          lastDate: DateTime(2100),
+                        );
+                        if (picked != null) {
+                          setState(() => _recurrenceEndDate = picked);
+                        }
                       },
                     ),
                   ],
-                ),
-              ],
-              if (_frequency != 'once') ...[
-                const SizedBox(height: AppSpacing.md),
-                DropdownButtonFormField<String>(
-                  initialValue:
-                      const [
-                        'never',
-                        'date',
-                        'occurrences',
-                      ].contains(_recurrenceEnds)
-                      ? _recurrenceEnds
-                      : 'never',
-                  decoration: const InputDecoration(
-                    labelText: 'Ends',
-                    prefixIcon: Icon(Icons.event_busy_outlined),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'never', child: Text('Never')),
-                    DropdownMenuItem(value: 'date', child: Text('On Date')),
-                    DropdownMenuItem(
-                      value: 'occurrences',
-                      child: Text('After Occurrences'),
+                  if (_recurrenceEnds == 'occurrences') ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    TextFormField(
+                      controller: _limitController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Number of occurrences',
+                        prefixIcon: Icon(Icons.numbers_outlined),
+                      ),
+                      onChanged: (value) =>
+                          _recurrenceLimit = int.tryParse(value),
                     ),
                   ],
-                  onChanged: (value) =>
-                      setState(() => _recurrenceEnds = value ?? 'never'),
+                ],
+                const SizedBox(height: AppSpacing.sm),
+                PremiumRow(
+                  icon: Icons.calendar_month_outlined,
+                  title: _frequency == 'once' ? 'Date' : 'Next date',
+                  subtitle: formatLedgerDate(
+                    _nextDate,
+                    state.preferences.locale,
+                  ),
+                  onTap: _pickRecurringDate,
                 ),
-                if (_recurrenceEnds == 'date') ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  PremiumRow(
-                    icon: Icons.event_outlined,
-                    title: 'End date',
-                    subtitle: _recurrenceEndDate == null
-                        ? 'Choose date'
-                        : formatLedgerDate(
-                            _recurrenceEndDate!,
-                            state.preferences.locale,
-                          ),
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate:
-                            _recurrenceEndDate ??
-                            _nextDate.add(const Duration(days: 30)),
-                        firstDate: _nextDate,
-                        lastDate: DateTime(2100),
-                      );
-                      if (picked != null) {
-                        setState(() => _recurrenceEndDate = picked);
-                      }
-                    },
+                const SizedBox(height: AppSpacing.sm),
+                TextFormField(
+                  controller: _notesController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Notes',
+                    prefixIcon: Icon(Icons.notes_outlined),
                   ),
-                ],
-                if (_recurrenceEnds == 'occurrences') ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  TextFormField(
-                    controller: _limitController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Number of occurrences',
-                      prefixIcon: Icon(Icons.numbers_outlined),
-                    ),
-                    onChanged: (value) =>
-                        _recurrenceLimit = int.tryParse(value),
-                  ),
-                ],
+                ),
               ],
-              const SizedBox(height: AppSpacing.sm),
-              PremiumRow(
-                icon: Icons.calendar_month_outlined,
-                title: _frequency == 'once' ? 'Date' : 'Next date',
-                subtitle: formatLedgerDate(_nextDate, state.preferences.locale),
-                onTap: _pickRecurringDate,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              TextFormField(
-                controller: _notesController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Notes',
-                  prefixIcon: Icon(Icons.notes_outlined),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-        const Gap(AppSpacing.lg),
-      ],
+          const Gap(AppSpacing.lg),
+        ],
       ),
     );
   }
@@ -1807,10 +1846,7 @@ class RecurringDetailView extends ConsumerWidget {
 
     final freq = transaction.recurrenceFrequency;
     if (freq == 'once' || freq == null) {
-      await notifier.updateTransactionStatus(
-        transaction.id,
-        'finished',
-      );
+      await notifier.updateTransactionStatus(transaction.id, 'finished');
     } else {
       await notifier.updateTransactionStatus(
         transaction.id,

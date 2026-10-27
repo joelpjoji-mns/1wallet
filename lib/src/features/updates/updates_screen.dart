@@ -291,7 +291,9 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                 ),
               ),
               child: hasUpdate
-                  ? Row(
+                  ? Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      runSpacing: AppSpacing.xxs,
                       children: [
                         _buildVersionPill(
                           context,
@@ -319,7 +321,10 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                         ),
                       ],
                     )
-                  : Row(
+                  : Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.xxs,
                       children: [
                         _buildVersionPill(
                           context,
@@ -327,14 +332,10 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                           badgeText: 'INSTALLED',
                           badgeColor: const Color(0xFF2E7D32),
                         ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: Text(
-                            'You have the latest version installed.',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
-                            overflow: TextOverflow.ellipsis,
+                        Text(
+                          'You have the latest version installed.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -453,11 +454,14 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          version,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-            fontFamily: 'monospace',
+        Flexible(
+          child: Text(
+            version,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontFamily: 'monospace',
+            ),
           ),
         ),
         const SizedBox(width: AppSpacing.xxs),
