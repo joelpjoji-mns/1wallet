@@ -7,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../auth/auth_controller.dart';
 import '../../features/launch/brand_widgets.dart';
 import '../../features/settings/permission_setup_controller.dart';
+import '../../widgets/app_kit.dart';
 import '../common/route_scaffold.dart';
 
 class PermissionsSetupScreen extends ConsumerStatefulWidget {
@@ -117,16 +118,8 @@ class _PermissionsSetupScreenState
                   const SizedBox(height: 32),
                   StaggeredFadeIn(
                     delay: const Duration(milliseconds: 200),
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: scheme.surfaceContainerHigh.withValues(
-                          alpha: 0.4,
-                        ),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: scheme.outlineVariant.withValues(alpha: 0.5),
-                        ),
-                      ),
+                    child: AppPanel(
+                      padding: EdgeInsets.zero,
                       child: Column(
                         children: [
                           if (!kIsWeb &&

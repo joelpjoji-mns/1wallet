@@ -72,9 +72,10 @@ class HomeScreen extends ConsumerWidget {
       onMenuPressed: onMenuPressed,
       actions: [
         if (reorderMode)
-          IconButton(
+          HeaderIconButton(
+            icon: Icons.restart_alt_rounded,
+            semanticLabel: 'Reset widget order',
             tooltip: 'Reset widget order',
-            icon: const Icon(Icons.restart_alt_rounded),
             onPressed: () {
               ref.read(ledgerProvider.notifier).resetHomeWidgetOrder();
             },
@@ -246,14 +247,16 @@ class _HomeDashboardList extends ConsumerWidget {
     int index,
   ) {
     final id = widgetOrder[index];
-    final accountGridIndex =
-        widgetOrder.indexOf(HomeDashboardWidgetId.accountGrid);
+    final accountGridIndex = widgetOrder.indexOf(
+      HomeDashboardWidgetId.accountGrid,
+    );
     final isAtOrAboveAccountGrid =
         (accountGridIndex != -1 && index <= accountGridIndex) ||
         id == HomeDashboardWidgetId.balanceHero ||
         id == HomeDashboardWidgetId.accountGrid;
 
-    final canSwipeToOpenDrawer = !reorderMode &&
+    final canSwipeToOpenDrawer =
+        !reorderMode &&
         isAtOrAboveAccountGrid &&
         id != HomeDashboardWidgetId.balanceTrend;
 

@@ -36,10 +36,11 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     return RouteScaffold(
       title: 'Categories',
       actions: [
-        IconButton(
+        HeaderIconButton(
           tooltip: 'Add category',
+          semanticLabel: 'Add category',
           onPressed: () => _openCategoryEditor(context, state),
-          icon: const Icon(Icons.add_rounded),
+          icon: Icons.add_rounded,
         ),
         PopupMenuButton<String>(
           tooltip: 'Category options',
@@ -214,16 +215,12 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.account_tree_outlined),
-                  title: const Text('Parent group'),
-                  subtitle: Text(
-                    parentId == null
-                        ? 'Top-level category'
-                        : categoryPath(state, categoryById(state, parentId)),
-                  ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
+                PremiumRow(
+                  icon: Icons.account_tree_outlined,
+                  title: 'Parent group',
+                  subtitle: parentId == null
+                      ? 'Top-level category'
+                      : categoryPath(state, categoryById(state, parentId)),
                   onTap: () async {
                     final next = await showFullScreenPicker<String>(
                       context: dialogContext,
@@ -259,16 +256,11 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   },
                 ),
                 const SizedBox(height: AppSpacing.md),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                    backgroundColor:
-                        color ?? Theme.of(context).colorScheme.primary,
-                    radius: 12,
-                  ),
-                  title: const Text('Color'),
-                  subtitle: const Text('Choose a custom color'),
-                  trailing: const Icon(Icons.palette_outlined),
+                PremiumRow(
+                  icon: Icons.palette_outlined,
+                  iconColor: color ?? Theme.of(context).colorScheme.primary,
+                  title: 'Color',
+                  subtitle: 'Choose a custom color',
                   onTap: () async {
                     final selected = await showAppColorPicker(
                       context: context,
@@ -469,116 +461,102 @@ class _CategoryTreeNode extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: depth == 0
-                ? scheme.surfaceContainerLow
-                : scheme.surfaceContainerHighest.withValues(alpha: 0.47),
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            border: Border.all(
-              color: depth == 0
-                  ? scheme.outlineVariant
-                  : scheme.outlineVariant.withValues(alpha: 0.55),
-            ),
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            onTap: () => onEdit(category),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  IconBubble(
-                    icon: categoryIcon(category),
-                    color: categoryColor(category, context),
-                    compact: true,
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          category.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.w900),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          _categoryNodeSubtitle(
-                            category,
-                            childCount: children.length,
-                            depth: depth,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: scheme.onSurfaceVariant,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
+        AppPanel(
+          color: depth == 0
+              ? null
+              : scheme.surfaceContainerHighest.withValues(alpha: 0.47),
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          onTap: () => onEdit(category),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              IconBubble(
+                icon: categoryIcon(category),
+                color: categoryColor(category, context),
+                compact: true,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      category.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _categoryNodeSubtitle(
+                        category,
+                        childCount: children.length,
+                        depth: depth,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: scheme.onSurfaceVariant,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuButton<_CategoryAction>(
+                onSelected: (action) {
+                  switch (action) {
+                    case _CategoryAction.edit:
+                      onEdit(category);
+                      break;
+                    case _CategoryAction.addChild:
+                      onAddChild(category);
+                      break;
+                    case _CategoryAction.toggleArchive:
+                      onToggleArchive(category);
+                      break;
+                    case _CategoryAction.delete:
+                      onDelete(category);
+                      break;
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: _CategoryAction.edit,
+                    child: Text('Edit'),
                   ),
-                  PopupMenuButton<_CategoryAction>(
-                    onSelected: (action) {
-                      switch (action) {
-                        case _CategoryAction.edit:
-                          onEdit(category);
-                          break;
-                        case _CategoryAction.addChild:
-                          onAddChild(category);
-                          break;
-                        case _CategoryAction.toggleArchive:
-                          onToggleArchive(category);
-                          break;
-                        case _CategoryAction.delete:
-                          onDelete(category);
-                          break;
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: _CategoryAction.edit,
-                        child: Text('Edit'),
+                  const PopupMenuItem(
+                    value: _CategoryAction.addChild,
+                    child: Text('Add subcategory'),
+                  ),
+                  PopupMenuItem(
+                    value: _CategoryAction.toggleArchive,
+                    child: Text(category.isArchived ? 'Restore' : 'Archive'),
+                  ),
+                  PopupMenuItem(
+                    value: _CategoryAction.delete,
+                    child: Text(
+                      'Delete',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
                       ),
-                      const PopupMenuItem(
-                        value: _CategoryAction.addChild,
-                        child: Text('Add subcategory'),
-                      ),
-                      PopupMenuItem(
-                        value: _CategoryAction.toggleArchive,
-                        child: Text(
-                          category.isArchived ? 'Restore' : 'Archive',
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: _CategoryAction.delete,
-                        child: Text(
-                          'Delete',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
-                      ),
-                    ],
-
-                    icon: Icon(
-                      Icons.more_vert_rounded,
-                      color: switch (tone) {
-                        MetricTone.positive => amountColor(context, 1),
-                        MetricTone.danger => scheme.error,
-                        MetricTone.warning => scheme.secondary,
-                        MetricTone.standard => scheme.primary,
-                      },
                     ),
                   ),
                 ],
+
+                icon: Icon(
+                  Icons.more_vert_rounded,
+                  color: switch (tone) {
+                    MetricTone.positive => amountColor(context, 1),
+                    MetricTone.danger => scheme.error,
+                    MetricTone.warning => scheme.secondary,
+                    MetricTone.standard => scheme.primary,
+                  },
+                ),
               ),
-            ),
+            ],
           ),
         ),
         if (children.isNotEmpty)
@@ -589,7 +567,9 @@ class _CategoryTreeNode extends StatelessWidget {
               padding: const EdgeInsets.only(left: AppSpacing.sm),
               decoration: BoxDecoration(
                 border: Border(
-                  left: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.47)),
+                  left: BorderSide(
+                    color: scheme.outlineVariant.withValues(alpha: 0.47),
+                  ),
                 ),
               ),
               child: Column(

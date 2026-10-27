@@ -99,6 +99,7 @@ class TransactionCommandStrip extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.md),
         GlassCard(
+          margin: EdgeInsets.zero,
           padding: const EdgeInsets.all(AppSpacing.sm),
           shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
           quality: GlassQuality.standard,
@@ -319,8 +320,11 @@ class MiniFlowRail extends StatelessWidget {
         vertical: AppSpacing.md,
       ),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHigh,
+        color: scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.55),
+        ),
       ),
       child: Row(
         children: [

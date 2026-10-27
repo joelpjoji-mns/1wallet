@@ -63,13 +63,17 @@ class _TransactionDetailScreenState
     return RouteScaffold(
       title: 'Transaction detail',
       actions: [
-        IconButton(
+        HeaderIconButton(
+          icon: Icons.edit_outlined,
+          semanticLabel: 'Edit transaction',
+          tooltip: 'Edit transaction',
           onPressed: () => context.push('/add?transactionId=${transaction.id}'),
-          icon: const Icon(Icons.edit_outlined),
         ),
-        IconButton(
+        HeaderIconButton(
+          icon: Icons.delete_outline_rounded,
+          semanticLabel: 'Delete transaction',
+          tooltip: 'Delete transaction',
           onPressed: () => _confirmDelete(context, ref, transaction),
-          icon: const Icon(Icons.delete_outline_rounded),
         ),
       ],
       child: Column(

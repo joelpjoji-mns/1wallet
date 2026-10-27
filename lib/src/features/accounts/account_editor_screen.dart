@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -108,9 +107,10 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
       title: isNew ? 'New account' : account.name,
       actions: [
         if (account != null)
-          IconButton(
+          HeaderIconButton(
             tooltip: 'Delete account',
-            icon: const Icon(Icons.delete_outline_rounded),
+            semanticLabel: 'Delete account',
+            icon: Icons.delete_outline_rounded,
             onPressed: _isSaving
                 ? null
                 : () => _confirmDeleteAccount(state, account),
@@ -250,17 +250,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 if (isCash)
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).cardColor.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(AppRadii.lg),
-                      border: Border.all(
-                        color: Theme.of(
-                          context,
-                        ).dividerColor.withValues(alpha: 0.15),
-                      ),
-                    ),
+                  AppPanel(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1265,31 +1255,20 @@ class _DetailField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return AppPanel(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadii.lg),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(AppRadii.lg),
-          border: Border.all(
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(fontWeight: FontWeight.w800),
-              ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w800),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1302,7 +1281,7 @@ Future<int?> showDayOfMonthPicker({
 }) async {
   final theme = Theme.of(context);
   final scheme = theme.colorScheme;
-  final isAmoled = theme.scaffoldBackgroundColor == AppColors.amoledBackground;
+  final isAmoled = AppSurfaces.isAmoled(context);
   final isDesktop = AppResponsiveLayout.isDesktop(context);
 
   Widget buildPickerContent(BuildContext pickerContext) {
@@ -1457,23 +1436,8 @@ Future<int?> showDayOfMonthPicker({
       ),
     );
 
-    if (isAmoled) {
-      return DecoratedBox(
-        decoration: BoxDecoration(
-          color: AppColors.amoledBackground,
-          borderRadius: BorderRadius.circular(AppRadii.xl),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.09), width: 0.8),
-        ),
-        child: inner,
-      );
-    }
-
-    return GlassCard(
-      useOwnLayer: true,
-      quality: GlassQuality.standard,
-      shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.xl),
-      child: inner,
-    );
+    // Modal surface: keeps the dialog radius (xl) of the theme's dialogs.
+    return AppPanel(glass: true, radius: AppRadii.xl, child: inner);
   }
 
   if (isDesktop) {

@@ -25,8 +25,7 @@ class ImportStatementScreen extends ConsumerStatefulWidget {
 
 enum _ImportStep { pick, preview, done }
 
-class _ImportStatementScreenState
-    extends ConsumerState<ImportStatementScreen> {
+class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
   _ImportStep _step = _ImportStep.pick;
   bool _busy = false;
   String? _error;
@@ -146,9 +145,7 @@ class _ImportStatementScreenState
       children: [
         Icon(icon, size: 16, color: theme.colorScheme.primary),
         const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Text(text, style: theme.textTheme.bodyMedium),
-        ),
+        Expanded(child: Text(text, style: theme.textTheme.bodyMedium)),
       ],
     );
   }
@@ -214,12 +211,18 @@ class _ImportStatementScreenState
                 const SizedBox(height: AppSpacing.sm),
                 Row(
                   children: [
-                    Icon(Icons.auto_mode_outlined, size: 14, color: theme.colorScheme.primary),
+                    Icon(
+                      Icons.auto_mode_outlined,
+                      size: 14,
+                      color: theme.colorScheme.primary,
+                    ),
                     const SizedBox(width: AppSpacing.xs),
                     Text(
                       'Parsed using ${result.strategy.label}',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.7,
+                        ),
                       ),
                     ),
                   ],
@@ -303,14 +306,18 @@ class _ImportStatementScreenState
                     EmptyState(
                       icon: Icons.search_off_outlined,
                       title: 'No transactions found',
-                      body: result.diagnostics ??
+                      body:
+                          result.diagnostics ??
                           'The statement text could not be parsed into transactions.',
                     ),
                     const SizedBox(height: AppSpacing.md),
                     OutlinedButton.icon(
                       onPressed: _busy
                           ? null
-                          : () => _reParseRelaxed(effectiveCurrency, effectiveAccountId),
+                          : () => _reParseRelaxed(
+                              effectiveCurrency,
+                              effectiveAccountId,
+                            ),
                       icon: const Icon(Icons.refresh_outlined),
                       label: const Text('Try Relaxed Scanner Mode'),
                     ),
@@ -318,9 +325,7 @@ class _ImportStatementScreenState
                 )
               : Column(
                   children: [
-                    for (var i = 0;
-                        i < result.rows.length && i < 50;
-                        i++) ...[
+                    for (var i = 0; i < result.rows.length && i < 50; i++) ...[
                       _TransactionPreviewTile(
                         row: result.rows[i],
                         currency: effectiveCurrency,
@@ -334,8 +339,9 @@ class _ImportStatementScreenState
                         child: Text(
                           '… and ${result.rows.length - 50} more',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.6),
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.6,
+                            ),
                           ),
                         ),
                       ),
@@ -349,8 +355,14 @@ class _ImportStatementScreenState
         if (_rawText != null)
           OutlinedButton.icon(
             onPressed: () => setState(() => _showRawText = !_showRawText),
-            icon: Icon(_showRawText ? Icons.visibility_off_rounded : Icons.visibility_rounded),
-            label: Text(_showRawText ? 'Hide extracted text' : 'View extracted PDF text'),
+            icon: Icon(
+              _showRawText
+                  ? Icons.visibility_off_rounded
+                  : Icons.visibility_rounded,
+            ),
+            label: Text(
+              _showRawText ? 'Hide extracted text' : 'View extracted PDF text',
+            ),
           ),
 
         if (_showRawText && _rawText != null) ...[
@@ -358,10 +370,7 @@ class _ImportStatementScreenState
           Container(
             height: 200,
             padding: const EdgeInsets.all(AppSpacing.sm),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(8),
-            ),
+            decoration: AppSurfaces.panel(context),
             child: SingleChildScrollView(
               child: SelectableText(
                 _rawText!,
@@ -381,14 +390,14 @@ class _ImportStatementScreenState
                 onPressed: _busy
                     ? null
                     : () => setState(() {
-                          _step = _ImportStep.pick;
-                          _result = null;
-                          _rawText = null;
-                          _error = null;
-                          _fileName = null;
-                          _selectedCurrency = null;
-                          _showRawText = false;
-                        }),
+                        _step = _ImportStep.pick;
+                        _result = null;
+                        _rawText = null;
+                        _error = null;
+                        _fileName = null;
+                        _selectedCurrency = null;
+                        _showRawText = false;
+                      }),
                 child: const Text('Back'),
               ),
             ),
@@ -397,7 +406,8 @@ class _ImportStatementScreenState
               child: FilledButton.icon(
                 onPressed: _busy || result.rows.isEmpty
                     ? null
-                    : () => _confirmImport(effectiveAccountId, effectiveCurrency),
+                    : () =>
+                          _confirmImport(effectiveAccountId, effectiveCurrency),
                 icon: const Icon(Icons.file_download_done_outlined),
                 label: Text('Import ${result.rows.length}'),
               ),
@@ -407,10 +417,7 @@ class _ImportStatementScreenState
 
         if (_error != null) ...[
           const SizedBox(height: AppSpacing.md),
-          Text(
-            _error!,
-            style: TextStyle(color: theme.colorScheme.error),
-          ),
+          Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
         ],
       ],
     );
@@ -518,10 +525,10 @@ class _ImportStatementScreenState
 
       while (!unlocked) {
         try {
-          rawText = await compute(
-            _runPdfExtractor,
-            (bytes: bytes, password: password),
-          );
+          rawText = await compute(_runPdfExtractor, (
+            bytes: bytes,
+            password: password,
+          ));
           unlocked = true;
         } catch (e) {
           final errStr = e.toString().toLowerCase();
@@ -552,15 +559,12 @@ class _ImportStatementScreenState
       final accounts = state.accounts;
       final accountName = accounts.isNotEmpty ? accounts.first.name : '';
 
-      final parseResult = await compute(
-        _runStatementParser,
-        (
-          fullText: rawText,
-          accountName: accountName,
-          currency: null,
-          forceRelaxed: false,
-        ),
-      );
+      final parseResult = await compute(_runStatementParser, (
+        fullText: rawText,
+        accountName: accountName,
+        currency: null,
+        forceRelaxed: false,
+      ));
 
       setState(() {
         _busy = false;
@@ -642,15 +646,12 @@ class _ImportStatementScreenState
     final state = ref.read(ledgerProvider);
     final accountName = _getAccountName(state.accounts, accountId ?? '');
 
-    final reResult = await compute(
-      _runStatementParser,
-      (
-        fullText: _rawText!,
-        accountName: accountName,
-        currency: currency,
-        forceRelaxed: false,
-      ),
-    );
+    final reResult = await compute(_runStatementParser, (
+      fullText: _rawText!,
+      accountName: accountName,
+      currency: currency,
+      forceRelaxed: false,
+    ));
 
     if (!mounted) return;
     setState(() {
@@ -665,15 +666,12 @@ class _ImportStatementScreenState
     final state = ref.read(ledgerProvider);
     final accountName = _getAccountName(state.accounts, accountId ?? '');
 
-    final reResult = await compute(
-      _runStatementParser,
-      (
-        fullText: _rawText!,
-        accountName: accountName,
-        currency: currency,
-        forceRelaxed: true,
-      ),
-    );
+    final reResult = await compute(_runStatementParser, (
+      fullText: _rawText!,
+      accountName: accountName,
+      currency: currency,
+      forceRelaxed: true,
+    ));
 
     if (!mounted) return;
     setState(() {
@@ -696,18 +694,20 @@ class _ImportStatementScreenState
     final accountName = _getAccountName(state.accounts, effectiveAccountId);
 
     final rows = result.rows
-        .map((row) => ParsedWalletCsvRow(
-              rowNumber: row.rowNumber,
-              accountName: accountName,
-              amount: Money(
-                amountMinor: row.amount.amountMinor,
-                currency: currency,
-              ),
-              type: row.type,
-              categoryName: row.categoryName,
-              notes: row.notes,
-              occurredAt: row.occurredAt,
-            ))
+        .map(
+          (row) => ParsedWalletCsvRow(
+            rowNumber: row.rowNumber,
+            accountName: accountName,
+            amount: Money(
+              amountMinor: row.amount.amountMinor,
+              currency: currency,
+            ),
+            type: row.type,
+            categoryName: row.categoryName,
+            notes: row.notes,
+            occurredAt: row.occurredAt,
+          ),
+        )
         .toList();
 
     setState(() {
@@ -716,8 +716,9 @@ class _ImportStatementScreenState
     });
 
     try {
-      final imported =
-          await ref.read(ledgerProvider.notifier).importWalletCsvRows(rows);
+      final imported = await ref
+          .read(ledgerProvider.notifier)
+          .importWalletCsvRows(rows);
 
       if (!mounted) return;
       setState(() {
@@ -753,10 +754,7 @@ class _ImportStatementScreenState
 // ── Preview Row Widget ──
 
 class _TransactionPreviewTile extends StatelessWidget {
-  const _TransactionPreviewTile({
-    required this.row,
-    required this.currency,
-  });
+  const _TransactionPreviewTile({required this.row, required this.currency});
 
   final ParsedWalletCsvRow row;
   final String currency;
@@ -853,7 +851,8 @@ String _runPdfExtractor(({Uint8List bytes, String? password}) args) {
 }
 
 StatementParseResult _runStatementParser(
-  ({String fullText, String accountName, String? currency, bool? forceRelaxed}) args,
+  ({String fullText, String accountName, String? currency, bool? forceRelaxed})
+  args,
 ) {
   return parseStatement(
     args.fullText,

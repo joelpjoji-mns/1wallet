@@ -316,7 +316,10 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                             );
                             _showMessage('Removed "$word" from ignore words.');
                           },
-                          icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                          icon: const Icon(
+                            Icons.delete_outline_rounded,
+                            size: 16,
+                          ),
                           label: Text(
                             'Remove "${parsed.matchedIgnoreWord}" from ignore list',
                           ),
@@ -349,7 +352,10 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                             );
                             _showMessage('Removed "$word" from trigger words.');
                           },
-                          icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                          icon: const Icon(
+                            Icons.delete_outline_rounded,
+                            size: 16,
+                          ),
                           label: Text(
                             'Remove "${parsed.matchedTriggerWord}" from triggers',
                           ),
@@ -694,34 +700,9 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
           minChildSize: 0.4,
           maxChildSize: 0.92,
           builder: (context, scrollController) {
-            return DecoratedBox(
-              decoration: BoxDecoration(
-                color: theme.scaffoldBackgroundColor,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(AppRadii.lg),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.16),
-                    blurRadius: 16,
-                    offset: const Offset(0, -4),
-                  ),
-                ],
-              ),
+            return AppSheetSurface(
               child: Column(
                 children: [
-                  // Drag handle
-                  Center(
-                    child: Container(
-                      margin: const EdgeInsets.only(top: 10, bottom: 6),
-                      width: 36,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: scheme.onSurfaceVariant.withValues(alpha: 0.24),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
                   // Header summary
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
@@ -806,195 +787,190 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                               )
                             : null;
 
-                        return Card(
-                          margin: EdgeInsets.zero,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppRadii.md),
-                            side: BorderSide(
-                              color: isDuplicate
-                                  ? scheme.tertiary.withValues(alpha: 0.27)
-                                  : scheme.outlineVariant.withValues(alpha: 0.2),
-                            ),
-                          ),
+                        return AppPanel(
                           color: isDuplicate
                               ? scheme.tertiaryContainer.withValues(alpha: 0.1)
-                              : scheme.surfaceContainerHighest.withValues(alpha: 0.16),
-                          child: Padding(
-                            padding: const EdgeInsets.all(AppSpacing.md),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Icon(
-                                      isDuplicate
-                                          ? Icons.copy_rounded
-                                          : Icons.mark_email_read_outlined,
-                                      size: 20,
-                                      color: isDuplicate
-                                          ? scheme.tertiary
-                                          : scheme.primary,
-                                    ),
-                                    const SizedBox(width: AppSpacing.sm),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Flexible(
-                                                child: Text(
-                                                  parsed.merchant ??
-                                                      (parsed.transactionType ==
-                                                              'income'
-                                                          ? 'Incoming payment'
-                                                          : 'Payment'),
-                                                  style: theme
-                                                      .textTheme
-                                                      .titleSmall
-                                                      ?.copyWith(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                              if (amountText != null)
-                                                Text(
-                                                  amountText,
-                                                  style: theme
-                                                      .textTheme
-                                                      .titleSmall
-                                                      ?.copyWith(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        color:
-                                                            parsed.transactionType ==
-                                                                'income'
-                                                            ? scheme.primary
-                                                            : scheme.error,
-                                                      ),
-                                                ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 2,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: isDuplicate
-                                                  ? scheme.tertiary.withValues(alpha: 0.14)
-                                                  : scheme.primary.withValues(alpha: 0.12),
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
-                                            ),
-                                            child: Text(
-                                              isDuplicate
-                                                  ? (item.reason ==
-                                                            CaptureBlockReason
-                                                                .duplicatePosted
-                                                        ? 'Duplicate: already entered'
-                                                        : 'Duplicate: already in review')
-                                                  : 'Added to review',
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w600,
-                                                color: isDuplicate
-                                                    ? scheme.tertiary
-                                                    : scheme.primary,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: AppSpacing.sm),
-                                Text(
-                                  parsed.rawText,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: scheme.onSurfaceVariant,
+                              : null,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    isDuplicate
+                                        ? Icons.copy_rounded
+                                        : Icons.mark_email_read_outlined,
+                                    size: 20,
+                                    color: isDuplicate
+                                        ? scheme.tertiary
+                                        : scheme.primary,
                                   ),
-                                ),
-                                // Clickable duplicate button/banner
-                                if (isDuplicate && dupId != null) ...[
-                                  const SizedBox(height: AppSpacing.sm),
-                                  InkWell(
-                                    borderRadius: BorderRadius.circular(
-                                      AppRadii.sm,
-                                    ),
-                                    onTap: () {
-                                      Navigator.of(sheetContext).pop();
-                                      if (dupType == 'transaction') {
-                                        context.push('/transaction/$dupId');
-                                      } else {
-                                        context.push('/review');
-                                      }
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: scheme.tertiary.withValues(alpha: 0.08),
-                                        borderRadius: BorderRadius.circular(
-                                          AppRadii.sm,
-                                        ),
-                                        border: Border.all(
-                                          color: scheme.tertiary.withValues(alpha: 0.24),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.link_rounded,
-                                            size: 16,
-                                            color: scheme.tertiary,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              dupType == 'transaction'
-                                                  ? (matchedTx != null
-                                                        ? 'View transaction: ${matchedTx.name ?? formatMoney(matchedTx.amount, state.preferences.locale)}'
-                                                        : 'View matched transaction')
-                                                  : (matchedCandidate != null &&
-                                                            matchedCandidate
-                                                                    .merchant !=
-                                                                null
-                                                        ? 'View candidate: ${matchedCandidate.merchant}'
-                                                        : 'View in review queue'),
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
-                                                color: scheme.tertiary,
+                                  const SizedBox(width: AppSpacing.sm),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Flexible(
+                                              child: Text(
+                                                parsed.merchant ??
+                                                    (parsed.transactionType ==
+                                                            'income'
+                                                        ? 'Incoming payment'
+                                                        : 'Payment'),
+                                                style: theme
+                                                    .textTheme
+                                                    .titleSmall
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
+                                            if (amountText != null)
+                                              Text(
+                                                amountText,
+                                                style: theme
+                                                    .textTheme
+                                                    .titleSmall
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color:
+                                                          parsed.transactionType ==
+                                                              'income'
+                                                          ? scheme.primary
+                                                          : scheme.error,
+                                                    ),
+                                              ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
                                           ),
-                                          Icon(
-                                            Icons.chevron_right_rounded,
-                                            size: 18,
-                                            color: scheme.tertiary,
+                                          decoration: BoxDecoration(
+                                            color: isDuplicate
+                                                ? scheme.tertiary.withValues(
+                                                    alpha: 0.14,
+                                                  )
+                                                : scheme.primary.withValues(
+                                                    alpha: 0.12,
+                                                  ),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
                                           ),
-                                        ],
-                                      ),
+                                          child: Text(
+                                            isDuplicate
+                                                ? (item.reason ==
+                                                          CaptureBlockReason
+                                                              .duplicatePosted
+                                                      ? 'Duplicate: already entered'
+                                                      : 'Duplicate: already in review')
+                                                : 'Added to review',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: isDuplicate
+                                                  ? scheme.tertiary
+                                                  : scheme.primary,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              Text(
+                                parsed.rawText,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                              // Clickable duplicate button/banner
+                              if (isDuplicate && dupId != null) ...[
+                                const SizedBox(height: AppSpacing.sm),
+                                InkWell(
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadii.sm,
+                                  ),
+                                  onTap: () {
+                                    Navigator.of(sheetContext).pop();
+                                    if (dupType == 'transaction') {
+                                      context.push('/transaction/$dupId');
+                                    } else {
+                                      context.push('/review');
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: scheme.tertiary.withValues(
+                                        alpha: 0.08,
+                                      ),
+                                      borderRadius: BorderRadius.circular(
+                                        AppRadii.sm,
+                                      ),
+                                      border: Border.all(
+                                        color: scheme.tertiary.withValues(
+                                          alpha: 0.24,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.link_rounded,
+                                          size: 16,
+                                          color: scheme.tertiary,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            dupType == 'transaction'
+                                                ? (matchedTx != null
+                                                      ? 'View transaction: ${matchedTx.name ?? formatMoney(matchedTx.amount, state.preferences.locale)}'
+                                                      : 'View matched transaction')
+                                                : (matchedCandidate != null &&
+                                                          matchedCandidate
+                                                                  .merchant !=
+                                                              null
+                                                      ? 'View candidate: ${matchedCandidate.merchant}'
+                                                      : 'View in review queue'),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: scheme.tertiary,
+                                            ),
+                                          ),
+                                        ),
+                                        Icon(
+                                          Icons.chevron_right_rounded,
+                                          size: 18,
+                                          color: scheme.tertiary,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                               ],
-                            ),
+                            ],
                           ),
                         );
                       },
@@ -1108,7 +1084,9 @@ class _WordEditorState extends State<_WordEditor> {
                     label: Text(word),
                     onDeleted: () => _remove(word),
                     backgroundColor: widget.accent.withValues(alpha: 0.09),
-                    side: BorderSide(color: widget.accent.withValues(alpha: 0.27)),
+                    side: BorderSide(
+                      color: widget.accent.withValues(alpha: 0.27),
+                    ),
                   ),
               ],
             ),

@@ -209,53 +209,23 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
     );
   }
 
-  /// Empty state wrapped in a centred GlassCard for visual polish.
+  /// Empty state wrapped in a centred glass panel for visual polish (opaque
+  /// on AMOLED).
   Widget _buildEmptyState(BuildContext context) {
-    final theme = Theme.of(context);
-    final isAmoled =
-        theme.scaffoldBackgroundColor == AppColors.amoledBackground;
-
-    const content = EmptyState(
-      icon: Icons.done_all_rounded,
-      title: 'All caught up',
-      body: 'New transactions and alerts will appear here.',
-    );
-
-    if (isAmoled) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.xl,
-              vertical: AppSpacing.xxl,
-            ),
-            decoration: BoxDecoration(
-              color: AppColors.amoledBackground,
-              borderRadius: BorderRadius.circular(AppRadii.lg),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.09),
-                width: 0.8,
-              ),
-            ),
-            child: content,
-          ),
-        ),
-      );
-    }
-
     return const Center(
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-        child: GlassCard(
-          useOwnLayer: true,
-          quality: GlassQuality.standard,
+        child: AppPanel(
+          glass: true,
           padding: EdgeInsets.symmetric(
             horizontal: AppSpacing.xl,
             vertical: AppSpacing.xxl,
           ),
-          shape: LiquidRoundedSuperellipse(borderRadius: AppRadii.lg),
-          child: content,
+          child: EmptyState(
+            icon: Icons.done_all_rounded,
+            title: 'All caught up',
+            body: 'New transactions and alerts will appear here.',
+          ),
         ),
       ),
     );
@@ -279,251 +249,235 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
 
     // Glass is reserved for navigation/control chrome (per the
     // liquid_glass_widgets guidance); scrolling list rows stay opaque.
-    return Material(
-      color: scheme.surfaceContainerHigh,
-      borderRadius: BorderRadius.circular(AppRadii.lg),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => context.push('/capture/${candidate.id}'),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return AppPanel(
+      onTap: () => context.push('/capture/${candidate.id}'),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header: icon + merchant/date + amount ──────────────────
+          Row(
             children: [
-              // ── Header: icon + merchant/date + amount ──────────────────
-              Row(
-                children: [
-                  IconBubble(
-                    icon: candidate.source == 'sms'
-                        ? Icons.sms_rounded
-                        : Icons.receipt_long_rounded,
-                    color: colorScheme.primary,
-                    compact: true,
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          candidate.merchant ??
-                              candidate.transactionType?.toUpperCase() ??
-                              'UNKNOWN',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          DateFormat.MMMd(
-                            state.preferences.locale.replaceAll('_', '-'),
-                          ).add_jm().format(candidate.createdAt),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (candidate.parsedAmount != null) ...[
-                    const SizedBox(width: AppSpacing.sm),
-                    Flexible(
-                      child: PrivacyText(
-                        (isIncome ? '+' : '') +
-                            formatMoney(
-                              candidate.parsedAmount!,
-                              state.preferences.locale,
-                            ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          color: isIncome
-                              ? positiveTone(context)
-                              : scheme.onSurface,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
+              IconBubble(
+                icon: candidate.source == 'sms'
+                    ? Icons.sms_rounded
+                    : Icons.receipt_long_rounded,
+                color: colorScheme.primary,
+                compact: true,
               ),
-
-              // ── Suggestion chips ────────────────────────────────────────
-              if (candidate.suggestedAccountId != null ||
-                  candidate.suggestedCategoryId != null) ...[
-                const SizedBox(height: AppSpacing.sm),
-                Wrap(
-                  spacing: AppSpacing.xs,
-                  runSpacing: AppSpacing.xs,
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (candidate.suggestedAccountId != null)
-                      GlassChip(
-                        label:
-                            state.accounts
-                                .where(
-                                  (a) => a.id == candidate.suggestedAccountId,
-                                )
-                                .firstOrNull
-                                ?.name ??
-                            'Account',
-                        icon: const Icon(Icons.account_balance_wallet_rounded),
-                        iconSize: 13,
-                        iconColor: scheme.primary,
-                        labelStyle: theme.textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        quality: GlassQuality.standard,
-                        useOwnLayer: true,
-                        semanticLabel:
-                            'Account: ${state.accounts.where((a) => a.id == candidate.suggestedAccountId).firstOrNull?.name ?? 'Account'}',
+                    Text(
+                      candidate.merchant ??
+                          candidate.transactionType?.toUpperCase() ??
+                          'UNKNOWN',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
                       ),
-                    if (candidate.suggestedCategoryId != null)
-                      GlassChip(
-                        label: _categoryChipText(state, candidate),
-                        icon: const Icon(Icons.category_rounded),
-                        iconSize: 13,
-                        iconColor: scheme.secondary,
-                        labelStyle: theme.textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        quality: GlassQuality.standard,
-                        useOwnLayer: true,
-                        semanticLabel:
-                            'Category: ${_categoryChipText(state, candidate)}',
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      DateFormat.MMMd(
+                        state.preferences.locale.replaceAll('_', '-'),
+                      ).add_jm().format(candidate.createdAt),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
                       ),
+                    ),
                   ],
                 ),
-              ],
-
-              // ── Raw text preview ────────────────────────────────────────
-              if (candidate.rawText != null &&
-                  candidate.rawText!.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.sm),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHighest.withValues(
-                      alpha: 0.5,
-                    ),
-                    borderRadius: BorderRadius.circular(AppRadii.md),
-                  ),
-                  child: Text(
-                    candidate.rawText!,
-                    maxLines: 3,
+              ),
+              if (candidate.parsedAmount != null) ...[
+                const SizedBox(width: AppSpacing.sm),
+                Flexible(
+                  child: PrivacyText(
+                    (isIncome ? '+' : '') +
+                        formatMoney(
+                          candidate.parsedAmount!,
+                          state.preferences.locale,
+                        ),
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      fontFamily: 'monospace',
-                      height: 1.4,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: isIncome
+                          ? positiveTone(context)
+                          : scheme.onSurface,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
                     ),
-                  ),
-                ),
-              ],
-
-              // ── Divider between content and action buttons ──────────────
-              if (candidate.status == 'pending') ...[
-                const SizedBox(height: AppSpacing.md),
-                Divider(
-                  height: 1,
-                  thickness: 1,
-                  color: scheme.outlineVariant.withValues(alpha: 0.4),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-
-                // ── Action bar: block | dismiss | confirm ─────────────────
-                // Uses pill-shaped buttons at full height for easy tap targets.
-                IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Block: GlassIconButton (standalone, glass chrome)
-                      Tooltip(
-                        message: 'Block Pattern',
-                        child: GlassIconButton(
-                          icon: const Icon(Icons.block_rounded),
-                          onPressed: () =>
-                              _showBlockDialog(context, ref, candidate),
-                          size: 48,
-                          iconSize: 22,
-                          glowColor: scheme.error,
-                          shape: GlassIconButtonShape.roundedSquare,
-                          borderRadius: AppRadii.pill,
-                          useOwnLayer: true,
-                          quality: GlassQuality.standard,
-                          semanticLabel: 'Block Pattern',
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-
-                      // Dismiss
-                      Expanded(
-                        flex: 2,
-                        child: TextButton.icon(
-                          onPressed: () => _updateCandidateStatus(
-                            context,
-                            ref,
-                            candidate.id,
-                            'rejected',
-                          ),
-                          icon: const Icon(Icons.close_rounded),
-                          label: const Text('Dismiss'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: scheme.error,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppRadii.pill,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-
-                      // Confirm
-                      Expanded(
-                        flex: 3,
-                        child: FilledButton.icon(
-                          onPressed: () => _updateCandidateStatus(
-                            context,
-                            ref,
-                            candidate.id,
-                            'approved',
-                          ),
-                          icon: const Icon(Icons.check_rounded),
-                          label: const Text('Confirm'),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: colorScheme.primaryContainer,
-                            foregroundColor: colorScheme.onPrimaryContainer,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppRadii.pill,
-                              ),
-                            ),
-                            elevation: 0,
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
                 ),
               ],
             ],
           ),
-        ),
+
+          // ── Suggestion chips ────────────────────────────────────────
+          if (candidate.suggestedAccountId != null ||
+              candidate.suggestedCategoryId != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: [
+                if (candidate.suggestedAccountId != null)
+                  GlassChip(
+                    label:
+                        state.accounts
+                            .where((a) => a.id == candidate.suggestedAccountId)
+                            .firstOrNull
+                            ?.name ??
+                        'Account',
+                    icon: const Icon(Icons.account_balance_wallet_rounded),
+                    iconSize: 13,
+                    iconColor: scheme.primary,
+                    labelStyle: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    quality: GlassQuality.standard,
+                    useOwnLayer: true,
+                    semanticLabel:
+                        'Account: ${state.accounts.where((a) => a.id == candidate.suggestedAccountId).firstOrNull?.name ?? 'Account'}',
+                  ),
+                if (candidate.suggestedCategoryId != null)
+                  GlassChip(
+                    label: _categoryChipText(state, candidate),
+                    icon: const Icon(Icons.category_rounded),
+                    iconSize: 13,
+                    iconColor: scheme.secondary,
+                    labelStyle: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    quality: GlassQuality.standard,
+                    useOwnLayer: true,
+                    semanticLabel:
+                        'Category: ${_categoryChipText(state, candidate)}',
+                  ),
+              ],
+            ),
+          ],
+
+          // ── Raw text preview ────────────────────────────────────────
+          if (candidate.rawText != null && candidate.rawText!.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(AppRadii.md),
+              ),
+              child: Text(
+                candidate.rawText!,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontFamily: 'monospace',
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+
+          // ── Divider between content and action buttons ──────────────
+          if (candidate.status == 'pending') ...[
+            const SizedBox(height: AppSpacing.md),
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: scheme.outlineVariant.withValues(alpha: 0.4),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+
+            // ── Action bar: block | dismiss | confirm ─────────────────
+            // Uses pill-shaped buttons at full height for easy tap targets.
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Block: GlassIconButton (standalone, glass chrome)
+                  Tooltip(
+                    message: 'Block Pattern',
+                    child: GlassIconButton(
+                      icon: const Icon(Icons.block_rounded),
+                      onPressed: () =>
+                          _showBlockDialog(context, ref, candidate),
+                      size: 48,
+                      iconSize: 22,
+                      glowColor: scheme.error,
+                      shape: GlassIconButtonShape.roundedSquare,
+                      borderRadius: AppRadii.pill,
+                      useOwnLayer: true,
+                      quality: GlassQuality.standard,
+                      semanticLabel: 'Block Pattern',
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+
+                  // Dismiss
+                  Expanded(
+                    flex: 2,
+                    child: TextButton.icon(
+                      onPressed: () => _updateCandidateStatus(
+                        context,
+                        ref,
+                        candidate.id,
+                        'rejected',
+                      ),
+                      icon: const Icon(Icons.close_rounded),
+                      label: const Text('Dismiss'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: scheme.error,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadii.pill),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+
+                  // Confirm
+                  Expanded(
+                    flex: 3,
+                    child: FilledButton.icon(
+                      onPressed: () => _updateCandidateStatus(
+                        context,
+                        ref,
+                        candidate.id,
+                        'approved',
+                      ),
+                      icon: const Icon(Icons.check_rounded),
+                      label: const Text('Confirm'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: colorScheme.primaryContainer,
+                        foregroundColor: colorScheme.onPrimaryContainer,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadii.pill),
+                        ),
+                        elevation: 0,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -551,231 +505,224 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
         background: Container(
           decoration: BoxDecoration(
             color: scheme.errorContainer,
-            borderRadius: BorderRadius.circular(AppRadii.lg),
+            borderRadius: BorderRadius.circular(AppRadii.md),
           ),
           alignment: Alignment.centerRight,
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Icon(Icons.archive_outlined, color: scheme.onErrorContainer),
         ),
-        child: Material(
+        child: AppPanel(
           color: notification.read
-              ? scheme.surfaceContainerHigh
+              ? null
               : Color.alphaBlend(
                   (notification.isOverdue || notification.isDueSoon
                           ? scheme.error
                           : scheme.primary)
                       .withValues(alpha: 0.12),
-                  scheme.surfaceContainerHigh,
+                  scheme.surfaceContainerLow,
                 ),
-          borderRadius: BorderRadius.circular(AppRadii.lg),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () => _openNotification(context, ref, notification),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.lg,
-                    AppSpacing.lg,
-                    AppSpacing.lg,
-                    AppSpacing.sm,
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: accountColor.withValues(alpha: 0.18),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          accountIcon(account),
-                          size: 22,
-                          color: accountColor,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    account.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: theme.textTheme.titleMedium
-                                        ?.copyWith(fontWeight: FontWeight.w800),
-                                  ),
-                                ),
-                                if (notification.badgeLabel != null) ...[
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 7,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          (notification.isOverdue ||
-                                                      notification.isDueSoon
-                                                  ? scheme.error
-                                                  : scheme.primary)
-                                              .withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      notification.badgeLabel!,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color:
-                                            notification.isOverdue ||
-                                                notification.isDueSoon
-                                            ? scheme.error
-                                            : scheme.primary,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              [
-                                if (account.institution?.isNotEmpty == true)
-                                  account.institution!,
-                                if (dueStatus != null)
-                                  'Due ${dueStatus.daysUntilDue >= 0 ? "in ${dueStatus.daysUntilDue}d" : "${-dueStatus.daysUntilDue}d ago"} (${dueStatus.dueDate.day}/${dueStatus.dueDate.month})',
-                              ].join(' · '),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: scheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (notification.amount != null) ...[
-                        const SizedBox(width: AppSpacing.sm),
-                        Flexible(
-                          child: PrivacyText(
-                            formatMoney(
-                              convertMoneyForDisplay(
-                                state,
-                                notification.amount!,
-                              ),
-                              state.preferences.locale,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              color: notification.isOverdue
-                                  ? scheme.error
-                                  : scheme.onSurface,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+          padding: EdgeInsets.zero,
+          onTap: () => _openNotification(context, ref, notification),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  AppSpacing.sm,
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg,
-                  ),
-                  child: Text(
-                    notification.body,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
+                child: Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: accountColor.withValues(alpha: 0.18),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        accountIcon(account),
+                        size: 22,
+                        color: accountColor,
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Divider(
-                  height: 1,
-                  thickness: 1,
-                  color: scheme.outlineVariant.withValues(alpha: 0.3),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.md,
-                    AppSpacing.xs,
-                    AppSpacing.md,
-                    AppSpacing.sm,
-                  ),
-                  child: Row(
-                    children: [
-                      TextButton.icon(
-                        onPressed: () => _dismiss(ref, notification.id),
-                        icon: const Icon(Icons.close_rounded, size: 16),
-                        label: const Text('Dismiss'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: scheme.onSurfaceVariant,
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        tooltip: 'View Card Details',
-                        icon: const Icon(Icons.credit_card_outlined, size: 20),
-                        onPressed: () => context.push('/cards'),
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                      FilledButton.icon(
-                        onPressed: () async {
-                          final cycle =
-                              notification.cycleKey ?? dueStatus?.cycleKey;
-                          await ref
-                              .read(ledgerProvider.notifier)
-                              .markCardBillPaid(account.id, cycle);
-                          await _dismiss(ref, notification.id);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Marked ${account.name} bill as paid',
-                                ),
-                                behavior: SnackBarBehavior.floating,
-                                action: SnackBarAction(
-                                  label: 'Undo',
-                                  onPressed: () {
-                                    ref
-                                        .read(ledgerProvider.notifier)
-                                        .markCardBillPaid(account.id, null);
-                                  },
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  account.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
                               ),
-                            );
-                          }
-                        },
-                        icon: const Icon(Icons.check_rounded, size: 16),
-                        label: const Text('Confirm Paid'),
-                        style: FilledButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 8,
+                              if (notification.badgeLabel != null) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        (notification.isOverdue ||
+                                                    notification.isDueSoon
+                                                ? scheme.error
+                                                : scheme.primary)
+                                            .withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    notification.badgeLabel!,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color:
+                                          notification.isOverdue ||
+                                              notification.isDueSoon
+                                          ? scheme.error
+                                          : scheme.primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppRadii.pill),
+                          const SizedBox(height: 2),
+                          Text(
+                            [
+                              if (account.institution?.isNotEmpty == true)
+                                account.institution!,
+                              if (dueStatus != null)
+                                'Due ${dueStatus.daysUntilDue >= 0 ? "in ${dueStatus.daysUntilDue}d" : "${-dueStatus.daysUntilDue}d ago"} (${dueStatus.dueDate.day}/${dueStatus.dueDate.month})',
+                            ].join(' · '),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (notification.amount != null) ...[
+                      const SizedBox(width: AppSpacing.sm),
+                      Flexible(
+                        child: PrivacyText(
+                          formatMoney(
+                            convertMoneyForDisplay(state, notification.amount!),
+                            state.preferences.locale,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: notification.isOverdue
+                                ? scheme.error
+                                : scheme.onSurface,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
                           ),
                         ),
                       ),
                     ],
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                child: Text(
+                  notification.body,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
                   ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: scheme.outlineVariant.withValues(alpha: 0.3),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.xs,
+                  AppSpacing.md,
+                  AppSpacing.sm,
+                ),
+                child: Row(
+                  children: [
+                    TextButton.icon(
+                      onPressed: () => _dismiss(ref, notification.id),
+                      icon: const Icon(Icons.close_rounded, size: 16),
+                      label: const Text('Dismiss'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: scheme.onSurfaceVariant,
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      tooltip: 'View Card Details',
+                      icon: const Icon(Icons.credit_card_outlined, size: 20),
+                      onPressed: () => context.push('/cards'),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    FilledButton.icon(
+                      onPressed: () async {
+                        final cycle =
+                            notification.cycleKey ?? dueStatus?.cycleKey;
+                        await ref
+                            .read(ledgerProvider.notifier)
+                            .markCardBillPaid(account.id, cycle);
+                        await _dismiss(ref, notification.id);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Marked ${account.name} bill as paid',
+                              ),
+                              behavior: SnackBarBehavior.floating,
+                              action: SnackBarAction(
+                                label: 'Undo',
+                                onPressed: () {
+                                  ref
+                                      .read(ledgerProvider.notifier)
+                                      .markCardBillPaid(account.id, null);
+                                },
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.check_rounded, size: 16),
+                      label: const Text('Confirm Paid'),
+                      style: FilledButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadii.pill),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -792,7 +739,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
       background: Container(
         decoration: BoxDecoration(
           color: theme.colorScheme.errorContainer,
-          borderRadius: BorderRadius.circular(AppRadii.lg),
+          borderRadius: BorderRadius.circular(AppRadii.md),
         ),
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -801,134 +748,131 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
           color: theme.colorScheme.onErrorContainer,
         ),
       ),
-      child: Material(
+      child: AppPanel(
         color: notification.read
-            ? scheme.surfaceContainerHigh
+            ? null
             : Color.alphaBlend(
                 scheme.primaryContainer.withValues(alpha: 0.25),
-                scheme.surfaceContainerHigh,
+                scheme.surfaceContainerLow,
               ),
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => _openNotification(context, ref, notification),
-          child: Column(
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: notification.read ? 0 : 4,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      color: scheme.primary,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(AppRadii.lg),
-                        bottomLeft: Radius.circular(AppRadii.lg),
-                      ),
+        padding: EdgeInsets.zero,
+        onTap: () => _openNotification(context, ref, notification),
+        child: Column(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: notification.read ? 0 : 4,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: scheme.primary,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(AppRadii.md),
+                      bottomLeft: Radius.circular(AppRadii.md),
                     ),
                   ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(AppSpacing.lg),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          IconBubble(
-                            icon: icon,
-                            color: notification.read
-                                ? scheme.onSurfaceVariant
-                                : scheme.primary,
-                            compact: true,
-                          ),
-                          const SizedBox(width: AppSpacing.md),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  notification.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: notification.read
-                                        ? FontWeight.w600
-                                        : FontWeight.w800,
-                                    color: scheme.onSurface,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  notification.body,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                                ),
-                                const SizedBox(height: AppSpacing.sm),
-                                Text(
-                                  _relativeDate(notification.createdAt),
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (!notification.read) ...[
-                            const SizedBox(width: AppSpacing.sm),
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Icon(
-                                Icons.fiber_manual_record_rounded,
-                                size: 10,
-                                color: scheme.primary,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              Divider(
-                height: 1,
-                thickness: 1,
-                color: scheme.outlineVariant.withValues(alpha: 0.3),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: 4,
                 ),
-                child: Row(
-                  children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        IconBubble(
+                          icon: icon,
+                          color: notification.read
+                              ? scheme.onSurfaceVariant
+                              : scheme.primary,
+                          compact: true,
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                notification.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: notification.read
+                                      ? FontWeight.w600
+                                      : FontWeight.w800,
+                                  color: scheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                notification.body,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              Text(
+                                _relativeDate(notification.createdAt),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (!notification.read) ...[
+                          const SizedBox(width: AppSpacing.sm),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Icon(
+                              Icons.fiber_manual_record_rounded,
+                              size: 10,
+                              color: scheme.primary,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: scheme.outlineVariant.withValues(alpha: 0.3),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: 4,
+              ),
+              child: Row(
+                children: [
+                  TextButton.icon(
+                    onPressed: () => _dismiss(ref, notification.id),
+                    icon: const Icon(Icons.close_rounded, size: 16),
+                    label: const Text('Dismiss'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: scheme.onSurfaceVariant,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (notification.actionRoute != null)
                     TextButton.icon(
-                      onPressed: () => _dismiss(ref, notification.id),
-                      icon: const Icon(Icons.close_rounded, size: 16),
-                      label: const Text('Dismiss'),
+                      onPressed: () =>
+                          _openNotification(context, ref, notification),
+                      icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                      label: const Text('View'),
                       style: TextButton.styleFrom(
-                        foregroundColor: scheme.onSurfaceVariant,
                         visualDensity: VisualDensity.compact,
                       ),
                     ),
-                    const Spacer(),
-                    if (notification.actionRoute != null)
-                      TextButton.icon(
-                        onPressed: () =>
-                            _openNotification(context, ref, notification),
-                        icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-                        label: const Text('View'),
-                        style: TextButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      ),
-                  ],
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

@@ -16,6 +16,7 @@ class TransactionRow extends StatelessWidget {
     this.selected = false,
     this.side = 'single',
     this.glass = true,
+    this.showSurface = true,
     super.key,
     this.selectedAccountId,
   });
@@ -28,6 +29,10 @@ class TransactionRow extends StatelessWidget {
   final String side;
   final String? selectedAccountId;
   final bool glass;
+
+  /// Set false when the row sits inside a container that already paints the
+  /// surface (e.g. an `AppGroupedSection`), so glass is never nested in glass.
+  final bool showSurface;
 
   @override
   Widget build(BuildContext context) {
@@ -47,8 +52,8 @@ class TransactionRow extends StatelessWidget {
     final merchantName = transaction.name?.trim() ?? '';
     final details = merchantName.isNotEmpty && merchantName != title
         ? (rawNotes.isNotEmpty && rawNotes != merchantName
-            ? '$merchantName · $rawNotes'
-            : merchantName)
+              ? '$merchantName · $rawNotes'
+              : merchantName)
         : rawNotes;
 
     Widget content = Material(
@@ -64,6 +69,7 @@ class TransactionRow extends StatelessWidget {
                     context,
                   ).colorScheme.secondaryContainer.withValues(alpha: 0.47)
                 : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppRadii.md),
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(
@@ -174,6 +180,10 @@ class TransactionRow extends StatelessWidget {
     final isAmoled =
         Theme.of(context).scaffoldBackgroundColor == AppColors.amoledBackground;
 
+    if (!showSurface) {
+      return RepaintBoundary(child: content);
+    }
+
     if (glass) {
       if (isAmoled) {
         return RepaintBoundary(child: content);
@@ -183,7 +193,7 @@ class TransactionRow extends StatelessWidget {
           margin: EdgeInsets.zero,
           padding: EdgeInsets.zero,
           shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-          quality: GlassQuality.minimal,
+          quality: GlassQuality.standard,
           clipBehavior: Clip.antiAlias,
           child: content,
         ),
@@ -196,7 +206,9 @@ class TransactionRow extends StatelessWidget {
         decoration: BoxDecoration(
           color: scheme.surfaceContainerLow,
           borderRadius: BorderRadius.circular(AppRadii.md),
-          border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
+          border: Border.all(
+            color: scheme.outlineVariant.withValues(alpha: 0.55),
+          ),
         ),
         child: content,
       ),

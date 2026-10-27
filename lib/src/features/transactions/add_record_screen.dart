@@ -538,8 +538,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                       itemCount: optionsList.length,
                                       itemBuilder: (context, index) {
                                         final option = optionsList[index];
-                                        return ListTile(
-                                          dense: true,
+                                        return AppGroupedTile(
                                           leading: const Icon(
                                             Icons.history_rounded,
                                             size: 18,
@@ -670,8 +669,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                           final createVal = option.substring(
                                             '__create__:'.length,
                                           );
-                                          return ListTile(
-                                            dense: true,
+                                          return AppGroupedTile(
                                             leading: const Icon(
                                               Icons.add_rounded,
                                             ),
@@ -679,8 +677,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                             onTap: () => onSelected(createVal),
                                           );
                                         }
-                                        return ListTile(
-                                          dense: true,
+                                        return AppGroupedTile(
                                           leading: const Icon(
                                             Icons.label_outline_rounded,
                                             size: 18,
@@ -755,9 +752,10 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(AppRadii.md),
                               border: Border.all(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.outlineVariant,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .outlineVariant
+                                    .withValues(alpha: 0.55),
                               ),
                             ),
                             child: Row(
@@ -1507,7 +1505,7 @@ class _FxAmountCard extends StatelessWidget {
       margin: EdgeInsets.zero,
       padding: EdgeInsets.zero,
       shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-      quality: GlassQuality.minimal,
+      quality: GlassQuality.standard,
       clipBehavior: Clip.antiAlias,
       child: Material(
         color: Colors.transparent,

@@ -10,6 +10,7 @@ import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
 import '../../theme/theme_controller.dart';
 import '../../security/app_lock.dart';
+import '../../widgets/app_kit.dart';
 import '../common/full_screen_picker.dart';
 import '../common/route_scaffold.dart';
 import '../onboarding/onboarding_controller.dart';
@@ -58,7 +59,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final state = ref.watch(ledgerProvider);
     final auth = ref.watch(authControllerProvider);
     final themeState = ref.watch(themeControllerProvider);
@@ -150,178 +150,156 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   const SizedBox(height: AppSpacing.md),
 
                   // ── Notifications ──
-                  GlassGroupedSection(
-                    header: const Text('Notifications'),
+                  AppGroupedSection(
+                    header: 'Notifications',
                     children: [
-                      GlassListTile(
+                      AppGroupedTile.toggle(
                         title: const Text('Notification inbox'),
                         subtitle: const Text('Active reminder alerts.'),
-                        trailing: GlassSwitch(
-                          quality: GlassQuality.standard,
-                          value: state.preferences.notificationInboxEnabled,
-                          onChanged: (value) {
-                            ref
-                                .read(ledgerProvider.notifier)
-                                .updatePreferencesWith(
-                                  (livePreferences) => livePreferences.copyWith(
-                                    notificationInboxEnabled: value,
-                                  ),
-                                );
-                            _showMessage(
-                              value
-                                  ? 'Notification inbox enabled.'
-                                  : 'Notification inbox paused.',
-                            );
-                          },
-                        ),
+                        value: state.preferences.notificationInboxEnabled,
+                        onChanged: (value) {
+                          ref
+                              .read(ledgerProvider.notifier)
+                              .updatePreferencesWith(
+                                (livePreferences) => livePreferences.copyWith(
+                                  notificationInboxEnabled: value,
+                                ),
+                              );
+                          _showMessage(
+                            value
+                                ? 'Notification inbox enabled.'
+                                : 'Notification inbox paused.',
+                          );
+                        },
                       ),
                       const GlassDivider(),
-                      GlassListTile(
+                      AppGroupedTile.toggle(
                         title: const Text('Device notifications'),
                         subtitle: const Text(
                           'Allow scheduled-payment reminders on this device.',
                         ),
-                        trailing: GlassSwitch(
-                          quality: GlassQuality.standard,
-                          value: state.preferences.deviceNotificationsEnabled,
-                          onChanged: (value) {
-                            ref
-                                .read(ledgerProvider.notifier)
-                                .updatePreferencesWith(
-                                  (livePreferences) => livePreferences.copyWith(
-                                    deviceNotificationsEnabled: value,
-                                  ),
-                                );
-                            _showMessage(
-                              value
-                                  ? 'Device notifications enabled.'
-                                  : 'Device notifications disabled.',
-                            );
-                          },
-                        ),
+                        value: state.preferences.deviceNotificationsEnabled,
+                        onChanged: (value) {
+                          ref
+                              .read(ledgerProvider.notifier)
+                              .updatePreferencesWith(
+                                (livePreferences) => livePreferences.copyWith(
+                                  deviceNotificationsEnabled: value,
+                                ),
+                              );
+                          _showMessage(
+                            value
+                                ? 'Device notifications enabled.'
+                                : 'Device notifications disabled.',
+                          );
+                        },
                       ),
                       const GlassDivider(),
-                      GlassListTile(
-                        leading: Icon(
-                          Icons.event_repeat_outlined,
-                          color: theme.colorScheme.primary,
-                        ),
+                      AppGroupedTile.toggle(
+                        leading: const Icon(Icons.event_repeat_outlined),
                         title: const Text('Scheduled records'),
                         subtitle: const Text(
                           'Upcoming and overdue payments, transfers, bills, and income.',
                         ),
-                        trailing: GlassSwitch(
-                          quality: GlassQuality.standard,
-                          value: state.preferences.channelScheduledEnabled,
-                          onChanged: (value) {
-                            ref
-                                .read(ledgerProvider.notifier)
-                                .updatePreferencesWith(
-                                  (current) => current.copyWith(
-                                    channelScheduledEnabled: value,
-                                  ),
-                                );
-                            _showMessage(
-                              value
-                                  ? 'Scheduled records enabled'
-                                  : 'Scheduled records paused',
-                            );
-                          },
-                        ),
+                        value: state.preferences.channelScheduledEnabled,
+                        onChanged: (value) {
+                          ref
+                              .read(ledgerProvider.notifier)
+                              .updatePreferencesWith(
+                                (current) => current.copyWith(
+                                  channelScheduledEnabled: value,
+                                ),
+                              );
+                          _showMessage(
+                            value
+                                ? 'Scheduled records enabled'
+                                : 'Scheduled records paused',
+                          );
+                        },
                       ),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.md),
 
-                  GlassGroupedSection(
-                    header: const Text('Account visibility'),
+                  AppGroupedSection(
+                    header: 'Account visibility',
                     children: [
-                      GlassListTile(
+                      AppGroupedTile.toggle(
                         title: const Text('Show excluded accounts'),
                         subtitle: const Text(
                           'Include accounts excluded from totals in the account list.',
                         ),
-                        trailing: GlassSwitch(
-                          quality: GlassQuality.standard,
-                          value: state.preferences.showExcludedAccounts,
-                          onChanged: (value) => ref
-                              .read(ledgerProvider.notifier)
-                              .updatePreferencesWith(
-                                (livePreferences) => livePreferences.copyWith(
-                                  showExcludedAccounts: value,
-                                ),
+                        value: state.preferences.showExcludedAccounts,
+                        onChanged: (value) => ref
+                            .read(ledgerProvider.notifier)
+                            .updatePreferencesWith(
+                              (livePreferences) => livePreferences.copyWith(
+                                showExcludedAccounts: value,
                               ),
-                        ),
+                            ),
                       ),
                       const GlassDivider(),
-                      GlassListTile(
+                      AppGroupedTile.toggle(
                         title: const Text('Show archived accounts'),
                         subtitle: const Text(
                           'Include archived accounts in the account list.',
                         ),
-                        trailing: GlassSwitch(
-                          quality: GlassQuality.standard,
-                          value: state.preferences.showArchivedAccounts,
-                          onChanged: (value) => ref
-                              .read(ledgerProvider.notifier)
-                              .updatePreferencesWith(
-                                (livePreferences) => livePreferences.copyWith(
-                                  showArchivedAccounts: value,
-                                ),
+                        value: state.preferences.showArchivedAccounts,
+                        onChanged: (value) => ref
+                            .read(ledgerProvider.notifier)
+                            .updatePreferencesWith(
+                              (livePreferences) => livePreferences.copyWith(
+                                showArchivedAccounts: value,
                               ),
-                        ),
+                            ),
                       ),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.md),
 
                   // ── Security & Privacy ──
-                  GlassGroupedSection(
-                    header: const Text('Security & privacy'),
+                  AppGroupedSection(
+                    header: 'Security & privacy',
                     children: [
-                      GlassListTile(
+                      AppGroupedTile.toggle(
                         title: const Text('Biometric lock'),
                         subtitle: Text(
                           appLock.message ??
                               'Require biometrics or your device credential when opening the app.',
                         ),
-                        trailing: IgnorePointer(
-                          ignoring: appLock.busy,
-                          child: GlassSwitch(
-                            quality: GlassQuality.standard,
-                            value: appLock.enabled,
-                            onChanged: (value) async {
-                              if (value) {
-                                await ref
-                                    .read(appLockProvider.notifier)
-                                    .enable();
-                                final current = ref.read(appLockProvider);
-                                _showMessage(
-                                  current.enabled
-                                      ? 'App lock enabled on this device.'
-                                      : current.message ??
-                                            'App lock was not enabled.',
-                                );
-                              } else {
-                                await ref
-                                    .read(appLockProvider.notifier)
-                                    .disable();
-                                _showMessage(
-                                  'App lock disabled on this device.',
-                                );
-                              }
-                            },
-                          ),
-                        ),
+                        value: appLock.enabled,
+                        onChanged: appLock.busy
+                            ? null
+                            : (value) async {
+                                if (value) {
+                                  await ref
+                                      .read(appLockProvider.notifier)
+                                      .enable();
+                                  final current = ref.read(appLockProvider);
+                                  _showMessage(
+                                    current.enabled
+                                        ? 'App lock enabled on this device.'
+                                        : current.message ??
+                                              'App lock was not enabled.',
+                                  );
+                                } else {
+                                  await ref
+                                      .read(appLockProvider.notifier)
+                                      .disable();
+                                  _showMessage(
+                                    'App lock disabled on this device.',
+                                  );
+                                }
+                              },
                       ),
                       const GlassDivider(),
-                      GlassListTile(
+                      AppGroupedTile(
                         leading: const Icon(Icons.security_outlined),
                         title: const Text('Device permissions'),
                         subtitle: const Text(
                           'Manage camera, photos, and notification access.',
                         ),
-                        trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+                        showChevron: true,
                         onTap: () => context.push('/device-permissions'),
                       ),
                     ],
@@ -332,35 +310,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   // Offline mode has no account to delete; its wallet is
                   // managed through backups and Data backup instead.
                   if (!auth.isLocalOnly)
-                    GlassGroupedSection(
-                      header: Text(
-                        'Danger zone',
-                        style: TextStyle(
-                          color: theme.colorScheme.error,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                    AppGroupedSection(
+                      header: 'Danger zone',
+                      destructive: true,
                       children: [
-                        GlassListTile(
-                          leading: Icon(
-                            Icons.delete_forever_rounded,
-                            color: theme.colorScheme.error,
-                          ),
-                          title: Text(
-                            'Delete account',
-                            style: TextStyle(
-                              color: theme.colorScheme.error,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                        AppGroupedTile(
+                          leading: const Icon(Icons.delete_forever_rounded),
+                          title: const Text('Delete account'),
                           subtitle: const Text(
                             'Delete this account\'s cloud data and its wallet on this device.',
                           ),
-                          trailing: Icon(
-                            Icons.chevron_right_rounded,
-                            size: 20,
-                            color: theme.colorScheme.error,
-                          ),
+                          destructive: true,
+                          showChevron: true,
                           onTap: _showDeleteAccountDialog,
                         ),
                       ],
@@ -600,8 +561,8 @@ class _GlassTuningSectionState extends State<_GlassTuningSection> {
 
   @override
   Widget build(BuildContext context) {
-    return GlassGroupedSection(
-      header: const Text('Glass appearance'),
+    return AppGroupedSection(
+      header: 'Glass appearance',
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(
@@ -669,9 +630,9 @@ class _PrivacyQuickCard extends StatelessWidget {
         child: MergeSemantics(
           child: ExcludeFocus(
             child: ExcludeSemantics(
-              child: GlassGroupedSection(
+              child: AppGroupedSection(
                 children: [
-                  GlassListTile(
+                  AppGroupedTile.toggle(
                     leading: Icon(
                       enabled
                           ? Icons.visibility_off_rounded
@@ -683,13 +644,8 @@ class _PrivacyQuickCard extends StatelessWidget {
                           ? 'Balances and amounts are hidden across the app.'
                           : 'Hide balances and amounts across the app.',
                     ),
-                    trailing: IgnorePointer(
-                      child: GlassSwitch(
-                        quality: GlassQuality.standard,
-                        value: enabled,
-                        onChanged: onChanged,
-                      ),
-                    ),
+                    value: enabled,
+                    onChanged: onChanged,
                   ),
                 ],
               ),

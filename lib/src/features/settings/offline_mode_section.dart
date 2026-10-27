@@ -6,7 +6,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../design/tokens.dart';
 import '../../offline_mode/offline_mode_controller.dart';
-import '../launch/brand_widgets.dart';
+import '../../widgets/app_kit.dart';
 
 /// Offline-mode status plus the backup actions an offline user owns:
 /// encrypted export/import and the upgrade to Google backup & sync.
@@ -17,44 +17,43 @@ class OfflineModeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return GlassGroupedSection(
-      header: const Text('Offline mode'),
+    return AppGroupedSection(
+      header: 'Offline mode',
       children: [
-        GlassListTile(
-          leading: Icon(Icons.phonelink_lock_outlined, color: scheme.primary),
-          title: const Text('Stored only on this device'),
-          subtitle: const Text(
+        const AppGroupedTile(
+          leading: Icon(Icons.phonelink_lock_outlined),
+          title: Text('Stored only on this device'),
+          subtitle: Text(
             'Cloud sync is off and nothing is uploaded. Export an encrypted '
             'backup regularly so you can restore your wallet.',
           ),
         ),
         const GlassDivider(),
-        GlassListTile(
+        AppGroupedTile(
           key: upgradeKey,
-          leading: Icon(Icons.cloud_upload_outlined, color: scheme.primary),
+          leading: const Icon(Icons.cloud_upload_outlined),
           title: const Text('Back up & sync with Google'),
           subtitle: const Text(
             'Sign in to move this wallet to your Google account and keep it '
             'in sync across devices.',
           ),
-          trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+          showChevron: true,
           onTap: () => showOfflineUpgradeSheet(context),
         ),
         const GlassDivider(),
-        GlassListTile(
+        AppGroupedTile(
           leading: const Icon(Icons.file_download_outlined),
           title: const Text('Export encrypted backup'),
           subtitle: const Text('AES-256 protected with your own passphrase.'),
-          trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+          showChevron: true,
           onTap: () => context.push('/data-backup'),
         ),
         const GlassDivider(),
-        GlassListTile(
+        AppGroupedTile(
           leading: const Icon(Icons.restore_outlined),
           title: const Text('Import backup'),
           subtitle: const Text('Restore a 1Wallet backup file to this device.'),
-          trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+          showChevron: true,
           onTap: () => context.push('/data-backup'),
         ),
       ],
@@ -177,8 +176,10 @@ class _OfflineUpgradeSheetState extends ConsumerState<OfflineUpgradeSheet> {
       },
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
-        child: BrandFrostedPanel(
-          borderRadius: AppRadii.xl,
+        child: AppPanel(
+          glass: true,
+          radius: AppRadii.lg,
+          padding: const EdgeInsets.all(AppSpacing.xl),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -306,28 +307,30 @@ class _OfflineUpgradeSheetState extends ConsumerState<OfflineUpgradeSheet> {
         ),
       ],
       const SizedBox(height: AppSpacing.md),
-      _ChoiceTile(
+      PremiumRow(
         key: const Key('offline-upgrade-keep-local'),
         icon: Icons.smartphone_outlined,
         title: 'Keep this device\'s wallet',
         subtitle: 'Upload it and replace the wallet in your Google account.',
         onTap: () => _choose(CloudWalletChoice.keepLocal),
       ),
-      _ChoiceTile(
+      const SizedBox(height: AppSpacing.xs),
+      PremiumRow(
         key: const Key('offline-upgrade-keep-cloud'),
         icon: Icons.cloud_download_outlined,
         title: 'Use the Google wallet',
         subtitle: 'Replace this device\'s wallet with the one in Google.',
         onTap: () => _choose(CloudWalletChoice.keepCloud),
       ),
-      _ChoiceTile(
+      const SizedBox(height: AppSpacing.xs),
+      PremiumRow(
         key: const Key('offline-upgrade-merge'),
         icon: Icons.merge_type_outlined,
         title: 'Merge both',
         subtitle: 'Combine both wallets and upload the result.',
         onTap: () => _choose(CloudWalletChoice.merge),
       ),
-      const SizedBox(height: AppSpacing.xs),
+      const SizedBox(height: AppSpacing.md),
       TextButton(
         onPressed: _close,
         child: const Text('Cancel and stay offline'),
@@ -352,45 +355,6 @@ class _Progress extends StatelessWidget {
         const SizedBox(width: AppSpacing.md),
         Expanded(child: Text(message)),
       ],
-    );
-  }
-}
-
-class _ChoiceTile extends StatelessWidget {
-  const _ChoiceTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-    super.key,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-      child: Material(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        child: ListTile(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadii.md),
-          ),
-          leading: Icon(icon, color: scheme.primary),
-          title: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
-          subtitle: Text(subtitle),
-          onTap: onTap,
-        ),
-      ),
     );
   }
 }

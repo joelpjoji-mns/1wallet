@@ -224,7 +224,9 @@ class AddRecordSelectorBox extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadii.md),
             border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant,
+              color: Theme.of(
+                context,
+              ).colorScheme.outlineVariant.withValues(alpha: 0.55),
             ),
           ),
           child: Row(
@@ -325,7 +327,9 @@ class AddRecordCalculatorPad extends StatelessWidget {
         return colors.operatorBackground;
       }
       if (key == 'AC') {
-        return Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.31);
+        return Theme.of(
+          context,
+        ).colorScheme.errorContainer.withValues(alpha: 0.31);
       }
       return Theme.of(
         context,
@@ -503,7 +507,9 @@ class AddRecordTappableDetailField extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadii.md),
             border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant,
+              color: Theme.of(
+                context,
+              ).colorScheme.outlineVariant.withValues(alpha: 0.55),
             ),
           ),
           child: Row(

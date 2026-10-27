@@ -72,13 +72,11 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
       return RouteScaffold(
         title: 'Downloading Update',
         actions: [
-          Tooltip(
-            message: 'Cancel download',
-            child: GlassHeaderButton(
-              icon: Icons.close_rounded,
-              onPressed: () => provider.cancelDownload(),
-              semanticLabel: 'Cancel download',
-            ),
+          HeaderIconButton(
+            icon: Icons.close_rounded,
+            onPressed: () => provider.cancelDownload(),
+            semanticLabel: 'Cancel download',
+            tooltip: 'Cancel download',
           ),
         ],
         child: _buildDedicatedDownloadView(context, state, provider),
@@ -88,16 +86,14 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     return RouteScaffold(
       title: 'Updates',
       actions: [
-        Tooltip(
-          message: 'Check for updates',
-          child: HeaderIconButton(
-            icon: Icons.refresh_rounded,
-            loading: state.status == UpdateStatus.checking,
-            onPressed: state.status == UpdateStatus.checking
-                ? null
-                : () => provider.checkForUpdates(force: true),
-            semanticLabel: 'Check for updates',
-          ),
+        HeaderIconButton(
+          icon: Icons.refresh_rounded,
+          loading: state.status == UpdateStatus.checking,
+          onPressed: state.status == UpdateStatus.checking
+              ? null
+              : () => provider.checkForUpdates(force: true),
+          semanticLabel: 'Check for updates',
+          tooltip: 'Check for updates',
         ),
       ],
       child: GlassIsolationScope(
@@ -231,7 +227,8 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
       color = scheme.primary;
     }
 
-    return GlassCard(
+    return AppPanel(
+      glass: true,
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
@@ -278,17 +275,10 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
             ),
             const SizedBox(height: AppSpacing.md),
             // Morphe version transition indicator
-            Container(
+            AppPanel(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.sm,
                 vertical: AppSpacing.xs,
-              ),
-              decoration: BoxDecoration(
-                color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(AppRadii.md),
-                border: Border.all(
-                  color: scheme.outlineVariant.withValues(alpha: 0.3),
-                ),
               ),
               child: hasUpdate
                   ? Wrap(
@@ -1201,6 +1191,12 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               GlassCard(
+                margin: EdgeInsets.zero,
+                padding: const EdgeInsets.all(AppSpacing.md),
+                shape: const LiquidRoundedSuperellipse(
+                  borderRadius: AppRadii.lg,
+                ),
+                quality: GlassQuality.standard,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.lg,

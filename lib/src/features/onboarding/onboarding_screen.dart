@@ -2,12 +2,10 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/ledger_models.dart';
-import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart' show minorUnits;
 import '../../auth/auth_controller.dart';
 import '../launch/brand_widgets.dart';
@@ -183,9 +181,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       // wallet data; an empty ledger means this really is a fresh setup.
       for (final draft in _accounts) {
         final parsedOpening =
-            double.tryParse(
-              draft.opening.replaceAll(RegExp(r'[^0-9.]'), ''),
-            ) ??
+            double.tryParse(draft.opening.replaceAll(RegExp(r'[^0-9.]'), '')) ??
             0;
         final openingBalanceMinor =
             (parsedOpening * math.pow(10, minorUnits(draft.currency))).round();
@@ -285,9 +281,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 child: Row(
                   children: [
                     if (_currentPage > 0)
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                      HeaderIconButton(
+                        icon: Icons.arrow_back_ios_new_rounded,
                         onPressed: _prevPage,
+                        semanticLabel: 'Back',
+                        tooltip: 'Back',
                       )
                     else
                       const SizedBox(width: 48),
@@ -367,36 +365,22 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                // Wrapped in its own transparent Material so ink splashes
-                // paint above this row's background instead of being hidden
-                // beneath BrandFrostedPanel's own DecoratedBox (Flutter
-                // flags this combination as "background color or ink
-                // splashes may be invisible" otherwise).
-                Material(
-                  type: MaterialType.transparency,
-                  child: ListTile(
-                    title: Text(_baseCurrency),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    tileColor: Theme.of(
-                      context,
-                    ).colorScheme.surface.withValues(alpha: 0.5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    onTap: () async {
-                      final curr = await showCurrencyPicker(
-                        context: context,
-                        state: ref.read(ledgerProvider),
-                        selectedValue: _baseCurrency,
-                      );
-                      if (curr != null) {
-                        setState(() {
-                          _baseCurrency = curr;
-                          _currentDraft.currency = curr;
-                        });
-                      }
-                    },
-                  ),
+                PremiumRow(
+                  icon: Icons.currency_exchange_outlined,
+                  title: _baseCurrency,
+                  onTap: () async {
+                    final curr = await showCurrencyPicker(
+                      context: context,
+                      state: ref.read(ledgerProvider),
+                      selectedValue: _baseCurrency,
+                    );
+                    if (curr != null) {
+                      setState(() {
+                        _baseCurrency = curr;
+                        _currentDraft.currency = curr;
+                      });
+                    }
+                  },
                 ),
               ],
             ),
@@ -616,17 +600,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           ..._accounts.map(
             (a) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: GlassCard(
-                margin: EdgeInsets.zero,
+              child: AppPanel(
+                glass: true,
                 padding: const EdgeInsets.all(4),
-                shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-                quality: GlassQuality.standard,
-                child: ListTile(
+                child: AppGroupedTile(
                   leading: Icon(a.icon, color: a.color),
-                  title: Text(
-                    a.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                  title: Text(a.name),
                   subtitle: Text('${a.opening} ${a.currency}'),
                 ),
               ),

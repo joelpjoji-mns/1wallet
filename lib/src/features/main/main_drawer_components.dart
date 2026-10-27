@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../design/tokens.dart';
+import '../../widgets/app_kit.dart';
 
 class DrawerMetricCard extends StatelessWidget {
   const DrawerMetricCard({
@@ -22,10 +23,10 @@ class DrawerMetricCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
-      decoration: BoxDecoration(
+      decoration: AppSurfaces.panel(
+        context,
+        radius: AppRadii.lg,
         color: scheme.surface.withValues(alpha: 0.75),
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.71)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -154,10 +155,10 @@ class DrawerSection extends StatelessWidget {
           ),
           Container(
             padding: const EdgeInsets.all(AppSpacing.xs),
-            decoration: BoxDecoration(
+            decoration: AppSurfaces.panel(
+              context,
+              radius: AppRadii.xl,
               color: surfaceTint.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(AppRadii.xl),
-              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.63)),
             ),
             child: Column(
               children: [

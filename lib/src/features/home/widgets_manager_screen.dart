@@ -42,8 +42,10 @@ class WidgetsManagerScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55),
+        ),
       ),
       child: Row(
         children: [
@@ -92,9 +94,10 @@ class WidgetsManagerScreen extends ConsumerWidget {
     return RouteScaffold(
       title: 'Widgets Gallery',
       actions: [
-        IconButton(
+        HeaderIconButton(
+          icon: Icons.home_outlined,
+          semanticLabel: 'Home',
           tooltip: 'Home',
-          icon: const Icon(Icons.home_outlined),
           onPressed: () {
             if (context.canPop()) {
               context.pop();
@@ -207,20 +210,21 @@ class _LiveWidgetPreview extends ConsumerWidget {
               top: Radius.circular(AppRadii.lg),
             ),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                isVisible
-                    ? Icons.visibility_rounded
-                    : Icons.visibility_off_rounded,
-                size: 20,
-                color: isVisible
-                    ? theme.colorScheme.onPrimaryContainer
-                    : theme.colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
+              AppSwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                secondary: Icon(
+                  isVisible
+                      ? Icons.visibility_rounded
+                      : Icons.visibility_off_rounded,
+                  size: 20,
+                  color: isVisible
+                      ? theme.colorScheme.onPrimaryContainer
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+                title: Text(
                   isVisible ? 'Added to Home' : 'Hidden',
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
@@ -229,15 +233,6 @@ class _LiveWidgetPreview extends ConsumerWidget {
                         : theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
-              ),
-              ActionChip(
-                visualDensity: VisualDensity.compact,
-                avatar: const Icon(Icons.calendar_month_rounded, size: 16),
-                label: Text(homeWidgetDateLabel(datePreset)),
-                onPressed: () => _chooseDatePreset(context, ref, datePreset),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Switch.adaptive(
                 value: isVisible,
                 onChanged: (value) {
                   if (value) {
@@ -246,6 +241,12 @@ class _LiveWidgetPreview extends ConsumerWidget {
                     _hideWidget(ref);
                   }
                 },
+              ),
+              ActionChip(
+                visualDensity: VisualDensity.compact,
+                avatar: const Icon(Icons.calendar_month_rounded, size: 16),
+                label: Text(homeWidgetDateLabel(datePreset)),
+                onPressed: () => _chooseDatePreset(context, ref, datePreset),
               ),
             ],
           ),

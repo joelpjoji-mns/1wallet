@@ -130,11 +130,16 @@ class RecurringScreen extends ConsumerWidget {
             mode != 'edit' &&
             mode != 'new' &&
             selected != null) ...[
-          IconButton(
+          HeaderIconButton(
+            icon: Icons.edit_rounded,
+            semanticLabel: 'Edit recurring',
             onPressed: () => context.push('/recurring/${selected.id}/edit'),
-            icon: const Icon(Icons.edit_rounded),
           ),
-          IconButton(
+          HeaderIconButton(
+            icon: Icons.delete_outline_rounded,
+            destructive: true,
+            tooltip: 'Delete plan',
+            semanticLabel: 'Delete plan',
             onPressed: () async {
               final confirm = await showDialog<bool>(
                 context: context,
@@ -176,13 +181,12 @@ class RecurringScreen extends ConsumerWidget {
                 }
               }
             },
-            icon: const Icon(Icons.delete_outline_rounded),
-            color: Theme.of(context).colorScheme.error,
           ),
         ] else if (mode != 'edit' && mode != 'new' && mode != 'past')
-          IconButton(
+          HeaderIconButton(
+            icon: Icons.add_rounded,
+            semanticLabel: 'New recurring',
             onPressed: () => context.push('/recurring/new'),
-            icon: const Icon(Icons.add_rounded),
           ),
       ],
       child: Column(
@@ -440,292 +444,281 @@ class _RecurringCompactCard extends StatelessWidget {
         ? scheme.error
         : scheme.error.withAlphaFactor(0.7);
 
-    return GlassCard(
-      margin: EdgeInsets.zero,
+    return AppPanel(
+      glass: true,
       padding: EdgeInsets.zero,
-      shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-      quality: GlassQuality.minimal,
-      clipBehavior: Clip.antiAlias,
+      onTap: onTap,
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (isUrgent) Container(width: 4, color: urgentBorderColor),
             Expanded(
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                  onTap: onTap,
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      isUrgent ? AppSpacing.sm : AppSpacing.md,
-                      12,
-                      AppSpacing.md,
-                      12,
-                    ),
-                    child: Column(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  isUrgent ? AppSpacing.sm : AppSpacing.md,
+                  12,
+                  AppSpacing.md,
+                  12,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _RoundRecurringIcon(
-                              icon: category != null
-                                  ? categoryIcon(category)
-                                  : transactionIcon(transaction),
-                              color: categoryColor(category, context),
-                            ),
-                            const SizedBox(width: AppSpacing.md),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                        _RoundRecurringIcon(
+                          icon: category != null
+                              ? categoryIcon(category)
+                              : transactionIcon(transaction),
+                          color: categoryColor(category, context),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
                                 children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          primaryTitle,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleMedium
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.w800,
-                                              ),
-                                        ),
-                                      ),
-                                      if (isOverdue) ...[
-                                        const SizedBox(width: AppSpacing.xs),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 7,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: scheme.errorContainer,
-                                            borderRadius: BorderRadius.circular(
-                                              AppRadii.pill,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            'OVERDUE',
-                                            style: TextStyle(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w900,
-                                              letterSpacing: 0.8,
-                                              color: scheme.onErrorContainer,
-                                            ),
-                                          ),
-                                        ),
-                                      ] else if (isDueToday) ...[
-                                        const SizedBox(width: AppSpacing.xs),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 7,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: scheme.errorContainer,
-                                            borderRadius: BorderRadius.circular(
-                                              AppRadii.pill,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            'TODAY',
-                                            style: TextStyle(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w900,
-                                              letterSpacing: 0.8,
-                                              color: scheme.onErrorContainer,
-                                            ),
-                                          ),
-                                        ),
-                                      ] else if (isUrgent) ...[
-                                        const SizedBox(width: AppSpacing.xs),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 7,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: scheme.errorContainer
-                                                .withAlphaFactor(0.6),
-                                            borderRadius: BorderRadius.circular(
-                                              AppRadii.pill,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            '${daysUntilDue}D',
-                                            style: TextStyle(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w900,
-                                              letterSpacing: 0.5,
-                                              color: scheme.onErrorContainer,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                  if (categorySubtitle != null) ...[
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      categorySubtitle,
+                                  Expanded(
+                                    child: Text(
+                                      primaryTitle,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: scheme.onSurfaceVariant,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ],
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    recurrence,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: scheme.onSurfaceVariant,
-                                      fontSize: 13,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w800,
+                                          ),
                                     ),
                                   ),
-                                  if (extraLine != null) ...[
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      extraLine,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: scheme.onSurfaceVariant,
-                                        fontStyle: FontStyle.italic,
-                                        fontSize: 13,
+                                  if (isOverdue) ...[
+                                    const SizedBox(width: AppSpacing.xs),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 7,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: scheme.errorContainer,
+                                        borderRadius: BorderRadius.circular(
+                                          AppRadii.pill,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        'OVERDUE',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: 0.8,
+                                          color: scheme.onErrorContainer,
+                                        ),
+                                      ),
+                                    ),
+                                  ] else if (isDueToday) ...[
+                                    const SizedBox(width: AppSpacing.xs),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 7,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: scheme.errorContainer,
+                                        borderRadius: BorderRadius.circular(
+                                          AppRadii.pill,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        'TODAY',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: 0.8,
+                                          color: scheme.onErrorContainer,
+                                        ),
+                                      ),
+                                    ),
+                                  ] else if (isUrgent) ...[
+                                    const SizedBox(width: AppSpacing.xs),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 7,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: scheme.errorContainer
+                                            .withAlphaFactor(0.6),
+                                        borderRadius: BorderRadius.circular(
+                                          AppRadii.pill,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        '${daysUntilDue}D',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: 0.5,
+                                          color: scheme.onErrorContainer,
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ],
                               ),
-                            ),
-                            const SizedBox(width: AppSpacing.md),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
+                              if (categorySubtitle != null) ...[
+                                const SizedBox(height: 2),
                                 Text(
-                                  amountText,
+                                  categorySubtitle,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.titleMedium
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.w900,
-                                        color:
-                                            (transaction.status == 'void' ||
-                                                transaction.status == 'paused')
-                                            ? scheme.outline
-                                            : _recurringAmountColor(
-                                                context,
-                                                transaction,
-                                              ),
-                                        decoration: transaction.status == 'void'
-                                            ? TextDecoration.lineThrough
-                                            : null,
-                                      ),
+                                  style: TextStyle(
+                                    color: scheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
                                 ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    Icon(
-                                      status.icon,
-                                      color: status.color,
-                                      size: 14,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      status.label,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: status.color,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ],
+                              ],
+                              const SizedBox(height: 2),
+                              Text(
+                                recurrence,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: scheme.onSurfaceVariant,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              if (extraLine != null) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  extraLine,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: scheme.onSurfaceVariant,
+                                    fontStyle: FontStyle.italic,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              amountText,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w900,
+                                    color:
+                                        (transaction.status == 'void' ||
+                                            transaction.status == 'paused')
+                                        ? scheme.outline
+                                        : _recurringAmountColor(
+                                            context,
+                                            transaction,
+                                          ),
+                                    decoration: transaction.status == 'void'
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                  ),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Icon(
+                                  status.icon,
+                                  color: status.color,
+                                  size: 14,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  status.label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: status.color,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ],
                             ),
                           ],
                         ),
-                        if (!historyMode &&
-                            (account?.loanDetails != null ||
-                                counter?.loanDetails != null))
-                          Builder(
-                            builder: (context) {
-                              final loanAccount = account?.loanDetails != null
-                                  ? account
-                                  : counter;
-                              final total =
-                                  loanAccount?.loanDetails?.repaymentCount;
-                              if (total == null || total <= 0) {
-                                return const SizedBox();
-                              }
-                              final postedCount = state.transactions
-                                  .where(
-                                    (t) =>
-                                        (t.status == 'posted' ||
-                                            t.status == 'cleared') &&
-                                        (t.accountId == loanAccount!.id ||
-                                            t.counterAccountId ==
-                                                loanAccount.id) &&
-                                        t.type == 'loan_repayment',
-                                  )
-                                  .length;
-                              final progress = (postedCount / total).clamp(
-                                0.0,
-                                1.0,
-                              );
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  const SizedBox(height: AppSpacing.md),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        'Payment $postedCount of $total',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: scheme.onSurfaceVariant,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      Text(
-                                        '${total - postedCount} left',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: scheme.onSurfaceVariant,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-                                  LinearProgressIndicator(
-                                    value: progress,
-                                    backgroundColor:
-                                        scheme.surfaceContainerHighest,
-                                    color: scheme.primary,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
                       ],
                     ),
-                  ),
+                    if (!historyMode &&
+                        (account?.loanDetails != null ||
+                            counter?.loanDetails != null))
+                      Builder(
+                        builder: (context) {
+                          final loanAccount = account?.loanDetails != null
+                              ? account
+                              : counter;
+                          final total =
+                              loanAccount?.loanDetails?.repaymentCount;
+                          if (total == null || total <= 0) {
+                            return const SizedBox();
+                          }
+                          final postedCount = state.transactions
+                              .where(
+                                (t) =>
+                                    (t.status == 'posted' ||
+                                        t.status == 'cleared') &&
+                                    (t.accountId == loanAccount!.id ||
+                                        t.counterAccountId == loanAccount.id) &&
+                                    t.type == 'loan_repayment',
+                              )
+                              .length;
+                          final progress = (postedCount / total).clamp(
+                            0.0,
+                            1.0,
+                          );
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const SizedBox(height: AppSpacing.md),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Payment $postedCount of $total',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: scheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${total - postedCount} left',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: scheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              LinearProgressIndicator(
+                                value: progress,
+                                backgroundColor: scheme.surfaceContainerHighest,
+                                color: scheme.primary,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                  ],
                 ),
               ),
             ),
@@ -1553,12 +1546,8 @@ class RecurringDetailView extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  Container(
+                  AppPanel(
                     padding: const EdgeInsets.all(AppSpacing.sm),
-                    decoration: BoxDecoration(
-                      color: scheme.surfaceContainer,
-                      borderRadius: BorderRadius.circular(AppRadii.sm),
-                    ),
                     child: Column(
                       children: [
                         Row(

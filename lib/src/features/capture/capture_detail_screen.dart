@@ -66,10 +66,11 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
     return RouteScaffold(
       title: 'Capture detail',
       actions: [
-        IconButton(
+        HeaderIconButton(
+          icon: Icons.save_outlined,
           tooltip: 'Save draft',
+          semanticLabel: 'Save draft',
           onPressed: () => _saveDraft(candidate, state),
-          icon: const Icon(Icons.save_outlined),
         ),
       ],
       child: Column(

@@ -41,7 +41,8 @@ class HomeWidgetCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final isAmoled = theme.scaffoldBackgroundColor == AppColors.amoledBackground;
+    final isAmoled =
+        theme.scaffoldBackgroundColor == AppColors.amoledBackground;
     final isDark = theme.brightness == Brightness.dark;
     final resolvedIconColor = iconColor ?? scheme.primary;
     final reorderScope = HomeWidgetCardReorderScope.maybeOf(context);
@@ -50,93 +51,95 @@ class HomeWidgetCard extends StatelessWidget {
       color: Colors.transparent,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
             children: [
-            Row(
-              children: [
-                HomeWidgetReorderableIcon(
-                  icon: icon,
-                  iconColor: resolvedIconColor,
-                  onTap: onIconTap ?? onAction,
-                  tooltip: actionLabel != null ? '$title: $actionLabel' : title,
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+              HomeWidgetReorderableIcon(
+                icon: icon,
+                iconColor: resolvedIconColor,
+                onTap: onIconTap ?? onAction,
+                tooltip: actionLabel != null ? '$title: $actionLabel' : title,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    if (subtitle != null)
                       Text(
-                        title,
+                        subtitle!,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w900),
-                      ),
-                      if (subtitle != null)
-                        Text(
-                          subtitle!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: scheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w600,
-                              ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
-                if (reorderScope?.reorderMode ?? false) ...[
-                  const SizedBox(width: AppSpacing.xs),
-                  GlassIconButton(
-                    semanticLabel: 'Move up ${reorderScope!.label}',
-                    icon: const Icon(Icons.keyboard_arrow_up_rounded),
-                    onPressed: reorderScope.canMoveUp
-                        ? reorderScope.onMoveUp
-                        : null,
-                    quality: GlassQuality.minimal,
-                  ),
-                  GlassIconButton(
-                    semanticLabel: 'Move down ${reorderScope.label}',
-                    icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                    onPressed: reorderScope.canMoveDown
-                        ? reorderScope.onMoveDown
-                        : null,
-                    quality: GlassQuality.minimal,
-                  ),
-                ] else if (dateFilter != null && onDateFilterChanged != null) ...[
-                  const SizedBox(width: AppSpacing.xs),
-                  GlassDropdownPill<String>(
-                    value: dateFilterOptions.contains(dateFilter)
-                        ? dateFilter!
-                        : (dateFilterOptions.contains('This month')
+              ),
+              if (reorderScope?.reorderMode ?? false) ...[
+                const SizedBox(width: AppSpacing.xs),
+                GlassIconButton(
+                  semanticLabel: 'Move up ${reorderScope!.label}',
+                  icon: const Icon(Icons.keyboard_arrow_up_rounded),
+                  onPressed: reorderScope.canMoveUp
+                      ? reorderScope.onMoveUp
+                      : null,
+                  quality: GlassQuality.minimal,
+                ),
+                GlassIconButton(
+                  semanticLabel: 'Move down ${reorderScope.label}',
+                  icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                  onPressed: reorderScope.canMoveDown
+                      ? reorderScope.onMoveDown
+                      : null,
+                  quality: GlassQuality.minimal,
+                ),
+              ] else if (dateFilter != null && onDateFilterChanged != null) ...[
+                const SizedBox(width: AppSpacing.xs),
+                GlassDropdownPill<String>(
+                  value: dateFilterOptions.contains(dateFilter)
+                      ? dateFilter!
+                      : (dateFilterOptions.contains('This month')
                             ? 'This month'
                             : dateFilterOptions.first),
-                    options: [
-                      for (final option in dateFilterOptions)
-                        GlassDropdownOption(option, option),
-                    ],
-                    semanticLabel: '$title date filter',
-                    onChanged: onDateFilterChanged!,
-                  ),
-                ] else if (actionLabel != null && onAction != null && headerTrailing == null) ...[
-                  const SizedBox(width: AppSpacing.xs),
-                  AppActionButton(
-                    label: actionLabel!,
-                    onPressed: onAction,
-                    compact: true,
-                  ),
-                ],
-                if (headerTrailing != null) ...[
-                  const SizedBox(width: AppSpacing.xs),
-                  headerTrailing!,
-                ],
+                  options: [
+                    for (final option in dateFilterOptions)
+                      GlassDropdownOption(option, option),
+                  ],
+                  semanticLabel: '$title date filter',
+                  onChanged: onDateFilterChanged!,
+                ),
+              ] else if (actionLabel != null &&
+                  onAction != null &&
+                  headerTrailing == null) ...[
+                const SizedBox(width: AppSpacing.xs),
+                AppActionButton(
+                  label: actionLabel!,
+                  onPressed: onAction,
+                  compact: true,
+                ),
               ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            child,
-          ],
-        ),
-      );
+              if (headerTrailing != null) ...[
+                const SizedBox(width: AppSpacing.xs),
+                headerTrailing!,
+              ],
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          child,
+        ],
+      ),
+    );
 
     if (isAmoled) {
       return RepaintBoundary(
@@ -170,7 +173,7 @@ class HomeWidgetCard extends StatelessWidget {
           margin: EdgeInsets.zero,
           padding: const EdgeInsets.all(AppSpacing.sm),
           shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-          quality: GlassQuality.minimal,
+          quality: GlassQuality.standard,
           child: cardContent,
         ),
       ),
@@ -499,6 +502,9 @@ class _MiniLineChartState extends State<MiniLineChart> {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.55),
+        ),
       ),
       child: GestureDetector(
         onPanDown: (details) =>

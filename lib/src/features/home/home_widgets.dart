@@ -497,6 +497,7 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
                     return TransactionRow(
                       state: state,
                       transaction: transaction,
+                      glass: false,
                       onTap: () =>
                           context.push('/transaction/${transaction.id}'),
                     );
@@ -1681,6 +1682,7 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
               TransactionRow(
                 state: state,
                 transaction: transaction,
+                glass: false,
                 onTap: () => context.push('/transaction/${transaction.id}'),
               ),
               if (transaction != next.last)
@@ -2955,7 +2957,7 @@ class DashboardCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         child: child,
       ),
     );
@@ -2965,8 +2967,11 @@ class DashboardCard extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
           color: AppColors.amoledBackground,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.09), width: 0.8),
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.09),
+            width: 0.8,
+          ),
         ),
         child: inner,
       );
@@ -2975,7 +2980,7 @@ class DashboardCard extends StatelessWidget {
     return GlassCard(
       margin: EdgeInsets.zero,
       padding: const EdgeInsets.all(AppSpacing.lg),
-      shape: const LiquidRoundedSuperellipse(borderRadius: 16),
+      shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
       quality: GlassQuality.standard,
       child: inner,
     );

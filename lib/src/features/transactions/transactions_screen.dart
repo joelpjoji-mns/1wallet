@@ -20,7 +20,11 @@ final _filteredTransactionsProvider = Provider.autoDispose
     .family<List<TransactionRecord>, _TransactionFilterState>((ref, filter) {
       ref.watch(
         ledgerProvider.select(
-          (s) => (s.transactions, s.categories, s.preferences.hideSkippedInHistory),
+          (s) => (
+            s.transactions,
+            s.categories,
+            s.preferences.hideSkippedInHistory,
+          ),
         ),
       );
       final state = ref.read(ledgerProvider);
@@ -115,19 +119,34 @@ final _filteredTransactionsProvider = Provider.autoDispose
             final payment = transaction.paymentMethod?.toLowerCase() ?? '';
             final tags = transaction.tags.map((t) => t.toLowerCase()).join(' ');
             final cat = transaction.categoryId != null
-                ? categoryById(state, transaction.categoryId)?.name.toLowerCase() ?? ''
+                ? categoryById(
+                        state,
+                        transaction.categoryId,
+                      )?.name.toLowerCase() ??
+                      ''
                 : '';
-            final acc = accountById(state, transaction.accountId)?.name.toLowerCase() ?? '';
+            final acc =
+                accountById(state, transaction.accountId)?.name.toLowerCase() ??
+                '';
             final counterAcc = transaction.counterAccountId != null
-                ? accountById(state, transaction.counterAccountId)?.name.toLowerCase() ?? ''
+                ? accountById(
+                        state,
+                        transaction.counterAccountId,
+                      )?.name.toLowerCase() ??
+                      ''
                 : '';
-            final amountStr = formatMoney(transaction.amount, state.preferences.locale).toLowerCase();
+            final amountStr = formatMoney(
+              transaction.amount,
+              state.preferences.locale,
+            ).toLowerCase();
             final rawAmount = (transaction.amount.amountMinor / 100).toString();
 
             final combined =
                 '$notes $name $location $payment $tags $cat $acc $counterAcc $amountStr $rawAmount';
 
-            final allTokensMatch = queryTokens.every((token) => combined.contains(token));
+            final allTokensMatch = queryTokens.every(
+              (token) => combined.contains(token),
+            );
             if (allTokensMatch) return true;
 
             if (regex != null) {
@@ -254,10 +273,7 @@ final _monthlyStatsProvider = Provider.autoDispose
         if (sourceIncluded) {
           final sourceConverted = convertMoneyForDisplay(
             state,
-            Money(
-              amountMinor: sourceDelta(t),
-              currency: t.amount.currency,
-            ),
+            Money(amountMinor: sourceDelta(t), currency: t.amount.currency),
             params.displayCurrency,
           );
           if (sourceConverted.currency == params.displayCurrency) {
@@ -333,10 +349,7 @@ final _monthlyStatsProvider = Provider.autoDispose
         }
       }
 
-      return (
-        monthlyBalances: monthlyBalances,
-        monthlyFlows: monthlyFlows,
-      );
+      return (monthlyBalances: monthlyBalances, monthlyFlows: monthlyFlows);
     });
 
 final transactionsTypeFilterProvider = StateProvider<String>((ref) => 'all');
@@ -344,8 +357,9 @@ final transactionsDateFilterProvider = StateProvider<String>(
   (ref) => 'this_year',
 );
 final transactionsStatusFilterProvider = StateProvider<String>((ref) => 'all');
-final transactionsCategoryFilterProvider =
-    StateProvider<Set<String>>((ref) => <String>{});
+final transactionsCategoryFilterProvider = StateProvider<Set<String>>(
+  (ref) => <String>{},
+);
 final transactionsTagFilterProvider = StateProvider<String>((ref) => 'all');
 
 class TransactionsScreen extends ConsumerStatefulWidget {
@@ -390,12 +404,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final transactions = ref.watch(_filteredTransactionsProvider(filterState));
     final flow = ref.watch(_transactionsFlowProvider(filterState));
     final hasActiveFilters = _hasActiveFilters(accountFilter);
-    final allLedgerTags = state.transactions
-        .expand((t) => t.tags)
-        .where((t) => t.trim().isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort();
+    final allLedgerTags =
+        state.transactions
+            .expand((t) => t.tags)
+            .where((t) => t.trim().isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
 
     return AppScreen(
       title: _selectedTransactionIds.isNotEmpty
@@ -451,9 +466,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             categoryLabel: _categoryFilterLabel(state),
             categoryValue: _categoryFilters.isEmpty
                 ? (_includeUncategorizedCategory ? 'uncategorized' : 'all')
-                : (_categoryFilters.length == 1 && !_includeUncategorizedCategory
-                    ? _categoryFilters.first
-                    : null),
+                : (_categoryFilters.length == 1 &&
+                          !_includeUncategorizedCategory
+                      ? _categoryFilters.first
+                      : null),
             categoryOptions: [
               const GlassDropdownOption('all', 'All categories'),
               const GlassDropdownOption(
@@ -462,11 +478,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 icon: Icons.label_off_outlined,
               ),
               for (final cat in state.categories.where((c) => !c.isArchived))
-                GlassDropdownOption(
-                  cat.id,
-                  cat.name,
-                  icon: categoryIcon(cat),
-                ),
+                GlassDropdownOption(cat.id, cat.name, icon: categoryIcon(cat)),
             ],
             statusLabel: _statusFilterLabel(statusFilter),
             statusValue: statusFilter,
@@ -476,7 +488,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             tagOptions: [
               const GlassDropdownOption('all', 'All tags'),
               for (final tag in allLedgerTags)
-                GlassDropdownOption(tag, tag, icon: Icons.label_outline_rounded),
+                GlassDropdownOption(
+                  tag,
+                  tag,
+                  icon: Icons.label_outline_rounded,
+                ),
             ],
             onTagSelected: (value) =>
                 ref.read(transactionsTagFilterProvider.notifier).state = value,
@@ -572,237 +588,265 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             child: AppTopFadeMask(
               enabled: transactions.isNotEmpty,
               child: transactions.isEmpty
-                ? EmptyState(
-                    icon: Icons.format_list_bulleted_rounded,
-                    title: 'No matching transactions',
-                    body: hasActiveFilters
-                        ? 'Clear filters to see the full ledger.'
-                        : 'Add a new record to start building your ledger.',
-                    actionLabel: hasActiveFilters
-                        ? 'Clear filters'
-                        : 'Add transaction',
-                    actionIcon: hasActiveFilters
-                        ? Icons.filter_alt_off_rounded
-                        : Icons.add_rounded,
-                    onAction: hasActiveFilters
-                        ? _clearFilters
-                        : () => context.push('/add'),
-                  )
-                : Builder(
-                    builder: (context) {
-                      final stats = ref.watch(
-                        _monthlyStatsProvider((
-                          accountFilter: accountFilter,
-                          displayCurrency: state.preferences.displayCurrency,
-                          locale: state.preferences.locale.replaceAll('_', '-'),
-                        )),
-                      );
-                      final monthlyBalances = stats.monthlyBalances;
-                      final monthlyFlows = stats.monthlyFlows;
-
-                      final filteredMonthlyFlows = <String, int>{};
-                      final filteredMonthlyCounts = <String, int>{};
-                      final includedAccounts = accountFilter != null
-                          ? {accountFilter}
-                          : {
-                              for (final a in state.accounts)
-                                if (!a.isArchived && a.includeInTotals) a.id,
-                            };
-
-                      final entries = <_HistoryEntry>[];
-                      String? currentMonth;
-                      DateTime? currentDay;
-                      final now = DateTime.now();
-                      final today = DateTime(now.year, now.month, now.day);
-                      final yesterday = today.subtract(const Duration(days: 1));
-                      final locale = state.preferences.locale.replaceAll(
-                        '_',
-                        '-',
-                      );
-
-                      final monthFormat = DateFormat('MMM yyyy', locale);
-                      final dayFormat = DateFormat('EEE, d MMM', locale);
-
-                      for (final t in transactions) {
-                        final mStr = monthFormat.format(t.occurredAt).toUpperCase();
-                        filteredMonthlyCounts[mStr] = (filteredMonthlyCounts[mStr] ?? 0) + 1;
-
-                        if (t.status == 'scheduled' ||
-                            t.status == 'paused' ||
-                            t.status == 'void' ||
-                            t.isExcludedFromReports) {
-                          continue;
-                        }
-
-                        final sourceIncluded = includedAccounts.contains(t.accountId);
-                        final counterIncluded = t.counterAccountId != null &&
-                            includedAccounts.contains(t.counterAccountId);
-                        if (!sourceIncluded && !counterIncluded) continue;
-
-                        int flowMinor = 0;
-                        if (t.type == 'transfer') {
-                          if (sourceIncluded && !counterIncluded) {
-                            final converted = convertMoneyForDisplay(
-                              state,
-                              t.amount,
-                              state.preferences.displayCurrency,
-                            );
-                            flowMinor = -converted.amountMinor;
-                          } else if (!sourceIncluded && counterIncluded) {
-                            final counterAmt = t.counterAmount ?? t.amount;
-                            final converted = convertMoneyForDisplay(
-                              state,
-                              counterAmt,
-                              state.preferences.displayCurrency,
-                            );
-                            flowMinor = converted.amountMinor;
-                          }
-                        } else if (incomeTypes.contains(t.type)) {
-                          if (sourceIncluded) {
-                            final converted = convertMoneyForDisplay(
-                              state,
-                              t.amount,
-                              state.preferences.displayCurrency,
-                            );
-                            flowMinor = converted.amountMinor;
-                          }
-                        } else if (expenseTypes.contains(t.type)) {
-                          if (sourceIncluded) {
-                            final converted = convertMoneyForDisplay(
-                              state,
-                              t.amount,
-                              state.preferences.displayCurrency,
-                            );
-                            flowMinor = -converted.amountMinor;
-                          }
-                        }
-                        filteredMonthlyFlows[mStr] =
-                            (filteredMonthlyFlows[mStr] ?? 0) + flowMinor;
-                      }
-
-                      String? currentDayLabel;
-                      List<TransactionRecord> currentDayTransactions = [];
-
-                      void flushDay() {
-                        if (currentDayTransactions.isNotEmpty &&
-                            currentDayLabel != null) {
-                          entries.add(
-                            _DayGroupEntry(
-                              dayLabel: currentDayLabel,
-                              transactions: currentDayTransactions,
+                  ? EmptyState(
+                      icon: Icons.format_list_bulleted_rounded,
+                      title: 'No matching transactions',
+                      body: hasActiveFilters
+                          ? 'Clear filters to see the full ledger.'
+                          : 'Add a new record to start building your ledger.',
+                      actionLabel: hasActiveFilters
+                          ? 'Clear filters'
+                          : 'Add transaction',
+                      actionIcon: hasActiveFilters
+                          ? Icons.filter_alt_off_rounded
+                          : Icons.add_rounded,
+                      onAction: hasActiveFilters
+                          ? _clearFilters
+                          : () => context.push('/add'),
+                    )
+                  : Builder(
+                      builder: (context) {
+                        final stats = ref.watch(
+                          _monthlyStatsProvider((
+                            accountFilter: accountFilter,
+                            displayCurrency: state.preferences.displayCurrency,
+                            locale: state.preferences.locale.replaceAll(
+                              '_',
+                              '-',
                             ),
-                          );
-                          currentDayTransactions = [];
-                        }
-                      }
-
-                      for (final t in transactions) {
-                        final monthStr = monthFormat
-                            .format(t.occurredAt)
-                            .toUpperCase();
-
-                        final isNewMonth = currentMonth != monthStr;
-                        if (isNewMonth) {
-                          flushDay();
-                          currentMonth = monthStr;
-
-                          final int effectiveFlowMinor = hasActiveFilters
-                              ? (filteredMonthlyFlows[monthStr] ?? 0)
-                              : (monthlyFlows[monthStr] ?? 0);
-                          final formattedFlow = formatMoney(
-                            Money(
-                              amountMinor: effectiveFlowMinor,
-                              currency: state.preferences.displayCurrency,
-                            ),
-                            state.preferences.locale,
-                          );
-                          final flowStr = (hasActiveFilters && effectiveFlowMinor > 0)
-                              ? '+$formattedFlow'
-                              : formattedFlow;
-
-                          final balanceStr = hasActiveFilters
-                              ? '${filteredMonthlyCounts[monthStr] ?? 0} record${(filteredMonthlyCounts[monthStr] ?? 0) == 1 ? '' : 's'}'
-                              : formatMoney(
-                                  Money(
-                                    amountMinor: monthlyBalances[monthStr] ?? 0,
-                                    currency: state.preferences.displayCurrency,
-                                  ),
-                                  state.preferences.locale,
-                                );
-
-                          entries.add(
-                            _MonthHeaderEntry(
-                              monthStr: monthStr,
-                              balanceStr: balanceStr,
-                              flowStr: flowStr,
-                              isFirst: entries.isEmpty,
-                              isFiltered: hasActiveFilters,
-                            ),
-                          );
-                        }
-
-                        final occurredAt = t.occurredAt;
-                        final day = DateTime(
-                          occurredAt.year,
-                          occurredAt.month,
-                          occurredAt.day,
+                          )),
                         );
-                        if (isNewMonth || currentDay != day) {
-                          flushDay();
-                          currentDay = day;
-                          if (day == today) {
-                            currentDayLabel = 'Today';
-                          } else if (day == yesterday) {
-                            currentDayLabel = 'Yesterday';
-                          } else {
-                            currentDayLabel = dayFormat.format(day);
+                        final monthlyBalances = stats.monthlyBalances;
+                        final monthlyFlows = stats.monthlyFlows;
+
+                        final filteredMonthlyFlows = <String, int>{};
+                        final filteredMonthlyCounts = <String, int>{};
+                        final includedAccounts = accountFilter != null
+                            ? {accountFilter}
+                            : {
+                                for (final a in state.accounts)
+                                  if (!a.isArchived && a.includeInTotals) a.id,
+                              };
+
+                        final entries = <_HistoryEntry>[];
+                        String? currentMonth;
+                        DateTime? currentDay;
+                        final now = DateTime.now();
+                        final today = DateTime(now.year, now.month, now.day);
+                        final yesterday = today.subtract(
+                          const Duration(days: 1),
+                        );
+                        final locale = state.preferences.locale.replaceAll(
+                          '_',
+                          '-',
+                        );
+
+                        final monthFormat = DateFormat('MMM yyyy', locale);
+                        final dayFormat = DateFormat('EEE, d MMM', locale);
+
+                        for (final t in transactions) {
+                          final mStr = monthFormat
+                              .format(t.occurredAt)
+                              .toUpperCase();
+                          filteredMonthlyCounts[mStr] =
+                              (filteredMonthlyCounts[mStr] ?? 0) + 1;
+
+                          if (t.status == 'scheduled' ||
+                              t.status == 'paused' ||
+                              t.status == 'void' ||
+                              t.isExcludedFromReports) {
+                            continue;
+                          }
+
+                          final sourceIncluded = includedAccounts.contains(
+                            t.accountId,
+                          );
+                          final counterIncluded =
+                              t.counterAccountId != null &&
+                              includedAccounts.contains(t.counterAccountId);
+                          if (!sourceIncluded && !counterIncluded) continue;
+
+                          int flowMinor = 0;
+                          if (t.type == 'transfer') {
+                            if (sourceIncluded && !counterIncluded) {
+                              final converted = convertMoneyForDisplay(
+                                state,
+                                t.amount,
+                                state.preferences.displayCurrency,
+                              );
+                              flowMinor = -converted.amountMinor;
+                            } else if (!sourceIncluded && counterIncluded) {
+                              final counterAmt = t.counterAmount ?? t.amount;
+                              final converted = convertMoneyForDisplay(
+                                state,
+                                counterAmt,
+                                state.preferences.displayCurrency,
+                              );
+                              flowMinor = converted.amountMinor;
+                            }
+                          } else if (incomeTypes.contains(t.type)) {
+                            if (sourceIncluded) {
+                              final converted = convertMoneyForDisplay(
+                                state,
+                                t.amount,
+                                state.preferences.displayCurrency,
+                              );
+                              flowMinor = converted.amountMinor;
+                            }
+                          } else if (expenseTypes.contains(t.type)) {
+                            if (sourceIncluded) {
+                              final converted = convertMoneyForDisplay(
+                                state,
+                                t.amount,
+                                state.preferences.displayCurrency,
+                              );
+                              flowMinor = -converted.amountMinor;
+                            }
+                          }
+                          filteredMonthlyFlows[mStr] =
+                              (filteredMonthlyFlows[mStr] ?? 0) + flowMinor;
+                        }
+
+                        String? currentDayLabel;
+                        List<TransactionRecord> currentDayTransactions = [];
+
+                        void flushDay() {
+                          if (currentDayTransactions.isNotEmpty &&
+                              currentDayLabel != null) {
+                            entries.add(
+                              _DayGroupEntry(
+                                dayLabel: currentDayLabel,
+                                transactions: currentDayTransactions,
+                              ),
+                            );
+                            currentDayTransactions = [];
                           }
                         }
 
-                        currentDayTransactions.add(t);
-                      }
-                      flushDay();
+                        for (final t in transactions) {
+                          final monthStr = monthFormat
+                              .format(t.occurredAt)
+                              .toUpperCase();
 
-                      return ListView.builder(
-                        padding: EdgeInsets.only(
-                          bottom:
-                              AppSizes.bottomBarClearance +
-                              MediaQuery.paddingOf(context).bottom,
-                        ),
-                        itemCount: entries.length,
-                        itemBuilder: (context, index) {
-                          final item = entries[index];
-                          if (item is _MonthHeaderEntry) {
-                            return Padding(
-                              padding: EdgeInsets.fromLTRB(
-                                0,
-                                item.isFirst ? 0 : AppSpacing.md,
-                                0,
-                                AppSpacing.sm,
+                          final isNewMonth = currentMonth != monthStr;
+                          if (isNewMonth) {
+                            flushDay();
+                            currentMonth = monthStr;
+
+                            final int effectiveFlowMinor = hasActiveFilters
+                                ? (filteredMonthlyFlows[monthStr] ?? 0)
+                                : (monthlyFlows[monthStr] ?? 0);
+                            final formattedFlow = formatMoney(
+                              Money(
+                                amountMinor: effectiveFlowMinor,
+                                currency: state.preferences.displayCurrency,
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Text(
-                                    item.monthStr,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleSmall
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w800,
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.primary,
+                              state.preferences.locale,
+                            );
+                            final flowStr =
+                                (hasActiveFilters && effectiveFlowMinor > 0)
+                                ? '+$formattedFlow'
+                                : formattedFlow;
+
+                            final balanceStr = hasActiveFilters
+                                ? '${filteredMonthlyCounts[monthStr] ?? 0} record${(filteredMonthlyCounts[monthStr] ?? 0) == 1 ? '' : 's'}'
+                                : formatMoney(
+                                    Money(
+                                      amountMinor:
+                                          monthlyBalances[monthStr] ?? 0,
+                                      currency:
+                                          state.preferences.displayCurrency,
+                                    ),
+                                    state.preferences.locale,
+                                  );
+
+                            entries.add(
+                              _MonthHeaderEntry(
+                                monthStr: monthStr,
+                                balanceStr: balanceStr,
+                                flowStr: flowStr,
+                                isFirst: entries.isEmpty,
+                                isFiltered: hasActiveFilters,
+                              ),
+                            );
+                          }
+
+                          final occurredAt = t.occurredAt;
+                          final day = DateTime(
+                            occurredAt.year,
+                            occurredAt.month,
+                            occurredAt.day,
+                          );
+                          if (isNewMonth || currentDay != day) {
+                            flushDay();
+                            currentDay = day;
+                            if (day == today) {
+                              currentDayLabel = 'Today';
+                            } else if (day == yesterday) {
+                              currentDayLabel = 'Yesterday';
+                            } else {
+                              currentDayLabel = dayFormat.format(day);
+                            }
+                          }
+
+                          currentDayTransactions.add(t);
+                        }
+                        flushDay();
+
+                        return ListView.builder(
+                          padding: EdgeInsets.only(
+                            bottom:
+                                AppSizes.bottomBarClearance +
+                                MediaQuery.paddingOf(context).bottom,
+                          ),
+                          itemCount: entries.length,
+                          itemBuilder: (context, index) {
+                            final item = entries[index];
+                            if (item is _MonthHeaderEntry) {
+                              return Padding(
+                                padding: EdgeInsets.fromLTRB(
+                                  0,
+                                  item.isFirst ? 0 : AppSpacing.md,
+                                  0,
+                                  AppSpacing.sm,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Text(
+                                      item.monthStr,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w800,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: PrivacyText(
+                                            item.isFiltered
+                                                ? item.balanceStr
+                                                : 'Balance ${item.balanceStr}',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                          ),
                                         ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: PrivacyText(
-                                          item.isFiltered
-                                              ? item.balanceStr
-                                              : 'Balance ${item.balanceStr}',
+                                        PrivacyText(
+                                          '∑ ${item.flowStr}',
                                           style: Theme.of(context)
                                               .textTheme
                                               .bodySmall
@@ -813,64 +857,33 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                                                 ).colorScheme.onSurfaceVariant,
                                               ),
                                         ),
-                                      ),
-                                      PrivacyText(
-                                        '∑ ${item.flowStr}',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w700,
-                                              color: Theme.of(
-                                                context,
-                                              ).colorScheme.onSurfaceVariant,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-
-                          final dayGroup = item as _DayGroupEntry;
-                          return RepaintBoundary(
-                            child: Padding(
-                              padding: const EdgeInsets.only(
-                                bottom: AppSpacing.md,
-                              ),
-                              child: GlassGroupedSection(
-                                margin: EdgeInsets.zero,
-                                shape: const LiquidRoundedSuperellipse(
-                                  borderRadius: AppRadii.md,
+                                      ],
+                                    ),
+                                  ],
                                 ),
-                                header: Text(dayGroup.dayLabel),
-                                children: [
-                                  for (final entry in dayGroup.transactions.indexed) ...[
-                                    if (entry.$1 > 0) const GlassDivider(),
-                                    TransactionRow(
-                                      state: state,
-                                      transaction: entry.$2,
-                                      selectedAccountId: accountFilter,
-                                      selected: _selectedTransactionIds
-                                          .contains(entry.$2.id),
-                                      onLongPress: () {
-                                        setState(() {
-                                          if (_selectedTransactionIds.contains(
-                                            entry.$2.id,
-                                          )) {
-                                            _selectedTransactionIds.remove(
-                                              entry.$2.id,
-                                            );
-                                          } else {
-                                            _selectedTransactionIds.add(
-                                              entry.$2.id,
-                                            );
-                                          }
-                                        });
-                                      },
-                                      onTap: () {
-                                        if (_selectedTransactionIds.isNotEmpty) {
+                              );
+                            }
+
+                            final dayGroup = item as _DayGroupEntry;
+                            return RepaintBoundary(
+                              child: Padding(
+                                padding: const EdgeInsets.only(
+                                  bottom: AppSpacing.md,
+                                ),
+                                child: AppGroupedSection(
+                                  header: dayGroup.dayLabel,
+                                  children: [
+                                    for (final entry
+                                        in dayGroup.transactions.indexed) ...[
+                                      if (entry.$1 > 0) const GlassDivider(),
+                                      TransactionRow(
+                                        state: state,
+                                        transaction: entry.$2,
+                                        selectedAccountId: accountFilter,
+                                        showSurface: false,
+                                        selected: _selectedTransactionIds
+                                            .contains(entry.$2.id),
+                                        onLongPress: () {
                                           setState(() {
                                             if (_selectedTransactionIds
                                                 .contains(entry.$2.id)) {
@@ -883,22 +896,38 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                                               );
                                             }
                                           });
-                                        } else {
-                                          context.push(
-                                            '/transaction/${entry.$2.id}',
-                                          );
-                                        }
-                                      },
-                                    ),
+                                        },
+                                        onTap: () {
+                                          if (_selectedTransactionIds
+                                              .isNotEmpty) {
+                                            setState(() {
+                                              if (_selectedTransactionIds
+                                                  .contains(entry.$2.id)) {
+                                                _selectedTransactionIds.remove(
+                                                  entry.$2.id,
+                                                );
+                                              } else {
+                                                _selectedTransactionIds.add(
+                                                  entry.$2.id,
+                                                );
+                                              }
+                                            });
+                                          } else {
+                                            context.push(
+                                              '/transaction/${entry.$2.id}',
+                                            );
+                                          }
+                                        },
+                                      ),
+                                    ],
                                   ],
-                                ],
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
+                            );
+                          },
+                        );
+                      },
+                    ),
             ),
           ),
         ],
@@ -1016,20 +1045,19 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CheckboxListTile(
+                      AppSwitchListTile(
                         value: includeUncategorized,
-                        onChanged: (value) => setDialogState(
-                          () => includeUncategorized = value ?? false,
-                        ),
+                        onChanged: (value) =>
+                            setDialogState(() => includeUncategorized = value),
                         title: const Text('Uncategorized'),
                         subtitle: const Text('Records without a category'),
                         secondary: const Icon(Icons.label_off_outlined),
                       ),
                       for (final category in categories)
-                        CheckboxListTile(
+                        AppSwitchListTile(
                           value: selected.contains(category.id),
                           onChanged: (value) => setDialogState(() {
-                            if (value ?? false) {
+                            if (value) {
                               selected.add(category.id);
                             } else {
                               selected.remove(category.id);
@@ -1135,7 +1163,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
     // Check constraint: All must belong to the same account
     final firstAccountId = selectedList.first.accountId;
-    final allSameAccount = selectedList.every((t) => t.accountId == firstAccountId);
+    final allSameAccount = selectedList.every(
+      (t) => t.accountId == firstAccountId,
+    );
     if (!allSameAccount) {
       await showDialog<void>(
         context: context,
@@ -1159,7 +1189,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final allSameCategory = selectedList.every(
       (t) => t.categoryId == selectedList.first.categoryId,
     );
-    final initialCategoryId = allSameCategory ? selectedList.first.categoryId : null;
+    final initialCategoryId = allSameCategory
+        ? selectedList.first.categoryId
+        : null;
 
     final totalAmountMinor = selectedList.fold<int>(
       0,
@@ -1188,12 +1220,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             _selectedTransactionIds.clear();
           });
           try {
-            await ref.read(ledgerProvider.notifier).mergeTransactions(
-              transactionIds: ids,
-              categoryId: categoryId,
-              name: name,
-              notes: notes,
-            );
+            await ref
+                .read(ledgerProvider.notifier)
+                .mergeTransactions(
+                  transactionIds: ids,
+                  categoryId: categoryId,
+                  name: name,
+                  notes: notes,
+                );
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -1291,11 +1325,7 @@ Set<String> _selectedCategoryMatchIds(
   return ids;
 }
 
-bool _matchesDateFilter(
-  DateTime date,
-  String dateFilter, {
-  DateTime? now,
-}) {
+bool _matchesDateFilter(DateTime date, String dateFilter, {DateTime? now}) {
   if (dateFilter == 'all') return true;
   final current = now ?? DateTime.now();
   final day = DateTime(date.year, date.month, date.day);
@@ -1388,10 +1418,12 @@ class _MergeTransactionsSheet extends StatefulWidget {
   final Money totalMoney;
   final String? initialCategoryId;
   final bool allSameCategory;
-  final void Function({String? categoryId, String? name, String? notes}) onMerge;
+  final void Function({String? categoryId, String? name, String? notes})
+  onMerge;
 
   @override
-  State<_MergeTransactionsSheet> createState() => _MergeTransactionsSheetState();
+  State<_MergeTransactionsSheet> createState() =>
+      _MergeTransactionsSheetState();
 }
 
 class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
@@ -1404,14 +1436,16 @@ class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
     super.initState();
     _selectedCategoryId = widget.initialCategoryId;
 
-    final defaultName = widget.selectedTransactions
+    final defaultName =
+        widget.selectedTransactions
             .where((t) => t.name != null && t.name!.trim().isNotEmpty)
             .firstOrNull
             ?.name ??
         'Merged transaction';
     _nameController = TextEditingController(text: defaultName);
 
-    final defaultNotes = 'Merged from ${widget.selectedTransactions.length} transactions:\n${widget.selectedTransactions.map((t) => '• ${t.name ?? "Transaction"}: ${t.amount.amountMinor / 100} (${t.occurredAt.toLocal().toString().split(" ").first})').join('\n')}';
+    final defaultNotes =
+        'Merged from ${widget.selectedTransactions.length} transactions:\n${widget.selectedTransactions.map((t) => '• ${t.name ?? "Transaction"}: ${t.amount.amountMinor / 100} (${t.occurredAt.toLocal().toString().split(" ").first})').join('\n')}';
     _notesController = TextEditingController(text: defaultNotes);
   }
 
@@ -1433,34 +1467,9 @@ class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
       minChildSize: 0.45,
       maxChildSize: 0.94,
       builder: (context, scrollController) {
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            color: theme.scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(AppRadii.lg),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.16),
-                blurRadius: 16,
-                offset: const Offset(0, -4),
-              ),
-            ],
-          ),
+        return AppSheetSurface(
           child: Column(
             children: [
-              // Drag handle
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.only(top: 10, bottom: 6),
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: scheme.onSurfaceVariant.withValues(alpha: 0.24),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
               // Header
               Padding(
                 padding: const EdgeInsets.fromLTRB(
@@ -1511,14 +1520,14 @@ class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
                   padding: const EdgeInsets.all(AppSpacing.lg),
                   children: [
                     // Summary card
-                    Card(
-                      margin: EdgeInsets.zero,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainerLow,
                         borderRadius: BorderRadius.circular(AppRadii.md),
-                        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.2)),
+                        border: Border.all(
+                          color: scheme.outlineVariant.withValues(alpha: 0.55),
+                        ),
                       ),
-                      color: scheme.surfaceContainerHighest.withValues(alpha: 0.2),
                       child: Padding(
                         padding: const EdgeInsets.all(AppSpacing.md),
                         child: Column(
@@ -1602,32 +1611,39 @@ class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
                         );
                         if (picked != null) {
                           setState(() {
-                            _selectedCategoryId = picked.isEmpty ? null : picked;
+                            _selectedCategoryId = picked.isEmpty
+                                ? null
+                                : picked;
                           });
                         }
                       },
                       child: Container(
                         padding: const EdgeInsets.all(AppSpacing.md),
                         decoration: BoxDecoration(
-                          color: scheme.surfaceContainerHighest.withValues(alpha: 0.16),
+                          color: scheme.surfaceContainerLow,
                           borderRadius: BorderRadius.circular(AppRadii.md),
                           border: Border.all(
-                            color: _selectedCategoryId == null && !widget.allSameCategory
+                            color:
+                                _selectedCategoryId == null &&
+                                    !widget.allSameCategory
                                 ? scheme.error.withValues(alpha: 0.47)
-                                : scheme.outlineVariant.withValues(alpha: 0.24),
+                                : scheme.outlineVariant.withValues(alpha: 0.55),
                           ),
                         ),
                         child: Row(
                           children: [
                             Icon(
-                              category != null ? categoryIcon(category) : Icons.category_outlined,
+                              category != null
+                                  ? categoryIcon(category)
+                                  : Icons.category_outlined,
                               color: scheme.primary,
                               size: 20,
                             ),
                             const SizedBox(width: AppSpacing.sm),
                             Expanded(
                               child: Text(
-                                category?.name ?? 'No category selected (Tap to choose)',
+                                category?.name ??
+                                    'No category selected (Tap to choose)',
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   fontWeight: FontWeight.w600,
                                   color: category != null
@@ -1674,14 +1690,14 @@ class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xs),
-                    Card(
-                      margin: EdgeInsets.zero,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainerLow,
                         borderRadius: BorderRadius.circular(AppRadii.md),
-                        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.2)),
+                        border: Border.all(
+                          color: scheme.outlineVariant.withValues(alpha: 0.55),
+                        ),
                       ),
-                      color: scheme.surfaceContainerHighest.withValues(alpha: 0.1),
                       child: Padding(
                         padding: const EdgeInsets.all(AppSpacing.sm),
                         child: Column(
@@ -1703,9 +1719,10 @@ class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
                                     Expanded(
                                       child: Text(
                                         t.name ?? 'Transaction',
-                                        style: theme.textTheme.bodySmall?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
@@ -1714,9 +1731,10 @@ class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
                                         t.amount,
                                         widget.state.preferences.locale,
                                       ),
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                     ),
                                   ],
                                 ),
@@ -1798,12 +1816,8 @@ class _MonthHeaderEntry extends _HistoryEntry {
 }
 
 class _DayGroupEntry extends _HistoryEntry {
-  _DayGroupEntry({
-    required this.dayLabel,
-    required this.transactions,
-  });
+  _DayGroupEntry({required this.dayLabel, required this.transactions});
 
   final String dayLabel;
   final List<TransactionRecord> transactions;
 }
-

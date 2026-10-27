@@ -35,10 +35,11 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
           : 'Currencies',
       actions: [
         if (isSelectionMode)
-          IconButton(
+          HeaderIconButton(
+            destructive: true,
             tooltip: 'Delete selected',
-            icon: const Icon(Icons.delete_outline_rounded),
-            color: Theme.of(context).colorScheme.error,
+            semanticLabel: 'Delete selected',
+            icon: Icons.delete_outline_rounded,
             onPressed: () {
               for (final c in _selectedForDeletion) {
                 ref.read(ledgerProvider.notifier).removeEnabledCurrency(c);
@@ -57,9 +58,10 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
             },
           )
         else ...[
-          IconButton(
+          HeaderIconButton(
             tooltip: 'Refresh rates',
-            icon: const Icon(Icons.refresh_rounded),
+            semanticLabel: 'Refresh rates',
+            icon: Icons.refresh_rounded,
             onPressed: () async {
               final messenger = ScaffoldMessenger.of(context);
               try {
@@ -88,9 +90,10 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
               }
             },
           ),
-          IconButton(
+          HeaderIconButton(
             tooltip: 'Choose display currency',
-            icon: const Icon(Icons.currency_exchange_rounded),
+            semanticLabel: 'Choose display currency',
+            icon: Icons.currency_exchange_rounded,
             onPressed: () => _chooseDisplayCurrency(context, ref, state),
           ),
         ],

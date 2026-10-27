@@ -16,8 +16,9 @@ class CardsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final accounts =
-        ref.watch(ledgerProvider.select((state) => state.accounts));
+    final accounts = ref.watch(
+      ledgerProvider.select((state) => state.accounts),
+    );
     final cards = accounts
         .where(
           (account) =>
@@ -56,9 +57,10 @@ class _AccountCollectionScreen extends ConsumerWidget {
     return RouteScaffold(
       title: title,
       actions: [
-        IconButton(
+        HeaderIconButton(
+          icon: Icons.add_rounded,
+          semanticLabel: 'Add card',
           onPressed: () => context.push('/account/new?type=$newAccountType'),
-          icon: const Icon(Icons.add_rounded),
         ),
       ],
       child: Column(
@@ -91,10 +93,7 @@ class _AccountCollectionScreen extends ConsumerWidget {
 }
 
 class _CardAccountTile extends ConsumerWidget {
-  const _CardAccountTile({
-    required this.state,
-    required this.account,
-  });
+  const _CardAccountTile({required this.state, required this.account});
 
   final LedgerState state;
   final Account account;
@@ -130,8 +129,8 @@ class _CardAccountTile extends ConsumerWidget {
         badgeLabel = dueStatus.daysUntilDue == 0
             ? 'Due today'
             : (dueStatus.daysUntilDue == 1
-                ? 'Due tomorrow'
-                : 'Due in ${dueStatus.daysUntilDue} days');
+                  ? 'Due tomorrow'
+                  : 'Due in ${dueStatus.daysUntilDue} days');
         badgeIcon = Icons.alarm_rounded;
       } else if (dueStatus.isStatementGenerated) {
         badgeColor = scheme.primary.withAlphaFactor(0.18);
@@ -164,23 +163,22 @@ class _CardAccountTile extends ConsumerWidget {
         'Due: ${formatMoney(Money(amountMinor: lastStmtAmountMinor, currency: lastStmtCurrency), state.preferences.locale)}',
     ].whereType<String>().join(' · ');
 
+    final billNeedsAttention =
+        dueStatus != null && (dueStatus.isDueSoon || dueStatus.isOverdue);
+
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: dueStatus != null && (dueStatus.isDueSoon || dueStatus.isOverdue)
-              ? scheme.error.withAlphaFactor(0.5)
-              : scheme.outlineVariant.withAlphaFactor(0.4),
-          width: dueStatus != null && (dueStatus.isDueSoon || dueStatus.isOverdue)
-              ? 1.5
-              : 1.0,
-        ),
-      ),
+      decoration: billNeedsAttention
+          ? AppSurfaces.panel(context).copyWith(
+              border: Border.all(
+                color: scheme.error.withAlphaFactor(0.5),
+                width: 1.5,
+              ),
+            )
+          : AppSurfaces.panel(context),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadii.md),
           onTap: () => context.push('/account/${account.id}'),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -192,7 +190,8 @@ class _CardAccountTile extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: (account.color ?? scheme.primary).withAlphaFactor(0.18),
+                        color: (account.color ?? scheme.primary)
+                            .withAlphaFactor(0.18),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -275,13 +274,22 @@ class _CardAccountTile extends ConsumerWidget {
                           onPressed: () {
                             ref
                                 .read(ledgerProvider.notifier)
-                                .markCardBillPaid(account.id, dueStatus.cycleKey);
+                                .markCardBillPaid(
+                                  account.id,
+                                  dueStatus.cycleKey,
+                                );
                           },
                           icon: const Icon(Icons.check_rounded, size: 16),
-                          label: const Text('Confirm Paid', style: TextStyle(fontSize: 12)),
+                          label: const Text(
+                            'Confirm Paid',
+                            style: TextStyle(fontSize: 12),
+                          ),
                           style: TextButton.styleFrom(
                             visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
                           ),
                         )
                       else
@@ -293,11 +301,17 @@ class _CardAccountTile extends ConsumerWidget {
                           },
                           style: TextButton.styleFrom(
                             visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
                           ),
                           child: Text(
                             'Unmark Paid',
-                            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: scheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
                     ],

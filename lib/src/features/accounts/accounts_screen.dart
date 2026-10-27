@@ -36,9 +36,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
     _order!.removeWhere((id) => !currentIds.contains(id));
     final existingIds = _order!.toSet();
 
-    final sortedAccounts = state.accounts
-        .where((a) => !a.isDeleted)
-        .toList()
+    final sortedAccounts = state.accounts.where((a) => !a.isDeleted).toList()
       ..sort((left, right) => left.sortOrder.compareTo(right.sortOrder));
     for (final acc in sortedAccounts) {
       if (!existingIds.contains(acc.id)) {
@@ -85,91 +83,93 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
             child: AppTopFadeMask(
               enabled: rows.isNotEmpty,
               child: rows.isEmpty
-                ? EmptyState(
-                    icon: _query.isNotEmpty
-                        ? Icons.search_off_rounded
-                        : Icons.wallet_outlined,
-                    title: _query.isNotEmpty
-                        ? 'No matching accounts'
-                        : 'No accounts found',
-                    body: _query.isNotEmpty
-                        ? 'No accounts match "$_query". Try a different search term.'
-                        : 'Add a cash, bank, card, loan, or wallet account to start tracking.',
-                    actionLabel: _query.isNotEmpty
-                        ? 'Clear search'
-                        : 'Add account',
-                    actionIcon: _query.isNotEmpty
-                        ? Icons.clear_rounded
-                        : Icons.add_rounded,
-                    onAction: _query.isNotEmpty
-                        ? () => setState(() => _query = '')
-                        : () => context.push('/account/new'),
-                  )
-                : AppResponsiveLayout(
-                    mobile: ReorderableListView.builder(
-                      header: _buildListHeader(context, state, rows),
-                      padding: EdgeInsets.only(
-                        bottom:
-                            AppSizes.bottomBarClearance +
-                            MediaQuery.paddingOf(context).bottom +
-                            AppSpacing.xl,
-                      ),
-                      itemCount: rows.length,
-                      onReorderItem: (oldIndex, newIndex) {
-                        setState(() {
-                          if (oldIndex == newIndex) return;
+                  ? EmptyState(
+                      icon: _query.isNotEmpty
+                          ? Icons.search_off_rounded
+                          : Icons.wallet_outlined,
+                      title: _query.isNotEmpty
+                          ? 'No matching accounts'
+                          : 'No accounts found',
+                      body: _query.isNotEmpty
+                          ? 'No accounts match "$_query". Try a different search term.'
+                          : 'Add a cash, bank, card, loan, or wallet account to start tracking.',
+                      actionLabel: _query.isNotEmpty
+                          ? 'Clear search'
+                          : 'Add account',
+                      actionIcon: _query.isNotEmpty
+                          ? Icons.clear_rounded
+                          : Icons.add_rounded,
+                      onAction: _query.isNotEmpty
+                          ? () => setState(() => _query = '')
+                          : () => context.push('/account/new'),
+                    )
+                  : AppResponsiveLayout(
+                      mobile: ReorderableListView.builder(
+                        header: _buildListHeader(context, state, rows),
+                        padding: EdgeInsets.only(
+                          bottom:
+                              AppSizes.bottomBarClearance +
+                              MediaQuery.paddingOf(context).bottom +
+                              AppSpacing.xl,
+                        ),
+                        itemCount: rows.length,
+                        onReorderItem: (oldIndex, newIndex) {
+                          setState(() {
+                            if (oldIndex == newIndex) return;
 
-                          final ids = _order!.toList();
-                          final moved = rows[oldIndex].id;
-                          final target = rows[newIndex].id;
-                          ids.remove(moved);
-                          final targetIndex = ids.indexOf(target);
-                          if (targetIndex != -1) {
-                            if (oldIndex < newIndex) {
-                              ids.insert(targetIndex + 1, moved);
+                            final ids = _order!.toList();
+                            final moved = rows[oldIndex].id;
+                            final target = rows[newIndex].id;
+                            ids.remove(moved);
+                            final targetIndex = ids.indexOf(target);
+                            if (targetIndex != -1) {
+                              if (oldIndex < newIndex) {
+                                ids.insert(targetIndex + 1, moved);
+                              } else {
+                                ids.insert(targetIndex, moved);
+                              }
                             } else {
-                              ids.insert(targetIndex, moved);
+                              ids.add(moved);
                             }
-                          } else {
-                            ids.add(moved);
-                          }
-                          _order = ids;
-                          ref
-                              .read(ledgerProvider.notifier)
-                              .reorderAccounts(ids);
-                        });
-                      },
-                      itemBuilder: (context, index) {
-                        final account = rows[index];
-                        return Padding(
-                          key: ValueKey(account.id),
-                          padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                          child: _AccountRow(state: state, account: account),
-                        );
-                      },
-                    ),
-                    desktop: SingleChildScrollView(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.xl),
-                      child: Column(
-                        children: [
-                          _buildListHeader(context, state, rows),
-                          Wrap(
-                            spacing: AppSpacing.md,
-                            runSpacing: AppSpacing.md,
-                            children: rows.map((account) {
-                              return SizedBox(
-                                width: 360,
-                                child: _AccountRow(
-                                  state: state,
-                                  account: account,
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ],
+                            _order = ids;
+                            ref
+                                .read(ledgerProvider.notifier)
+                                .reorderAccounts(ids);
+                          });
+                        },
+                        itemBuilder: (context, index) {
+                          final account = rows[index];
+                          return Padding(
+                            key: ValueKey(account.id),
+                            padding: const EdgeInsets.only(
+                              bottom: AppSpacing.xs,
+                            ),
+                            child: _AccountRow(state: state, account: account),
+                          );
+                        },
+                      ),
+                      desktop: SingleChildScrollView(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+                        child: Column(
+                          children: [
+                            _buildListHeader(context, state, rows),
+                            Wrap(
+                              spacing: AppSpacing.md,
+                              runSpacing: AppSpacing.md,
+                              children: rows.map((account) {
+                                return SizedBox(
+                                  width: 360,
+                                  child: _AccountRow(
+                                    state: state,
+                                    account: account,
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
             ),
           ),
         ],
@@ -257,11 +257,8 @@ class _CurrencySummaryHeader extends StatelessWidget {
         return b.value.abs().compareTo(a.value.abs());
       });
 
-    final theme = Theme.of(context);
-    final isAmoled =
-        theme.scaffoldBackgroundColor == AppColors.amoledBackground;
-
-    final inner = Padding(
+    return AppPanel(
+      glass: true,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
@@ -269,64 +266,42 @@ class _CurrencySummaryHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-            for (final entry in currencyEntries)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      entry.key == state.preferences.baseCurrency
-                          ? '${entry.key} (Base)'
-                          : entry.key,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: entry.key == state.preferences.baseCurrency
-                            ? FontWeight.bold
-                            : FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+          for (final entry in currencyEntries)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    entry.key == state.preferences.baseCurrency
+                        ? '${entry.key} (Base)'
+                        : entry.key,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: entry.key == state.preferences.baseCurrency
+                          ? FontWeight.bold
+                          : FontWeight.w600,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
-                    PrivacyText(
-                      formatMoney(
-                        Money(amountMinor: entry.value, currency: entry.key),
-                        state.preferences.locale,
-                      ),
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: entry.value < 0
-                            ? Theme.of(context).colorScheme.error
-                            : Theme.of(context).colorScheme.primary,
-                      ),
+                  ),
+                  PrivacyText(
+                    formatMoney(
+                      Money(amountMinor: entry.value, currency: entry.key),
+                      state.preferences.locale,
                     ),
-                  ],
-                ),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: entry.value < 0
+                          ? Theme.of(context).colorScheme.error
+                          : Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ],
               ),
-          ],
-        ),
-      );
-
-    if (isAmoled) {
-      return DecoratedBox(
-        decoration: BoxDecoration(
-          color: AppColors.amoledBackground,
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.09),
-            width: 0.8,
-          ),
-        ),
-        child: inner,
-      );
-    }
-
-    return GlassCard(
-      margin: EdgeInsets.zero,
-      padding: EdgeInsets.zero,
-      shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-      quality: GlassQuality.minimal,
-      child: inner,
+            ),
+        ],
+      ),
     );
   }
 }
@@ -347,8 +322,9 @@ class _AccountRow extends StatelessWidget {
       displayCurrency,
     );
     final isCash = account.type == 'cash';
-    final cashBreakdown =
-        isCash ? cashCurrencyBalancesForAccount(state, account) : <Money>[];
+    final cashBreakdown = isCash
+        ? cashCurrencyBalancesForAccount(state, account)
+        : <Money>[];
     final isDifferentCurrency =
         account.currency.toUpperCase() != displayCurrency.toUpperCase();
 

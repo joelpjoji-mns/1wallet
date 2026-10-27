@@ -170,13 +170,7 @@ class _DiagnosticEventTile extends StatelessWidget {
       _ => scheme.onSurfaceVariant,
     };
 
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.59)),
-      ),
+    return AppPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -296,7 +290,9 @@ class _MetaChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: 0.71),
         borderRadius: BorderRadius.circular(AppRadii.pill),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.55),
+        ),
       ),
       child: Text(
         label,

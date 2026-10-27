@@ -3,7 +3,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../auth/auth_controller.dart';
 import '../../auth/auth_user.dart';
@@ -425,7 +424,9 @@ class AppMainDrawer extends ConsumerWidget {
                     color: scheme.outlineVariant.withValues(alpha: 0.71),
                   ),
                 )
-              : Border.all(color: scheme.outlineVariant.withValues(alpha: 0.71)),
+              : Border.all(
+                  color: scheme.outlineVariant.withValues(alpha: 0.71),
+                ),
           boxShadow: isStatic
               ? null
               : [
@@ -453,9 +454,13 @@ class AppMainDrawer extends ConsumerWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      scheme.primaryContainer.withValues(alpha: isStatic ? 0.59 : 0.86),
+                      scheme.primaryContainer.withValues(
+                        alpha: isStatic ? 0.59 : 0.86,
+                      ),
                       scheme.surfaceContainerHigh,
-                      scheme.tertiaryContainer.withValues(alpha: isStatic ? 0.47 : 0.71),
+                      scheme.tertiaryContainer.withValues(
+                        alpha: isStatic ? 0.47 : 0.71,
+                      ),
                     ],
                   ),
                   border: Border.all(
@@ -597,10 +602,9 @@ class AppMainDrawer extends ConsumerWidget {
                     ),
                     child: Container(
                       padding: const EdgeInsets.all(AppSpacing.sm),
-                      decoration: BoxDecoration(
-                        color: scheme.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(AppRadii.xl),
-                        border: Border.all(color: scheme.outlineVariant),
+                      decoration: AppSurfaces.panel(
+                        context,
+                        radius: AppRadii.xl,
                       ),
                       child: Column(
                         children: [
@@ -732,62 +736,23 @@ class _DrawerPrivacyToggle extends ConsumerWidget {
             ? scheme.primary.withValues(alpha: 0.11)
             : scheme.surface.withValues(alpha: 0.63),
         borderRadius: BorderRadius.circular(AppRadii.lg),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(AppRadii.lg),
-          onTap: toggle,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: 6,
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  enabled
-                      ? Icons.visibility_off_rounded
-                      : Icons.visibility_outlined,
-                  size: 18,
-                  color: scheme.primary,
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Text(
-                    enabled ? 'Privacy mode · On' : 'Privacy mode · Off',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: scheme.onSurface,
-                    ),
-                  ),
-                ),
-                // ExcludeFocus stops the switch from claiming its own
-                // keyboard-focus stop, which would otherwise block
-                // MergeSemantics from folding its toggled state into the
-                // single merged node (same rationale as AppSwitchListTile).
-                // IgnorePointer keeps real touches routed through the
-                // InkWell above so the whole row toggles consistently;
-                // since Flutter 3.8, IgnorePointer keeps the switch's
-                // toggled/label semantics visible while only stripping its
-                // own tap *action* (isBlockingUserActions), so it merges
-                // cleanly without a competing onTap. `onChanged` still
-                // calls the real `toggle()` (not a no-op) so the merged
-                // node's accessibility action is correct if that ever
-                // changes.
-                ExcludeFocus(
-                  child: IgnorePointer(
-                    child: GlassSwitch(
-                      value: enabled,
-                      onChanged: (_) => toggle(),
-                      activeColor: scheme.primary,
-                      quality: GlassQuality.standard,
-                      enableHaptics: false,
-                      semanticLabel: 'Privacy mode',
-                    ),
-                  ),
-                ),
-              ],
-            ),
+        clipBehavior: Clip.antiAlias,
+        child: AppSwitchListTile(
+          secondary: Icon(
+            enabled ? Icons.visibility_off_rounded : Icons.visibility_outlined,
+            size: 18,
+            color: scheme.primary,
+          ),
+          title: Text(
+            enabled ? 'Privacy mode · On' : 'Privacy mode · Off',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          value: enabled,
+          onChanged: (_) => toggle(),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: 6,
           ),
         ),
       ),

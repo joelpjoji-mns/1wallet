@@ -550,12 +550,16 @@ class HeaderIconButton extends StatelessWidget {
     this.semanticLabel,
     this.tooltip,
     this.loading = false,
+    this.destructive = false,
   });
 
   final IconData icon;
   final VoidCallback? onPressed;
   final int? badge;
   final bool loading;
+
+  /// Tints the icon with the error colour (e.g. delete-selection actions).
+  final bool destructive;
 
   /// Accessibility label announced by screen readers. Without this,
   /// `GlassIconButton` exposes an empty label and the button is announced
@@ -584,7 +588,14 @@ class HeaderIconButton extends StatelessWidget {
         children: [
           UnconstrainedBox(
             child: GlassIconButton(
-              icon: loading ? const AppInlineSpinner() : Icon(icon),
+              icon: loading
+                  ? const AppInlineSpinner()
+                  : Icon(
+                      icon,
+                      color: destructive
+                          ? Theme.of(context).colorScheme.error
+                          : null,
+                    ),
               iconSize: 22,
               quality: GlassQuality.standard,
               onPressed: onPressed,
@@ -778,16 +789,7 @@ class SectionCard extends StatelessWidget {
       );
     }
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.55),
-        ),
-      ),
-      child: content,
-    );
+    return DecoratedBox(decoration: AppSurfaces.panel(context), child: content);
   }
 }
 
@@ -880,13 +882,8 @@ class MetricTile extends StatelessWidget {
 
     return Container(
       clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.55),
-        ),
-      ),
+      decoration: AppSurfaces.panel(context),
+
       child: content,
     );
   }
@@ -1147,19 +1144,17 @@ class PremiumRow extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
                         color: scheme.onSurface,
-                        fontSize: 15,
                       ),
                     ),
                     if (subtitle != null) ...[
-                      const SizedBox(height: 2),
+                      const SizedBox(height: AppSpacing.xxxs),
                       Text(
                         subtitle!,
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: scheme.onSurfaceVariant,
-                          fontSize: 12,
                         ),
                       ),
                     ],
@@ -1167,28 +1162,27 @@ class PremiumRow extends StatelessWidget {
                       const SizedBox(height: AppSpacing.xs),
                       Wrap(
                         spacing: AppSpacing.xs,
-                        runSpacing: 2,
+                        runSpacing: AppSpacing.xxxs,
                         children: [
                           if (meta != null)
                             Text(
                               meta!,
-                              style: TextStyle(
-                                color: selected
-                                    ? scheme.primary
-                                    : scheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                              ),
+                              style: Theme.of(context).textTheme.labelMedium
+                                  ?.copyWith(
+                                    color: selected
+                                        ? scheme.primary
+                                        : scheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                             ),
                           if (metaSubtitle != null)
                             Text(
                               metaSubtitle!,
-                              style: TextStyle(
-                                color: scheme.onSurfaceVariant.withAlphaFactor(
-                                  0.8,
-                                ),
-                                fontSize: 12,
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: scheme.onSurfaceVariant
+                                        .withAlphaFactor(0.8),
+                                  ),
                             ),
                         ],
                       ),
@@ -1231,13 +1225,8 @@ class PremiumRow extends StatelessWidget {
 
     return Container(
       clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.55),
-        ),
-      ),
+      decoration: AppSurfaces.panel(context),
+
       child: content,
     );
   }
@@ -1278,7 +1267,9 @@ class InfoRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: TextStyle(color: scheme.onSurfaceVariant),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
@@ -1287,10 +1278,9 @@ class InfoRow extends StatelessWidget {
             child: Text(
               value,
               textAlign: TextAlign.end,
-              style: TextStyle(
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w800,
                 color: color,
-                fontSize: 15,
               ),
             ),
           ),
@@ -1354,18 +1344,16 @@ class AppSwitchListTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     DefaultTextStyle(
-                      style: TextStyle(
-                        fontSize: 16,
+                      style: Theme.of(context).textTheme.titleMedium!.copyWith(
                         fontWeight: FontWeight.w700,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                       child: title,
                     ),
                     if (subtitle != null) ...[
-                      const SizedBox(height: 2),
+                      const SizedBox(height: AppSpacing.xxxs),
                       DefaultTextStyle(
-                        style: TextStyle(
-                          fontSize: 13,
+                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                         child: subtitle!,
@@ -1554,6 +1542,103 @@ extension AppSnackBarMessenger on ScaffoldMessengerState {
 /// Use with the Material button that matches the action's hierarchy:
 /// `FilledButton` (primary), `OutlinedButton` (secondary), `TextButton`
 /// (tertiary).
+/// Canonical opaque surface: the surface of `SectionCard(glass: false)`, the
+/// opaque `PremiumRow`/`MetricTile` and every untitled panel. Use it instead
+/// of re-stating colour/radius/border values.
+abstract final class AppSurfaces {
+  static Color panelBorderColor(BuildContext context) =>
+      Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.55);
+
+  static BoxDecoration panel(
+    BuildContext context, {
+    double radius = AppRadii.md,
+    Color? color,
+  }) {
+    return BoxDecoration(
+      color: color ?? Theme.of(context).colorScheme.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(radius),
+      border: Border.all(color: panelBorderColor(context)),
+    );
+  }
+
+  static ShapeBorder panelShape(
+    BuildContext context, {
+    double radius = AppRadii.md,
+  }) {
+    return RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(radius),
+      side: BorderSide(color: panelBorderColor(context)),
+    );
+  }
+
+  /// True on the pure-black AMOLED theme, where refractive glass has nothing
+  /// to refract and panels fall back to the opaque surface.
+  static bool isAmoled(BuildContext context) =>
+      Theme.of(context).scaffoldBackgroundColor == AppColors.amoledBackground;
+}
+
+/// Canonical untitled panel. Opaque by default (dense/scrolling content and
+/// anything placed on another glass surface). With [glass] it renders the
+/// canonical `GlassCard` instead — except on AMOLED, where it stays opaque.
+/// When [onTap]/[onLongPress] are set the ink ripple is clipped to the shape.
+class AppPanel extends StatelessWidget {
+  const AppPanel({
+    required this.child,
+    super.key,
+    this.padding = const EdgeInsets.all(AppSpacing.md),
+    this.onTap,
+    this.onLongPress,
+    this.color,
+    this.radius = AppRadii.md,
+    this.glass = false,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+
+  /// Overrides the opaque fill (e.g. a status tint). Ignored for glass.
+  final Color? color;
+  final double radius;
+  final bool glass;
+
+  @override
+  Widget build(BuildContext context) {
+    final interactive = onTap != null || onLongPress != null;
+    Widget content = Padding(padding: padding, child: child);
+    if (glass && !AppSurfaces.isAmoled(context)) {
+      if (interactive) {
+        content = Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            onLongPress: onLongPress,
+            borderRadius: BorderRadius.circular(radius),
+            child: content,
+          ),
+        );
+      }
+      return GlassCard(
+        margin: EdgeInsets.zero,
+        padding: EdgeInsets.zero,
+        shape: LiquidRoundedSuperellipse(borderRadius: radius),
+        quality: GlassQuality.standard,
+        clipBehavior: Clip.antiAlias,
+        child: content,
+      );
+    }
+    return Material(
+      color: color ?? Theme.of(context).colorScheme.surfaceContainerLow,
+      shape: AppSurfaces.panelShape(context, radius: radius),
+      clipBehavior: Clip.antiAlias,
+      child: interactive
+          ? InkWell(onTap: onTap, onLongPress: onLongPress, child: content)
+          : content,
+    );
+  }
+}
+
 abstract final class AppButtonStyles {
   /// Full-width primary call to action (onboarding, setup, form submit).
   /// Works with any Material button; keeps the theme's stadium shape.
@@ -1825,6 +1910,7 @@ class AppGroupedSection extends StatelessWidget {
     super.key,
     this.header,
     this.destructive = false,
+    this.margin = EdgeInsets.zero,
   });
 
   final String? header;
@@ -1833,11 +1919,17 @@ class AppGroupedSection extends StatelessWidget {
   /// Tints the header with the error colour (danger zones).
   final bool destructive;
 
+  /// Outer margin. Defaults to none so grouped lists share the content width
+  /// of the cards around them (the page supplies the gutters).
+  final EdgeInsetsGeometry margin;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     return GlassGroupedSection(
+      margin: margin,
+      shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
       header: header == null
           ? null
           : Text(
@@ -1940,7 +2032,7 @@ class AppGroupedTile extends StatelessWidget {
           : onTap,
       titleStyle: theme.textTheme.titleMedium?.copyWith(
         color: destructive ? scheme.error : scheme.onSurface,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w700,
       ),
       subtitleStyle: theme.textTheme.bodySmall?.copyWith(
         color: scheme.onSurfaceVariant,

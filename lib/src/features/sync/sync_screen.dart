@@ -60,10 +60,12 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                 true);
     final localLatest = getLatestTransactionDate(state);
     final cloudLatest = sync.cloudLatestTransactionAt;
-    final isCloudOlder = localLatest != null &&
+    final isCloudOlder =
+        localLatest != null &&
         cloudLatest != null &&
         cloudLatest.isBefore(localLatest);
-    final isCloudFewer = sync.cloudTransactionCount != null &&
+    final isCloudFewer =
+        sync.cloudTransactionCount != null &&
         sync.cloudTransactionCount! < state.transactions.length;
 
     return AppScreen(
@@ -75,10 +77,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
             const SizedBox(height: 16),
           ],
 
-          if (offline) ...[
-            const OfflineModeCard(),
-            const SizedBox(height: 16),
-          ],
+          if (offline) ...[const OfflineModeCard(), const SizedBox(height: 16)],
 
           // --- CLOUD SYNC SECTION ---
           SectionCard(
@@ -203,17 +202,16 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                   const SizedBox(height: AppSpacing.md),
                   Container(
                     padding: const EdgeInsets.all(AppSpacing.md),
-                    decoration: BoxDecoration(
-                      color: (isCloudOlder || isCloudFewer)
-                          ? theme.colorScheme.errorContainer.withValues(alpha: 0.25)
-                          : theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: (isCloudOlder || isCloudFewer)
-                            ? theme.colorScheme.error
-                            : theme.colorScheme.outlineVariant,
-                      ),
-                    ),
+                    decoration: (isCloudOlder || isCloudFewer)
+                        ? AppSurfaces.panel(
+                            context,
+                            color: theme.colorScheme.errorContainer.withValues(
+                              alpha: 0.25,
+                            ),
+                          ).copyWith(
+                            border: Border.all(color: theme.colorScheme.error),
+                          )
+                        : AppSurfaces.panel(context),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -277,37 +275,53 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                                 ),
                               ],
                             ),
-                            const TableRow(children: [
-                              SizedBox(height: 6),
-                              SizedBox(height: 6),
-                              SizedBox(height: 6),
-                            ]),
+                            const TableRow(
+                              children: [
+                                SizedBox(height: 6),
+                                SizedBox(height: 6),
+                                SizedBox(height: 6),
+                              ],
+                            ),
                             TableRow(
                               children: [
-                                Text('Latest Record', style: theme.textTheme.bodySmall),
                                 Text(
-                                  localLatest != null ? DateFormat.yMMMd().format(localLatest) : 'None',
+                                  'Latest Record',
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                                Text(
+                                  localLatest != null
+                                      ? DateFormat.yMMMd().format(localLatest)
+                                      : 'None',
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 Text(
-                                  cloudLatest != null ? DateFormat.yMMMd().format(cloudLatest) : 'Unknown',
+                                  cloudLatest != null
+                                      ? DateFormat.yMMMd().format(cloudLatest)
+                                      : 'Unknown',
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: isCloudOlder ? theme.colorScheme.error : null,
+                                    color: isCloudOlder
+                                        ? theme.colorScheme.error
+                                        : null,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ],
                             ),
-                            const TableRow(children: [
-                              SizedBox(height: 4),
-                              SizedBox(height: 4),
-                              SizedBox(height: 4),
-                            ]),
+                            const TableRow(
+                              children: [
+                                SizedBox(height: 4),
+                                SizedBox(height: 4),
+                                SizedBox(height: 4),
+                              ],
+                            ),
                             TableRow(
                               children: [
-                                Text('Transactions', style: theme.textTheme.bodySmall),
+                                Text(
+                                  'Transactions',
+                                  style: theme.textTheme.bodySmall,
+                                ),
                                 Text(
                                   '${state.transactions.length}',
                                   style: theme.textTheme.bodySmall?.copyWith(
@@ -315,9 +329,13 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                                   ),
                                 ),
                                 Text(
-                                  sync.cloudTransactionCount != null ? '${sync.cloudTransactionCount}' : 'Unknown',
+                                  sync.cloudTransactionCount != null
+                                      ? '${sync.cloudTransactionCount}'
+                                      : 'Unknown',
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: isCloudFewer ? theme.colorScheme.error : null,
+                                    color: isCloudFewer
+                                        ? theme.colorScheme.error
+                                        : null,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -332,7 +350,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                           children: [
                             AppActionButton(
                               prominent: true,
-                              onPressed: isWorking ? null : _confirmOverwriteCloud,
+                              onPressed: isWorking
+                                  ? null
+                                  : _confirmOverwriteCloud,
                               icon: Icons.cloud_upload_outlined,
                               label: (isCloudOlder || isCloudFewer)
                                   ? 'Keep this device & update cloud'
@@ -341,7 +361,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                             AppActionButton(
                               onPressed: isWorking
                                   ? null
-                                  : () => _confirmUseCloudCopy(isCloudOlder: isCloudOlder),
+                                  : () => _confirmUseCloudCopy(
+                                      isCloudOlder: isCloudOlder,
+                                    ),
                               icon: Icons.cloud_download_outlined,
                               label: 'Use cloud copy',
                             ),
@@ -438,22 +460,40 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                       padding: const EdgeInsets.all(AppSpacing.sm),
                       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                       decoration: BoxDecoration(
-                        color: sync.cloudVerificationStatus!.contains('100% In Sync') ||
-                                sync.cloudVerificationStatus!.contains('Verified')
-                            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
-                            : theme.colorScheme.errorContainer.withValues(alpha: 0.3),
+                        color:
+                            sync.cloudVerificationStatus!.contains(
+                                  '100% In Sync',
+                                ) ||
+                                sync.cloudVerificationStatus!.contains(
+                                  'Verified',
+                                )
+                            ? theme.colorScheme.primaryContainer.withValues(
+                                alpha: 0.3,
+                              )
+                            : theme.colorScheme.errorContainer.withValues(
+                                alpha: 0.3,
+                              ),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         children: [
                           Icon(
-                            sync.cloudVerificationStatus!.contains('100% In Sync') ||
-                                    sync.cloudVerificationStatus!.contains('Verified')
+                            sync.cloudVerificationStatus!.contains(
+                                      '100% In Sync',
+                                    ) ||
+                                    sync.cloudVerificationStatus!.contains(
+                                      'Verified',
+                                    )
                                 ? Icons.verified_rounded
                                 : Icons.info_outline_rounded,
                             size: 18,
-                            color: sync.cloudVerificationStatus!.contains('100% In Sync') ||
-                                    sync.cloudVerificationStatus!.contains('Verified')
+                            color:
+                                sync.cloudVerificationStatus!.contains(
+                                      '100% In Sync',
+                                    ) ||
+                                    sync.cloudVerificationStatus!.contains(
+                                      'Verified',
+                                    )
                                 ? theme.colorScheme.primary
                                 : theme.colorScheme.error,
                           ),
@@ -480,7 +520,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                       InfoRow(
                         icon: Icons.cloud_done_outlined,
                         label: 'Firebase Server Time',
-                        value: DateFormat.yMMMd().add_jms().format(sync.verifiedCloudUpdatedAt!),
+                        value: DateFormat.yMMMd().add_jms().format(
+                          sync.verifiedCloudUpdatedAt!,
+                        ),
                       ),
                     if (sync.verifiedCloudTransactionCount != null)
                       InfoRow(
@@ -506,8 +548,8 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                     onPressed: sync.isVerifyingCloud
                         ? null
                         : () => ref
-                            .read(cloudSyncControllerProvider.notifier)
-                            .verifyCloudBackup(),
+                              .read(cloudSyncControllerProvider.notifier)
+                              .verifyCloudBackup(),
                     icon: sync.isVerifyingCloud
                         ? const SizedBox(
                             width: 16,
@@ -563,7 +605,8 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
           PremiumRow(
             icon: Icons.picture_as_pdf_outlined,
             title: 'Import Bank Statement (PDF)',
-            subtitle: 'Extract and import transactions from bank statement PDFs',
+            subtitle:
+                'Extract and import transactions from bank statement PDFs',
             onTap: () => context.push('/import-statement'),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -614,8 +657,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
 
   Future<void> _confirmUseCloudCopy({bool isCloudOlder = false}) async {
     final localLatest = getLatestTransactionDate(ref.read(ledgerProvider));
-    final cloudLatest =
-        ref.read(cloudSyncControllerProvider).cloudLatestTransactionAt;
+    final cloudLatest = ref
+        .read(cloudSyncControllerProvider)
+        .cloudLatestTransactionAt;
 
     final String message;
     final String title;

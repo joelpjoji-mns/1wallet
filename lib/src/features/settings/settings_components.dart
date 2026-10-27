@@ -6,6 +6,7 @@ import '../../auth/auth_user.dart';
 import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
 import '../../theme/theme_controller.dart';
+import '../../widgets/app_kit.dart';
 import '../../widgets/user_identity_widgets.dart';
 
 class SettingsProfileSection extends StatelessWidget {
@@ -28,101 +29,96 @@ class SettingsProfileSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return GlassCard(
-      quality: GlassQuality.premium,
+    return AppPanel(
+      glass: true,
       child: Material(
         type: MaterialType.transparency,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  AuthUserAvatar(
-                    user: user,
-                    fallbackLabel: user?.initials ?? '1W',
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          user?.displayName ?? '1wallet account',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                AuthUserAvatar(
+                  user: user,
+                  fallbackLabel: user?.initials ?? '1W',
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user?.displayName ?? '1wallet account',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w900,
                         ),
+                      ),
+                      Text(
+                        user?.email ?? 'Not signed in',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          offline
+                              ? Icons.phonelink_lock_outlined
+                              : user?.isGoogleProvider == true
+                              ? Icons.cloud_done_outlined
+                              : Icons.cloud_outlined,
+                          size: 14,
+                          color: !offline && user?.isGoogleProvider == true
+                              ? Colors.green
+                              : theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: 4),
                         Text(
-                          user?.email ?? 'Not signed in',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontSize: 13,
+                          offline
+                              ? 'Offline'
+                              : user?.isGoogleProvider == true
+                              ? 'Google Sync'
+                              : 'Local',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            offline
-                                ? Icons.phonelink_lock_outlined
-                                : user?.isGoogleProvider == true
-                                ? Icons.cloud_done_outlined
-                                : Icons.cloud_outlined,
-                            size: 14,
-                            color: !offline && user?.isGoogleProvider == true
-                                ? Colors.green
-                                : theme.colorScheme.primary,
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FilledButton.tonal(
+                          onPressed: offline ? onUpgrade : onSignOut,
+                          style: FilledButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            offline
-                                ? 'Offline'
-                                : user?.isGoogleProvider == true
-                                ? 'Google Sync'
-                                : 'Local',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          child: Text(
+                            offline ? 'Sync with Google' : 'Sign out',
+                            style: const TextStyle(fontSize: 12),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          FilledButton.tonal(
-                            onPressed: offline ? onUpgrade : onSignOut,
-                            style: FilledButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                              ),
-                            ),
-                            child: Text(
-                              offline ? 'Sync with Google' : 'Sign out',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -158,26 +154,26 @@ class SettingsPreferencesSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return GlassGroupedSection(
-      header: const Text('Preferences'),
+    return AppGroupedSection(
+      header: 'Preferences',
       children: [
-        GlassListTile(
+        AppGroupedTile(
           leading: const Icon(Icons.currency_exchange_outlined),
           title: const Text('Base currency'),
           subtitle: Text(preferences.baseCurrency),
-          trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+          showChevron: true,
           onTap: onBaseCurrencyTap,
         ),
         const GlassDivider(),
-        GlassListTile(
+        AppGroupedTile(
           leading: const Icon(Icons.language_outlined),
           title: const Text('Locale'),
           subtitle: Text(localeLabel),
-          trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+          showChevron: true,
           onTap: onLocaleTap,
         ),
         const GlassDivider(),
-        GlassListTile(
+        AppGroupedTile(
           leading: const Icon(Icons.calendar_today_outlined),
           title: const Text('Month starts on day'),
           subtitle: startDayValidationError != null
@@ -210,7 +206,7 @@ class SettingsPreferencesSection extends StatelessWidget {
           ),
         ),
         const GlassDivider(),
-        GlassListTile(
+        AppGroupedTile(
           leading: const Icon(Icons.palette_outlined),
           title: const Text('Theme'),
           subtitle: Text(switch (themeState.preference) {
@@ -218,20 +214,17 @@ class SettingsPreferencesSection extends StatelessWidget {
             AppThemePreference.light => 'Light',
             AppThemePreference.amoled => 'Dark',
           }),
-          trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+          showChevron: true,
           onTap: onThemeTap,
         ),
         const GlassDivider(),
-        GlassListTile(
+        AppGroupedTile.toggle(
           title: const Text('Hide skipped in history'),
           subtitle: const Text(
             'Hide skipped plan records from the main transaction history.',
           ),
-          trailing: GlassSwitch(
-            quality: GlassQuality.standard,
-            value: preferences.hideSkippedInHistory,
-            onChanged: onHideSkippedChanged,
-          ),
+          value: preferences.hideSkippedInHistory,
+          onChanged: onHideSkippedChanged,
         ),
       ],
     );
