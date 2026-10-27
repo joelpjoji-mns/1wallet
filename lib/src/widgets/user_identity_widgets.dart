@@ -47,7 +47,7 @@ class AuthUserAvatar extends StatelessWidget {
                 ? [
                     BoxShadow(
                       color: (isGoogle ? ringColors.first : scheme.primary)
-                          .withAlpha(55),
+                          .withValues(alpha: 0.22),
                       blurRadius: radius * 0.45,
                       offset: const Offset(0, 4),
                     ),
@@ -88,11 +88,11 @@ class AuthProviderChip extends StatelessWidget {
     final isGoogle = user?.isGoogleProvider ?? false;
     final iconColor = isGoogle ? const Color(0xFF4285F4) : scheme.primary;
     final bgColor = isGoogle
-        ? const Color(0xFF4285F4).withAlpha(22)
-        : scheme.primaryContainer.withAlpha(130);
+        ? const Color(0xFF4285F4).withValues(alpha: 0.09)
+        : scheme.primaryContainer.withValues(alpha: 0.51);
     final borderColor = isGoogle
-        ? const Color(0xFF4285F4).withAlpha(70)
-        : scheme.primary.withAlpha(55);
+        ? const Color(0xFF4285F4).withValues(alpha: 0.27)
+        : scheme.primary.withValues(alpha: 0.22);
     final label = user == null
         ? 'Local session'
         : isGoogle
@@ -146,11 +146,11 @@ class AuthPhotoStatusChip extends StatelessWidget {
     final isGoogle = user?.isGoogleProvider ?? false;
     final hasPhoto = user?.photoUrl?.trim().isNotEmpty ?? false;
     final backgroundColor = isGoogle
-        ? const Color(0xFF34A853).withAlpha(20)
-        : scheme.secondaryContainer.withAlpha(170);
+        ? const Color(0xFF34A853).withValues(alpha: 0.08)
+        : scheme.secondaryContainer.withValues(alpha: 0.67);
     final borderColor = isGoogle
-        ? const Color(0xFF34A853).withAlpha(80)
-        : scheme.secondary.withAlpha(55);
+        ? const Color(0xFF34A853).withValues(alpha: 0.31)
+        : scheme.secondary.withValues(alpha: 0.22);
     final label = switch ((user != null, hasPhoto, isGoogle)) {
       (false, _, _) => 'Local avatar',
       (true, true, true) => 'Google photo synced',
@@ -231,7 +231,7 @@ class AuthUserActionButton extends StatelessWidget {
     button = DecoratedBox(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: scheme.outlineVariant.withAlpha(170)),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.67)),
         color: scheme.surfaceContainerLow,
       ),
       child: button,

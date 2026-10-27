@@ -292,7 +292,7 @@ class AppTopFadeMask extends StatelessWidget {
                   end: Alignment.bottomCenter,
                   colors: [
                     surfaceColor,
-                    surfaceColor.withAlpha(0),
+                    surfaceColor.withValues(alpha: 0),
                   ],
                 ),
               ),
@@ -786,7 +786,7 @@ class SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: scheme.outlineVariant.withAlpha(140)),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
       ),
       child: content,
     );
@@ -888,7 +888,7 @@ class MetricTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: scheme.outlineVariant.withAlpha(140)),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
       ),
       child: content,
     );
@@ -1230,7 +1230,7 @@ class PremiumRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: scheme.outlineVariant.withAlpha(140)),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
       ),
       child: content,
     );

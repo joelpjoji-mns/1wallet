@@ -23,9 +23,9 @@ class DrawerMetricCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
-        color: scheme.surface.withAlpha(190),
+        color: scheme.surface.withValues(alpha: 0.75),
         borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: scheme.outlineVariant.withAlpha(180)),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.71)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -34,7 +34,7 @@ class DrawerMetricCard extends StatelessWidget {
             width: 30,
             height: 30,
             decoration: BoxDecoration(
-              color: color.withAlpha(28),
+              color: color.withValues(alpha: 0.11),
               borderRadius: BorderRadius.circular(AppRadii.md),
             ),
             child: Icon(icon, size: 17, color: color),
@@ -83,9 +83,9 @@ class DrawerInfoChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withAlpha(18),
+        color: color.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(AppRadii.pill),
-        border: Border.all(color: color.withAlpha(55)),
+        border: Border.all(color: color.withValues(alpha: 0.22)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -155,9 +155,9 @@ class DrawerSection extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(AppSpacing.xs),
             decoration: BoxDecoration(
-              color: surfaceTint.withAlpha(12),
+              color: surfaceTint.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(AppRadii.xl),
-              border: Border.all(color: scheme.outlineVariant.withAlpha(160)),
+              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.63)),
             ),
             child: Column(
               children: [
@@ -167,7 +167,7 @@ class DrawerSection extends StatelessWidget {
                       width: 28,
                       height: 28,
                       decoration: BoxDecoration(
-                        color: surfaceTint.withAlpha(22),
+                        color: surfaceTint.withValues(alpha: 0.09),
                         borderRadius: BorderRadius.circular(AppRadii.md),
                       ),
                       child: Icon(
@@ -251,20 +251,20 @@ class _DrawerRouteTileState extends State<DrawerRouteTile> {
       curve: Curves.easeOutCubic,
       decoration: BoxDecoration(
         color: active
-            ? accentColor.withAlpha(18)
+            ? accentColor.withValues(alpha: 0.07)
             : _hovered
-            ? scheme.surfaceContainerHighest.withAlpha(170)
-            : scheme.surface.withAlpha(140),
+            ? scheme.surfaceContainerHighest.withValues(alpha: 0.67)
+            : scheme.surface.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(AppRadii.lg),
         border: Border.all(
           color: active
-              ? accentColor.withAlpha(110)
-              : scheme.outlineVariant.withAlpha(120),
+              ? accentColor.withValues(alpha: 0.43)
+              : scheme.outlineVariant.withValues(alpha: 0.47),
         ),
         boxShadow: active
             ? [
                 BoxShadow(
-                  color: accentColor.withAlpha(26),
+                  color: accentColor.withValues(alpha: 0.1),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -302,9 +302,9 @@ class _DrawerRouteTileState extends State<DrawerRouteTile> {
                   height: 34,
                   decoration: BoxDecoration(
                     color: widget.danger
-                        ? scheme.error.withAlpha(20)
+                        ? scheme.error.withValues(alpha: 0.08)
                         : active
-                        ? accentColor.withAlpha(20)
+                        ? accentColor.withValues(alpha: 0.08)
                         : scheme.surfaceContainerHigh,
                     borderRadius: BorderRadius.circular(AppRadii.md),
                   ),

@@ -62,7 +62,7 @@ class TransactionRow extends StatelessWidget {
             color: selected
                 ? Theme.of(
                     context,
-                  ).colorScheme.secondaryContainer.withAlpha(120)
+                  ).colorScheme.secondaryContainer.withValues(alpha: 0.47)
                 : Colors.transparent,
           ),
           child: Padding(
@@ -196,7 +196,7 @@ class TransactionRow extends StatelessWidget {
         decoration: BoxDecoration(
           color: scheme.surfaceContainerLow,
           borderRadius: BorderRadius.circular(AppRadii.md),
-          border: Border.all(color: scheme.outlineVariant.withAlpha(140)),
+          border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
         ),
         child: content,
       ),

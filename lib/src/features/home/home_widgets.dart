@@ -187,9 +187,9 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
         borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(
           color: isAmoled
-              ? Colors.white.withAlpha(24)
+              ? Colors.white.withValues(alpha: 0.09)
               : (isDark
-                    ? scheme.outlineVariant.withAlpha(50)
+                    ? scheme.outlineVariant.withValues(alpha: 0.2)
                     : scheme.outlineVariant),
           width: 0.8,
         ),
@@ -2635,7 +2635,7 @@ class _AccountTile extends ConsumerWidget {
               children: [
                 Icon(
                   accountIcon(account),
-                  color: foreground.withAlpha(200),
+                  color: foreground.withValues(alpha: 0.78),
                   size: 13,
                 ),
                 const SizedBox(width: 3),
@@ -2660,17 +2660,17 @@ class _AccountTile extends ConsumerWidget {
                       vertical: 1,
                     ),
                     decoration: BoxDecoration(
-                      color: foreground.withAlpha(40),
+                      color: foreground.withValues(alpha: 0.16),
                       borderRadius: BorderRadius.circular(AppRadii.pill),
                       border: Border.all(
-                        color: foreground.withAlpha(60),
+                        color: foreground.withValues(alpha: 0.24),
                         width: 0.5,
                       ),
                     ),
                     child: Text(
                       nativeBalance.currency,
                       style: TextStyle(
-                        color: foreground.withAlpha(220),
+                        color: foreground.withValues(alpha: 0.86),
                         fontSize: 9,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.3,
@@ -2686,7 +2686,7 @@ class _AccountTile extends ConsumerWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: foreground.withAlpha(240),
+                color: foreground.withValues(alpha: 0.94),
                 fontSize: 13,
                 height: 1.1,
                 letterSpacing: -0.3,
@@ -2699,7 +2699,7 @@ class _AccountTile extends ConsumerWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: foreground.withAlpha(160),
+                  color: foreground.withValues(alpha: 0.63),
                   fontSize: 10,
                   height: 1.1,
                   fontWeight: FontWeight.w600,
@@ -2966,7 +2966,7 @@ class DashboardCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.amoledBackground,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withAlpha(24), width: 0.8),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.09), width: 0.8),
         ),
         child: inner,
       );

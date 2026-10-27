@@ -702,7 +702,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withAlpha(40),
+                    color: Colors.black.withValues(alpha: 0.16),
                     blurRadius: 16,
                     offset: const Offset(0, -4),
                   ),
@@ -717,7 +717,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                       width: 36,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: scheme.onSurfaceVariant.withAlpha(60),
+                        color: scheme.onSurfaceVariant.withValues(alpha: 0.24),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -813,13 +813,13 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                             borderRadius: BorderRadius.circular(AppRadii.md),
                             side: BorderSide(
                               color: isDuplicate
-                                  ? scheme.tertiary.withAlpha(70)
-                                  : scheme.outlineVariant.withAlpha(50),
+                                  ? scheme.tertiary.withValues(alpha: 0.27)
+                                  : scheme.outlineVariant.withValues(alpha: 0.2),
                             ),
                           ),
                           color: isDuplicate
-                              ? scheme.tertiaryContainer.withAlpha(25)
-                              : scheme.surfaceContainerHighest.withAlpha(40),
+                              ? scheme.tertiaryContainer.withValues(alpha: 0.1)
+                              : scheme.surfaceContainerHighest.withValues(alpha: 0.16),
                           child: Padding(
                             padding: const EdgeInsets.all(AppSpacing.md),
                             child: Column(
@@ -891,12 +891,8 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                                             ),
                                             decoration: BoxDecoration(
                                               color: isDuplicate
-                                                  ? scheme.tertiary.withAlpha(
-                                                      35,
-                                                    )
-                                                  : scheme.primary.withAlpha(
-                                                      30,
-                                                    ),
+                                                  ? scheme.tertiary.withValues(alpha: 0.14)
+                                                  : scheme.primary.withValues(alpha: 0.12),
                                               borderRadius:
                                                   BorderRadius.circular(4),
                                             ),
@@ -952,12 +948,12 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                                         vertical: 8,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: scheme.tertiary.withAlpha(20),
+                                        color: scheme.tertiary.withValues(alpha: 0.08),
                                         borderRadius: BorderRadius.circular(
                                           AppRadii.sm,
                                         ),
                                         border: Border.all(
-                                          color: scheme.tertiary.withAlpha(60),
+                                          color: scheme.tertiary.withValues(alpha: 0.24),
                                         ),
                                       ),
                                       child: Row(
@@ -1111,8 +1107,8 @@ class _WordEditorState extends State<_WordEditor> {
                   InputChip(
                     label: Text(word),
                     onDeleted: () => _remove(word),
-                    backgroundColor: widget.accent.withAlpha(24),
-                    side: BorderSide(color: widget.accent.withAlpha(70)),
+                    backgroundColor: widget.accent.withValues(alpha: 0.09),
+                    side: BorderSide(color: widget.accent.withValues(alpha: 0.27)),
                   ),
               ],
             ),

@@ -156,7 +156,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                     (_selectedColor ??
                             account.color ??
                             Theme.of(context).colorScheme.primary)
-                        .withAlpha(150),
+                        .withValues(alpha: 0.59),
                 isUnlocked: _isCardUnlocked,
                 customFields: _unlockedCustomFields,
               ),
@@ -1421,7 +1421,7 @@ Future<int?> showDayOfMonthPicker({
                         color: isSelected
                             ? scheme.primary
                             : (isAmoled
-                                  ? Colors.white.withAlpha(24)
+                                  ? Colors.white.withValues(alpha: 0.09)
                                   : scheme.outlineVariant.withValues(
                                       alpha: 0.5,
                                     )),
@@ -1462,7 +1462,7 @@ Future<int?> showDayOfMonthPicker({
         decoration: BoxDecoration(
           color: AppColors.amoledBackground,
           borderRadius: BorderRadius.circular(AppRadii.xl),
-          border: Border.all(color: Colors.white.withAlpha(24), width: 0.8),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.09), width: 0.8),
         ),
         child: inner,
       );

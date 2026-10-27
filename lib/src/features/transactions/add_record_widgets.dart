@@ -325,11 +325,11 @@ class AddRecordCalculatorPad extends StatelessWidget {
         return colors.operatorBackground;
       }
       if (key == 'AC') {
-        return Theme.of(context).colorScheme.errorContainer.withAlpha(80);
+        return Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.31);
       }
       return Theme.of(
         context,
-      ).colorScheme.surfaceContainerHighest.withAlpha(80);
+      ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.31);
     }
 
     Color fgColor(String key) {
@@ -391,19 +391,19 @@ addRecordCalculatorPadColors(BuildContext context, String type) {
   final scheme = Theme.of(context).colorScheme;
   return switch (type) {
     'income' => (
-      operatorBackground: scheme.tertiaryContainer.withAlpha(110),
+      operatorBackground: scheme.tertiaryContainer.withValues(alpha: 0.43),
       operatorForeground: scheme.tertiary,
       equalsBackground: scheme.tertiary,
       equalsForeground: scheme.onTertiary,
     ),
     'transfer' => (
-      operatorBackground: scheme.primaryContainer.withAlpha(110),
+      operatorBackground: scheme.primaryContainer.withValues(alpha: 0.43),
       operatorForeground: scheme.primary,
       equalsBackground: scheme.primary,
       equalsForeground: scheme.onPrimary,
     ),
     _ => (
-      operatorBackground: scheme.errorContainer.withAlpha(110),
+      operatorBackground: scheme.errorContainer.withValues(alpha: 0.43),
       operatorForeground: scheme.error,
       equalsBackground: scheme.error,
       equalsForeground: scheme.onError,
@@ -448,11 +448,11 @@ class _AddRecordCalcKeyState extends State<AddRecordCalcKey> {
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: _pressed
-                ? widget.backgroundColor.withAlpha(200)
+                ? widget.backgroundColor.withValues(alpha: 0.78)
                 : widget.backgroundColor,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: widget.foregroundColor.withAlpha(15),
+              color: widget.foregroundColor.withValues(alpha: 0.06),
             ),
           ),
           child: Center(

@@ -313,7 +313,7 @@ class _CurrencySummaryHeader extends StatelessWidget {
           color: AppColors.amoledBackground,
           borderRadius: BorderRadius.circular(AppRadii.md),
           border: Border.all(
-            color: Colors.white.withAlpha(24),
+            color: Colors.white.withValues(alpha: 0.09),
             width: 0.8,
           ),
         ),

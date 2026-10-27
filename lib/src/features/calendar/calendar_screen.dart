@@ -668,7 +668,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             color: AppColors.amoledBackground,
             borderRadius: BorderRadius.circular(AppRadii.lg),
             border: Border.all(
-              color: Colors.white.withAlpha(24),
+              color: Colors.white.withValues(alpha: 0.09),
               width: 0.8,
             ),
           ),
@@ -754,7 +754,7 @@ class SummaryPill extends StatelessWidget {
             isAmoled ? AppColors.amoledBackground : scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(
-          color: isAmoled ? Colors.white.withAlpha(24) : scheme.outlineVariant,
+          color: isAmoled ? Colors.white.withValues(alpha: 0.09) : scheme.outlineVariant,
           width: 0.8,
         ),
       ),
@@ -822,14 +822,14 @@ class _CalendarFilterCard extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             color: active
-                ? scheme.primaryContainer.withAlpha(100)
+                ? scheme.primaryContainer.withValues(alpha: 0.39)
                 : (isAmoled ? AppColors.amoledBackground : Colors.transparent),
             borderRadius: BorderRadius.circular(AppRadii.md),
             border: Border.all(
               color: active
                   ? scheme.primary
                   : (isAmoled
-                      ? Colors.white.withAlpha(24)
+                      ? Colors.white.withValues(alpha: 0.09)
                       : scheme.outlineVariant),
               width: 0.8,
             ),
@@ -962,7 +962,7 @@ class _DayCell extends StatelessWidget {
             color: isToday
                 ? scheme.primary
                 : (isAmoled
-                    ? Colors.white.withAlpha(24)
+                    ? Colors.white.withValues(alpha: 0.09)
                     : scheme.outlineVariant),
             width: 0.8,
           ),

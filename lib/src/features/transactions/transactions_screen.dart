@@ -1441,7 +1441,7 @@ class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withAlpha(40),
+                color: Colors.black.withValues(alpha: 0.16),
                 blurRadius: 16,
                 offset: const Offset(0, -4),
               ),
@@ -1456,7 +1456,7 @@ class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
                   width: 36,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: scheme.onSurfaceVariant.withAlpha(60),
+                    color: scheme.onSurfaceVariant.withValues(alpha: 0.24),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -1516,9 +1516,9 @@ class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(AppRadii.md),
-                        side: BorderSide(color: scheme.outlineVariant.withAlpha(50)),
+                        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.2)),
                       ),
-                      color: scheme.surfaceContainerHighest.withAlpha(50),
+                      color: scheme.surfaceContainerHighest.withValues(alpha: 0.2),
                       child: Padding(
                         padding: const EdgeInsets.all(AppSpacing.md),
                         child: Column(
@@ -1609,12 +1609,12 @@ class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
                       child: Container(
                         padding: const EdgeInsets.all(AppSpacing.md),
                         decoration: BoxDecoration(
-                          color: scheme.surfaceContainerHighest.withAlpha(40),
+                          color: scheme.surfaceContainerHighest.withValues(alpha: 0.16),
                           borderRadius: BorderRadius.circular(AppRadii.md),
                           border: Border.all(
                             color: _selectedCategoryId == null && !widget.allSameCategory
-                                ? scheme.error.withAlpha(120)
-                                : scheme.outlineVariant.withAlpha(60),
+                                ? scheme.error.withValues(alpha: 0.47)
+                                : scheme.outlineVariant.withValues(alpha: 0.24),
                           ),
                         ),
                         child: Row(
@@ -1679,9 +1679,9 @@ class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(AppRadii.md),
-                        side: BorderSide(color: scheme.outlineVariant.withAlpha(50)),
+                        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.2)),
                       ),
-                      color: scheme.surfaceContainerHighest.withAlpha(25),
+                      color: scheme.surfaceContainerHighest.withValues(alpha: 0.1),
                       child: Padding(
                         padding: const EdgeInsets.all(AppSpacing.sm),
                         child: Column(

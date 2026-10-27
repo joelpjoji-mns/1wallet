@@ -474,7 +474,7 @@ class _SecureAccountDetailsScreenState
                   account.color ?? Theme.of(context).colorScheme.primary,
               gradientEnd:
                   (account.color ?? Theme.of(context).colorScheme.primary)
-                      .withAlpha(150),
+                      .withValues(alpha: 0.59),
               isUnlocked: true,
               customFields: Map.fromEntries(
                 _customFields
@@ -493,7 +493,7 @@ class _SecureAccountDetailsScreenState
                   account.color ?? Theme.of(context).colorScheme.primary,
               gradientEnd:
                   (account.color ?? Theme.of(context).colorScheme.primary)
-                      .withAlpha(150),
+                      .withValues(alpha: 0.59),
               isUnlocked: true,
               customFields: Map.fromEntries(
                 _customFields

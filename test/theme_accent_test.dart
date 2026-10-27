@@ -73,7 +73,7 @@ void main() {
     expect(incomeCategoryColor, theme.colorScheme.tertiary);
     expect(
       incomePadColors.operatorBackground,
-      theme.colorScheme.tertiaryContainer.withAlpha(110),
+      theme.colorScheme.tertiaryContainer.withValues(alpha: 0.43),
     );
     expect(incomePadColors.operatorForeground, theme.colorScheme.tertiary);
     expect(incomePadColors.equalsBackground, theme.colorScheme.tertiary);

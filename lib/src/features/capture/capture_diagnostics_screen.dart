@@ -175,7 +175,7 @@ class _DiagnosticEventTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: scheme.outlineVariant.withAlpha(150)),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.59)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -254,7 +254,7 @@ class _DiagnosticEventTile extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
-                color: scheme.surfaceContainerHighest.withAlpha(130),
+                color: scheme.surfaceContainerHighest.withValues(alpha: 0.51),
                 borderRadius: BorderRadius.circular(AppRadii.md),
               ),
               child: PrivacyText(
@@ -294,9 +294,9 @@ class _MetaChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withAlpha(180),
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.71),
         borderRadius: BorderRadius.circular(AppRadii.pill),
-        border: Border.all(color: scheme.outlineVariant.withAlpha(140)),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
       ),
       child: Text(
         label,

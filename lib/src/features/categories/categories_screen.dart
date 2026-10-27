@@ -473,12 +473,12 @@ class _CategoryTreeNode extends StatelessWidget {
           decoration: BoxDecoration(
             color: depth == 0
                 ? scheme.surfaceContainerLow
-                : scheme.surfaceContainerHighest.withAlpha(120),
+                : scheme.surfaceContainerHighest.withValues(alpha: 0.47),
             borderRadius: BorderRadius.circular(AppRadii.md),
             border: Border.all(
               color: depth == 0
                   ? scheme.outlineVariant
-                  : scheme.outlineVariant.withAlpha(140),
+                  : scheme.outlineVariant.withValues(alpha: 0.55),
             ),
           ),
           child: InkWell(
@@ -589,7 +589,7 @@ class _CategoryTreeNode extends StatelessWidget {
               padding: const EdgeInsets.only(left: AppSpacing.sm),
               decoration: BoxDecoration(
                 border: Border(
-                  left: BorderSide(color: scheme.outlineVariant.withAlpha(120)),
+                  left: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.47)),
                 ),
               ),
               child: Column(

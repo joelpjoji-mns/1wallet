@@ -243,7 +243,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
             decoration: BoxDecoration(
               color: AppColors.amoledBackground,
               borderRadius: BorderRadius.circular(AppRadii.lg),
-              border: Border.all(color: Colors.white.withAlpha(24), width: 0.8),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.09), width: 0.8),
             ),
             child: content,
           ),

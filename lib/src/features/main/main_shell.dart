@@ -422,15 +422,15 @@ class AppMainDrawer extends ConsumerWidget {
           border: isStatic
               ? Border(
                   right: BorderSide(
-                    color: scheme.outlineVariant.withAlpha(180),
+                    color: scheme.outlineVariant.withValues(alpha: 0.71),
                   ),
                 )
-              : Border.all(color: scheme.outlineVariant.withAlpha(180)),
+              : Border.all(color: scheme.outlineVariant.withValues(alpha: 0.71)),
           boxShadow: isStatic
               ? null
               : [
                   BoxShadow(
-                    color: Colors.black.withAlpha(28),
+                    color: Colors.black.withValues(alpha: 0.11),
                     blurRadius: 22,
                     offset: const Offset(0, 10),
                   ),
@@ -453,13 +453,13 @@ class AppMainDrawer extends ConsumerWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      scheme.primaryContainer.withAlpha(isStatic ? 150 : 220),
+                      scheme.primaryContainer.withValues(alpha: isStatic ? 0.59 : 0.86),
                       scheme.surfaceContainerHigh,
-                      scheme.tertiaryContainer.withAlpha(isStatic ? 120 : 180),
+                      scheme.tertiaryContainer.withValues(alpha: isStatic ? 0.47 : 0.71),
                     ],
                   ),
                   border: Border.all(
-                    color: scheme.outlineVariant.withAlpha(180),
+                    color: scheme.outlineVariant.withValues(alpha: 0.71),
                   ),
                 ),
                 child: Column(
@@ -729,8 +729,8 @@ class _DrawerPrivacyToggle extends ConsumerWidget {
     return MergeSemantics(
       child: Material(
         color: enabled
-            ? scheme.primary.withAlpha(28)
-            : scheme.surface.withAlpha(160),
+            ? scheme.primary.withValues(alpha: 0.11)
+            : scheme.surface.withValues(alpha: 0.63),
         borderRadius: BorderRadius.circular(AppRadii.lg),
         child: InkWell(
           borderRadius: BorderRadius.circular(AppRadii.lg),

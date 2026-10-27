@@ -1509,7 +1509,7 @@ class _FxAmountCard extends StatelessWidget {
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: selected
-                  ? scheme.primaryContainer.withAlpha(110)
+                  ? scheme.primaryContainer.withValues(alpha: 0.43)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(AppRadii.md),
               border: Border.all(

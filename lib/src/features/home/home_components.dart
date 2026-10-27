@@ -88,9 +88,9 @@ class HomeFlowPanel extends StatelessWidget {
         vertical: AppSpacing.xs,
       ),
       decoration: BoxDecoration(
-        color: color.withAlpha(20),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: color.withAlpha(40)),
+        border: Border.all(color: color.withValues(alpha: 0.16)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,8 +203,8 @@ class AddAccountHomeRow extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppRadii.md),
-          border: Border.all(color: scheme.primary.withAlpha(60)),
-          color: scheme.primary.withAlpha(24),
+          border: Border.all(color: scheme.primary.withValues(alpha: 0.24)),
+          color: scheme.primary.withValues(alpha: 0.09),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,

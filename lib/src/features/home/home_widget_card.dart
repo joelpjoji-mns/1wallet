@@ -146,7 +146,7 @@ class HomeWidgetCard extends StatelessWidget {
             color: AppColors.amoledBackground,
             borderRadius: BorderRadius.circular(AppRadii.md),
             border: Border.all(
-              color: Colors.white.withAlpha(24),
+              color: Colors.white.withValues(alpha: 0.09),
               width: 0.8,
             ),
           ),
@@ -161,7 +161,7 @@ class HomeWidgetCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadii.md),
           border: Border.all(
             color: isDark
-                ? scheme.outlineVariant.withAlpha(50)
+                ? scheme.outlineVariant.withValues(alpha: 0.2)
                 : Colors.transparent,
             width: 0.8,
           ),
@@ -341,9 +341,9 @@ class HomeMetricTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
-        color: color.withAlpha(20),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: color.withAlpha(40)),
+        border: Border.all(color: color.withValues(alpha: 0.16)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
