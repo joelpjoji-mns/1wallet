@@ -40,6 +40,11 @@ flutter test
 # 2. Run Flutter static analyzer
 flutter analyze
 
+# Validate dynamic notification resources in the actual shrunk release APK.
+node --test scripts/validate-android-notification-resources.test.mjs
+flutter build apk --release --target-platform android-arm64 --split-per-abi
+node scripts/validate-android-notification-resources.mjs --apk build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+
 # 3. Run PWA tests and linting
 cd pwa
 npm test
@@ -51,6 +56,16 @@ cd firebase
 npm test
 cd ..
 ```
+
+Notification icons are resolved by name through a platform channel. Keep them in
+the Android raw resource keep file; source existence or a debug build is not
+sufficient evidence that resource shrinking preserves them. PR validation and
+the signed release workflow validate the packaged APK before publishing it.
+Use bare drawable names for the notification plugin, not XML `@drawable/...`
+syntax, and use an actual bitmap drawable rather than an adaptive launcher XML
+for the large icon. Native tests exercise both name lookup and bitmap decoding.
+A notification-delivery failure must also leave a discovered update available
+to download, with a non-blocking warning instead of an update-check error.
 
 ---
 

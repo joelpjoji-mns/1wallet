@@ -212,6 +212,14 @@ jobs:
             --output .tmp-release-notes.json \
             --markdown .tmp-release-notes.md
 
+      - name: Test update notification failure handling
+        if: steps.notes_source.outputs.skip_release != 'true'
+        run: flutter test --no-pub test/update_notification_failure_test.dart test/app_update_version_check_test.dart test/updates_screen_test.dart
+
+      - name: Test release resource validator
+        if: steps.notes_source.outputs.skip_release != 'true'
+        run: node --test scripts/validate-android-notification-resources.test.mjs
+
       - name: Build signed arm64 APK
         if: steps.notes_source.outputs.skip_release != 'true'
         env:
@@ -223,6 +231,10 @@ jobs:
           ONEWALLET_VERSION_NAME: ${{ steps.info.outputs.versionName }}
           ONEWALLET_VERSION_CODE: ${{ steps.info.outputs.versionCode }}
         run: flutter build apk --release --target-platform android-arm64 --split-per-abi --obfuscate --split-debug-info=build/app/outputs/symbols --build-name="${{ steps.info.outputs.versionName }}" --build-number="${{ steps.info.outputs.versionCode }}"
+
+      - name: Validate packaged notification resources
+        if: steps.notes_source.outputs.skip_release != 'true'
+        run: node scripts/validate-android-notification-resources.mjs --apk "$APK_PATH"
 
       - name: Stage release assets
         if: steps.notes_source.outputs.skip_release != 'true'

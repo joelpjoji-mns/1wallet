@@ -15,6 +15,8 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   static bool _initialized = false;
+  static const androidSmallIcon = 'ic_notification';
+  static const androidLargeIcon = 'ic_launcher_foreground';
   static const _deliveredKey = 'one_wallet_flutter.native_delivered_ids.v1';
 
   /// Hook other layers (e.g. the app's router/navigator setup) can assign to
@@ -47,9 +49,7 @@ class NotificationService {
   static Future<void> initialize() async {
     if (_initialized) return;
 
-    const androidSettings = AndroidInitializationSettings(
-      '@drawable/ic_notification',
-    );
+    const androidSettings = AndroidInitializationSettings(androidSmallIcon);
     const darwinSettings = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
@@ -68,8 +68,8 @@ class NotificationService {
       },
     );
 
-    final launchDetails =
-        await _notificationsPlugin.getNotificationAppLaunchDetails();
+    final launchDetails = await _notificationsPlugin
+        .getNotificationAppLaunchDetails();
     if (launchDetails?.didNotificationLaunchApp ?? false) {
       final payload = launchDetails?.notificationResponse?.payload;
       if (payload != null && payload.trim().isNotEmpty) {
@@ -120,6 +120,7 @@ class NotificationService {
   }
 
   static Future<void> showUpdateNotification(String version) async {
+    await initialize();
     await requestPermissions();
 
     final androidDetails = AndroidNotificationDetails(
@@ -128,8 +129,8 @@ class NotificationService {
       channelDescription: 'Notifications for new app versions',
       importance: Importance.high,
       priority: Priority.high,
-      icon: '@drawable/ic_notification',
-      largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      icon: androidSmallIcon,
+      largeIcon: const DrawableResourceAndroidBitmap(androidLargeIcon),
       color: await _notificationAccentColor(),
     );
     const darwinDetails = DarwinNotificationDetails(
@@ -155,9 +156,9 @@ class NotificationService {
   static Future<void> cancelAll() async {
     if (!_initialized) return;
     try {
-      await _notificationsPlugin
-          .cancelAll()
-          .timeout(const Duration(milliseconds: 500));
+      await _notificationsPlugin.cancelAll().timeout(
+        const Duration(milliseconds: 500),
+      );
     } catch (_) {}
   }
 
@@ -323,8 +324,8 @@ class NotificationService {
       channelDescription: 'Notifications for upcoming payments',
       importance: Importance.high,
       priority: Priority.high,
-      icon: '@drawable/ic_notification',
-      largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      icon: androidSmallIcon,
+      largeIcon: const DrawableResourceAndroidBitmap(androidLargeIcon),
       color: resolvedAccent,
     );
     const darwinDetails = DarwinNotificationDetails(

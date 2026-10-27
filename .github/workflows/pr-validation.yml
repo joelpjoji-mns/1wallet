@@ -58,6 +58,14 @@ jobs:
       - name: Android queue tests and debug build
         run: bash android/gradlew -p android :app:testDebugUnitTest :app:assembleDebug
 
+      - name: Test release resource validator
+        run: node --test scripts/validate-android-notification-resources.test.mjs
+
+      - name: Build shrunk release and validate notification resources
+        run: |
+          flutter build apk --release --no-pub --target-platform android-arm64 --split-per-abi
+          node scripts/validate-android-notification-resources.mjs --apk build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+
   validate-pwa:
     name: PWA Lint, Typecheck, and Build
     runs-on: ubuntu-24.04

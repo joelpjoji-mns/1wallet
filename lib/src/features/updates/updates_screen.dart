@@ -109,6 +109,16 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
             children: [
               // Top Section: Hero Card with Version Transition & Update Action Button
               _buildHeroCard(context, state, provider),
+              if (state.notificationWarning != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    state.notificationWarning!,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+              ],
               if (hasUpdate) ...[
                 const SizedBox(height: AppSpacing.md),
                 _buildReleaseInfoCard(context, state.latestRelease!),
@@ -240,9 +250,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                       width: 1.5,
                     ),
                   ),
-                  child: Center(
-                    child: Icon(icon, color: color, size: 26),
-                  ),
+                  child: Center(child: Icon(icon, color: color, size: 26)),
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
@@ -298,8 +306,9 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                           child: Icon(
                             Icons.arrow_forward_rounded,
                             size: 16,
-                            color:
-                                scheme.onSurfaceVariant.withValues(alpha: 0.7),
+                            color: scheme.onSurfaceVariant.withValues(
+                              alpha: 0.7,
+                            ),
                           ),
                         ),
                         _buildVersionPill(
@@ -480,10 +489,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
   // RELEASE DETAILS CARD
   // ===========================================================================
 
-  Widget _buildReleaseInfoCard(
-    BuildContext context,
-    AppUpdateRelease release,
-  ) {
+  Widget _buildReleaseInfoCard(BuildContext context, AppUpdateRelease release) {
     final scheme = Theme.of(context).colorScheme;
     final publishedDate = _formatReleaseDate(release.publishedAt);
 
@@ -560,12 +566,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
         children: [
           Icon(icon, size: 18, color: scheme.primary),
           const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              title,
-              style: theme.textTheme.bodyMedium,
-            ),
-          ),
+          Expanded(child: Text(title, style: theme.textTheme.bodyMedium)),
           Text(
             value,
             style: theme.textTheme.bodyMedium?.copyWith(
@@ -629,7 +630,8 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final changelog = release.changelog;
-    final totalChanges = changelog.newFeatures.length +
+    final totalChanges =
+        changelog.newFeatures.length +
         changelog.bugFixes.length +
         changelog.notes.length;
 
@@ -649,8 +651,8 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                   accentColor: isLatest
                       ? scheme.primary
                       : (isInstalled
-                          ? const Color(0xFF2E7D32)
-                          : scheme.onSurfaceVariant),
+                            ? const Color(0xFF2E7D32)
+                            : scheme.onSurfaceVariant),
                 ),
                 const SizedBox(width: AppSpacing.xs),
                 Text(
@@ -674,10 +676,14 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                   ),
                 const Spacer(),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                    color: scheme.surfaceContainerHighest.withValues(
+                      alpha: 0.6,
+                    ),
                     borderRadius: BorderRadius.circular(AppRadii.pill),
                   ),
                   child: Text(
@@ -768,7 +774,8 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
 
     return SectionCard(
       title: 'Older Releases',
-      subtitle: '${olderReleases.length} previous versions available to explore',
+      subtitle:
+          '${olderReleases.length} previous versions available to explore',
       compact: true,
       child: Column(
         children: [
@@ -800,7 +807,8 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     final scheme = theme.colorScheme;
     final isExpanded = _isReleaseExpanded(release.id);
     final changelog = release.changelog;
-    final totalChanges = changelog.newFeatures.length +
+    final totalChanges =
+        changelog.newFeatures.length +
         changelog.bugFixes.length +
         changelog.notes.length;
     final publishedDate = _formatReleaseDate(release.publishedAt);
@@ -859,10 +867,14 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                 ),
                 const Spacer(),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    color: scheme.surfaceContainerHighest.withValues(
+                      alpha: 0.5,
+                    ),
                     borderRadius: BorderRadius.circular(AppRadii.pill),
                   ),
                   child: Text(
@@ -954,10 +966,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-          width: 0.8,
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 0.8),
       ),
       child: Text(
         label,
@@ -984,8 +993,9 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     final isExpanded = _isSectionExpanded(sectionKey);
     const previewLimit = 5;
     final hasOverflow = items.length > previewLimit;
-    final displayedItems =
-        hasOverflow && !isExpanded ? items.take(previewLimit).toList() : items;
+    final displayedItems = hasOverflow && !isExpanded
+        ? items.take(previewLimit).toList()
+        : items;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -1120,12 +1130,12 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                           vertical: 1.5,
                         ),
                         decoration: BoxDecoration(
-                          color: scheme.surfaceContainerHighest
-                              .withValues(alpha: 0.8),
+                          color: scheme.surfaceContainerHighest.withValues(
+                            alpha: 0.8,
+                          ),
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
-                            color:
-                                scheme.outlineVariant.withValues(alpha: 0.3),
+                            color: scheme.outlineVariant.withValues(alpha: 0.3),
                             width: 0.8,
                           ),
                         ),
@@ -1141,9 +1151,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                     ],
                     _MorpheInlineText(
                       text: body.isNotEmpty ? body : text,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        height: 1.35,
-                      ),
+                      style: theme.textTheme.bodyMedium?.copyWith(height: 1.35),
                     ),
                   ],
                 ),
@@ -1209,8 +1217,9 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color:
-                                        scheme.primary.withValues(alpha: 0.16),
+                                    color: scheme.primary.withValues(
+                                      alpha: 0.16,
+                                    ),
                                     blurRadius: 36,
                                     spreadRadius: 6,
                                   ),
@@ -1242,11 +1251,12 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                               children: [
                                 Text(
                                   '$percent%',
-                                  style: theme.textTheme.displayMedium?.copyWith(
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -1.5,
-                                    color: scheme.onSurface,
-                                  ),
+                                  style: theme.textTheme.displayMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: -1.5,
+                                        color: scheme.onSurface,
+                                      ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
@@ -1288,7 +1298,9 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                   label: 'Cancel Download',
                   onTap: () => provider.cancelDownload(),
                   height: 48,
-                  shape: const LiquidRoundedRectangle(borderRadius: AppRadii.pill),
+                  shape: const LiquidRoundedRectangle(
+                    borderRadius: AppRadii.pill,
+                  ),
                   useOwnLayer: true,
                   quality: GlassQuality.standard,
                   style: GlassButtonStyle.filled,
@@ -1296,7 +1308,9 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                     width: double.infinity,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: scheme.surfaceContainerHighest.withValues(alpha: 0.65),
+                      color: scheme.surfaceContainerHighest.withValues(
+                        alpha: 0.65,
+                      ),
                       borderRadius: BorderRadius.circular(AppRadii.pill),
                     ),
                     alignment: Alignment.center,
@@ -1403,10 +1417,7 @@ class _MorpheTimelineNodeIcon extends StatelessWidget {
     return Container(
       width: 10,
       height: 10,
-      decoration: BoxDecoration(
-        color: accentColor,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: accentColor, shape: BoxShape.circle),
     );
   }
 }
@@ -1428,11 +1439,7 @@ class _MorpheTimelineRailPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     // Draw rail line along x = 8
-    canvas.drawLine(
-      const Offset(8, 0),
-      Offset(8, size.height),
-      paint,
-    );
+    canvas.drawLine(const Offset(8, 0), Offset(8, size.height), paint);
   }
 
   @override
@@ -1446,10 +1453,7 @@ class _MorpheTimelineRailPainter extends CustomPainter {
 // =============================================================================
 
 class _MorpheInlineText extends StatelessWidget {
-  const _MorpheInlineText({
-    required this.text,
-    this.style,
-  });
+  const _MorpheInlineText({required this.text, this.style});
 
   final String text;
   final TextStyle? style;
@@ -1470,61 +1474,60 @@ class _MorpheInlineText extends StatelessWidget {
 
     for (final match in regex.allMatches(text)) {
       if (match.start > lastEnd) {
-        spans.add(TextSpan(
-          text: text.substring(lastEnd, match.start),
-          style: effectiveStyle,
-        ));
+        spans.add(
+          TextSpan(
+            text: text.substring(lastEnd, match.start),
+            style: effectiveStyle,
+          ),
+        );
       }
 
       final code = match.group(1);
       final bold = match.group(2);
 
       if (code != null) {
-        spans.add(WidgetSpan(
-          alignment: PlaceholderAlignment.middle,
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest.withValues(alpha: 0.9),
-              borderRadius: BorderRadius.circular(5),
-              border: Border.all(
-                color: scheme.outlineVariant.withValues(alpha: 0.4),
-                width: 0.8,
+        spans.add(
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHighest.withValues(alpha: 0.9),
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(
+                  color: scheme.outlineVariant.withValues(alpha: 0.4),
+                  width: 0.8,
+                ),
               ),
-            ),
-            child: Text(
-              code,
-              style: effectiveStyle.copyWith(
-                fontFamily: 'monospace',
-                fontSize: (effectiveStyle.fontSize ?? 14) * 0.9,
-                fontWeight: FontWeight.w600,
-                color: scheme.primary,
+              child: Text(
+                code,
+                style: effectiveStyle.copyWith(
+                  fontFamily: 'monospace',
+                  fontSize: (effectiveStyle.fontSize ?? 14) * 0.9,
+                  fontWeight: FontWeight.w600,
+                  color: scheme.primary,
+                ),
               ),
             ),
           ),
-        ));
+        );
       } else if (bold != null) {
-        spans.add(TextSpan(
-          text: bold,
-          style: effectiveStyle.copyWith(
-            fontWeight: FontWeight.w700,
+        spans.add(
+          TextSpan(
+            text: bold,
+            style: effectiveStyle.copyWith(fontWeight: FontWeight.w700),
           ),
-        ));
+        );
       }
 
       lastEnd = match.end;
     }
 
     if (lastEnd < text.length) {
-      spans.add(TextSpan(
-        text: text.substring(lastEnd),
-        style: effectiveStyle,
-      ));
+      spans.add(TextSpan(text: text.substring(lastEnd), style: effectiveStyle));
     }
 
-    return Text.rich(
-      TextSpan(children: spans),
-    );
+    return Text.rich(TextSpan(children: spans));
   }
 }

@@ -1,10 +1,12 @@
 import 'dart:io';
+import 'dart:developer' as developer;
 import 'package:crypto/crypto.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -283,9 +285,7 @@ final List<AppUpdateRelease> kBuiltInReleaseHistory = [
       bugFixes: const [
         'Optimized regular expressions and memoized selectors to eliminate UI thread lag',
       ],
-      notes: const [
-        'Added over 380 unit and widget integration tests',
-      ],
+      notes: const ['Added over 380 unit and widget integration tests'],
     ),
   ),
   AppUpdateRelease(
@@ -358,9 +358,7 @@ final List<AppUpdateRelease> kBuiltInReleaseHistory = [
       bugFixes: const [
         'Fixed statement cycle end dates for months with fewer than 31 days',
       ],
-      notes: const [
-        'Fluid glass card animations on selection',
-      ],
+      notes: const ['Fluid glass card animations on selection'],
     ),
   ),
   AppUpdateRelease(
@@ -408,9 +406,7 @@ final List<AppUpdateRelease> kBuiltInReleaseHistory = [
         'Card urgency stripe for overdue and near-due payments',
         'Categories drill-down breakdown in monthly reports',
       ],
-      bugFixes: const [
-        'Fixed filter state persistence across tab switches',
-      ],
+      bugFixes: const ['Fixed filter state persistence across tab switches'],
       notes: const [
         'Color-coded urgency stripes: green, amber, and alert crimson',
       ],
@@ -438,9 +434,7 @@ final List<AppUpdateRelease> kBuiltInReleaseHistory = [
         'Eliminated repeated update alerts when on latest build',
         'Added download cancel guard and concurrency protection',
       ],
-      notes: const [
-        'Zero background battery drain from update checker loop',
-      ],
+      notes: const ['Zero background battery drain from update checker loop'],
     ),
   ),
   AppUpdateRelease(
@@ -592,9 +586,7 @@ final List<AppUpdateRelease> kBuiltInReleaseHistory = [
         'Enforced dark transparent glass default for app island & home avatar circle',
         'Cleaned accent color logic for dynamic Material You palettes',
       ],
-      notes: const [
-        'Smooth splash screen fade into selected theme',
-      ],
+      notes: const ['Smooth splash screen fade into selected theme'],
     ),
   ),
   AppUpdateRelease(
@@ -639,12 +631,8 @@ final List<AppUpdateRelease> kBuiltInReleaseHistory = [
       newFeatures: const [
         'Unified navigation chrome with GlassAppBar and integrated back navigation',
       ],
-      bugFixes: const [
-        'Resolved settings screen overflow on narrow screens',
-      ],
-      notes: const [
-        'Standardized app bar heights and touch target padding',
-      ],
+      bugFixes: const ['Resolved settings screen overflow on narrow screens'],
+      notes: const ['Standardized app bar heights and touch target padding'],
     ),
   ),
   AppUpdateRelease(
@@ -749,9 +737,7 @@ final List<AppUpdateRelease> kBuiltInReleaseHistory = [
       bugFixes: const [
         'Fixed recurring payment reminder notifications upon device reboot',
       ],
-      notes: const [
-        'Optimized background alarm manager triggers',
-      ],
+      notes: const ['Optimized background alarm manager triggers'],
     ),
   ),
   AppUpdateRelease(
@@ -797,9 +783,7 @@ final List<AppUpdateRelease> kBuiltInReleaseHistory = [
       bugFixes: const [
         'Updated Firestore collection security rules for seamless multi-tier backups',
       ],
-      notes: const [
-        'Hardened cloud authentication session validation',
-      ],
+      notes: const ['Hardened cloud authentication session validation'],
     ),
   ),
   AppUpdateRelease(
@@ -822,9 +806,7 @@ final List<AppUpdateRelease> kBuiltInReleaseHistory = [
       bugFixes: const [
         'Fixed category search matching across deeply nested child items',
       ],
-      notes: const [
-        'Automated migration for existing category assignments',
-      ],
+      notes: const ['Automated migration for existing category assignments'],
     ),
   ),
   AppUpdateRelease(
@@ -870,9 +852,7 @@ final List<AppUpdateRelease> kBuiltInReleaseHistory = [
         'Comprehensive multi-account net summaries and aggregated balance overview',
         'Swipe-to-navigate drawer menu with instant route switching',
       ],
-      bugFixes: const [
-        'Resolved drawer duplicate navigation history bug',
-      ],
+      bugFixes: const ['Resolved drawer duplicate navigation history bug'],
       notes: const [
         'Stable 1.6.0 release introducing full accounts management suite',
       ],
@@ -897,9 +877,7 @@ final List<AppUpdateRelease> kBuiltInReleaseHistory = [
         'Real-time multi-currency exchange rate conversions',
       ],
       bugFixes: const [],
-      notes: const [
-        'Introduced progressive web app companion shell',
-      ],
+      notes: const ['Introduced progressive web app companion shell'],
     ),
   ),
   AppUpdateRelease(
@@ -967,9 +945,7 @@ final List<AppUpdateRelease> kBuiltInReleaseHistory = [
         'Integrated CMake codegen pipeline for high-performance cryptographic operations',
       ],
       bugFixes: const [],
-      notes: const [
-        'Foundational mobile update release pipeline',
-      ],
+      notes: const ['Foundational mobile update release pipeline'],
     ),
   ),
 ];
@@ -985,6 +961,7 @@ class AppUpdateState {
   final int bytesWritten;
   final int bytesExpected;
   final String? errorMessage;
+  final String? notificationWarning;
   final String? downloadedApkPath;
 
   AppUpdateState({
@@ -998,6 +975,7 @@ class AppUpdateState {
     this.bytesWritten = 0,
     this.bytesExpected = 0,
     this.errorMessage,
+    this.notificationWarning,
     this.downloadedApkPath,
   });
 
@@ -1012,10 +990,12 @@ class AppUpdateState {
     int? bytesWritten,
     int? bytesExpected,
     String? errorMessage,
+    String? notificationWarning,
     String? downloadedApkPath,
     bool clearLatestRelease = false,
     bool clearCurrentRelease = false,
     bool clearErrorMessage = false,
+    bool clearNotificationWarning = false,
     bool clearDownloadedApkPath = false,
   }) {
     return AppUpdateState(
@@ -1035,6 +1015,9 @@ class AppUpdateState {
       errorMessage: clearErrorMessage
           ? null
           : errorMessage ?? this.errorMessage,
+      notificationWarning: clearNotificationWarning
+          ? null
+          : notificationWarning ?? this.notificationWarning,
       downloadedApkPath: clearDownloadedApkPath
           ? null
           : downloadedApkPath ?? this.downloadedApkPath,
@@ -1051,8 +1034,12 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
   );
   CancelToken? _downloadCancelToken;
   DateTime? _lastCheckedAt;
+  final Future<void> Function(String) _notifyUpdate;
 
-  AppUpdateProvider() : super(AppUpdateState()) {
+  AppUpdateProvider({Future<void> Function(String)? notifyUpdate})
+    : _notifyUpdate =
+          notifyUpdate ?? NotificationService.showUpdateNotification,
+      super(AppUpdateState()) {
     _init();
   }
 
@@ -1074,6 +1061,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
 
   Future<void> _init() async {
     await _clearOldUpdates();
+    if (!mounted) return;
     state = state.copyWith(allReleases: kBuiltInReleaseHistory);
     try {
       if (Firebase.apps.isEmpty) return;
@@ -1104,6 +1092,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
     state = state.copyWith(
       status: UpdateStatus.checking,
       clearErrorMessage: true,
+      clearNotificationWarning: true,
       clearDownloadedApkPath: true,
     );
 
@@ -1152,7 +1141,10 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
         }
       } catch (_) {}
 
-      final allReleases = _mergeReleases(fetchedReleases, kBuiltInReleaseHistory);
+      final allReleases = _mergeReleases(
+        fetchedReleases,
+        kBuiltInReleaseHistory,
+      );
 
       DocumentSnapshot? channelDoc;
       try {
@@ -1221,7 +1213,8 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
       );
 
       if (isNewer) {
-        final release = candidateRelease ??
+        final release =
+            candidateRelease ??
             AppUpdateRelease.fromJson(
               latestReleaseId.isNotEmpty
                   ? latestReleaseId
@@ -1243,23 +1236,11 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
               },
             );
 
-        state = state.copyWith(
-          status: UpdateStatus.idle,
-          latestRelease: release,
+        await publishAvailableRelease(
+          release,
           currentRelease: currentRelease,
           allReleases: allReleases,
-          clearCurrentRelease: currentRelease == null,
         );
-
-        final prefs = await SharedPreferences.getInstance();
-        const notificationKey = 'lastNotifiedVersionCode.stable';
-        final lastNotifiedVersionCode = prefs.getInt(notificationKey) ?? 0;
-        if (latestVersionCode > lastNotifiedVersionCode) {
-          await NotificationService.showUpdateNotification(
-            release.versionName,
-          );
-          await prefs.setInt(notificationKey, latestVersionCode);
-        }
         return;
       }
 
@@ -1280,6 +1261,50 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
         allReleases: state.allReleases.isNotEmpty
             ? state.allReleases
             : kBuiltInReleaseHistory,
+      );
+    }
+  }
+
+  @protected
+  Future<void> publishAvailableRelease(
+    AppUpdateRelease release, {
+    AppUpdateRelease? currentRelease,
+    required List<AppUpdateRelease> allReleases,
+  }) async {
+    if (!mounted) return;
+    state = state.copyWith(
+      status: UpdateStatus.idle,
+      latestRelease: release,
+      currentRelease: currentRelease,
+      allReleases: allReleases,
+      clearCurrentRelease: currentRelease == null,
+      clearErrorMessage: true,
+      clearNotificationWarning: true,
+    );
+    // Notification delivery is optional; a valid update must remain installable.
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
+      const notificationKey = 'lastNotifiedVersionCode.stable';
+      final lastNotifiedVersionCode = prefs.getInt(notificationKey) ?? 0;
+      if (release.versionCode > lastNotifiedVersionCode) {
+        await _notifyUpdate(release.versionName);
+        if (!mounted) return;
+        if (!await prefs.setInt(notificationKey, release.versionCode)) {
+          throw StateError('Could not record update notification delivery.');
+        }
+      }
+    } catch (error, stack) {
+      developer.log(
+        'Could not deliver the update notification',
+        name: 'AppUpdateProvider',
+        error: error,
+        stackTrace: stack,
+      );
+      if (!mounted) return;
+      state = state.copyWith(
+        notificationWarning:
+            'The update notification could not be shown. You can still download and install the update here.',
       );
     }
   }
@@ -1330,8 +1355,9 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
     if (parts1.any((p) => p == -1) || parts2.any((p) => p == -1)) {
       return null;
     }
-    final maxLength =
-        parts1.length > parts2.length ? parts1.length : parts2.length;
+    final maxLength = parts1.length > parts2.length
+        ? parts1.length
+        : parts2.length;
     for (int i = 0; i < maxLength; i++) {
       final p1 = i < parts1.length ? parts1[i] : 0;
       final p2 = i < parts2.length ? parts2[i] : 0;
@@ -1488,11 +1514,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
       }
     }
 
-    return Changelog(
-      newFeatures: features,
-      bugFixes: fixes,
-      notes: notes,
-    );
+    return Changelog(newFeatures: features, bugFixes: fixes, notes: notes);
   }
 
   static int _deriveVersionCode(String versionName) {
@@ -1575,9 +1597,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
       // SHA-256 integrity check — verify the downloaded file matches the hash
       // stored in Firestore before allowing installation.
       // -----------------------------------------------------------------------
-      state = state.copyWith(
-        progress: 1.0,
-      );
+      state = state.copyWith(progress: 1.0);
 
       final downloadedFile = File(savePath);
       final fileBytes = await downloadedFile.readAsBytes();
