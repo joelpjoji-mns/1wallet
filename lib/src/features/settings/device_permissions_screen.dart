@@ -77,11 +77,7 @@ class _DevicePermissionsScreenState extends State<DevicePermissionsScreen> {
         AndroidSmsPermissionStatus.unavailable =>
           'SMS permission is available on Android only.',
       };
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-        );
+      showAppSnackBar(context, message);
     } finally {
       if (mounted) setState(() => _requestingSms = false);
     }
@@ -113,13 +109,7 @@ class _DevicePermissionsScreenState extends State<DevicePermissionsScreen> {
             subtitle:
                 'Used for transaction-alert parsing and review queue suggestions.',
             child: _loading
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text('Checking SMS availability…'),
-                    ),
-                  )
+                ? const AppLoadingState(message: 'Checking SMS availability…')
                 : Column(
                     children: [
                       InfoRow(

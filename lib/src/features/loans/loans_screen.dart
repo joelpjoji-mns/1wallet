@@ -3037,10 +3037,5 @@ int _amountMinorFromInput(String value, String currency) {
   return integer * math.pow(10, minorUnits(currency)).toInt() + fraction;
 }
 
-void _showRouteMessage(BuildContext context, String message) {
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-    );
-}
+void _showRouteMessage(BuildContext context, String message) =>
+    showAppSnackBar(context, message);

@@ -318,13 +318,7 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
     _showCaptureMessage('Capture candidate marked rejected.');
   }
 
-  void _showCaptureMessage(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-      );
-  }
+  void _showCaptureMessage(String message) => showAppSnackBar(context, message);
 }
 
 String _formatAmountInput(int amountMinor, String currency) {

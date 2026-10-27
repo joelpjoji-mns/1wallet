@@ -154,9 +154,7 @@ class RecurringScreen extends ConsumerWidget {
                     .read(ledgerProvider.notifier)
                     .deleteTransaction(selected.id);
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Plan deleted.')),
-                  );
+                  showAppSnackBar(context, 'Plan deleted.');
                   if (context.canPop()) {
                     context.pop();
                   } else {
@@ -694,8 +692,6 @@ class _RecurringCompactCard extends StatelessWidget {
                               const SizedBox(height: 6),
                               LinearProgressIndicator(
                                 value: progress,
-                                backgroundColor: scheme.surfaceContainerHighest,
-                                color: scheme.primary,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                             ],
@@ -1677,8 +1673,6 @@ class RecurringDetailView extends ConsumerWidget {
                             const SizedBox(height: 6),
                             LinearProgressIndicator(
                               value: progress,
-                              backgroundColor: scheme.surfaceContainerHighest,
-                              color: scheme.primary,
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ],
@@ -1955,13 +1949,8 @@ int _amountMinorFromInput(String value, String currency) {
   return (parsed * math.pow(10, minorUnits(currency))).round();
 }
 
-void _showRouteMessage(BuildContext context, String message) {
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-    );
-}
+void _showRouteMessage(BuildContext context, String message) =>
+    showAppSnackBar(context, message);
 
 String _recurringHeaderTitle(LedgerState state, TransactionRecord transaction) {
   final notes = transaction.notes?.trim();

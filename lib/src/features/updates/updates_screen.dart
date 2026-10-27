@@ -1220,7 +1220,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                                 value: progress > 0 ? progress : null,
                                 strokeWidth: 10,
                                 strokeCap: StrokeCap.round,
-                                color: scheme.primary,
                               ),
                             ),
                             Column(

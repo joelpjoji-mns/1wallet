@@ -75,26 +75,23 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
                 icon: const Icon(Icons.picture_as_pdf_outlined),
                 label: const Text('Select PDF statement'),
               ),
-              if (_busy) ...[
-                const SizedBox(height: AppSpacing.md),
-                const Center(child: CircularProgressIndicator()),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'Reading and self-recovering statement…',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodySmall,
+              if (_busy)
+                const AppLoadingState(
+                  message: 'Reading and self-recovering statement…',
                 ),
-              ],
             ],
           ),
         ),
         if (_error != null) ...[
           const SizedBox(height: AppSpacing.md),
-          SectionCard(
-            title: 'Error',
-            child: Text(
-              _error!,
-              style: TextStyle(color: theme.colorScheme.error),
+          AppPanel(
+            glass: true,
+            padding: EdgeInsets.zero,
+            child: EmptyState(
+              icon: Icons.error_outline_rounded,
+              title: 'Error',
+              body: _error!,
+              tone: MetricTone.danger,
             ),
           ),
         ],
@@ -725,7 +722,10 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
         _busy = false;
         _step = _ImportStep.done;
       });
-      _showMessage('Imported $imported transactions from $_fileName.');
+      showAppSnackBar(
+        context,
+        'Imported $imported transactions from $_fileName.',
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -740,14 +740,6 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
       if (account.id == accountId) return account.name;
     }
     return accounts.isNotEmpty ? accounts.first.name : '';
-  }
-
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-      );
   }
 }
 

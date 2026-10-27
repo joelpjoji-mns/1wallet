@@ -437,13 +437,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     context.go('/login');
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-      );
-  }
+  void _showMessage(String message) => showAppSnackBar(context, message);
 
   String _themePreferenceLabel(AppThemePreference preference) {
     return switch (preference) {
@@ -748,11 +742,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
               const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
-                  const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
+                  const AppInlineSpinner(size: 20),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Text(

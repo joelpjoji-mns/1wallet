@@ -155,12 +155,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (cloudSync.hasCloudWallet) {
       // Guard: strictly refuse to overwrite cloud wallet from onboarding
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Existing cloud wallet found. Restoring your wallet instead of creating a new account.',
-            ),
-          ),
+        showAppSnackBar(
+          context,
+          'Existing cloud wallet found. Restoring your wallet instead of creating a new account.',
         );
         ref.read(cloudSyncControllerProvider.notifier).retryBootstrap();
         context.go('/launch');

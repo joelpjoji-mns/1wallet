@@ -149,10 +149,7 @@ class _OfflineModeSheetState extends ConsumerState<OfflineModeSheet> {
                   key: OfflineModeSheet.confirmKey,
                   onPressed: _acknowledged && !_busy ? _continueOffline : null,
                   icon: _busy
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
+                      ? const AppInlineSpinner(size: 18)
                       : const Icon(Icons.lock_outline_rounded),
                   label: const Text('Continue offline'),
                 ),

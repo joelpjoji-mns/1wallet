@@ -147,7 +147,6 @@ class HomeProgressRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -175,7 +174,6 @@ class HomeProgressRow extends StatelessWidget {
             minHeight: 6,
             value: progress.clamp(0, 1).toDouble(),
             color: color,
-            backgroundColor: scheme.surfaceContainerHighest,
           ),
         ),
       ],

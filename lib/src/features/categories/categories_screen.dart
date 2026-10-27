@@ -153,16 +153,13 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       message:
           'This will reset your categories to the 100 standard built-in categories and subcategories, clear custom category overrides, and reset merchant categorization rules.',
       confirmLabel: 'Reset to defaults',
+      destructive: true,
     );
 
     if (confirmed && mounted) {
       await ref.read(ledgerProvider.notifier).resetCategoriesToDefault();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Categories and rules reset to defaults.'),
-        ),
-      );
+      showAppSnackBar(context, 'Categories and rules reset to defaults.');
     }
   }
 
@@ -298,20 +295,14 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                 if (!dialogContext.mounted) return;
                 Navigator.of(dialogContext).pop();
                 if (!screenContext.mounted) return;
-                ScaffoldMessenger.of(screenContext)
-                  ..hideCurrentSnackBar()
-                  ..showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        category == null
-                            ? parentId == null
-                                  ? 'Category created.'
-                                  : 'Subcategory created.'
-                            : 'Category saved.',
-                      ),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
+                showAppSnackBar(
+                  screenContext,
+                  category == null
+                      ? parentId == null
+                            ? 'Category created.'
+                            : 'Subcategory created.'
+                      : 'Category saved.',
+                );
               },
               child: const Text('Save'),
             ),

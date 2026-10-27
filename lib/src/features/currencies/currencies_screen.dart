@@ -44,16 +44,10 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
               for (final c in _selectedForDeletion) {
                 ref.read(ledgerProvider.notifier).removeEnabledCurrency(c);
               }
-              ScaffoldMessenger.of(context)
-                ..hideCurrentSnackBar()
-                ..showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      '${_selectedForDeletion.length} currencies removed.',
-                    ),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+              showAppSnackBar(
+                context,
+                '${_selectedForDeletion.length} currencies removed.',
+              );
               setState(() => _selectedForDeletion.clear());
             },
           )
@@ -67,25 +61,13 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
               try {
                 await ref.read(exchangeRateServiceProvider).refreshRates();
                 if (mounted) {
-                  messenger
-                    ..hideCurrentSnackBar()
-                    ..showSnackBar(
-                      const SnackBar(
-                        content: Text('Exchange rates updated.'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
+                  messenger.showAppSnackBar('Exchange rates updated.');
                 }
               } catch (e) {
                 if (mounted) {
-                  messenger
-                    ..hideCurrentSnackBar()
-                    ..showSnackBar(
-                      SnackBar(
-                        content: Text('Failed to update exchange rates: $e'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
+                  messenger.showAppSnackBar(
+                    'Failed to update exchange rates: $e',
+                  );
                 }
               }
             },
@@ -151,14 +133,7 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                       ref
                           .read(ledgerProvider.notifier)
                           .removeEnabledCurrency(currency);
-                      ScaffoldMessenger.of(context)
-                        ..hideCurrentSnackBar()
-                        ..showSnackBar(
-                          SnackBar(
-                            content: Text('$currency removed.'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
+                      showAppSnackBar(context, '$currency removed.');
                     },
                     background: Container(
                       alignment: Alignment.centerRight,
@@ -226,34 +201,18 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                 : '${state.exchangeRates.length} explicit rate records saved.',
             actionLabel: 'Refresh',
             onAction: () async {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Refreshing exchange rates…'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
+              showAppSnackBar(context, 'Refreshing exchange rates…');
               try {
                 await ref.read(exchangeRateServiceProvider).refreshRates();
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context)
-                    ..hideCurrentSnackBar()
-                    ..showSnackBar(
-                      const SnackBar(
-                        content: Text('Exchange rates updated.'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
+                  showAppSnackBar(context, 'Exchange rates updated.');
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context)
-                    ..hideCurrentSnackBar()
-                    ..showSnackBar(
-                      SnackBar(
-                        content: Text('Failed to update exchange rates: $e'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
+                  showAppSnackBar(
+                    context,
+                    'Failed to update exchange rates: $e',
+                  );
                 }
               }
             },

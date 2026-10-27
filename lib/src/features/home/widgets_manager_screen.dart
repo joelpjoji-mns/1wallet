@@ -69,14 +69,7 @@ class WidgetsManagerScreen extends ConsumerWidget {
           FilledButton.tonalIcon(
             onPressed: () {
               ref.read(ledgerProvider.notifier).resetHomeWidgetOrder();
-              ScaffoldMessenger.of(context)
-                ..hideCurrentSnackBar()
-                ..showSnackBar(
-                  const SnackBar(
-                    content: Text('Home widgets reset'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+              showAppSnackBar(context, 'Home widgets reset');
             },
             icon: const Icon(Icons.restart_alt_rounded),
             label: const Text('Reset order'),

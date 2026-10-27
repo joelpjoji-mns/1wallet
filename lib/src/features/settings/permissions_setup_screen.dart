@@ -62,14 +62,7 @@ class _PermissionsSetupScreenState
           .setCompleted(ownerId, true);
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text('Permissions setup complete.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+      showAppSnackBar(context, 'Permissions setup complete.');
       context.go('/');
     } finally {
       if (mounted) setState(() => _requestingAll = false);

@@ -472,14 +472,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
           FilledButton.icon(
             onPressed: _isScanning ? null : _startBatchScan,
             icon: _isScanning
-                ? SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: scheme.onPrimary,
-                    ),
-                  )
+                ? AppInlineSpinner(size: 16, color: scheme.onPrimary)
                 : const Icon(Icons.manage_search_rounded),
             label: Text(_isScanning ? 'Scanning…' : 'Scan inbox'),
           ),
@@ -663,11 +656,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-      );
+    showAppSnackBar(context, message);
   }
 
   void _showScanResultsSheet({

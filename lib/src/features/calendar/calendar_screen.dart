@@ -610,14 +610,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             ),
             const SizedBox(height: AppSpacing.md),
             if (records.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
-                child: Center(
-                  child: Text(
-                    'No records on this day',
-                    style: TextStyle(color: scheme.onSurfaceVariant),
-                  ),
-                ),
+              const EmptyState(
+                icon: Icons.event_busy_outlined,
+                title: 'No records on this day',
+                body: 'Nothing was posted or scheduled for this date.',
               )
             else
               ConstrainedBox(

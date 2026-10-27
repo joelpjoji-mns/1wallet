@@ -78,24 +78,18 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
       );
       if (mounted && count > _reportedQuarantineCount) {
         _reportedQuarantineCount = count;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '$count invalid capture item(s) were retained in quarantine, not imported.',
-            ),
-          ),
+        showAppSnackBar(
+          context,
+          '$count invalid capture item(s) were retained in quarantine, not imported.',
         );
       }
     } catch (error, stack) {
       debugPrint('Queued capture processing failed: $error');
       debugPrintStack(stackTrace: stack);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Queued captures could not be processed. Unacknowledged items were retained for retry.',
-            ),
-          ),
+        showAppSnackBar(
+          context,
+          'Queued captures could not be processed. Unacknowledged items were retained for retry.',
         );
       }
     }
@@ -645,20 +639,16 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                             .markCardBillPaid(account.id, cycle);
                         await _dismiss(ref, notification.id);
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Marked ${account.name} bill as paid',
-                              ),
-                              behavior: SnackBarBehavior.floating,
-                              action: SnackBarAction(
-                                label: 'Undo',
-                                onPressed: () {
-                                  ref
-                                      .read(ledgerProvider.notifier)
-                                      .markCardBillPaid(account.id, null);
-                                },
-                              ),
+                          showAppSnackBar(
+                            context,
+                            'Marked ${account.name} bill as paid',
+                            action: SnackBarAction(
+                              label: 'Undo',
+                              onPressed: () {
+                                ref
+                                    .read(ledgerProvider.notifier)
+                                    .markCardBillPaid(account.id, null);
+                              },
                             ),
                           );
                         }
@@ -842,9 +832,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
           await ledger.approveCaptureCandidate(candidate.id);
         } catch (e) {
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Failed to approve item: $e')),
-            );
+            showAppSnackBar(context, 'Failed to approve item: $e');
           }
         }
       }
@@ -862,6 +850,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
       message:
           'Are you sure you want to dismiss all ${candidates.length} pending items?',
       confirmLabel: 'Dismiss All',
+      destructive: true,
     );
 
     if (confirmed && context.mounted) {
@@ -1019,24 +1008,10 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
             .updateCaptureCandidateStatus(id, status);
       }
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text('Capture candidate marked $status.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+      showAppSnackBar(context, 'Capture candidate marked $status.');
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+      showAppSnackBar(context, e.toString());
     }
   }
 

@@ -1215,23 +1215,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   notes: notes,
                 );
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Merged ${ids.length} transactions into one (${formatMoney(totalMoney, state.preferences.locale)}).',
-                  ),
-                  behavior: SnackBarBehavior.floating,
-                ),
+              showAppSnackBar(
+                context,
+                'Merged ${ids.length} transactions into one (${formatMoney(totalMoney, state.preferences.locale)}).',
               );
             }
           } catch (e) {
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Failed to merge transactions: $e'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
+              showAppSnackBar(context, 'Failed to merge transactions: $e');
             }
           }
         },

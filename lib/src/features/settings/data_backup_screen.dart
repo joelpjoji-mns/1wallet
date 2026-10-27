@@ -350,13 +350,7 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
     }
   }
 
-  void _showBackupMessage(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-      );
-  }
+  void _showBackupMessage(String message) => showAppSnackBar(context, message);
 
   Future<bool> _confirmWalletReplacement() => showAppConfirmDialog(
     context,

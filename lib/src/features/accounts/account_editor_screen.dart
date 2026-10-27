@@ -607,12 +607,9 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
       debugPrint('Secure card access failed: ${e.runtimeType}');
       debugPrintStack(stackTrace: stack);
       if (mounted && ref.read(ledgerProvider).userId == owner) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Secure details could not be unlocked. Original data was preserved.',
-            ),
-          ),
+        showAppSnackBar(
+          context,
+          'Secure details could not be unlocked. Original data was preserved.',
         );
       }
     }
@@ -920,13 +917,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
     );
   }
 
-  void _showAccountMessage(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-      );
-  }
+  void _showAccountMessage(String message) => showAppSnackBar(context, message);
 
   Future<void> _chooseAccountType(BuildContext context) async {
     final next = await showFullScreenPicker<String>(

@@ -98,17 +98,11 @@ class _MainShellState extends ConsumerState<MainShell>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         ref.read(offlineModeControllerProvider.notifier).markAnnounced();
-        ScaffoldMessenger.maybeOf(context)
-          ?..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              content: Text(
-                'Backup & sync is on for '
-                '${next.accountEmail ?? 'your Google account'}.',
-              ),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+        showAppSnackBar(
+          context,
+          'Backup & sync is on for '
+          '${next.accountEmail ?? 'your Google account'}.',
+        );
       });
     }, fireImmediately: true);
     _lightBackgroundPeriodicTimer = Timer.periodic(
@@ -362,18 +356,14 @@ class AppMainDrawer extends ConsumerWidget {
       if ((previous == null || previous.latestRelease == null) &&
           next.latestRelease != null &&
           next.status == UpdateStatus.idle) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Update ${next.latestRelease!.versionName} is available!',
-            ),
-            action: SnackBarAction(
-              label: 'View',
-              onPressed: () => context.push('/updates'),
-            ),
-            duration: const Duration(seconds: 10),
-            behavior: SnackBarBehavior.floating,
+        showAppSnackBar(
+          context,
+          'Update ${next.latestRelease!.versionName} is available!',
+          action: SnackBarAction(
+            label: 'View',
+            onPressed: () => context.push('/updates'),
           ),
+          duration: const Duration(seconds: 10),
         );
       }
     });

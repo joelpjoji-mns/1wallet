@@ -109,12 +109,9 @@ class _SecureAccountDetailsScreenState
 
           if (mounted) setState(() {});
           if (_decryptionFailed && mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Some secure fields cannot be decrypted on this device. Original data was preserved; saving is disabled.',
-                ),
-              ),
+            showAppSnackBar(
+              context,
+              'Some secure fields cannot be decrypted on this device. Original data was preserved; saving is disabled.',
             );
           }
         } catch (e) {
@@ -142,14 +139,7 @@ class _SecureAccountDetailsScreenState
   void _copyToClipboard(String text) {
     if (text.isEmpty) return;
     Clipboard.setData(ClipboardData(text: text.replaceAll(RegExp(r'\s+'), '')));
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(
-          content: Text('Copied to clipboard'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+    showAppSnackBar(context, 'Copied to clipboard');
   }
 
   Future<void> _addCustomField() async {
@@ -204,12 +194,9 @@ class _SecureAccountDetailsScreenState
             _customFields.any((field) => field.key == nameCtrl.text))) {
       valueCtrl.dispose();
       nameCtrl.dispose();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'That field name is reserved or already in use. Choose another name.',
-          ),
-        ),
+      showAppSnackBar(
+        context,
+        'That field name is reserved or already in use. Choose another name.',
       );
       return;
     }
@@ -321,22 +308,14 @@ class _SecureAccountDetailsScreenState
           );
       if (!silent && mounted) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Secure details saved'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        showAppSnackBar(context, 'Secure details saved');
       }
     } catch (e) {
       debugPrint('Secure details save failed: ${e.runtimeType}');
       if (mounted && !silent) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Secure details could not be persisted. Review this wallet and retry.',
-            ),
-          ),
+        showAppSnackBar(
+          context,
+          'Secure details could not be persisted. Review this wallet and retry.',
         );
       }
     } finally {
@@ -379,12 +358,7 @@ class _SecureAccountDetailsScreenState
           );
       if (mounted) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Account closed and archived.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        showAppSnackBar(context, 'Account closed and archived.');
       }
     }
   }

@@ -5,6 +5,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../theme/theme_controller.dart';
+import '../widgets/app_kit.dart';
 
 abstract interface class AppAuthenticator {
   Future<bool> isDeviceSupported();
@@ -269,11 +270,7 @@ class _AppLockGateState extends ConsumerState<AppLockGate>
                     ? null
                     : () => ref.read(appLockProvider.notifier).retryUnlock(),
                 icon: lock.busy
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                    ? const AppInlineSpinner(size: 18)
                     : const Icon(Icons.fingerprint_rounded),
                 label: Text(lock.busy ? 'Authenticating…' : 'Unlock'),
               ),

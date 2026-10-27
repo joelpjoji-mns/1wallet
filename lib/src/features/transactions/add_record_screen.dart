@@ -1286,13 +1286,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
     }
   }
 
-  void _showMessage(String msg) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
-      );
-  }
+  void _showMessage(String msg) => showAppSnackBar(context, msg);
 
   void _syncDrafts(
     TransactionRecord? tx,

@@ -101,13 +101,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                         ),
                         alignment: Alignment.center,
                         child: isWorking
-                            ? SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: theme.colorScheme.onPrimaryContainer,
-                                ),
+                            ? AppInlineSpinner(
+                                size: 22,
+                                color: theme.colorScheme.onPrimaryContainer,
                               )
                             : Icon(
                                 enabled
@@ -432,11 +428,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                 onPressed: isWorking
                     ? null
                     : () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Starting manual sync...'),
-                          ),
-                        );
+                        showAppSnackBar(context, 'Starting manual sync...');
                         ref
                             .read(cloudSyncControllerProvider.notifier)
                             .fullSync(reason: 'manual');
@@ -550,11 +542,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                               .read(cloudSyncControllerProvider.notifier)
                               .verifyCloudBackup(),
                     icon: sync.isVerifyingCloud
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
+                        ? const AppInlineSpinner(size: 16)
                         : const Icon(Icons.verified_user_outlined),
                     label: Text(
                       sync.isVerifyingCloud
@@ -710,6 +698,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
     title: title,
     message: message,
     confirmLabel: action,
+    destructive: true,
     barrierDismissible: true,
   );
 
@@ -848,19 +837,13 @@ class ImportBatchDetailScreen extends ConsumerWidget {
       message:
           'This removes transactions created by this import batch from the local ledger.',
       confirmLabel: 'Rollback',
+      destructive: true,
     );
     if (!confirmed) return;
     final removed = await ref
         .read(ledgerProvider.notifier)
         .rollbackImportBatch(batch.id);
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('Rolled back $removed imported transactions.'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+    showAppSnackBar(context, 'Rolled back $removed imported transactions.');
   }
 }

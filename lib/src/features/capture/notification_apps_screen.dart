@@ -206,7 +206,7 @@ class _AppIconWidgetState extends State<AppIconWidget> {
         height: 40,
         child: Padding(
           padding: EdgeInsets.all(8.0),
-          child: CircularProgressIndicator(strokeWidth: 2),
+          child: AppInlineSpinner(size: 24),
         ),
       );
     }

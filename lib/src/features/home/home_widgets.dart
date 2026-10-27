@@ -633,13 +633,13 @@ class _BalanceTrendHomeWidgetState
           icon: Icons.bar_chart_rounded,
           iconColor: scheme.tertiary,
           headerTrailing: _buildDropdown(),
-          child: SizedBox(
+          child: const SizedBox(
             height: _chartHeight,
-            child: Center(
-              child: Text(
-                'Could not load balance trend',
-                style: TextStyle(color: scheme.error),
-              ),
+            child: EmptyState(
+              icon: Icons.error_outline_rounded,
+              title: 'Could not load balance trend',
+              body: 'Please try again later.',
+              tone: MetricTone.danger,
             ),
           ),
         ),
@@ -658,7 +658,11 @@ class _BalanceTrendHomeWidgetState
         headerTrailing: _buildDropdown(),
         child: const SizedBox(
           height: _chartHeight,
-          child: Center(child: Text('No data for this period')),
+          child: EmptyState(
+            icon: Icons.bar_chart_rounded,
+            title: 'No data for this period',
+            body: 'Try another period.',
+          ),
         ),
       );
     }
@@ -721,7 +725,11 @@ class _BalanceTrendHomeWidgetState
         headerTrailing: _buildDropdown(),
         child: const SizedBox(
           height: _chartHeight,
-          child: Center(child: Text('No data for this period')),
+          child: EmptyState(
+            icon: Icons.bar_chart_rounded,
+            title: 'No data for this period',
+            body: 'Try another period.',
+          ),
         ),
       );
     }
@@ -1670,11 +1678,10 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
           ),
           if (next.isEmpty) ...[
             const SizedBox(height: AppSpacing.sm),
-            Text(
-              'No scheduled records yet.',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+            const EmptyState(
+              icon: Icons.event_available_outlined,
+              title: 'No scheduled records yet.',
+              body: 'Scheduled payments and bills will appear here.',
             ),
           ] else ...[
             const SizedBox(height: AppSpacing.sm),
@@ -2247,16 +2254,10 @@ class _CategoryListWidgetState extends ConsumerState<_CategoryListWidget> {
         dateFilter: widget.period,
         onDateFilterChanged: widget.onPeriodChanged,
         child: widget.items.isEmpty
-            ? Padding(
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-                child: Center(
-                  child: Text(
-                    'No matching records for this period.',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
+            ? const EmptyState(
+                icon: Icons.category_outlined,
+                title: 'No matching records for this period.',
+                body: 'Try another period.',
               )
             : Column(
                 children: [
@@ -2387,7 +2388,6 @@ class _CategoryItemWidget extends StatelessWidget {
                     minHeight: 5,
                     value: progress,
                     color: color,
-                    backgroundColor: scheme.surfaceContainerHighest,
                   ),
                 ),
               ],
@@ -3014,16 +3014,10 @@ class CreditUtilizationWidget extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (creditAccounts.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-                child: Center(
-                  child: Text(
-                    'No credit accounts.',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
+              const EmptyState(
+                icon: Icons.credit_card_outlined,
+                title: 'No credit accounts.',
+                body: 'Credit cards you add will appear here.',
               ),
             ...creditAccounts.map((acc) {
               final rawBal = convertMoneyForDisplay(
@@ -3082,7 +3076,6 @@ class CreditUtilizationWidget extends ConsumerWidget {
                     LinearProgressIndicator(
                       value: limit > 0 ? util.clamp(0.0, 1.0) : 0.0,
                       color: acc.color ?? scheme.primary,
-                      backgroundColor: scheme.surfaceContainerHighest,
                       minHeight: 16,
                       borderRadius: BorderRadius.circular(4),
                     ),

@@ -335,10 +335,7 @@ class _Progress extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const SizedBox.square(
-          dimension: 22,
-          child: CircularProgressIndicator(strokeWidth: 2.5),
-        ),
+        const AppInlineSpinner(size: 22),
         const SizedBox(width: AppSpacing.md),
         Expanded(child: Text(message)),
       ],

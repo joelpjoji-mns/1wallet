@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/auth_controller.dart';
+import '../../widgets/app_kit.dart';
 import '../launch/brand_widgets.dart';
 import 'offline_mode_sheet.dart';
 
@@ -23,14 +24,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           next.errorMessage == previous?.errorMessage) {
         return;
       }
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(next.errorMessage!),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+      showAppSnackBar(context, next.errorMessage!);
     });
 
     final unavailable = !auth.googleSignInAvailable;
@@ -210,15 +204,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                                 MainAxisAlignment.center,
                                             children: [
                                               if (auth.isSigningIn)
-                                                SizedBox.square(
-                                                  dimension: 24,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                        strokeWidth: 2.5,
-                                                        color: Theme.of(
-                                                          context,
-                                                        ).colorScheme.primary,
-                                                      ),
+                                                AppInlineSpinner(
+                                                  size: 24,
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).colorScheme.primary,
                                                 )
                                               else
                                                 ClipRRect(

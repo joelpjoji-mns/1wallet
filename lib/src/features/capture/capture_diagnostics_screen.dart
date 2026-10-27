@@ -65,6 +65,7 @@ class _CaptureDiagnosticsScreenState
                   'contain alerts from other wallets on this device. This clears only that '
                   'diagnostic history, not ledger records or queued captures.',
               confirmLabel: 'Clear unassigned history',
+              destructive: true,
             );
             if (!confirmed ||
                 !mounted ||
@@ -74,10 +75,9 @@ class _CaptureDiagnosticsScreenState
             try {
               await CaptureDiagnostics.clearLegacy();
               if (mounted && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Unassigned diagnostic history cleared.'),
-                  ),
+                showAppSnackBar(
+                  context,
+                  'Unassigned diagnostic history cleared.',
                 );
               }
             } catch (error, stack) {
@@ -86,10 +86,9 @@ class _CaptureDiagnosticsScreenState
               );
               debugPrintStack(stackTrace: stack);
               if (mounted && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Unassigned history could not be cleared.'),
-                  ),
+                showAppSnackBar(
+                  context,
+                  'Unassigned history could not be cleared.',
                 );
               }
             }
@@ -97,12 +96,13 @@ class _CaptureDiagnosticsScreenState
         ),
       ],
       child: history.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const AppLoadingState(),
         error: (error, stack) => const EmptyState(
           icon: Icons.error_outline_rounded,
           title: 'Could not load diagnostics',
           body:
               'The original history was retained. Refresh or clear this wallet\'s history to retry.',
+          tone: MetricTone.danger,
         ),
         data: (events) {
           if (events.isEmpty) {

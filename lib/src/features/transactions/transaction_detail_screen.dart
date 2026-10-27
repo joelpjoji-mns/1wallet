@@ -341,11 +341,7 @@ class _TransactionDetailScreenState
                           : () =>
                                 _attachReceipt(transaction, ImageSource.camera),
                       icon: _isAttaching
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
+                          ? const AppInlineSpinner(size: 16)
                           : const Icon(Icons.camera_alt_outlined),
                       label: const Text('Scan'),
                     ),
@@ -406,21 +402,12 @@ class _TransactionDetailScreenState
           .read(ledgerProvider.notifier)
           .addAttachment(transaction.id, attachment);
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text('Receipt attached'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+      showAppSnackBar(context, 'Receipt attached');
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not attach the receipt. Please try again.'),
-            behavior: SnackBarBehavior.floating,
-          ),
+        showAppSnackBar(
+          context,
+          'Could not attach the receipt. Please try again.',
         );
       }
     } finally {
@@ -469,14 +456,7 @@ class _TransactionDetailScreenState
     if (!confirmed) return;
     await ref.read(ledgerProvider.notifier).deleteTransaction(transaction.id);
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(
-          content: Text('Record deleted.'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+    showAppSnackBar(context, 'Record deleted.');
     if (context.canPop()) {
       context.pop();
     } else {
