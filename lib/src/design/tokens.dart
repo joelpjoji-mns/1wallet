@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 abstract final class AppSpacing {
+  /// Hairline gap, e.g. between a stacked title and its subtitle.
+  static const double xxxs = 2;
   static const double xxs = 4;
   static const double xs = 8;
   static const double sm = 12;
@@ -11,11 +13,20 @@ abstract final class AppSpacing {
 }
 
 abstract final class AppRadii {
+  /// Micro elements: bars, progress tracks, swatches, tiny status tags.
+  static const double xs = 4;
   static const double sm = 8;
   static const double md = 14;
   static const double lg = 22;
   static const double xl = 28;
   static const double pill = 999;
+}
+
+/// Font families that are not part of the Material type scale.
+abstract final class AppFonts {
+  /// Machine-readable text: version strings, raw SMS/notification bodies,
+  /// diagnostics and logs.
+  static const String mono = 'monospace';
 }
 
 abstract final class AppSizes {
@@ -29,6 +40,9 @@ abstract final class AppSizes {
       bottomBar + bottomBarOuterVerticalPadding * 2 + bottomBarGap;
   static const double rowLarge = 76;
   static const double islandMaxWidth = 430;
+
+  /// Full-width primary call-to-action height (onboarding/setup/form submit).
+  static const double ctaHeight = 56;
 }
 
 abstract final class AppColors {
@@ -96,4 +110,13 @@ abstract final class AppColors {
 extension ColorAlpha on Color {
   Color withAlphaFactor(double opacity) =>
       withAlpha((opacity.clamp(0, 1) * 255).round());
+}
+
+/// Semantic money/status colours that Material's [ColorScheme] has no role
+/// for. Danger/negative uses `scheme.error`.
+extension AppSemanticColors on ColorScheme {
+  /// Income, gains, success and "installed/healthy" states.
+  Color get positive => brightness == Brightness.dark
+      ? AppColors.positiveDark
+      : AppColors.positiveLight;
 }

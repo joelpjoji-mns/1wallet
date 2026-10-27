@@ -61,31 +61,31 @@ class _RightSwipeToOpenDrawerState extends State<RightSwipeToOpenDrawer> {
       gestures: <Type, GestureRecognizerFactory>{
         RightSwipeGestureRecognizer:
             GestureRecognizerFactoryWithHandlers<RightSwipeGestureRecognizer>(
-          () => RightSwipeGestureRecognizer(),
-          (RightSwipeGestureRecognizer instance) {
-            instance
-              ..onStart = (_) {
-                _dragDistance = 0.0;
-                _triggered = false;
-              }
-              ..onUpdate = (details) {
-                _dragDistance += details.delta.dx;
-                if (!_triggered && _dragDistance > 38.0) {
-                  _triggered = true;
-                  widget.onOpenDrawer();
-                }
-              }
-              ..onEnd = (details) {
-                if (!_triggered) {
-                  final velocity = details.primaryVelocity ?? 0.0;
-                  if (velocity > 100.0 || _dragDistance > 24.0) {
-                    _triggered = true;
-                    widget.onOpenDrawer();
+              () => RightSwipeGestureRecognizer(),
+              (RightSwipeGestureRecognizer instance) {
+                instance
+                  ..onStart = (_) {
+                    _dragDistance = 0.0;
+                    _triggered = false;
                   }
-                }
-              };
-          },
-        ),
+                  ..onUpdate = (details) {
+                    _dragDistance += details.delta.dx;
+                    if (!_triggered && _dragDistance > 38.0) {
+                      _triggered = true;
+                      widget.onOpenDrawer();
+                    }
+                  }
+                  ..onEnd = (details) {
+                    if (!_triggered) {
+                      final velocity = details.primaryVelocity ?? 0.0;
+                      if (velocity > 100.0 || _dragDistance > 24.0) {
+                        _triggered = true;
+                        widget.onOpenDrawer();
+                      }
+                    }
+                  };
+              },
+            ),
       },
       child: widget.child,
     );
@@ -290,10 +290,7 @@ class AppTopFadeMask extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    surfaceColor,
-                    surfaceColor.withValues(alpha: 0),
-                  ],
+                  colors: [surfaceColor, surfaceColor.withValues(alpha: 0)],
                 ),
               ),
             ),
@@ -386,9 +383,7 @@ class AppScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                Expanded(
-                  child: body,
-                ),
+                Expanded(child: body),
               ],
             ),
           ),
@@ -425,9 +420,9 @@ class IslandFloatingActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final glassTheme = GlassThemeData.of(context);
     final interaction = glassTheme.interaction;
-    final glassSettings = glassTheme.settingsFor(context)?.applyTo(
-          const LiquidGlassSettings(),
-        );
+    final glassSettings = glassTheme
+        .settingsFor(context)
+        ?.applyTo(const LiquidGlassSettings());
 
     Widget button = GlassButton(
       icon: Icon(icon),
@@ -488,10 +483,7 @@ class AppHeader extends StatelessWidget {
     return GlassIsolationScope(
       defaultQuality: GlassQuality.premium,
       child: onMenuPressed != null
-          ? RightSwipeToOpenDrawer(
-              onOpenDrawer: onMenuPressed!,
-              child: header,
-            )
+          ? RightSwipeToOpenDrawer(onOpenDrawer: onMenuPressed!, child: header)
           : header,
     );
   }
@@ -556,6 +548,7 @@ class HeaderIconButton extends StatelessWidget {
     super.key,
     this.badge,
     this.semanticLabel,
+    this.tooltip,
     this.loading = false,
   });
 
@@ -569,8 +562,20 @@ class HeaderIconButton extends StatelessWidget {
   /// with no description of its action.
   final String? semanticLabel;
 
+  /// Optional long-press/hover tooltip (usually the same as
+  /// [semanticLabel]).
+  final String? tooltip;
+
   @override
   Widget build(BuildContext context) {
+    final message = tooltip;
+    if (message != null && message.isNotEmpty) {
+      return Tooltip(message: message, child: _buildButton(context));
+    }
+    return _buildButton(context);
+  }
+
+  Widget _buildButton(BuildContext context) {
     final badgeCount = badge ?? 0;
     return Padding(
       padding: const EdgeInsets.only(left: 6.0),
@@ -579,12 +584,7 @@ class HeaderIconButton extends StatelessWidget {
         children: [
           UnconstrainedBox(
             child: GlassIconButton(
-              icon: loading
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Icon(icon),
+              icon: loading ? const AppInlineSpinner() : Icon(icon),
               iconSize: 22,
               quality: GlassQuality.standard,
               onPressed: onPressed,
@@ -667,11 +667,7 @@ class AppActionButton extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (icon != null) ...[
-            Icon(
-              icon,
-              size: compact ? 16 : 18,
-              color: fg,
-            ),
+            Icon(icon, size: compact ? 16 : 18, color: fg),
             const SizedBox(width: AppSpacing.xs),
           ],
           Text(
@@ -786,7 +782,9 @@ class SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.55),
+        ),
       ),
       child: content,
     );
@@ -827,10 +825,7 @@ class MetricTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final color = switch (tone) {
-      MetricTone.positive =>
-        Theme.of(context).brightness == Brightness.dark
-            ? AppColors.positiveDark
-            : AppColors.positiveLight,
+      MetricTone.positive => scheme.positive,
       MetricTone.danger => scheme.error,
       MetricTone.warning => scheme.secondary,
       MetricTone.standard => scheme.primary,
@@ -888,7 +883,9 @@ class MetricTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.55),
+        ),
       ),
       child: content,
     );
@@ -976,13 +973,18 @@ class _PremiumSearchInputState extends State<PremiumSearchInput> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return GlassSearchBar(
       controller: _controller,
       placeholder: widget.hintText,
       onChanged: widget.onChanged,
       height: widget.height,
-      textStyle: TextStyle(color: scheme.onSurface, fontSize: 16),
+      textStyle: TextStyle(
+        color: scheme.onSurface,
+        fontFamily: theme.textTheme.bodyLarge?.fontFamily,
+        fontSize: theme.textTheme.bodyLarge?.fontSize,
+      ),
       searchIconColor: scheme.primary,
       quality: GlassQuality.standard,
       useOwnLayer: true,
@@ -1063,8 +1065,10 @@ class AppGlassTextField extends StatelessWidget {
       autofocus: autofocus,
       onChanged: onChanged,
       onSubmitted: onSubmitted,
-      textStyle:
-          style ?? TextStyle(color: Theme.of(context).colorScheme.onSurface),
+      textStyle: TextStyle(
+        color: Theme.of(context).colorScheme.onSurface,
+        fontFamily: Theme.of(context).textTheme.bodyLarge?.fontFamily,
+      ).merge(style),
       quality: GlassQuality.standard,
     );
   }
@@ -1230,7 +1234,9 @@ class PremiumRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.55),
+        ),
       ),
       child: content,
     );
@@ -1255,10 +1261,7 @@ class InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final color = switch (tone) {
-      MetricTone.positive =>
-        Theme.of(context).brightness == Brightness.dark
-            ? AppColors.positiveDark
-            : AppColors.positiveLight,
+      MetricTone.positive => scheme.positive,
       MetricTone.danger => scheme.error,
       MetricTone.warning => scheme.secondary,
       MetricTone.standard => scheme.onSurface,
@@ -1413,6 +1416,7 @@ class EmptyState extends StatelessWidget {
     this.actionLabel,
     this.onAction,
     this.actionIcon,
+    this.tone = MetricTone.standard,
   });
 
   final IconData icon;
@@ -1422,16 +1426,21 @@ class EmptyState extends StatelessWidget {
   final VoidCallback? onAction;
   final IconData? actionIcon;
 
+  /// [MetricTone.danger] renders the canonical error state (error-tinted
+  /// icon bubble). Every other tone keeps the primary-tinted empty state.
+  final MetricTone tone;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final iconColor = tone == MetricTone.danger ? scheme.error : scheme.primary;
     final lowerAction = actionLabel?.toLowerCase() ?? '';
-    final defaultActionIcon = lowerAction.contains('clear') ||
-            lowerAction.contains('reset')
+    final defaultActionIcon =
+        lowerAction.contains('clear') || lowerAction.contains('reset')
         ? Icons.filter_alt_off_rounded
         : (lowerAction.contains('back') || lowerAction.contains('home')
-            ? Icons.arrow_back_rounded
-            : Icons.add_rounded);
+              ? Icons.arrow_back_rounded
+              : Icons.add_rounded);
 
     return Center(
       child: ConstrainedBox(
@@ -1443,7 +1452,7 @@ class EmptyState extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              IconBubble(icon: icon, color: scheme.primary),
+              IconBubble(icon: icon, color: iconColor),
               const SizedBox(height: AppSpacing.md),
               Text(
                 title,
@@ -1494,5 +1503,450 @@ class AppBackAction extends StatelessWidget {
       onPressed: () => Navigator.of(context).maybePop(),
       semanticLabel: 'Back',
     );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Canonical helpers. Feature screens use these instead of building their own
+// snackbars, confirmation dialogs, sheets, loading states, destructive button
+// styles and grouped settings rows. See lib/src/widgets/AGENTS.md.
+// ─────────────────────────────────────────────────────────────────────────
+
+/// Canonical transient feedback: floating, and replaces any visible snackbar
+/// so rapid actions never queue stale messages.
+///
+/// `AppTheme.snackBarTheme` deliberately renders snackbars visually
+/// suppressed (no floating popups over the bottom island); the message is
+/// still exposed to assistive technologies.
+void showAppSnackBar(
+  BuildContext context,
+  String message, {
+  SnackBarAction? action,
+  Duration? duration,
+}) {
+  ScaffoldMessenger.maybeOf(
+    context,
+  )?.showAppSnackBar(message, action: action, duration: duration);
+}
+
+extension AppSnackBarMessenger on ScaffoldMessengerState {
+  /// Messenger-based variant of [showAppSnackBar] for call sites that capture
+  /// the messenger before an `await`.
+  void showAppSnackBar(
+    String message, {
+    SnackBarAction? action,
+    Duration? duration,
+  }) {
+    this
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          action: action,
+          duration: duration ?? const Duration(milliseconds: 4000),
+        ),
+      );
+  }
+}
+
+/// Canonical button styles for destructive actions at each button level.
+/// Use with the Material button that matches the action's hierarchy:
+/// `FilledButton` (primary), `OutlinedButton` (secondary), `TextButton`
+/// (tertiary).
+abstract final class AppButtonStyles {
+  /// Full-width primary call to action (onboarding, setup, form submit).
+  /// Works with any Material button; keeps the theme's stadium shape.
+  static const ButtonStyle cta = ButtonStyle(
+    minimumSize: WidgetStatePropertyAll(Size.fromHeight(AppSizes.ctaHeight)),
+  );
+
+  /// Dense inline action, e.g. inside a profile card or a list row.
+  static ButtonStyle compact(BuildContext context) => ButtonStyle(
+    visualDensity: VisualDensity.compact,
+    padding: const WidgetStatePropertyAll(
+      EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+    ),
+    textStyle: WidgetStatePropertyAll(Theme.of(context).textTheme.labelMedium),
+  );
+
+  static ButtonStyle destructiveFilled(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return FilledButton.styleFrom(
+      backgroundColor: scheme.error,
+      foregroundColor: scheme.onError,
+    );
+  }
+
+  static ButtonStyle destructiveOutlined(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return OutlinedButton.styleFrom(
+      foregroundColor: scheme.error,
+      side: BorderSide(color: scheme.error.withValues(alpha: 0.6)),
+    );
+  }
+
+  static ButtonStyle destructiveText(BuildContext context) {
+    return TextButton.styleFrom(
+      foregroundColor: Theme.of(context).colorScheme.error,
+    );
+  }
+}
+
+/// Canonical confirmation dialog: title, message, a `TextButton` cancel and a
+/// `FilledButton` confirm (error-coloured when [destructive]).
+class AppConfirmDialog extends StatelessWidget {
+  const AppConfirmDialog({
+    required this.title,
+    super.key,
+    this.message,
+    this.content,
+    this.confirmLabel = 'Confirm',
+    this.cancelLabel = 'Cancel',
+    this.destructive = false,
+    this.icon,
+    this.confirmKey,
+    this.cancelKey,
+  }) : assert(
+         message == null || content == null,
+         'Provide either message or content, not both.',
+       );
+
+  final String title;
+  final String? message;
+  final Widget? content;
+  final String confirmLabel;
+  final String cancelLabel;
+  final bool destructive;
+  final IconData? icon;
+  final Key? confirmKey;
+  final Key? cancelKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return AlertDialog(
+      scrollable: true,
+      icon: icon == null
+          ? null
+          : Icon(icon, color: destructive ? scheme.error : scheme.primary),
+      title: Text(title),
+      content: content ?? (message == null ? null : Text(message!)),
+      actions: [
+        TextButton(
+          key: cancelKey,
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(cancelLabel),
+        ),
+        FilledButton(
+          key: confirmKey,
+          style: destructive
+              ? AppButtonStyles.destructiveFilled(context)
+              : null,
+          onPressed: () => Navigator.of(context).pop(true),
+          child: Text(confirmLabel),
+        ),
+      ],
+    );
+  }
+}
+
+/// Shows an [AppConfirmDialog] and resolves to `true` only when confirmed.
+Future<bool> showAppConfirmDialog(
+  BuildContext context, {
+  required String title,
+  String? message,
+  Widget? content,
+  String confirmLabel = 'Confirm',
+  String cancelLabel = 'Cancel',
+  bool destructive = false,
+  IconData? icon,
+  bool barrierDismissible = true,
+  Key? confirmKey,
+  Key? cancelKey,
+}) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    barrierDismissible: barrierDismissible,
+    builder: (_) => AppConfirmDialog(
+      title: title,
+      message: message,
+      content: content,
+      confirmLabel: confirmLabel,
+      cancelLabel: cancelLabel,
+      destructive: destructive,
+      icon: icon,
+      confirmKey: confirmKey,
+      cancelKey: cancelKey,
+    ),
+  );
+  return confirmed ?? false;
+}
+
+/// Canonical modal bottom sheet presentation. The sheet content owns its
+/// surface ([AppSheetSurface] for draggable sheets, or a card/panel for
+/// compact sheets), so the route itself is transparent.
+Future<T?> showAppSheet<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  double maxWidth = 640,
+  bool isDismissible = true,
+  bool enableDrag = true,
+}) {
+  return showModalBottomSheet<T>(
+    context: context,
+    builder: builder,
+    isScrollControlled: true,
+    useSafeArea: true,
+    isDismissible: isDismissible,
+    enableDrag: enableDrag,
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+    constraints: BoxConstraints(maxWidth: maxWidth),
+  );
+}
+
+/// Drag handle shown at the top of every draggable sheet.
+class AppSheetHandle extends StatelessWidget {
+  const AppSheetHandle({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.only(top: 10, bottom: 6),
+        width: 36,
+        height: 4,
+        decoration: BoxDecoration(
+          color: Theme.of(
+            context,
+          ).colorScheme.onSurfaceVariant.withValues(alpha: 0.24),
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+        ),
+      ),
+    );
+  }
+}
+
+/// Opaque, top-rounded surface for draggable/full-height bottom sheets.
+class AppSheetSurface extends StatelessWidget {
+  const AppSheetSurface({
+    required this.child,
+    super.key,
+    this.showHandle = true,
+  });
+
+  final Widget child;
+  final bool showHandle;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppRadii.lg),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.16),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          if (showHandle) const AppSheetHandle(),
+          Expanded(child: child),
+        ],
+      ),
+    );
+  }
+}
+
+/// Canonical small inline spinner for buttons, rows and header actions.
+class AppInlineSpinner extends StatelessWidget {
+  const AppInlineSpinner({super.key, this.size = 18, this.color});
+
+  final double size;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: size,
+      child: CircularProgressIndicator(strokeWidth: 2, color: color),
+    );
+  }
+}
+
+/// Canonical loading state for a page or section that has no content yet.
+class AppLoadingState extends StatelessWidget {
+  const AppLoadingState({super.key, this.message});
+
+  final String? message;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            if (message != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                message!,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Canonical grouped settings list (iOS-style inset group). Use with
+/// [AppGroupedTile] rows separated by `GlassDivider`.
+///
+/// Wraps `GlassGroupedSection` so the header uses the app type scale (the
+/// package default replaces the inherited text style and drops the app font).
+class AppGroupedSection extends StatelessWidget {
+  const AppGroupedSection({
+    required this.children,
+    super.key,
+    this.header,
+    this.destructive = false,
+  });
+
+  final String? header;
+  final List<Widget> children;
+
+  /// Tints the header with the error colour (danger zones).
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return GlassGroupedSection(
+      header: header == null
+          ? null
+          : Text(
+              header!,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: destructive ? scheme.error : scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+      children: children,
+    );
+  }
+}
+
+/// Canonical row inside an [AppGroupedSection]. Wraps `GlassListTile` with
+/// the app type scale and colour roles.
+///
+/// Use [AppGroupedTile.toggle] for on/off settings: it merges the row and its
+/// switch into one accessible control and toggles on row tap, matching
+/// [AppSwitchListTile].
+class AppGroupedTile extends StatelessWidget {
+  const AppGroupedTile({
+    required this.title,
+    super.key,
+    this.subtitle,
+    this.leading,
+    this.trailing,
+    this.onTap,
+    this.destructive = false,
+    this.showChevron = false,
+  }) : value = null,
+       onChanged = null;
+
+  const AppGroupedTile.toggle({
+    required this.title,
+    required bool this.value,
+    required this.onChanged,
+    super.key,
+    this.subtitle,
+    this.leading,
+    this.destructive = false,
+  }) : trailing = null,
+       onTap = null,
+       showChevron = false;
+
+  final Widget title;
+  final Widget? subtitle;
+  final Widget? leading;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+  final bool destructive;
+
+  /// Adds the canonical disclosure chevron as trailing widget.
+  final bool showChevron;
+
+  final bool? value;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isToggle = value != null;
+    final toggleEnabled = onChanged != null;
+
+    Widget? effectiveTrailing = trailing;
+    if (isToggle) {
+      effectiveTrailing = ExcludeFocus(
+        child: IgnorePointer(
+          ignoring: !toggleEnabled,
+          child: Opacity(
+            opacity: toggleEnabled ? 1 : 0.38,
+            child: GlassSwitch(
+              value: value!,
+              onChanged: onChanged ?? (_) {},
+              activeColor: scheme.primary,
+              useOwnLayer: true,
+              quality: GlassQuality.standard,
+              semanticLabel: '',
+            ),
+          ),
+        ),
+      );
+    } else if (showChevron) {
+      effectiveTrailing = Icon(
+        Icons.chevron_right_rounded,
+        size: 20,
+        color: destructive ? scheme.error : scheme.onSurfaceVariant,
+      );
+    }
+
+    final tile = GlassListTile(
+      leading: leading,
+      leadingIconColor: destructive ? scheme.error : scheme.primary,
+      title: title,
+      subtitle: subtitle,
+      trailing: effectiveTrailing,
+      onTap: isToggle
+          ? (toggleEnabled ? () => onChanged!(!value!) : null)
+          : onTap,
+      titleStyle: theme.textTheme.titleMedium?.copyWith(
+        color: destructive ? scheme.error : scheme.onSurface,
+        fontWeight: FontWeight.w600,
+      ),
+      subtitleStyle: theme.textTheme.bodySmall?.copyWith(
+        color: scheme.onSurfaceVariant,
+      ),
+    );
+
+    return isToggle ? MergeSemantics(child: tile) : tile;
   }
 }

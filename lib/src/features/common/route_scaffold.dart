@@ -29,7 +29,9 @@ class RouteScaffold extends StatelessWidget {
     this.actions = const [],
     this.floatingActionButton,
     this.drawer,
-    this.hasDrawer = false,
+    this.hasDrawer,
+    this.leading,
+    this.automaticallyImplyLeading = true,
   }) : assert(
          (child == null) != (scrollView == null),
          'Provide exactly one of child or scrollView.',
@@ -53,12 +55,24 @@ class RouteScaffold extends StatelessWidget {
   final List<Widget> actions;
   final Widget? floatingActionButton;
   final Widget? drawer;
-  final bool hasDrawer;
+
+  /// Shows the app drawer (menu action) instead of a back action. When null
+  /// the nearest [DrawerConfig] decides; pass `false` to keep a back action
+  /// on a route that sits under a drawer-enabled [DrawerConfig].
+  final bool? hasDrawer;
+
+  /// Replaces the automatic back/menu action, e.g. for screens with custom
+  /// back handling. Use a [HeaderIconButton] so it matches other headers.
+  final Widget? leading;
+
+  /// When false no back action is added even if the route can pop (blocking
+  /// flows such as account deletion).
+  final bool automaticallyImplyLeading;
 
   @override
   Widget build(BuildContext context) {
     final configHasDrawer = DrawerConfig.of(context)?.hasDrawer ?? false;
-    final shouldShowDrawer = hasDrawer || configHasDrawer;
+    final shouldShowDrawer = hasDrawer ?? configHasDrawer;
 
     final effectiveDrawer =
         drawer ??
@@ -101,6 +115,8 @@ class RouteScaffold extends StatelessWidget {
       ),
     );
 
+    final canPop = automaticallyImplyLeading && Navigator.of(context).canPop();
+
     Widget mobileView = Scaffold(
       drawer: effectiveDrawer,
       drawerEnableOpenDragGesture: effectiveDrawer != null,
@@ -111,15 +127,17 @@ class RouteScaffold extends StatelessWidget {
             context,
           ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
         ),
-        leading: effectiveDrawer != null
-            ? Builder(
-                builder: (scaffoldContext) => AppMenuAction(
-                  onPressed: Scaffold.of(scaffoldContext).openDrawer,
-                ),
-              )
-            : Navigator.of(context).canPop()
-            ? const AppBackAction()
-            : null,
+        leading:
+            leading ??
+            (effectiveDrawer != null
+                ? Builder(
+                    builder: (scaffoldContext) => AppMenuAction(
+                      onPressed: Scaffold.of(scaffoldContext).openDrawer,
+                    ),
+                  )
+                : canPop
+                ? const AppBackAction()
+                : null),
         actions: actions,
         centerTitle: false,
       ),
@@ -142,9 +160,11 @@ class RouteScaffold extends StatelessWidget {
         // be supplied explicitly whenever there's no persistent drawer and
         // the route can actually be popped - otherwise every pushed desktop
         // sub-route would silently lose its way back.
-        leading: effectiveDrawer != null
-            ? const SizedBox.shrink()
-            : (Navigator.of(context).canPop() ? const AppBackAction() : null),
+        leading:
+            leading ??
+            (effectiveDrawer != null
+                ? const SizedBox.shrink()
+                : (canPop ? const AppBackAction() : null)),
         centerTitle: false,
       ),
       floatingActionButton: floatingActionButton,
