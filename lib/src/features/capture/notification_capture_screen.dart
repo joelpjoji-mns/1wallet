@@ -633,7 +633,7 @@ class _NotificationCaptureScreenState
                                                       color:
                                                           parsed.transactionType ==
                                                               'income'
-                                                          ? scheme.primary
+                                                          ? scheme.positive
                                                           : scheme.error,
                                                     ),
                                               ),

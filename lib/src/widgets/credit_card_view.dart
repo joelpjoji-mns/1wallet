@@ -33,6 +33,12 @@ class CreditCardView extends StatelessWidget {
     Clipboard.setData(ClipboardData(text: text.replaceAll(RegExp(r'\s+'), '')));
   }
 
+  /// Contrast colour for text/icons drawn on the user-chosen card colour.
+  Color get _foreground =>
+      ThemeData.estimateBrightnessForColor(gradientStart) == Brightness.dark
+      ? Colors.white
+      : Colors.black;
+
   String _formatCardNumber(String number) {
     final clean = number.replaceAll(RegExp(r'\s+'), '');
     final buffer = StringBuffer();
@@ -49,7 +55,7 @@ class CreditCardView extends StatelessWidget {
     BuildContext context,
     String text,
     String label, {
-    Color color = Colors.white70,
+    Color? color,
   }) {
     if (!isUnlocked || text.isEmpty || text == '***' || text.contains('****')) {
       return const SizedBox.shrink();
@@ -61,7 +67,11 @@ class CreditCardView extends StatelessWidget {
         onTap: () => _copyToClipboard(context, text, label),
         child: Padding(
           padding: const EdgeInsets.all(4.0),
-          child: Icon(Icons.copy_rounded, color: color, size: 16),
+          child: Icon(
+            Icons.copy_rounded,
+            color: color ?? _foreground.withValues(alpha: 0.7),
+            size: 16,
+          ),
         ),
       ),
     );
@@ -93,6 +103,8 @@ class CreditCardView extends StatelessWidget {
         dynamicFields[entry.key.toUpperCase()] = entry.value;
       }
     }
+    final foreground = _foreground;
+    final mutedForeground = foreground.withValues(alpha: 0.54);
 
     return Container(
       width: 400,
@@ -105,11 +117,11 @@ class CreditCardView extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Colors.black26,
+            color: Colors.black.withValues(alpha: 0.26),
             blurRadius: 10,
-            offset: Offset(0, 5),
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -121,8 +133,10 @@ class CreditCardView extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Icon(
-                  type == 'bank' ? Icons.account_balance_rounded : Icons.credit_card_rounded,
-                  color: Colors.white,
+                  type == 'bank'
+                      ? Icons.account_balance_rounded
+                      : Icons.credit_card_rounded,
+                  color: foreground,
                   size: 32,
                 ),
                 if (displayExpiry.isNotEmpty)
@@ -131,17 +145,17 @@ class CreditCardView extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          const Text(
+                          Text(
                             'VALID THRU',
                             style: TextStyle(
-                              color: Colors.white54,
+                              color: mutedForeground,
                               fontSize: 8,
                             ),
                           ),
                           Text(
                             displayExpiry,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: foreground,
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                             ),
@@ -162,17 +176,17 @@ class CreditCardView extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (type == 'bank')
-                        const Text(
+                        Text(
                           'ACCOUNT NO.',
-                          style: TextStyle(color: Colors.white54, fontSize: 8),
+                          style: TextStyle(color: mutedForeground, fontSize: 8),
                         ),
                       FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
                         child: Text(
                           displayNumber,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: foreground,
                             fontSize: 22,
                             letterSpacing: 2,
                             fontWeight: FontWeight.w700,
@@ -199,10 +213,7 @@ class CreditCardView extends StatelessWidget {
                     children: [
                       Text(
                         type == 'bank' ? 'ACCOUNT HOLDER' : 'CARD HOLDER',
-                        style: const TextStyle(
-                          color: Colors.white54,
-                          fontSize: 8,
-                        ),
+                        style: TextStyle(color: mutedForeground, fontSize: 8),
                       ),
                       FittedBox(
                         fit: BoxFit.scaleDown,
@@ -211,8 +222,8 @@ class CreditCardView extends StatelessWidget {
                           cardHolder.isEmpty
                               ? 'YOUR NAME'
                               : cardHolder.toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: foreground,
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
@@ -236,15 +247,15 @@ class CreditCardView extends StatelessWidget {
                               children: [
                                 Text(
                                   entry.key,
-                                  style: const TextStyle(
-                                    color: Colors.white54,
+                                  style: TextStyle(
+                                    color: mutedForeground,
                                     fontSize: 8,
                                   ),
                                 ),
                                 Text(
                                   entry.value,
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: foreground,
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                   ),

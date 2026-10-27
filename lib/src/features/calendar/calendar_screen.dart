@@ -696,15 +696,7 @@ class SummaryPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final color = switch (tone) {
-      MetricTone.positive =>
-        Theme.of(context).brightness == Brightness.dark
-            ? AppColors.positiveDark
-            : AppColors.positiveLight,
-      MetricTone.danger => scheme.error,
-      MetricTone.warning => scheme.secondary,
-      MetricTone.standard => scheme.onSurface,
-    };
+    final color = tone.resolve(scheme, standard: scheme.onSurface);
     return Container(
       constraints: const BoxConstraints(minHeight: 58),
       padding: const EdgeInsets.symmetric(
@@ -872,26 +864,16 @@ class _DayCell extends StatelessWidget {
         date.day == today.day;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final isAmoled =
-        theme.scaffoldBackgroundColor == AppColors.amoledBackground;
     return InkWell(
       borderRadius: BorderRadius.circular(AppRadii.md),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(5),
         decoration: BoxDecoration(
-          color: isToday
-              ? scheme.primaryContainer
-              : (isAmoled
-                    ? AppColors.amoledBackground
-                    : scheme.surfaceContainer),
+          color: isToday ? scheme.primaryContainer : scheme.surfaceContainer,
           borderRadius: BorderRadius.circular(AppRadii.md),
           border: Border.all(
-            color: isToday
-                ? scheme.primary
-                : (isAmoled
-                      ? Colors.white.withValues(alpha: 0.09)
-                      : scheme.outlineVariant),
+            color: isToday ? scheme.primary : scheme.outlineVariant,
             width: 0.8,
           ),
         ),

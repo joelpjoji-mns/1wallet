@@ -5,6 +5,13 @@ import 'package:flutter/material.dart';
 import '../auth/auth_user.dart';
 import '../design/tokens.dart';
 
+// Google brand colours (logo, avatar ring and Google-provider badges). Brand
+// exception to the ColorScheme-only rule; declared once here.
+const _googleBlue = Color(0xFF4285F4);
+const _googleGreen = Color(0xFF34A853);
+const _googleYellow = Color(0xFFFBBC05);
+const _googleRed = Color(0xFFEA4335);
+
 class AuthUserAvatar extends StatelessWidget {
   const AuthUserAvatar({
     required this.user,
@@ -27,12 +34,7 @@ class AuthUserAvatar extends StatelessWidget {
     final initials = fallbackLabel ?? user?.initials ?? '1W';
     final isGoogle = user?.isGoogleProvider ?? false;
     final ringColors = isGoogle
-        ? const [
-            Color(0xFF4285F4),
-            Color(0xFF34A853),
-            Color(0xFFFBBC05),
-            Color(0xFFEA4335),
-          ]
+        ? const [_googleBlue, _googleGreen, _googleYellow, _googleRed]
         : [scheme.primary, scheme.tertiary];
 
     return Stack(
@@ -86,12 +88,12 @@ class AuthProviderChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isGoogle = user?.isGoogleProvider ?? false;
-    final iconColor = isGoogle ? const Color(0xFF4285F4) : scheme.primary;
+    final iconColor = isGoogle ? _googleBlue : scheme.primary;
     final bgColor = isGoogle
-        ? const Color(0xFF4285F4).withValues(alpha: 0.09)
+        ? _googleBlue.withValues(alpha: 0.09)
         : scheme.primaryContainer.withValues(alpha: 0.51);
     final borderColor = isGoogle
-        ? const Color(0xFF4285F4).withValues(alpha: 0.27)
+        ? _googleBlue.withValues(alpha: 0.27)
         : scheme.primary.withValues(alpha: 0.22);
     final label = user == null
         ? 'Local session'
@@ -146,10 +148,10 @@ class AuthPhotoStatusChip extends StatelessWidget {
     final isGoogle = user?.isGoogleProvider ?? false;
     final hasPhoto = user?.photoUrl?.trim().isNotEmpty ?? false;
     final backgroundColor = isGoogle
-        ? const Color(0xFF34A853).withValues(alpha: 0.08)
+        ? _googleGreen.withValues(alpha: 0.08)
         : scheme.secondaryContainer.withValues(alpha: 0.67);
     final borderColor = isGoogle
-        ? const Color(0xFF34A853).withValues(alpha: 0.31)
+        ? _googleGreen.withValues(alpha: 0.31)
         : scheme.secondary.withValues(alpha: 0.22);
     final label = switch ((user != null, hasPhoto, isGoogle)) {
       (false, _, _) => 'Local avatar',
@@ -231,7 +233,9 @@ class AuthUserActionButton extends StatelessWidget {
     button = DecoratedBox(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.67)),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.67),
+        ),
         color: scheme.surfaceContainerLow,
       ),
       child: button,
@@ -316,7 +320,10 @@ class _GoogleGlyph extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return RepaintBoundary(
-      child: CustomPaint(size: Size.square(size), painter: _GoogleGlyphPainter()),
+      child: CustomPaint(
+        size: Size.square(size),
+        painter: _GoogleGlyphPainter(),
+      ),
     );
   }
 }
@@ -333,22 +340,22 @@ class _GoogleGlyphPainter extends CustomPainter {
 
     final paints = [
       Paint()
-        ..color = const Color(0xFFEA4335)
+        ..color = _googleRed
         ..style = PaintingStyle.stroke
         ..strokeWidth = stroke
         ..strokeCap = StrokeCap.round,
       Paint()
-        ..color = const Color(0xFFFBBC05)
+        ..color = _googleYellow
         ..style = PaintingStyle.stroke
         ..strokeWidth = stroke
         ..strokeCap = StrokeCap.round,
       Paint()
-        ..color = const Color(0xFF34A853)
+        ..color = _googleGreen
         ..style = PaintingStyle.stroke
         ..strokeWidth = stroke
         ..strokeCap = StrokeCap.round,
       Paint()
-        ..color = const Color(0xFF4285F4)
+        ..color = _googleBlue
         ..style = PaintingStyle.stroke
         ..strokeWidth = stroke
         ..strokeCap = StrokeCap.round,
@@ -360,7 +367,7 @@ class _GoogleGlyphPainter extends CustomPainter {
     canvas.drawArc(rect, 2.82, 2.75, false, paints[3]);
 
     final barPaint = Paint()
-      ..color = const Color(0xFF4285F4)
+      ..color = _googleBlue
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke
       ..strokeCap = StrokeCap.round;

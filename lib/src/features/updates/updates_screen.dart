@@ -207,7 +207,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
         statusTitle = 'App is up to date';
         statusSubtitle = 'Version $versionName (Build $displayBuild)';
         icon = Icons.check_circle_rounded;
-        color = const Color(0xFF2E7D32);
+        color = scheme.positive;
       }
     } else if (state.status == UpdateStatus.error) {
       statusTitle = 'Update check unavailable';
@@ -219,7 +219,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
       statusSubtitle =
           'Version ${state.latestRelease?.versionName ?? ''} is downloaded';
       icon = Icons.download_done_rounded;
-      color = const Color(0xFF2E7D32);
+      color = scheme.positive;
     } else {
       statusTitle = 'Opening installer…';
       statusSubtitle = 'Confirm prompt to finish updating';
@@ -289,7 +289,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                           context,
                           version: 'v$versionName',
                           badgeText: 'INSTALLED',
-                          badgeColor: const Color(0xFF2E7D32),
+                          badgeColor: scheme.positive,
                         ),
                         Padding(
                           padding: const EdgeInsets.symmetric(
@@ -320,7 +320,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                           context,
                           version: 'v$versionName',
                           badgeText: 'INSTALLED',
-                          badgeColor: const Color(0xFF2E7D32),
+                          badgeColor: scheme.positive,
                         ),
                         Text(
                           'You have the latest version installed.',
@@ -622,7 +622,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                   accentColor: isLatest
                       ? scheme.primary
                       : (isInstalled
-                            ? const Color(0xFF2E7D32)
+                            ? scheme.positive
                             : scheme.onSurfaceVariant),
                 ),
                 const SizedBox(width: AppSpacing.xs),
@@ -643,7 +643,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                   _buildBadgePill(
                     context,
                     label: 'INSTALLED',
-                    color: const Color(0xFF2E7D32),
+                    color: scheme.positive,
                   ),
                 const Spacer(),
                 Container(
@@ -696,7 +696,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                       categoryTitle: 'Bug Fixes',
                       items: changelog.bugFixes,
                       icon: Icons.bug_report_rounded,
-                      accentColor: const Color(0xFFE57373),
+                      accentColor: scheme.error,
                     ),
                   ],
                   if (changelog.notes.isNotEmpty) ...[
@@ -706,7 +706,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                       categoryTitle: 'Improvements & Notes',
                       items: changelog.notes,
                       icon: Icons.tune_rounded,
-                      accentColor: const Color(0xFF64B5F6),
+                      accentColor: scheme.tertiary,
                     ),
                   ],
                   if (changelog.isEmpty)
@@ -801,7 +801,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                   isLatest: false,
                   isInstalled: isInstalled,
                   accentColor: isInstalled
-                      ? const Color(0xFF2E7D32)
+                      ? scheme.positive
                       : scheme.onSurfaceVariant.withValues(alpha: 0.6),
                 ),
                 const SizedBox(width: AppSpacing.sm),
@@ -821,7 +821,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                           _buildBadgePill(
                             context,
                             label: 'INSTALLED',
-                            color: const Color(0xFF2E7D32),
+                            color: scheme.positive,
                           ),
                         ],
                       ],
@@ -895,7 +895,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                     categoryTitle: 'Bug Fixes',
                     items: changelog.bugFixes,
                     icon: Icons.bug_report_rounded,
-                    accentColor: const Color(0xFFE57373),
+                    accentColor: scheme.error,
                   ),
                 ],
                 if (changelog.notes.isNotEmpty) ...[
@@ -905,7 +905,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                     categoryTitle: 'Improvements & Notes',
                     items: changelog.notes,
                     icon: Icons.tune_rounded,
-                    accentColor: const Color(0xFF64B5F6),
+                    accentColor: scheme.tertiary,
                   ),
                 ],
                 if (changelog.isEmpty)

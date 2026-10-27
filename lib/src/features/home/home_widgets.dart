@@ -174,26 +174,10 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
         .map((m) => m.amountMinor < 0 ? m.copyWith(amountMinor: 0) : m)
         .toList();
 
-    final theme = Theme.of(context);
-    final isAmoled =
-        theme.scaffoldBackgroundColor == AppColors.amoledBackground;
-    final isDark = theme.brightness == Brightness.dark;
-
     return Container(
       constraints: const BoxConstraints(minHeight: 178),
       padding: const EdgeInsets.all(AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(
-          color: isAmoled
-              ? Colors.white.withValues(alpha: 0.09)
-              : (isDark
-                    ? scheme.outlineVariant.withValues(alpha: 0.2)
-                    : scheme.outlineVariant),
-          width: 0.8,
-        ),
-      ),
+      decoration: AppSurfaces.panel(context, color: scheme.surface),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2950,9 +2934,7 @@ class DashboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isAmoled =
-        theme.scaffoldBackgroundColor == AppColors.amoledBackground;
+    final isAmoled = AppSurfaces.isAmoled(context);
     final inner = Material(
       color: Colors.transparent,
       child: InkWell(
@@ -2965,14 +2947,7 @@ class DashboardCard extends StatelessWidget {
     if (isAmoled) {
       return Container(
         padding: const EdgeInsets.all(AppSpacing.lg),
-        decoration: BoxDecoration(
-          color: AppColors.amoledBackground,
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.09),
-            width: 0.8,
-          ),
-        ),
+        decoration: AppSurfaces.panel(context),
         child: inner,
       );
     }

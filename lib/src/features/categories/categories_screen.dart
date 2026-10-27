@@ -513,12 +513,7 @@ class _CategoryTreeNode extends StatelessWidget {
 
                 icon: Icon(
                   Icons.more_vert_rounded,
-                  color: switch (tone) {
-                    MetricTone.positive => amountColor(context, 1),
-                    MetricTone.danger => scheme.error,
-                    MetricTone.warning => scheme.secondary,
-                    MetricTone.standard => scheme.primary,
-                  },
+                  color: tone.resolve(scheme),
                 ),
               ),
             ],

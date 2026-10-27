@@ -835,12 +835,7 @@ class MetricTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final color = switch (tone) {
-      MetricTone.positive => scheme.positive,
-      MetricTone.danger => scheme.error,
-      MetricTone.warning => scheme.secondary,
-      MetricTone.standard => scheme.primary,
-    };
+    final color = tone.resolve(scheme);
 
     final content = Material(
       color: Colors.transparent,
@@ -899,6 +894,18 @@ class MetricTile extends StatelessWidget {
 }
 
 enum MetricTone { standard, positive, danger, warning }
+
+/// The single tone -> colour mapping used by every status surface.
+extension MetricToneColors on MetricTone {
+  /// [standard] is what the neutral tone resolves to (primary by default;
+  /// pass `scheme.onSurface` for plain text values).
+  Color resolve(ColorScheme scheme, {Color? standard}) => switch (this) {
+    MetricTone.positive => scheme.positive,
+    MetricTone.danger => scheme.error,
+    MetricTone.warning => scheme.warning,
+    MetricTone.standard => standard ?? scheme.primary,
+  };
+}
 
 class IconBubble extends StatelessWidget {
   const IconBubble({
@@ -1258,12 +1265,7 @@ class InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final color = switch (tone) {
-      MetricTone.positive => scheme.positive,
-      MetricTone.danger => scheme.error,
-      MetricTone.warning => scheme.secondary,
-      MetricTone.standard => scheme.onSurface,
-    };
+    final color = tone.resolve(scheme, standard: scheme.onSurface);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: Row(

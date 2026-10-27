@@ -74,10 +74,7 @@ class HomeFlowPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final color = switch (tone) {
-      MetricTone.positive =>
-        Theme.of(context).brightness == Brightness.dark
-            ? AppColors.positiveDark
-            : AppColors.positiveLight,
+      MetricTone.positive => scheme.positive,
       MetricTone.danger => scheme.error,
       MetricTone.warning => scheme.secondary,
       MetricTone.standard => scheme.onSurfaceVariant,

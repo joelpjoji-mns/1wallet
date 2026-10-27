@@ -36,7 +36,6 @@ class TransactionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final account = accountById(state, transaction.accountId);
     final counter = accountById(state, transaction.counterAccountId);
     final category = categoryById(state, transaction.categoryId);
@@ -177,8 +176,7 @@ class TransactionRow extends StatelessWidget {
       ),
     );
 
-    final isAmoled =
-        Theme.of(context).scaffoldBackgroundColor == AppColors.amoledBackground;
+    final isAmoled = AppSurfaces.isAmoled(context);
 
     if (!showSurface) {
       return RepaintBoundary(child: content);
@@ -203,13 +201,7 @@ class TransactionRow extends StatelessWidget {
     return RepaintBoundary(
       child: Container(
         clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          border: Border.all(
-            color: scheme.outlineVariant.withValues(alpha: 0.55),
-          ),
-        ),
+        decoration: AppSurfaces.panel(context),
         child: content,
       ),
     );

@@ -1582,11 +1582,7 @@ class _ChargeDraft {
 
 Color _toneColor(BuildContext context, String type) {
   final scheme = Theme.of(context).colorScheme;
-  if (type == 'income') {
-    return Theme.of(context).brightness == Brightness.dark
-        ? AppColors.positiveDark
-        : AppColors.positiveLight;
-  }
+  if (type == 'income') return scheme.positive;
   return type == 'transfer' ? scheme.primary : scheme.error;
 }
 

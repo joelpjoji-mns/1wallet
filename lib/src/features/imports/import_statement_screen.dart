@@ -217,9 +217,7 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
                     Text(
                       'Parsed using ${result.strategy.label}',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.7,
-                        ),
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -336,9 +334,7 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
                         child: Text(
                           '… and ${result.rows.length - 50} more',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(
-                              alpha: 0.6,
-                            ),
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ),
@@ -444,7 +440,7 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
             'You can undo this import from the Data & Sync screen by rolling back the import batch.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -758,7 +754,7 @@ class _TransactionPreviewTile extends StatelessWidget {
     final sign = isExpense ? '-' : '+';
     final color = isExpense
         ? theme.colorScheme.error
-        : theme.colorScheme.primary;
+        : theme.colorScheme.positive;
 
     final amountStr = _formatAmount(row.amount.amountMinor, currency);
     final dateStr = row.occurredAt != null
@@ -793,7 +789,7 @@ class _TransactionPreviewTile extends StatelessWidget {
                 Text(
                   dateStr,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],

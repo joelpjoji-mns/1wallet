@@ -34,16 +34,16 @@ abstract final class AppTheme {
           ? AppColors.amoledBackground
           : baseScheme.surfaceContainerLowest,
       surfaceContainerLow: amoled
-          ? const Color(0xFF080808)
+          ? AppColors.amoledSurfaceLow
           : baseScheme.surfaceContainerLow,
       surfaceContainer: amoled
-          ? const Color(0xFF0E0E0E)
+          ? AppColors.amoledSurface
           : baseScheme.surfaceContainer,
       surfaceContainerHigh: amoled
-          ? const Color(0xFF151515)
+          ? AppColors.amoledSurfaceHigh
           : baseScheme.surfaceContainerHigh,
       surfaceContainerHighest: amoled
-          ? const Color(0xFF1C1C1C)
+          ? AppColors.amoledSurfaceHighest
           : baseScheme.surfaceContainerHighest,
       outlineVariant: baseScheme.outlineVariant,
     );
@@ -66,7 +66,7 @@ abstract final class AppTheme {
           ? AppColors.amoledBackground
           : dark
           ? AppColors.darkBackground
-          : const Color(0xFFFFFBFF),
+          : AppColors.lightBackground,
       visualDensity: VisualDensity.standard,
       textTheme: textTheme,
       appBarTheme: AppBarTheme(

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/ledger_models.dart';
+import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart' show minorUnits;
 import '../../auth/auth_controller.dart';
 import '../launch/brand_widgets.dart';
@@ -75,7 +76,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       name: '',
       type: 'bank',
       currency: _baseCurrency,
-      color: Colors.blueAccent,
+      color: AppColors.defaultAccountColor,
       opening: '',
       icon: Icons.account_balance_rounded,
     );

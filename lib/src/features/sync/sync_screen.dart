@@ -458,9 +458,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                                 sync.cloudVerificationStatus!.contains(
                                   'Verified',
                                 )
-                            ? theme.colorScheme.primaryContainer.withValues(
-                                alpha: 0.3,
-                              )
+                            ? theme.colorScheme.positive.withValues(alpha: 0.12)
                             : theme.colorScheme.errorContainer.withValues(
                                 alpha: 0.3,
                               ),
@@ -485,7 +483,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                                     sync.cloudVerificationStatus!.contains(
                                       'Verified',
                                     )
-                                ? theme.colorScheme.primary
+                                ? theme.colorScheme.positive
                                 : theme.colorScheme.error,
                           ),
                           const SizedBox(width: AppSpacing.sm),

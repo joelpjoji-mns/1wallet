@@ -394,10 +394,15 @@ Money totalBalance(
   final balances = accountBalanceMap(state);
   final accounts = accountId != null
       ? (accountId == 'cash_group'
-            ? state.accounts.where((a) => a.type == 'cash' && !a.isArchived && !a.isDeleted)
+            ? state.accounts.where(
+                (a) => a.type == 'cash' && !a.isArchived && !a.isDeleted,
+              )
             : state.accounts.where((a) => a.id == accountId && !a.isDeleted))
       : state.accounts.where(
-          (account) => !account.isArchived && !account.isDeleted && account.includeInTotals,
+          (account) =>
+              !account.isArchived &&
+              !account.isDeleted &&
+              account.includeInTotals,
         );
   final total = accounts.fold<int>(0, (sum, account) {
     final converted = convertMoneyForDisplay(
@@ -415,7 +420,9 @@ Money totalBalance(
   var liabilities = 0;
   final balances = accountBalanceMap(state);
   for (final account in state.accounts) {
-    if (account.isArchived || account.isDeleted || !account.includeInNetWorth) continue;
+    if (account.isArchived || account.isDeleted || !account.includeInNetWorth) {
+      continue;
+    }
     final balance = convertMoneyForDisplay(
       state,
       accountBalanceFromMap(balances, account),
@@ -903,7 +910,10 @@ List<String> availableCurrencies(LedgerState state) {
 final _currencyFormatCache = <String, NumberFormat>{};
 final _dateFormatCache = <String, DateFormat>{};
 
-NumberFormat _cachedSimpleCurrencyFormat(String normalizedLocale, String currency) {
+NumberFormat _cachedSimpleCurrencyFormat(
+  String normalizedLocale,
+  String currency,
+) {
   final key = '$normalizedLocale|$currency';
   return _currencyFormatCache.putIfAbsent(
     key,
@@ -1116,11 +1126,7 @@ bool isLiabilityAccount(Account account) {
 
 Color amountColor(BuildContext context, int amountMinor) {
   final theme = Theme.of(context);
-  if (amountMinor > 0) {
-    return theme.brightness == Brightness.dark
-        ? AppColors.positiveDark
-        : AppColors.positiveLight;
-  }
+  if (amountMinor > 0) return theme.colorScheme.positive;
   if (amountMinor < 0) return theme.colorScheme.error;
   return theme.colorScheme.onSurfaceVariant;
 }
@@ -1129,9 +1135,7 @@ Color amountColor(BuildContext context, int amountMinor) {
 /// amounts. Prefer this over hardcoded greens so the color is consistent
 /// across the app and adapts to light/dark.
 Color positiveTone(BuildContext context) {
-  return Theme.of(context).brightness == Brightness.dark
-      ? AppColors.positiveDark
-      : AppColors.positiveLight;
+  return Theme.of(context).colorScheme.positive;
 }
 
 IconData accountIcon(Account account) {
@@ -1307,9 +1311,7 @@ IconData _resolveCategoryIcon(Category? category) {
     return Icons.celebration_outlined;
   }
   if (key.contains('subscription')) return Icons.subscriptions_outlined;
-  if (key.contains('course') ||
-      key.contains('book') ||
-      key.contains('tutor')) {
+  if (key.contains('course') || key.contains('book') || key.contains('tutor')) {
     return Icons.school_outlined;
   }
   if (key.contains('shipping') || key.contains('courier')) {
@@ -1659,8 +1661,11 @@ CreditCardDueStatus? creditCardDueStatus(
     }
   } else {
     // Only statementDay is configured (no explicit dueDay)
-    final maxStmtDayThisMonth =
-        DateTime(current.year, current.month + 1, 0).day;
+    final maxStmtDayThisMonth = DateTime(
+      current.year,
+      current.month + 1,
+      0,
+    ).day;
     final thisMonthStmtDate = DateTime(
       current.year,
       current.month,
@@ -1677,8 +1682,11 @@ CreditCardDueStatus? creditCardDueStatus(
       // The statement for this month has not been generated yet.
       // Check the previous month's statement cycle first.
       final lastMonth = DateTime(current.year, current.month - 1);
-      final maxStmtDayLastMonth =
-          DateTime(lastMonth.year, lastMonth.month + 1, 0).day;
+      final maxStmtDayLastMonth = DateTime(
+        lastMonth.year,
+        lastMonth.month + 1,
+        0,
+      ).day;
       final lastMonthStmtDate = DateTime(
         lastMonth.year,
         lastMonth.month,
@@ -1707,12 +1715,13 @@ CreditCardDueStatus? creditCardDueStatus(
 
   final isPaid = account.lastPaidBillMonth == cycleKey;
   final daysDiff = targetDueDate.difference(today).inDays;
-  final notifyDays = account.notifyDaysBeforeDue ??
-      (account.statementDay != null ? 3 : 7);
+  final notifyDays =
+      account.notifyDaysBeforeDue ?? (account.statementDay != null ? 3 : 7);
 
   final isOverdue = !isPaid && daysDiff < 0;
   final isDueSoon = !isPaid && (daysDiff >= 0 && daysDiff <= notifyDays);
-  final isStatementGenerated = !isPaid &&
+  final isStatementGenerated =
+      !isPaid &&
       statementDate != null &&
       (today.isAfter(statementDate) || today.isAtSameMomentAs(statementDate));
 
@@ -1753,4 +1762,3 @@ int creditCardsDueSoonCount(LedgerState state, {DateTime? now}) {
   }
   return count;
 }
-

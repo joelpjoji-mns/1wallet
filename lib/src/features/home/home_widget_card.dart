@@ -41,8 +41,7 @@ class HomeWidgetCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final isAmoled =
-        theme.scaffoldBackgroundColor == AppColors.amoledBackground;
+    final isAmoled = AppSurfaces.isAmoled(context);
     final isDark = theme.brightness == Brightness.dark;
     final resolvedIconColor = iconColor ?? scheme.primary;
     final reorderScope = HomeWidgetCardReorderScope.maybeOf(context);
@@ -145,14 +144,7 @@ class HomeWidgetCard extends StatelessWidget {
       return RepaintBoundary(
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.sm),
-          decoration: BoxDecoration(
-            color: AppColors.amoledBackground,
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.09),
-              width: 0.8,
-            ),
-          ),
+          decoration: AppSurfaces.panel(context),
           child: cardContent,
         ),
       );
@@ -333,10 +325,7 @@ class HomeMetricTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final color = switch (tone) {
-      MetricTone.positive =>
-        Theme.of(context).brightness == Brightness.dark
-            ? AppColors.positiveDark
-            : AppColors.positiveLight,
+      MetricTone.positive => scheme.positive,
       MetricTone.danger => scheme.error,
       MetricTone.warning => scheme.secondary,
       MetricTone.standard => scheme.primary,
@@ -409,10 +398,7 @@ class HomeDetailRow extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final resolvedIconColor = iconColor ?? scheme.primary;
     final trailingColor = switch (tone) {
-      MetricTone.positive =>
-        Theme.of(context).brightness == Brightness.dark
-            ? AppColors.positiveDark
-            : AppColors.positiveLight,
+      MetricTone.positive => scheme.positive,
       MetricTone.danger => scheme.error,
       MetricTone.warning => scheme.secondary,
       MetricTone.standard => scheme.onSurface,
@@ -527,6 +513,8 @@ class _MiniLineChartState extends State<MiniLineChart> {
               minY: widget.minY,
               maxY: widget.maxY,
               dotBackgroundColor: scheme.surface,
+              tooltipBackgroundColor: scheme.inverseSurface,
+              tooltipTextColor: scheme.onInverseSurface,
             ),
             child: const SizedBox.expand(),
           ),
@@ -545,6 +533,8 @@ class _MiniLineChartPainter extends CustomPainter {
     required this.yAxisLabels,
     required this.textColor,
     required this.dotBackgroundColor,
+    required this.tooltipBackgroundColor,
+    required this.tooltipTextColor,
     this.touchPosition,
     this.tooltipFormatter,
     this.minY,
@@ -566,6 +556,10 @@ class _MiniLineChartPainter extends CustomPainter {
   /// resolved via `Theme.of(context)` inside [paint]) so this painter never
   /// needs to hold on to a [BuildContext] outside of the widget build phase.
   final Color dotBackgroundColor;
+
+  /// Touch tooltip bubble fill and label colour (inverse surface roles).
+  final Color tooltipBackgroundColor;
+  final Color tooltipTextColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -708,8 +702,8 @@ class _MiniLineChartPainter extends CustomPainter {
       final tpTip = TextPainter(
         text: TextSpan(
           text: text,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: tooltipTextColor,
             fontWeight: FontWeight.bold,
             fontSize: 12,
           ),
@@ -729,10 +723,7 @@ class _MiniLineChartPainter extends CustomPainter {
         tpTip.height + 8,
       );
       final bgRRect = RRect.fromRectAndRadius(bgRect, const Radius.circular(6));
-      canvas.drawRRect(
-        bgRRect,
-        Paint()..color = const Color(0xff1e293b),
-      ); // Slate-800
+      canvas.drawRRect(bgRRect, Paint()..color = tooltipBackgroundColor);
 
       tpTip.paint(canvas, Offset(tipX, tipY));
     }
@@ -747,6 +738,8 @@ class _MiniLineChartPainter extends CustomPainter {
         oldDelegate.yAxisLabels != yAxisLabels ||
         oldDelegate.textColor != textColor ||
         oldDelegate.dotBackgroundColor != dotBackgroundColor ||
+        oldDelegate.tooltipBackgroundColor != tooltipBackgroundColor ||
+        oldDelegate.tooltipTextColor != tooltipTextColor ||
         oldDelegate.touchPosition != touchPosition;
   }
 }

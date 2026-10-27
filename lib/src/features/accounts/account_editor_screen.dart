@@ -94,9 +94,11 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
         _selectedColor ??
         account?.color ??
         Theme.of(context).colorScheme.primary;
-    final selectedForeground = selectedColor.computeLuminance() > 0.5
-        ? Theme.of(context).colorScheme.onSurface
-        : Theme.of(context).colorScheme.surface;
+    // Contrast glyph drawn on the user-chosen account colour.
+    final selectedForeground =
+        ThemeData.estimateBrightnessForColor(selectedColor) == Brightness.dark
+        ? Colors.white
+        : Colors.black;
 
     final currentType =
         _selectedType ?? account?.type ?? widget.initialType ?? 'bank';
@@ -378,9 +380,13 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                           ),
                           selectedItemBuilder: (context) {
                             return [
-                              const Text(
+                              Text(
                                 'Not set',
-                                style: TextStyle(color: Colors.grey),
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
                               ),
                               for (int d = 1; d <= 31; d++)
                                 Text(
@@ -416,9 +422,13 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                           ),
                           selectedItemBuilder: (context) {
                             return [
-                              const Text(
+                              Text(
                                 'Not set',
-                                style: TextStyle(color: Colors.grey),
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
                               ),
                               for (int d = 1; d <= 31; d++)
                                 Text(
@@ -1208,7 +1218,6 @@ Future<int?> showDayOfMonthPicker({
 }) async {
   final theme = Theme.of(context);
   final scheme = theme.colorScheme;
-  final isAmoled = AppSurfaces.isAmoled(context);
   final isDesktop = AppResponsiveLayout.isDesktop(context);
 
   Widget buildPickerContent(BuildContext pickerContext) {
@@ -1282,10 +1291,10 @@ Future<int?> showDayOfMonthPicker({
                   child: Center(
                     child: Text(
                       d,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        color: Colors.grey,
+                        color: scheme.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -1315,20 +1324,14 @@ Future<int?> showDayOfMonthPicker({
                     decoration: BoxDecoration(
                       color: isSelected
                           ? scheme.primary
-                          : (isAmoled
-                                ? AppColors.amoledBackground
-                                : scheme.surfaceContainerHighest.withValues(
-                                    alpha: 0.5,
-                                  )),
+                          : scheme.surfaceContainerHighest.withValues(
+                              alpha: 0.5,
+                            ),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: isSelected
                             ? scheme.primary
-                            : (isAmoled
-                                  ? Colors.white.withValues(alpha: 0.09)
-                                  : scheme.outlineVariant.withValues(
-                                      alpha: 0.5,
-                                    )),
+                            : scheme.outlineVariant.withValues(alpha: 0.5),
                         width: isSelected ? 2.0 : 1.0,
                       ),
                       boxShadow: isSelected

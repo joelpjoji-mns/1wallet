@@ -55,9 +55,15 @@ abstract final class AppColors {
   static const Color dangerLight = Color(0xFFBA1A1A);
   static const Color dangerDark = Color(0xFFFFB4AB);
   static const Color warning = Color(0xFF946200);
-  static const Color lightBackground = Color(0xFFF8F9FF);
+  static const Color lightBackground = Color(0xFFFFFBFF);
   static const Color darkBackground = Color(0xFF101318);
   static const Color amoledBackground = Color(0xFF000000);
+
+  /// AMOLED surface-container ramp (low → highest) layered on pure black.
+  static const Color amoledSurfaceLow = Color(0xFF080808);
+  static const Color amoledSurface = Color(0xFF0E0E0E);
+  static const Color amoledSurfaceHigh = Color(0xFF151515);
+  static const Color amoledSurfaceHighest = Color(0xFF1C1C1C);
   static const Color launchBackground = Color(0xFF0F1820);
   static const Color launchBackgroundDeep = Color(0xFF0B1218);
   static const Color launchPrimary = Color(0xFFA9C7FF);
@@ -65,6 +71,10 @@ abstract final class AppColors {
   static const Color launchGold = Color(0xFFDFC894);
   static const Color launchText = Color(0xFFF4F7FB);
   static const Color launchMutedText = Color(0xFFC8D3DF);
+
+  /// Colour stored for accounts created during onboarding (persisted data;
+  /// equals Material's blueAccent and must not change).
+  static const Color defaultAccountColor = Color(0xFF448AFF);
 
   static const List<Color> accountPalette = [
     // Original colors
@@ -119,4 +129,8 @@ extension AppSemanticColors on ColorScheme {
   Color get positive => brightness == Brightness.dark
       ? AppColors.positiveDark
       : AppColors.positiveLight;
+
+  /// Attention / pending / partially-granted states. Mirrors the app's
+  /// long-standing `MetricTone.warning` mapping.
+  Color get warning => secondary;
 }

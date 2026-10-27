@@ -223,12 +223,6 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final isIncome = candidate.transactionType == 'income';
-    final colorScheme = isIncome
-        ? ColorScheme.fromSeed(
-            seedColor: Colors.green,
-            brightness: theme.brightness,
-          )
-        : scheme;
 
     // Glass is reserved for navigation/control chrome (per the
     // liquid_glass_widgets guidance); scrolling list rows stay opaque.
@@ -245,7 +239,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                 icon: candidate.source == 'sms'
                     ? Icons.sms_rounded
                     : Icons.receipt_long_rounded,
-                color: colorScheme.primary,
+                color: isIncome ? scheme.positive : scheme.primary,
                 compact: true,
               ),
               const SizedBox(width: AppSpacing.md),
@@ -287,9 +281,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleLarge?.copyWith(
-                      color: isIncome
-                          ? positiveTone(context)
-                          : scheme.onSurface,
+                      color: isIncome ? scheme.positive : scheme.onSurface,
                       fontWeight: FontWeight.w900,
                       letterSpacing: -0.5,
                     ),

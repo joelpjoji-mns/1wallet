@@ -80,7 +80,7 @@ class SettingsProfileSection extends StatelessWidget {
                               : Icons.cloud_outlined,
                           size: 14,
                           color: !offline && user?.isGoogleProvider == true
-                              ? Colors.green
+                              ? theme.colorScheme.positive
                               : theme.colorScheme.primary,
                         ),
                         const SizedBox(width: 4),

@@ -112,19 +112,19 @@ class _CardAccountTile extends ConsumerWidget {
 
     if (dueStatus != null) {
       if (dueStatus.isPaid) {
-        badgeColor = Colors.green.withAlphaFactor(0.2);
-        badgeTextColor = Colors.green;
+        badgeColor = scheme.positive.withValues(alpha: 0.2);
+        badgeTextColor = scheme.positive;
         badgeLabel = 'Bill paid';
         badgeIcon = Icons.check_circle_outline_rounded;
       } else if (dueStatus.isOverdue) {
-        badgeColor = scheme.error.withAlphaFactor(0.2);
+        badgeColor = scheme.error.withValues(alpha: 0.2);
         badgeTextColor = scheme.error;
         badgeLabel = dueStatus.daysUntilDue == -1
             ? 'Overdue yesterday'
             : 'Overdue (${-dueStatus.daysUntilDue}d ago)';
         badgeIcon = Icons.warning_amber_rounded;
       } else if (dueStatus.isDueSoon) {
-        badgeColor = scheme.error.withAlphaFactor(0.2);
+        badgeColor = scheme.error.withValues(alpha: 0.2);
         badgeTextColor = scheme.error;
         badgeLabel = dueStatus.daysUntilDue == 0
             ? 'Due today'
@@ -133,7 +133,7 @@ class _CardAccountTile extends ConsumerWidget {
                   : 'Due in ${dueStatus.daysUntilDue} days');
         badgeIcon = Icons.alarm_rounded;
       } else if (dueStatus.isStatementGenerated) {
-        badgeColor = scheme.primary.withAlphaFactor(0.18);
+        badgeColor = scheme.primary.withValues(alpha: 0.18);
         badgeTextColor = scheme.primary;
         badgeLabel = 'Bill ready · Due in ${dueStatus.daysUntilDue}d';
         badgeIcon = Icons.receipt_long_rounded;

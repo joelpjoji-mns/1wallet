@@ -3,13 +3,15 @@ import 'package:flutter/material.dart';
 
 class LiquidProgressIndicator extends StatefulWidget {
   final double value;
-  final Color color;
+
+  /// Wave fill; defaults to the theme's primary colour.
+  final Color? color;
   final Color backgroundColor;
 
   const LiquidProgressIndicator({
     super.key,
     required this.value,
-    this.color = Colors.blue,
+    this.color,
     this.backgroundColor = Colors.transparent,
   });
 
@@ -39,6 +41,7 @@ class _LiquidProgressIndicatorState extends State<LiquidProgressIndicator>
 
   @override
   Widget build(BuildContext context) {
+    final color = widget.color ?? Theme.of(context).colorScheme.primary;
     return RepaintBoundary(
       child: AnimatedBuilder(
         animation: _controller,
@@ -46,7 +49,7 @@ class _LiquidProgressIndicatorState extends State<LiquidProgressIndicator>
           return CustomPaint(
             painter: _LiquidPainter(
               value: widget.value,
-              color: widget.color,
+              color: color,
               phase: _controller.value * 2 * math.pi,
             ),
           );

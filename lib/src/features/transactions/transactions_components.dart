@@ -332,9 +332,7 @@ class MiniFlowRail extends StatelessWidget {
             child: MiniFlowStat(
               label: 'INCOME',
               value: income,
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? AppColors.positiveDark
-                  : AppColors.positiveLight,
+              color: scheme.positive,
             ),
           ),
           const SizedBox(width: AppSpacing.sm),

@@ -9,13 +9,13 @@ import '../../startup/startup_state.dart';
 import '../../widgets/app_kit.dart';
 
 abstract final class LaunchPalette {
-  static const background = Color(0xFF0F1820);
-  static const backgroundDeep = Color(0xFF0B1218);
-  static const primary = Color(0xFFA9C7FF);
-  static const tertiary = Color(0xFF9BDDB5);
-  static const gold = Color(0xFFDFC894);
-  static const text = Color(0xFFF4F7FB);
-  static const mutedText = Color(0xFFC8D3DF);
+  static const background = AppColors.launchBackground;
+  static const backgroundDeep = AppColors.launchBackgroundDeep;
+  static const primary = AppColors.launchPrimary;
+  static const tertiary = AppColors.launchTertiary;
+  static const gold = AppColors.launchGold;
+  static const text = AppColors.launchText;
+  static const mutedText = AppColors.launchMutedText;
 }
 
 class _ResolvedLaunchPalette {

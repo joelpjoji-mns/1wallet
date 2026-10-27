@@ -152,7 +152,7 @@ class _DiagnosticEventTile extends StatelessWidget {
     final rawText = event.rawText?.trim();
     final showRaw = rawText != null && rawText.isNotEmpty;
     final decisionColor = switch (event.decision) {
-      'queued' => positiveTone(context),
+      'queued' => scheme.positive,
       'duplicate' => scheme.tertiary,
       'error' => scheme.error,
       _ => scheme.onSurfaceVariant,

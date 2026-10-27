@@ -717,10 +717,10 @@ class _RoundRecurringIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final foreground = color.computeLuminance() > 0.5
-        ? scheme.onSurface
-        : scheme.surface;
+    final foreground =
+        ThemeData.estimateBrightnessForColor(color) == Brightness.dark
+        ? Colors.white
+        : Colors.black;
     return Container(
       width: 56,
       height: 56,
@@ -2076,14 +2076,14 @@ String? _recurringExtraLine(
     return (
       label: formatDueDate(date, locale),
       icon: Icons.notification_important_outlined,
-      color: scheme.secondary,
+      color: scheme.warning,
     );
   }
   if (diff == 1) {
     return (
       label: formatDueDate(date, locale),
       icon: Icons.history_toggle_off_rounded,
-      color: scheme.secondary,
+      color: scheme.warning,
     );
   }
   return (

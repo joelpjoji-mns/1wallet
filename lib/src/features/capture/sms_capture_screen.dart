@@ -826,7 +826,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                                                       color:
                                                           parsed.transactionType ==
                                                               'income'
-                                                          ? scheme.primary
+                                                          ? scheme.positive
                                                           : scheme.error,
                                                     ),
                                               ),

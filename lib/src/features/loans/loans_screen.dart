@@ -1358,10 +1358,10 @@ class _RoundTileIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final foreground = color.computeLuminance() > 0.5
-        ? scheme.onSurface
-        : scheme.surface;
+    final foreground =
+        ThemeData.estimateBrightnessForColor(color) == Brightness.dark
+        ? Colors.white
+        : Colors.black;
     return Container(
       width: 56,
       height: 56,
@@ -1379,8 +1379,8 @@ class NumberedDotPainter extends FlDotPainter {
 
   NumberedDotPainter(
     this.label, {
-    this.color = Colors.green,
-    this.textColor = Colors.white,
+    required this.color,
+    required this.textColor,
     this.radius = 10,
   });
 
@@ -2220,11 +2220,19 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
         ),
         Row(
           children: [
-            const Icon(Icons.zoom_out_rounded, size: 20, color: Colors.grey),
+            Icon(
+              Icons.zoom_out_rounded,
+              size: 20,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
             Expanded(
               child: Slider(value: _zoomPercent, onChanged: _onSliderChange),
             ),
-            const Icon(Icons.zoom_in_rounded, size: 20, color: Colors.grey),
+            Icon(
+              Icons.zoom_in_rounded,
+              size: 20,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ],
         ),
       ],
@@ -2544,18 +2552,14 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               children: [
                 Row(
                   children: [
-                    const Icon(
-                      Icons.bolt_rounded,
-                      color: Colors.white,
-                      size: 28,
-                    ),
+                    Icon(Icons.bolt_rounded, color: scheme.onPrimary, size: 28),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Accelerated Impact',
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(
-                              color: Colors.white,
+                              color: scheme.onPrimary,
                               fontWeight: FontWeight.bold,
                             ),
                       ),
@@ -2580,7 +2584,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                       'You could save $savedText in interest and finish $monthsSaved month${monthsSaved == 1 ? '' : 's'} early!',
                       style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(
-                            color: Colors.white,
+                            color: scheme.onPrimary,
                             fontWeight: FontWeight.w900,
                             height: 1.2,
                           ),
@@ -2908,12 +2912,7 @@ String _loanCadenceLabel(AccountLoanDetails details) {
     );
   }
   final tone = _scheduleTone(date);
-  final color = switch (tone) {
-    MetricTone.danger => scheme.error,
-    MetricTone.warning => scheme.secondary,
-    MetricTone.positive => scheme.tertiary,
-    MetricTone.standard => scheme.primary,
-  };
+  final color = tone.resolve(scheme);
   return (
     label: _scheduleStatusLabel(date, locale: locale, historyMode: historyMode),
     icon: historyMode
