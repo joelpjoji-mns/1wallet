@@ -9,6 +9,7 @@ import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
+import '../common/route_scaffold.dart';
 import '../../widgets/privacy_text.dart';
 import '../notifications/notification_engine.dart';
 import 'capture_queue.dart';
@@ -136,84 +137,73 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
 
     return GlassIsolationScope(
       defaultQuality: GlassQuality.standard,
-      child: Scaffold(
-        appBar: GlassAppBar(
-          title: Text(
-            'Review & Inbox',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+      child: RouteScaffold(
+        title: 'Review & Inbox',
+        // The route sits under a drawer-enabled DrawerConfig but has always
+        // offered a back action; keep that navigation.
+        hasDrawer: false,
+        actions: [
+          HeaderIconButton(
+            icon: Icons.settings_suggest_outlined,
+            semanticLabel: 'Auto-capture settings',
+            tooltip: 'Auto-capture settings',
+            onPressed: () => context.push('/capture-settings'),
           ),
-          leading: Navigator.of(context).canPop()
-              ? const AppBackAction()
-              : null,
-          centerTitle: false,
-          actions: [
-            IconButton(
-              tooltip: 'Auto-capture settings',
-              icon: const Icon(Icons.settings_suggest_outlined),
-              onPressed: () => context.push('/capture-settings'),
+          if (candidates.isNotEmpty) ...[
+            HeaderIconButton(
+              icon: Icons.done_all_rounded,
+              semanticLabel: 'Approve All',
+              tooltip: 'Approve All',
+              onPressed: () => _approveAll(context, ref, candidates),
             ),
-            if (candidates.isNotEmpty) ...[
-              IconButton(
-                tooltip: 'Approve All',
-                onPressed: () => _approveAll(context, ref, candidates),
-                icon: const Icon(Icons.done_all_rounded),
-              ),
-              IconButton(
-                tooltip: 'Dismiss All',
-                onPressed: () => _dismissAll(context, ref, candidates),
-                icon: const Icon(Icons.clear_all_rounded),
-              ),
-            ],
-            if (unreadCount > 0)
-              IconButton(
-                tooltip: 'Mark all read',
-                onPressed: () => _markAllRead(ref, allNotifications),
-                icon: const Icon(Icons.mark_email_read_outlined),
-              ),
+            HeaderIconButton(
+              icon: Icons.clear_all_rounded,
+              semanticLabel: 'Dismiss All',
+              tooltip: 'Dismiss All',
+              onPressed: () => _dismissAll(context, ref, candidates),
+            ),
           ],
-        ),
-        body: SafeArea(
-          child: RefreshIndicator(
-            onRefresh: _refreshSpooled,
-            child: items.isEmpty
-                ? ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: [
-                      SizedBox(
-                        height: MediaQuery.sizeOf(context).height * 0.7,
-                        child: _buildEmptyState(context),
-                      ),
-                    ],
-                  )
-                : ListView.separated(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg,
-                      AppSpacing.md,
-                      AppSpacing.lg,
-                      AppSpacing.xxl,
+          if (unreadCount > 0)
+            HeaderIconButton(
+              icon: Icons.mark_email_read_outlined,
+              semanticLabel: 'Mark all read',
+              tooltip: 'Mark all read',
+              onPressed: () => _markAllRead(ref, allNotifications),
+            ),
+        ],
+        scrollView: RefreshIndicator(
+          onRefresh: _refreshSpooled,
+          child: items.isEmpty
+              ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    SizedBox(
+                      height: MediaQuery.sizeOf(context).height * 0.7,
+                      child: _buildEmptyState(context),
                     ),
-                    itemCount: items.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: AppSpacing.md),
-                    itemBuilder: (context, index) {
-                      final item = items[index];
-                      if (item is CaptureCandidate) {
-                        return _buildCandidateCard(context, ref, state, item);
-                      } else if (item is AppNotification) {
-                        return _buildNotificationCard(
-                          context,
-                          ref,
-                          state,
-                          item,
-                        );
-                      }
-                      return const SizedBox();
-                    },
+                  ],
+                )
+              : ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    AppSpacing.md,
+                    AppSpacing.lg,
+                    AppSpacing.xxl,
                   ),
-          ),
+                  itemCount: items.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: AppSpacing.md),
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    if (item is CaptureCandidate) {
+                      return _buildCandidateCard(context, ref, state, item);
+                    } else if (item is AppNotification) {
+                      return _buildNotificationCard(context, ref, state, item);
+                    }
+                    return const SizedBox();
+                  },
+                ),
         ),
       ),
     );
@@ -243,7 +233,10 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
             decoration: BoxDecoration(
               color: AppColors.amoledBackground,
               borderRadius: BorderRadius.circular(AppRadii.lg),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.09), width: 0.8),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.09),
+                width: 0.8,
+              ),
             ),
             child: content,
           ),

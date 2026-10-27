@@ -6,6 +6,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
+import '../common/route_scaffold.dart';
 import 'sms_inbox_reader.dart'; // we put the native methods here
 
 class NotificationAppsScreen extends ConsumerStatefulWidget {
@@ -82,113 +83,85 @@ class _NotificationAppsScreenState
 
     return GlassIsolationScope(
       defaultQuality: GlassQuality.premium,
-      child: Scaffold(
-        appBar: GlassAppBar(
-          title: Text(
-            'Target Apps',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          leading: Navigator.of(context).canPop()
-              ? const AppBackAction()
-              : null,
-          centerTitle: false,
-        ),
-        body: SafeArea(
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 800),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    child: PremiumSearchInput(
-                      hintText: 'Search apps...',
-                      value: _searchQuery,
-                      onChanged: (value) =>
-                          setState(() => _searchQuery = value),
-                    ),
-                  ),
-                  if (_isLoading)
-                    const Expanded(
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  else if (_apps == null || _apps!.isEmpty)
-                    const Expanded(
-                      child: EmptyState(
-                        icon: Icons.apps_outlined,
-                        title: 'No apps found',
-                        body: 'No apps found or unsupported platform.',
-                      ),
-                    )
-                  else if (filteredApps.isEmpty)
-                    Expanded(
-                      child: EmptyState(
-                        icon: Icons.search_off_rounded,
-                        title: 'No matching apps',
-                        body: 'No apps match "$_searchQuery".',
-                        actionLabel: 'Clear search',
-                        actionIcon: Icons.clear_rounded,
-                        onAction: () => setState(() => _searchQuery = ''),
-                      ),
-                    )
-                  else
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: filteredApps.length,
-                        itemBuilder: (context, index) {
-                          final app = filteredApps[index];
-                          final isEnabled = targetPackages.contains(
-                            app.packageName.toLowerCase(),
-                          );
-
-                          return AppSwitchListTile(
-                            secondary: AppIconWidget(
-                              packageName: app.packageName,
-                            ),
-                            title: Text(
-                              app.appName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            subtitle: Text(
-                              app.packageName,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: scheme.onSurfaceVariant,
-                              ),
-                            ),
-                            value: isEnabled,
-                            onChanged: (val) {
-                              final next = Set<String>.from(
-                                prefs.notificationTargetPackages,
-                              );
-                              if (val) {
-                                next.add(app.packageName.toLowerCase());
-                              } else {
-                                next.remove(app.packageName.toLowerCase());
-                              }
-                              ref
-                                  .read(ledgerProvider.notifier)
-                                  .updatePreferencesWith(
-                                    (livePreferences) =>
-                                        livePreferences.copyWith(
-                                          notificationTargetPackages: next
-                                              .toList(),
-                                        ),
-                                  );
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                ],
+      child: RouteScaffold(
+        title: 'Target Apps',
+        scrollView: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: PremiumSearchInput(
+                hintText: 'Search apps...',
+                value: _searchQuery,
+                onChanged: (value) => setState(() => _searchQuery = value),
               ),
             ),
-          ),
+            if (_isLoading)
+              const Expanded(child: AppLoadingState())
+            else if (_apps == null || _apps!.isEmpty)
+              const Expanded(
+                child: EmptyState(
+                  icon: Icons.apps_outlined,
+                  title: 'No apps found',
+                  body: 'No apps found or unsupported platform.',
+                ),
+              )
+            else if (filteredApps.isEmpty)
+              Expanded(
+                child: EmptyState(
+                  icon: Icons.search_off_rounded,
+                  title: 'No matching apps',
+                  body: 'No apps match "$_searchQuery".',
+                  actionLabel: 'Clear search',
+                  actionIcon: Icons.clear_rounded,
+                  onAction: () => setState(() => _searchQuery = ''),
+                ),
+              )
+            else
+              Expanded(
+                child: ListView.builder(
+                  itemCount: filteredApps.length,
+                  itemBuilder: (context, index) {
+                    final app = filteredApps[index];
+                    final isEnabled = targetPackages.contains(
+                      app.packageName.toLowerCase(),
+                    );
+
+                    return AppSwitchListTile(
+                      secondary: AppIconWidget(packageName: app.packageName),
+                      title: Text(
+                        app.appName,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text(
+                        app.packageName,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                      value: isEnabled,
+                      onChanged: (val) {
+                        final next = Set<String>.from(
+                          prefs.notificationTargetPackages,
+                        );
+                        if (val) {
+                          next.add(app.packageName.toLowerCase());
+                        } else {
+                          next.remove(app.packageName.toLowerCase());
+                        }
+                        ref
+                            .read(ledgerProvider.notifier)
+                            .updatePreferencesWith(
+                              (livePreferences) => livePreferences.copyWith(
+                                notificationTargetPackages: next.toList(),
+                              ),
+                            );
+                      },
+                    );
+                  },
+                ),
+              ),
+          ],
         ),
       ),
     );

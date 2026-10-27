@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
+import 'route_scaffold.dart';
 import '../../widgets/app_glass_page.dart';
 
 class PickerOption<T> {
@@ -110,113 +110,91 @@ class _FullScreenPickerState<T> extends State<_FullScreenPicker<T>> {
     final scheme = Theme.of(context).colorScheme;
 
     return AppGlassPage(
-      child: Scaffold(
-        appBar: GlassAppBar(
-          leading: GlassIconButton(
-            icon: const Icon(Icons.arrow_back_rounded),
-            semanticLabel: 'Back',
-            useOwnLayer: true,
-            onPressed: () => Navigator.of(context).pop(),
+      child: RouteScaffold(
+        title: widget.title,
+        actions: [
+          if (widget.actionIcon != null && widget.onAction != null)
+            HeaderIconButton(
+              icon: widget.actionIcon!,
+              semanticLabel: widget.actionTooltip,
+              tooltip: widget.actionTooltip ?? '',
+              onPressed: widget.onAction,
+            ),
+        ],
+        scrollView: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            0,
+            AppSpacing.md,
+            AppSpacing.xxl,
           ),
-          title: Text(
-            widget.title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          centerTitle: false,
-          actions: [
-            if (widget.actionIcon != null && widget.onAction != null)
-              Tooltip(
-                message: widget.actionTooltip ?? '',
-                child: GlassIconButton(
-                  icon: Icon(widget.actionIcon),
-                  semanticLabel: widget.actionTooltip,
-                  useOwnLayer: true,
-                  onPressed: widget.onAction,
+          children: [
+            if (widget.subtitle != null) ...[
+              Text(
+                widget.subtitle!,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
                 ),
               ),
-          ],
-        ),
-        body: SafeArea(
-          top: false,
-          child: AppTopFadeMask(
-            child: ListView(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              0,
-              AppSpacing.md,
-              AppSpacing.xxl,
-            ),
-            children: [
-              if (widget.subtitle != null) ...[
-                Text(
-                  widget.subtitle!,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-              ],
-              if (widget.searchable) ...[
-                PremiumSearchInput(
-                  hintText: widget.searchHint,
-                  value: _query,
-                  onChanged: (value) => setState(() => _query = value),
-                ),
-                const SizedBox(height: AppSpacing.md),
-              ],
-              if (widget.allowClear) ...[
-                Semantics(
+              const SizedBox(height: AppSpacing.md),
+            ],
+            if (widget.searchable) ...[
+              PremiumSearchInput(
+                hintText: widget.searchHint,
+                value: _query,
+                onChanged: (value) => setState(() => _query = value),
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
+            if (widget.allowClear) ...[
+              Semantics(
+                selected: widget.selectedValue == null,
+                child: PremiumRow(
+                  icon: Icons.clear_rounded,
+                  title: widget.clearLabel,
+                  subtitle: 'Show every option',
                   selected: widget.selectedValue == null,
+                  onTap: () => Navigator.of(context).pop(),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+            if (visibleOptions.isEmpty)
+              if (query.isEmpty)
+                // The caller supplied zero options - this is not a search
+                // dead-end, so don't offer a "Clear search" action that
+                // has nothing to clear.
+                const EmptyState(
+                  icon: Icons.inbox_outlined,
+                  title: 'Nothing to choose from',
+                  body: 'No options are available right now.',
+                )
+              else
+                EmptyState(
+                  icon: Icons.search_off_rounded,
+                  title: 'No matches',
+                  body: 'Try a different search term.',
+                  actionLabel: 'Clear search',
+                  onAction: () => setState(() => _query = ''),
+                )
+            else
+              for (final option in visibleOptions) ...[
+                Semantics(
+                  selected: option.value == widget.selectedValue,
                   child: PremiumRow(
-                    icon: Icons.clear_rounded,
-                    title: widget.clearLabel,
-                    subtitle: 'Show every option',
-                    selected: widget.selectedValue == null,
-                    onTap: () => Navigator.of(context).pop(),
+                    icon: option.icon ?? Icons.circle_outlined,
+                    title: option.title,
+                    subtitle: option.subtitle,
+                    iconColor: option.iconColor,
+                    selected: option.value == widget.selectedValue,
+                    onTap: () => Navigator.of(context).pop(option.value),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
               ],
-              if (visibleOptions.isEmpty)
-                if (query.isEmpty)
-                  // The caller supplied zero options - this is not a search
-                  // dead-end, so don't offer a "Clear search" action that
-                  // has nothing to clear.
-                  const EmptyState(
-                    icon: Icons.inbox_outlined,
-                    title: 'Nothing to choose from',
-                    body: 'No options are available right now.',
-                  )
-                else
-                  EmptyState(
-                    icon: Icons.search_off_rounded,
-                    title: 'No matches',
-                    body: 'Try a different search term.',
-                    actionLabel: 'Clear search',
-                    onAction: () => setState(() => _query = ''),
-                  )
-              else
-                for (final option in visibleOptions) ...[
-                  Semantics(
-                    selected: option.value == widget.selectedValue,
-                    child: PremiumRow(
-                      icon: option.icon ?? Icons.circle_outlined,
-                      title: option.title,
-                      subtitle: option.subtitle,
-                      iconColor: option.iconColor,
-                      selected: option.value == widget.selectedValue,
-                      onTap: () => Navigator.of(context).pop(option.value),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                ],
-            ],
-          ),
+          ],
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

@@ -18,6 +18,7 @@ import '../../ledger/ledger_selectors.dart';
 import '../../utils/number_formatter.dart';
 import '../../widgets/privacy_text.dart';
 import '../../widgets/app_kit.dart';
+import '../common/route_scaffold.dart';
 import '../common/category_hierarchy_picker.dart';
 import '../common/full_screen_picker.dart';
 
@@ -117,12 +118,13 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(ledgerProvider);
     final uniqueNotes = _recentNotes(state.transactions);
-    final allTags = state.transactions
-        .expand((t) => t.tags)
-        .where((t) => t.trim().isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort();
+    final allTags =
+        state.transactions
+            .expand((t) => t.tags)
+            .where((t) => t.trim().isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
     final editingTransaction = widget.transactionId == null
         ? null
         : state.transactions.firstWhereOrNull(
@@ -182,55 +184,33 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       child: DefaultTabController(
         length: 2,
         initialIndex: widget.initialTab,
-        child: Scaffold(
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          appBar: GlassAppBar(
-            backgroundColor: Theme.of(context).colorScheme.surface,
-            centerTitle: false,
-            leading: IconButton(
-              icon: Icon(
-                Icons.arrow_back_rounded,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-              onPressed: () {
-                if (context.canPop()) {
-                  context.pop();
-                } else {
-                  context.go('/');
-                }
-              },
-            ),
-            title: Text(
-              editingTransaction == null ? 'Add record' : 'Edit record',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-            actions: [
-              IconButton(
-                icon: _isScanning
-                    ? SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                      )
-                    : Icon(
-                        Icons.camera_alt_outlined,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                onPressed: _isScanning
-                    ? null
-                    : () => _scanReceipt(ImageSource.camera),
-              ),
-              HeaderSaveAction(isSaving: _isSaving, onPressed: _saveRecord),
-            ],
+        child: RouteScaffold(
+          title: editingTransaction == null ? 'Add record' : 'Edit record',
+          hasDrawer: false,
+          leading: HeaderIconButton(
+            icon: Icons.arrow_back_rounded,
+            semanticLabel: 'Back',
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/');
+              }
+            },
           ),
-          body: SafeArea(
-          child: Column(
+          actions: [
+            HeaderIconButton(
+              icon: Icons.camera_alt_outlined,
+              loading: _isScanning,
+              semanticLabel: 'Scan receipt',
+              tooltip: 'Scan receipt',
+              onPressed: _isScanning
+                  ? null
+                  : () => _scanReceipt(ImageSource.camera),
+            ),
+            HeaderSaveAction(isSaving: _isSaving, onPressed: _saveRecord),
+          ],
+          scrollView: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
@@ -398,9 +378,9 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                           const SizedBox(width: AppSpacing.sm),
                           GlassDropdownPill<String>(
                             value: txCurrency,
-                            options: availableCurrencies(state)
-                                .map((c) => GlassDropdownOption(c, c))
-                                .toList(),
+                            options: availableCurrencies(
+                              state,
+                            ).map((c) => GlassDropdownOption(c, c)).toList(),
                             onChanged: (val) => setState(() {
                               _transactionCurrency = val;
                               _localAmountEdited = false;
@@ -501,7 +481,10 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                             }
                             final lowerQuery = query.toLowerCase();
                             return uniqueNotes
-                                .where((note) => note.toLowerCase().contains(lowerQuery))
+                                .where(
+                                  (note) =>
+                                      note.toLowerCase().contains(lowerQuery),
+                                )
                                 .take(8);
                           },
                           fieldViewBuilder:
@@ -531,7 +514,9 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                               },
                           optionsViewBuilder: (context, onSelected, options) {
                             final optionsList = options.toList();
-                            if (optionsList.isEmpty) return const SizedBox.shrink();
+                            if (optionsList.isEmpty) {
+                              return const SizedBox.shrink();
+                            }
                             return Align(
                               alignment: Alignment.bottomLeft,
                               child: Material(
@@ -555,7 +540,10 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                         final option = optionsList[index];
                                         return ListTile(
                                           dense: true,
-                                          leading: const Icon(Icons.history_rounded, size: 18),
+                                          leading: const Icon(
+                                            Icons.history_rounded,
+                                            size: 18,
+                                          ),
                                           title: Text(option),
                                           onTap: () => onSelected(option),
                                         );
@@ -576,7 +564,8 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                               for (final tag in _tags)
                                 InputChip(
                                   label: Text(tag),
-                                  onDeleted: () => setState(() => _tags.remove(tag)),
+                                  onDeleted: () =>
+                                      setState(() => _tags.remove(tag)),
                                   visualDensity: VisualDensity.compact,
                                 ),
                             ],
@@ -590,15 +579,20 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                           optionsBuilder: (textEditingValue) {
                             final query = textEditingValue.text.trim();
                             final lowerQuery = query.toLowerCase();
-                            final unselected = allTags.where((t) => !_tags.contains(t)).toList();
+                            final unselected = allTags
+                                .where((t) => !_tags.contains(t))
+                                .toList();
                             if (query.isEmpty) {
                               return const Iterable<String>.empty();
                             }
                             final matches = unselected
-                                .where((t) => t.toLowerCase().contains(lowerQuery))
+                                .where(
+                                  (t) => t.toLowerCase().contains(lowerQuery),
+                                )
                                 .toList();
-                            final exactMatch = allTags
-                                .any((t) => t.toLowerCase() == lowerQuery);
+                            final exactMatch = allTags.any(
+                              (t) => t.toLowerCase() == lowerQuery,
+                            );
                             if (!exactMatch && query.isNotEmpty) {
                               matches.insert(0, '__create__:$query');
                             }
@@ -639,7 +633,8 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                   ),
                                   onSubmitted: (value) {
                                     final val = value.trim();
-                                    if (val.isNotEmpty && !_tags.contains(val)) {
+                                    if (val.isNotEmpty &&
+                                        !_tags.contains(val)) {
                                       setState(() {
                                         _tags.add(val);
                                         textEditingController.clear();
@@ -672,17 +667,24 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                       itemBuilder: (context, index) {
                                         final option = optionsList[index];
                                         if (option.startsWith('__create__:')) {
-                                          final createVal = option.substring('__create__:'.length);
+                                          final createVal = option.substring(
+                                            '__create__:'.length,
+                                          );
                                           return ListTile(
                                             dense: true,
-                                            leading: const Icon(Icons.add_rounded),
+                                            leading: const Icon(
+                                              Icons.add_rounded,
+                                            ),
                                             title: Text('Create "$createVal"'),
                                             onTap: () => onSelected(createVal),
                                           );
                                         }
                                         return ListTile(
                                           dense: true,
-                                          leading: const Icon(Icons.label_outline_rounded, size: 18),
+                                          leading: const Icon(
+                                            Icons.label_outline_rounded,
+                                            size: 18,
+                                          ),
                                           title: Text('#$option'),
                                           onTap: () => onSelected(option),
                                         );
@@ -741,7 +743,9 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                         ),
                         const SizedBox(height: AppSpacing.md),
                         Material(
-                          color: Theme.of(context).colorScheme.surfaceContainerLow,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerLow,
                           borderRadius: BorderRadius.circular(AppRadii.md),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -751,7 +755,9 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(AppRadii.md),
                               border: Border.all(
-                                color: Theme.of(context).colorScheme.outlineVariant,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.outlineVariant,
                               ),
                             ),
                             child: Row(
@@ -768,16 +774,19 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                     style: TextStyle(
                                       fontWeight: FontWeight.w700,
                                       fontSize: 13,
-                                      color: Theme.of(context).colorScheme.onSurface,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface,
                                     ),
                                   ),
                                 ),
                                 GlassDropdownPill<String>(
-                                  value: const [
-                                    'cleared',
-                                    'pending',
-                                    'void',
-                                  ].contains(_status)
+                                  value:
+                                      const [
+                                        'cleared',
+                                        'pending',
+                                        'void',
+                                      ].contains(_status)
                                       ? _status!
                                       : 'cleared',
                                   options: const [
@@ -797,7 +806,8 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                       icon: Icons.block_rounded,
                                     ),
                                   ],
-                                  onChanged: (val) => setState(() => _status = val),
+                                  onChanged: (val) =>
+                                      setState(() => _status = val),
                                   semanticLabel: 'Select status',
                                 ),
                               ],
@@ -813,7 +823,6 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
             ],
           ),
         ),
-      ),
       ),
     );
   }
@@ -850,7 +859,10 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
     if (key == '%') {
       final current = amount.trim().isEmpty ? '0' : amount;
       final value = double.tryParse(current) ?? 0;
-      return _CalcState(amount: _trimNumber(value / 100), expression: expression);
+      return _CalcState(
+        amount: _trimNumber(value / 100),
+        expression: expression,
+      );
     }
     if (RegExp(r'^\d$').hasMatch(key)) {
       return _CalcState(
@@ -1239,10 +1251,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
         } else {
           await ref
               .read(ledgerProvider.notifier)
-              .updateTransactionStatus(
-                widget.plannedId!,
-                'finished',
-              );
+              .updateTransactionStatus(widget.plannedId!, 'finished');
         }
       }
 

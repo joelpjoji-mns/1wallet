@@ -2,13 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../auth/auth_controller.dart';
 import '../../features/launch/brand_widgets.dart';
 import '../../features/settings/permission_setup_controller.dart';
-import '../../widgets/app_kit.dart';
+import '../common/route_scaffold.dart';
 
 class PermissionsSetupScreen extends ConsumerStatefulWidget {
   const PermissionsSetupScreen({super.key});
@@ -81,92 +80,64 @@ class _PermissionsSetupScreenState
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    return Scaffold(
-      appBar: GlassAppBar(
-        title: Text(
-          'Setup',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-        ),
-        leading: Navigator.of(context).canPop() ? const AppBackAction() : null,
-        centerTitle: false,
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const StaggeredFadeIn(
-                      child: Text(
-                        'Almost\nthere.',
-                        textAlign: TextAlign.left,
-                        style: TextStyle(
-                          fontSize: 48,
-                          fontWeight: FontWeight.w900,
-                          height: 1.1,
-                          letterSpacing: -1,
-                        ),
+    return RouteScaffold(
+      title: 'Setup',
+      scrollView: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const StaggeredFadeIn(
+                    child: Text(
+                      'Almost\nthere.',
+                      textAlign: TextAlign.left,
+                      style: TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.w900,
+                        height: 1.1,
+                        letterSpacing: -1,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    StaggeredFadeIn(
-                      delay: const Duration(milliseconds: 100),
-                      child: Text(
-                        'To get the most out of 1Wallet, we need a few permissions to automate your expense tracking.',
-                        textAlign: TextAlign.left,
-                        style: TextStyle(
-                          color: scheme.onSurface.withValues(alpha: 0.7),
-                          fontSize: 16,
-                        ),
+                  ),
+                  const SizedBox(height: 16),
+                  StaggeredFadeIn(
+                    delay: const Duration(milliseconds: 100),
+                    child: Text(
+                      'To get the most out of 1Wallet, we need a few permissions to automate your expense tracking.',
+                      textAlign: TextAlign.left,
+                      style: TextStyle(
+                        color: scheme.onSurface.withValues(alpha: 0.7),
+                        fontSize: 16,
                       ),
                     ),
-                    const SizedBox(height: 32),
-                    StaggeredFadeIn(
-                      delay: const Duration(milliseconds: 200),
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: scheme.surfaceContainerHigh.withValues(
-                            alpha: 0.4,
-                          ),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(
-                            color: scheme.outlineVariant.withValues(alpha: 0.5),
-                          ),
+                  ),
+                  const SizedBox(height: 32),
+                  StaggeredFadeIn(
+                    delay: const Duration(milliseconds: 200),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainerHigh.withValues(
+                          alpha: 0.4,
                         ),
-                        child: Column(
-                          children: [
-                            if (!kIsWeb &&
-                                defaultTargetPlatform ==
-                                    TargetPlatform.android) ...[
-                              _buildPermissionItem(
-                                context,
-                                icon: Icons.sms_rounded,
-                                title: 'Auto-Capture (SMS)',
-                                description:
-                                    'Automatically track expenses from bank messages.',
-                              ),
-                              Divider(
-                                height: 1,
-                                color: scheme.outlineVariant.withValues(
-                                  alpha: 0.3,
-                                ),
-                                indent: 64,
-                              ),
-                            ],
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: scheme.outlineVariant.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          if (!kIsWeb &&
+                              defaultTargetPlatform ==
+                                  TargetPlatform.android) ...[
                             _buildPermissionItem(
                               context,
-                              icon: Icons.notifications_active_rounded,
-                              title: 'Notifications',
+                              icon: Icons.sms_rounded,
+                              title: 'Auto-Capture (SMS)',
                               description:
-                                  'Get timely reminders for upcoming bills.',
+                                  'Automatically track expenses from bank messages.',
                             ),
                             Divider(
                               height: 1,
@@ -175,46 +146,58 @@ class _PermissionsSetupScreenState
                               ),
                               indent: 64,
                             ),
-                            _buildPermissionItem(
-                              context,
-                              icon: Icons.camera_alt_rounded,
-                              title: 'Attachments',
-                              description:
-                                  'Attach receipts and documents to your transactions.',
-                            ),
                           ],
-                        ),
+                          _buildPermissionItem(
+                            context,
+                            icon: Icons.notifications_active_rounded,
+                            title: 'Notifications',
+                            description:
+                                'Get timely reminders for upcoming bills.',
+                          ),
+                          Divider(
+                            height: 1,
+                            color: scheme.outlineVariant.withValues(alpha: 0.3),
+                            indent: 64,
+                          ),
+                          _buildPermissionItem(
+                            context,
+                            icon: Icons.camera_alt_rounded,
+                            title: 'Attachments',
+                            description:
+                                'Attach receipts and documents to your transactions.',
+                          ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: StaggeredFadeIn(
+              delay: const Duration(milliseconds: 300),
+              child: FilledButton.icon(
+                onPressed: _requestingAll ? null : _finishSetup,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(56),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                icon: const Icon(Icons.check_circle_outline_rounded),
+                label: Text(
+                  _requestingAll ? 'Requesting...' : 'Finish Setup',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: StaggeredFadeIn(
-                delay: const Duration(milliseconds: 300),
-                child: FilledButton.icon(
-                  onPressed: _requestingAll ? null : _finishSetup,
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(56),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  icon: const Icon(Icons.check_circle_outline_rounded),
-                  label: Text(
-                    _requestingAll ? 'Requesting...' : 'Finish Setup',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

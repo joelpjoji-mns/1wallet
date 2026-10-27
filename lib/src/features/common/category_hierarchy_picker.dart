@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
+import 'route_scaffold.dart';
 import '../../widgets/app_glass_page.dart';
 
 Future<String?> showCategoryHierarchyPicker({
@@ -77,122 +77,108 @@ class _CategoryHierarchyPickerState extends State<_CategoryHierarchyPicker> {
         _handleBack();
       },
       child: AppGlassPage(
-        child: Scaffold(
-          appBar: GlassAppBar(
-            leading: Tooltip(
-              message: showingSubcategories ? 'Categories' : 'Back',
-              child: GlassIconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
-                semanticLabel: showingSubcategories ? 'Categories' : 'Back',
-                useOwnLayer: true,
-                onPressed: _handleBack,
-              ),
-            ),
-            title: Text(
-              showingSubcategories ? 'Choose subcategory' : widget.title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            centerTitle: false,
+        child: RouteScaffold(
+          title: showingSubcategories ? 'Choose subcategory' : widget.title,
+          leading: HeaderIconButton(
+            icon: Icons.arrow_back_rounded,
+            semanticLabel: showingSubcategories ? 'Categories' : 'Back',
+            tooltip: showingSubcategories ? 'Categories' : 'Back',
+            onPressed: _handleBack,
           ),
-          body: SafeArea(
-            top: false,
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                0,
-                AppSpacing.md,
-                AppSpacing.xxl,
+          scrollView: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              0,
+              AppSpacing.md,
+              AppSpacing.xxl,
+            ),
+            children: [
+              Text(
+                showingSubcategories
+                    ? 'Pick a subcategory under ${root.name}. Back returns to categories.'
+                    : 'Pick the closest category. The most-used categories are shown first.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
-              children: [
-                Text(
-                  showingSubcategories
-                      ? 'Pick a subcategory under ${root.name}. Back returns to categories.'
-                      : 'Pick the closest category. The most-used categories are shown first.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
+              const SizedBox(height: AppSpacing.md),
+              PremiumSearchInput(
+                hintText: showingSubcategories
+                    ? 'Search subcategories'
+                    : 'Search categories',
+                value: _query,
+                onChanged: (value) => setState(() => _query = value),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              if (showingSubcategories) ...[
+                PremiumRow(
+                  icon: Icons.arrow_upward_rounded,
+                  title: root.parentId == null
+                      ? 'All categories'
+                      : 'Back to parent',
+                  subtitle: 'Go up one level',
+                  iconColor: scheme.primary,
+                  onTap: _handleBack,
                 ),
-                const SizedBox(height: AppSpacing.md),
-                PremiumSearchInput(
-                  hintText: showingSubcategories
-                      ? 'Search subcategories'
-                      : 'Search categories',
-                  value: _query,
-                  onChanged: (value) => setState(() => _query = value),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                if (showingSubcategories) ...[
-                  PremiumRow(
-                    icon: Icons.arrow_upward_rounded,
-                    title: root.parentId == null
-                        ? 'All categories'
-                        : 'Back to parent',
-                    subtitle: 'Go up one level',
-                    iconColor: scheme.primary,
-                    onTap: _handleBack,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Semantics(
+                const SizedBox(height: AppSpacing.sm),
+                Semantics(
+                  selected: widget.selectedCategoryId == root.id,
+                  child: PremiumRow(
+                    icon: categoryIcon(root),
+                    title: 'Use ${root.name}',
+                    subtitle: 'Save without a subcategory',
+                    iconColor: categoryColor(root, context),
                     selected: widget.selectedCategoryId == root.id,
+                    onTap: () => Navigator.of(context).pop(root.id),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+              if (visibleOptions.isEmpty)
+                if (hasActiveQuery)
+                  EmptyState(
+                    icon: Icons.search_off_rounded,
+                    title: 'No matches',
+                    body: 'Try a different search term.',
+                    actionLabel: 'Clear search',
+                    onAction: () => setState(() => _query = ''),
+                  )
+                else
+                  // The list is genuinely empty here (not a search
+                  // dead-end): either there are no categories yet, or
+                  // this root has no subcategories left. Don't offer a
+                  // "Clear search" action that has nothing to clear.
+                  EmptyState(
+                    icon: Icons.category_outlined,
+                    title: showingSubcategories
+                        ? 'No subcategories'
+                        : 'No categories yet',
+                    body: showingSubcategories
+                        ? '${root.name} has no subcategories to choose from.'
+                        : 'Create a category first to pick one here.',
+                  )
+              else
+                for (final category in visibleOptions) ...[
+                  Semantics(
+                    selected: showingSubcategories
+                        ? selectedChildId == category.id
+                        : selectedRoot?.id == category.id,
                     child: PremiumRow(
-                      icon: categoryIcon(root),
-                      title: 'Use ${root.name}',
-                      subtitle: 'Save without a subcategory',
-                      iconColor: categoryColor(root, context),
-                      selected: widget.selectedCategoryId == root.id,
-                      onTap: () => Navigator.of(context).pop(root.id),
+                      icon: categoryIcon(category),
+                      title: category.name,
+                      subtitle: showingSubcategories
+                          ? categoryPath(widget.state, category)
+                          : _rootSubtitle(widget.state, category),
+                      iconColor: categoryColor(category, context),
+                      selected: showingSubcategories
+                          ? selectedChildId == category.id
+                          : selectedRoot?.id == category.id,
+                      onTap: () => _select(category),
                     ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                 ],
-                if (visibleOptions.isEmpty)
-                  if (hasActiveQuery)
-                    EmptyState(
-                      icon: Icons.search_off_rounded,
-                      title: 'No matches',
-                      body: 'Try a different search term.',
-                      actionLabel: 'Clear search',
-                      onAction: () => setState(() => _query = ''),
-                    )
-                  else
-                    // The list is genuinely empty here (not a search
-                    // dead-end): either there are no categories yet, or
-                    // this root has no subcategories left. Don't offer a
-                    // "Clear search" action that has nothing to clear.
-                    EmptyState(
-                      icon: Icons.category_outlined,
-                      title: showingSubcategories
-                          ? 'No subcategories'
-                          : 'No categories yet',
-                      body: showingSubcategories
-                          ? '${root.name} has no subcategories to choose from.'
-                          : 'Create a category first to pick one here.',
-                    )
-                else
-                  for (final category in visibleOptions) ...[
-                    Semantics(
-                      selected: showingSubcategories
-                          ? selectedChildId == category.id
-                          : selectedRoot?.id == category.id,
-                      child: PremiumRow(
-                        icon: categoryIcon(category),
-                        title: category.name,
-                        subtitle: showingSubcategories
-                            ? categoryPath(widget.state, category)
-                            : _rootSubtitle(widget.state, category),
-                        iconColor: categoryColor(category, context),
-                        selected: showingSubcategories
-                            ? selectedChildId == category.id
-                            : selectedRoot?.id == category.id,
-                        onTap: () => _select(category),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                  ],
-              ],
-            ),
+            ],
           ),
         ),
       ),
