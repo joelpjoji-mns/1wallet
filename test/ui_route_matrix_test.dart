@@ -10,6 +10,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:one_wallet_flutter/src/auth/auth_controller.dart';
+import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
 import 'package:one_wallet_flutter/src/routing/app_router.dart';
 import 'package:one_wallet_flutter/src/startup/startup_state.dart';
@@ -70,6 +71,31 @@ const _homeRoutes = <String>[
   '/updates',
   '/device-permissions',
 ];
+
+/// Empty states (dashboard tiles, lists, pickers) on a brand-new wallet.
+const _emptyLedgerRoutes = <String>[
+  '/',
+  '#tab1',
+  '#tab2',
+  '/accounts',
+  '/widgets',
+  '/review',
+  '/cards',
+  '/loans',
+  '/recurring',
+  '/categories',
+  '/sync',
+];
+
+const _emptyLedger = LedgerState(
+  version: 14,
+  userId: 'empty-test-user',
+  preferences: LedgerPreferences(),
+  accounts: [],
+  categories: [],
+  transactions: [],
+  captureCandidates: [],
+);
 
 /// Routes that are only reachable for a specific startup destination.
 const _gatedRoutes = <String, StartupDestination>{
@@ -167,9 +193,7 @@ Future<void> _loadFonts() async {
     );
     if (icons.existsSync()) {
       final loader = FontLoader('MaterialIcons')
-        ..addFont(
-          Future.value(ByteData.sublistView(icons.readAsBytesSync())),
-        );
+        ..addFont(Future.value(ByteData.sublistView(icons.readAsBytesSync())));
       await loader.load();
     }
   }
@@ -180,6 +204,7 @@ Future<void> _pumpVariant(
   _Variant variant,
   List<String> routes, {
   StartupDestination destination = StartupDestination.home,
+  LedgerState? ledger,
 }) async {
   tester.view.physicalSize = variant.size;
   tester.view.devicePixelRatio = 1;
@@ -191,7 +216,7 @@ Future<void> _pumpVariant(
   final prefs = await SharedPreferences.getInstance();
   final container = ProviderContainer(
     overrides: destination == StartupDestination.home
-        ? authenticatedSampleOverrides(prefs: prefs)
+        ? authenticatedSampleOverrides(prefs: prefs, ledger: ledger)
         : [
             startupStateProvider.overrideWithValue(
               StartupState.ready(destination: destination),
@@ -293,10 +318,22 @@ void main() {
   });
 
   for (final variant in _variants) {
-    testWidgets('home routes render cleanly (${variant.name})', (
+    testWidgets('home routes render cleanly (${variant.name})', (tester) async {
+      await _run(tester, () => _pumpVariant(tester, variant, _homeRoutes));
+    });
+
+    testWidgets('empty-ledger routes render cleanly (${variant.name})', (
       tester,
     ) async {
-      await _run(tester, () => _pumpVariant(tester, variant, _homeRoutes));
+      await _run(
+        tester,
+        () => _pumpVariant(
+          tester,
+          variant,
+          _emptyLedgerRoutes,
+          ledger: _emptyLedger,
+        ),
+      );
     });
 
     for (final entry in _gatedRoutes.entries) {
@@ -305,12 +342,9 @@ void main() {
       ) async {
         await _run(
           tester,
-          () => _pumpVariant(
-            tester,
-            variant,
-            [entry.key],
-            destination: entry.value,
-          ),
+          () => _pumpVariant(tester, variant, [
+            entry.key,
+          ], destination: entry.value),
         );
       });
     }

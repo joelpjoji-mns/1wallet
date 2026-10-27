@@ -184,14 +184,13 @@ class GlassDropdownPill<T> extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: scheme.onSurface,
-                    fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              const SizedBox(width: 2),
+              const SizedBox(width: AppSpacing.xxxs),
               Icon(
                 Icons.expand_more_rounded,
                 size: 17,
@@ -363,8 +362,12 @@ class AppScreen extends StatelessWidget {
       ),
     );
 
-    return ColoredBox(
-      color: Colors.transparent,
+    // A transparent Material gives text and ink a Material ancestor even
+    // when the page is used outside the MainShell scaffold (e.g. the
+    // stand-alone /accounts route); without it Text falls back to the
+    // framework's debug style.
+    return Material(
+      type: MaterialType.transparency,
       child: Stack(
         children: [
           SafeArea(
@@ -582,7 +585,7 @@ class HeaderIconButton extends StatelessWidget {
   Widget _buildButton(BuildContext context) {
     final badgeCount = badge ?? 0;
     return Padding(
-      padding: const EdgeInsets.only(left: 6.0),
+      padding: const EdgeInsets.only(left: AppSpacing.xxs),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -624,10 +627,10 @@ class HeaderIconButton extends StatelessWidget {
                   ),
                   child: Text(
                     badgeCount > 9 ? '9+' : '$badgeCount',
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: Theme.of(context).colorScheme.onError,
-                      fontSize: 10,
                       fontWeight: FontWeight.w800,
+                      height: 1.1,
                     ),
                   ),
                 ),
@@ -668,7 +671,9 @@ class AppActionButton extends StatelessWidget {
 
     final content = Container(
       height: compact ? 36 : 48,
-      padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 20),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? AppSpacing.sm : AppSpacing.lg,
+      ),
       decoration: BoxDecoration(
         color: enabled && onPressed != null ? bg : bg.withValues(alpha: 0.38),
         borderRadius: BorderRadius.circular(AppRadii.pill),
@@ -681,12 +686,16 @@ class AppActionButton extends StatelessWidget {
             Icon(icon, size: compact ? 16 : 18, color: fg),
             const SizedBox(width: AppSpacing.xs),
           ],
-          Text(
-            label,
-            style: TextStyle(
-              color: fg,
-              fontWeight: FontWeight.w700,
-              fontSize: compact ? 13 : 15,
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style:
+                  (compact
+                          ? Theme.of(context).textTheme.labelMedium
+                          : Theme.of(context).textTheme.labelLarge)
+                      ?.copyWith(color: fg, fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -754,7 +763,7 @@ class SectionCard extends StatelessWidget {
                       ),
                       if (subtitle != null)
                         Padding(
-                          padding: const EdgeInsets.only(top: 2),
+                          padding: const EdgeInsets.only(top: AppSpacing.xxxs),
                           child: Text(
                             subtitle!,
                             style: Theme.of(context).textTheme.bodySmall
@@ -1799,7 +1808,10 @@ class AppSheetHandle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Container(
-        margin: const EdgeInsets.only(top: 10, bottom: 6),
+        margin: const EdgeInsets.only(
+          top: AppSpacing.sm,
+          bottom: AppSpacing.xxs,
+        ),
         width: 36,
         height: 4,
         decoration: BoxDecoration(
