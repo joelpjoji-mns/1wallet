@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../design/tokens.dart';
 import '../theme/theme_controller.dart';
 import '../widgets/app_kit.dart';
 
@@ -250,21 +251,21 @@ class _AppLockGateState extends ConsumerState<AppLockGate>
       color: Theme.of(context).scaffoldBackgroundColor,
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(AppSpacing.xxl),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.lock_outline_rounded, size: 48),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               Text(
                 '1Wallet is locked',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               if (lock.message != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.sm),
                 Text(lock.message!, textAlign: TextAlign.center),
               ],
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.lg),
               FilledButton.icon(
                 onPressed: lock.busy
                     ? null

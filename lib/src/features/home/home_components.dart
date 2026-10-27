@@ -25,7 +25,7 @@ class HomeBalancePill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
-        vertical: 7,
+        vertical: AppSpacing.xs,
       ),
       decoration: BoxDecoration(
         color: scheme.primary.withAlphaFactor(isDark ? 0.28 : 0.16),
@@ -36,7 +36,7 @@ class HomeBalancePill extends StatelessWidget {
         children: [
           if (icon != null) ...[
             Icon(icon, size: 14, color: scheme.primary),
-            const SizedBox(width: 5),
+            const SizedBox(width: AppSpacing.xxs),
           ],
           Text(
             label,
@@ -47,7 +47,7 @@ class HomeBalancePill extends StatelessWidget {
             ),
           ),
           if (showChevron) ...[
-            const SizedBox(width: 2),
+            const SizedBox(width: AppSpacing.xxxs),
             Icon(Icons.expand_more_rounded, size: 15, color: scheme.primary),
           ],
         ],
@@ -73,12 +73,7 @@ class HomeFlowPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final color = switch (tone) {
-      MetricTone.positive => scheme.positive,
-      MetricTone.danger => scheme.error,
-      MetricTone.warning => scheme.secondary,
-      MetricTone.standard => scheme.onSurfaceVariant,
-    };
+    final color = tone.resolve(scheme, standard: scheme.onSurfaceVariant);
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
@@ -99,7 +94,7 @@ class HomeFlowPanel extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: AppSpacing.xxxs),
           TweenAnimationBuilder<double>(
             duration: const Duration(milliseconds: 600),
             curve: Curves.easeOutCubic,

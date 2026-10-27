@@ -159,7 +159,7 @@ class _SecureAccountDetailsScreenState
                 labelText: 'Field Name (e.g. PIN)',
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.xs),
             AppGlassTextField(
               controller: valueCtrl,
               decoration: const InputDecoration(labelText: 'Value'),
@@ -371,7 +371,7 @@ class _SecureAccountDetailsScreenState
     List<TextInputFormatter>? formatters,
   ]) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Row(
         children: [
           Expanded(
@@ -488,7 +488,7 @@ class _SecureAccountDetailsScreenState
                     [_ExpiryDateFormatter()],
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: _buildFieldWithCopy(
                     _ccvController,
@@ -507,7 +507,7 @@ class _SecureAccountDetailsScreenState
             ),
           ],
 
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xl),
 
           if (_customFields.isNotEmpty) ...[
             const Divider(),
@@ -539,16 +539,16 @@ class _SecureAccountDetailsScreenState
               ),
           ],
 
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           OutlinedButton.icon(
             onPressed: _addCustomField,
             icon: const Icon(Icons.add_rounded),
             label: const Text('Add custom field'),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xl),
           const Divider(),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
 
           OutlinedButton.icon(
             onPressed: () => _archiveAccount(account),
@@ -557,7 +557,7 @@ class _SecureAccountDetailsScreenState
             style: AppButtonStyles.destructiveOutlined(context),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xl),
           Text(
             'These details are encrypted and stored locally. The last 4 digits of your primary number will be mapped for SMS automation.',
             style: TextStyle(

@@ -27,6 +27,9 @@ Manages application configuration, user preferences, security lock toggles, loca
    - Account deletion must purge both local persistent stores (`SharedPreferences`, files) and remote Firestore documents, logging the user out.
 3. **Offline Mode Never Signs Out**:
    - Signing out clears the device wallet, which is an offline user's only copy. Offline mode offers the Google upgrade and encrypted export/import instead.
+4. **Canonical settings UI**:
+   - Preference groups are `AppGroupedSection` + `AppGroupedTile` / `AppGroupedTile.toggle` (danger zone: `destructive: true`); never raw `GlassGroupedSection`/`GlassListTile` (they drop the app font) or bare `GlassSwitch` rows.
+   - Confirmations use `showAppConfirmDialog` (destructive when data is removed or overwritten); feedback uses `showAppSnackBar`; sheets use `showAppSheet`. The offline-upgrade sheet uses the standard panel, not the login-only `BrandFrostedPanel`.
 
 ---
 

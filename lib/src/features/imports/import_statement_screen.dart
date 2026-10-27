@@ -13,6 +13,7 @@ import '../../imports/pdf_text_extractor.dart';
 import '../../imports/statement_parser.dart';
 import '../../imports/wallet_csv_parser.dart' show ParsedWalletCsvRow;
 import '../../widgets/app_kit.dart';
+import '../../widgets/privacy_text.dart';
 import '../common/route_scaffold.dart';
 
 class ImportStatementScreen extends ConsumerStatefulWidget {
@@ -607,7 +608,7 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
               padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
                 color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(AppRadii.xs),
               ),
               child: const Text(
                 '💡 Common PDF statement password formats:\n'
@@ -795,7 +796,7 @@ class _TransactionPreviewTile extends StatelessWidget {
               ],
             ),
           ),
-          Text(
+          PrivacyText(
             '$sign$amountStr',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: color,

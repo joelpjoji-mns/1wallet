@@ -96,7 +96,7 @@ class HomeScreen extends ConsumerWidget {
         ),
         UnconstrainedBox(
           child: Padding(
-            padding: const EdgeInsets.only(left: 6.0),
+            padding: const EdgeInsets.only(left: AppSpacing.xxs),
             child: AuthUserActionButton(
               user: user,
               radius: 14,
@@ -170,7 +170,8 @@ class _HomeDashboardList extends ConsumerWidget {
       mobileView = ListView.separated(
         padding: padding,
         itemCount: widgetOrder.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 12),
+        separatorBuilder: (context, index) =>
+            const SizedBox(height: AppSpacing.sm),
         itemBuilder: (context, index) =>
             _buildScopedHomeWidget(context, ref, state, index),
       );

@@ -127,7 +127,7 @@ class _TransactionDetailScreenState
                   ),
                   for (final amountLine in secondaryAmounts)
                     Padding(
-                      padding: const EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.only(top: AppSpacing.xxs),
                       child: PrivacyText(
                         amountLine,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -164,7 +164,7 @@ class _TransactionDetailScreenState
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Icon(Icons.place_outlined, size: 16),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: AppSpacing.xxs),
                         Flexible(
                           child: Text(
                             transaction.locationLabel!,

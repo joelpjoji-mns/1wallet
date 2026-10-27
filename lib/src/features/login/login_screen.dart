@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/auth_controller.dart';
+import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
 import '../launch/brand_widgets.dart';
 import 'offline_mode_sheet.dart';
@@ -39,7 +40,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.all(24.0),
+                    padding: const EdgeInsets.all(AppSpacing.xl),
                     child: Row(
                       children: [
                         const SizedBox(width: 48),
@@ -63,9 +64,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   Expanded(
                     child: ListView(
-                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xxl,
+                      ),
                       children: [
-                        const SizedBox(height: 40),
+                        const SizedBox(height: AppSpacing.xxl + AppSpacing.xs),
                         StaggeredFadeIn(
                           child: Text(
                             'Welcome.\n1Wallet.',
@@ -79,7 +82,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: AppSpacing.xl),
                         StaggeredFadeIn(
                           delay: const Duration(milliseconds: 100),
                           child: Text(
@@ -95,7 +98,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 80),
+                        const SizedBox(
+                          height: AppSpacing.xxl * 2 + AppSpacing.md,
+                        ),
                         StaggeredFadeIn(
                           delay: const Duration(milliseconds: 200),
                           child: DecoratedBox(
@@ -109,8 +114,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ],
                             ),
                             child: BrandFrostedPanel(
-                              padding: const EdgeInsets.all(32),
-                              borderRadius: 32, // More curves
+                              padding: const EdgeInsets.all(AppSpacing.xxl),
+                              borderRadius: AppRadii.xl,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
@@ -127,7 +132,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       ).colorScheme.onSurface,
                                     ),
                                   ),
-                                  const SizedBox(height: 12),
+                                  const SizedBox(height: AppSpacing.sm),
                                   Text(
                                     unavailable
                                         ? 'Cloud sync is currently unavailable. You can still use the app locally.'
@@ -142,7 +147,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       height: 1.4,
                                     ),
                                   ),
-                                  const SizedBox(height: 32),
+                                  const SizedBox(height: AppSpacing.xxl),
                                   // Sign-in is unavailable (offline mode), so
                                   // dim the button — otherwise it looks fully
                                   // interactive even though onTap is null.
@@ -220,7 +225,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                                     width: 24,
                                                   ),
                                                 ),
-                                              const SizedBox(width: 14),
+                                              const SizedBox(
+                                                width: AppSpacing.sm,
+                                              ),
                                               Flexible(
                                                 child: FittedBox(
                                                   fit: BoxFit.scaleDown,
@@ -261,15 +268,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   ),
                                   if (auth.errorMessage != null &&
                                       !unavailable) ...[
-                                    const SizedBox(height: 20),
+                                    const SizedBox(height: AppSpacing.lg),
                                     Container(
-                                      padding: const EdgeInsets.all(16),
+                                      padding: const EdgeInsets.all(
+                                        AppSpacing.md,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: Theme.of(context)
                                             .colorScheme
                                             .errorContainer
                                             .withValues(alpha: 0.3),
-                                        borderRadius: BorderRadius.circular(16),
+                                        borderRadius: BorderRadius.circular(
+                                          AppRadii.md,
+                                        ),
                                       ),
                                       child: Text(
                                         auth.errorMessage!,
@@ -290,7 +301,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: AppSpacing.lg),
                         StaggeredFadeIn(
                           delay: const Duration(milliseconds: 260),
                           child: Center(
@@ -311,7 +322,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 28),
+                        const SizedBox(height: AppSpacing.xl),
                         Center(
                           child: Text(
                             'Secure • Private • Local First',

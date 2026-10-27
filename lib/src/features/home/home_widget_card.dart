@@ -237,10 +237,10 @@ class HomeWidgetReorderableIcon extends StatelessWidget {
             children: [
               leadingIcon,
               Positioned(
-                right: -4,
-                bottom: -4,
+                right: -AppSpacing.xxs,
+                bottom: -AppSpacing.xxs,
                 child: Container(
-                  padding: const EdgeInsets.all(2),
+                  padding: const EdgeInsets.all(AppSpacing.xxxs),
                   decoration: BoxDecoration(
                     color: scheme.primary,
                     shape: BoxShape.circle,
@@ -324,12 +324,7 @@ class HomeMetricTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final color = switch (tone) {
-      MetricTone.positive => scheme.positive,
-      MetricTone.danger => scheme.error,
-      MetricTone.warning => scheme.secondary,
-      MetricTone.standard => scheme.primary,
-    };
+    final color = tone.resolve(scheme);
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
@@ -359,7 +354,7 @@ class HomeMetricTile extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: AppSpacing.xxxs),
           Text(
             value,
             maxLines: 1,
@@ -397,12 +392,7 @@ class HomeDetailRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final resolvedIconColor = iconColor ?? scheme.primary;
-    final trailingColor = switch (tone) {
-      MetricTone.positive => scheme.positive,
-      MetricTone.danger => scheme.error,
-      MetricTone.warning => scheme.secondary,
-      MetricTone.standard => scheme.onSurface,
-    };
+    final trailingColor = tone.resolve(scheme, standard: scheme.onSurface);
     return Row(
       children: [
         Container(
@@ -722,7 +712,10 @@ class _MiniLineChartPainter extends CustomPainter {
         tpTip.width + 12,
         tpTip.height + 8,
       );
-      final bgRRect = RRect.fromRectAndRadius(bgRect, const Radius.circular(6));
+      final bgRRect = RRect.fromRectAndRadius(
+        bgRect,
+        const Radius.circular(AppRadii.xs),
+      );
       canvas.drawRRect(bgRRect, Paint()..color = tooltipBackgroundColor);
 
       tpTip.paint(canvas, Offset(tipX, tipY));

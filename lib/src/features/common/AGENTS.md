@@ -7,9 +7,9 @@ Houses reusable screens, scaffolds, and pickers shared across multiple features,
 
 ## 📜 Key Files
 
-- **`route_scaffold.dart`**: Standardized scaffold providing frosted glass app bar, bottom island navigation compatibility, and consistent safe area padding.
-- **`full_screen_picker.dart`**: Full-screen modal picker for searching and selecting accounts, categories, tags, or payment methods.
-- **`category_hierarchy_picker.dart`**: Two-tiered dropdown or bottom-sheet picker for parent and subcategory selection.
+- **`route_scaffold.dart`**: The canonical frame for every pushed route: glass app bar (titleLarge/w800 title), automatic `AppBackAction` or drawer `AppMenuAction` (via `DrawerConfig`, or the nullable `hasDrawer` override), optional custom `leading` (a `HeaderIconButton`), `automaticallyImplyLeading: false` for blocking flows, `SafeArea`, an 800 dp content cap and the top fade mask. Pass `child` for a padded list or `scrollView` for a custom scrollable/column.
+- **`full_screen_picker.dart`**: Full-screen modal picker for searching and selecting accounts, categories, tags, or payment methods. Built on `RouteScaffold` + `PremiumRow`.
+- **`category_hierarchy_picker.dart`**: Drill-down parent/subcategory picker built on `RouteScaffold` with a custom `leading` that steps up one level (system back does the same).
 - **`file_picker_utils.dart`**: Cross-platform wrapper around `file_picker` for selecting PDF statements, CSV files, and backup bundles.
 
 ---

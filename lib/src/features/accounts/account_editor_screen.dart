@@ -270,7 +270,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                                         .titleSmall
                                         ?.copyWith(fontWeight: FontWeight.w600),
                                   ),
-                                  const SizedBox(height: 2),
+                                  const SizedBox(height: AppSpacing.xxxs),
                                   Text(
                                     'Initial cash in each currency you hold',
                                     style: Theme.of(context).textTheme.bodySmall
@@ -1061,7 +1061,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                     context,
                   ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: AppSpacing.xxs),
                 const Icon(Icons.arrow_drop_down_rounded, size: 16),
               ],
             ),
@@ -1230,10 +1230,10 @@ Future<int?> showDayOfMonthPicker({
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(AppSpacing.xs),
                 decoration: BoxDecoration(
                   color: scheme.primary.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
                 ),
                 child: Icon(
                   Icons.calendar_month_rounded,
@@ -1307,8 +1307,8 @@ Future<int?> showDayOfMonthPicker({
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 7,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
+              mainAxisSpacing: AppSpacing.xs,
+              crossAxisSpacing: AppSpacing.xs,
             ),
             itemCount: 31,
             itemBuilder: (context, index) {
@@ -1318,7 +1318,7 @@ Future<int?> showDayOfMonthPicker({
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () => Navigator.of(pickerContext).pop(day),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppRadii.md),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
                     decoration: BoxDecoration(
@@ -1327,7 +1327,7 @@ Future<int?> showDayOfMonthPicker({
                           : scheme.surfaceContainerHighest.withValues(
                               alpha: 0.5,
                             ),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppRadii.md),
                       border: Border.all(
                         color: isSelected
                             ? scheme.primary

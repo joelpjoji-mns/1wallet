@@ -484,7 +484,7 @@ class AppMainDrawer extends ConsumerWidget {
                                       letterSpacing: -0.6,
                                     ),
                               ),
-                              const SizedBox(height: 2),
+                              const SizedBox(height: AppSpacing.xxxs),
                               Text(
                                 profileSubtitle,
                                 maxLines: 2,
@@ -742,7 +742,7 @@ class _DrawerPrivacyToggle extends ConsumerWidget {
           onChanged: (_) => toggle(),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
-            vertical: 6,
+            vertical: AppSpacing.xxs,
           ),
         ),
       ),

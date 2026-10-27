@@ -141,7 +141,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(fontWeight: FontWeight.w900),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpacing.xxxs),
                     Text(
                       '${selectedCategory?.name ?? 'All categories'} · ${selectedAccount?.name ?? 'All accounts'}',
                       textAlign: TextAlign.center,
@@ -267,12 +267,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             child: Column(
               children: [
                 for (var w = 0; w < days.length ~/ 7; w++) ...[
-                  if (w > 0) const SizedBox(height: 4),
+                  if (w > 0) const SizedBox(height: AppSpacing.xxs),
                   Expanded(
                     child: Row(
                       children: [
                         for (var d = 0; d < 7; d++) ...[
-                          if (d > 0) const SizedBox(width: 4),
+                          if (d > 0) const SizedBox(width: AppSpacing.xxs),
                           Expanded(
                             child: Builder(
                               builder: (context) {
@@ -868,7 +868,7 @@ class _DayCell extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppRadii.md),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(5),
+        padding: const EdgeInsets.all(AppSpacing.xxs),
         decoration: BoxDecoration(
           color: isToday ? scheme.primaryContainer : scheme.surfaceContainer,
           borderRadius: BorderRadius.circular(AppRadii.md),

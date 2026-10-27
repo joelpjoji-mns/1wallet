@@ -103,8 +103,8 @@ class AuthProviderChip extends StatelessWidget {
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: compact ? 8 : 10,
-        vertical: compact ? 5 : 6,
+        horizontal: compact ? AppSpacing.xs : AppSpacing.sm,
+        vertical: AppSpacing.xxs,
       ),
       decoration: BoxDecoration(
         color: bgColor,
@@ -118,7 +118,7 @@ class AuthProviderChip extends StatelessWidget {
             const _GoogleGlyph(size: 14)
           else
             Icon(Icons.verified_user_outlined, size: 14, color: iconColor),
-          const SizedBox(width: 6),
+          const SizedBox(width: AppSpacing.xxs),
           Text(
             label,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
@@ -163,8 +163,8 @@ class AuthPhotoStatusChip extends StatelessWidget {
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: compact ? 8 : 10,
-        vertical: compact ? 5 : 6,
+        horizontal: compact ? AppSpacing.xs : AppSpacing.sm,
+        vertical: AppSpacing.xxs,
       ),
       decoration: BoxDecoration(
         color: backgroundColor,
@@ -182,7 +182,7 @@ class AuthPhotoStatusChip extends StatelessWidget {
               size: 14,
               color: scheme.secondary,
             ),
-          const SizedBox(width: 6),
+          const SizedBox(width: AppSpacing.xxs),
           Text(
             label,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
@@ -219,7 +219,7 @@ class AuthUserActionButton extends StatelessWidget {
         customBorder: const CircleBorder(),
         onTap: onPressed,
         child: Padding(
-          padding: const EdgeInsets.all(4),
+          padding: const EdgeInsets.all(AppSpacing.xxs),
           child: AuthUserAvatar(
             user: user,
             radius: radius,

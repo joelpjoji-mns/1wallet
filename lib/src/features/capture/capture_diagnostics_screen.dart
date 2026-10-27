@@ -209,7 +209,10 @@ class _DiagnosticEventTile extends StatelessWidget {
                 _MetaChip(label: 'ignore: ${event.matchedIgnoreWord}'),
               if (event.amount != null)
                 _MetaChip(
-                  label: formatMoney(event.amount!, state.preferences.locale),
+                  label: maskMoneyIfPrivate(
+                    state,
+                    formatMoney(event.amount!, state.preferences.locale),
+                  ),
                 ),
               if (event.merchant != null)
                 _MetaChip(label: 'seller: ${event.merchant}'),
@@ -274,7 +277,10 @@ class _MetaChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs,
+        vertical: AppSpacing.xxs,
+      ),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: 0.71),
         borderRadius: BorderRadius.circular(AppRadii.pill),

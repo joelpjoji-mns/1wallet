@@ -50,7 +50,7 @@ class DrawerMetricCard extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: AppSpacing.xxxs),
           Text(
             value,
             maxLines: 1,
@@ -82,7 +82,10 @@ class DrawerInfoChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xxs,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(AppRadii.pill),
@@ -92,7 +95,7 @@ class DrawerInfoChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: color),
-          const SizedBox(width: 6),
+          const SizedBox(width: AppSpacing.xxs),
           Text(
             label,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
@@ -137,9 +140,9 @@ class DrawerSection extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.sm,
-              4,
+              AppSpacing.xxs,
               AppSpacing.md,
-              2,
+              AppSpacing.xxxs,
             ),
             child: Text(
               title.toUpperCase(),
@@ -294,7 +297,7 @@ class _DrawerRouteTileState extends State<DrawerRouteTile> {
           child: Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.md,
-              vertical: 11,
+              vertical: AppSpacing.sm,
             ),
             child: Row(
               children: [
@@ -325,7 +328,7 @@ class _DrawerRouteTileState extends State<DrawerRouteTile> {
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.sm,
-                      vertical: 3,
+                      vertical: AppSpacing.xxxs,
                     ),
                     decoration: BoxDecoration(
                       color: widget.danger

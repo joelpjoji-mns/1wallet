@@ -251,7 +251,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.dialpad_rounded, size: 16),
-                          SizedBox(width: 6),
+                          SizedBox(width: AppSpacing.xxs),
                           Text('Keypad'),
                         ],
                       ),
@@ -262,7 +262,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.notes_rounded, size: 16),
-                          SizedBox(width: 6),
+                          SizedBox(width: AppSpacing.xxs),
                           Text('Details'),
                         ],
                       ),
@@ -1426,7 +1426,7 @@ class _FxAmountPanel extends StatelessWidget {
               onTap: onEditMain,
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.xs),
           Expanded(
             child: _FxAmountCard(
               title: 'Received',
@@ -1455,7 +1455,7 @@ class _FxAmountPanel extends StatelessWidget {
               onTap: onEditMain,
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.xs),
           Expanded(
             child: _FxAmountCard(
               title: 'Charged',
@@ -1507,7 +1507,7 @@ class _FxAmountCard extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(AppRadii.md),
           child: Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(AppSpacing.xs),
             decoration: BoxDecoration(
               color: selected
                   ? scheme.primaryContainer.withValues(alpha: 0.43)
@@ -1523,7 +1523,7 @@ class _FxAmountCard extends StatelessWidget {
                 Row(
                   children: [
                     Icon(icon, size: 14, color: color),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: AppSpacing.xxs),
                     Text(
                       title,
                       style: TextStyle(
@@ -1534,7 +1534,7 @@ class _FxAmountCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xxs),
                 Text(
                   '$amount $currency',
                   maxLines: 1,

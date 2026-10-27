@@ -216,7 +216,7 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
               ),
             ],
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: AppSpacing.xxxs),
           TweenAnimationBuilder<double>(
             duration: const Duration(milliseconds: 600),
             curve: Curves.easeOutCubic,
@@ -252,8 +252,8 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                         for (final money in currencyBreakdown) ...[
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
+                              horizontal: AppSpacing.xs,
+                              vertical: AppSpacing.xxxs,
                             ),
                             decoration: BoxDecoration(
                               color: scheme.surfaceContainerHigh,
@@ -862,7 +862,10 @@ class _BalanceTrendHomeWidgetState
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.only(right: 16.0, top: 16.0),
+                padding: const EdgeInsets.only(
+                  right: AppSpacing.md,
+                  top: AppSpacing.md,
+                ),
                 child: SizedBox(
                   height: _chartHeight,
                   child: RepaintBoundary(
@@ -1126,16 +1129,16 @@ class _BalanceTrendHomeWidgetState
               // Legend row
               Padding(
                 padding: const EdgeInsets.only(
-                  left: 8,
-                  right: 16,
-                  bottom: 4,
-                  top: 2,
+                  left: AppSpacing.xs,
+                  right: AppSpacing.md,
+                  bottom: AppSpacing.xxs,
+                  top: AppSpacing.xxxs,
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     _LegendDot(color: scheme.primary),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: AppSpacing.xxs),
                     Text(
                       'Actual',
                       style: TextStyle(
@@ -1143,12 +1146,12 @@ class _BalanceTrendHomeWidgetState
                         color: scheme.onSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpacing.sm),
                     _LegendDot(
                       color: scheme.onSurfaceVariant.withAlphaFactor(0.5),
                       dashed: true,
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: AppSpacing.xxs),
                     Text(
                       'Projected',
                       style: TextStyle(
@@ -1465,12 +1468,15 @@ class _CalculatorRow extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final info = getCurrencyInfo(currency);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
         color: isBase
             ? scheme.tertiaryContainer.withAlphaFactor(0.3)
             : scheme.surfaceContainerHighest.withAlphaFactor(0.3),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(
           color: isBase
               ? scheme.tertiary.withAlphaFactor(0.5)
@@ -1516,7 +1522,7 @@ class _CalculatorRow extends StatelessWidget {
               },
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.xs),
           Expanded(
             flex: 2,
             child: Column(
@@ -1550,7 +1556,7 @@ class _CalculatorRow extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.sm),
           Icon(
             isBase ? Icons.account_balance_outlined : Icons.payments_outlined,
             color: isBase ? scheme.tertiary : scheme.onSurfaceVariant,
@@ -1851,7 +1857,10 @@ class PlannedPaymentsHomeWidget extends ConsumerWidget {
       },
       child: HomeMetricTile(
         label: 'Planned',
-        value: _formatDisplayBaseMoney(state, planned),
+        value: maskMoneyIfPrivate(
+          state,
+          _formatDisplayBaseMoney(state, planned),
+        ),
         icon: Icons.event_repeat_outlined,
         tone: MetricTone.warning,
       ),
@@ -2307,9 +2316,9 @@ class _CategoryItemWidget extends StatelessWidget {
           onTap: hasChildren
               ? onToggleExpand
               : () => onSelectCategory(item.allCategoryIds),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(AppRadii.sm),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+            padding: const EdgeInsets.all(AppSpacing.xxs),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -2323,7 +2332,7 @@ class _CategoryItemWidget extends StatelessWidget {
                         shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.xs),
                     Expanded(
                       child: Text(
                         item.label,
@@ -2347,7 +2356,7 @@ class _CategoryItemWidget extends StatelessWidget {
                       ),
                     ),
                     if (hasChildren) ...[
-                      const SizedBox(width: 4),
+                      const SizedBox(width: AppSpacing.xxs),
                       Icon(
                         isExpanded
                             ? Icons.keyboard_arrow_up_rounded
@@ -2356,7 +2365,7 @@ class _CategoryItemWidget extends StatelessWidget {
                         color: scheme.onSurfaceVariant,
                       ),
                     ] else ...[
-                      const SizedBox(width: 4),
+                      const SizedBox(width: AppSpacing.xxs),
                       Icon(
                         Icons.chevron_right_rounded,
                         size: 18,
@@ -2365,7 +2374,7 @@ class _CategoryItemWidget extends StatelessWidget {
                     ],
                   ],
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: AppSpacing.xxs),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(AppRadii.pill),
                   child: LinearProgressIndicator(
@@ -2380,8 +2389,12 @@ class _CategoryItemWidget extends StatelessWidget {
         ),
         if (hasChildren && isExpanded) ...[
           Container(
-            margin: const EdgeInsets.only(left: 14, top: 4, bottom: 4),
-            padding: const EdgeInsets.only(left: 10),
+            margin: const EdgeInsets.only(
+              left: AppSpacing.md,
+              top: AppSpacing.xxs,
+              bottom: AppSpacing.xxs,
+            ),
+            padding: const EdgeInsets.only(left: AppSpacing.sm),
             decoration: BoxDecoration(
               border: Border(
                 left: BorderSide(color: color.withAlphaFactor(0.35), width: 2),
@@ -2392,12 +2405,9 @@ class _CategoryItemWidget extends StatelessWidget {
               children: [
                 InkWell(
                   onTap: () => onSelectCategory(item.allCategoryIds),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 4,
-                      horizontal: 4,
-                    ),
+                    padding: const EdgeInsets.all(AppSpacing.xxs),
                     child: Row(
                       children: [
                         Icon(
@@ -2405,7 +2415,7 @@ class _CategoryItemWidget extends StatelessWidget {
                           size: 14,
                           color: scheme.primary,
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: AppSpacing.xxs),
                         Expanded(
                           child: Text(
                             'All ${item.label}',
@@ -2428,12 +2438,9 @@ class _CategoryItemWidget extends StatelessWidget {
                 for (final sub in item.subcategories) ...[
                   InkWell(
                     onTap: () => onSelectCategory(sub.allCategoryIds),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppRadii.sm),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 4,
-                        horizontal: 4,
-                      ),
+                      padding: const EdgeInsets.all(AppSpacing.xxs),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -2447,7 +2454,7 @@ class _CategoryItemWidget extends StatelessWidget {
                                   shape: BoxShape.circle,
                                 ),
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(width: AppSpacing.xxs),
                               Expanded(
                                 child: Text(
                                   sub.label,
@@ -2460,7 +2467,7 @@ class _CategoryItemWidget extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: AppSpacing.xs),
                               PrivacyText(
                                 formatMoney(
                                   _displayBaseMoney(state, sub.amountMinor),
@@ -2471,7 +2478,7 @@ class _CategoryItemWidget extends StatelessWidget {
                                   fontSize: 12,
                                 ),
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: AppSpacing.xxs),
                               Icon(
                                 Icons.chevron_right_rounded,
                                 size: 16,
@@ -2481,7 +2488,7 @@ class _CategoryItemWidget extends StatelessWidget {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 3),
+                          const SizedBox(height: AppSpacing.xxs),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(AppRadii.pill),
                             child: LinearProgressIndicator(
@@ -2608,7 +2615,7 @@ class _AccountTile extends ConsumerWidget {
         // pixels; a `minHeight` lets the tile grow instead (the surrounding
         // `Wrap` sizes each row to its tallest tile, so this is safe here).
         constraints: const BoxConstraints(minHeight: 60),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+        padding: const EdgeInsets.all(AppSpacing.xs),
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(AppRadii.md),
@@ -2624,7 +2631,7 @@ class _AccountTile extends ConsumerWidget {
                   color: foreground.withValues(alpha: 0.78),
                   size: 13,
                 ),
-                const SizedBox(width: 3),
+                const SizedBox(width: AppSpacing.xxxs),
                 Expanded(
                   child: Text(
                     account.name,
@@ -2642,8 +2649,8 @@ class _AccountTile extends ConsumerWidget {
                 if (isForeignCurrency)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 1,
+                      horizontal: AppSpacing.xxs,
+                      vertical: AppSpacing.xxxs,
                     ),
                     decoration: BoxDecoration(
                       color: foreground.withValues(alpha: 0.16),
@@ -2665,7 +2672,7 @@ class _AccountTile extends ConsumerWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: AppSpacing.xxxs),
             // Display in base currency
             PrivacyText(
               primaryLabel,
@@ -3013,7 +3020,7 @@ class CreditUtilizationWidget extends ConsumerWidget {
               final util = limit > 0 ? (debt / limit) : 0.0;
 
               return Padding(
-                padding: const EdgeInsets.only(bottom: 24),
+                padding: const EdgeInsets.only(bottom: AppSpacing.xl),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -3047,14 +3054,14 @@ class CreditUtilizationWidget extends ConsumerWidget {
                           ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.xs),
                     LinearProgressIndicator(
                       value: limit > 0 ? util.clamp(0.0, 1.0) : 0.0,
                       color: acc.color ?? scheme.primary,
                       minHeight: 16,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(AppRadii.xs),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppSpacing.xs),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -3069,7 +3076,7 @@ class CreditUtilizationWidget extends ConsumerWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpacing.xs),
                         Flexible(
                           child: PrivacyText(
                             'Limit ${limit > 0 ? formatMoney(Money(amountMinor: limit, currency: state.preferences.displayCurrency), state.preferences.locale) : 'Not Set'}',

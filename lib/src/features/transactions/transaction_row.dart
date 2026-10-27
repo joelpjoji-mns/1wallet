@@ -126,7 +126,7 @@ class TransactionRow extends StatelessWidget {
                         ),
                       if (transaction.tags.isNotEmpty)
                         Padding(
-                          padding: const EdgeInsets.only(top: 2),
+                          padding: const EdgeInsets.only(top: AppSpacing.xxxs),
                           child: Text(
                             transaction.tags.join(' · '),
                             maxLines: 1,

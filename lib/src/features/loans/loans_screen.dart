@@ -167,7 +167,7 @@ class LoansScreen extends ConsumerWidget {
                 mode: mode,
                 onTap: () => context.push('/loans/${loan.id}'),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpacing.xs),
             ],
         ],
       ),
@@ -435,7 +435,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Wrap(
-                      spacing: 8,
+                      spacing: AppSpacing.xs,
                       children: [
                         for (var i = 1; i <= 7; i++)
                           FilterChip(
@@ -466,8 +466,8 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
+                      spacing: AppSpacing.xs,
+                      runSpacing: AppSpacing.xxs,
                       children: [
                         for (var i = 1; i <= 31; i++)
                           FilterChip(
@@ -490,7 +490,9 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                           ),
                         FilterChip(
                           label: const Text('Last day of month'),
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.xxs,
+                          ),
                           materialTapTargetSize:
                               MaterialTapTargetSize.shrinkWrap,
                           selected: _daysOfMonth.contains(32),
@@ -884,7 +886,7 @@ class LoanDetailView extends ConsumerWidget {
                               style: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(fontWeight: FontWeight.w800),
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: AppSpacing.xxxs),
                             Text(
                               '${accountTypeLabel(loan.type).toUpperCase()} ACCOUNT',
                               style: TextStyle(
@@ -969,7 +971,7 @@ class LoanDetailView extends ConsumerWidget {
                                 ],
                               ],
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: AppSpacing.xs),
                             LinearProgressIndicator(value: progress),
                           ],
                         );
@@ -1180,7 +1182,7 @@ class _LoanCompactCard extends StatelessWidget {
       onTap: onTap,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
-        vertical: 12,
+        vertical: AppSpacing.sm,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1223,7 +1225,7 @@ class _LoanCompactCard extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpacing.xxxs),
                     Text(
                       cadenceSummary,
                       maxLines: 1,
@@ -1234,7 +1236,7 @@ class _LoanCompactCard extends StatelessWidget {
                       ),
                     ),
                     if (tertiaryLine != null) ...[
-                      const SizedBox(height: 6),
+                      const SizedBox(height: AppSpacing.xxs),
                       Text(
                         tertiaryLine,
                         maxLines: 1,
@@ -1247,7 +1249,7 @@ class _LoanCompactCard extends StatelessWidget {
                       ),
                     ],
                     if (mode == 'past') ...[
-                      const SizedBox(height: 6),
+                      const SizedBox(height: AppSpacing.xxs),
                       Text(
                         projection.payoffLabel,
                         maxLines: 1,
@@ -1275,7 +1277,7 @@ class _LoanCompactCard extends StatelessWidget {
                       color: mode == 'past' ? scheme.onSurface : scheme.error,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xxs),
                   Text(
                     status.label,
                     maxLines: 1,
@@ -1337,7 +1339,7 @@ class _LoanCompactCard extends StatelessWidget {
                         ],
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppSpacing.xs),
                     LinearProgressIndicator(value: progress),
                   ],
                 );
@@ -1650,9 +1652,9 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
             onScaleUpdate: _onScaleUpdate,
             child: Padding(
               padding: const EdgeInsets.only(
-                top: 8.0,
-                bottom: 8.0,
-                right: 16.0,
+                top: AppSpacing.xs,
+                bottom: AppSpacing.xs,
+                right: AppSpacing.md,
               ),
               child: RepaintBoundary(
                 child: LineChart(
@@ -1722,7 +1724,10 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                           dashArray: [5, 5],
                           label: VerticalLineLabel(
                             show: true,
-                            padding: const EdgeInsets.only(bottom: 24, left: 4),
+                            padding: const EdgeInsets.only(
+                              bottom: AppSpacing.xl,
+                              left: AppSpacing.xxs,
+                            ),
                             style: TextStyle(
                               fontSize: 10,
                               color: Theme.of(context).colorScheme.primary,
@@ -1745,8 +1750,8 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                             label: VerticalLineLabel(
                               show: true,
                               padding: const EdgeInsets.only(
-                                bottom: 4,
-                                left: 4,
+                                bottom: AppSpacing.xxs,
+                                left: AppSpacing.xxs,
                               ),
                               style: TextStyle(
                                 fontSize: 10,
@@ -1829,7 +1834,9 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                               dateStr = DateFormat('yyyy').format(date);
                             }
                             return Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
+                              padding: const EdgeInsets.only(
+                                top: AppSpacing.xs,
+                              ),
                               child: Text(
                                 dateStr,
                                 style: const TextStyle(fontSize: 10),
@@ -1846,7 +1853,9 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                           getTitlesWidget: (value, meta) {
                             final formatted = numberFormat.format(value);
                             return Padding(
-                              padding: const EdgeInsets.only(right: 8.0),
+                              padding: const EdgeInsets.only(
+                                right: AppSpacing.xs,
+                              ),
                               child: Text(
                                 widget.isPrivate
                                     ? maskAmountDigits(formatted)
@@ -1877,8 +1886,8 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
           ),
         ),
         Positioned(
-          right: 6,
-          bottom: 6,
+          right: AppSpacing.xs,
+          bottom: AppSpacing.xs,
           child: _ChartZoomControls(
             onZoomIn: () => _applyZoom(0.6, 0.5),
             onZoomOut: () => _applyZoom(1.0 / 0.6, 0.5),
@@ -1908,7 +1917,7 @@ class _ChartZoomControls extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     Widget button(IconData icon, VoidCallback onTap, String tooltip) {
       return Padding(
-        padding: const EdgeInsets.only(top: 6),
+        padding: const EdgeInsets.only(top: AppSpacing.xs),
         child: Material(
           color: scheme.surfaceContainerHighest.withValues(alpha: 0.92),
           shape: const CircleBorder(),
@@ -2138,9 +2147,9 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
             onHorizontalDragUpdate: _onPanUpdate,
             child: Padding(
               padding: const EdgeInsets.only(
-                top: 8.0,
-                bottom: 8.0,
-                right: 16.0,
+                top: AppSpacing.xs,
+                bottom: AppSpacing.xs,
+                right: AppSpacing.md,
               ),
               child: RepaintBoundary(
                 child: BarChart(
@@ -2168,7 +2177,9 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
                                 str = DateFormat('yyyy').format(date);
                               }
                               return Padding(
-                                padding: const EdgeInsets.only(top: 8.0),
+                                padding: const EdgeInsets.only(
+                                  top: AppSpacing.xs,
+                                ),
                                 child: Text(
                                   str,
                                   textAlign: TextAlign.center,
@@ -2188,7 +2199,9 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
                           getTitlesWidget: (value, meta) {
                             final formatted = numberFormat.format(value);
                             return Padding(
-                              padding: const EdgeInsets.only(right: 8.0),
+                              padding: const EdgeInsets.only(
+                                right: AppSpacing.xs,
+                              ),
                               child: Text(
                                 widget.isPrivate
                                     ? maskAmountDigits(formatted)
@@ -2538,7 +2551,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AppRadii.md),
               boxShadow: [
                 BoxShadow(
                   color: scheme.primary.withValues(alpha: 0.4),
@@ -2553,7 +2566,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                 Row(
                   children: [
                     Icon(Icons.bolt_rounded, color: scheme.onPrimary, size: 28),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.xs),
                     Expanded(
                       child: Text(
                         'Accelerated Impact',
@@ -2566,7 +2579,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.md),
                 Builder(
                   builder: (context) {
                     final savedText = maskMoneyIfPrivate(
@@ -2835,7 +2848,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.xs),
                       Expanded(child: Text(loan.name)),
                     ],
                   ),

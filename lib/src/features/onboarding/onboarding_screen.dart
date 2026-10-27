@@ -16,6 +16,7 @@ import 'package:uuid/uuid.dart';
 import '../../cloud_sync/cloud_sync_controller.dart';
 import '../../data/ledger_providers.dart';
 import '../../widgets/currency_picker.dart';
+import '../../widgets/privacy_text.dart';
 import '../../widgets/app_kit.dart';
 import '../../utils/number_formatter.dart';
 
@@ -224,7 +225,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         body: LaunchBackdrop(
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(AppSpacing.xl),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -233,14 +234,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     size: 64,
                     color: Theme.of(context).colorScheme.primary,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.md),
                   Text(
                     'Cloud Wallet Found',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     'We detected an existing wallet for your Google account. Your data is safe in Firebase.',
                     textAlign: TextAlign.center,
@@ -250,7 +251,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       ).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.xl),
                   FilledButton.icon(
                     onPressed: () {
                       ref
@@ -275,7 +276,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.all(24.0),
+                padding: const EdgeInsets.all(AppSpacing.xl),
                 child: Row(
                   children: [
                     if (_currentPage > 0)
@@ -325,7 +326,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Widget _buildProfileStep() {
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       children: [
         const StaggeredFadeIn(
           child: Text(
@@ -338,7 +339,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: AppSpacing.xxl),
         StaggeredFadeIn(
           delay: const Duration(milliseconds: 100),
           child: BrandFrostedPanel(
@@ -349,7 +350,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   'What should we call you?',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.xs),
                 AppGlassTextField(
                   controller: _displayNameController,
                   decoration: const InputDecoration(
@@ -357,12 +358,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     filled: true,
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.xl),
                 const Text(
                   'Main currency',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.xs),
                 PremiumRow(
                   icon: Icons.currency_exchange_outlined,
                   title: _baseCurrency,
@@ -384,7 +385,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: AppSpacing.xxl),
         StaggeredFadeIn(
           delay: const Duration(milliseconds: 200),
           child: FilledButton(
@@ -418,7 +419,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     ];
 
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       children: [
         const StaggeredFadeIn(
           child: Text(
@@ -431,12 +432,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: AppSpacing.xxl),
         StaggeredFadeIn(
           delay: const Duration(milliseconds: 100),
           child: Wrap(
-            spacing: 12,
-            runSpacing: 12,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
             children: useCases.map((uc) {
               final isSelected = _selectedUseCases.contains(uc['id']);
               return ChoiceChip(
@@ -452,12 +453,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     }
                   });
                 },
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(AppSpacing.sm),
               );
             }).toList(),
           ),
         ),
-        const SizedBox(height: 48),
+        const SizedBox(height: AppSpacing.xxl + AppSpacing.md),
         StaggeredFadeIn(
           delay: const Duration(milliseconds: 200),
           child: FilledButton(
@@ -472,7 +473,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Widget _buildAccountStep() {
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       children: [
         const StaggeredFadeIn(
           child: Text(
@@ -485,7 +486,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: AppSpacing.xxl),
         StaggeredFadeIn(
           delay: const Duration(milliseconds: 100),
           child: BrandFrostedPanel(
@@ -498,7 +499,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     hintText: 'Account name (e.g. Cash, Savings)',
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.md),
                 DropdownButtonFormField<String>(
                   initialValue:
                       const [
@@ -532,7 +533,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     if (v != null) setState(() => _currentDraft.type = v);
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.md),
                 AppGlassTextField(
                   onChanged: (v) => setState(() => _currentDraft.opening = v),
                   keyboardType: const TextInputType.numberWithOptions(
@@ -548,7 +549,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: AppSpacing.xxl),
         StaggeredFadeIn(
           delay: const Duration(milliseconds: 200),
           child: FilledButton(
@@ -572,7 +573,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Widget _buildReviewAccountsStep() {
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       children: [
         const StaggeredFadeIn(
           child: Text(
@@ -585,25 +586,25 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: AppSpacing.xxl),
         if (_accounts.isEmpty)
           const Text('No accounts added yet.')
         else
           ..._accounts.map(
             (a) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
               child: AppPanel(
                 glass: true,
-                padding: const EdgeInsets.all(4),
+                padding: const EdgeInsets.all(AppSpacing.xxs),
                 child: AppGroupedTile(
                   leading: Icon(a.icon, color: a.color),
                   title: Text(a.name),
-                  subtitle: Text('${a.opening} ${a.currency}'),
+                  subtitle: PrivacyText('${a.opening} ${a.currency}'),
                 ),
               ),
             ),
           ),
-        const SizedBox(height: 32),
+        const SizedBox(height: AppSpacing.xxl),
         FilledButton(
           onPressed: _nextPage,
           style: AppButtonStyles.cta,
@@ -615,7 +616,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Widget _buildPermissionsStep() {
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       children: [
         const StaggeredFadeIn(
           child: Text(
@@ -628,7 +629,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: AppSpacing.xxl),
         StaggeredFadeIn(
           delay: const Duration(milliseconds: 100),
           child: BrandFrostedPanel(
@@ -654,7 +655,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 48),
+        const SizedBox(height: AppSpacing.xxl + AppSpacing.md),
         StaggeredFadeIn(
           delay: const Duration(milliseconds: 200),
           child: FilledButton(

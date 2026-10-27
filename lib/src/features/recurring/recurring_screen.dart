@@ -202,8 +202,8 @@ class RecurringScreen extends ConsumerWidget {
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
+                                horizontal: AppSpacing.xs,
+                                vertical: AppSpacing.xxs,
                               ),
                               decoration: BoxDecoration(
                                 color: Theme.of(
@@ -286,7 +286,7 @@ class RecurringScreen extends ConsumerWidget {
                   onTap: () => context.push('/recurring/${transaction.id}'),
                   historyMode: false,
                 ),
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpacing.xs),
             ],
         ],
       ),
@@ -439,9 +439,9 @@ class _RecurringCompactCard extends StatelessWidget {
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
                   isUrgent ? AppSpacing.sm : AppSpacing.md,
-                  12,
+                  AppSpacing.sm,
                   AppSpacing.md,
-                  12,
+                  AppSpacing.sm,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -479,8 +479,8 @@ class _RecurringCompactCard extends StatelessWidget {
                                     const SizedBox(width: AppSpacing.xs),
                                     Container(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 7,
-                                        vertical: 2,
+                                        horizontal: AppSpacing.xs,
+                                        vertical: AppSpacing.xxxs,
                                       ),
                                       decoration: BoxDecoration(
                                         color: scheme.errorContainer,
@@ -502,8 +502,8 @@ class _RecurringCompactCard extends StatelessWidget {
                                     const SizedBox(width: AppSpacing.xs),
                                     Container(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 7,
-                                        vertical: 2,
+                                        horizontal: AppSpacing.xs,
+                                        vertical: AppSpacing.xxxs,
                                       ),
                                       decoration: BoxDecoration(
                                         color: scheme.errorContainer,
@@ -525,8 +525,8 @@ class _RecurringCompactCard extends StatelessWidget {
                                     const SizedBox(width: AppSpacing.xs),
                                     Container(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 7,
-                                        vertical: 2,
+                                        horizontal: AppSpacing.xs,
+                                        vertical: AppSpacing.xxxs,
                                       ),
                                       decoration: BoxDecoration(
                                         color: scheme.errorContainer
@@ -549,7 +549,7 @@ class _RecurringCompactCard extends StatelessWidget {
                                 ],
                               ),
                               if (categorySubtitle != null) ...[
-                                const SizedBox(height: 2),
+                                const SizedBox(height: AppSpacing.xxxs),
                                 Text(
                                   categorySubtitle,
                                   maxLines: 1,
@@ -561,7 +561,7 @@ class _RecurringCompactCard extends StatelessWidget {
                                   ),
                                 ),
                               ],
-                              const SizedBox(height: 2),
+                              const SizedBox(height: AppSpacing.xxxs),
                               Text(
                                 recurrence,
                                 maxLines: 1,
@@ -572,7 +572,7 @@ class _RecurringCompactCard extends StatelessWidget {
                                 ),
                               ),
                               if (extraLine != null) ...[
-                                const SizedBox(height: 6),
+                                const SizedBox(height: AppSpacing.xxs),
                                 Text(
                                   extraLine,
                                   maxLines: 1,
@@ -591,7 +591,7 @@ class _RecurringCompactCard extends StatelessWidget {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text(
+                            PrivacyText(
                               amountText,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -611,7 +611,7 @@ class _RecurringCompactCard extends StatelessWidget {
                                         : null,
                                   ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: AppSpacing.xxs),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
@@ -620,7 +620,7 @@ class _RecurringCompactCard extends StatelessWidget {
                                   color: status.color,
                                   size: 14,
                                 ),
-                                const SizedBox(width: 4),
+                                const SizedBox(width: AppSpacing.xxs),
                                 Text(
                                   status.label,
                                   maxLines: 1,
@@ -689,10 +689,12 @@ class _RecurringCompactCard extends StatelessWidget {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: AppSpacing.xs),
                               LinearProgressIndicator(
                                 value: progress,
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(
+                                  AppRadii.xs,
+                                ),
                               ),
                             ],
                           );
@@ -977,7 +979,7 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Wrap(
-                    spacing: 8,
+                    spacing: AppSpacing.xs,
                     children: [
                       for (var i = 1; i <= 7; i++)
                         FilterChip(
@@ -1008,8 +1010,8 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
+                    spacing: AppSpacing.xs,
+                    runSpacing: AppSpacing.xxs,
                     children: [
                       for (var i = 1; i <= 31; i++)
                         FilterChip(
@@ -1032,7 +1034,9 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                         ),
                       FilterChip(
                         label: const Text('Last day of month'),
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.xxs,
+                        ),
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         selected: _daysOfMonth.contains(32),
                         onSelected: (selected) {
@@ -1499,7 +1503,7 @@ class RecurringDetailView extends ConsumerWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: AppSpacing.xxxs),
                             Text(
                               '${transaction.status.toUpperCase()} · ${transactionTypeLabel(frequency).toUpperCase()}${transaction.postMode == 'auto' ? ' (AUTO)' : ''}',
                               style: TextStyle(
@@ -1512,7 +1516,7 @@ class RecurringDetailView extends ConsumerWidget {
                         ),
                       ),
                       Flexible(
-                        child: Text(
+                        child: PrivacyText(
                           _recurringAmountLabel(state, transaction),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1549,7 +1553,7 @@ class RecurringDetailView extends ConsumerWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: AppSpacing.xxs),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -1576,7 +1580,7 @@ class RecurringDetailView extends ConsumerWidget {
                           ],
                         ),
                         if (counter != null) ...[
-                          const SizedBox(height: 4),
+                          const SizedBox(height: AppSpacing.xxs),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -1643,7 +1647,7 @@ class RecurringDetailView extends ConsumerWidget {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Flexible(
-                                  child: Text(
+                                  child: PrivacyText(
                                     'Paid: ${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: paid, currency: loanAccount.currency), state.preferences.locale))}',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -1656,7 +1660,7 @@ class RecurringDetailView extends ConsumerWidget {
                                 ),
                                 const SizedBox(width: AppSpacing.sm),
                                 Flexible(
-                                  child: Text(
+                                  child: PrivacyText(
                                     '${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: remaining > 0 ? remaining : 0, currency: loanAccount.currency), state.preferences.locale))} left',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -1670,10 +1674,10 @@ class RecurringDetailView extends ConsumerWidget {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: AppSpacing.xs),
                             LinearProgressIndicator(
                               value: progress,
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(AppRadii.xs),
                             ),
                           ],
                         );

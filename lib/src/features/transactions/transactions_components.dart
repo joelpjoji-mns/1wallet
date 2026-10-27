@@ -385,7 +385,7 @@ class MiniFlowStat extends StatelessWidget {
             fontSize: 9,
           ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: AppSpacing.xxxs),
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,

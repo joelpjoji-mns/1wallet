@@ -89,7 +89,7 @@ class AddRecordTypeTabPill extends StatelessWidget {
               size: 13,
               color: selected ? color : color.withAlphaFactor(0.6),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: AppSpacing.xxs),
             Flexible(
               child: Text(
                 label,
@@ -232,7 +232,7 @@ class AddRecordSelectorBox extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(7),
+                padding: const EdgeInsets.all(AppSpacing.xs),
                 decoration: BoxDecoration(
                   color:
                       iconColor?.withAlphaFactor(0.18) ??
@@ -454,7 +454,7 @@ class _AddRecordCalcKeyState extends State<AddRecordCalcKey> {
             color: _pressed
                 ? widget.backgroundColor.withValues(alpha: 0.78)
                 : widget.backgroundColor,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppRadii.md),
             border: Border.all(
               color: widget.foregroundColor.withValues(alpha: 0.06),
             ),

@@ -257,7 +257,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpacing.xxxs),
                     Text(
                       DateFormat.MMMd(
                         state.preferences.locale.replaceAll('_', '-'),
@@ -314,8 +314,8 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                       fontWeight: FontWeight.w600,
                     ),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
+                      horizontal: AppSpacing.sm,
+                      vertical: AppSpacing.xxs,
                     ),
                     quality: GlassQuality.standard,
                     useOwnLayer: true,
@@ -332,8 +332,8 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                       fontWeight: FontWeight.w600,
                     ),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
+                      horizontal: AppSpacing.sm,
+                      vertical: AppSpacing.xxs,
                     ),
                     quality: GlassQuality.standard,
                     useOwnLayer: true,
@@ -354,7 +354,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                 color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(AppRadii.md),
               ),
-              child: Text(
+              child: PrivacyText(
                 candidate.rawText!,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
@@ -458,7 +458,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
             borderRadius: BorderRadius.circular(AppRadii.md),
           ),
           alignment: Alignment.centerRight,
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
           child: Icon(Icons.archive_outlined, color: scheme.onErrorContainer),
         ),
         child: AppPanel(
@@ -516,11 +516,11 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                                 ),
                               ),
                               if (notification.badgeLabel != null) ...[
-                                const SizedBox(width: 8),
+                                const SizedBox(width: AppSpacing.xs),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 7,
-                                    vertical: 2,
+                                    horizontal: AppSpacing.xs,
+                                    vertical: AppSpacing.xxxs,
                                   ),
                                   decoration: BoxDecoration(
                                     color:
@@ -529,7 +529,9 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                                                 ? scheme.error
                                                 : scheme.primary)
                                             .withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(6),
+                                    borderRadius: BorderRadius.circular(
+                                      AppRadii.xs,
+                                    ),
                                   ),
                                   child: Text(
                                     notification.badgeLabel!,
@@ -547,7 +549,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                               ],
                             ],
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: AppSpacing.xxxs),
                           Text(
                             [
                               if (account.institution?.isNotEmpty == true)
@@ -672,7 +674,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
           borderRadius: BorderRadius.circular(AppRadii.md),
         ),
         alignment: Alignment.centerRight,
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
         child: Icon(
           Icons.archive_outlined,
           color: theme.colorScheme.onErrorContainer,
@@ -733,7 +735,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                                   color: scheme.onSurface,
                                 ),
                               ),
-                              const SizedBox(height: 2),
+                              const SizedBox(height: AppSpacing.xxxs),
                               Text(
                                 notification.body,
                                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -753,7 +755,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                         if (!notification.read) ...[
                           const SizedBox(width: AppSpacing.sm),
                           Padding(
-                            padding: const EdgeInsets.only(top: 8),
+                            padding: const EdgeInsets.only(top: AppSpacing.xs),
                             child: Icon(
                               Icons.fiber_manual_record_rounded,
                               size: 10,
@@ -775,7 +777,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.md,
-                vertical: 4,
+                vertical: AppSpacing.xxs,
               ),
               child: Row(
                 children: [
@@ -889,19 +891,19 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                   'Messages matching this regex pattern will be automatically ignored.',
                   style: TextStyle(fontSize: 14),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.md),
                 Text(
                   'Original Message:',
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xxs),
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(AppSpacing.xs),
                   decoration: BoxDecoration(
                     color: Theme.of(
                       context,
                     ).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppRadii.sm),
                   ),
                   child: Text(
                     rawText,
@@ -911,16 +913,16 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.md),
                 if (words.isNotEmpty) ...[
                   Text(
                     'Tap to add word:',
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xxs),
                   Wrap(
-                    spacing: 4,
-                    runSpacing: 4,
+                    spacing: AppSpacing.xxs,
+                    runSpacing: AppSpacing.xxs,
                     children: words.map((word) {
                       return ActionChip(
                         label: Text(word),
@@ -934,7 +936,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                       );
                     }).toList(),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.md),
                 ],
                 AppGlassTextField(
                   controller: controller,

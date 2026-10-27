@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../auth/auth_controller.dart';
+import '../../design/tokens.dart';
 import '../../features/launch/brand_widgets.dart';
 import '../../features/settings/permission_setup_controller.dart';
 import '../../widgets/app_kit.dart';
@@ -80,7 +81,10 @@ class _PermissionsSetupScreenState
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xl,
+                vertical: AppSpacing.md,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -96,7 +100,7 @@ class _PermissionsSetupScreenState
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.md),
                   StaggeredFadeIn(
                     delay: const Duration(milliseconds: 100),
                     child: Text(
@@ -108,7 +112,7 @@ class _PermissionsSetupScreenState
                       ),
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: AppSpacing.xxl),
                   StaggeredFadeIn(
                     delay: const Duration(milliseconds: 200),
                     child: AppPanel(
@@ -161,7 +165,7 @@ class _PermissionsSetupScreenState
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(AppSpacing.xl),
             child: StaggeredFadeIn(
               delay: const Duration(milliseconds: 300),
               child: FilledButton.icon(
@@ -191,19 +195,19 @@ class _PermissionsSetupScreenState
   }) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: BoxDecoration(
               color: scheme.primaryContainer,
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: scheme.onPrimaryContainer, size: 24),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,7 +219,7 @@ class _PermissionsSetupScreenState
                     fontSize: 16,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xxs),
                 Text(
                   description,
                   style: TextStyle(

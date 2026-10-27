@@ -83,7 +83,7 @@ class SettingsProfileSection extends StatelessWidget {
                               ? theme.colorScheme.positive
                               : theme.colorScheme.primary,
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: AppSpacing.xxs),
                         Text(
                           offline
                               ? 'Offline'
@@ -97,7 +97,7 @@ class SettingsProfileSection extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpacing.xxs),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [

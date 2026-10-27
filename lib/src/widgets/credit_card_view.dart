@@ -2,6 +2,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../design/tokens.dart';
+
 class CreditCardView extends StatelessWidget {
   final String cardNumber;
   final String expiry;
@@ -63,10 +65,10 @@ class CreditCardView extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadii.pill),
         onTap: () => _copyToClipboard(context, text, label),
         child: Padding(
-          padding: const EdgeInsets.all(4.0),
+          padding: const EdgeInsets.all(AppSpacing.xxs),
           child: Icon(
             Icons.copy_rounded,
             color: color ?? _foreground.withValues(alpha: 0.7),
@@ -109,7 +111,7 @@ class CreditCardView extends StatelessWidget {
     return Container(
       width: 400,
       constraints: const BoxConstraints(minHeight: 230),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
@@ -162,13 +164,13 @@ class CreditCardView extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: AppSpacing.xxs),
                       _buildCopyButton(context, expiry, 'expiry'),
                     ],
                   ),
               ],
             ),
-            const Expanded(child: SizedBox(height: 30)),
+            const Expanded(child: SizedBox(height: AppSpacing.xxl)),
             Row(
               children: [
                 Expanded(
@@ -199,14 +201,14 @@ class CreditCardView extends StatelessWidget {
                 _buildCopyButton(context, cardNumber, 'number'),
               ],
             ),
-            const SizedBox(height: 15),
+            const SizedBox(height: AppSpacing.md),
             Wrap(
               alignment: WrapAlignment.spaceBetween,
-              runSpacing: 15,
+              runSpacing: AppSpacing.md,
               children: [
                 Container(
                   constraints: const BoxConstraints(maxWidth: 360),
-                  padding: const EdgeInsets.only(right: 16),
+                  padding: const EdgeInsets.only(right: AppSpacing.md),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
@@ -234,8 +236,8 @@ class CreditCardView extends StatelessWidget {
                 ),
                 if (dynamicFields.isNotEmpty)
                   Wrap(
-                    spacing: 16,
-                    runSpacing: 10,
+                    spacing: AppSpacing.md,
+                    runSpacing: AppSpacing.xs,
                     alignment: WrapAlignment.end,
                     children: [
                       for (final entry in dynamicFields.entries)
@@ -262,7 +264,7 @@ class CreditCardView extends StatelessWidget {
                                 ),
                               ],
                             ),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: AppSpacing.xxs),
                             _buildCopyButton(context, entry.value, entry.key),
                           ],
                         ),

@@ -43,3 +43,8 @@ The `features/` directory contains screen-level UI and user workflows for 1Walle
    - Never compute balances or filter transaction lists manually in widget `build()` methods. Always utilize selectors from `lib/src/ledger/ledger_selectors.dart` to maximize caching and minimize unnecessary rebuilds.
 3. **Responsive & Adaptive Shell**:
    - Screen layouts must adapt to both portrait mobile phones and wide desktop/tablet screens.
+4. **One design system** (see `lib/src/widgets/AGENTS.md` and `lib/src/design/AGENTS.md`):
+   - Pushed routes use `RouteScaffold`; MainShell tabs use `AppScreen`. Only MainShell and the launch/login/onboarding brand screens own a `Scaffold`.
+   - Compose `app_kit.dart` primitives (SectionCard, AppPanel, AppGroupedSection/Tile, PremiumRow, AppSwitchListTile, EmptyState, AppLoadingState, showAppConfirmDialog, showAppSheet, showAppSnackBar, AppButtonStyles) instead of Material `Card`/`ListTile`/`Switch`, inline `SnackBar`s or raw `showModalBottomSheet`.
+   - No raw `fontSize`, `BorderRadius.circular(<n>)`, numeric `EdgeInsets`, `Colors.<hue>` or hex colours in feature screens: use `textTheme` roles, `AppRadii`, `AppSpacing`, `ColorScheme` roles (`scheme.positive`/`scheme.warning`/`tone.resolve(scheme)`).
+   - Enforced by `test/ui_design_system_guard_test.dart`; layouts are checked at 360 dp, 1.3× text, tablet, light/AMOLED and with an empty wallet by `test/ui_route_matrix_test.dart`. The inventory and canonical-choice table live in `doc/ui-audit.md`.

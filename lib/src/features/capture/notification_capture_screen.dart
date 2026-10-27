@@ -491,7 +491,7 @@ class _NotificationCaptureScreenState
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: AppSpacing.xxs),
                         Text(
                           'Scanned $totalScanned notification${totalScanned == 1 ? '' : 's'} · $queued queued · $duplicates duplicate${duplicates == 1 ? '' : 's'}',
                           style: theme.textTheme.bodyMedium?.copyWith(
@@ -622,7 +622,7 @@ class _NotificationCaptureScreenState
                                               ),
                                             ),
                                             if (amountText != null)
-                                              Text(
+                                              PrivacyText(
                                                 amountText,
                                                 style: theme
                                                     .textTheme
@@ -639,11 +639,11 @@ class _NotificationCaptureScreenState
                                               ),
                                           ],
                                         ),
-                                        const SizedBox(height: 2),
+                                        const SizedBox(height: AppSpacing.xxxs),
                                         Container(
                                           padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                            vertical: 2,
+                                            horizontal: AppSpacing.xxs,
+                                            vertical: AppSpacing.xxxs,
                                           ),
                                           decoration: BoxDecoration(
                                             color: isDuplicate
@@ -654,7 +654,7 @@ class _NotificationCaptureScreenState
                                                     alpha: 0.12,
                                                   ),
                                             borderRadius: BorderRadius.circular(
-                                              4,
+                                              AppRadii.xs,
                                             ),
                                           ),
                                           child: Text(
@@ -680,7 +680,7 @@ class _NotificationCaptureScreenState
                                 ],
                               ),
                               const SizedBox(height: AppSpacing.sm),
-                              Text(
+                              PrivacyText(
                                 parsed.rawText,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -704,8 +704,8 @@ class _NotificationCaptureScreenState
                                   },
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 8,
+                                      horizontal: AppSpacing.sm,
+                                      vertical: AppSpacing.xs,
                                     ),
                                     decoration: BoxDecoration(
                                       color: scheme.tertiary.withValues(
@@ -727,12 +727,12 @@ class _NotificationCaptureScreenState
                                           size: 16,
                                           color: scheme.tertiary,
                                         ),
-                                        const SizedBox(width: 8),
+                                        const SizedBox(width: AppSpacing.xs),
                                         Expanded(
                                           child: Text(
                                             dupType == 'transaction'
                                                 ? (matchedTx != null
-                                                      ? 'View transaction: ${matchedTx.name ?? formatMoney(matchedTx.amount, state.preferences.locale)}'
+                                                      ? 'View transaction: ${matchedTx.name ?? maskMoneyIfPrivate(state, formatMoney(matchedTx.amount, state.preferences.locale))}'
                                                       : 'View matched transaction')
                                                 : (matchedCandidate != null &&
                                                           matchedCandidate

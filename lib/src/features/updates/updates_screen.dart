@@ -261,7 +261,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                           letterSpacing: -0.2,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: AppSpacing.xxxs),
                       Text(
                         statusSubtitle,
                         style: theme.textTheme.bodySmall?.copyWith(
@@ -433,10 +433,13 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
         ),
         const SizedBox(width: AppSpacing.xxs),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xxs,
+            vertical: AppSpacing.xxxs,
+          ),
           decoration: BoxDecoration(
             color: badgeColor.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(AppRadii.xs),
             border: Border.all(
               color: badgeColor.withValues(alpha: 0.3),
               width: 0.8,
@@ -648,8 +651,8 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                 const Spacer(),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
+                    horizontal: AppSpacing.xs,
+                    vertical: AppSpacing.xxxs,
                   ),
                   decoration: BoxDecoration(
                     color: scheme.surfaceContainerHighest.withValues(
@@ -675,7 +678,10 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
               accentColor: scheme.primary,
             ),
             child: Padding(
-              padding: const EdgeInsets.only(left: 20, top: AppSpacing.xs),
+              padding: const EdgeInsets.only(
+                left: AppSpacing.lg,
+                top: AppSpacing.xs,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -826,7 +832,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                         ],
                       ],
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpacing.xxxs),
                     Text(
                       publishedDate,
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -839,8 +845,8 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                 const Spacer(),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 2,
+                    horizontal: AppSpacing.xs,
+                    vertical: AppSpacing.xxxs,
                   ),
                   decoration: BoxDecoration(
                     color: scheme.surfaceContainerHighest.withValues(
@@ -871,7 +877,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
         if (isExpanded)
           Padding(
             padding: const EdgeInsets.only(
-              left: 28,
+              left: AppSpacing.xl,
               right: AppSpacing.xs,
               bottom: AppSpacing.sm,
             ),
@@ -910,7 +916,9 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                 ],
                 if (changelog.isEmpty)
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.xxs,
+                    ),
                     child: Text(
                       'Bug fixes and stability improvements.',
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -933,10 +941,13 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
   }) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xxs,
+        vertical: AppSpacing.xxxs,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(AppRadii.xs),
         border: Border.all(color: color.withValues(alpha: 0.3), width: 0.8),
       ),
       child: Text(
@@ -978,10 +989,10 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(4),
+                  padding: const EdgeInsets.all(AppSpacing.xxs),
                   decoration: BoxDecoration(
                     color: accentColor.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(AppRadii.xs),
                   ),
                   child: Icon(icon, size: 14, color: accentColor),
                 ),
@@ -1034,7 +1045,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                       size: 16,
                       color: accentColor,
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: AppSpacing.xxs),
                     Text(
                       isExpanded
                           ? 'Show fewer changes'
@@ -1073,7 +1084,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxs),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1081,7 +1092,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                margin: const EdgeInsets.only(top: 7, right: 8),
+                margin: const EdgeInsets.only(top: 7, right: AppSpacing.xs),
                 width: 5,
                 height: 5,
                 decoration: BoxDecoration(
@@ -1095,16 +1106,16 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                   children: [
                     if (scope != null) ...[
                       Container(
-                        margin: const EdgeInsets.only(bottom: 2),
+                        margin: const EdgeInsets.only(bottom: AppSpacing.xxxs),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 5,
-                          vertical: 1.5,
+                          horizontal: AppSpacing.xxs,
+                          vertical: AppSpacing.xxxs,
                         ),
                         decoration: BoxDecoration(
                           color: scheme.surfaceContainerHighest.withValues(
                             alpha: 0.8,
                           ),
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(AppRadii.xs),
                           border: Border.all(
                             color: scheme.outlineVariant.withValues(alpha: 0.3),
                             width: 0.8,
@@ -1131,7 +1142,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
           ),
           if (showDivider)
             Padding(
-              padding: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.only(top: AppSpacing.xxs),
               child: Divider(
                 height: 1,
                 color: scheme.outlineVariant.withValues(alpha: 0.2),
@@ -1234,7 +1245,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                                         color: scheme.onSurface,
                                       ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: AppSpacing.xxs),
                                 Text(
                                   state.bytesExpected > 0
                                       ? '$writtenMb / $totalMb MB'
@@ -1256,7 +1267,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpacing.xxs),
                       Text(
                         'v${state.latestRelease?.versionName ?? ''} · Please keep the app open',
                         style: theme.textTheme.bodySmall?.copyWith(
@@ -1430,11 +1441,14 @@ class _MorpheInlineText extends StatelessWidget {
           WidgetSpan(
             alignment: PlaceholderAlignment.middle,
             child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xxxs),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xxs,
+                vertical: AppSpacing.xxxs,
+              ),
               decoration: BoxDecoration(
                 color: scheme.surfaceContainerHighest.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(5),
+                borderRadius: BorderRadius.circular(AppRadii.xs),
                 border: Border.all(
                   color: scheme.outlineVariant.withValues(alpha: 0.4),
                   width: 0.8,

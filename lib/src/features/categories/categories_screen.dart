@@ -56,7 +56,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
               child: Row(
                 children: [
                   Icon(Icons.restart_alt_rounded, size: 20),
-                  SizedBox(width: 12),
+                  SizedBox(width: AppSpacing.sm),
                   Text('Reset to default categories'),
                 ],
               ),
@@ -453,7 +453,7 @@ class _CategoryTreeNode extends StatelessWidget {
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpacing.xxxs),
                     Text(
                       _categoryNodeSubtitle(
                         category,
@@ -521,7 +521,7 @@ class _CategoryTreeNode extends StatelessWidget {
         ),
         if (children.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.only(left: 18.0 + 14.0),
+            padding: const EdgeInsets.only(left: AppSpacing.xxl),
             child: Container(
               margin: const EdgeInsets.only(top: AppSpacing.xs),
               padding: const EdgeInsets.only(left: AppSpacing.sm),

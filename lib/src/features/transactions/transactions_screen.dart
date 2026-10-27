@@ -559,7 +559,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (flow.income.amountMinor > 0)
-                            Text(
+                            PrivacyText(
                               '+${formatMoney(flow.income, state.preferences.locale)}',
                               style: TextStyle(
                                 color: positiveTone(context),
@@ -570,7 +570,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                               flow.expense.amountMinor > 0)
                             const SizedBox(width: AppSpacing.md),
                           if (flow.expense.amountMinor > 0)
-                            Text(
+                            PrivacyText(
                               '-${formatMoney(flow.expense, state.preferences.locale)}',
                               style: TextStyle(
                                 color: Theme.of(context).colorScheme.error,
@@ -826,7 +826,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                                             ).colorScheme.primary,
                                           ),
                                     ),
-                                    const SizedBox(height: 2),
+                                    const SizedBox(height: AppSpacing.xxxs),
                                     Row(
                                       children: [
                                         Expanded(
@@ -1519,7 +1519,7 @@ class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
                                     color: scheme.onSurfaceVariant,
                                   ),
                                 ),
-                                Text(
+                                PrivacyText(
                                   formatMoney(
                                     widget.totalMoney,
                                     widget.state.preferences.locale,
@@ -1704,7 +1704,7 @@ class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
-                                    Text(
+                                    PrivacyText(
                                       formatMoney(
                                         t.amount,
                                         widget.state.preferences.locale,
@@ -1756,7 +1756,7 @@ class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
                         );
                       },
                       icon: const Icon(Icons.call_merge_rounded),
-                      label: Text(
+                      label: PrivacyText(
                         'Merge into ${formatMoney(widget.totalMoney, widget.state.preferences.locale)}',
                       ),
                     ),

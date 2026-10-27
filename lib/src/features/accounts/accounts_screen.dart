@@ -268,7 +268,7 @@ class _CurrencySummaryHeader extends StatelessWidget {
         children: [
           for (final entry in currencyEntries)
             Padding(
-              padding: const EdgeInsets.only(bottom: 2),
+              padding: const EdgeInsets.only(bottom: AppSpacing.xxxs),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [

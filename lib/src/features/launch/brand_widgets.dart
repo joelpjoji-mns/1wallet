@@ -278,7 +278,7 @@ class BrandFrostedPanel extends StatelessWidget {
   const BrandFrostedPanel({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(24),
+    this.padding = const EdgeInsets.all(AppSpacing.xl),
     this.borderRadius,
   });
   final Widget child;
@@ -627,7 +627,7 @@ class BrandedLoadingState extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: AppSpacing.xxl),
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 300),
                     child: Text(
@@ -641,11 +641,11 @@ class BrandedLoadingState extends StatelessWidget {
                     ),
                   ),
                   if (progress != null) ...[
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppSpacing.xl),
                     SizedBox(
                       width: 200,
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(AppRadii.xs),
                         child: LinearProgressIndicator(
                           value: progress,
                           backgroundColor: Theme.of(

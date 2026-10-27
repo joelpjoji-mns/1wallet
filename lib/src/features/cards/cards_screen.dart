@@ -160,7 +160,7 @@ class _CardAccountTile extends ConsumerWidget {
       if (dueStatus?.statementDate != null)
         'Bill: ${DateFormat('d MMM').format(dueStatus!.statementDate!)}',
       if (lastStmtAmountMinor != null && dueStatus != null && !dueStatus.isPaid)
-        'Due: ${formatMoney(Money(amountMinor: lastStmtAmountMinor, currency: lastStmtCurrency), state.preferences.locale)}',
+        'Due: ${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: lastStmtAmountMinor, currency: lastStmtCurrency), state.preferences.locale))}',
     ].whereType<String>().join(' · ');
 
     final billNeedsAttention =
@@ -181,14 +181,14 @@ class _CardAccountTile extends ConsumerWidget {
           borderRadius: BorderRadius.circular(AppRadii.md),
           onTap: () => context.push('/account/${account.id}'),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(AppSpacing.xs),
                       decoration: BoxDecoration(
                         color: (account.color ?? scheme.primary)
                             .withAlphaFactor(0.18),
@@ -200,7 +200,7 @@ class _CardAccountTile extends ConsumerWidget {
                         color: account.color ?? scheme.primary,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,7 +215,7 @@ class _CardAccountTile extends ConsumerWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                           if (subtitleParts.isNotEmpty) ...[
-                            const SizedBox(height: 2),
+                            const SizedBox(height: AppSpacing.xxxs),
                             Text(
                               subtitleParts,
                               style: TextStyle(
@@ -229,7 +229,7 @@ class _CardAccountTile extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.xs),
                     PrivacyText(
                       formatMoney(displayBalance, state.preferences.locale),
                       style: const TextStyle(
@@ -240,23 +240,23 @@ class _CardAccountTile extends ConsumerWidget {
                   ],
                 ),
                 if (dueStatus != null) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AppSpacing.xs),
                   Row(
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
+                          horizontal: AppSpacing.xs,
+                          vertical: AppSpacing.xxs,
                         ),
                         decoration: BoxDecoration(
                           color: badgeColor,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(AppRadii.sm),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(badgeIcon, size: 14, color: badgeTextColor),
-                            const SizedBox(width: 5),
+                            const SizedBox(width: AppSpacing.xxs),
                             Text(
                               badgeLabel,
                               style: TextStyle(

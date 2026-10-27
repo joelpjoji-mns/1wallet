@@ -298,7 +298,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                           : MetricTone.warning,
                     ),
                     if (parsed.ignored && parsed.matchedIgnoreWord != null) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpacing.xxs),
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton.icon(
@@ -331,7 +331,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                     ],
                     if (!parsed.ignored &&
                         parsed.matchedTriggerWord != null) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpacing.xxs),
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton.icon(
@@ -363,7 +363,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                       ),
                     ],
                     if (parsed.ignored && parsed.matchedIgnoreWord == null) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpacing.xs),
                       const Text(
                         'Select a word from the SMS to add to triggers:',
                         style: TextStyle(
@@ -371,10 +371,10 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpacing.xxs),
                       Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
+                        spacing: AppSpacing.xs,
+                        runSpacing: AppSpacing.xs,
                         children: [
                           for (final word in _extractCandidateWords(
                             _testController.text,
@@ -711,7 +711,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: AppSpacing.xxs),
                         Text(
                           'Scanned $totalScanned SMS · $queued queued · $duplicates duplicate${duplicates == 1 ? '' : 's'}',
                           style: theme.textTheme.bodyMedium?.copyWith(
@@ -815,7 +815,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                                               ),
                                             ),
                                             if (amountText != null)
-                                              Text(
+                                              PrivacyText(
                                                 amountText,
                                                 style: theme
                                                     .textTheme
@@ -832,11 +832,11 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                                               ),
                                           ],
                                         ),
-                                        const SizedBox(height: 2),
+                                        const SizedBox(height: AppSpacing.xxxs),
                                         Container(
                                           padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                            vertical: 2,
+                                            horizontal: AppSpacing.xxs,
+                                            vertical: AppSpacing.xxxs,
                                           ),
                                           decoration: BoxDecoration(
                                             color: isDuplicate
@@ -847,7 +847,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                                                     alpha: 0.12,
                                                   ),
                                             borderRadius: BorderRadius.circular(
-                                              4,
+                                              AppRadii.xs,
                                             ),
                                           ),
                                           child: Text(
@@ -873,7 +873,7 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                                 ],
                               ),
                               const SizedBox(height: AppSpacing.sm),
-                              Text(
+                              PrivacyText(
                                 parsed.rawText,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -898,8 +898,8 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                                   },
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 8,
+                                      horizontal: AppSpacing.sm,
+                                      vertical: AppSpacing.xs,
                                     ),
                                     decoration: BoxDecoration(
                                       color: scheme.tertiary.withValues(
@@ -921,12 +921,12 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                                           size: 16,
                                           color: scheme.tertiary,
                                         ),
-                                        const SizedBox(width: 8),
+                                        const SizedBox(width: AppSpacing.xs),
                                         Expanded(
                                           child: Text(
                                             dupType == 'transaction'
                                                 ? (matchedTx != null
-                                                      ? 'View transaction: ${matchedTx.name ?? formatMoney(matchedTx.amount, state.preferences.locale)}'
+                                                      ? 'View transaction: ${matchedTx.name ?? maskMoneyIfPrivate(state, formatMoney(matchedTx.amount, state.preferences.locale))}'
                                                       : 'View matched transaction')
                                                 : (matchedCandidate != null &&
                                                           matchedCandidate
@@ -977,7 +977,7 @@ class _RuleRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxs),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

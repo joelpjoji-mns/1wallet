@@ -73,10 +73,13 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
         children: [
           if (isWorking) ...[
             const LinearProgressIndicator(),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
           ],
 
-          if (offline) ...[const OfflineModeCard(), const SizedBox(height: 16)],
+          if (offline) ...[
+            const OfflineModeCard(),
+            const SizedBox(height: AppSpacing.md),
+          ],
 
           // --- CLOUD SYNC SECTION ---
           SectionCard(
@@ -87,7 +90,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                   child: Row(
                     children: [
                       Container(
@@ -97,7 +100,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                           color: enabled
                               ? theme.colorScheme.primaryContainer
                               : theme.colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(AppRadii.sm),
                         ),
                         alignment: Alignment.center,
                         child: isWorking
@@ -115,7 +118,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                                     : theme.colorScheme.onSurfaceVariant,
                               ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,7 +129,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: AppSpacing.xxxs),
                             Text(
                               enabled
                                   ? 'Cloud sync is connected for this Google account.'
@@ -272,9 +275,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                             ),
                             const TableRow(
                               children: [
-                                SizedBox(height: 6),
-                                SizedBox(height: 6),
-                                SizedBox(height: 6),
+                                SizedBox(height: AppSpacing.xs),
+                                SizedBox(height: AppSpacing.xs),
+                                SizedBox(height: AppSpacing.xs),
                               ],
                             ),
                             TableRow(
@@ -306,9 +309,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                             ),
                             const TableRow(
                               children: [
-                                SizedBox(height: 4),
-                                SizedBox(height: 4),
-                                SizedBox(height: 4),
+                                SizedBox(height: AppSpacing.xxs),
+                                SizedBox(height: AppSpacing.xxs),
+                                SizedBox(height: AppSpacing.xxs),
                               ],
                             ),
                             TableRow(
@@ -373,13 +376,13 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
           ),
 
           if (enabled) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             SectionCard(
               title: 'Auto Upload Interval',
               compact: true,
               child: Column(
                 children: [
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.xs),
                   DropdownButtonFormField<int?>(
                     initialValue:
                         const [
@@ -396,8 +399,8 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                       labelStyle: theme.textTheme.bodyMedium,
                       border: const OutlineInputBorder(),
                       contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.xs,
                       ),
                     ),
                     items: const [
@@ -421,9 +424,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
+              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
               child: FilledButton.icon(
                 onPressed: isWorking
                     ? null
@@ -462,7 +465,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                             : theme.colorScheme.errorContainer.withValues(
                                 alpha: 0.3,
                               ),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(AppRadii.sm),
                       ),
                       child: Row(
                         children: [

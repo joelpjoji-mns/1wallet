@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
 import '../capture/sms_inbox_reader.dart';
 import '../common/route_scaffold.dart';
@@ -126,10 +127,10 @@ class _DevicePermissionsScreenState extends State<DevicePermissionsScreen> {
                         value: _smsPermissionLabel(_smsState),
                         tone: _smsPermissionTone(_smsState),
                       ),
-                      const Gap(10),
+                      const Gap(AppSpacing.xs),
                       Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
+                        spacing: AppSpacing.xs,
+                        runSpacing: AppSpacing.xs,
                         children: [
                           FilledButton.icon(
                             onPressed: (!_smsAvailable || _requestingSms)
@@ -150,7 +151,7 @@ class _DevicePermissionsScreenState extends State<DevicePermissionsScreen> {
                     ],
                   ),
           ),
-          const Gap(12),
+          const Gap(AppSpacing.sm),
           SectionCard(
             title: 'Camera and photos',
             subtitle:
@@ -167,10 +168,10 @@ class _DevicePermissionsScreenState extends State<DevicePermissionsScreen> {
                   label: 'Photos',
                   value: 'Requested on first use',
                 ),
-                const Gap(10),
+                const Gap(AppSpacing.xs),
                 Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
                   children: [
                     FilledButton.icon(
                       onPressed: _requestingMedia ? null : _requestMedia,
@@ -194,7 +195,7 @@ class _DevicePermissionsScreenState extends State<DevicePermissionsScreen> {
               ],
             ),
           ),
-          const Gap(12),
+          const Gap(AppSpacing.sm),
           SectionCard(
             title: 'Guided setup',
             subtitle:
