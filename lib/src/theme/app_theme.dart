@@ -48,9 +48,14 @@ abstract final class AppTheme {
       outlineVariant: baseScheme.outlineVariant,
     );
 
-    final textTheme = Typography.material2021()
-        .black
-        .apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
+    // `ThemeData.fontFamily` only applies to the *default* text theme; an
+    // explicit `textTheme` (like this one) keeps Typography's platform font
+    // (Roboto / SF) unless the family is applied here as well.
+    final textTheme = Typography.material2021().black.apply(
+      fontFamily: 'Inter',
+      bodyColor: scheme.onSurface,
+      displayColor: scheme.onSurface,
+    );
 
     return ThemeData(
       useMaterial3: true,
@@ -71,10 +76,19 @@ abstract final class AppTheme {
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         foregroundColor: scheme.onSurface,
-        titleTextStyle: TextStyle(
+        titleTextStyle: textTheme.titleLarge?.copyWith(
           color: scheme.onSurface,
-          fontSize: 20,
           fontWeight: FontWeight.w800,
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: scheme.surfaceContainerHigh,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.xl),
+        ),
+        titleTextStyle: textTheme.headlineSmall,
+        contentTextStyle: textTheme.bodyMedium?.copyWith(
+          color: scheme.onSurfaceVariant,
         ),
       ),
       cardTheme: CardThemeData(

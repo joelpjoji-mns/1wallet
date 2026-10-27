@@ -41,9 +41,9 @@ class BottomIslandNavBar extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final glassTheme = GlassThemeData.of(context);
-    final glassSettings = glassTheme.settingsFor(context)?.applyTo(
-          const LiquidGlassSettings(),
-        );
+    final glassSettings = glassTheme
+        .settingsFor(context)
+        ?.applyTo(const LiquidGlassSettings());
 
     return SafeArea(
       top: false,
@@ -59,7 +59,9 @@ class BottomIslandNavBar extends StatelessWidget {
             // When FAB is down beside the island bar, shrink the island and shift left
             // leaving room for 64px FAB + 12px margin on the right.
             final islandWidth = hasDownFab
-                ? (totalWidth - 76).clamp(240.0, AppSizes.islandMaxWidth - 76).toDouble()
+                ? (totalWidth - 76)
+                      .clamp(240.0, AppSizes.islandMaxWidth - 76)
+                      .toDouble()
                 : totalWidth.clamp(320.0, AppSizes.islandMaxWidth).toDouble();
 
             final islandLeft = hasDownFab
@@ -88,7 +90,9 @@ class BottomIslandNavBar extends StatelessWidget {
                             GlassTab(
                               label: item.title,
                               semanticLabel: item.title,
-                              icon: item.badgeCount != null && item.badgeCount! > 0
+                              icon:
+                                  item.badgeCount != null &&
+                                      item.badgeCount! > 0
                                   ? Badge.count(
                                       count: item.badgeCount!,
                                       backgroundColor: scheme.error,
@@ -96,13 +100,14 @@ class BottomIslandNavBar extends StatelessWidget {
                                     )
                                   : Icon(item.icon),
                               activeIcon:
-                                  item.badgeCount != null && item.badgeCount! > 0
-                                      ? Badge.count(
-                                          count: item.badgeCount!,
-                                          backgroundColor: scheme.error,
-                                          child: Icon(item.activeIcon),
-                                        )
-                                      : Icon(item.activeIcon),
+                                  item.badgeCount != null &&
+                                      item.badgeCount! > 0
+                                  ? Badge.count(
+                                      count: item.badgeCount!,
+                                      backgroundColor: scheme.error,
+                                      child: Icon(item.activeIcon),
+                                    )
+                                  : Icon(item.activeIcon),
                             ),
                         ],
                         selectedIndex: selectedIndex,
@@ -121,6 +126,18 @@ class BottomIslandNavBar extends StatelessWidget {
                         unselectedIconColor: scheme.onSurfaceVariant,
                         selectedLabelColor: scheme.primary,
                         unselectedLabelColor: scheme.onSurfaceVariant,
+                        // The package label style has no font family; keep
+                        // the app type face on the navigation labels.
+                        selectedLabelStyle: TextStyle(
+                          fontFamily: Theme.of(
+                            context,
+                          ).textTheme.labelSmall?.fontFamily,
+                        ),
+                        unselectedLabelStyle: TextStyle(
+                          fontFamily: Theme.of(
+                            context,
+                          ).textTheme.labelSmall?.fontFamily,
+                        ),
                         backgroundQuality: GlassQuality.minimal,
                       ),
                     ),
