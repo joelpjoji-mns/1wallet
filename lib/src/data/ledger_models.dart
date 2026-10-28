@@ -942,6 +942,8 @@ class CaptureCandidate {
     this.merchant,
     this.transactionType,
     this.suggestedAccountId,
+    this.suggestedCounterAccountId,
+    this.pairedCandidateId,
     this.suggestedCategoryId,
     this.suggestedCategoryConfidence,
     this.suggestedCategoryReason,
@@ -956,6 +958,8 @@ class CaptureCandidate {
   final String? merchant;
   final String? transactionType;
   final String? suggestedAccountId;
+  final String? suggestedCounterAccountId;
+  final String? pairedCandidateId;
   final String? suggestedCategoryId;
   final double? suggestedCategoryConfidence;
   final String? suggestedCategoryReason;
@@ -970,6 +974,8 @@ class CaptureCandidate {
     String? merchant,
     String? transactionType,
     String? suggestedAccountId,
+    String? suggestedCounterAccountId,
+    String? pairedCandidateId,
     String? suggestedCategoryId,
     double? suggestedCategoryConfidence,
     String? suggestedCategoryReason,
@@ -984,6 +990,9 @@ class CaptureCandidate {
       merchant: merchant ?? this.merchant,
       transactionType: transactionType ?? this.transactionType,
       suggestedAccountId: suggestedAccountId ?? this.suggestedAccountId,
+      suggestedCounterAccountId:
+          suggestedCounterAccountId ?? this.suggestedCounterAccountId,
+      pairedCandidateId: pairedCandidateId ?? this.pairedCandidateId,
       suggestedCategoryId: suggestedCategoryId ?? this.suggestedCategoryId,
       suggestedCategoryConfidence:
           suggestedCategoryConfidence ?? this.suggestedCategoryConfidence,

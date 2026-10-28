@@ -2432,12 +2432,46 @@ class LedgerController extends StateNotifier<LedgerState> {
 
   Future<void> updateCaptureCandidateStatus(String id, String status) =>
       _runMutation(() async {
+        final candidate = _candidateById(state, id);
+        final pairedId = candidate?.pairedCandidateId;
         final candidates = [
-          for (final candidate in state.captureCandidates)
-            candidate.id == id ? candidate.copyWith(status: status) : candidate,
+          for (final item in state.captureCandidates)
+            (item.id == id || (pairedId != null && item.id == pairedId))
+                ? item.copyWith(status: status)
+                : item,
         ];
         await _commit(state.copyWith(captureCandidates: candidates));
       });
+
+  Future<void> linkTransferCandidates({
+    required String debitCandidateId,
+    required String creditCandidateId,
+  }) => _runMutation(() async {
+    final debitCandidate =
+        state.captureCandidates.firstWhereOrNull((c) => c.id == debitCandidateId);
+    final creditCandidate =
+        state.captureCandidates.firstWhereOrNull((c) => c.id == creditCandidateId);
+    if (debitCandidate == null || creditCandidate == null) return;
+
+    final candidates = [
+      for (final item in state.captureCandidates)
+        if (item.id == debitCandidateId)
+          item.copyWith(
+            transactionType: 'transfer',
+            suggestedCounterAccountId: creditCandidate.suggestedAccountId,
+            pairedCandidateId: creditCandidate.id,
+          )
+        else if (item.id == creditCandidateId)
+          item.copyWith(
+            transactionType: 'transfer',
+            suggestedCounterAccountId: debitCandidate.suggestedAccountId,
+            pairedCandidateId: debitCandidate.id,
+          )
+        else
+          item,
+    ];
+    await _commit(state.copyWith(captureCandidates: candidates));
+  });
 
   Future<void> updateCaptureCandidateStatuses(
     Iterable<String> ids,
@@ -2469,10 +2503,13 @@ class LedgerController extends StateNotifier<LedgerState> {
       if (account == null) {
         throw StateError('Create an account before confirming captures.');
       }
-      final type = candidate.transactionType == 'income' ? 'income' : 'expense';
-      final category =
-          categoryById(state, candidate.suggestedCategoryId) ??
-          _matchCategory(state, candidate.merchant, type);
+      final type = candidate.transactionType == 'transfer'
+          ? 'transfer'
+          : (candidate.transactionType == 'income' ? 'income' : 'expense');
+      final category = type == 'transfer'
+          ? null
+          : (categoryById(state, candidate.suggestedCategoryId) ??
+              _matchCategory(state, candidate.merchant, type));
       Money amount;
       Money? originalAmount;
       final parsedCurrency = candidate.parsedAmount!.currency.toUpperCase();
@@ -2498,6 +2535,8 @@ class LedgerController extends StateNotifier<LedgerState> {
         status: 'cleared',
         source: candidate.source,
         accountId: account.id,
+        counterAccountId:
+            type == 'transfer' ? candidate.suggestedCounterAccountId : null,
         amount: amount,
         baseAmount: baseAmount,
         originalAmount: originalAmount,
@@ -2511,7 +2550,11 @@ class LedgerController extends StateNotifier<LedgerState> {
       );
       final candidates = [
         for (final item in state.captureCandidates)
-          item.id == id ? item.copyWith(status: 'approved') : item,
+          (item.id == id ||
+                  (candidate.pairedCandidateId != null &&
+                      item.id == candidate.pairedCandidateId))
+              ? item.copyWith(status: 'approved')
+              : item,
       ];
       final preferences = _preferencesRememberingCategory(
         state,
@@ -2660,6 +2703,21 @@ class LedgerController extends StateNotifier<LedgerState> {
               return false;
             }
           }
+        }
+
+        // If transaction types are explicitly known and opposite (income vs expense),
+        // they are opposite flow directions (e.g. transfer pair or separate flows), NOT duplicates.
+        if (c.transactionType != null &&
+            parsed.transactionType != null &&
+            c.transactionType != parsed.transactionType) {
+          return false;
+        }
+
+        // If both accounts are known and different, they are different accounts (e.g. transfer pair).
+        if (matchedAccountId != null &&
+            c.suggestedAccountId != null &&
+            matchedAccountId != c.suggestedAccountId) {
+          return false;
         }
 
         if (matchedAccountId == null ||

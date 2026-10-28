@@ -106,14 +106,20 @@ class SmsReceiver : BroadcastReceiver() {
         val accept = amount != null && matchedTrigger != null && matchedIgnore == null
 
         if (accept) {
-            val spooled = spoolMessage(context, sender, body, amount, matchedTrigger, expectedOwner = captureOwner, expectedRevision = captureConfiguration.revision)
-            val notificationShown = if (spooled) showNotification(context, amount, extractLast4(body)) else false
+            val last4 = extractLast4(body)
+            val shouldNotify = CaptureNotificationTracker.shouldShowNotification(context, amount, body, last4)
+            val spooled = spoolMessage(
+                context, sender, body, amount, matchedTrigger,
+                expectedOwner = captureOwner, expectedRevision = captureConfiguration.revision,
+                notificationShown = shouldNotify
+            )
+            val notificationShown = if (spooled && shouldNotify) showNotification(context, amount, last4) else false
             appendDiagnostic(
                 context,
                 source = "sms",
                 stage = "native-sms",
                 decision = if (spooled) "accepted" else "error",
-                reason = if (spooled) "spooled before notification" else "spool failed",
+                reason = if (spooled) (if (shouldNotify) "spooled before notification" else "suppressed duplicate notification") else "spool failed",
                 rawText = body,
                 amount = amount,
                 matchedTriggerWord = matchedTrigger,
@@ -176,14 +182,15 @@ class SmsReceiver : BroadcastReceiver() {
 
     private fun spoolMessage(
         context: Context, sender: String, body: String, amount: String?,
-        matchedTrigger: String?, isBillStatement: Boolean = false, expectedOwner: String, expectedRevision: Long
+        matchedTrigger: String?, isBillStatement: Boolean = false, expectedOwner: String, expectedRevision: Long,
+        notificationShown: Boolean = true
     ): Boolean {
         val payload = org.json.JSONObject()
         payload.put("sender", sender)
         payload.put("body", body)
         payload.put("nativeSource", "sms")
         payload.put("nativeAccepted", true)
-        payload.put("notificationShown", true)
+        payload.put("notificationShown", notificationShown)
         payload.put("timestamp", java.time.Instant.now().toString())
         if (isBillStatement) payload.put("isBillStatement", true)
         if (amount != null) payload.put("nativeMatchedAmount", amount)
@@ -239,7 +246,8 @@ class SmsReceiver : BroadcastReceiver() {
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
 
-            notificationManager.notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), builder.build())
+            val notificationId = CaptureNotificationTracker.getNotificationId(amount, last4)
+            notificationManager.notify(notificationId, builder.build())
             true
         } catch (_: Exception) {
             false
@@ -294,7 +302,8 @@ class SmsReceiver : BroadcastReceiver() {
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
 
-            notificationManager.notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), builder.build())
+            val notificationId = CaptureNotificationTracker.getNotificationId(amount, last4)
+            notificationManager.notify(notificationId, builder.build())
             true
         } catch (_: Exception) {
             false

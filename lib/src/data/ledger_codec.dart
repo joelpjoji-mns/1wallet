@@ -83,19 +83,7 @@ LedgerState normalizeLedgerState(
   CaptureCandidate withValidatedCandidateCategory(CaptureCandidate candidate) {
     final next = validCategoryId(candidate.suggestedCategoryId);
     if (next == candidate.suggestedCategoryId) return candidate;
-    return CaptureCandidate(
-      id: candidate.id,
-      source: candidate.source,
-      status: candidate.status,
-      createdAt: candidate.createdAt,
-      rawText: candidate.rawText,
-      parsedAmount: candidate.parsedAmount,
-      merchant: candidate.merchant,
-      transactionType: candidate.transactionType,
-      suggestedAccountId: candidate.suggestedAccountId,
-      suggestedCategoryConfidence: candidate.suggestedCategoryConfidence,
-      suggestedCategoryReason: candidate.suggestedCategoryReason,
-    );
+    return candidate.copyWith(suggestedCategoryId: next);
   }
 
   FutureGenerationRule withValidatedRuleCategory(FutureGenerationRule rule) {
@@ -854,6 +842,8 @@ Map<String, Object?> _captureCandidateToJson(CaptureCandidate candidate) {
     'merchant': candidate.merchant,
     'transactionType': candidate.transactionType,
     'suggestedAccountId': candidate.suggestedAccountId,
+    'suggestedCounterAccountId': candidate.suggestedCounterAccountId,
+    'pairedCandidateId': candidate.pairedCandidateId,
     'suggestedCategoryId': candidate.suggestedCategoryId,
     'suggestedCategoryConfidence': candidate.suggestedCategoryConfidence,
     'suggestedCategoryReason': candidate.suggestedCategoryReason,
@@ -873,6 +863,9 @@ CaptureCandidate _captureCandidateFromJson(Map<String, dynamic> json) {
     merchant: _nullableString(json['merchant']),
     transactionType: _nullableString(json['transactionType']),
     suggestedAccountId: _nullableString(json['suggestedAccountId']),
+    suggestedCounterAccountId:
+        _nullableString(json['suggestedCounterAccountId']),
+    pairedCandidateId: _nullableString(json['pairedCandidateId']),
     suggestedCategoryId: _nullableString(json['suggestedCategoryId']),
     suggestedCategoryConfidence: _nullableDouble(
       json['suggestedCategoryConfidence'],

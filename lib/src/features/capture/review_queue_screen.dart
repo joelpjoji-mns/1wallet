@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import '../../ledger/ledger_selectors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +14,21 @@ import '../common/route_scaffold.dart';
 import '../../widgets/privacy_text.dart';
 import '../notifications/notification_engine.dart';
 import 'capture_queue.dart';
+
+class TransferCandidatePair {
+  const TransferCandidatePair({
+    required this.debitCandidate,
+    required this.creditCandidate,
+  });
+
+  final CaptureCandidate debitCandidate;
+  final CaptureCandidate creditCandidate;
+
+  DateTime get createdAt =>
+      debitCandidate.createdAt.isAfter(creditCandidate.createdAt)
+          ? debitCandidate.createdAt
+          : creditCandidate.createdAt;
+}
 
 class ReviewQueueScreen extends ConsumerStatefulWidget {
   const ReviewQueueScreen({super.key});
@@ -107,16 +123,10 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
         .where((notification) => !notification.read)
         .length;
 
-    final items = <dynamic>[...candidates, ...allNotifications];
-    items.sort((a, b) {
-      final aDate = a is CaptureCandidate
-          ? a.createdAt
-          : (a as AppNotification).createdAt;
-      final bDate = b is CaptureCandidate
-          ? b.createdAt
-          : (b as AppNotification).createdAt;
-      return bDate.compareTo(aDate);
-    });
+    final items = _groupReviewItems(
+      pendingCandidates: candidates,
+      notifications: allNotifications,
+    );
 
     return GlassIsolationScope(
       defaultQuality: GlassQuality.standard,
@@ -179,7 +189,9 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                       const SizedBox(height: AppSpacing.md),
                   itemBuilder: (context, index) {
                     final item = items[index];
-                    if (item is CaptureCandidate) {
+                    if (item is TransferCandidatePair) {
+                      return _buildTransferPairCard(context, ref, state, item);
+                    } else if (item is CaptureCandidate) {
                       return _buildCandidateCard(context, ref, state, item);
                     } else if (item is AppNotification) {
                       return _buildNotificationCard(context, ref, state, item);
@@ -223,6 +235,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final isIncome = candidate.transactionType == 'income';
+    final matchedPlan = _findMatchingPlan(state, candidate);
 
     // Glass is reserved for navigation/control chrome (per the
     // liquid_glass_widgets guidance); scrolling list rows stay opaque.
@@ -293,6 +306,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
 
           // ── Suggestion chips ────────────────────────────────────────
           if (candidate.suggestedAccountId != null ||
+              matchedPlan != null ||
               candidate.suggestedCategoryId != null) ...[
             const SizedBox(height: AppSpacing.sm),
             Wrap(
@@ -321,6 +335,27 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                     useOwnLayer: true,
                     semanticLabel:
                         'Account: ${state.accounts.where((a) => a.id == candidate.suggestedAccountId).firstOrNull?.name ?? 'Account'}',
+                  ),
+                if (matchedPlan != null)
+                  GlassChip(
+                    label: matchedPlan.name?.isNotEmpty == true
+                        ? 'Planned: ${matchedPlan.name}'
+                        : 'Planned payment detected',
+                    icon: const Icon(Icons.event_repeat_rounded),
+                    iconSize: 13,
+                    iconColor: scheme.tertiary,
+                    labelStyle: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: scheme.tertiary,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: AppSpacing.xxs,
+                    ),
+                    quality: GlassQuality.standard,
+                    useOwnLayer: true,
+                    semanticLabel:
+                        'Planned payment detected: ${matchedPlan.name ?? ''}',
                   ),
                 if (candidate.suggestedCategoryId != null)
                   GlassChip(
@@ -390,7 +425,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                     color: scheme.error,
                     icon: const Icon(Icons.block_rounded),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
+                  const SizedBox(width: AppSpacing.xs),
 
                   // Dismiss
                   Expanded(
@@ -407,7 +442,29 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                       style: AppButtonStyles.destructiveText(context),
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
+                  const SizedBox(width: AppSpacing.xs),
+
+                  // Pay Plan (if plan match detected)
+                  if (matchedPlan != null) ...[
+                    Expanded(
+                      flex: 3,
+                      child: FilledButton.tonalIcon(
+                        onPressed: () async {
+                          final router = GoRouter.of(context);
+                          await router.push(
+                            '/add?plannedId=${matchedPlan.id}&captureCandidateId=${candidate.id}',
+                          );
+                        },
+                        icon: const Icon(Icons.event_repeat_rounded),
+                        label: const Text('Pay Plan'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: scheme.tertiaryContainer,
+                          foregroundColor: scheme.onTertiaryContainer,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                  ],
 
                   // Confirm
                   Expanded(
@@ -1053,6 +1110,429 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
             readNotificationIds: nextRead.toList()..sort(),
           ),
         );
+  }
+
+  List<dynamic> _groupReviewItems({
+    required List<CaptureCandidate> pendingCandidates,
+    required List<AppNotification> notifications,
+  }) {
+    final pairedIds = <String>{};
+    final pairs = <TransferCandidatePair>[];
+
+    // 1. Explicitly paired candidates
+    for (final c in pendingCandidates) {
+      if (c.pairedCandidateId != null && !pairedIds.contains(c.id)) {
+        final other = pendingCandidates.firstWhereOrNull(
+          (o) => o.id == c.pairedCandidateId && !pairedIds.contains(o.id),
+        );
+        if (other != null) {
+          final debit = c.transactionType == 'expense' ? c : other;
+          final credit = c.transactionType == 'expense' ? other : c;
+          pairs.add(TransferCandidatePair(
+            debitCandidate: debit,
+            creditCandidate: credit,
+          ));
+          pairedIds.add(debit.id);
+          pairedIds.add(credit.id);
+        }
+      }
+    }
+
+    // 2. Discover potential transfer pairs:
+    // Same amountMinor & currency, opposite directions (one expense, one income),
+    // different accounts (or different texts), within 24 hours.
+    for (final c in pendingCandidates) {
+      if (pairedIds.contains(c.id) || c.parsedAmount == null) continue;
+      if (c.transactionType != 'expense' && c.transactionType != 'income') {
+        continue;
+      }
+
+      for (final other in pendingCandidates) {
+        if (other.id == c.id ||
+            pairedIds.contains(other.id) ||
+            other.parsedAmount == null) {
+          continue;
+        }
+        if (other.transactionType != 'expense' &&
+            other.transactionType != 'income') {
+          continue;
+        }
+
+        // Opposite flow direction: one debit and one income
+        if (c.transactionType == other.transactionType) continue;
+
+        // Same amount and currency
+        if (c.parsedAmount!.amountMinor != other.parsedAmount!.amountMinor ||
+            c.parsedAmount!.currency.toUpperCase() !=
+                other.parsedAmount!.currency.toUpperCase()) {
+          continue;
+        }
+
+        // Within 24 hours
+        if ((c.createdAt.difference(other.createdAt).inHours).abs() > 24) {
+          continue;
+        }
+
+        // Different accounts if both are present
+        if (c.suggestedAccountId != null &&
+            other.suggestedAccountId != null &&
+            c.suggestedAccountId == other.suggestedAccountId) {
+          continue;
+        }
+
+        final debit = c.transactionType == 'expense' ? c : other;
+        final credit = c.transactionType == 'expense' ? other : c;
+        pairs.add(TransferCandidatePair(
+          debitCandidate: debit,
+          creditCandidate: credit,
+        ));
+        pairedIds.add(debit.id);
+        pairedIds.add(credit.id);
+        break;
+      }
+    }
+
+    final standalone =
+        pendingCandidates.where((c) => !pairedIds.contains(c.id)).toList();
+
+    final items = <dynamic>[...pairs, ...standalone, ...notifications];
+    items.sort((a, b) {
+      final aDate = a is TransferCandidatePair
+          ? a.createdAt
+          : (a is CaptureCandidate
+              ? a.createdAt
+              : (a as AppNotification).createdAt);
+      final bDate = b is TransferCandidatePair
+          ? b.createdAt
+          : (b is CaptureCandidate
+              ? b.createdAt
+              : (b as AppNotification).createdAt);
+      return bDate.compareTo(aDate);
+    });
+    return items;
+  }
+
+  TransactionRecord? _findMatchingPlan(
+    LedgerState state,
+    CaptureCandidate candidate,
+  ) {
+    if (candidate.parsedAmount == null) return null;
+    final candAmt = candidate.parsedAmount!;
+    final scheduled = scheduledTransactions(state);
+
+    TransactionRecord? bestMatch;
+    int bestScore = -1;
+
+    for (final plan in scheduled) {
+      if (plan.status != 'scheduled' && plan.status != 'paused') continue;
+
+      final planAmt = plan.originalAmount ?? plan.amount;
+      if (planAmt.amountMinor != candAmt.amountMinor ||
+          planAmt.currency.toUpperCase() != candAmt.currency.toUpperCase()) {
+        continue;
+      }
+
+      if (candidate.transactionType != null &&
+          candidate.transactionType != 'transfer') {
+        final isCandidateIncome = candidate.transactionType == 'income';
+        final isPlanIncome = plan.type == 'income';
+        if (isCandidateIncome != isPlanIncome) continue;
+      }
+
+      // Check within +/- 3 days (72 hours)
+      final diffHours =
+          (candidate.createdAt.difference(plan.occurredAt).inHours).abs();
+      if (diffHours > 72) continue;
+
+      int score = 10;
+      if (candidate.suggestedAccountId != null &&
+          candidate.suggestedAccountId == plan.accountId) {
+        score += 20;
+      }
+      if (plan.name != null && candidate.merchant != null) {
+        final pName = plan.name!.trim().toLowerCase();
+        final cName = candidate.merchant!.trim().toLowerCase();
+        if (pName.isNotEmpty &&
+            cName.isNotEmpty &&
+            (pName.contains(cName) || cName.contains(pName))) {
+          score += 15;
+        }
+      }
+      if (diffHours <= 24) {
+        score += 5;
+      } else if (diffHours <= 48) {
+        score += 2;
+      }
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = plan;
+      }
+    }
+
+    return bestMatch;
+  }
+
+  Widget _buildTransferPairCard(
+    BuildContext context,
+    WidgetRef ref,
+    LedgerState state,
+    TransferCandidatePair pair,
+  ) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final debit = pair.debitCandidate;
+    final credit = pair.creditCandidate;
+
+    final fromAccount = state.accounts
+        .firstWhereOrNull((a) => a.id == debit.suggestedAccountId);
+    final toAccount = state.accounts
+        .firstWhereOrNull((a) => a.id == credit.suggestedAccountId);
+
+    final amount = debit.parsedAmount ?? credit.parsedAmount;
+
+    return AppPanel(
+      onTap: () => _confirmTransferPair(context, ref, pair),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header: Transfer icon + title + amount ──────────────────
+          Row(
+            children: [
+              IconBubble(
+                icon: Icons.swap_horiz_rounded,
+                color: scheme.primary,
+                compact: true,
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Transfer detected',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xxxs),
+                    Text(
+                      DateFormat.MMMd(
+                        state.preferences.locale.replaceAll('_', '-'),
+                      ).add_jm().format(pair.createdAt),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (amount != null) ...[
+                const SizedBox(width: AppSpacing.sm),
+                Flexible(
+                  child: PrivacyText(
+                    formatMoney(amount, state.preferences.locale),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: scheme.primary,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+
+          // ── Accounts route chips: From ➔ To ─────────────────────────
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              GlassChip(
+                label: 'From: ${fromAccount?.name ?? 'Account'}',
+                icon: const Icon(Icons.call_made_rounded),
+                iconSize: 13,
+                iconColor: scheme.error,
+                labelStyle: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.xxs,
+                ),
+                quality: GlassQuality.standard,
+                useOwnLayer: true,
+              ),
+              Icon(
+                Icons.arrow_forward_rounded,
+                size: 14,
+                color: scheme.onSurfaceVariant,
+              ),
+              GlassChip(
+                label: 'To: ${toAccount?.name ?? 'Account'}',
+                icon: const Icon(Icons.call_received_rounded),
+                iconSize: 13,
+                iconColor: scheme.positive,
+                labelStyle: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.xxs,
+                ),
+                quality: GlassQuality.standard,
+                useOwnLayer: true,
+              ),
+              GlassChip(
+                label: 'Transfer',
+                icon: const Icon(Icons.swap_horiz_rounded),
+                iconSize: 13,
+                iconColor: scheme.tertiary,
+                labelStyle: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: scheme.tertiary,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.xxs,
+                ),
+                quality: GlassQuality.standard,
+                useOwnLayer: true,
+              ),
+            ],
+          ),
+
+          // ── Raw text preview (both debit & credit messages) ─────────
+          if ((debit.rawText?.isNotEmpty == true) ||
+              (credit.rawText?.isNotEmpty == true)) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(AppRadii.md),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (debit.rawText?.isNotEmpty == true)
+                    PrivacyText(
+                      'Debit: ${debit.rawText!}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontFamily: AppFonts.mono,
+                        height: 1.3,
+                      ),
+                    ),
+                  if (debit.rawText?.isNotEmpty == true &&
+                      credit.rawText?.isNotEmpty == true)
+                    const SizedBox(height: AppSpacing.xxs),
+                  if (credit.rawText?.isNotEmpty == true)
+                    PrivacyText(
+                      'Credit: ${credit.rawText!}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontFamily: AppFonts.mono,
+                        height: 1.3,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+
+          // ── Divider ─────────────────────────────────────────────────
+          const SizedBox(height: AppSpacing.md),
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: scheme.outlineVariant.withValues(alpha: 0.4),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+
+          // ── Actions ─────────────────────────────────────────────────
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Dismiss both
+                Expanded(
+                  flex: 2,
+                  child: TextButton.icon(
+                    onPressed: () => _dismissTransferPair(context, ref, pair),
+                    icon: const Icon(Icons.close_rounded),
+                    label: const Text('Dismiss'),
+                    style: AppButtonStyles.destructiveText(context),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+
+                // Confirm Transfer
+                Expanded(
+                  flex: 3,
+                  child: FilledButton.tonalIcon(
+                    onPressed: () => _confirmTransferPair(context, ref, pair),
+                    icon: const Icon(Icons.check_rounded),
+                    label: const Text('Confirm Transfer'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmTransferPair(
+    BuildContext context,
+    WidgetRef ref,
+    TransferCandidatePair pair,
+  ) async {
+    try {
+      await ref.read(ledgerProvider.notifier).linkTransferCandidates(
+            debitCandidateId: pair.debitCandidate.id,
+            creditCandidateId: pair.creditCandidate.id,
+          );
+      if (!context.mounted) return;
+      final router = GoRouter.of(context);
+      await router.push('/add?captureCandidateId=${pair.debitCandidate.id}');
+    } catch (e) {
+      if (!context.mounted) return;
+      showAppSnackBar(context, e.toString());
+    }
+  }
+
+  Future<void> _dismissTransferPair(
+    BuildContext context,
+    WidgetRef ref,
+    TransferCandidatePair pair,
+  ) async {
+    try {
+      await ref
+          .read(ledgerProvider.notifier)
+          .updateCaptureCandidateStatus(pair.debitCandidate.id, 'rejected');
+      await ref
+          .read(ledgerProvider.notifier)
+          .updateCaptureCandidateStatus(pair.creditCandidate.id, 'rejected');
+      if (!context.mounted) return;
+      showAppSnackBar(context, 'Transfer candidates dismissed.');
+    } catch (e) {
+      if (!context.mounted) return;
+      showAppSnackBar(context, e.toString());
+    }
   }
 
   void _openNotification(

@@ -253,6 +253,11 @@ class NotificationReceiver : NotificationListenerService() {
 
         if (combinedText.isEmpty()) return
 
+        val sbnKey = "${sbn.packageName}:${sbn.id}:${sbn.tag ?: ""}"
+        if (CaptureNotificationTracker.isDuplicateStatusBarNotification(sbnKey, combinedText)) {
+            return
+        }
+
         val triggers = CaptureQueue.words(captureConfiguration.settings, "notificationTriggerWords", DEFAULT_TRIGGERS)
         val ignores = CaptureQueue.words(captureConfiguration.settings, "notificationIgnoreWords", DEFAULT_IGNORES)
         val lowerText = combinedText.lowercase()
@@ -299,14 +304,20 @@ class NotificationReceiver : NotificationListenerService() {
         val accept = amount != null && matchedTrigger != null && matchedIgnore == null
 
         if (accept) {
-            val spooled = spoolMessage(context, title.ifEmpty { "Notification" }, combinedText, amount, matchedTrigger, expectedOwner = captureOwner, expectedRevision = captureConfiguration.revision)
-            val notificationShown = if (spooled) showNotification(context, amount, extractLast4(combinedText)) else false
+            val last4 = extractLast4(combinedText)
+            val shouldNotify = CaptureNotificationTracker.shouldShowNotification(context, amount, combinedText, last4)
+            val spooled = spoolMessage(
+                context, title.ifEmpty { "Notification" }, combinedText, amount, matchedTrigger,
+                expectedOwner = captureOwner, expectedRevision = captureConfiguration.revision,
+                notificationShown = shouldNotify
+            )
+            val notificationShown = if (spooled && shouldNotify) showNotification(context, amount, last4) else false
             appendDiagnostic(
                 context,
                 source = "notification",
                 stage = "native-notification",
                 decision = if (spooled) "accepted" else "error",
-                reason = if (spooled) "spooled before notification" else "spool failed",
+                reason = if (spooled) (if (shouldNotify) "spooled before notification" else "suppressed duplicate notification") else "spool failed",
                 rawText = combinedText,
                 amount = amount,
                 matchedTriggerWord = matchedTrigger,
@@ -369,14 +380,15 @@ class NotificationReceiver : NotificationListenerService() {
 
     private fun spoolMessage(
         context: Context, sender: String, body: String, amount: String?,
-        matchedTrigger: String?, isBillStatement: Boolean = false, expectedOwner: String, expectedRevision: Long
+        matchedTrigger: String?, isBillStatement: Boolean = false, expectedOwner: String, expectedRevision: Long,
+        notificationShown: Boolean = true
     ): Boolean {
         val payload = org.json.JSONObject()
         payload.put("sender", sender)
         payload.put("body", body)
         payload.put("nativeSource", "notification")
         payload.put("nativeAccepted", true)
-        payload.put("notificationShown", true)
+        payload.put("notificationShown", notificationShown)
         payload.put("timestamp", java.time.Instant.now().toString())
         if (isBillStatement) payload.put("isBillStatement", true)
         if (amount != null) payload.put("nativeMatchedAmount", amount)
@@ -432,7 +444,8 @@ class NotificationReceiver : NotificationListenerService() {
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
 
-            notificationManager.notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), builder.build())
+            val notificationId = CaptureNotificationTracker.getNotificationId(amount, last4)
+            notificationManager.notify(notificationId, builder.build())
             true
         } catch (_: Exception) {
             false
@@ -487,7 +500,8 @@ class NotificationReceiver : NotificationListenerService() {
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
 
-            notificationManager.notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), builder.build())
+            val notificationId = CaptureNotificationTracker.getNotificationId(amount, last4)
+            notificationManager.notify(notificationId, builder.build())
             true
         } catch (_: Exception) {
             false

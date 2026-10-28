@@ -1228,7 +1228,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                 : _paymentMethodController.text.trim(),
             name: (captureCandidate?.merchant?.trim().isNotEmpty ?? false)
                 ? captureCandidate!.merchant!.trim()
-                : editingTransaction?.name,
+                : (plannedTransaction?.name ?? editingTransaction?.name),
             occurredAt: _occurredAt,
             originalTransactionId:
                 widget.plannedId ?? editingTransaction?.originalTransactionId,
@@ -1272,6 +1272,14 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
               widget.captureCandidateId!,
               'approved',
             );
+        if (captureCandidate?.pairedCandidateId != null) {
+          await ref
+              .read(ledgerProvider.notifier)
+              .updateCaptureCandidateStatus(
+                captureCandidate!.pairedCandidateId!,
+                'approved',
+              );
+        }
       }
 
       if (!mounted) return;
@@ -1305,22 +1313,40 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
     _loadedTransactionId = key;
 
     if (hasCapture && candidate != null) {
-      _type = candidate.transactionType == 'income' ? 'income' : 'expense';
-      _accountId = candidate.suggestedAccountId ?? widget.initialAccountId;
-      _categoryId = candidate.suggestedCategoryId;
+      if (candidate.transactionType == 'transfer' ||
+          candidate.suggestedCounterAccountId != null) {
+        _type = 'transfer';
+        _accountId = candidate.suggestedAccountId ?? widget.initialAccountId;
+        _counterAccountId = candidate.suggestedCounterAccountId;
+      } else {
+        _type = planned?.type ??
+            (candidate.transactionType == 'income' ? 'income' : 'expense');
+        _accountId = candidate.suggestedAccountId ??
+            planned?.accountId ??
+            widget.initialAccountId;
+      }
+      _categoryId = candidate.suggestedCategoryId ?? planned?.categoryId;
       _notesController.text = (candidate.rawText?.trim().isNotEmpty == true)
           ? candidate.rawText!.trim()
-          : (candidate.merchant ?? '');
-      _locationController.text = '';
-      _paymentMethodController.text = candidate.source.toUpperCase();
+          : (candidate.merchant ?? planned?.notes ?? '');
+      _locationController.text = planned?.locationLabel ?? '';
+      _paymentMethodController.text =
+          planned?.paymentMethod ?? candidate.source.toUpperCase();
       if (candidate.parsedAmount != null) {
         _transactionCurrency = candidate.parsedAmount!.currency;
         _amount = _formatAmountInput(
           candidate.parsedAmount!.amountMinor,
           _transactionCurrency!,
         );
+      } else if (planned != null) {
+        final pAmt = planned.originalAmount ?? planned.amount;
+        _transactionCurrency = pAmt.currency;
+        _amount = _formatAmountInput(pAmt.amountMinor, _transactionCurrency!);
       }
       _occurredAt = candidate.createdAt;
+      if (planned != null) {
+        _status = 'cleared';
+      }
     } else {
       final source = tx ?? planned;
       if (source == null) return;
