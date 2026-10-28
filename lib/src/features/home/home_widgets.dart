@@ -424,6 +424,9 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedAccountId = ref.watch(homeSelectedAccountProvider);
+    final selectedAccount = selectedAccountId != null
+        ? accountById(state, selectedAccountId)
+        : null;
     final period = getHomeWidgetFilterForWidget(
       state.preferences.homeWidgetFilters,
       'recentRecords',
@@ -444,6 +447,9 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
 
     return HomeWidgetCard(
       title: 'Recent records',
+      subtitle: selectedAccount != null
+          ? 'Filtered by ${selectedAccount.name}'
+          : null,
       icon: Icons.format_list_bulleted_rounded,
       iconColor: Theme.of(context).colorScheme.error,
       actionLabel: 'View',
@@ -463,10 +469,14 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
             );
       },
       child: recent.isEmpty
-          ? const EmptyState(
+          ? EmptyState(
               icon: Icons.receipt_long_outlined,
-              title: 'No records yet',
-              body: 'Your latest transactions will appear here.',
+              title: selectedAccount != null
+                  ? 'No records for ${selectedAccount.name}'
+                  : 'No records for $period',
+              body: selectedAccount != null
+                  ? 'Tap the account tile above to clear the filter.'
+                  : 'Your latest transactions in this period will appear here.',
             )
           : ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 275),
