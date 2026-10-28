@@ -12,17 +12,19 @@ class HomeBalancePill extends StatelessWidget {
     super.key,
     this.icon,
     this.showChevron = false,
+    this.onTap,
   });
 
   final String label;
   final IconData? icon;
   final bool showChevron;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
+    final pill = Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
         vertical: AppSpacing.xs,
@@ -52,6 +54,15 @@ class HomeBalancePill extends StatelessWidget {
         ],
       ),
     );
+
+    if (onTap != null) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        child: pill,
+      );
+    }
+    return pill;
   }
 }
 

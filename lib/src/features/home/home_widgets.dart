@@ -214,6 +214,28 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                 icon: Icons.calendar_month_rounded,
                 semanticLabel: 'Balance period',
               ),
+              const SizedBox(width: AppSpacing.xs),
+              if (allCurrencies.length > 1 && forcedCurrency == null)
+                GlassDropdownPill<String>(
+                  value: displayCurrency,
+                  options: [
+                    for (final currency in allCurrencies)
+                      GlassDropdownOption(currency, currency),
+                  ],
+                  onChanged: (val) {
+                    ref.read(ledgerProvider.notifier).setDisplayCurrency(val);
+                  },
+                  icon: Icons.currency_exchange_rounded,
+                  semanticLabel: 'Display currency',
+                )
+              else
+                HomeBalancePill(
+                  label: displayCurrency,
+                  icon: Icons.currency_exchange_rounded,
+                  onTap: forcedCurrency == null
+                      ? () => context.push('/currency-values')
+                      : null,
+                ),
             ],
           ),
           const SizedBox(height: AppSpacing.xxxs),
