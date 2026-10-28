@@ -59,6 +59,108 @@ void main() {
     ]);
   });
 
+  test('balance trend for specific account reflects only that account and transfers', () {
+    final state = _ledger(
+      accounts: [
+        _account(id: 'bank', openingMinor: 10000),
+        _account(id: 'cash', type: 'cash', openingMinor: 2000),
+      ],
+      transactions: [
+        _tx(
+          id: 'income',
+          type: 'income',
+          accountId: 'bank',
+          amountMinor: 2000,
+          date: DateTime(2026, 1, 2),
+        ),
+        _tx(
+          id: 'expense',
+          type: 'expense',
+          accountId: 'cash',
+          amountMinor: 500,
+          date: DateTime(2026, 1, 3),
+        ),
+        _tx(
+          id: 'transfer',
+          type: 'transfer',
+          accountId: 'bank',
+          counterAccountId: 'cash',
+          amountMinor: 1000,
+          date: DateTime(2026, 1, 4),
+        ),
+      ],
+    );
+
+    final bankTrend = balanceTrendForRange(
+      state,
+      start: DateTime(2026, 1, 1),
+      end: DateTime(2026, 1, 4),
+      accountId: 'bank',
+    );
+
+    expect(bankTrend.map((point) => point.balance.amountMinor), [
+      10000,
+      12000,
+      12000,
+      11000,
+    ]);
+
+    final cashTrend = balanceTrendForRange(
+      state,
+      start: DateTime(2026, 1, 1),
+      end: DateTime(2026, 1, 4),
+      accountId: 'cash',
+    );
+
+    expect(cashTrend.map((point) => point.balance.amountMinor), [
+      2000,
+      2000,
+      1500,
+      2500,
+    ]);
+  });
+
+  test('future balance trend for specific account includes only scheduled transactions for that account', () {
+    final state = _ledger(
+      accounts: [
+        _account(id: 'bank', openingMinor: 10000),
+        _account(id: 'cash', type: 'cash', openingMinor: 2000),
+      ],
+      transactions: [
+        _tx(
+          id: 'future-bank-expense',
+          type: 'expense',
+          status: 'scheduled',
+          accountId: 'bank',
+          amountMinor: 1500,
+          date: DateTime(2026, 2, 2),
+        ),
+        _tx(
+          id: 'future-cash-expense',
+          type: 'expense',
+          status: 'scheduled',
+          accountId: 'cash',
+          amountMinor: 500,
+          date: DateTime(2026, 2, 3),
+        ),
+      ],
+    );
+
+    final bankFutureTrend = balanceFutureTrendForRange(
+      state,
+      start: DateTime(2026, 2, 1),
+      end: DateTime(2026, 2, 4),
+      accountId: 'bank',
+    );
+
+    expect(bankFutureTrend.map((point) => point.balance.amountMinor), [
+      10000,
+      8500,
+      8500,
+      8500,
+    ]);
+  });
+
   test('balance breakdown matches default total-balance account scope', () {
     final state = _ledger(
       accounts: [

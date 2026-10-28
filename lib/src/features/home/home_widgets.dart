@@ -586,6 +586,35 @@ class _BalanceTrendHomeWidgetState
 
   @override
   Widget build(BuildContext context) {
+    final selectedAccountId = ref.watch(homeSelectedAccountProvider);
+    final selectedAccount = selectedAccountId != null
+        ? accountById(widget.state, selectedAccountId)
+        : null;
+
+    final allCurrencies = availableCurrencies(widget.state);
+    String? forcedCurrency;
+    if (selectedAccountId != null && selectedAccountId != 'cash_group') {
+      forcedCurrency = selectedAccount?.currency.toUpperCase();
+    }
+
+    var displayCurrency =
+        forcedCurrency ??
+        widget.state.preferences.displayCurrency.toUpperCase();
+    if (forcedCurrency == null &&
+        !allCurrencies.contains(displayCurrency) &&
+        allCurrencies.isNotEmpty) {
+      displayCurrency = allCurrencies.first;
+    }
+
+    final accountFilterName = selectedAccountId != null
+        ? (selectedAccountId == 'cash_group'
+            ? 'Cash'
+            : (selectedAccount?.name ?? 'Selected account'))
+        : null;
+    final fallbackSubtitle = accountFilterName != null
+        ? '$accountFilterName · $_period'
+        : _period;
+
     final now = DateTime.now();
     final nowRounded = DateTime(now.year, now.month, now.day);
 
@@ -593,10 +622,20 @@ class _BalanceTrendHomeWidgetState
     final futureEnd = nowRounded.add(const Duration(days: 365 * 2));
 
     final pastTrendAsync = ref.watch(
-      homeBalanceTrendProvider((start: null, end: nowRounded)),
+      homeBalanceTrendProvider((
+        start: null,
+        end: nowRounded,
+        accountId: selectedAccountId,
+        targetCurrency: displayCurrency,
+      )),
     );
     final futureTrendAsync = ref.watch(
-      homeBalanceFutureTrendProvider((start: nowRounded, end: futureEnd)),
+      homeBalanceFutureTrendProvider((
+        start: nowRounded,
+        end: futureEnd,
+        accountId: selectedAccountId,
+        targetCurrency: displayCurrency,
+      )),
     );
 
     final scheme = Theme.of(context).colorScheme;
@@ -605,7 +644,7 @@ class _BalanceTrendHomeWidgetState
       return RepaintBoundary(
         child: HomeWidgetCard(
           title: 'Balance trend',
-          subtitle: _period,
+          subtitle: fallbackSubtitle,
           icon: Icons.bar_chart_rounded,
           iconColor: scheme.tertiary,
           headerTrailing: _buildDropdown(),
@@ -626,7 +665,7 @@ class _BalanceTrendHomeWidgetState
       return RepaintBoundary(
         child: HomeWidgetCard(
           title: 'Balance trend',
-          subtitle: _period,
+          subtitle: fallbackSubtitle,
           icon: Icons.bar_chart_rounded,
           iconColor: scheme.tertiary,
           headerTrailing: _buildDropdown(),
@@ -649,7 +688,7 @@ class _BalanceTrendHomeWidgetState
     if (pastTrend.isEmpty && futureTrend.isEmpty) {
       return HomeWidgetCard(
         title: 'Balance trend',
-        subtitle: _period,
+        subtitle: fallbackSubtitle,
         icon: Icons.bar_chart_rounded,
         iconColor: scheme.tertiary,
         headerTrailing: _buildDropdown(),
@@ -716,7 +755,7 @@ class _BalanceTrendHomeWidgetState
     if (visibleValues.isEmpty) {
       return HomeWidgetCard(
         title: 'Balance trend',
-        subtitle: _period,
+        subtitle: fallbackSubtitle,
         icon: Icons.bar_chart_rounded,
         iconColor: scheme.tertiary,
         headerTrailing: _buildDropdown(),
@@ -854,11 +893,14 @@ class _BalanceTrendHomeWidgetState
         : nowRounded;
     final periodLabel =
         '${_shortDate(leftDate, widget.state.preferences.locale)} · ${_shortDate(rightDate, widget.state.preferences.locale)}';
+    final subtitle = accountFilterName != null
+        ? '$accountFilterName · $periodLabel'
+        : periodLabel;
 
     return RepaintBoundary(
       child: HomeWidgetCard(
         title: 'Balance trend',
-        subtitle: periodLabel,
+        subtitle: subtitle,
         icon: Icons.bar_chart_rounded,
         iconColor: scheme.tertiary,
         headerTrailing: _buildDropdown(),
@@ -1119,10 +1161,7 @@ class _BalanceTrendHomeWidgetState
                                         formatMoney(
                                           Money(
                                             amountMinor: spot.y.toInt(),
-                                            currency: widget
-                                                .state
-                                                .preferences
-                                                .displayCurrency,
+                                            currency: displayCurrency,
                                           ),
                                           widget.state.preferences.locale,
                                         ),

@@ -37,11 +37,50 @@ List<BalanceTrendPoint> balanceTrendForRange(
   LedgerState state, {
   DateTime? start,
   DateTime? end,
+  String? accountId,
+  String? targetCurrency,
 }) {
+  final includedAccounts = accountId != null
+      ? (accountId == 'cash_group'
+            ? {
+                for (final account in state.accounts)
+                  if (account.type == 'cash' &&
+                      !account.isArchived &&
+                      !account.isDeleted)
+                    account.id,
+              }
+            : {
+                for (final account in state.accounts)
+                  if (account.id == accountId && !account.isDeleted) account.id,
+              })
+      : {
+          for (final account in state.accounts)
+            if (!account.isArchived &&
+                !account.isDeleted &&
+                account.includeInReports)
+              account.id,
+        };
+
+  if (includedAccounts.isEmpty) return const [];
+
+  final displayCurrency =
+      targetCurrency ??
+      (accountId != null && accountId != 'cash_group'
+          ? (accountById(state, accountId)?.currency ??
+              state.preferences.displayCurrency)
+          : state.preferences.displayCurrency);
+
   final now = DateTime.now();
   final rangeEndRaw = end ?? now;
   DateTime earliest = now;
   for (final tx in state.transactions) {
+    if (tx.status == 'scheduled' || tx.status == 'void') continue;
+    if (includedAccounts.isNotEmpty) {
+      if (!includedAccounts.contains(tx.accountId) &&
+          !includedAccounts.contains(tx.counterAccountId)) {
+        continue;
+      }
+    }
     if (tx.occurredAt.isBefore(earliest)) earliest = tx.occurredAt;
   }
   final rangeStartRaw = start ?? earliest;
@@ -58,11 +97,6 @@ List<BalanceTrendPoint> balanceTrendForRange(
     rangeEndRaw.day,
   );
 
-  final includedAccounts = {
-    for (final account in state.accounts)
-      if (!account.isArchived && account.includeInReports) account.id,
-  };
-  final displayCurrency = state.preferences.displayCurrency;
   var running = state.accounts
       .where((account) => includedAccounts.contains(account.id))
       .fold<int>(0, (sum, account) {
@@ -77,12 +111,23 @@ List<BalanceTrendPoint> balanceTrendForRange(
   final txs =
       state.transactions
           .where((tx) => tx.status != 'scheduled' && tx.status != 'void')
+          .where(
+            (tx) =>
+                includedAccounts.contains(tx.accountId) ||
+                (tx.counterAccountId != null &&
+                    includedAccounts.contains(tx.counterAccountId)),
+          )
           .toList()
         ..sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
 
   int txIndex = 0;
   while (txIndex < txs.length && txs[txIndex].occurredAt.isBefore(rangeStart)) {
-    running += _includedTotalDelta(state, txs[txIndex], includedAccounts);
+    running += _includedTotalDelta(
+      state,
+      txs[txIndex],
+      includedAccounts,
+      displayCurrency,
+    );
     txIndex++;
   }
 
@@ -92,7 +137,12 @@ List<BalanceTrendPoint> balanceTrendForRange(
   while (!current.isAfter(rangeEnd)) {
     final nextDay = DateTime(current.year, current.month, current.day + 1);
     while (txIndex < txs.length && txs[txIndex].occurredAt.isBefore(nextDay)) {
-      running += _includedTotalDelta(state, txs[txIndex], includedAccounts);
+      running += _includedTotalDelta(
+        state,
+        txs[txIndex],
+        includedAccounts,
+        displayCurrency,
+      );
       txIndex++;
     }
     points.add(
@@ -113,17 +163,43 @@ List<BalanceTrendPoint> balanceFutureTrendForRange(
   LedgerState state, {
   required DateTime start,
   required DateTime end,
+  String? accountId,
+  String? targetCurrency,
 }) {
   if (end.isBefore(start)) return const [];
 
   final rangeStart = DateTime(start.year, start.month, start.day);
   final rangeEnd = DateTime(end.year, end.month, end.day);
 
-  final includedAccounts = {
-    for (final account in state.accounts)
-      if (!account.isArchived && account.includeInReports) account.id,
-  };
-  final displayCurrency = state.preferences.displayCurrency;
+  final includedAccounts = accountId != null
+      ? (accountId == 'cash_group'
+            ? {
+                for (final account in state.accounts)
+                  if (account.type == 'cash' &&
+                      !account.isArchived &&
+                      !account.isDeleted)
+                    account.id,
+              }
+            : {
+                for (final account in state.accounts)
+                  if (account.id == accountId && !account.isDeleted) account.id,
+              })
+      : {
+          for (final account in state.accounts)
+            if (!account.isArchived &&
+                !account.isDeleted &&
+                account.includeInReports)
+              account.id,
+        };
+
+  if (includedAccounts.isEmpty) return const [];
+
+  final displayCurrency =
+      targetCurrency ??
+      (accountId != null && accountId != 'cash_group'
+          ? (accountById(state, accountId)?.currency ??
+              state.preferences.displayCurrency)
+          : state.preferences.displayCurrency);
 
   // Seed running balance from all posted transactions (same as balanceTrendForRange)
   var running = state.accounts
@@ -140,11 +216,22 @@ List<BalanceTrendPoint> balanceFutureTrendForRange(
   final postedTxs =
       state.transactions
           .where((tx) => tx.status != 'scheduled' && tx.status != 'void')
+          .where(
+            (tx) =>
+                includedAccounts.contains(tx.accountId) ||
+                (tx.counterAccountId != null &&
+                    includedAccounts.contains(tx.counterAccountId)),
+          )
           .toList()
         ..sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
 
   for (final tx in postedTxs) {
-    running += _includedTotalDelta(state, tx, includedAccounts);
+    running += _includedTotalDelta(
+      state,
+      tx,
+      includedAccounts,
+      displayCurrency,
+    );
   }
 
   // Gather scheduled/paused transactions due in [start..end]
@@ -156,9 +243,22 @@ List<BalanceTrendPoint> balanceFutureTrendForRange(
             !tx.occurredAt.isBefore(rangeStart) &&
             !tx.occurredAt.isAfter(rangeEnd),
       )
+      .where(
+        (tx) =>
+            includedAccounts.contains(tx.accountId) ||
+            (tx.counterAccountId != null &&
+                includedAccounts.contains(tx.counterAccountId)),
+      )
       .toList();
 
-  futureTxs.addAll(forecastRecurringTransactions(state, rangeStart, rangeEnd));
+  futureTxs.addAll(
+    forecastRecurringTransactions(state, rangeStart, rangeEnd).where(
+      (tx) =>
+          includedAccounts.contains(tx.accountId) ||
+          (tx.counterAccountId != null &&
+              includedAccounts.contains(tx.counterAccountId)),
+    ),
+  );
   futureTxs.sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
 
   final points = <BalanceTrendPoint>[];
@@ -173,6 +273,7 @@ List<BalanceTrendPoint> balanceFutureTrendForRange(
         state,
         futureTxs[txIndex],
         includedAccounts,
+        displayCurrency,
       );
       txIndex++;
     }
@@ -354,8 +455,9 @@ List<Money> foreignCurrencyExposure(LedgerState state) {
 int _includedTotalDelta(
   LedgerState state,
   TransactionRecord transaction,
-  Set<String> accountIds,
-) {
+  Set<String> accountIds, [
+  String? targetCurrency,
+]) {
   var delta = 0;
   if (accountIds.contains(transaction.accountId)) {
     delta += convertMoneyForDisplay(
@@ -364,6 +466,7 @@ int _includedTotalDelta(
         amountMinor: sourceDelta(transaction),
         currency: transaction.amount.currency,
       ),
+      targetCurrency,
     ).amountMinor;
   }
   if (transaction.counterAccountId != null &&
@@ -374,6 +477,7 @@ int _includedTotalDelta(
         amountMinor: counterDelta(transaction),
         currency: (transaction.counterAmount ?? transaction.amount).currency,
       ),
+      targetCurrency,
     ).amountMinor;
   }
   return delta;

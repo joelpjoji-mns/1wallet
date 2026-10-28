@@ -54,29 +54,59 @@ final homeFlowForPeriodProvider = Provider.family
     });
 
 final homeBalanceTrendProvider = FutureProvider.family
-    .autoDispose<List<BalanceTrendPoint>, ({DateTime? start, DateTime? end})>((
-      ref,
-      args,
-    ) async {
+    .autoDispose<
+      List<BalanceTrendPoint>,
+      ({
+        DateTime? start,
+        DateTime? end,
+        String? accountId,
+        String? targetCurrency,
+      })
+    >((ref, args) async {
       final state = ref.watch(ledgerProvider);
       return await compute((msg) {
-        return balanceTrendForRange(msg.state, start: msg.start, end: msg.end);
-      }, (state: state, start: args.start, end: args.end));
+        return balanceTrendForRange(
+          msg.state,
+          start: msg.start,
+          end: msg.end,
+          accountId: msg.accountId,
+          targetCurrency: msg.targetCurrency,
+        );
+      }, (
+        state: state,
+        start: args.start,
+        end: args.end,
+        accountId: args.accountId,
+        targetCurrency: args.targetCurrency,
+      ));
     });
 
 final homeBalanceFutureTrendProvider = FutureProvider.family
-    .autoDispose<List<BalanceTrendPoint>, ({DateTime start, DateTime end})>((
-      ref,
-      args,
-    ) async {
+    .autoDispose<
+      List<BalanceTrendPoint>,
+      ({
+        DateTime start,
+        DateTime end,
+        String? accountId,
+        String? targetCurrency,
+      })
+    >((ref, args) async {
       final state = ref.watch(ledgerProvider);
       return await compute((msg) {
         return balanceFutureTrendForRange(
           msg.state,
           start: msg.start,
           end: msg.end,
+          accountId: msg.accountId,
+          targetCurrency: msg.targetCurrency,
         );
-      }, (state: state, start: args.start, end: args.end));
+      }, (
+        state: state,
+        start: args.start,
+        end: args.end,
+        accountId: args.accountId,
+        targetCurrency: args.targetCurrency,
+      ));
     });
 
 final homeAccountBalanceMapProvider = Provider.autoDispose<Map<String, Money>>((

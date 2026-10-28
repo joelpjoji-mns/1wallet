@@ -54,14 +54,21 @@ void main() {
           state,
           overrides: [
             homeBalanceTrendProvider.overrideWith(
-              (ref, args) =>
-                  balanceTrendForRange(state, start: args.start, end: args.end),
+              (ref, args) => balanceTrendForRange(
+                state,
+                start: args.start,
+                end: args.end,
+                accountId: args.accountId,
+                targetCurrency: args.targetCurrency,
+              ),
             ),
             homeBalanceFutureTrendProvider.overrideWith(
               (ref, args) => balanceFutureTrendForRange(
                 state,
                 start: args.start,
                 end: args.end,
+                accountId: args.accountId,
+                targetCurrency: args.targetCurrency,
               ),
             ),
           ],
