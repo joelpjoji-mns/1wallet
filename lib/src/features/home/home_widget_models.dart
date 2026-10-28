@@ -45,6 +45,13 @@ const standardHomeDateFilterOptions = [
   'All time',
 ];
 
+const recentRecordsDateFilterOptions = [
+  'Today',
+  'This week',
+  '2 weeks',
+  'This month',
+];
+
 const futureHomeDateFilterOptions = [
   'This week',
   'This month',
@@ -82,8 +89,10 @@ const homeWidgetDateLabels = {
   'This year': 'This year',
   'All time': 'All time',
   'today': 'Today',
+  'Today': 'Today',
   '1_week': 'This week',
-  '2_weeks': 'This week',
+  '2_weeks': '2 weeks',
+  '2 weeks': '2 weeks',
   '1_month': 'This month',
 };
 
@@ -107,6 +116,12 @@ DateTimeRange homeWidgetDateRange(String period) {
       return DateTimeRange(
         start: start,
         end: start.add(const Duration(days: 7)),
+      );
+    case '2 weeks':
+    case '2_weeks':
+      return DateTimeRange(
+        start: today.subtract(const Duration(days: 14)),
+        end: today.add(const Duration(days: 1)),
       );
     case 'This month':
     case 'thisMonth':
@@ -300,4 +315,19 @@ String getHomeWidgetFilter(
   final val = homeWidgetFilters[widgetKey];
   if (val == null || val.isEmpty) return defaultValue;
   return homeWidgetDateLabels[val] ?? val;
+}
+
+String getHomeWidgetFilterForWidget(
+  Map<String, String> homeWidgetFilters,
+  String widgetKey,
+) {
+  final defaultValue = switch (widgetKey) {
+    'recentRecords' => 'This week',
+    _ => 'This month',
+  };
+  return getHomeWidgetFilter(
+    homeWidgetFilters,
+    widgetKey,
+    defaultValue: defaultValue,
+  );
 }

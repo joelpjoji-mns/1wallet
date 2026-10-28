@@ -354,7 +354,7 @@ final _monthlyStatsProvider = Provider.autoDispose
 
 final transactionsTypeFilterProvider = StateProvider<String>((ref) => 'all');
 final transactionsDateFilterProvider = StateProvider<String>(
-  (ref) => 'this_year',
+  (ref) => 'all',
 );
 final transactionsStatusFilterProvider = StateProvider<String>((ref) => 'all');
 final transactionsCategoryFilterProvider = StateProvider<Set<String>>(
@@ -372,7 +372,7 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 }
 
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
-  static const _defaultDateFilter = 'this_year';
+  static const _defaultDateFilter = 'all';
 
   var _query = '';
   final Set<String> _categoryFilters = <String>{};

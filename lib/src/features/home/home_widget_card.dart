@@ -108,9 +108,7 @@ class HomeWidgetCard extends StatelessWidget {
                 GlassDropdownPill<String>(
                   value: dateFilterOptions.contains(dateFilter)
                       ? dateFilter!
-                      : (dateFilterOptions.contains('This month')
-                            ? 'This month'
-                            : dateFilterOptions.first),
+                      : dateFilterOptions.first,
                   options: [
                     for (final option in dateFilterOptions)
                       GlassDropdownOption(option, option),

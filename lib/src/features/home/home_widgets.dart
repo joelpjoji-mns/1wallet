@@ -424,7 +424,7 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedAccountId = ref.watch(homeSelectedAccountProvider);
-    final period = getHomeWidgetFilter(
+    final period = getHomeWidgetFilterForWidget(
       state.preferences.homeWidgetFilters,
       'recentRecords',
     );
@@ -449,6 +449,7 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
       actionLabel: 'View',
       onAction: () => onTabSelected(1),
       dateFilter: period,
+      dateFilterOptions: recentRecordsDateFilterOptions,
       onDateFilterChanged: (value) {
         final newFilters = Map<String, String>.from(
           state.preferences.homeWidgetFilters,
