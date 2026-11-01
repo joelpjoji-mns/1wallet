@@ -579,6 +579,7 @@ class _BalanceTrendHomeWidgetState
   /// Positive => scrolled into the future (chart shows later dates).
   /// Negative => scrolled further into the past.
   double _scrollOffset = 0.0;
+  double? _touchedIndex;
 
   int get _zoomDays {
     switch (_period) {
@@ -923,6 +924,7 @@ class _BalanceTrendHomeWidgetState
         child: GestureDetector(
           onHorizontalDragUpdate: (details) {
             setState(() {
+              _touchedIndex = null;
               // Convert pixel drag to index-space movement.
               // Dragging right => scroll into the past (decrease offset).
               final pixelsPerDay =
@@ -940,261 +942,444 @@ class _BalanceTrendHomeWidgetState
                 child: SizedBox(
                   height: _chartHeight,
                   child: RepaintBoundary(
-                    child: LineChart(
-                      LineChartData(
-                        clipData: const FlClipData.all(),
-                        gridData: FlGridData(
-                          horizontalInterval: niceInterval,
-                          verticalInterval: niceXInterval,
-                          getDrawingHorizontalLine: (value) => FlLine(
-                            color: scheme.outlineVariant.withAlphaFactor(0.25),
-                            strokeWidth: 0.5,
-                            dashArray: [3, 5],
-                          ),
-                          getDrawingVerticalLine: (value) => FlLine(
-                            color: scheme.outlineVariant.withAlphaFactor(0.25),
-                            strokeWidth: 0.5,
-                            dashArray: [3, 5],
-                          ),
-                        ),
-                        titlesData: FlTitlesData(
-                          topTitles: const AxisTitles(),
-                          rightTitles: const AxisTitles(),
-                          leftTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              reservedSize: 52,
-                              interval: niceInterval,
-                              getTitlesWidget: (value, meta) {
-                                return PrivacyText(
-                                  formatCompact(value),
-                                  style: Theme.of(context).textTheme.labelSmall
-                                      ?.copyWith(
-                                        color: scheme.onSurfaceVariant,
-                                      ),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final chartWidth = constraints.maxWidth - 52.0;
+                        final isTouchedVisible = _touchedIndex != null &&
+                            _touchedIndex! >= viewLeft &&
+                            _touchedIndex! <= viewRight &&
+                            chartWidth > 0;
+                        Widget? touchedDateBadge;
+                        if (isTouchedVisible) {
+                          final touchedIdx =
+                              _touchedIndex!.round().clamp(0, totalN - 1);
+                          final touchedDate = pastTrend.isNotEmpty
+                              ? pastTrend.first.date.add(
+                                  Duration(days: touchedIdx),
+                                )
+                              : nowRounded.add(
+                                  Duration(days: touchedIdx - nowIndex),
                                 );
-                              },
-                            ),
-                          ),
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              reservedSize: 32,
-                              interval: niceXInterval,
-                              getTitlesWidget: (value, meta) {
-                                final idx = value.toInt();
-                                if (idx < 0 || idx >= totalN) {
-                                  return const SizedBox.shrink();
-                                }
+                          final isNow = touchedIdx == nowIndex;
+                          final dateText = isNow
+                              ? 'Now · ${_shortDate(touchedDate, widget.state.preferences.locale)}'
+                              : _shortDate(
+                                  touchedDate,
+                                  widget.state.preferences.locale,
+                                );
+                          final rawCenterX = 52.0 +
+                              ((_touchedIndex! - viewLeft) /
+                                      (viewRight - viewLeft)) *
+                                  chartWidth;
+                          final clampedCenterX = rawCenterX.clamp(
+                            52.0 + 20.0,
+                            constraints.maxWidth - 20.0,
+                          );
 
-                                if (idx == nowIndex) {
-                                  return SideTitleWidget(
-                                    meta: meta,
-                                    child: Text(
-                                      'Now',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .labelSmall
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                            color: scheme.primary,
-                                          ),
-                                      softWrap: false,
+                          touchedDateBadge = Positioned(
+                            left: clampedCenterX,
+                            bottom: AppSpacing.xxxs,
+                            child: FractionalTranslation(
+                              translation: const Offset(-0.5, 0),
+                              child: IgnorePointer(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: AppSpacing.xs,
+                                    vertical: AppSpacing.xxxs,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: scheme.primary,
+                                    borderRadius: BorderRadius.circular(
+                                      AppRadii.xs,
                                     ),
-                                  );
-                                }
-
-                                final date = pastTrend.isNotEmpty
-                                    ? pastTrend.first.date.add(
-                                        Duration(days: idx),
-                                      )
-                                    : nowRounded.add(
-                                        Duration(days: idx - nowIndex),
-                                      );
-
-                                return SideTitleWidget(
-                                  meta: meta,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: scheme.shadow.withAlphaFactor(0.2),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ],
+                                  ),
                                   child: Text(
-                                    _shortDate(
-                                      date,
-                                      widget.state.preferences.locale,
-                                    ),
+                                    dateText,
                                     style: Theme.of(context)
                                         .textTheme
                                         .labelSmall
                                         ?.copyWith(
-                                          color: scheme.onSurfaceVariant,
+                                          color: scheme.onPrimary,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                     softWrap: false,
                                   ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        borderData: FlBorderData(show: false),
-                        minX: viewLeft,
-                        maxX: viewRight,
-                        minY: minY,
-                        maxY: maxY,
-                        extraLinesData: ExtraLinesData(
-                          horizontalLines: [
-                            HorizontalLine(
-                              y: 0,
-                              color: scheme.onSurfaceVariant.withAlphaFactor(
-                                0.3,
-                              ),
-                              strokeWidth: 1,
-                            ),
-                          ],
-                          verticalLines: [
-                            if (nowX >= viewLeft && nowX <= viewRight)
-                              VerticalLine(
-                                x: nowX,
-                                color: scheme.primary.withAlphaFactor(0.4),
-                                strokeWidth: 1.0,
-                                dashArray: [4, 4],
-                                label: VerticalLineLabel(),
-                              ),
-                          ],
-                        ),
-                        lineBarsData: [
-                          // Past line — full colour
-                          if (pastSpots.length > 1)
-                            LineChartBarData(
-                              spots: pastSpots,
-                              curveSmoothness: 0.3,
-                              color: scheme.primary,
-                              barWidth: 1.2,
-                              isStrokeCapRound: true,
-                              shadow: Shadow(
-                                color: scheme.primary.withAlphaFactor(0.25),
-                                blurRadius: 6,
-                                offset: const Offset(0, 3),
-                              ),
-                              dotData: FlDotData(
-                                checkToShowDot: (spot, barData) =>
-                                    spot.x == barData.spots.last.x,
-                                getDotPainter:
-                                    (spot, percent, barData, index) =>
-                                        FlDotCirclePainter(
-                                          radius: 4,
-                                          color: scheme.primary,
-                                          strokeWidth: 2,
-                                          strokeColor: scheme.surface,
-                                        ),
-                              ),
-                              belowBarData: BarAreaData(
-                                show: true,
-                                cutOffY: minY,
-                                gradient: LinearGradient(
-                                  colors: [
-                                    scheme.primary.withAlphaFactor(0.35),
-                                    scheme.primary.withAlphaFactor(0.0),
-                                  ],
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
                                 ),
                               ),
                             ),
-                          // Future line — muted/greyed out
-                          if (futureSpots.length > 1)
-                            LineChartBarData(
-                              spots: futureSpots,
-                              color: scheme.onSurfaceVariant.withAlphaFactor(
-                                0.45,
-                              ),
-                              barWidth: 1.0,
-                              isStrokeCapRound: true,
-                              dashArray: [6, 4],
-                              dotData: FlDotData(
-                                checkToShowDot: (spot, barData) =>
-                                    spot.x == barData.spots.last.x,
-                                getDotPainter:
-                                    (spot, percent, barData, index) =>
-                                        FlDotCirclePainter(
-                                          radius: 3,
-                                          color: scheme.onSurfaceVariant
-                                              .withAlphaFactor(0.5),
-                                          strokeWidth: 1,
-                                          strokeColor: scheme.surface,
-                                        ),
-                              ),
-                              belowBarData: BarAreaData(
-                                show: true,
-                                cutOffY: minY,
-                                gradient: LinearGradient(
-                                  colors: [
-                                    scheme.onSurfaceVariant.withAlphaFactor(
-                                      0.12,
-                                    ),
-                                    scheme.onSurfaceVariant.withAlphaFactor(
-                                      0.0,
-                                    ),
-                                  ],
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
+                          );
+                        }
+
+                        return Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            LineChart(
+                              LineChartData(
+                                clipData: const FlClipData.all(),
+                                gridData: FlGridData(
+                                  horizontalInterval: niceInterval,
+                                  verticalInterval: niceXInterval,
+                                  getDrawingHorizontalLine: (value) => FlLine(
+                                    color: scheme.outlineVariant.withAlphaFactor(0.25),
+                                    strokeWidth: 0.5,
+                                    dashArray: [3, 5],
+                                  ),
+                                  getDrawingVerticalLine: (value) => FlLine(
+                                    color: scheme.outlineVariant.withAlphaFactor(0.25),
+                                    strokeWidth: 0.5,
+                                    dashArray: [3, 5],
+                                  ),
                                 ),
-                              ),
-                            ),
-                        ],
-                        lineTouchData: LineTouchData(
-                          getTouchedSpotIndicator:
-                              (
-                                LineChartBarData barData,
-                                List<int> spotIndexes,
-                              ) {
-                                return spotIndexes.map((index) {
-                                  return TouchedSpotIndicatorData(
-                                    FlLine(
-                                      color: scheme.primary.withAlphaFactor(
-                                        0.4,
-                                      ),
-                                      strokeWidth: 1.5,
-                                      dashArray: [4, 4],
-                                    ),
-                                    FlDotData(
-                                      getDotPainter:
-                                          (spot, percent, barData, index) =>
-                                              FlDotCirclePainter(
-                                                radius: 4,
-                                                color: scheme.primary,
-                                                strokeWidth: 2,
-                                                strokeColor: scheme.surface,
+                                titlesData: FlTitlesData(
+                                  topTitles: const AxisTitles(),
+                                  rightTitles: const AxisTitles(),
+                                  leftTitles: AxisTitles(
+                                    sideTitles: SideTitles(
+                                      showTitles: true,
+                                      reservedSize: 52,
+                                      interval: niceInterval,
+                                      getTitlesWidget: (value, meta) {
+                                        return PrivacyText(
+                                          formatCompact(value),
+                                          style: Theme.of(context).textTheme.labelSmall
+                                              ?.copyWith(
+                                                color: scheme.onSurfaceVariant,
                                               ),
+                                        );
+                                      },
                                     ),
-                                  );
-                                }).toList();
-                              },
-                          touchTooltipData: LineTouchTooltipData(
-                            getTooltipColor: (touchedSpot) => scheme.onSurface,
-                            getTooltipItems: (touchedSpots) {
-                              return touchedSpots
-                                  .map(
-                                    (spot) => LineTooltipItem(
-                                      maskMoneyIfPrivate(
-                                        widget.state,
-                                        formatMoney(
-                                          Money(
-                                            amountMinor: spot.y.toInt(),
-                                            currency: displayCurrency,
+                                  ),
+                                  bottomTitles: AxisTitles(
+                                    sideTitles: SideTitles(
+                                      showTitles: true,
+                                      reservedSize: 32,
+                                      interval: niceXInterval,
+                                      getTitlesWidget: (value, meta) {
+                                        final idx = value.round();
+                                        if (idx < 0 || idx >= totalN) {
+                                          return const SizedBox.shrink();
+                                        }
+
+                                        // 1. Prevent collision with the touched point's date badge
+                                        if (_touchedIndex != null &&
+                                            _touchedIndex! >= meta.min &&
+                                            _touchedIndex! <= meta.max) {
+                                          final touchedPixel =
+                                              ((_touchedIndex! - meta.min) /
+                                                      (meta.max - meta.min)) *
+                                                  meta.parentAxisSize;
+                                          if ((meta.axisPosition - touchedPixel).abs() <
+                                              42.0) {
+                                            return const SizedBox.shrink();
+                                          }
+                                        }
+
+                                        // 2. "Now" is always rendered at nowIndex if visible
+                                        if (idx == nowIndex) {
+                                          return SideTitleWidget(
+                                            meta: meta,
+                                            fitInside:
+                                                SideTitleFitInsideData.fromTitleMeta(
+                                                  meta,
+                                                  distanceFromEdge: 4,
+                                                ),
+                                            child: Text(
+                                              'Now',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .labelSmall
+                                                  ?.copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: scheme.primary,
+                                                  ),
+                                              softWrap: false,
+                                            ),
+                                          );
+                                        }
+
+                                        // 3. If "Now" is visible in the viewport, prevent other ticks from colliding with "Now"
+                                        if (nowIndex >= meta.min &&
+                                            nowIndex <= meta.max) {
+                                          final nowPixel =
+                                              ((nowIndex - meta.min) /
+                                                      (meta.max - meta.min)) *
+                                                  meta.parentAxisSize;
+                                          if ((meta.axisPosition - nowPixel).abs() <
+                                              38.0) {
+                                            return const SizedBox.shrink();
+                                          }
+                                        }
+
+                                        // 4. Prevent overlap at the end of the chart (maxIncluded collision)
+                                        final isMax =
+                                            (value - meta.max).abs() < 0.001;
+                                        if (isMax) {
+                                          final lastTickBeforeMax = meta.min +
+                                              ((meta.max - meta.min) ~/
+                                                      meta.appliedInterval) *
+                                                  meta.appliedInterval;
+                                          final pixelDistToPrev =
+                                              ((meta.max - lastTickBeforeMax) /
+                                                      (meta.max - meta.min)) *
+                                                  meta.parentAxisSize;
+                                          final prevIdx =
+                                              lastTickBeforeMax.round();
+                                          if (idx == prevIdx ||
+                                              pixelDistToPrev < 42.0) {
+                                            return const SizedBox.shrink();
+                                          }
+                                        } else {
+                                          // Regular interval tick that falls right at the edge
+                                          if ((meta.parentAxisSize -
+                                                  meta.axisPosition) <
+                                              18.0) {
+                                            return const SizedBox.shrink();
+                                          }
+                                        }
+
+                                        // 5. Prevent overlap at the start of the chart
+                                        final isMin =
+                                            (value - meta.min).abs() < 0.001;
+                                        if (isMin) {
+                                          final mod = (0.0 - meta.min) %
+                                              meta.appliedInterval;
+                                          if (mod > 0.001) {
+                                            final pixelDistToNext = (mod /
+                                                    (meta.max - meta.min)) *
+                                                meta.parentAxisSize;
+                                            if (pixelDistToNext < 42.0) {
+                                              return const SizedBox.shrink();
+                                            }
+                                          }
+                                        }
+
+                                        final date = pastTrend.isNotEmpty
+                                            ? pastTrend.first.date.add(
+                                                Duration(days: idx),
+                                              )
+                                            : nowRounded.add(
+                                                Duration(days: idx - nowIndex),
+                                              );
+
+                                        return SideTitleWidget(
+                                          meta: meta,
+                                          fitInside:
+                                              SideTitleFitInsideData.fromTitleMeta(
+                                                meta,
+                                                distanceFromEdge: 4,
+                                              ),
+                                          child: Text(
+                                            _shortDate(
+                                              date,
+                                              widget.state.preferences.locale,
+                                            ),
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelSmall
+                                                ?.copyWith(
+                                                  color: scheme.onSurfaceVariant,
+                                                ),
+                                            softWrap: false,
                                           ),
-                                          widget.state.preferences.locale,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                                borderData: FlBorderData(show: false),
+                                minX: viewLeft,
+                                maxX: viewRight,
+                                minY: minY,
+                                maxY: maxY,
+                                extraLinesData: ExtraLinesData(
+                                  horizontalLines: [
+                                    HorizontalLine(
+                                      y: 0,
+                                      color: scheme.onSurfaceVariant.withAlphaFactor(
+                                        0.3,
+                                      ),
+                                      strokeWidth: 1,
+                                    ),
+                                  ],
+                                  verticalLines: [
+                                    if (nowX >= viewLeft && nowX <= viewRight)
+                                      VerticalLine(
+                                        x: nowX,
+                                        color: scheme.primary.withAlphaFactor(0.4),
+                                        strokeWidth: 1.0,
+                                        dashArray: [4, 4],
+                                        label: VerticalLineLabel(),
+                                      ),
+                                  ],
+                                ),
+                                lineBarsData: [
+                                  // Past line — full colour
+                                  if (pastSpots.length > 1)
+                                    LineChartBarData(
+                                      spots: pastSpots,
+                                      curveSmoothness: 0.3,
+                                      color: scheme.primary,
+                                      barWidth: 1.2,
+                                      isStrokeCapRound: true,
+                                      shadow: Shadow(
+                                        color: scheme.primary.withAlphaFactor(0.25),
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                      dotData: FlDotData(
+                                        checkToShowDot: (spot, barData) =>
+                                            spot.x == barData.spots.last.x,
+                                        getDotPainter:
+                                            (spot, percent, barData, index) =>
+                                                FlDotCirclePainter(
+                                                  radius: 4,
+                                                  color: scheme.primary,
+                                                  strokeWidth: 2,
+                                                  strokeColor: scheme.surface,
+                                                ),
+                                      ),
+                                      belowBarData: BarAreaData(
+                                        show: true,
+                                        cutOffY: minY,
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            scheme.primary.withAlphaFactor(0.35),
+                                            scheme.primary.withAlphaFactor(0.0),
+                                          ],
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
                                         ),
                                       ),
-                                      Theme.of(
-                                        context,
-                                      ).textTheme.labelMedium!.copyWith(
-                                        color: scheme.surface,
-                                        fontWeight: FontWeight.bold,
+                                    ),
+                                  // Future line — muted/greyed out
+                                  if (futureSpots.length > 1)
+                                    LineChartBarData(
+                                      spots: futureSpots,
+                                      color: scheme.onSurfaceVariant.withAlphaFactor(
+                                        0.45,
+                                      ),
+                                      barWidth: 1.0,
+                                      isStrokeCapRound: true,
+                                      dashArray: [6, 4],
+                                      dotData: FlDotData(
+                                        checkToShowDot: (spot, barData) =>
+                                            spot.x == barData.spots.last.x,
+                                        getDotPainter:
+                                            (spot, percent, barData, index) =>
+                                                FlDotCirclePainter(
+                                                  radius: 3,
+                                                  color: scheme.onSurfaceVariant
+                                                      .withAlphaFactor(0.5),
+                                                  strokeWidth: 1,
+                                                  strokeColor: scheme.surface,
+                                                ),
+                                      ),
+                                      belowBarData: BarAreaData(
+                                        show: true,
+                                        cutOffY: minY,
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            scheme.onSurfaceVariant.withAlphaFactor(
+                                              0.12,
+                                            ),
+                                            scheme.onSurfaceVariant.withAlphaFactor(
+                                              0.0,
+                                            ),
+                                          ],
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                        ),
                                       ),
                                     ),
-                                  )
-                                  .toList();
-                            },
-                          ),
-                        ),
-                      ),
+                                ],
+                                lineTouchData: LineTouchData(
+                                  touchCallback: (
+                                    FlTouchEvent event,
+                                    LineTouchResponse? touchResponse,
+                                  ) {
+                                    if (!event.isInterestedForInteractions ||
+                                        touchResponse == null ||
+                                        touchResponse.lineBarSpots == null ||
+                                        touchResponse.lineBarSpots!.isEmpty) {
+                                      if (_touchedIndex != null) {
+                                        setState(() => _touchedIndex = null);
+                                      }
+                                      return;
+                                    }
+                                    final spot =
+                                        touchResponse.lineBarSpots!.first;
+                                    if (_touchedIndex != spot.x) {
+                                      setState(() => _touchedIndex = spot.x);
+                                    }
+                                  },
+                                  getTouchedSpotIndicator:
+                                      (
+                                        LineChartBarData barData,
+                                        List<int> spotIndexes,
+                                      ) {
+                                        return spotIndexes.map((index) {
+                                          return TouchedSpotIndicatorData(
+                                            FlLine(
+                                              color: scheme.primary.withAlphaFactor(
+                                                0.4,
+                                              ),
+                                              strokeWidth: 1.5,
+                                              dashArray: [4, 4],
+                                            ),
+                                            FlDotData(
+                                              getDotPainter:
+                                                  (spot, percent, barData, index) =>
+                                                      FlDotCirclePainter(
+                                                        radius: 4,
+                                                        color: scheme.primary,
+                                                        strokeWidth: 2,
+                                                        strokeColor: scheme.surface,
+                                                      ),
+                                            ),
+                                          );
+                                        }).toList();
+                                      },
+                                  touchTooltipData: LineTouchTooltipData(
+                                    getTooltipColor: (touchedSpot) => scheme.onSurface,
+                                    getTooltipItems: (touchedSpots) {
+                                      return touchedSpots
+                                          .map(
+                                            (spot) => LineTooltipItem(
+                                              maskMoneyIfPrivate(
+                                                widget.state,
+                                                formatMoney(
+                                                  Money(
+                                                    amountMinor: spot.y.toInt(),
+                                                    currency: displayCurrency,
+                                                  ),
+                                                  widget.state.preferences.locale,
+                                                ),
+                                              ),
+                                              Theme.of(
+                                                context,
+                                              ).textTheme.labelMedium!.copyWith(
+                                                color: scheme.surface,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          )
+                                          .toList();
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ),
+                            ?touchedDateBadge,
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ),
