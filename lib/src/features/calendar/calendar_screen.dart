@@ -9,6 +9,7 @@ import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/privacy_text.dart';
+import '../common/category_tree_picker.dart';
 import '../common/full_screen_picker.dart';
 import '../transactions/transaction_row.dart';
 import 'calendar_forecast.dart';
@@ -25,7 +26,8 @@ class CalendarScreen extends ConsumerStatefulWidget {
 class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   var _visibleMonth = DateTime(DateTime.now().year, DateTime.now().month);
   String? _accountFilter;
-  String? _categoryFilter;
+  final _categoryFilters = <String>{};
+  bool _includeUncategorizedCategory = false;
   Object? _cachedKey;
   List<DateTime>? _cachedDays;
   Map<String, List<TransactionRecord>>? _cachedSummaries;
@@ -33,10 +35,28 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   int _cachedExpense = 0;
   int _cachedNet = 0;
 
+  String _categoryFilterLabel(LedgerState state) {
+    final count =
+        _categoryFilters.length + (_includeUncategorizedCategory ? 1 : 0);
+    if (count == 0) return 'All categories';
+    if (count == 1 && _includeUncategorizedCategory) return 'Uncategorized';
+    if (count == 1) {
+      final category = categoryById(state, _categoryFilters.first);
+      return category?.name ?? '1 category';
+    }
+    return '$count categories';
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(ledgerProvider);
-    final key = (state, _visibleMonth, _accountFilter, _categoryFilter);
+    final key = (
+      state,
+      _visibleMonth,
+      _accountFilter,
+      _categoryFilters.join(','),
+      _includeUncategorizedCategory,
+    );
 
     if (_cachedKey != key || _cachedDays == null || _cachedSummaries == null) {
       final days = _calendarDays(_visibleMonth);
@@ -102,7 +122,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     final locale = state.preferences.locale.replaceAll('_', '-');
     final selectedAccount = accountById(state, _accountFilter);
-    final selectedCategory = categoryById(state, _categoryFilter);
+    final hasCategoryFilter =
+        _categoryFilters.isNotEmpty || _includeUncategorizedCategory;
     final bottomDockClearance =
         AppSizes.bottomBarClearance + MediaQuery.paddingOf(context).bottom;
 
@@ -143,7 +164,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     ),
                     const SizedBox(height: AppSpacing.xxxs),
                     Text(
-                      '${selectedCategory?.name ?? 'All categories'} · ${selectedAccount?.name ?? 'All accounts'}',
+                      '${_categoryFilterLabel(state)} · ${selectedAccount?.name ?? 'All accounts'}',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -221,9 +242,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 child: _CalendarFilterCard(
                   icon: Icons.category_outlined,
                   title: 'Category',
-                  value: selectedCategory?.name ?? 'All categories',
+                  value: _categoryFilterLabel(state),
                   subtitle: 'Filter by category',
-                  active: _categoryFilter != null,
+                  active: hasCategoryFilter,
                   onTap: () => _showCategoryFilter(state),
                 ),
               ),
@@ -328,8 +349,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           f.counterAccountId != _accountFilter) {
         continue;
       }
-      if (_categoryFilter != null && f.categoryId != _categoryFilter) {
-        continue;
+      if (_categoryFilters.isNotEmpty || _includeUncategorizedCategory) {
+        final catId = f.categoryId;
+        final match = (catId == null && _includeUncategorizedCategory) ||
+            (catId != null && _categoryFilters.contains(catId));
+        if (!match) continue;
       }
       result.putIfAbsent(_key(f.occurredAt), () => []).add(f);
     }
@@ -343,9 +367,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           transaction.counterAccountId != _accountFilter) {
         return false;
       }
-      if (_categoryFilter != null &&
-          transaction.categoryId != _categoryFilter) {
-        return false;
+      if (_categoryFilters.isNotEmpty || _includeUncategorizedCategory) {
+        final catId = transaction.categoryId;
+        final match = (catId == null && _includeUncategorizedCategory) ||
+            (catId != null && _categoryFilters.contains(catId));
+        if (!match) return false;
       }
       if (isHiddenInterest(state, transaction)) {
         return false;
@@ -510,32 +536,25 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   }
 
   Future<void> _showCategoryFilter(LedgerState state) async {
-    final next = await showFullScreenPicker<String>(
+    final result = await showCategoryTreeMultiSelectPicker(
       context: context,
-      title: 'Calendar category',
-      searchHint: 'Search categories',
-      selectedValue: _categoryFilter ?? '__all__',
-      options: [
-        const PickerOption(
-          value: '__all__',
-          title: 'All categories',
-          subtitle: 'Include every category in the calendar',
-          icon: Icons.all_inclusive_rounded,
-        ),
-        for (final category in state.categories.where(
-          (category) => !category.isArchived,
-        ))
-          PickerOption(
-            value: category.id,
-            title: category.name,
-            subtitle: categoryPath(state, category),
-            icon: categoryIcon(category),
-            iconColor: categoryColor(category, context),
-          ),
-      ],
+      state: state,
+      initialSelectedCategoryIds: _categoryFilters,
+      initialIncludeUncategorized: _includeUncategorizedCategory,
+      title: 'Calendar categories',
     );
-    if (next == null) return;
-    setState(() => _categoryFilter = next == '__all__' ? null : next);
+    if (result == null) return;
+
+    final hasUncategorized = result.contains(categoryTreeUncategorizedKey);
+    final categoryIds =
+        result.where((id) => id != categoryTreeUncategorizedKey).toSet();
+
+    setState(() {
+      _categoryFilters
+        ..clear()
+        ..addAll(categoryIds);
+      _includeUncategorizedCategory = hasUncategorized;
+    });
   }
 
   void _showDay(

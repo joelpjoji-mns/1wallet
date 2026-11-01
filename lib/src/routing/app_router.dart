@@ -272,11 +272,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           child: DrawerConfig(hasDrawer: true, child: SyncScreen()),
         ),
       ),
-      GoRoute(path: '/imports', redirect: (context, state) => '/sync'),
+      GoRoute(
+        path: '/imports',
+        redirect: (context, state) => '/import-statement',
+      ),
       GoRoute(
         path: '/import-statement',
-        builder: (context, state) =>
-            const AppGlassPage(child: ImportStatementScreen()),
+        builder: (context, state) => const AppGlassPage(
+          child: DrawerConfig(
+            hasDrawer: true,
+            child: ImportStatementScreen(),
+          ),
+        ),
       ),
       GoRoute(
         path: '/imports/:id',
@@ -307,8 +314,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/data-backup',
-        builder: (context, state) =>
-            const AppGlassPage(child: DataBackupScreen()),
+        builder: (context, state) => const AppGlassPage(
+          child: DrawerConfig(
+            hasDrawer: true,
+            child: DataBackupScreen(),
+          ),
+        ),
       ),
       GoRoute(
         path: '/auto-capture',

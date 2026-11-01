@@ -2537,12 +2537,7 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
         if (result.impact.interestSavedMinor > 0 ||
             result.impact.monthsSaved > 0)
           Container(
-            margin: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              0,
-              AppSpacing.md,
-              AppSpacing.lg,
-            ),
+            margin: const EdgeInsets.only(bottom: AppSpacing.lg),
             padding: const EdgeInsets.all(AppSpacing.lg),
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -2606,14 +2601,12 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               ],
             ),
           ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          child: SectionCard(
-            title: 'Payoff Simulation',
-            subtitle:
-                'Adjust your emergency fund and extra cash allocation to see the payoff graph.',
-            child: Column(
-              children: [
+        SectionCard(
+          title: 'Payoff Simulation',
+          subtitle:
+              'Adjust your emergency fund and extra cash allocation to see the payoff graph.',
+          child: Column(
+            children: [
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Padding(
@@ -2748,40 +2741,34 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               ],
             ),
           ),
-        ),
         const Gap(AppSpacing.lg),
 
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          child: SectionCard(
-            title: 'Projected Liquid Cash',
-            subtitle:
-                'Pinch, scroll, or tap +/− to zoom · drag to pan. Numbered dots mark when each loan is paid off.',
-            child: SizedBox(
-              height: 380,
-              child: DynamicForecastLineChart(
-                spots: spots,
-                chartWidth: lineChartWidth,
-                lineColor: scheme.primary,
-                balanceCurve: result.balanceCurve,
-                locale: locale,
-                payoffDots: payoffDots,
-                currencySymbol: currencySymbol,
-                isPrivate: widget.state.preferences.privacyModeEnabled,
-              ),
+        SectionCard(
+          title: 'Projected Liquid Cash',
+          subtitle:
+              'Pinch, scroll, or tap +/− to zoom · drag to pan. Numbered dots mark when each loan is paid off.',
+          child: SizedBox(
+            height: 380,
+            child: DynamicForecastLineChart(
+              spots: spots,
+              chartWidth: lineChartWidth,
+              lineColor: scheme.primary,
+              balanceCurve: result.balanceCurve,
+              locale: locale,
+              payoffDots: payoffDots,
+              currencySymbol: currencySymbol,
+              isPrivate: widget.state.preferences.privacyModeEnabled,
             ),
           ),
         ),
 
         const Gap(AppSpacing.lg),
 
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          child: SectionCard(
-            title: 'Payoff Priority & Timeline',
-            subtitle:
-                'Drag and drop to change priority. The timeline reflects exactly when each loan pays off.',
-            child: ReorderableListView(
+        SectionCard(
+          title: 'Payoff Priority & Timeline',
+          subtitle:
+              'Drag and drop to change priority. The timeline reflects exactly when each loan pays off.',
+          child: ReorderableListView(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               onReorderItem: (oldIndex, newIndex) {
@@ -2854,7 +2841,6 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               }).toList(),
             ),
           ),
-        ),
       ],
     );
   }

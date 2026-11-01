@@ -11,6 +11,7 @@ import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/privacy_text.dart';
 import '../common/category_hierarchy_picker.dart';
+import '../common/category_tree_picker.dart';
 import '../common/full_screen_picker.dart';
 import '../home/home_screen.dart';
 import 'transactions_components.dart';
@@ -995,41 +996,18 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   Future<void> _showCategoryFilter(LedgerState state) async {
-    const uncategorizedKey = '__uncategorized__';
-    final initialSelected = <String>{
-      ..._categoryFilters,
-      if (_includeUncategorizedCategory) uncategorizedKey,
-    };
-    final options = <PickerOption<String>>[
-      const PickerOption(
-        value: uncategorizedKey,
-        title: 'Uncategorized',
-        subtitle: 'Records without a category',
-        icon: Icons.label_off_outlined,
-      ),
-      for (final category in state.categories.where((c) => !c.isArchived))
-        PickerOption(
-          value: category.id,
-          title: category.name,
-          subtitle: categoryPath(state, category),
-          icon: categoryIcon(category),
-          iconColor: categoryColor(category, context),
-          searchText: '${category.name} ${categoryPath(state, category)}',
-        ),
-    ];
-
-    final result = await showMultiSelectFullScreenPicker<String>(
+    final result = await showCategoryTreeMultiSelectPicker(
       context: context,
+      state: state,
+      initialSelectedCategoryIds: _categoryFilters,
+      initialIncludeUncategorized: _includeUncategorizedCategory,
       title: 'Choose categories',
-      searchHint: 'Search categories',
-      options: options,
-      selectedValues: initialSelected,
-      clearLabel: 'Clear all',
     );
     if (result == null) return;
 
-    final hasUncategorized = result.contains(uncategorizedKey);
-    final categoryIds = result.where((id) => id != uncategorizedKey).toSet();
+    final hasUncategorized = result.contains(categoryTreeUncategorizedKey);
+    final categoryIds =
+        result.where((id) => id != categoryTreeUncategorizedKey).toSet();
 
     setState(() {
       _categoryFilters

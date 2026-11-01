@@ -576,9 +576,14 @@ class AppMainDrawer extends ConsumerWidget {
                         badge: syncBadge,
                       ),
                       DrawerRowConfig.route(
-                        'Import & backup',
-                        Icons.folder_copy_outlined,
-                        '/imports',
+                        'Import statements',
+                        Icons.receipt_long_outlined,
+                        '/import-statement',
+                      ),
+                      DrawerRowConfig.route(
+                        'Data backup',
+                        Icons.backup_outlined,
+                        '/data-backup',
                       ),
                     ],
                     selectedIndex: selectedIndex,

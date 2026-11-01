@@ -115,6 +115,22 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
     }
   }
 
+  Future<void> _triggerManualAutoBackup() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(ledgerProvider.notifier).flushAutoBackupBeforeSignOut();
+      await _checkLatestAutoBackup();
+      if (!mounted) return;
+      showAppSnackBar(context, 'Auto-backup created successfully.');
+    } catch (e) {
+      if (!mounted) return;
+      showAppSnackBar(context, 'Failed to create auto-backup: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(ledgerProvider);
@@ -150,19 +166,65 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
               ],
             ),
           ),
-          if (_latestAutoBackup != null) ...[
-            const Gap(AppSpacing.lg),
+          const Gap(AppSpacing.lg),
+          if (_latestAutoBackup != null)
             SectionCard(
-              title: 'Auto-Backup Found',
+              title: 'Automatic Backup',
               subtitle:
-                  'A recent automatic local backup was found:\nLast modified: ${_formatDateTime(_latestAutoBackupTime!)}\nPath: ${_latestAutoBackup!.path}',
-              child: FilledButton.icon(
-                onPressed: _busy ? null : _restoreFromAutoBackup,
-                icon: const Icon(Icons.history_toggle_off_rounded),
-                label: const Text('Restore latest auto-backup'),
+                  'A recent automatic on-device backup was found:\nLast modified: ${_formatDateTime(_latestAutoBackupTime!)}\nPath: ${_latestAutoBackup!.path}',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  FilledButton.icon(
+                    onPressed: _busy ? null : _restoreFromAutoBackup,
+                    icon: const Icon(Icons.history_toggle_off_rounded),
+                    label: const Text('Restore latest auto-backup'),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : _triggerManualAutoBackup,
+                    icon: const Icon(Icons.backup_outlined),
+                    label: const Text('Create auto-backup snapshot now'),
+                  ),
+                ],
+              ),
+            )
+          else
+            SectionCard(
+              title: 'Automatic Backup',
+              subtitle:
+                  '1Wallet automatically creates encrypted on-device backups whenever changes occur in your wallet.',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle_rounded,
+                        color: Theme.of(context).colorScheme.positive,
+                        size: 20,
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Expanded(
+                        child: Text(
+                          'Auto-backup is active on device',
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : _triggerManualAutoBackup,
+                    icon: const Icon(Icons.backup_outlined),
+                    label: const Text('Create auto-backup snapshot now'),
+                  ),
+                ],
               ),
             ),
-          ],
           const Gap(AppSpacing.lg),
           SectionCard(
             title: 'Export',
