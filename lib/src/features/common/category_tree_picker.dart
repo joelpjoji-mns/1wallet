@@ -84,15 +84,17 @@ class _CategoryTreeMultiSelectPickerState
     final hasQuery = _query.trim().isNotEmpty;
     final queryLower = _query.trim().toLowerCase();
 
-    return AppGlassPage(
-      child: RouteScaffold(
-        title: widget.title,
-        leading: HeaderIconButton(
-          icon: Icons.close_rounded,
-          semanticLabel: 'Close',
-          tooltip: 'Close',
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+    return PopScope<Set<String>?>(
+      canPop: true,
+      child: AppGlassPage(
+        child: RouteScaffold(
+          title: widget.title,
+          leading: HeaderIconButton(
+            icon: Icons.arrow_back_rounded,
+            semanticLabel: 'Back',
+            tooltip: 'Back',
+            onPressed: () => Navigator.of(context).pop(),
+          ),
         actions: [
           if (_selectedIds.isNotEmpty)
             TextButton(
@@ -142,8 +144,9 @@ class _CategoryTreeMultiSelectPickerState
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildUncategorizedTile(ColorScheme scheme) {
     final isSelected = _selectedIds.contains(categoryTreeUncategorizedKey);

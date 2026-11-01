@@ -115,7 +115,9 @@ class RouteScaffold extends StatelessWidget {
       ),
     );
 
-    final canPop = automaticallyImplyLeading && Navigator.of(context).canPop();
+    final canPop = automaticallyImplyLeading &&
+        (Navigator.of(context).canPop() ||
+            (GoRouter.maybeOf(context)?.canPop() ?? false));
 
     Widget mobileView = Scaffold(
       drawer: effectiveDrawer,
@@ -129,14 +131,14 @@ class RouteScaffold extends StatelessWidget {
         ),
         leading:
             leading ??
-            (effectiveDrawer != null
+            (canPop
+                ? const AppBackAction()
+                : effectiveDrawer != null
                 ? Builder(
                     builder: (scaffoldContext) => AppMenuAction(
                       onPressed: Scaffold.of(scaffoldContext).openDrawer,
                     ),
                   )
-                : canPop
-                ? const AppBackAction()
                 : null),
         actions: actions,
         centerTitle: false,
@@ -154,17 +156,13 @@ class RouteScaffold extends StatelessWidget {
           ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
         ),
         actions: actions,
-        // Hide the hamburger menu button on desktop since the drawer is
-        // persistent, but GlassAppBar (unlike Material's AppBar) has no
-        // built-in Navigator awareness, so the back button still needs to
-        // be supplied explicitly whenever there's no persistent drawer and
-        // the route can actually be popped - otherwise every pushed desktop
-        // sub-route would silently lose its way back.
         leading:
             leading ??
-            (effectiveDrawer != null
+            (canPop
+                ? const AppBackAction()
+                : effectiveDrawer != null
                 ? const SizedBox.shrink()
-                : (canPop ? const AppBackAction() : null)),
+                : null),
         centerTitle: false,
       ),
       floatingActionButton: floatingActionButton,

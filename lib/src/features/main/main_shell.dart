@@ -196,9 +196,7 @@ class _MainShellState extends ConsumerState<MainShell>
           Navigator.of(context).pop();
           return true;
         }
-        if (_selectedIndex.value == 0) return false;
-        _selectTab(0);
-        return true;
+        return false;
       },
       child: ValueListenableBuilder<int>(
         valueListenable: _selectedIndex,

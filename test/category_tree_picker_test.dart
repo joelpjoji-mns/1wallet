@@ -150,4 +150,74 @@ void main() {
     expect(find.text('Rent & Mortgage'), findsOneWidget);
     expect(find.text('Housing & Utilities'), findsNothing);
   });
+
+  testWidgets('showCategoryTreeMultiSelectPicker has a back button that pops with null', (tester) async {
+    final base = sampleLedgerState();
+    Set<String>? result = {'dummy'};
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () async {
+                result = await showCategoryTreeMultiSelectPicker(
+                  context: context,
+                  state: base,
+                  initialSelectedCategoryIds: {},
+                );
+              },
+              child: const Text('Open Picker'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open Picker'));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
+    expect(find.byTooltip('Back'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+    await tester.pumpAndSettle();
+
+    expect(result, isNull);
+    expect(find.text('Choose categories'), findsNothing);
+  });
+
+  testWidgets('showCategoryTreeMultiSelectPicker pops on system back without throwing', (tester) async {
+    final base = sampleLedgerState();
+    Set<String>? result = {'dummy'};
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () async {
+                result = await showCategoryTreeMultiSelectPicker(
+                  context: context,
+                  state: base,
+                  initialSelectedCategoryIds: {},
+                );
+              },
+              child: const Text('Open Picker'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open Picker'));
+    await tester.pumpAndSettle();
+
+    final pickerContext = tester.element(find.text('Choose categories'));
+    await Navigator.of(pickerContext).maybePop();
+    await tester.pumpAndSettle();
+
+    expect(result, isNull);
+    expect(find.text('Choose categories'), findsNothing);
+  });
 }

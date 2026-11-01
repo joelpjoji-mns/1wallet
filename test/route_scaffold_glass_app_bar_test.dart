@@ -158,6 +158,48 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('drawer content'), findsOneWidget);
     });
+
+    testWidgets('a pushed route with a drawer prioritizes the back button', (
+      tester,
+    ) async {
+      await pumpAtWidth(
+        tester,
+        400,
+        Builder(
+          builder: (context) => RouteScaffold(
+            title: 'Home',
+            child: Center(
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (context) => const RouteScaffold(
+                      title: 'Drawer Route',
+                      hasDrawer: true,
+                      drawer: Drawer(child: Text('drawer content')),
+                      child: Text('drawer route body'),
+                    ),
+                  ),
+                ),
+                child: const Text('Push drawer route'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Push drawer route'));
+      await tester.pumpAndSettle();
+      expect(find.text('Drawer Route'), findsOneWidget);
+
+      final backButton = find.byType(AppBackAction);
+      expect(backButton, findsOneWidget);
+      expect(find.byType(AppMenuAction), findsNothing);
+
+      await tester.tap(backButton);
+      await tester.pumpAndSettle();
+      expect(find.text('Home'), findsOneWidget);
+      expect(find.text('Drawer Route'), findsNothing);
+    });
   });
 
   group('desktop layout (>= 800px)', () {
@@ -226,6 +268,47 @@ void main() {
         // Scaffold drawer), so the app bar's leading slot must stay empty.
         expect(find.byType(AppBackAction), findsNothing);
         expect(find.byType(AppMenuAction), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'a pushed route with a persistent drawer still shows a back button',
+      (tester) async {
+        await pumpAtWidthWithProviders(
+          tester,
+          1000,
+          Builder(
+            builder: (context) => RouteScaffold(
+              title: 'Home',
+              child: Center(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (context) => const RouteScaffold(
+                        title: 'Drawer Route',
+                        hasDrawer: true,
+                        child: Text('drawer route body'),
+                      ),
+                    ),
+                  ),
+                  child: const Text('Push drawer route'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Push drawer route'));
+        await tester.pumpAndSettle();
+        expect(find.text('Drawer Route'), findsOneWidget);
+
+        final backButton = find.byType(AppBackAction);
+        expect(backButton, findsOneWidget);
+
+        await tester.tap(backButton);
+        await tester.pumpAndSettle();
+        expect(find.text('Home'), findsOneWidget);
+        expect(find.text('Drawer Route'), findsNothing);
       },
     );
   });
