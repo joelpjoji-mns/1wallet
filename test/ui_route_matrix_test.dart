@@ -64,7 +64,7 @@ const _homeRoutes = <String>[
   '/data-backup',
   '/auto-capture',
   '/auto-capture/debug',
-  '/capture-settings',
+  '/capture-diagnostics',
   '/import-sms',
   '/notification-capture',
   '/notification-capture/apps',

@@ -16,7 +16,6 @@ Provides UI for capturing expenses from paper receipts (via camera/gallery OCR),
 | `sms_inbox_reader.dart` | Platform integration to read Android SMS inbox with permission handling. |
 | `capture_queue.dart` | Owner-scoped native SQLite queue bridge, acknowledgments, quarantine, and injectable test queue. Both sources share one ledger consumer. |
 | `notification_apps_screen.dart` | Whitelist configuration for selecting which financial app push notifications are listened to. |
-| `capture_settings_screen.dart` | Configuration toggles for auto-extraction, sensitivity, and OCR languages. |
 | `capture_diagnostics.dart` & `capture_diagnostics_screen.dart` | Diagnostic log viewer for debugging parsing failures and regex misses. |
 
 ---

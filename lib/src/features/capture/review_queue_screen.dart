@@ -149,10 +149,10 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
             onPressed: () => context.push('/notification-capture'),
           ),
           HeaderIconButton(
-            icon: Icons.settings_suggest_outlined,
-            semanticLabel: 'Auto-capture settings',
-            tooltip: 'Auto-capture settings',
-            onPressed: () => context.push('/capture-settings'),
+            icon: Icons.bug_report_outlined,
+            semanticLabel: 'Capture diagnostics',
+            tooltip: 'Capture diagnostics',
+            onPressed: () => context.push('/auto-capture/debug'),
           ),
           if (candidates.isNotEmpty) ...[
             HeaderIconButton(

@@ -107,7 +107,7 @@ void main() {
       '/data-backup',
       '/auto-capture',
       '/auto-capture/debug',
-      '/capture-settings',
+      '/capture-diagnostics',
       '/notification-capture',
       '/notification-capture/apps',
       '/updates',

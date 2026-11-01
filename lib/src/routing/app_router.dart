@@ -8,7 +8,6 @@ import '../features/main/main_shell.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/routes/route_screens.dart';
 import '../features/sync/sync_screen.dart';
-import '../features/capture/capture_settings_screen.dart';
 import '../features/capture/notification_capture_screen.dart';
 import '../features/capture/notification_apps_screen.dart';
 import '../startup/startup_state.dart';
@@ -288,9 +287,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        path: '/capture-settings',
-        builder: (context, state) =>
-            const AppGlassPage(child: CaptureSettingsScreen()),
+        path: '/capture-diagnostics',
+        redirect: (context, state) => '/auto-capture/debug',
       ),
       GoRoute(
         path: '/import-sms',
