@@ -45,9 +45,10 @@ void main() {
     expect(find.text('Tags / Labels'), findsNothing);
     expect(find.byIcon(Icons.sell_outlined), findsOneWidget);
 
-    final tagField = find.byWidgetPredicate(
-      (w) => w is TextField && w.decoration?.labelText == 'Tags',
-    );
+    final tagsBox = find.widgetWithText(InputDecorator, 'Tags');
+    expect(tagsBox, findsOneWidget);
+
+    final tagField = find.descendant(of: tagsBox, matching: find.byType(TextField));
     expect(tagField, findsOneWidget);
 
     // Tap the text field directly to focus it
@@ -68,7 +69,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify 'Groceries' chip is now created inside an InputChip inside the tags box
-    expect(find.byType(InputChip), findsOneWidget);
+    expect(find.descendant(of: tagsBox, matching: find.byType(InputChip)), findsOneWidget);
     expect(find.descendant(of: find.byType(InputChip), matching: find.text('Groceries')), findsOneWidget);
 
     // Tap field again and select 'Travel'
@@ -79,8 +80,8 @@ void main() {
     await tester.tap(find.text('Travel'));
     await tester.pumpAndSettle();
 
-    // Verify multiple tags are now present inside chips
-    expect(find.byType(InputChip), findsNWidgets(2));
+    // Verify multiple tags are now present inside chips inside the tags box
+    expect(find.descendant(of: tagsBox, matching: find.byType(InputChip)), findsNWidgets(2));
     expect(find.descendant(of: find.byType(InputChip), matching: find.text('Groceries')), findsOneWidget);
     expect(find.descendant(of: find.byType(InputChip), matching: find.text('Travel')), findsOneWidget);
   });

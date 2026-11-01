@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:image_picker/image_picker.dart';
 
 import '../capture/receipt_ocr.dart';
@@ -94,6 +94,33 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
 
   void _onTagFocusChanged() {
     if (mounted) setState(() {});
+  }
+
+  double _computeTagRemainingWidth(
+    List<String> tags,
+    double maxWidth,
+    TextStyle? style,
+  ) {
+    if (!maxWidth.isFinite || maxWidth <= 0) return 180.0;
+    if (tags.isEmpty) return maxWidth;
+    const spacing = AppSpacing.xs;
+    double availableOnLine = maxWidth;
+
+    for (final tag in tags) {
+      final tp = TextPainter(
+        text: TextSpan(text: tag, style: style),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final chipWidth = tp.width + 42.0;
+
+      if (availableOnLine >= chipWidth + spacing) {
+        availableOnLine -= (chipWidth + spacing);
+      } else {
+        availableOnLine = maxWidth - (chipWidth + spacing);
+      }
+    }
+
+    return availableOnLine > 0 ? availableOnLine : 0;
   }
 
   @override
@@ -574,38 +601,6 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                           },
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        if (_tags.isNotEmpty) ...[
-                          Wrap(
-                            spacing: AppSpacing.xs,
-                            runSpacing: AppSpacing.xs,
-                            children: [
-                              for (final tag in _tags)
-                                InputChip(
-                                  label: Text(
-                                    tag,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                  ),
-                                  onDeleted: () =>
-                                      setState(() => _tags.remove(tag)),
-                                  visualDensity: VisualDensity.compact,
-                                  materialTapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 4,
-                                  ),
-                                  deleteIconColor: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                        ],
                         RawAutocomplete<String>(
                           textEditingController: _tagInputController,
                           focusNode: _tagFocusNode,
@@ -661,39 +656,138 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                 focusNode,
                                 onFieldSubmitted,
                               ) {
-                                return TextField(
-                                  controller: textEditingController,
-                                  focusNode: focusNode,
+                                final theme = Theme.of(context);
+                                final isFocused = focusNode.hasFocus;
+                                return InkWell(
                                   onTap: _triggerTagOptions,
-                                  decoration: InputDecoration(
-                                    labelText: 'Tags',
-                                    hintText: 'Add tags (e.g. Work, Vacation)',
-                                    prefixIcon: const Icon(
-                                      Icons.sell_outlined,
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppRadii.md,
-                                      ),
-                                    ),
-                                    contentPadding:
-                                        const EdgeInsets.symmetric(
-                                          horizontal: AppSpacing.md,
-                                          vertical: AppSpacing.sm,
-                                        ),
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadii.md,
                                   ),
-                                  onSubmitted: (value) {
-                                    final val = value
-                                        .replaceAll('#', '')
-                                        .trim();
-                                    if (val.isNotEmpty &&
-                                        !_tags.contains(val)) {
-                                      setState(() {
-                                        _tags.add(val);
-                                        textEditingController.clear();
-                                      });
-                                    }
-                                  },
+                                  child: InputDecorator(
+                                    isFocused: isFocused,
+                                    isEmpty:
+                                        _tags.isEmpty &&
+                                        textEditingController.text.isEmpty &&
+                                        !isFocused,
+                                    decoration: InputDecoration(
+                                      labelText: 'Tags',
+                                      prefixIcon: const Icon(
+                                        Icons.sell_outlined,
+                                      ),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          AppRadii.md,
+                                        ),
+                                      ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: AppSpacing.md,
+                                            vertical: AppSpacing.sm,
+                                          ),
+                                    ),
+                                    child: LayoutBuilder(
+                                      builder: (context, constraints) {
+                                        final remainingWidth =
+                                            _computeTagRemainingWidth(
+                                              _tags,
+                                              constraints.maxWidth,
+                                              theme.textTheme.labelMedium,
+                                            );
+                                        final fieldWidth =
+                                            remainingWidth >= 90.0
+                                                ? remainingWidth
+                                                : constraints.maxWidth;
+
+                                        return Wrap(
+                                          spacing: AppSpacing.xs,
+                                          runSpacing: AppSpacing.xs,
+                                          crossAxisAlignment:
+                                              WrapCrossAlignment.center,
+                                          children: [
+                                            for (final tag in _tags)
+                                              InputChip(
+                                                label: Text(
+                                                  tag,
+                                                  style: theme.textTheme
+                                                      .labelMedium
+                                                      ?.copyWith(
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        AppRadii.xs,
+                                                      ),
+                                                ),
+                                                onDeleted: () => setState(
+                                                  () => _tags.remove(tag),
+                                                ),
+                                                visualDensity:
+                                                    VisualDensity.compact,
+                                                materialTapTargetSize:
+                                                    MaterialTapTargetSize
+                                                        .shrinkWrap,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 4,
+                                                    ),
+                                                deleteIconColor: theme
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
+                                              ),
+                                            SizedBox(
+                                              width: fieldWidth,
+                                              child: TextField(
+                                                controller:
+                                                    textEditingController,
+                                                focusNode: focusNode,
+                                                decoration: InputDecoration(
+                                                  border: InputBorder.none,
+                                                  isDense: true,
+                                                  contentPadding:
+                                                      const EdgeInsets.symmetric(
+                                                        vertical: AppSpacing.xs,
+                                                      ),
+                                                  hintText: _tags.isNotEmpty
+                                                      ? 'Add tag...'
+                                                      : 'Add tags (e.g. Work, Vacation)',
+                                                  hintStyle: theme.textTheme
+                                                      .bodyMedium
+                                                      ?.copyWith(
+                                                        color: theme
+                                                            .colorScheme
+                                                            .onSurfaceVariant
+                                                            .withValues(
+                                                              alpha: 0.7,
+                                                            ),
+                                                      ),
+                                                ),
+                                                style: theme
+                                                    .textTheme
+                                                    .bodyMedium,
+                                                onTap: _triggerTagOptions,
+                                                onSubmitted: (value) {
+                                                  final val = value
+                                                      .replaceAll('#', '')
+                                                      .trim();
+                                                  if (val.isNotEmpty &&
+                                                      !_tags.contains(val)) {
+                                                    setState(() {
+                                                      _tags.add(val);
+                                                      textEditingController
+                                                          .clear();
+                                                    });
+                                                  }
+                                                },
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    ),
+                                  ),
                                 );
                               },
                           optionsViewBuilder: (context, onSelected, options) {
