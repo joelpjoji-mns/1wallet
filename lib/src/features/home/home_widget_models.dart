@@ -2,14 +2,10 @@ import 'package:flutter/material.dart';
 
 enum HomeDashboardWidgetId {
   balanceHero('balanceHero'),
-  plannedPaymentsTile('plannedPaymentsTile'),
-  loansTile('loansTile'),
   accountGrid('accountGrid'),
   recentRecords('recentRecords'),
   upcomingScheduled('upcomingScheduled'),
-  emiTracker('emiTracker'),
   accountGroups('accountGroups'),
-  loanPayoff('loanPayoff'),
   balanceTrend('balanceTrend'),
   topCategories('topCategories'),
   currencyValues('currencyValues'),
@@ -241,7 +237,6 @@ HomeDashboardWidgetId? homeWidgetIdFromStorageKey(String key) {
   final byKey = {
     for (final item in HomeDashboardWidgetId.values) item.storageKey: item,
     'upcomingDue': HomeDashboardWidgetId.upcomingScheduled,
-    'loansAndEmis': HomeDashboardWidgetId.emiTracker,
   };
   return byKey[key];
 }

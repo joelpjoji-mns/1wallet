@@ -464,22 +464,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             accountLabel:
                 accountById(state, accountFilter)?.name ?? 'All accounts',
             categoryLabel: _categoryFilterLabel(state),
-            categoryValue: _categoryFilters.isEmpty
-                ? (_includeUncategorizedCategory ? 'uncategorized' : 'all')
-                : (_categoryFilters.length == 1 &&
-                          !_includeUncategorizedCategory
-                      ? _categoryFilters.first
-                      : null),
-            categoryOptions: [
-              const GlassDropdownOption('all', 'All categories'),
-              const GlassDropdownOption(
-                'uncategorized',
-                'Uncategorized',
-                icon: Icons.label_off_outlined,
-              ),
-              for (final cat in state.categories.where((c) => !c.isArchived))
-                GlassDropdownOption(cat.id, cat.name, icon: categoryIcon(cat)),
-            ],
             statusLabel: _statusFilterLabel(statusFilter),
             statusValue: statusFilter,
             tagLabel: tagFilter == 'all' ? 'All tags' : tagFilter,
@@ -511,22 +495,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 ref.read(transactionsDateFilterProvider.notifier).state = value,
             onAccountTap: () => _showAccountFilter(state, accountFilter),
             onCategoryTap: () => _showCategoryFilter(state),
-            onCategorySelected: (value) {
-              setState(() {
-                if (value == 'all') {
-                  _categoryFilters.clear();
-                  _includeUncategorizedCategory = false;
-                } else if (value == 'uncategorized') {
-                  _categoryFilters.clear();
-                  _includeUncategorizedCategory = true;
-                } else {
-                  _categoryFilters
-                    ..clear()
-                    ..add(value);
-                  _includeUncategorizedCategory = false;
-                }
-              });
-            },
             onStatusSelected: (value) =>
                 ref.read(transactionsStatusFilterProvider.notifier).state =
                     value,
@@ -1027,88 +995,47 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   Future<void> _showCategoryFilter(LedgerState state) async {
-    final selected = Set<String>.from(_categoryFilters);
-    var includeUncategorized = _includeUncategorizedCategory;
-    final result = await showDialog<_CategoryFilterResult>(
+    const uncategorizedKey = '__uncategorized__';
+    final initialSelected = <String>{
+      ..._categoryFilters,
+      if (_includeUncategorizedCategory) uncategorizedKey,
+    };
+    final options = <PickerOption<String>>[
+      const PickerOption(
+        value: uncategorizedKey,
+        title: 'Uncategorized',
+        subtitle: 'Records without a category',
+        icon: Icons.label_off_outlined,
+      ),
+      for (final category in state.categories.where((c) => !c.isArchived))
+        PickerOption(
+          value: category.id,
+          title: category.name,
+          subtitle: categoryPath(state, category),
+          icon: categoryIcon(category),
+          iconColor: categoryColor(category, context),
+          searchText: '${category.name} ${categoryPath(state, category)}',
+        ),
+    ];
+
+    final result = await showMultiSelectFullScreenPicker<String>(
       context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            final categories = state.categories
-                .where((category) => !category.isArchived)
-                .toList();
-            return AlertDialog(
-              title: const Text('Choose categories'),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AppSwitchListTile(
-                        value: includeUncategorized,
-                        onChanged: (value) =>
-                            setDialogState(() => includeUncategorized = value),
-                        title: const Text('Uncategorized'),
-                        subtitle: const Text('Records without a category'),
-                        secondary: const Icon(Icons.label_off_outlined),
-                      ),
-                      for (final category in categories)
-                        AppSwitchListTile(
-                          value: selected.contains(category.id),
-                          onChanged: (value) => setDialogState(() {
-                            if (value) {
-                              selected.add(category.id);
-                            } else {
-                              selected.remove(category.id);
-                            }
-                          }),
-                          title: Text(category.name),
-                          subtitle: Text(categoryPath(state, category)),
-                          secondary: Icon(
-                            categoryIcon(category),
-                            color: categoryColor(category, context),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(
-                    const _CategoryFilterResult(
-                      categoryIds: <String>{},
-                      includeUncategorized: false,
-                    ),
-                  ),
-                  child: const Text('Clear'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.of(context).pop(
-                    _CategoryFilterResult(
-                      categoryIds: Set<String>.from(selected),
-                      includeUncategorized: includeUncategorized,
-                    ),
-                  ),
-                  child: const Text('Apply'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      title: 'Choose categories',
+      searchHint: 'Search categories',
+      options: options,
+      selectedValues: initialSelected,
+      clearLabel: 'Clear all',
     );
     if (result == null) return;
+
+    final hasUncategorized = result.contains(uncategorizedKey);
+    final categoryIds = result.where((id) => id != uncategorizedKey).toSet();
+
     setState(() {
       _categoryFilters
         ..clear()
-        ..addAll(result.categoryIds);
-      _includeUncategorizedCategory = result.includeUncategorized;
+        ..addAll(categoryIds);
+      _includeUncategorizedCategory = hasUncategorized;
     });
   }
 
@@ -1336,16 +1263,6 @@ bool _matchesDateFilter(DateTime date, String dateFilter, {DateTime? now}) {
     'this_year' => date.year == current.year,
     _ => true,
   };
-}
-
-class _CategoryFilterResult {
-  const _CategoryFilterResult({
-    required this.categoryIds,
-    required this.includeUncategorized,
-  });
-
-  final Set<String> categoryIds;
-  final bool includeUncategorized;
 }
 
 String _typeFilterLabel(String value) {

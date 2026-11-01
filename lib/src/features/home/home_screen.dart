@@ -333,14 +333,10 @@ class _HomeDashboardList extends ConsumerWidget {
 String _homeWidgetLabel(HomeDashboardWidgetId id) {
   return switch (id) {
     HomeDashboardWidgetId.balanceHero => 'Balance Hero',
-    HomeDashboardWidgetId.plannedPaymentsTile => 'Planned Payments',
-    HomeDashboardWidgetId.loansTile => 'Loans & EMIs',
     HomeDashboardWidgetId.accountGrid => 'All accounts',
     HomeDashboardWidgetId.recentRecords => 'Recent Records',
     HomeDashboardWidgetId.upcomingScheduled => 'Upcoming & due',
-    HomeDashboardWidgetId.emiTracker => 'Loans & EMIs',
     HomeDashboardWidgetId.accountGroups => 'Account Groups',
-    HomeDashboardWidgetId.loanPayoff => 'Loans & EMIs',
     HomeDashboardWidgetId.balanceTrend => 'Balance Trend',
     HomeDashboardWidgetId.topCategories => 'Categories',
     HomeDashboardWidgetId.currencyValues => 'Currency calculator',

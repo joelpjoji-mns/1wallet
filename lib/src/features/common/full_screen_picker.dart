@@ -198,3 +198,193 @@ class _FullScreenPickerState<T> extends State<_FullScreenPicker<T>> {
     );
   }
 }
+
+Future<Set<T>?> showMultiSelectFullScreenPicker<T>({
+  required BuildContext context,
+  required String title,
+  required List<PickerOption<T>> options,
+  Set<T> selectedValues = const {},
+  String? subtitle,
+  String searchHint = 'Search',
+  bool searchable = true,
+  bool allowClear = true,
+  String clearLabel = 'Clear all',
+  String applyLabel = 'Apply',
+}) {
+  return Navigator.of(context).push<Set<T>>(
+    MaterialPageRoute(
+      fullscreenDialog: true,
+      builder: (context) => _MultiSelectFullScreenPicker<T>(
+        title: title,
+        subtitle: subtitle,
+        options: options,
+        selectedValues: selectedValues,
+        searchHint: searchHint,
+        searchable: searchable,
+        allowClear: allowClear,
+        clearLabel: clearLabel,
+        applyLabel: applyLabel,
+      ),
+    ),
+  );
+}
+
+class _MultiSelectFullScreenPicker<T> extends StatefulWidget {
+  const _MultiSelectFullScreenPicker({
+    required this.title,
+    required this.options,
+    required this.selectedValues,
+    required this.searchHint,
+    required this.searchable,
+    required this.allowClear,
+    required this.clearLabel,
+    required this.applyLabel,
+    this.subtitle,
+  });
+
+  final String title;
+  final String? subtitle;
+  final List<PickerOption<T>> options;
+  final Set<T> selectedValues;
+  final String searchHint;
+  final bool searchable;
+  final bool allowClear;
+  final String clearLabel;
+  final String applyLabel;
+
+  @override
+  State<_MultiSelectFullScreenPicker<T>> createState() =>
+      _MultiSelectFullScreenPickerState<T>();
+}
+
+class _MultiSelectFullScreenPickerState<T>
+    extends State<_MultiSelectFullScreenPicker<T>> {
+  late final Set<T> _selected = Set<T>.from(widget.selectedValues);
+  var _query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _query.trim().toLowerCase();
+    final visibleOptions = query.isEmpty
+        ? widget.options
+        : widget.options.where((option) {
+            final searchable = [
+              option.title,
+              option.subtitle,
+              option.searchText,
+            ].whereType<String>().join(' ').toLowerCase();
+            return searchable.contains(query);
+          }).toList();
+
+    final scheme = Theme.of(context).colorScheme;
+
+    return AppGlassPage(
+      child: RouteScaffold(
+        title: widget.title,
+        actions: [
+          if (widget.allowClear && _selected.isNotEmpty)
+            HeaderIconButton(
+              icon: Icons.filter_alt_off_rounded,
+              semanticLabel: widget.clearLabel,
+              tooltip: widget.clearLabel,
+              onPressed: () => setState(() => _selected.clear()),
+            ),
+          HeaderIconButton(
+            icon: Icons.check_rounded,
+            semanticLabel: widget.applyLabel,
+            tooltip: widget.applyLabel,
+            onPressed: () => Navigator.of(context).pop(_selected),
+          ),
+        ],
+        scrollView: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            0,
+            AppSpacing.md,
+            AppSpacing.xxl,
+          ),
+          children: [
+            if (widget.subtitle != null) ...[
+              Text(
+                widget.subtitle!,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
+            if (widget.searchable) ...[
+              PremiumSearchInput(
+                hintText: widget.searchHint,
+                value: _query,
+                onChanged: (value) => setState(() => _query = value),
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
+            if (visibleOptions.isEmpty)
+              if (query.isEmpty)
+                const EmptyState(
+                  icon: Icons.inbox_outlined,
+                  title: 'Nothing to choose from',
+                  body: 'No options are available right now.',
+                )
+              else
+                EmptyState(
+                  icon: Icons.search_off_rounded,
+                  title: 'No matches',
+                  body: 'Try a different search term.',
+                  actionLabel: 'Clear search',
+                  onAction: () => setState(() => _query = ''),
+                )
+            else
+              for (final option in visibleOptions) ...[
+                Builder(
+                  builder: (context) {
+                    final isSelected = _selected.contains(option.value);
+                    return Semantics(
+                      selected: isSelected,
+                      child: PremiumRow(
+                        icon: option.icon ?? Icons.circle_outlined,
+                        title: option.title,
+                        subtitle: option.subtitle,
+                        iconColor: option.iconColor,
+                        selected: isSelected,
+                        trailing: Icon(
+                          isSelected
+                              ? Icons.check_box_rounded
+                              : Icons.check_box_outline_blank_rounded,
+                          color: isSelected
+                              ? scheme.primary
+                              : scheme.onSurfaceVariant.withAlphaFactor(0.6),
+                        ),
+                        onTap: () {
+                          setState(() {
+                            if (isSelected) {
+                              _selected.remove(option.value);
+                            } else {
+                              _selected.add(option.value);
+                            }
+                          });
+                        },
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+            const SizedBox(height: AppSpacing.md),
+            FilledButton.icon(
+              icon: const Icon(Icons.check_rounded),
+              label: Text(
+                _selected.isEmpty
+                    ? 'Show all'
+                    : '${widget.applyLabel} (${_selected.length})',
+              ),
+              onPressed: () => Navigator.of(context).pop(_selected),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

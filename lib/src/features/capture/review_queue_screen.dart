@@ -154,20 +154,6 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
             tooltip: 'Capture diagnostics',
             onPressed: () => context.push('/auto-capture/debug'),
           ),
-          if (candidates.isNotEmpty) ...[
-            HeaderIconButton(
-              icon: Icons.done_all_rounded,
-              semanticLabel: 'Approve All',
-              tooltip: 'Approve All',
-              onPressed: () => _approveAll(context, ref, candidates),
-            ),
-            HeaderIconButton(
-              icon: Icons.clear_all_rounded,
-              semanticLabel: 'Dismiss All',
-              tooltip: 'Dismiss All',
-              onPressed: () => _dismissAll(context, ref, candidates),
-            ),
-          ],
           if (unreadCount > 0)
             HeaderIconButton(
               icon: Icons.mark_email_read_outlined,
@@ -878,57 +864,6 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
         ),
       ),
     );
-  }
-
-  Future<void> _approveAll(
-    BuildContext context,
-    WidgetRef ref,
-    List<CaptureCandidate> candidates,
-  ) async {
-    final confirmed = await showAppConfirmDialog(
-      context,
-      title: 'Approve All?',
-      message:
-          'Are you sure you want to approve all ${candidates.length} pending items?\n\n'
-          'They will be added as transactions using their suggested accounts and categories.',
-      confirmLabel: 'Approve All',
-    );
-
-    if (confirmed && context.mounted) {
-      final ledger = ref.read(ledgerProvider.notifier);
-      for (final candidate in candidates) {
-        try {
-          await ledger.approveCaptureCandidate(candidate.id);
-        } catch (e) {
-          if (context.mounted) {
-            showAppSnackBar(context, 'Failed to approve item: $e');
-          }
-        }
-      }
-    }
-  }
-
-  Future<void> _dismissAll(
-    BuildContext context,
-    WidgetRef ref,
-    List<CaptureCandidate> candidates,
-  ) async {
-    final confirmed = await showAppConfirmDialog(
-      context,
-      title: 'Dismiss All?',
-      message:
-          'Are you sure you want to dismiss all ${candidates.length} pending items?',
-      confirmLabel: 'Dismiss All',
-      destructive: true,
-    );
-
-    if (confirmed && context.mounted) {
-      final ledger = ref.read(ledgerProvider.notifier);
-      await ledger.updateCaptureCandidateStatuses(
-        candidates.map((c) => c.id),
-        'rejected',
-      );
-    }
   }
 
   Future<void> _showBlockDialog(

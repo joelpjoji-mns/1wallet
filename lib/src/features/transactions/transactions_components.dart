@@ -13,8 +13,6 @@ class TransactionCommandStrip extends StatelessWidget {
     required this.dateValue,
     required this.accountLabel,
     required this.categoryLabel,
-    this.categoryValue,
-    this.categoryOptions,
     required this.statusLabel,
     required this.statusValue,
     this.tagLabel = 'All tags',
@@ -34,7 +32,6 @@ class TransactionCommandStrip extends StatelessWidget {
     required this.onDateSelected,
     required this.onAccountTap,
     required this.onCategoryTap,
-    this.onCategorySelected,
     required this.onStatusSelected,
     super.key,
   });
@@ -46,8 +43,6 @@ class TransactionCommandStrip extends StatelessWidget {
   final String dateValue;
   final String accountLabel;
   final String categoryLabel;
-  final String? categoryValue;
-  final List<GlassDropdownOption<String>>? categoryOptions;
   final String statusLabel;
   final String statusValue;
   final String tagLabel;
@@ -67,7 +62,6 @@ class TransactionCommandStrip extends StatelessWidget {
   final ValueChanged<String> onDateSelected;
   final VoidCallback onAccountTap;
   final VoidCallback onCategoryTap;
-  final ValueChanged<String>? onCategorySelected;
   final ValueChanged<String> onStatusSelected;
 
   @override
@@ -169,9 +163,6 @@ class TransactionCommandStrip extends StatelessWidget {
                               icon: Icons.category_outlined,
                               label: categoryLabel,
                               active: categoryActive,
-                              value: categoryValue,
-                              options: categoryOptions,
-                              onSelected: onCategorySelected,
                               onTap: onCategoryTap,
                             ),
                             if (tagOptions != null && tagOptions!.length > 1)

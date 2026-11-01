@@ -45,10 +45,9 @@ void main() {
     expect(find.text('Tags / Labels'), findsNothing);
     expect(find.byIcon(Icons.sell_outlined), findsOneWidget);
 
-    final tagsBox = find.widgetWithText(InputDecorator, 'Tags');
-    expect(tagsBox, findsOneWidget);
-
-    final tagField = find.descendant(of: tagsBox, matching: find.byType(TextField));
+    final tagField = find.byWidgetPredicate(
+      (w) => w is TextField && w.decoration?.labelText == 'Tags',
+    );
     expect(tagField, findsOneWidget);
 
     // Tap the text field directly to focus it
