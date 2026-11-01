@@ -196,6 +196,8 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
               Expanded(
                 child: Text(
                   'Balance',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: scheme.onSurfaceVariant,
                     fontWeight: FontWeight.w900,
@@ -213,6 +215,7 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                 onChanged: _onPeriodChanged,
                 icon: Icons.calendar_month_rounded,
                 semanticLabel: 'Balance period',
+                maxLabelWidth: 80,
               ),
               const SizedBox(width: AppSpacing.xs),
               if (allCurrencies.length > 1 && forcedCurrency == null)
@@ -227,6 +230,7 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                   },
                   icon: Icons.currency_exchange_rounded,
                   semanticLabel: 'Display currency',
+                  maxLabelWidth: 50,
                 )
               else
                 HomeBalancePill(

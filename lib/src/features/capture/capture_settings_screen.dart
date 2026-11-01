@@ -36,6 +36,13 @@ class CaptureSettingsScreen extends StatelessWidget {
             subtitle: 'Turn incoming app notifications into review drafts',
             onTap: () => context.push('/notification-capture'),
           ),
+          const SizedBox(height: AppSpacing.sm),
+          PremiumRow(
+            icon: Icons.bug_report_outlined,
+            title: 'Capture Diagnostics',
+            subtitle: 'Inspect auto-capture decision logs and cleanup retention',
+            onTap: () => context.push('/auto-capture/debug'),
+          ),
         ],
       ),
     );

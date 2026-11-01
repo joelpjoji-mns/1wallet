@@ -31,17 +31,20 @@ void main() {
         buildAutoBackupFileName(suffix: suffix, variant: 'safety'),
         '1wallet_auto_backup_safety_Joel_Thomas_joel@example.com.onewallet',
       );
+      final testDate = DateTime(2026, 11, 1);
       expect(
         buildManualBackupFileName(
           userId: 'uid-joel-1',
           email: 'joel@example.com',
           displayName: 'Joel Thomas',
+          date: testDate,
         ),
-        '1wallet_backup_Joel_Thomas_joel@example.com.onewallet',
+        '1wallet_manual_export_Joel_Thomas_joel@example.com_2026-11-01.onewallet',
       );
     });
 
     test('uses email when display name is empty or identical to email', () {
+      final testDate = DateTime(2026, 11, 1);
       final suffixNoName = buildUserBackupFileSuffix(
         userId: 'uid-2',
         email: 'alice@domain.org',
@@ -54,8 +57,9 @@ void main() {
         buildManualBackupFileName(
           userId: 'uid-2',
           email: 'alice@domain.org',
+          date: testDate,
         ),
-        '1wallet_backup_alice@domain.org.onewallet',
+        '1wallet_manual_export_alice@domain.org_2026-11-01.onewallet',
       );
 
       final suffixSameAsEmail = buildUserBackupFileSuffix(
@@ -70,13 +74,14 @@ void main() {
     });
 
     test('falls back to legacy filename when no user is signed in', () {
+      final testDate = DateTime(2026, 11, 1);
       expect(
         buildAutoBackupFileName(suffix: null),
         '1wallet_auto_backup.onewallet',
       );
       expect(
-        buildManualBackupFileName(),
-        '1wallet_backup.onewallet',
+        buildManualBackupFileName(date: testDate),
+        '1wallet_manual_export_2026-11-01.onewallet',
       );
     });
   });
@@ -106,9 +111,10 @@ void main() {
       addTearDown(controller.dispose);
       await ready.future;
 
+      final testDate = DateTime(2026, 11, 1);
       expect(
-        controller.defaultManualBackupFileName(),
-        '1wallet_backup_User_A_usera@example.com.onewallet',
+        controller.defaultManualBackupFileName(date: testDate),
+        '1wallet_manual_export_User_A_usera@example.com_2026-11-01.onewallet',
       );
 
       await controller.createStarterWallet(

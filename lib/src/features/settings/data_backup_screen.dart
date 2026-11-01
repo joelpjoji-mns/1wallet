@@ -167,11 +167,22 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
           SectionCard(
             title: 'Export',
             subtitle:
-                'Generate a portable 1Wallet archive and save it to your device.',
-            child: FilledButton.icon(
-              onPressed: _busy ? null : _generateAndSaveArchive,
-              icon: const Icon(Icons.file_download_outlined),
-              label: const Text('Save to file'),
+                'Generate a portable 1Wallet archive and save it to your Documents/1Wallet folder.',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                FilledButton.icon(
+                  onPressed: _busy ? null : () => _generateAndSaveArchive(encrypted: false),
+                  icon: const Icon(Icons.file_download_outlined),
+                  label: const Text('Export to file'),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : () => _generateAndSaveArchive(encrypted: true),
+                  icon: const Icon(Icons.lock_rounded),
+                  label: const Text('Export with password (encrypted)'),
+                ),
+              ],
             ),
           ),
           const Gap(AppSpacing.lg),
@@ -217,44 +228,73 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
     );
   }
 
-  Future<void> _generateAndSaveArchive() async {
+  Future<void> _generateAndSaveArchive({bool encrypted = false}) async {
     if (_busy) return;
     setState(() => _busy = true);
     final notifier = ref.read(ledgerProvider.notifier);
     final defaultFileName = notifier.defaultManualBackupFileName();
 
     try {
-      final passphrase = await showDialog<String>(
-        context: context,
-        builder: (_) => const _BackupPassphraseDialog(exporting: true),
-      );
-      if (passphrase == null || !mounted) return;
+      String archive;
       final owner = ref.read(ledgerProvider).userId;
-      setState(
-        () => _status =
-            'Encrypting backup. Keep the app open until the save dialog appears.',
-      );
-      final archive = await notifier.exportPortableBackup(passphrase);
+      if (encrypted) {
+        final passphrase = await showDialog<String>(
+          context: context,
+          builder: (_) => const _BackupPassphraseDialog(exporting: true),
+        );
+        if (passphrase == null || !mounted) return;
+        setState(
+          () => _status =
+              'Encrypting backup. Keep the app open until the save dialog appears.',
+        );
+        archive = await notifier.exportPortableBackup(passphrase);
+      } else {
+        setState(
+          () => _status = 'Exporting backup archive...',
+        );
+        archive = notifier.exportArchive();
+      }
       if (!mounted) return;
       if (ref.read(ledgerProvider).userId != owner) {
         throw StateError('The wallet session changed during export.');
       }
-      final outputFile = await FilePicker.saveFile(
-        dialogTitle: 'Save 1Wallet Backup',
-        fileName: defaultFileName,
-        type: FileType.custom,
-        allowedExtensions: ['onewallet', 'json'],
-        bytes: Uint8List.fromList(utf8.encode(archive)),
-      );
 
-      if (outputFile == null) {
-        _showBackupMessage('Save cancelled.');
-        return;
+      // Always save directly to the 1Wallet folder in Documents
+      File? localSavedFile;
+      try {
+        final docDir = await notifier.getAutoBackupDirectory();
+        localSavedFile = File('${docDir.path}/$defaultFileName');
+        await localSavedFile.writeAsString(archive, flush: true);
+      } catch (err) {
+        debugPrint('Could not save directly to documents: $err');
+      }
+
+      String? outputFile;
+      try {
+        final uri = await FilePicker.saveFile(
+          dialogTitle: 'Save 1Wallet Backup',
+          fileName: defaultFileName,
+          type: FileType.custom,
+          allowedExtensions: ['onewallet', 'json'],
+          bytes: Uint8List.fromList(utf8.encode(archive)),
+        );
+        outputFile = uri != null
+            ? (uri.hasScheme && uri.scheme == 'file'
+                ? uri.toFilePath()
+                : uri.toString())
+            : null;
+      } catch (_) {
+        // Platform might not support saveFile dialog
       }
 
       if (!mounted) return;
-      setState(() => _status = 'Archive saved successfully.');
-      _showBackupMessage('Archive saved successfully.');
+      final saveLocation = outputFile ?? localSavedFile?.path;
+      if (saveLocation != null) {
+        setState(() => _status = 'Archive saved to $saveLocation');
+        _showBackupMessage('Archive saved successfully.');
+      } else {
+        _showBackupMessage('Save cancelled.');
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _status = 'Failed to save archive: $e');
@@ -292,11 +332,11 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
         } else {
           final confirmed = await showAppConfirmDialog(
             context,
-            title: 'Import legacy plaintext backup?',
+            title: 'Restore backup from file?',
             message:
-                'This older backup is not encrypted. Import only a file you trust. '
-                'After validation it replaces this device\'s wallet and the cloud wallet used on other devices.',
-            confirmLabel: 'Import',
+                'After validation, this backup will replace this device\'s wallet '
+                'and, when signed in, the cloud wallet used on other devices. Continue?',
+            confirmLabel: 'Restore',
           );
           if (!confirmed || !mounted) return;
           replacementConfirmed = true;

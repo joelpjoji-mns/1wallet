@@ -83,19 +83,29 @@ Future<LedgerState> _rewrapFields(
         next[entry.key] = entry.value;
       } else if (exporting) {
         final versioned = entry.value.startsWith('v2:');
-        next[entry.key] = await SecureKeyStore.decrypt(
-          entry.value,
-          userId: versioned ? ledger.userId : null,
-          context: versioned
-              ? SecureKeyStore.fieldContext(account.id, entry.key)
-              : null,
-        );
+        try {
+          next[entry.key] = await SecureKeyStore.decrypt(
+            entry.value,
+            userId: versioned ? ledger.userId : null,
+            context: versioned
+                ? SecureKeyStore.fieldContext(account.id, entry.key)
+                : null,
+          );
+        } catch (error) {
+          debugPrint('Secure field kept during export: ${error.runtimeType}');
+          next[entry.key] = entry.value;
+        }
       } else {
-        next[entry.key] = await SecureKeyStore.encrypt(
-          entry.value,
-          userId: targetUserId,
-          context: SecureKeyStore.fieldContext(account.id, entry.key),
-        );
+        try {
+          next[entry.key] = await SecureKeyStore.encrypt(
+            entry.value,
+            userId: targetUserId,
+            context: SecureKeyStore.fieldContext(account.id, entry.key),
+          );
+        } catch (error) {
+          debugPrint('Secure field kept during import re-wrap: ${error.runtimeType}');
+          next[entry.key] = entry.value;
+        }
       }
     }
     accounts.add(account.copyWith(encryptedDetails: next));

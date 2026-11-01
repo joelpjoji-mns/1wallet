@@ -113,7 +113,40 @@ class CaptureDiagnosticEvent {
 
 class CaptureDiagnostics {
   static const _key = 'one_wallet_flutter.capture_diagnostics';
+  static const _retentionKey = 'one_wallet_flutter.capture_diagnostics_retention_days';
   static const _maxEvents = 150;
+  static const defaultRetentionDays = 30;
+
+  static Future<int> getRetentionDays() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_retentionKey) ?? defaultRetentionDays;
+  }
+
+  static Future<void> setRetentionDays(int days) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_retentionKey, days);
+  }
+
+  static Future<int> pruneOldEvents({
+    String ownerId = 'local-user',
+    int? customRetentionDays,
+  }) async {
+    final retentionDays = customRetentionDays ?? await getRetentionDays();
+    if (retentionDays <= 0) return 0;
+    final cutoff = DateTime.now().subtract(Duration(days: retentionDays));
+    final events = await recentEvents(ownerId: ownerId);
+    final remaining = events.where((e) => e.timestamp.isAfter(cutoff)).toList();
+    final prunedCount = events.length - remaining.length;
+    if (prunedCount > 0) {
+      final prefs = await SharedPreferences.getInstance();
+      final next = remaining
+          .take(_maxEvents)
+          .map((item) => jsonEncode(item.toJson()))
+          .toList();
+      await prefs.setString('$_key.$ownerId', jsonEncode(next));
+    }
+    return prunedCount;
+  }
 
   static Future<List<CaptureDiagnosticEvent>> recentEvents({
     String ownerId = 'local-user',

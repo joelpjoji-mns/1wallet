@@ -137,6 +137,18 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
         hasDrawer: false,
         actions: [
           HeaderIconButton(
+            icon: Icons.sms_outlined,
+            semanticLabel: 'SMS auto-capture',
+            tooltip: 'SMS auto-capture',
+            onPressed: () => context.push('/import-sms'),
+          ),
+          HeaderIconButton(
+            icon: Icons.notifications_active_outlined,
+            semanticLabel: 'Notification capture',
+            tooltip: 'Notification capture',
+            onPressed: () => context.push('/notification-capture'),
+          ),
+          HeaderIconButton(
             icon: Icons.settings_suggest_outlined,
             semanticLabel: 'Auto-capture settings',
             tooltip: 'Auto-capture settings',
@@ -167,14 +179,26 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
         scrollView: RefreshIndicator(
           onRefresh: _refreshSpooled,
           child: items.isEmpty
-              ? ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: [
-                    SizedBox(
-                      height: MediaQuery.sizeOf(context).height * 0.7,
-                      child: _buildEmptyState(context),
-                    ),
-                  ],
+              ? LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.lg,
+                              vertical: AppSpacing.xl,
+                            ),
+                            child: _buildEmptyState(context),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 )
               : ListView.separated(
                   physics: const AlwaysScrollableScrollPhysics(),
@@ -207,21 +231,16 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
   /// Empty state wrapped in a centred glass panel for visual polish (opaque
   /// on AMOLED).
   Widget _buildEmptyState(BuildContext context) {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-        child: AppPanel(
-          glass: true,
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacing.xl,
-            vertical: AppSpacing.xxl,
-          ),
-          child: EmptyState(
-            icon: Icons.done_all_rounded,
-            title: 'All caught up',
-            body: 'New transactions and alerts will appear here.',
-          ),
-        ),
+    return const AppPanel(
+      glass: true,
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.xxl,
+        vertical: AppSpacing.xxl,
+      ),
+      child: EmptyState(
+        icon: Icons.done_all_rounded,
+        title: 'All caught up',
+        body: 'New transactions and alerts will appear here.',
       ),
     );
   }

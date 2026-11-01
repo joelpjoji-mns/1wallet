@@ -146,16 +146,20 @@ String buildManualBackupFileName({
   String? displayName,
   String? email,
   String? userId,
+  DateTime? date,
 }) {
+  final d = date ?? DateTime.now();
+  final dateStr =
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   final suffix = buildUserBackupFileSuffix(
     displayName: displayName,
     email: email,
     userId: userId,
   );
   if (suffix.isEmpty) {
-    return '1wallet_backup.onewallet';
+    return '1wallet_manual_export_$dateStr.onewallet';
   }
-  return '1wallet_backup_$suffix.onewallet';
+  return '1wallet_manual_export_${suffix}_$dateStr.onewallet';
 }
 
 final ledgerRepositoryProvider = Provider<LedgerRepository>((ref) {
@@ -745,13 +749,16 @@ class LedgerController extends StateNotifier<LedgerState> {
     _checkSession();
   });
 
-  String defaultManualBackupFileName() {
+  String defaultManualBackupFileName({DateTime? date}) {
     return buildManualBackupFileName(
       displayName: _activeUser?.displayName,
       email: _activeUser?.email,
       userId: _activeUser?.userId ?? state.userId,
+      date: date,
     );
   }
+
+  Future<Directory> getAutoBackupDirectory() => getOneWalletDocumentsDirectory();
 
   @override
   void dispose() {
@@ -3648,6 +3655,26 @@ class LedgerController extends StateNotifier<LedgerState> {
     }
   }
 
+  Future<Directory> getOneWalletDocumentsDirectory() async {
+    if (Platform.isAndroid) {
+      try {
+        final androidDocs = Directory('/storage/emulated/0/Documents/1Wallet');
+        if (!await androidDocs.exists()) {
+          await androidDocs.create(recursive: true);
+        }
+        return androidDocs;
+      } catch (_) {
+        // Fall back to application documents if public external storage is inaccessible
+      }
+    }
+    final docsDir = await getApplicationDocumentsDirectory();
+    final target = Directory('${docsDir.path}/1Wallet');
+    if (!await target.exists()) {
+      await target.create(recursive: true);
+    }
+    return target;
+  }
+
   Future<void> _writeAutoBackupSnapshot(
     LedgerState ledger, {
     LedgerUserIdentity? userOverride,
@@ -3665,10 +3692,10 @@ class LedgerController extends StateNotifier<LedgerState> {
       final archive = await encodeDeviceBackup(ledger);
       _checkBackupSession(epoch);
 
-      final docsDir = await getApplicationSupportDirectory();
+      final docsDir = await getOneWalletDocumentsDirectory();
       _checkBackupSession(epoch);
       await _writeAutoBackupToDirectory(
-        Directory('${docsDir.path}/1Wallet'),
+        docsDir,
         archive,
         ledger,
         suffix: suffix,
@@ -3745,41 +3772,42 @@ class LedgerController extends StateNotifier<LedgerState> {
   Future<List<String>> _autoBackupSearchDirectories({Duration? timeout}) async {
     final dirs = <String>[];
     try {
-      final support = getApplicationSupportDirectory();
-      final directory = timeout == null
-          ? await support
-          : await support.timeout(timeout);
-      dirs.add('${directory.path}/1Wallet');
-    } catch (error) {
-      debugPrint(
-        'Application support backup directory unavailable: ${error.runtimeType}',
-      );
-    }
+      final docsDir = await getOneWalletDocumentsDirectory();
+      dirs.add(docsDir.path);
+    } catch (_) {}
+
     try {
       final docsFuture = getApplicationDocumentsDirectory();
       final docsDir = timeout != null
           ? await docsFuture.timeout(timeout)
           : await docsFuture;
-      dirs.add('${docsDir.path}/1Wallet');
-      dirs.add(docsDir.path);
-
+      final target = '${docsDir.path}/1Wallet';
+      if (!dirs.contains(target)) {
+        dirs.add(target);
+      }
       if (Platform.isAndroid) {
-        final extFuture = getExternalStorageDirectory();
-        final extDir = timeout != null
-            ? await extFuture.timeout(timeout)
-            : await extFuture;
-        if (extDir != null) {
-          dirs.add('${extDir.path}/1Wallet');
-          dirs.add(extDir.path);
+        const androidDoc = '/storage/emulated/0/Documents/1Wallet';
+        if (!dirs.contains(androidDoc)) {
+          dirs.add(androidDoc);
         }
-        dirs.addAll(const [
-          '/storage/emulated/0/Download/1Wallet',
-          '/storage/emulated/0/Download',
-          '/storage/emulated/0/Documents/1Wallet',
-          '/storage/emulated/0/Documents',
-        ]);
       }
     } catch (_) {}
+
+    // Legacy migration fallback: check old app support directory if no file found in Documents
+    try {
+      final support = getApplicationSupportDirectory();
+      final directory = timeout == null
+          ? await support
+          : await support.timeout(timeout);
+      final legacySupport = '${directory.path}/1Wallet';
+      if (!dirs.contains(legacySupport)) {
+        dirs.add(legacySupport);
+      }
+    } catch (error) {
+      debugPrint(
+        'Application support backup directory unavailable: ${error.runtimeType}',
+      );
+    }
     return dirs;
   }
 

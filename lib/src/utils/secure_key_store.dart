@@ -81,7 +81,12 @@ abstract final class SecureKeyStore {
     if (_isNewFormat(stored)) {
       return _decryptNew(stored);
     }
-    return _decryptLegacy(stored);
+    try {
+      return await _decryptLegacy(stored);
+    } catch (e) {
+      debugPrint('Legacy decryption failed: $e');
+      return stored;
+    }
   });
 
   /// Returns true for either older format that needs authenticated re-encryption.

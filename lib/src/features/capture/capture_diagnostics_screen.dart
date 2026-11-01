@@ -26,6 +26,28 @@ class CaptureDiagnosticsScreen extends ConsumerStatefulWidget {
 
 class _CaptureDiagnosticsScreenState
     extends ConsumerState<CaptureDiagnosticsScreen> {
+  int _retentionDays = CaptureDiagnostics.defaultRetentionDays;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRetentionAndPrune();
+  }
+
+  Future<void> _loadRetentionAndPrune() async {
+    final days = await CaptureDiagnostics.getRetentionDays();
+    if (mounted) {
+      setState(() => _retentionDays = days);
+    }
+    await CaptureDiagnostics.pruneOldEvents(
+      ownerId: ref.read(ledgerProvider).userId,
+      customRetentionDays: days,
+    );
+    if (mounted) {
+      _refresh();
+    }
+  }
+
   void _refresh() {
     ref.invalidate(
       captureDiagnosticEventsProvider(ref.read(ledgerProvider).userId),
@@ -43,6 +65,24 @@ class _CaptureDiagnosticsScreenState
           icon: Icons.refresh_rounded,
           semanticLabel: 'Refresh diagnostics',
           onPressed: _refresh,
+        ),
+        HeaderIconButton(
+          icon: Icons.cleaning_services_outlined,
+          semanticLabel: 'Clean up expired diagnostics',
+          tooltip: 'Clean up expired diagnostics',
+          onPressed: () async {
+            final pruned = await CaptureDiagnostics.pruneOldEvents(
+              ownerId: state.userId,
+            );
+            if (!mounted || !context.mounted) return;
+            showAppSnackBar(
+              context,
+              pruned > 0
+                  ? 'Purged $pruned event(s) older than $_retentionDays days.'
+                  : 'No expired logs found (retention: $_retentionDays days).',
+            );
+            _refresh();
+          },
         ),
         HeaderIconButton(
           icon: Icons.delete_sweep_outlined,
@@ -95,28 +135,72 @@ class _CaptureDiagnosticsScreenState
           },
         ),
       ],
-      child: history.when(
-        loading: () => const AppLoadingState(),
-        error: (error, stack) => const EmptyState(
-          icon: Icons.error_outline_rounded,
-          title: 'Could not load diagnostics',
-          body:
-              'The original history was retained. Refresh or clear this wallet\'s history to retry.',
-          tone: MetricTone.danger,
-        ),
-        data: (events) {
-          if (events.isEmpty) {
-            return const EmptyState(
-              icon: Icons.bug_report_outlined,
-              title: 'No capture diagnostics yet',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SectionCard(
+            title: 'Automatic cleanup',
+            subtitle:
+                'Logs older than the selected timeframe are automatically purged to keep storage clean.',
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Keep logs for',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
+                GlassDropdownPill<int>(
+                  value: _retentionDays,
+                  options: const [
+                    GlassDropdownOption(7, '1 week'),
+                    GlassDropdownOption(14, '2 weeks'),
+                    GlassDropdownOption(30, '30 days (default)'),
+                    GlassDropdownOption(90, '3 months'),
+                    GlassDropdownOption(180, '6 months'),
+                  ],
+                  onChanged: (days) async {
+                    await CaptureDiagnostics.setRetentionDays(days);
+                    if (mounted) setState(() => _retentionDays = days);
+                    final pruned = await CaptureDiagnostics.pruneOldEvents(
+                      ownerId: state.userId,
+                      customRetentionDays: days,
+                    );
+                    if (!mounted || !context.mounted) return;
+                    if (pruned > 0) {
+                      showAppSnackBar(
+                        context,
+                        'Cleaned up $pruned expired diagnostic log(s).',
+                      );
+                    }
+                    _refresh();
+                  },
+                ),
+              ],
+            ),
+          ),
+          const Gap(AppSpacing.lg),
+          history.when(
+            loading: () => const AppLoadingState(),
+            error: (error, stack) => const EmptyState(
+              icon: Icons.error_outline_rounded,
+              title: 'Could not load diagnostics',
               body:
-                  'Decisions for this wallet appear here. Older unassigned history is not shown automatically.',
-            );
-          }
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SectionCard(
+                  'The original history was retained. Refresh or clear this wallet\'s history to retry.',
+              tone: MetricTone.danger,
+            ),
+            data: (events) {
+              if (events.isEmpty) {
+                return const EmptyState(
+                  icon: Icons.bug_report_outlined,
+                  title: 'No capture diagnostics yet',
+                  body:
+                      'Decisions for this wallet appear here. Older unassigned history is not shown automatically.',
+                );
+              }
+              return SectionCard(
                 title: 'Recent decisions',
                 subtitle:
                     'Local-only debug trail for why messages were queued, ignored, duplicated, or notified.',
@@ -130,10 +214,10 @@ class _CaptureDiagnosticsScreenState
                     ],
                   ],
                 ),
-              ),
-            ],
-          );
-        },
+              );
+            },
+          ),
+        ],
       ),
     );
   }

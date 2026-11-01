@@ -166,7 +166,7 @@ void main() {
       'renders unified Transfer detected card when debit and credit candidates match',
       (tester) async {
         final now = DateTime.now();
-        final checking = const Account(
+        const checking = Account(
           id: 'acc-chk',
           name: 'HDFC Checking',
           type: 'bank',
@@ -174,7 +174,7 @@ void main() {
           accountLast4: '1111',
           openingBalance: Money(amountMinor: 5000000, currency: 'INR'),
         );
-        final savings = const Account(
+        const savings = Account(
           id: 'acc-svg',
           name: 'ICICI Savings',
           type: 'bank',
@@ -247,7 +247,7 @@ void main() {
       'renders Planned payment detected badge and Pay Plan button when candidate matches scheduled payment',
       (tester) async {
         final now = DateTime.now();
-        final checking = const Account(
+        const checking = Account(
           id: 'acc-chk',
           name: 'Main Checking',
           type: 'bank',
@@ -326,7 +326,7 @@ void main() {
       'AddRecordScreen pre-populates Transfer mode with counter account from paired candidate',
       (tester) async {
         final now = DateTime.now();
-        final checking = const Account(
+        const checking = Account(
           id: 'acc-chk',
           name: 'HDFC Checking',
           type: 'bank',
@@ -334,7 +334,7 @@ void main() {
           accountLast4: '1111',
           openingBalance: Money(amountMinor: 5000000, currency: 'INR'),
         );
-        final savings = const Account(
+        const savings = Account(
           id: 'acc-svg',
           name: 'ICICI Savings',
           type: 'bank',
@@ -413,7 +413,7 @@ void main() {
       'AddRecordScreen pre-populates Planned payment and candidate and clears both on save',
       (tester) async {
         final now = DateTime.now();
-        final checking = const Account(
+        const checking = Account(
           id: 'acc-chk',
           name: 'Main Checking',
           type: 'bank',

@@ -123,6 +123,7 @@ class GlassDropdownPill<T> extends StatelessWidget {
     required this.onChanged,
     this.icon,
     this.semanticLabel,
+    this.maxLabelWidth = 148,
     super.key,
   });
 
@@ -131,6 +132,7 @@ class GlassDropdownPill<T> extends StatelessWidget {
   final ValueChanged<T> onChanged;
   final IconData? icon;
   final String? semanticLabel;
+  final double maxLabelWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -179,7 +181,7 @@ class GlassDropdownPill<T> extends StatelessWidget {
                 const SizedBox(width: AppSpacing.xxs),
               ],
               ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 148),
+                constraints: BoxConstraints(maxWidth: maxLabelWidth),
                 child: Text(
                   label,
                   maxLines: 1,
@@ -781,8 +783,14 @@ class SectionCard extends StatelessWidget {
                   ),
               ],
             ),
-            SizedBox(height: compact ? AppSpacing.sm : AppSpacing.md),
-            child,
+            if (child is! SizedBox ||
+                ((child as SizedBox).height != null &&
+                    (child as SizedBox).height! > 0) ||
+                ((child as SizedBox).width != null &&
+                    (child as SizedBox).width! > 0)) ...[
+              SizedBox(height: compact ? AppSpacing.sm : AppSpacing.md),
+              child,
+            ],
           ],
         ),
       ),

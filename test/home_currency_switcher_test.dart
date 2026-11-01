@@ -34,22 +34,21 @@ void main() {
   testWidgets(
     'BalanceHomeWidget renders currency dropdown switcher when multiple currencies are available',
     (tester) async {
-      final now = DateTime.now();
-      final usdAccount = Account(
+      const usdAccount = Account(
         id: 'acc-usd',
         name: 'Chase Checking',
         type: 'bank',
         currency: 'USD',
         accountLast4: '1111',
-        openingBalance: const Money(amountMinor: 100000, currency: 'USD'),
+        openingBalance: Money(amountMinor: 100000, currency: 'USD'),
       );
-      final inrAccount = Account(
+      const inrAccount = Account(
         id: 'acc-inr',
         name: 'HDFC Savings',
         type: 'bank',
         currency: 'INR',
         accountLast4: '2222',
-        openingBalance: const Money(amountMinor: 5000000, currency: 'INR'),
+        openingBalance: Money(amountMinor: 5000000, currency: 'INR'),
       );
 
       final state = emptyLedgerState().copyWith(
