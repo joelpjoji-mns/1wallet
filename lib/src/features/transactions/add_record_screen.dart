@@ -77,12 +77,30 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
   void initState() {
     super.initState();
     _accountId = widget.initialAccountId;
+    _tagFocusNode.addListener(_onTagFocusChanged);
+  }
+
+  void _triggerTagOptions() {
+    _tagFocusNode.requestFocus();
+    _tagInputController.value = const TextEditingValue(
+      text: ' ',
+      selection: TextSelection.collapsed(offset: 1),
+    );
+    _tagInputController.value = const TextEditingValue(
+      text: '',
+      selection: TextSelection.collapsed(offset: 0),
+    );
+  }
+
+  void _onTagFocusChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     _notesController.dispose();
     _notesFocusNode.dispose();
+    _tagFocusNode.removeListener(_onTagFocusChanged);
     _tagInputController.dispose();
     _tagFocusNode.dispose();
     _locationController.dispose();
@@ -121,7 +139,8 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
     final allTags =
         state.transactions
             .expand((t) => t.tags)
-            .where((t) => t.trim().isNotEmpty)
+            .map((t) => t.replaceAll('#', '').trim())
+            .where((t) => t.isNotEmpty)
             .toSet()
             .toList()
           ..sort();
@@ -555,22 +574,6 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                           },
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        if (_tags.isNotEmpty) ...[
-                          Wrap(
-                            spacing: AppSpacing.xs,
-                            runSpacing: AppSpacing.xs,
-                            children: [
-                              for (final tag in _tags)
-                                InputChip(
-                                  label: Text(tag),
-                                  onDeleted: () =>
-                                      setState(() => _tags.remove(tag)),
-                                  visualDensity: VisualDensity.compact,
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                        ],
                         RawAutocomplete<String>(
                           textEditingController: _tagInputController,
                           focusNode: _tagFocusNode,
@@ -578,33 +581,44 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                           optionsBuilder: (textEditingValue) {
                             final query = textEditingValue.text.trim();
                             final lowerQuery = query.toLowerCase();
-                            final unselected = allTags
+                            final cleanAllTags = allTags
+                                .map((t) => t.replaceAll('#', '').trim())
+                                .where((t) => t.isNotEmpty)
+                                .toSet()
+                                .toList();
+                            final unselected = cleanAllTags
                                 .where((t) => !_tags.contains(t))
                                 .toList();
                             if (query.isEmpty) {
-                              return const Iterable<String>.empty();
+                              return unselected;
                             }
                             final matches = unselected
                                 .where(
                                   (t) => t.toLowerCase().contains(lowerQuery),
                                 )
                                 .toList();
-                            final exactMatch = allTags.any(
+                            final exactMatch = cleanAllTags.any(
                               (t) => t.toLowerCase() == lowerQuery,
                             );
                             if (!exactMatch && query.isNotEmpty) {
                               matches.insert(0, '__create__:$query');
                             }
-                            return matches.take(8);
+                            return matches;
                           },
                           onSelected: (option) {
-                            final val = option.startsWith('__create__:')
-                                ? option.substring('__create__:'.length).trim()
-                                : option.trim();
+                            final clean = option.startsWith('__create__:')
+                                ? option.substring('__create__:'.length)
+                                : option;
+                            final val = clean.replaceAll('#', '').trim();
                             if (val.isNotEmpty && !_tags.contains(val)) {
                               setState(() {
                                 _tags.add(val);
                                 _tagInputController.clear();
+                              });
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (mounted) {
+                                  _triggerTagOptions();
+                                }
                               });
                             }
                           },
@@ -615,35 +629,130 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                 focusNode,
                                 onFieldSubmitted,
                               ) {
-                                return TextField(
-                                  controller: textEditingController,
-                                  focusNode: focusNode,
-                                  decoration: InputDecoration(
-                                    labelText: 'Tags / Labels',
-                                    hintText: 'Add a tag (e.g. Work, Vacation)',
-                                    prefixIcon: const Icon(
-                                      Icons.label_outline_rounded,
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppRadii.md,
+                                final theme = Theme.of(context);
+                                final isFocused = focusNode.hasFocus;
+                                return InkWell(
+                                  onTap: _triggerTagOptions,
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadii.md,
+                                  ),
+                                  child: InputDecorator(
+                                    isFocused: isFocused,
+                                    isEmpty:
+                                        _tags.isEmpty &&
+                                        textEditingController.text.isEmpty,
+                                    decoration: InputDecoration(
+                                      labelText: 'Tags',
+                                      hintText: _tags.isEmpty
+                                          ? 'Add tags (e.g. Work, Vacation)'
+                                          : null,
+                                      prefixIcon: const Icon(
+                                        Icons.sell_outlined,
                                       ),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          AppRadii.md,
+                                        ),
+                                      ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: AppSpacing.md,
+                                            vertical: AppSpacing.sm,
+                                          ),
+                                    ),
+                                    child: Wrap(
+                                      spacing: AppSpacing.xs,
+                                      runSpacing: AppSpacing.xs,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
+                                      children: [
+                                        for (final tag in _tags)
+                                          InputChip(
+                                            label: Text(
+                                              tag,
+                                              style: theme.textTheme.labelMedium
+                                                  ?.copyWith(
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                            ),
+                                            onDeleted: () => setState(
+                                              () => _tags.remove(tag),
+                                            ),
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                            materialTapTargetSize:
+                                                MaterialTapTargetSize.shrinkWrap,
+                                            padding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: 4,
+                                                ),
+                                            deleteIconColor: theme
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
+                                        ConstrainedBox(
+                                          constraints: BoxConstraints(
+                                            minWidth: _tags.isEmpty ? 180 : 80,
+                                            maxWidth:
+                                                MediaQuery.of(context)
+                                                    .size
+                                                    .width -
+                                                130,
+                                          ),
+                                          child: IntrinsicWidth(
+                                            child: TextField(
+                                              controller: textEditingController,
+                                              focusNode: focusNode,
+                                              decoration: InputDecoration(
+                                                border: InputBorder.none,
+                                                isDense: true,
+                                                contentPadding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: AppSpacing.xs,
+                                                    ),
+                                                hintText: _tags.isNotEmpty
+                                                    ? 'Add tag...'
+                                                    : null,
+                                                hintStyle: theme
+                                                    .textTheme
+                                                    .bodyMedium
+                                                    ?.copyWith(
+                                                      color: theme
+                                                          .colorScheme
+                                                          .onSurfaceVariant
+                                                          .withValues(
+                                                            alpha: 0.7,
+                                                          ),
+                                                    ),
+                                              ),
+                                              style: theme.textTheme.bodyMedium,
+                                              onTap: _triggerTagOptions,
+                                              onSubmitted: (value) {
+                                                final val = value
+                                                    .replaceAll('#', '')
+                                                    .trim();
+                                                if (val.isNotEmpty &&
+                                                    !_tags.contains(val)) {
+                                                  setState(() {
+                                                    _tags.add(val);
+                                                    textEditingController
+                                                        .clear();
+                                                  });
+                                                }
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  onSubmitted: (value) {
-                                    final val = value.trim();
-                                    if (val.isNotEmpty &&
-                                        !_tags.contains(val)) {
-                                      setState(() {
-                                        _tags.add(val);
-                                        textEditingController.clear();
-                                      });
-                                    }
-                                  },
                                 );
                               },
                           optionsViewBuilder: (context, onSelected, options) {
                             final optionsList = options.toList();
+                            if (optionsList.isEmpty) {
+                              return const SizedBox.shrink();
+                            }
                             return Align(
                               alignment: Alignment.bottomLeft,
                               child: Material(
@@ -651,9 +760,12 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                 borderRadius: BorderRadius.circular(
                                   AppRadii.md,
                                 ),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.surfaceContainerHigh,
                                 child: ConstrainedBox(
                                   constraints: const BoxConstraints(
-                                    maxHeight: 180,
+                                    maxHeight: 135,
                                   ),
                                   child: SizedBox(
                                     width:
@@ -666,24 +778,29 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                       itemBuilder: (context, index) {
                                         final option = optionsList[index];
                                         if (option.startsWith('__create__:')) {
-                                          final createVal = option.substring(
-                                            '__create__:'.length,
-                                          );
+                                          final createVal = option
+                                              .substring('__create__:'.length)
+                                              .replaceAll('#', '')
+                                              .trim();
                                           return AppGroupedTile(
                                             leading: const Icon(
                                               Icons.add_rounded,
+                                              size: 18,
                                             ),
                                             title: Text('Create "$createVal"'),
                                             onTap: () => onSelected(createVal),
                                           );
                                         }
+                                        final displayTag = option
+                                            .replaceAll('#', '')
+                                            .trim();
                                         return AppGroupedTile(
                                           leading: const Icon(
-                                            Icons.label_outline_rounded,
+                                            Icons.sell_outlined,
                                             size: 18,
                                           ),
-                                          title: Text('#$option'),
-                                          onTap: () => onSelected(option),
+                                          title: Text(displayTag),
+                                          onTap: () => onSelected(displayTag),
                                         );
                                       },
                                     ),
@@ -1357,7 +1474,11 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       _notesController.text = source.notes ?? '';
       _tags
         ..clear()
-        ..addAll(source.tags);
+        ..addAll(
+          source.tags
+              .map((t) => t.replaceAll('#', '').trim())
+              .where((t) => t.isNotEmpty),
+        );
       _locationController.text = source.locationLabel ?? '';
       _paymentMethodController.text = source.paymentMethod ?? '';
       _transactionCurrency =

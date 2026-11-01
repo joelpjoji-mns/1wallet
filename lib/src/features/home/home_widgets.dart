@@ -81,8 +81,6 @@ Widget buildHomeDashboardWidget({
       state: state,
     ),
     HomeDashboardWidgetId.loansTile => LoansHomeWidget(state: state),
-    HomeDashboardWidgetId.cardDebt => CardsHomeWidget(state: state),
-    HomeDashboardWidgetId.cardPaymentPlan => CardsHomeWidget(state: state),
     HomeDashboardWidgetId.accountGroups => AccountGroupsHomeWidget(
       state: state,
     ),
@@ -2059,135 +2057,6 @@ class LoansHomeWidget extends ConsumerWidget {
   }
 }
 
-class CardsHomeWidget extends ConsumerWidget {
-  const CardsHomeWidget({required this.state, super.key});
-
-  final LedgerState state;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final period = getHomeWidgetFilter(
-      state.preferences.homeWidgetFilters,
-      'cardDebt',
-    );
-    final limitDate = homeWidgetFutureLimit(period);
-    final balances = ref.watch(homeAccountBalanceMapProvider);
-    final cards = state.accounts
-        .where(
-          (account) =>
-              (account.type == 'credit_card' || account.type == 'card') &&
-              !account.isArchived,
-        )
-        .toList();
-    int cardDebt(Account card) {
-      final bal = _displayAccountBalanceMinor(state, card, balances: balances);
-      return bal < 0 ? -bal : 0;
-    }
-
-    final debt = cards.fold<int>(0, (sum, account) => sum + cardDebt(account));
-    Account? highest;
-    int highestDebt = 0;
-    for (final card in cards) {
-      final d = cardDebt(card);
-      if (d > highestDebt) {
-        highest = card;
-        highestDebt = d;
-      }
-    }
-    final payments = ref
-        .watch(_homeScheduledTransactionsProvider)
-        .where(
-          (transaction) =>
-              transaction.type == 'card_payment' &&
-              !transaction.occurredAt.isAfter(limitDate),
-        )
-        .toList();
-    final planned = payments.fold<int>(
-      0,
-      (sum, transaction) => sum + transaction.baseAmount.amountMinor,
-    );
-    return HomeWidgetCard(
-      title: 'Cards',
-      subtitle: 'Debt and payment plan',
-      icon: Icons.credit_card_outlined,
-      iconColor: Theme.of(context).colorScheme.secondary,
-      actionLabel: 'Cards',
-      onAction: () => context.push('/cards'),
-      dateFilter: period,
-      dateFilterOptions: futureHomeDateFilterOptions,
-      onDateFilterChanged: (val) {
-        final newFilters = Map<String, String>.from(
-          state.preferences.homeWidgetFilters,
-        );
-        newFilters['cardDebt'] = val;
-        ref
-            .read(ledgerProvider.notifier)
-            .updatePreferencesWith(
-              (livePreferences) =>
-                  livePreferences.copyWith(homeWidgetFilters: newFilters),
-            );
-      },
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: HomeMetricTile(
-                  label: 'Card debt',
-                  value: maskMoneyIfPrivate(
-                    state,
-                    formatMoney(
-                      Money(
-                        amountMinor: debt,
-                        currency: state.preferences.displayCurrency,
-                      ),
-                      state.preferences.locale,
-                    ),
-                  ),
-                  icon: Icons.credit_card_outlined,
-                  tone: MetricTone.danger,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: HomeMetricTile(
-                  label: 'Planned',
-                  value: maskMoneyIfPrivate(
-                    state,
-                    _formatDisplayBaseMoney(state, planned),
-                  ),
-                  icon: Icons.payments_outlined,
-                  tone: MetricTone.warning,
-                ),
-              ),
-            ],
-          ),
-          if (highest != null && highestDebt > 0) ...[
-            const SizedBox(height: AppSpacing.sm),
-            HomeDetailRow(
-              icon: Icons.priority_high_rounded,
-              title: 'Highest card',
-              subtitle: highest.name,
-              trailing: maskMoneyIfPrivate(
-                state,
-                formatMoney(
-                  Money(
-                    amountMinor: highestDebt,
-                    currency: state.preferences.displayCurrency,
-                  ),
-                  state.preferences.locale,
-                ),
-              ),
-              iconColor: Theme.of(context).colorScheme.error,
-              tone: MetricTone.danger,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
 class AccountGroupsHomeWidget extends StatelessWidget {
   const AccountGroupsHomeWidget({required this.state, super.key});
 
@@ -3062,6 +2931,47 @@ class CreditUtilizationWidget extends ConsumerWidget {
         .toList();
     final balances = accountBalanceMap(state);
 
+    final accountMetrics = creditAccounts.map((acc) {
+      final rawBal = convertMoneyForDisplay(
+        state,
+        accountBalanceFromMap(balances, acc),
+        state.preferences.displayCurrency,
+      ).amountMinor;
+      final balForDisplay = rawBal.abs();
+      final debt = rawBal < 0 ? -rawBal : 0;
+
+      final limit = acc.creditLimit != null
+          ? convertMoneyForDisplay(
+              state,
+              acc.creditLimit!,
+              state.preferences.displayCurrency,
+            ).amountMinor
+          : 0;
+      final util = limit > 0 ? (debt / limit) : 0.0;
+      return (
+        account: acc,
+        balForDisplay: balForDisplay,
+        debt: debt,
+        limit: limit,
+        util: util,
+        hasLimit: limit > 0,
+      );
+    }).toList()
+      ..sort((a, b) {
+        // Sort by utilisation descending: highest percentage first
+        if (a.hasLimit && !b.hasLimit) {
+          return a.util > 0 ? -1 : 1;
+        }
+        if (!a.hasLimit && b.hasLimit) {
+          return b.util > 0 ? 1 : -1;
+        }
+        final utilComp = b.util.compareTo(a.util);
+        if (utilComp != 0) return utilComp;
+        final debtComp = b.debt.compareTo(a.debt);
+        if (debtComp != 0) return debtComp;
+        return a.account.name.compareTo(b.account.name);
+      });
+
     return RepaintBoundary(
       child: HomeWidgetCard(
         title: 'Credit utilization',
@@ -3073,29 +2983,17 @@ class CreditUtilizationWidget extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (creditAccounts.isEmpty)
+            if (accountMetrics.isEmpty)
               const EmptyState(
                 icon: Icons.credit_card_outlined,
                 title: 'No credit accounts.',
                 body: 'Credit cards you add will appear here.',
               ),
-            ...creditAccounts.map((acc) {
-              final rawBal = convertMoneyForDisplay(
-                state,
-                accountBalanceFromMap(balances, acc),
-                state.preferences.displayCurrency,
-              ).amountMinor;
-              final balForDisplay = rawBal.abs();
-              final debt = rawBal < 0 ? -rawBal : 0;
-
-              final limit = acc.creditLimit != null
-                  ? convertMoneyForDisplay(
-                      state,
-                      acc.creditLimit!,
-                      state.preferences.displayCurrency,
-                    ).amountMinor
-                  : 0;
-              final util = limit > 0 ? (debt / limit) : 0.0;
+            ...accountMetrics.map((metric) {
+              final acc = metric.account;
+              final balForDisplay = metric.balForDisplay;
+              final limit = metric.limit;
+              final util = metric.util;
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.xl),

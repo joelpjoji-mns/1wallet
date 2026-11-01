@@ -8,9 +8,7 @@ enum HomeDashboardWidgetId {
   recentRecords('recentRecords'),
   upcomingScheduled('upcomingScheduled'),
   emiTracker('emiTracker'),
-  cardDebt('cardDebt'),
   accountGroups('accountGroups'),
-  cardPaymentPlan('cardPaymentPlan'),
   loanPayoff('loanPayoff'),
   balanceTrend('balanceTrend'),
   topCategories('topCategories'),
@@ -244,8 +242,6 @@ HomeDashboardWidgetId? homeWidgetIdFromStorageKey(String key) {
     for (final item in HomeDashboardWidgetId.values) item.storageKey: item,
     'upcomingDue': HomeDashboardWidgetId.upcomingScheduled,
     'loansAndEmis': HomeDashboardWidgetId.emiTracker,
-    'cards': HomeDashboardWidgetId.cardDebt,
-    'cardPaymentPlan': HomeDashboardWidgetId.cardDebt,
   };
   return byKey[key];
 }

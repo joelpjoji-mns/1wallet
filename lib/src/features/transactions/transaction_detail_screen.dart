@@ -318,7 +318,7 @@ class _TransactionDetailScreenState
                 children: [
                   for (final tag in transaction.tags)
                     Chip(
-                      label: Text(tag),
+                      label: Text(tag.replaceAll('#', '').trim()),
                       visualDensity: VisualDensity.compact,
                     ),
                 ],

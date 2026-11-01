@@ -35,8 +35,6 @@ const kRnDefaultHomeWidgetOrder = <String>[
   'loanPayoff',
   'plannedPaymentsTile',
   'loansTile',
-  'cardDebt',
-  'cardPaymentPlan',
   'accountGroups',
   'topCategories',
   'creditUtilization',

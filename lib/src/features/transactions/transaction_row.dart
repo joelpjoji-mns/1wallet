@@ -128,7 +128,10 @@ class TransactionRow extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.only(top: AppSpacing.xxxs),
                           child: Text(
-                            transaction.tags.join(' · '),
+                            transaction.tags
+                                .map((t) => t.replaceAll('#', '').trim())
+                                .where((t) => t.isNotEmpty)
+                                .join(' · '),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.labelSmall
