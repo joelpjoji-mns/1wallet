@@ -896,10 +896,19 @@ class _BalanceTrendHomeWidgetState
 
     final double nowX = nowIndex.toDouble();
 
-    double niceXInterval = 1.0;
-    if (zoomDays > 6) {
-      niceXInterval = (zoomDays / 5).ceilToDouble();
+    int computeXIntervalDays(int zoom) {
+      if (zoom <= 7) return 1;
+      if (zoom <= 14) return 2;
+      if (zoom <= 21) return 3;
+      if (zoom <= 35) return 5;
+      if (zoom <= 60) return 10;
+      if (zoom <= 100) return 15;
+      if (zoom <= 180) return 30;
+      if (zoom <= 365) return 60;
+      return math.max(1, (zoom / 6).round());
     }
+
+    final intervalDays = computeXIntervalDays(zoomDays);
 
     // Date label for the subtitle
     final leftDate = pastTrend.isNotEmpty
@@ -1025,17 +1034,27 @@ class _BalanceTrendHomeWidgetState
                                 clipData: const FlClipData.all(),
                                 gridData: FlGridData(
                                   horizontalInterval: niceInterval,
-                                  verticalInterval: niceXInterval,
+                                  verticalInterval: 1.0,
                                   getDrawingHorizontalLine: (value) => FlLine(
                                     color: scheme.outlineVariant.withAlphaFactor(0.25),
                                     strokeWidth: 0.5,
                                     dashArray: [3, 5],
                                   ),
-                                  getDrawingVerticalLine: (value) => FlLine(
-                                    color: scheme.outlineVariant.withAlphaFactor(0.25),
-                                    strokeWidth: 0.5,
-                                    dashArray: [3, 5],
-                                  ),
+                                  getDrawingVerticalLine: (value) {
+                                    final idx = value.round();
+                                    if ((value - idx).abs() < 0.05 &&
+                                        ((idx - nowIndex).abs() % intervalDays) == 0) {
+                                      return FlLine(
+                                        color: scheme.outlineVariant.withAlphaFactor(0.25),
+                                        strokeWidth: 0.5,
+                                        dashArray: [3, 5],
+                                      );
+                                    }
+                                    return const FlLine(
+                                      color: Colors.transparent,
+                                      strokeWidth: 0,
+                                    );
+                                  },
                                 ),
                                 titlesData: FlTitlesData(
                                   topTitles: const AxisTitles(),
@@ -1060,14 +1079,22 @@ class _BalanceTrendHomeWidgetState
                                     sideTitles: SideTitles(
                                       showTitles: true,
                                       reservedSize: 32,
-                                      interval: niceXInterval,
+                                      interval: 1.0,
                                       getTitlesWidget: (value, meta) {
                                         final idx = value.round();
-                                        if (idx < 0 || idx >= totalN) {
+                                        if ((value - idx).abs() > 0.05 ||
+                                            idx < 0 ||
+                                            idx >= totalN) {
                                           return const SizedBox.shrink();
                                         }
 
-                                        // 1. Prevent collision with the touched point's date badge
+                                        // Only show dates that fall on even intervals aligned with nowIndex.
+                                        // This ensures the current date is always included and intervals are identical.
+                                        if (((idx - nowIndex).abs() % intervalDays) != 0) {
+                                          return const SizedBox.shrink();
+                                        }
+
+                                        // Hide this static date if it would collide with the touched date badge.
                                         if (_touchedIndex != null &&
                                             _touchedIndex! >= meta.min &&
                                             _touchedIndex! <= meta.max) {
@@ -1076,87 +1103,8 @@ class _BalanceTrendHomeWidgetState
                                                       (meta.max - meta.min)) *
                                                   meta.parentAxisSize;
                                           if ((meta.axisPosition - touchedPixel).abs() <
-                                              42.0) {
+                                              34.0) {
                                             return const SizedBox.shrink();
-                                          }
-                                        }
-
-                                        // 2. "Now" is always rendered at nowIndex if visible
-                                        if (idx == nowIndex) {
-                                          return SideTitleWidget(
-                                            meta: meta,
-                                            fitInside:
-                                                SideTitleFitInsideData.fromTitleMeta(
-                                                  meta,
-                                                  distanceFromEdge: 4,
-                                                ),
-                                            child: Text(
-                                              'Now',
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .labelSmall
-                                                  ?.copyWith(
-                                                    fontWeight: FontWeight.bold,
-                                                    color: scheme.primary,
-                                                  ),
-                                              softWrap: false,
-                                            ),
-                                          );
-                                        }
-
-                                        // 3. If "Now" is visible in the viewport, prevent other ticks from colliding with "Now"
-                                        if (nowIndex >= meta.min &&
-                                            nowIndex <= meta.max) {
-                                          final nowPixel =
-                                              ((nowIndex - meta.min) /
-                                                      (meta.max - meta.min)) *
-                                                  meta.parentAxisSize;
-                                          if ((meta.axisPosition - nowPixel).abs() <
-                                              38.0) {
-                                            return const SizedBox.shrink();
-                                          }
-                                        }
-
-                                        // 4. Prevent overlap at the end of the chart (maxIncluded collision)
-                                        final isMax =
-                                            (value - meta.max).abs() < 0.001;
-                                        if (isMax) {
-                                          final lastTickBeforeMax = meta.min +
-                                              ((meta.max - meta.min) ~/
-                                                      meta.appliedInterval) *
-                                                  meta.appliedInterval;
-                                          final pixelDistToPrev =
-                                              ((meta.max - lastTickBeforeMax) /
-                                                      (meta.max - meta.min)) *
-                                                  meta.parentAxisSize;
-                                          final prevIdx =
-                                              lastTickBeforeMax.round();
-                                          if (idx == prevIdx ||
-                                              pixelDistToPrev < 42.0) {
-                                            return const SizedBox.shrink();
-                                          }
-                                        } else {
-                                          // Regular interval tick that falls right at the edge
-                                          if ((meta.parentAxisSize -
-                                                  meta.axisPosition) <
-                                              18.0) {
-                                            return const SizedBox.shrink();
-                                          }
-                                        }
-
-                                        // 5. Prevent overlap at the start of the chart
-                                        final isMin =
-                                            (value - meta.min).abs() < 0.001;
-                                        if (isMin) {
-                                          final mod = (0.0 - meta.min) %
-                                              meta.appliedInterval;
-                                          if (mod > 0.001) {
-                                            final pixelDistToNext = (mod /
-                                                    (meta.max - meta.min)) *
-                                                meta.parentAxisSize;
-                                            if (pixelDistToNext < 42.0) {
-                                              return const SizedBox.shrink();
-                                            }
                                           }
                                         }
 
@@ -1168,6 +1116,12 @@ class _BalanceTrendHomeWidgetState
                                                 Duration(days: idx - nowIndex),
                                               );
 
+                                        final isCurrentDate = idx == nowIndex;
+                                        final dateText = _shortDate(
+                                          date,
+                                          widget.state.preferences.locale,
+                                        );
+
                                         return SideTitleWidget(
                                           meta: meta,
                                           fitInside:
@@ -1176,15 +1130,17 @@ class _BalanceTrendHomeWidgetState
                                                 distanceFromEdge: 4,
                                               ),
                                           child: Text(
-                                            _shortDate(
-                                              date,
-                                              widget.state.preferences.locale,
-                                            ),
+                                            dateText,
                                             style: Theme.of(context)
                                                 .textTheme
                                                 .labelSmall
                                                 ?.copyWith(
-                                                  color: scheme.onSurfaceVariant,
+                                                  color: isCurrentDate
+                                                      ? scheme.primary
+                                                      : scheme.onSurfaceVariant,
+                                                  fontWeight: isCurrentDate
+                                                      ? FontWeight.w800
+                                                      : FontWeight.w600,
                                                 ),
                                             softWrap: false,
                                           ),
