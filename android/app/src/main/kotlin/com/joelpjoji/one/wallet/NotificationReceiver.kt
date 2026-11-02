@@ -158,11 +158,15 @@ class NotificationReceiver : NotificationListenerService() {
                     notificationManager.createNotificationChannel(channel)
                 }
 
-                val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-                launchIntent?.putExtra("flutter_route", "/updates")
+                val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+                    putExtra("flutter_route", "/updates")
+                    addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                    data = android.net.Uri.parse("onewallet://updates?ts=${System.currentTimeMillis()}")
+                }
+                val reqCode = (System.currentTimeMillis() % 100000).toInt() + 5000
                 val pendingIntent = PendingIntent.getActivity(
                     context,
-                    201,
+                    reqCode,
                     launchIntent,
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )

@@ -33,6 +33,20 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
   final Set<String> _expandedReleases = <String>{};
   final Set<String> _expandedSections = <String>{};
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final updateState = ref.read(appUpdateProvider);
+      if (updateState.status != UpdateStatus.downloading &&
+          updateState.status != UpdateStatus.installing &&
+          updateState.status != UpdateStatus.checking) {
+        ref.read(appUpdateProvider.notifier).checkForUpdates(force: true);
+      }
+    });
+  }
+
   bool _isReleaseExpanded(String releaseId) =>
       _expandedReleases.contains(releaseId);
 
@@ -193,10 +207,17 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     Color color;
 
     if (state.status == UpdateStatus.checking) {
-      statusTitle = 'Checking for updates…';
-      statusSubtitle = 'Connecting to update servers';
-      icon = Icons.sync_rounded;
-      color = scheme.primary;
+      if (hasUpdate) {
+        statusTitle = 'Checking for updates…';
+        statusSubtitle = 'Version ${state.latestRelease!.versionName} available';
+        icon = Icons.sync_rounded;
+        color = scheme.primary;
+      } else {
+        statusTitle = 'Checking for updates…';
+        statusSubtitle = 'Connecting to update servers';
+        icon = Icons.sync_rounded;
+        color = scheme.primary;
+      }
     } else if (state.status == UpdateStatus.idle) {
       if (hasUpdate) {
         statusTitle = 'Update Available';
@@ -367,7 +388,9 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
       );
     }
 
-    if (state.latestRelease != null && state.status == UpdateStatus.idle) {
+    if (state.latestRelease != null &&
+        (state.status == UpdateStatus.idle ||
+            state.status == UpdateStatus.checking)) {
       final sizeStr = state.latestRelease!.apk?.sizeBytes != null
           ? ' (${(state.latestRelease!.apk!.sizeBytes / 1024 / 1024).toStringAsFixed(1)} MB)'
           : '';

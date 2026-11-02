@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:developer' as developer;
 import 'package:crypto/crypto.dart';
@@ -45,6 +46,12 @@ class Changelog {
   }
 
   bool get isEmpty => newFeatures.isEmpty && bugFixes.isEmpty && notes.isEmpty;
+
+  Map<String, dynamic> toJson() => {
+    'newFeatures': newFeatures,
+    'bugFixes': bugFixes,
+    'notes': notes,
+  };
 }
 
 class ApkMetadata {
@@ -79,6 +86,17 @@ class ApkMetadata {
       ),
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'downloadUrl': downloadUrl,
+    'fileName': fileName,
+    'sizeBytes': sizeBytes,
+    'sha256': sha256,
+    'architecture': architecture,
+    if (minSdk != null) 'minSdk': minSdk,
+    if (estimatedDownloadSeconds != null)
+      'estimatedDownloadSeconds': estimatedDownloadSeconds,
+  };
 }
 
 class AppUpdateRelease {
@@ -141,6 +159,23 @@ class AppUpdateRelease {
           : null,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'platform': platform,
+    'channel': channel,
+    'status': status,
+    'versionName': versionName,
+    'versionCode': versionCode,
+    'runtimeVersion': runtimeVersion,
+    'releaseType': releaseType,
+    'requirement': requirement,
+    'mandatory': mandatory,
+    'minimumSupportedVersionCode': minimumSupportedVersionCode,
+    'publishedAt': publishedAt,
+    'changelog': changelog.toJson(),
+    if (apk != null) 'apk': apk!.toJson(),
+  };
 }
 
 enum UpdateStatus { idle, checking, downloading, downloaded, installing, error }
@@ -1064,6 +1099,38 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
     if (!mounted) return;
     state = state.copyWith(allReleases: kBuiltInReleaseHistory);
     try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
+      final cachedJson = prefs.getString('cached_latest_release_json');
+      if (cachedJson != null && cachedJson.isNotEmpty) {
+        final decoded = jsonDecode(cachedJson);
+        if (decoded is Map<String, dynamic>) {
+          final id = _stringValue(decoded['id']);
+          final cachedRelease = AppUpdateRelease.fromJson(id, decoded);
+          final packageInfo = await PackageInfo.fromPlatform();
+          final currentCode = int.tryParse(packageInfo.buildNumber) ?? 0;
+          final currentName = packageInfo.version;
+          if (isReleaseNewer(
+            latestVersionCode: cachedRelease.versionCode,
+            latestVersionName: cachedRelease.versionName,
+            currentVersionCode: currentCode,
+            currentVersionName: currentName,
+          )) {
+            if (mounted) {
+              state = state.copyWith(
+                latestRelease: cachedRelease,
+                currentVersionName: currentName,
+                currentVersionCode: currentCode,
+              );
+            }
+          } else {
+            await prefs.remove('cached_latest_release_json');
+          }
+        }
+      }
+    } catch (_) {}
+    if (!mounted) return;
+    try {
       if (Firebase.apps.isEmpty) return;
     } catch (_) {
       return; // If Firebase is not linked
@@ -1087,7 +1154,6 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
         DateTime.now().difference(_lastCheckedAt!) < const Duration(hours: 6)) {
       return;
     }
-    _lastCheckedAt = DateTime.now();
 
     state = state.copyWith(
       status: UpdateStatus.checking,
@@ -1105,56 +1171,57 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
         currentVersionCode: currentVersionCode,
       );
 
-      final currentRelease = await _releaseForVersionCode(currentVersionCode);
+      final currentReleaseFuture = _releaseForVersionCode(currentVersionCode);
 
-      List<AppUpdateRelease> fetchedReleases = [];
-      try {
-        final res = await _dio.get(
-          'https://api.github.com/repos/joelpjoji-mns/1wallet/releases?per_page=30',
-          options: Options(
-            headers: {'User-Agent': '1Wallet-App'},
-            sendTimeout: const Duration(seconds: 8),
-            receiveTimeout: const Duration(seconds: 8),
-          ),
-        );
-        if (res.statusCode == 200 && res.data is List) {
-          for (final item in res.data) {
-            if (item is Map) {
-              final r = _parseGitHubRelease(Map<String, dynamic>.from(item));
-              if (r != null) fetchedReleases.add(r);
+      final githubFuture = () async {
+        try {
+          final res = await _dio.get(
+            'https://api.github.com/repos/joelpjoji-mns/1wallet/releases?per_page=30',
+            options: Options(
+              headers: {'User-Agent': '1Wallet-App'},
+              sendTimeout: const Duration(seconds: 4),
+              receiveTimeout: const Duration(seconds: 4),
+            ),
+          );
+          if (res.statusCode == 200 && res.data is List) {
+            final List<AppUpdateRelease> list = [];
+            for (final item in res.data) {
+              if (item is Map) {
+                final r = _parseGitHubRelease(Map<String, dynamic>.from(item));
+                if (r != null) list.add(r);
+              }
             }
+            return list;
           }
-        }
-      } catch (_) {}
+        } catch (_) {}
+        return <AppUpdateRelease>[];
+      }();
 
-      try {
-        final querySnap = await _firestore
-            .collection('appUpdates/android/releases')
-            .orderBy('versionCode', descending: true)
-            .limit(200)
-            .get();
-        if (querySnap.docs.isNotEmpty) {
-          final firestoreReleases = querySnap.docs
-              .map((doc) => AppUpdateRelease.fromFirestore(doc))
-              .toList();
-          fetchedReleases = _mergeReleases(fetchedReleases, firestoreReleases);
+      final channelDocFuture = () async {
+        try {
+          return await _firestore
+              .collection('appUpdates/android/channels')
+              .doc('stable')
+              .get()
+              .timeout(const Duration(seconds: 4));
+        } catch (_) {
+          return null;
         }
-      } catch (_) {}
+      }();
+
+      final results = await Future.wait([
+        currentReleaseFuture,
+        githubFuture,
+        channelDocFuture,
+      ]);
+      final currentRelease = results[0] as AppUpdateRelease?;
+      final fetchedReleases = (results[1] as List<AppUpdateRelease>?) ?? [];
+      final channelDoc = results[2] as DocumentSnapshot?;
 
       final allReleases = _mergeReleases(
         fetchedReleases,
         kBuiltInReleaseHistory,
       );
-
-      DocumentSnapshot? channelDoc;
-      try {
-        channelDoc = await _firestore
-            .collection('appUpdates/android/channels')
-            .doc('stable')
-            .get();
-      } catch (_) {
-        channelDoc = null;
-      }
 
       int? latestVersionCode;
       String latestReleaseId = '';
@@ -1192,6 +1259,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
       }
 
       if (latestVersionCode == null) {
+        _lastCheckedAt = DateTime.now();
         state = state.copyWith(
           status: UpdateStatus.idle,
           currentRelease: currentRelease,
@@ -1236,6 +1304,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
               },
             );
 
+        _lastCheckedAt = DateTime.now();
         await publishAvailableRelease(
           release,
           currentRelease: currentRelease,
@@ -1244,6 +1313,11 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
         return;
       }
 
+      _lastCheckedAt = DateTime.now();
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('cached_latest_release_json');
+      } catch (_) {}
       state = state.copyWith(
         status: UpdateStatus.idle,
         currentRelease: currentRelease ?? candidateRelease,
@@ -1252,6 +1326,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
         clearLatestRelease: true,
       );
     } catch (e) {
+      _lastCheckedAt = null;
       final message = e is FirebaseException && e.code == 'permission-denied'
           ? 'Update metadata is not available yet. Please try again later.'
           : 'Failed to check for updates: $e';
@@ -1281,6 +1356,13 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
       clearErrorMessage: true,
       clearNotificationWarning: true,
     );
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        'cached_latest_release_json',
+        jsonEncode(release.toJson()),
+      );
+    } catch (_) {}
     // Notification delivery is optional; a valid update must remain installable.
     try {
       final prefs = await SharedPreferences.getInstance();

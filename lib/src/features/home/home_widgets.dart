@@ -388,7 +388,18 @@ class AccountGridHomeWidget extends ConsumerWidget {
       icon: Icons.grid_view_rounded,
       iconColor: Theme.of(context).colorScheme.primary,
       actionLabel: 'Manage',
-      onAction: () => onTabSelected(3),
+      onAction: () {
+        if (selectedAccountId != null) {
+          final account = accountById(state, selectedAccountId);
+          if (account != null && account.type == 'loan') {
+            context.push('/loans/$selectedAccountId');
+          } else {
+            context.push('/account/$selectedAccountId');
+          }
+        } else {
+          onTabSelected(3);
+        }
+      },
       child: LayoutBuilder(
         builder: (context, constraints) {
           final availableWidth = constraints.maxWidth.isFinite

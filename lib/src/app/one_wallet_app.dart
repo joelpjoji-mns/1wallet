@@ -10,6 +10,7 @@ import '../theme/theme_controller.dart';
 import '../cloud_sync/cloud_sync_controller.dart';
 import '../data/ledger_providers.dart';
 import '../features/capture/sms_inbox_reader.dart';
+import '../features/updates/app_update_provider.dart';
 import '../services/notification_service.dart';
 import '../startup/startup_state.dart';
 import '../security/app_lock.dart';
@@ -78,41 +79,52 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     if (route != null) {
       _pendingNotificationRoute = null;
       _pendingSmsRoute = null;
-      // Process any spooled notifications/SMS first so the review queue is
-      // populated *before* we navigate to it.
-      _processPendingSpoolThenPush(route);
+      final isCaptureRoute = route == '/review' ||
+          route == '/auto-capture' ||
+          route.startsWith('/import-sms') ||
+          route.startsWith('/capture');
+      if (isCaptureRoute) {
+        // Process any spooled notifications/SMS first so the review queue is
+        // populated *before* we navigate to it.
+        _processPendingSpoolThenPush(route);
+      } else {
+        _pushRoute(route);
+      }
     }
   }
 
-  Future<void> _processPendingSpoolThenPush(String route) async {
-    if (_processingSpooledForRoute) return;
-    _processingSpooledForRoute = true;
-    try {
-      final ledger = ref.read(ledgerProvider.notifier);
-      final generation = ledger.sessionGeneration;
-      await ledger.processSpooledSms();
-      if (!mounted ||
-          !identical(ref.read(ledgerProvider.notifier), ledger) ||
-          ledger.sessionGeneration != generation) {
-        return;
-      }
-      await ledger.processSpooledNotifications();
-      if (!mounted || ledger.sessionGeneration != generation) return;
-    } on StaleLedgerSessionException {
-      return;
-    } finally {
-      _processingSpooledForRoute = false;
-    }
+  Future<void> _pushRoute(String route) async {
     if (!mounted) return;
     final startup = ref.read(startupStateProvider);
     if (startup.isPending || startup.destination != StartupDestination.home) {
+      _pendingNotificationRoute = route;
       return;
     }
     final router = ref.read(appRouterProvider);
     final currentLoc = router.routerDelegate.currentConfiguration.uri.path;
     if (currentLoc != route) {
       await router.push(route);
+    } else if (route == '/updates') {
+      ref.read(appUpdateProvider.notifier).checkForUpdates(force: true);
     }
+  }
+
+  Future<void> _processPendingSpoolThenPush(String route) async {
+    if (_processingSpooledForRoute) {
+      await _pushRoute(route);
+      return;
+    }
+    _processingSpooledForRoute = true;
+    try {
+      final ledger = ref.read(ledgerProvider.notifier);
+      await ledger.processSpooledSms();
+      await ledger.processSpooledNotifications();
+    } catch (_) {
+      // Ignore spool errors so route navigation is never dropped
+    } finally {
+      _processingSpooledForRoute = false;
+    }
+    await _pushRoute(route);
   }
 
   @override
@@ -136,7 +148,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
       // notification), _processPendingSpoolThenPush already handles spool
       // processing + navigation atomically. Only fire background processing
       // here when there is no pending route, to avoid double-processing.
-      if (_pendingSmsRoute == null) {
+      if (_pendingSmsRoute == null && _pendingNotificationRoute == null) {
         ref.read(ledgerProvider.notifier).processSpooledSms();
         ref.read(ledgerProvider.notifier).processSpooledNotifications();
       }
