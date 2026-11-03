@@ -83,14 +83,16 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
 
   void _triggerTagOptions() {
     _tagFocusNode.requestFocus();
-    _tagInputController.value = const TextEditingValue(
-      text: ' ',
-      selection: TextSelection.collapsed(offset: 1),
-    );
-    _tagInputController.value = const TextEditingValue(
-      text: '',
-      selection: TextSelection.collapsed(offset: 0),
-    );
+    if (_tags.isEmpty) {
+      _tagInputController.value = const TextEditingValue(
+        text: ' ',
+        selection: TextSelection.collapsed(offset: 1),
+      );
+      _tagInputController.value = const TextEditingValue(
+        text: '',
+        selection: TextSelection.collapsed(offset: 0),
+      );
+    }
   }
 
   void _onTagFocusChanged() {
@@ -635,7 +637,10 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                 .where((t) => !_tags.contains(t))
                                 .toList();
                             if (query.isEmpty) {
-                              return unselected;
+                              if (_tags.isEmpty) {
+                                return unselected;
+                              }
+                              return const Iterable<String>.empty();
                             }
                             final matches = unselected
                                 .where(
@@ -659,11 +664,6 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                               setState(() {
                                 _tags.add(val);
                                 _tagInputController.clear();
-                              });
-                              WidgetsBinding.instance.addPostFrameCallback((_) {
-                                if (mounted) {
-                                  _triggerTagOptions();
-                                }
                               });
                             }
                           },
@@ -736,7 +736,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                                 shape: RoundedRectangleBorder(
                                                   borderRadius:
                                                       BorderRadius.circular(
-                                                        AppRadii.xs,
+                                                        AppRadii.pill,
                                                       ),
                                                 ),
                                                 onDeleted: () => setState(
@@ -763,6 +763,18 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                                 focusNode: focusNode,
                                                 decoration: InputDecoration(
                                                   border: InputBorder.none,
+                                                  enabledBorder:
+                                                      InputBorder.none,
+                                                  focusedBorder:
+                                                      InputBorder.none,
+                                                  disabledBorder:
+                                                      InputBorder.none,
+                                                  errorBorder:
+                                                      InputBorder.none,
+                                                  focusedErrorBorder:
+                                                      InputBorder.none,
+                                                  filled: false,
+                                                  fillColor: Colors.transparent,
                                                   isDense: true,
                                                   contentPadding:
                                                       const EdgeInsets.symmetric(
@@ -905,7 +917,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: AppSpacing.md),
+                        const SizedBox(height: AppSpacing.sm),
                         TextFormField(
                           controller: _paymentMethodController,
                           decoration: InputDecoration(
@@ -916,7 +928,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: AppSpacing.md),
+                        const SizedBox(height: AppSpacing.sm),
                         Material(
                           color: Theme.of(
                             context,

@@ -72,11 +72,23 @@ void main() {
     expect(find.descendant(of: tagsBox, matching: find.byType(InputChip)), findsOneWidget);
     expect(find.descendant(of: find.byType(InputChip), matching: find.text('Groceries')), findsOneWidget);
 
-    // Tap field again and select 'Travel'
+    // Verify dropdown is now closed after selection (does not re-popup)
+    expect(find.text('Personal'), findsNothing);
+    expect(find.text('Travel'), findsNothing);
+
+    // Tap field again while a tag already exists: dropdown should NOT show on empty text
     await tester.tap(tagField);
+    await tester.pumpAndSettle();
+    expect(find.text('Travel'), findsNothing);
+    expect(find.text('Personal'), findsNothing);
+
+    // Second time: dropdown only appears after typing the first letter
+    await tester.enterText(tagField, 'T');
     await tester.pumpAndSettle();
 
     expect(find.text('Travel'), findsOneWidget);
+    expect(find.text('Personal'), findsNothing);
+
     await tester.tap(find.text('Travel'));
     await tester.pumpAndSettle();
 

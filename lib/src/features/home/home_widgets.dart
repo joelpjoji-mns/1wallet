@@ -1732,6 +1732,11 @@ class _CalculatorRow extends StatelessWidget {
                   inputFormatters: [ThousandsSeparatorInputFormatter()],
                   decoration: InputDecoration(
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
+                    filled: false,
+                    fillColor: Colors.transparent,
                     isDense: true,
                     contentPadding: EdgeInsets.zero,
                     hintText: hasRate ? '0' : 'No rate',
