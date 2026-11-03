@@ -123,11 +123,15 @@ class RouteScaffold extends StatelessWidget {
       drawer: effectiveDrawer,
       drawerEnableOpenDragGesture: effectiveDrawer != null,
       appBar: GlassAppBar(
-        title: Text(
-          title,
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+          ),
         ),
         leading:
             leading ??
@@ -149,11 +153,15 @@ class RouteScaffold extends StatelessWidget {
 
     Widget desktopView = Scaffold(
       appBar: GlassAppBar(
-        title: Text(
-          title,
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+          ),
         ),
         actions: actions,
         leading:

@@ -138,6 +138,18 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
         hasDrawer: false,
         actions: [
           HeaderIconButton(
+            icon: Icons.sms_outlined,
+            semanticLabel: 'SMS auto-capture',
+            tooltip: 'SMS auto-capture',
+            onPressed: () => context.push('/import-sms'),
+          ),
+          HeaderIconButton(
+            icon: Icons.notifications_active_outlined,
+            semanticLabel: 'Notification capture',
+            tooltip: 'Notification capture',
+            onPressed: () => context.push('/notification-capture'),
+          ),
+          HeaderIconButton(
             icon: Icons.bug_report_outlined,
             semanticLabel: 'Capture diagnostics',
             tooltip: 'Capture diagnostics',
@@ -150,42 +162,6 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
               tooltip: 'Mark all read',
               onPressed: () => _markAllRead(ref, allNotifications),
             ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert_rounded),
-            tooltip: 'Capture options',
-            onSelected: (value) {
-              switch (value) {
-                case 'sms':
-                  context.push('/import-sms');
-                  break;
-                case 'notifications':
-                  context.push('/notification-capture');
-                  break;
-              }
-            },
-            itemBuilder: (context) => const [
-              PopupMenuItem(
-                value: 'sms',
-                child: Row(
-                  children: [
-                    Icon(Icons.sms_outlined),
-                    SizedBox(width: AppSpacing.sm),
-                    Text('SMS auto-capture'),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'notifications',
-                child: Row(
-                  children: [
-                    Icon(Icons.notifications_active_outlined),
-                    SizedBox(width: AppSpacing.sm),
-                    Text('Notification capture'),
-                  ],
-                ),
-              ),
-            ],
-          ),
         ],
         scrollView: RefreshIndicator(
           onRefresh: _refreshSpooled,
@@ -420,143 +396,158 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
             // ── Action bar: block | dismiss | confirm ─────────────────
             LayoutBuilder(
               builder: (context, constraints) {
-                // When matchedPlan is present on wider viewports (tablets/landscape >= 520),
-                // all 4 buttons fit cleanly on a single row.
-                // When matchedPlan is null, the 3 buttons (Block, Dismiss, Confirm)
-                // fit on a single row on any standard screen (>= 220px).
-                final isSingleRow =
-                    matchedPlan == null || constraints.maxWidth >= 520;
-
-                if (isSingleRow) {
-                  return Row(
+                if (matchedPlan != null) {
+                  // 4 Buttons: Perfectly aligned 2x2 grid
+                  // Top Row: [ Block Pattern ] ... [ Pay Plan ]
+                  // Bottom Row: [ Dismiss ] ... [ Confirm ]
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      IconButton(
-                        tooltip: 'Block Pattern',
-                        onPressed: () =>
-                            _showBlockDialog(context, ref, candidate),
-                        color: scheme.error,
-                        icon: const Icon(Icons.block_rounded),
-                        visualDensity: VisualDensity.compact,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Flexible(
+                            child: TextButton.icon(
+                              onPressed: () =>
+                                  _showBlockDialog(context, ref, candidate),
+                              icon: const Icon(Icons.block_rounded, size: 16),
+                              label: const Text(
+                                'Block Pattern',
+                                softWrap: false,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              style: AppButtonStyles.destructiveText(context).merge(
+                                AppButtonStyles.compact(context),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.xs),
+                          Flexible(
+                            child: FilledButton.tonalIcon(
+                              onPressed: () async {
+                                final router = GoRouter.of(context);
+                                await router.push(
+                                  '/add?plannedId=${matchedPlan.id}&captureCandidateId=${candidate.id}',
+                                );
+                              },
+                              icon: const Icon(Icons.event_repeat_rounded, size: 16),
+                              label: const Text(
+                                'Pay Plan',
+                                softWrap: false,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: scheme.tertiaryContainer,
+                                foregroundColor: scheme.onTertiaryContainer,
+                              ).merge(AppButtonStyles.compact(context)),
+                            ),
+                          ),
+                        ],
                       ),
-                      TextButton.icon(
-                        onPressed: () => _updateCandidateStatus(
-                          context,
-                          ref,
-                          candidate.id,
-                          'rejected',
-                        ),
-                        icon: const Icon(Icons.close_rounded, size: 16),
-                        label: const Text('Dismiss', softWrap: false),
-                        style: AppButtonStyles.destructiveText(context).merge(
-                          AppButtonStyles.compact(context),
-                        ),
-                      ),
-                      const Spacer(),
-                      if (matchedPlan != null) ...[
-                        FilledButton.tonalIcon(
-                          onPressed: () async {
-                            final router = GoRouter.of(context);
-                            await router.push(
-                              '/add?plannedId=${matchedPlan.id}&captureCandidateId=${candidate.id}',
-                            );
-                          },
-                          icon: const Icon(Icons.event_repeat_rounded, size: 16),
-                          label: const Text('Pay Plan', softWrap: false),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: scheme.tertiaryContainer,
-                            foregroundColor: scheme.onTertiaryContainer,
-                          ).merge(AppButtonStyles.compact(context)),
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                      ],
-                      FilledButton.icon(
-                        onPressed: () => _updateCandidateStatus(
-                          context,
-                          ref,
-                          candidate.id,
-                          'approved',
-                        ),
-                        icon: const Icon(Icons.check_rounded, size: 16),
-                        label: const Text('Confirm', softWrap: false),
-                        style: AppButtonStyles.compact(context),
+                      const SizedBox(height: AppSpacing.xs),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Flexible(
+                            child: TextButton.icon(
+                              onPressed: () => _updateCandidateStatus(
+                                context,
+                                ref,
+                                candidate.id,
+                                'rejected',
+                              ),
+                              icon: const Icon(Icons.close_rounded, size: 16),
+                              label: const Text(
+                                'Dismiss',
+                                softWrap: false,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              style: AppButtonStyles.destructiveText(context).merge(
+                                AppButtonStyles.compact(context),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.xs),
+                          Flexible(
+                            child: FilledButton.icon(
+                              onPressed: () => _updateCandidateStatus(
+                                context,
+                                ref,
+                                candidate.id,
+                                'approved',
+                              ),
+                              icon: const Icon(Icons.check_rounded, size: 16),
+                              label: const Text(
+                                'Confirm',
+                                softWrap: false,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              style: AppButtonStyles.compact(context),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   );
                 }
 
-                // Narrow portrait screens with matched plan:
-                // Row 1: Block and Dismiss on the left.
-                // Row 2: Pay Plan and Confirm side-by-side as clean balanced actions.
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                // Up to 3 Buttons:
+                // Single line: [ Block Pattern ] [ Dismiss ] ... [ Confirm ]
+                return Row(
                   children: [
-                    Row(
-                      children: [
-                        IconButton(
-                          tooltip: 'Block Pattern',
-                          onPressed: () =>
-                              _showBlockDialog(context, ref, candidate),
-                          color: scheme.error,
-                          icon: const Icon(Icons.block_rounded),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        TextButton.icon(
-                          onPressed: () => _updateCandidateStatus(
-                            context,
-                            ref,
-                            candidate.id,
-                            'rejected',
+                    Expanded(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: TextButton.icon(
+                              onPressed: () =>
+                                  _showBlockDialog(context, ref, candidate),
+                              icon: const Icon(Icons.block_rounded, size: 16),
+                              label: const Text(
+                                'Block Pattern',
+                                softWrap: false,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              style: AppButtonStyles.destructiveText(context).merge(
+                                AppButtonStyles.compact(context),
+                              ),
+                            ),
                           ),
-                          icon: const Icon(Icons.close_rounded, size: 16),
-                          label: const Text('Dismiss', softWrap: false),
-                          style: AppButtonStyles.destructiveText(context).merge(
-                            AppButtonStyles.compact(context),
+                          const SizedBox(width: AppSpacing.xxs),
+                          Flexible(
+                            child: TextButton.icon(
+                              onPressed: () => _updateCandidateStatus(
+                                context,
+                                ref,
+                                candidate.id,
+                                'rejected',
+                              ),
+                              icon: const Icon(Icons.close_rounded, size: 16),
+                              label: const Text(
+                                'Dismiss',
+                                softWrap: false,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              style: AppButtonStyles.destructiveText(context).merge(
+                                AppButtonStyles.compact(context),
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: FilledButton.tonalIcon(
-                            onPressed: () async {
-                              final router = GoRouter.of(context);
-                              await router.push(
-                                '/add?plannedId=${matchedPlan.id}&captureCandidateId=${candidate.id}',
-                              );
-                            },
-                            icon: const Icon(Icons.event_repeat_rounded, size: 16),
-                            label: const Text(
-                              'Pay Plan',
-                              softWrap: false,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: scheme.tertiaryContainer,
-                              foregroundColor: scheme.onTertiaryContainer,
-                            ).merge(AppButtonStyles.compact(context)),
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Expanded(
-                          child: FilledButton.icon(
-                            onPressed: () => _updateCandidateStatus(
-                              context,
-                              ref,
-                              candidate.id,
-                              'approved',
-                            ),
-                            icon: const Icon(Icons.check_rounded, size: 16),
-                            label: const Text(
-                              'Confirm',
-                              softWrap: false,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            style: AppButtonStyles.compact(context),
-                          ),
-                        ),
-                      ],
+                    const SizedBox(width: AppSpacing.xs),
+                    FilledButton.icon(
+                      onPressed: () => _updateCandidateStatus(
+                        context,
+                        ref,
+                        candidate.id,
+                        'approved',
+                      ),
+                      icon: const Icon(Icons.check_rounded, size: 16),
+                      label: const Text('Confirm', softWrap: false),
+                      style: AppButtonStyles.compact(context),
                     ),
                   ],
                 );
