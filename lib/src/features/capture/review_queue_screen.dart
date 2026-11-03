@@ -398,21 +398,20 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
               builder: (context, constraints) {
                 if (matchedPlan != null) {
                   // 4 Buttons: Perfectly aligned 2x2 grid
-                  // Top Row: [ Block Pattern ] ... [ Pay Plan ]
+                  // Top Row: [ Block ] ... [ Pay Plan ]
                   // Bottom Row: [ Dismiss ] ... [ Confirm ]
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Flexible(
+                          Expanded(
                             child: TextButton.icon(
                               onPressed: () =>
                                   _showBlockDialog(context, ref, candidate),
                               icon: const Icon(Icons.block_rounded, size: 16),
                               label: const Text(
-                                'Block Pattern',
+                                'Block',
                                 softWrap: false,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -422,7 +421,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                             ),
                           ),
                           const SizedBox(width: AppSpacing.xs),
-                          Flexible(
+                          Expanded(
                             child: FilledButton.tonalIcon(
                               onPressed: () async {
                                 final router = GoRouter.of(context);
@@ -446,9 +445,8 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Flexible(
+                          Expanded(
                             child: TextButton.icon(
                               onPressed: () => _updateCandidateStatus(
                                 context,
@@ -468,7 +466,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                             ),
                           ),
                           const SizedBox(width: AppSpacing.xs),
-                          Flexible(
+                          Expanded(
                             child: FilledButton.icon(
                               onPressed: () => _updateCandidateStatus(
                                 context,
@@ -492,7 +490,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                 }
 
                 // Up to 3 Buttons:
-                // Single line: [ Block Pattern ] [ Dismiss ] ... [ Confirm ]
+                // Single line: [ Block ] [ Dismiss ] ... [ Confirm ]
                 return Row(
                   children: [
                     Expanded(
@@ -505,7 +503,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                                   _showBlockDialog(context, ref, candidate),
                               icon: const Icon(Icons.block_rounded, size: 16),
                               label: const Text(
-                                'Block Pattern',
+                                'Block',
                                 softWrap: false,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -1470,11 +1468,8 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
           const SizedBox(height: AppSpacing.sm),
 
           // ── Actions ─────────────────────────────────────────────────
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.xs,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               // Dismiss both
               TextButton.icon(
