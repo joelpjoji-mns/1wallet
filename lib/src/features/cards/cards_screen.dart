@@ -290,7 +290,7 @@ class _CardAccountTile extends ConsumerWidget {
                                 );
                           },
                           icon: const Icon(Icons.check_rounded, size: 16),
-                          label: const Text('Confirm Paid'),
+                          label: const Text('Confirm Paid', softWrap: false),
                           style: AppButtonStyles.compact(context),
                         )
                       else
@@ -305,7 +305,7 @@ class _CardAccountTile extends ConsumerWidget {
                               foregroundColor: scheme.onSurfaceVariant,
                             ),
                           ),
-                          child: const Text('Unmark Paid'),
+                          child: const Text('Unmark Paid', softWrap: false),
                         ),
                     ],
                   ),

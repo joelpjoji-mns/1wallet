@@ -323,6 +323,193 @@ void main() {
     );
 
     testWidgets(
+      'ReviewQueueScreen renders cleanly on narrow mobile screen without overflow or text wrapping',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(360, 700));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        final now = DateTime.now();
+        const checking = Account(
+          id: 'acc-groww',
+          name: 'Axis Bank',
+          type: 'bank',
+          currency: 'INR',
+          accountLast4: '0655',
+          openingBalance: Money(amountMinor: 5000000, currency: 'INR'),
+        );
+
+        final plannedTx = TransactionRecord(
+          id: 'plan-sip',
+          type: 'expense',
+          status: 'scheduled',
+          source: 'manual',
+          name: 'Groww Mutual Fund SIP',
+          accountId: 'acc-groww',
+          amount: const Money(amountMinor: 3000000, currency: 'INR'),
+          baseAmount: const Money(amountMinor: 3000000, currency: 'INR'),
+          occurredAt: now.add(const Duration(days: 1)),
+        );
+
+        final candidate = CaptureCandidate(
+          id: 'cand-sip',
+          source: 'sms',
+          status: 'pending',
+          createdAt: now,
+          rawText: '''INR 30000.00 debited
+A/c no. XX0655
+03-11-26, 23:22:06''',
+          merchant: 'Axis Bank',
+          parsedAmount: const Money(amountMinor: 3000000, currency: 'INR'),
+          transactionType: 'expense',
+          suggestedAccountId: 'acc-groww',
+        );
+
+        final seedState = emptyLedgerState().copyWith(
+          accounts: [checking],
+          transactions: [plannedTx],
+          captureCandidates: [candidate],
+          preferences: const LedgerPreferences(
+            baseCurrency: 'INR',
+            displayCurrency: 'INR',
+            enabledCurrencies: ['INR'],
+          ),
+        );
+
+        final prefs = await SharedPreferences.getInstance();
+        final container = ProviderContainer(
+          overrides: authenticatedSampleOverrides(ledger: seedState, prefs: prefs),
+        );
+        addTearDown(container.dispose);
+        await container.read(ledgerProvider.notifier).restoreLedgerState(seedState);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              theme: AppTheme.amoled().copyWith(
+                splashFactory: NoSplash.splashFactory,
+              ),
+              home: const ReviewQueueScreen(),
+            ),
+          ),
+        );
+
+        await _pumpBounded(tester);
+
+        // App bar title displays fully
+        expect(find.text('Review & Inbox'), findsOneWidget);
+
+        // Action buttons exist and are laid out without overflow
+        // (Dismiss exists on both the candidate card and the scheduled payment reminder notification card)
+        expect(find.text('Dismiss'), findsNWidgets(2));
+        expect(find.text('Pay Plan'), findsOneWidget);
+        expect(find.text('Confirm'), findsOneWidget);
+        expect(find.byIcon(Icons.block_rounded), findsOneWidget);
+
+        // Verify no Flutter exceptions / overflows occurred
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'ReviewQueueScreen renders cleanly across diverse phone display sizes and text scales',
+      (tester) async {
+        final now = DateTime.now();
+        const checking = Account(
+          id: 'acc-groww',
+          name: 'Axis Bank Long Name Corporation',
+          type: 'bank',
+          currency: 'INR',
+          accountLast4: '0655',
+          openingBalance: Money(amountMinor: 5000000, currency: 'INR'),
+        );
+
+        final plannedTx = TransactionRecord(
+          id: 'plan-sip',
+          type: 'expense',
+          status: 'scheduled',
+          source: 'manual',
+          name: 'Groww Mutual Fund Systematic Investment Plan',
+          accountId: 'acc-groww',
+          amount: const Money(amountMinor: 3000000, currency: 'INR'),
+          baseAmount: const Money(amountMinor: 3000000, currency: 'INR'),
+          occurredAt: now.add(const Duration(days: 1)),
+        );
+
+        final candidate = CaptureCandidate(
+          id: 'cand-sip',
+          source: 'sms',
+          status: 'pending',
+          createdAt: now,
+          rawText: '''INR 30000.00 debited
+A/c no. XX0655
+03-11-26, 23:22:06''',
+          merchant: 'MUTUAL FUNDS ICCL PRIVATE LIMITED',
+          parsedAmount: const Money(amountMinor: 3000000, currency: 'INR'),
+          transactionType: 'expense',
+          suggestedAccountId: 'acc-groww',
+          suggestedCategoryId: 'cat-invest',
+          suggestedCategoryReason: 'Learned merchant category from mutual fund transfer',
+        );
+
+        final seedState = emptyLedgerState().copyWith(
+          accounts: [checking],
+          transactions: [plannedTx],
+          captureCandidates: [candidate],
+          preferences: const LedgerPreferences(
+            baseCurrency: 'INR',
+            displayCurrency: 'INR',
+            enabledCurrencies: ['INR'],
+          ),
+        );
+
+        // Screen dimensions: narrow (320), medium (360), large phone (412), tablet (768)
+        final testSizes = [
+          const Size(320, 568),
+          const Size(360, 740),
+          const Size(412, 915),
+          const Size(768, 1024),
+        ];
+
+        for (final size in testSizes) {
+          await tester.binding.setSurfaceSize(size);
+
+          final prefs = await SharedPreferences.getInstance();
+          final container = ProviderContainer(
+            overrides: authenticatedSampleOverrides(ledger: seedState, prefs: prefs),
+          );
+          await container.read(ledgerProvider.notifier).restoreLedgerState(seedState);
+
+          await tester.pumpWidget(
+            UncontrolledProviderScope(
+              container: container,
+              child: MaterialApp(
+                theme: AppTheme.amoled().copyWith(
+                  splashFactory: NoSplash.splashFactory,
+                ),
+                home: const MediaQuery(
+                  data: MediaQueryData(textScaler: TextScaler.linear(1.2)),
+                  child: ReviewQueueScreen(),
+                ),
+              ),
+            ),
+          );
+
+          await _pumpBounded(tester);
+
+          expect(find.text('Review & Inbox'), findsOneWidget);
+          expect(find.text('Pay Plan'), findsOneWidget);
+          expect(find.text('Confirm'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+
+          container.dispose();
+        }
+
+        await tester.binding.setSurfaceSize(null);
+      },
+    );
+
+    testWidgets(
       'AddRecordScreen pre-populates Transfer mode with counter account from paired candidate',
       (tester) async {
         final now = DateTime.now();

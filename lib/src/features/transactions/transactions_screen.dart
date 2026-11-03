@@ -264,7 +264,7 @@ final _monthlyStatsProvider = Provider.autoDispose
       ).reversed;
 
       for (final t in fullLedger) {
-        final monthStr = monthFormat.format(t.occurredAt).toUpperCase();
+        final monthStr = monthFormat.format(t.occurredAt.toLocal()).toUpperCase();
         final sourceIncluded = includedAccounts.contains(t.accountId);
         final counterIncluded =
             t.counterAccountId != null &&
@@ -615,7 +615,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
                         for (final t in transactions) {
                           final mStr = monthFormat
-                              .format(t.occurredAt)
+                              .format(t.occurredAt.toLocal())
                               .toUpperCase();
                           filteredMonthlyCounts[mStr] =
                               (filteredMonthlyCounts[mStr] ?? 0) + 1;
@@ -694,7 +694,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
                         for (final t in transactions) {
                           final monthStr = monthFormat
-                              .format(t.occurredAt)
+                              .format(t.occurredAt.toLocal())
                               .toUpperCase();
 
                           final isNewMonth = currentMonth != monthStr;
@@ -740,7 +740,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                             );
                           }
 
-                          final occurredAt = t.occurredAt;
+                          final occurredAt = t.occurredAt.toLocal();
                           final day = DateTime(
                             occurredAt.year,
                             occurredAt.month,

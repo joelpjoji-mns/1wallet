@@ -981,9 +981,10 @@ String formatCompactMoney(Money money, String locale) {
 }
 
 String formatLedgerDate(DateTime date, String locale) {
+  final localDate = date.toLocal();
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
-  final target = DateTime(date.year, date.month, date.day);
+  final target = DateTime(localDate.year, localDate.month, localDate.day);
   final diff = target.difference(today).inDays;
 
   if (diff == 0) return 'Today';
@@ -991,18 +992,19 @@ String formatLedgerDate(DateTime date, String locale) {
   if (diff == 1) return 'Tomorrow';
 
   final normalizedLocale = locale.replaceAll('_', '-');
-  final formatStr = date.year == now.year ? 'MMMM d' : 'MMMM d, yyyy';
+  final formatStr = localDate.year == now.year ? 'MMMM d' : 'MMMM d, yyyy';
   try {
-    return _cachedDateFormat(formatStr, normalizedLocale).format(date);
+    return _cachedDateFormat(formatStr, normalizedLocale).format(localDate);
   } catch (_) {
-    return _cachedDateFormat(formatStr).format(date);
+    return _cachedDateFormat(formatStr).format(localDate);
   }
 }
 
 String formatDueDate(DateTime date, String locale) {
+  final localDate = date.toLocal();
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
-  final target = DateTime(date.year, date.month, date.day);
+  final target = DateTime(localDate.year, localDate.month, localDate.day);
   final diff = target.difference(today).inDays;
 
   if (diff == 0) return 'Due today';
@@ -1011,7 +1013,7 @@ String formatDueDate(DateTime date, String locale) {
   if (diff < -1 && diff > -30) return 'Due ${-diff} days ago';
   if (diff > 1 && diff < 30) return 'Due in $diff days';
 
-  return formatLedgerDate(date, locale);
+  return formatLedgerDate(localDate, locale);
 }
 
 int minorUnits(String currency) => switch (currency.toUpperCase()) {

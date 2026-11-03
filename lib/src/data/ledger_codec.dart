@@ -1009,7 +1009,10 @@ Color? _color(Object? value) {
 }
 
 DateTime _date(Object? value) {
-  if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+  if (value is String) {
+    final parsed = DateTime.tryParse(value);
+    if (parsed != null) return parsed.toLocal();
+  }
   return DateTime.now();
 }
 

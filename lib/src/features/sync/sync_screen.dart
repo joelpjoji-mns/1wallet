@@ -513,7 +513,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                         icon: Icons.cloud_done_outlined,
                         label: 'Firebase Server Time',
                         value: DateFormat.yMMMd().add_jms().format(
-                          sync.verifiedCloudUpdatedAt!,
+                          sync.verifiedCloudUpdatedAt!.toLocal(),
                         ),
                       ),
                     if (sync.verifiedCloudTransactionCount != null)
@@ -628,7 +628,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                           icon: Icons.file_upload_outlined,
                           title: transactionTypeLabel(batch.source),
                           subtitle:
-                              '${DateFormat.MMMd().add_jm().format(batch.createdAt)} · ${transactionTypeLabel(batch.status)}',
+                              '${DateFormat.MMMd().add_jm().format(batch.createdAt.toLocal())} · ${transactionTypeLabel(batch.status)}',
                           meta:
                               '${batch.importedCount}/${batch.rowCount}${batch.duplicateCount > 0 ? ' · ${batch.duplicateCount} dupes' : ''}',
                           onTap: () => context.push('/imports/${batch.id}'),
@@ -760,7 +760,7 @@ class ImportBatchDetailScreen extends ConsumerWidget {
         children: [
           SectionCard(
             title: transactionTypeLabel(batch.source),
-            subtitle: DateFormat.yMMMMEEEEd().add_jm().format(batch.createdAt),
+            subtitle: DateFormat.yMMMMEEEEd().add_jm().format(batch.createdAt.toLocal()),
             child: Column(
               children: [
                 InfoRow(

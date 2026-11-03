@@ -270,7 +270,7 @@ class _TransactionDetailScreenState
                     label: 'Time',
                     value: DateFormat.jm(
                       state.preferences.locale.replaceAll('_', '-'),
-                    ).format(transaction.occurredAt),
+                    ).format(transaction.occurredAt.toLocal()),
                     icon: Icons.schedule_outlined,
                   ),
                 ),

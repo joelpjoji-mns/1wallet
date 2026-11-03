@@ -278,6 +278,9 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                 child: TabBar(
                   dividerColor: Colors.transparent,
                   indicatorSize: TabBarIndicatorSize.tab,
+                  labelPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xs,
+                  ),
                   indicator: BoxDecoration(
                     color: Theme.of(context).colorScheme.secondaryContainer,
                     borderRadius: const BorderRadius.all(
@@ -295,10 +298,17 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                       height: 36,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.dialpad_rounded, size: 16),
                           SizedBox(width: AppSpacing.xxs),
-                          Text('Keypad'),
+                          Flexible(
+                            child: Text(
+                              'Keypad',
+                              overflow: TextOverflow.ellipsis,
+                              softWrap: false,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -306,10 +316,17 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                       height: 36,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.notes_rounded, size: 16),
                           SizedBox(width: AppSpacing.xxs),
-                          Text('Details'),
+                          Flexible(
+                            child: Text(
+                              'Details',
+                              overflow: TextOverflow.ellipsis,
+                              softWrap: false,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -869,7 +886,8 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                             Expanded(
                               child: AddRecordTappableDetailField(
                                 icon: Icons.schedule_outlined,
-                                label: DateFormat.jm().format(_occurredAt),
+                                label:
+                                    DateFormat.jm().format(_occurredAt.toLocal()),
                                 onTap: _selectTime,
                               ),
                             ),
@@ -1502,7 +1520,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
         _transactionCurrency = pAmt.currency;
         _amount = _formatAmountInput(pAmt.amountMinor, _transactionCurrency!);
       }
-      _occurredAt = candidate.createdAt;
+      _occurredAt = candidate.createdAt.toLocal();
       if (planned != null) {
         _status = 'cleared';
       }
@@ -1529,7 +1547,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
         (source.originalAmount ?? source.amount).amountMinor,
         _transactionCurrency!,
       );
-      _occurredAt = source.occurredAt;
+      _occurredAt = source.occurredAt.toLocal();
       _status = (tx == null && planned != null) ? 'cleared' : source.status;
     }
   }

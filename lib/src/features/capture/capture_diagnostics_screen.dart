@@ -66,73 +66,100 @@ class _CaptureDiagnosticsScreenState
           semanticLabel: 'Refresh diagnostics',
           onPressed: _refresh,
         ),
-        HeaderIconButton(
-          icon: Icons.cleaning_services_outlined,
-          semanticLabel: 'Clean up expired diagnostics',
-          tooltip: 'Clean up expired diagnostics',
-          onPressed: () async {
-            final pruned = await CaptureDiagnostics.pruneOldEvents(
-              ownerId: state.userId,
-            );
-            if (!mounted || !context.mounted) return;
-            showAppSnackBar(
-              context,
-              pruned > 0
-                  ? 'Purged $pruned event(s) older than $_retentionDays days.'
-                  : 'No expired logs found (retention: $_retentionDays days).',
-            );
-            _refresh();
-          },
-        ),
-        HeaderIconButton(
-          icon: Icons.delete_sweep_outlined,
-          semanticLabel: 'Clear diagnostics',
-          onPressed: () async {
-            await CaptureDiagnostics.clear(ownerId: state.userId);
-            if (!mounted) return;
-            _refresh();
-          },
-        ),
-        HeaderIconButton(
-          icon: Icons.history_rounded,
-          semanticLabel: 'Clear legacy unassigned diagnostic history',
-          onPressed: () async {
-            final confirmed = await showAppConfirmDialog(
-              context,
-              title: 'Clear unassigned diagnostic history?',
-              message:
-                  'Older diagnostic history has no verified owner and may '
-                  'contain alerts from other wallets on this device. This clears only that '
-                  'diagnostic history, not ledger records or queued captures.',
-              confirmLabel: 'Clear unassigned history',
-              destructive: true,
-            );
-            if (!confirmed ||
-                !mounted ||
-                ref.read(ledgerProvider).userId != state.userId) {
-              return;
-            }
-            try {
-              await CaptureDiagnostics.clearLegacy();
-              if (mounted && context.mounted) {
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert_rounded),
+          tooltip: 'Diagnostic options',
+          onSelected: (value) async {
+            switch (value) {
+              case 'prune':
+                final pruned = await CaptureDiagnostics.pruneOldEvents(
+                  ownerId: state.userId,
+                );
+                if (!mounted || !context.mounted) return;
                 showAppSnackBar(
                   context,
-                  'Unassigned diagnostic history cleared.',
+                  pruned > 0
+                      ? 'Purged $pruned event(s) older than $_retentionDays days.'
+                      : 'No expired logs found (retention: $_retentionDays days).',
                 );
-              }
-            } catch (error, stack) {
-              debugPrint(
-                'Could not clear unassigned history: ${error.runtimeType}',
-              );
-              debugPrintStack(stackTrace: stack);
-              if (mounted && context.mounted) {
-                showAppSnackBar(
+                _refresh();
+                break;
+              case 'clear':
+                await CaptureDiagnostics.clear(ownerId: state.userId);
+                if (!mounted) return;
+                _refresh();
+                break;
+              case 'clearLegacy':
+                final confirmed = await showAppConfirmDialog(
                   context,
-                  'Unassigned history could not be cleared.',
+                  title: 'Clear unassigned diagnostic history?',
+                  message:
+                      'Older diagnostic history has no verified owner and may '
+                      'contain alerts from other wallets on this device. This clears only that '
+                      'diagnostic history, not ledger records or queued captures.',
+                  confirmLabel: 'Clear unassigned history',
+                  destructive: true,
                 );
-              }
+                if (!confirmed ||
+                    !mounted ||
+                    ref.read(ledgerProvider).userId != state.userId) {
+                  return;
+                }
+                try {
+                  await CaptureDiagnostics.clearLegacy();
+                  if (mounted && context.mounted) {
+                    showAppSnackBar(
+                      context,
+                      'Unassigned diagnostic history cleared.',
+                    );
+                  }
+                } catch (error, stack) {
+                  debugPrint(
+                    'Could not clear unassigned history: ${error.runtimeType}',
+                  );
+                  debugPrintStack(stackTrace: stack);
+                  if (mounted && context.mounted) {
+                    showAppSnackBar(
+                      context,
+                      'Unassigned history could not be cleared.',
+                    );
+                  }
+                }
+                break;
             }
           },
+          itemBuilder: (context) => const [
+            PopupMenuItem(
+              value: 'prune',
+              child: Row(
+                children: [
+                  Icon(Icons.cleaning_services_outlined),
+                  SizedBox(width: AppSpacing.sm),
+                  Text('Prune expired logs'),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: 'clear',
+              child: Row(
+                children: [
+                  Icon(Icons.delete_sweep_outlined),
+                  SizedBox(width: AppSpacing.sm),
+                  Text('Clear user diagnostics'),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: 'clearLegacy',
+              child: Row(
+                children: [
+                  Icon(Icons.history_rounded),
+                  SizedBox(width: AppSpacing.sm),
+                  Text('Clear unassigned logs'),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
       child: Column(

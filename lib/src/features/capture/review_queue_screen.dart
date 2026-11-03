@@ -137,18 +137,6 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
         hasDrawer: false,
         actions: [
           HeaderIconButton(
-            icon: Icons.sms_outlined,
-            semanticLabel: 'SMS auto-capture',
-            tooltip: 'SMS auto-capture',
-            onPressed: () => context.push('/import-sms'),
-          ),
-          HeaderIconButton(
-            icon: Icons.notifications_active_outlined,
-            semanticLabel: 'Notification capture',
-            tooltip: 'Notification capture',
-            onPressed: () => context.push('/notification-capture'),
-          ),
-          HeaderIconButton(
             icon: Icons.bug_report_outlined,
             semanticLabel: 'Capture diagnostics',
             tooltip: 'Capture diagnostics',
@@ -161,6 +149,42 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
               tooltip: 'Mark all read',
               onPressed: () => _markAllRead(ref, allNotifications),
             ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded),
+            tooltip: 'Capture options',
+            onSelected: (value) {
+              switch (value) {
+                case 'sms':
+                  context.push('/import-sms');
+                  break;
+                case 'notifications':
+                  context.push('/notification-capture');
+                  break;
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: 'sms',
+                child: Row(
+                  children: [
+                    Icon(Icons.sms_outlined),
+                    SizedBox(width: AppSpacing.sm),
+                    Text('SMS auto-capture'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'notifications',
+                child: Row(
+                  children: [
+                    Icon(Icons.notifications_active_outlined),
+                    SizedBox(width: AppSpacing.sm),
+                    Text('Notification capture'),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
         scrollView: RefreshIndicator(
           onRefresh: _refreshSpooled,
@@ -279,7 +303,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                     Text(
                       DateFormat.MMMd(
                         state.preferences.locale.replaceAll('_', '-'),
-                      ).add_jm().format(candidate.createdAt),
+                      ).add_jm().format(candidate.createdAt.toLocal()),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),
@@ -319,7 +343,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
               runSpacing: AppSpacing.xs,
               children: [
                 if (candidate.suggestedAccountId != null)
-                  GlassChip(
+                  _ReviewQueueChip(
                     label:
                         state.accounts
                             .where((a) => a.id == candidate.suggestedAccountId)
@@ -327,56 +351,29 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                             ?.name ??
                         'Account',
                     icon: const Icon(Icons.account_balance_wallet_rounded),
-                    iconSize: 13,
                     iconColor: scheme.primary,
-                    labelStyle: theme.textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm,
-                      vertical: AppSpacing.xxs,
-                    ),
-                    quality: GlassQuality.standard,
-                    useOwnLayer: true,
                     semanticLabel:
                         'Account: ${state.accounts.where((a) => a.id == candidate.suggestedAccountId).firstOrNull?.name ?? 'Account'}',
                   ),
                 if (matchedPlan != null)
-                  GlassChip(
+                  _ReviewQueueChip(
                     label: matchedPlan.name?.isNotEmpty == true
                         ? 'Planned: ${matchedPlan.name}'
                         : 'Planned payment detected',
                     icon: const Icon(Icons.event_repeat_rounded),
-                    iconSize: 13,
                     iconColor: scheme.tertiary,
                     labelStyle: theme.textTheme.bodySmall?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: scheme.tertiary,
                     ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm,
-                      vertical: AppSpacing.xxs,
-                    ),
-                    quality: GlassQuality.standard,
-                    useOwnLayer: true,
                     semanticLabel:
                         'Planned payment detected: ${matchedPlan.name ?? ''}',
                   ),
                 if (candidate.suggestedCategoryId != null)
-                  GlassChip(
+                  _ReviewQueueChip(
                     label: _categoryChipText(state, candidate),
                     icon: const Icon(Icons.category_rounded),
-                    iconSize: 13,
                     iconColor: scheme.secondary,
-                    labelStyle: theme.textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm,
-                      vertical: AppSpacing.xxs,
-                    ),
-                    quality: GlassQuality.standard,
-                    useOwnLayer: true,
                     semanticLabel:
                         'Category: ${_categoryChipText(state, candidate)}',
                   ),
@@ -418,75 +415,168 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
             const SizedBox(height: AppSpacing.sm),
 
             // ── Action bar: block | dismiss | confirm ─────────────────
-            // Uses pill-shaped buttons at full height for easy tap targets.
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Block
-                  IconButton(
-                    tooltip: 'Block Pattern',
-                    onPressed: () => _showBlockDialog(context, ref, candidate),
-                    color: scheme.error,
-                    icon: const Icon(Icons.block_rounded),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isCompact = constraints.maxWidth < 340 ||
+                    (matchedPlan != null && constraints.maxWidth < 460);
 
-                  // Dismiss
-                  Expanded(
-                    flex: 2,
-                    child: TextButton.icon(
-                      onPressed: () => _updateCandidateStatus(
-                        context,
-                        ref,
-                        candidate.id,
-                        'rejected',
+                if (!isCompact) {
+                  return Row(
+                    children: [
+                      IconButton(
+                        tooltip: 'Block Pattern',
+                        onPressed: () =>
+                            _showBlockDialog(context, ref, candidate),
+                        color: scheme.error,
+                        icon: const Icon(Icons.block_rounded),
+                        visualDensity: VisualDensity.compact,
                       ),
-                      icon: const Icon(Icons.close_rounded),
-                      label: const Text('Dismiss'),
-                      style: AppButtonStyles.destructiveText(context),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
+                      TextButton.icon(
+                        onPressed: () => _updateCandidateStatus(
+                          context,
+                          ref,
+                          candidate.id,
+                          'rejected',
+                        ),
+                        icon: const Icon(Icons.close_rounded, size: 16),
+                        label: const Text('Dismiss', softWrap: false),
+                        style: AppButtonStyles.destructiveText(context).merge(
+                          AppButtonStyles.compact(context),
+                        ),
+                      ),
+                      const Spacer(),
+                      if (matchedPlan != null) ...[
+                        FilledButton.tonalIcon(
+                          onPressed: () async {
+                            final router = GoRouter.of(context);
+                            await router.push(
+                              '/add?plannedId=${matchedPlan.id}&captureCandidateId=${candidate.id}',
+                            );
+                          },
+                          icon: const Icon(Icons.event_repeat_rounded, size: 16),
+                          label: const Text('Pay Plan', softWrap: false),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: scheme.tertiaryContainer,
+                            foregroundColor: scheme.onTertiaryContainer,
+                          ).merge(AppButtonStyles.compact(context)),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                      ],
+                      FilledButton.icon(
+                        onPressed: () => _updateCandidateStatus(
+                          context,
+                          ref,
+                          candidate.id,
+                          'approved',
+                        ),
+                        icon: const Icon(Icons.check_rounded, size: 16),
+                        label: const Text('Confirm', softWrap: false),
+                        style: AppButtonStyles.compact(context),
+                      ),
+                    ],
+                  );
+                }
 
-                  // Pay Plan (if plan match detected)
-                  if (matchedPlan != null) ...[
-                    Expanded(
-                      flex: 3,
-                      child: FilledButton.tonalIcon(
+                // When matchedPlan is present or width is narrow, arrange in clean rows
+                // so labels never wrap letter-by-letter into vertical stacks.
+                final isUltraNarrow = constraints.maxWidth < 280;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(
+                          tooltip: 'Block Pattern',
+                          onPressed: () =>
+                              _showBlockDialog(context, ref, candidate),
+                          color: scheme.error,
+                          icon: const Icon(Icons.block_rounded),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        TextButton.icon(
+                          onPressed: () => _updateCandidateStatus(
+                            context,
+                            ref,
+                            candidate.id,
+                            'rejected',
+                          ),
+                          icon: const Icon(Icons.close_rounded, size: 16),
+                          label: const Text('Dismiss', softWrap: false),
+                          style: AppButtonStyles.destructiveText(context).merge(
+                            AppButtonStyles.compact(context),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    if (isUltraNarrow && matchedPlan != null) ...[
+                      FilledButton.tonalIcon(
                         onPressed: () async {
                           final router = GoRouter.of(context);
                           await router.push(
                             '/add?plannedId=${matchedPlan.id}&captureCandidateId=${candidate.id}',
                           );
                         },
-                        icon: const Icon(Icons.event_repeat_rounded),
-                        label: const Text('Pay Plan'),
+                        icon: const Icon(Icons.event_repeat_rounded, size: 16),
+                        label: const Text('Pay Plan', softWrap: false),
                         style: FilledButton.styleFrom(
                           backgroundColor: scheme.tertiaryContainer,
                           foregroundColor: scheme.onTertiaryContainer,
+                        ).merge(AppButtonStyles.compact(context)),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      FilledButton.icon(
+                        onPressed: () => _updateCandidateStatus(
+                          context,
+                          ref,
+                          candidate.id,
+                          'approved',
                         ),
+                        icon: const Icon(Icons.check_rounded, size: 16),
+                        label: const Text('Confirm', softWrap: false),
+                        style: AppButtonStyles.compact(context),
                       ),
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
+                    ] else
+                      Row(
+                        children: [
+                          if (matchedPlan != null) ...[
+                            Expanded(
+                              child: FilledButton.tonalIcon(
+                                onPressed: () async {
+                                  final router = GoRouter.of(context);
+                                  await router.push(
+                                    '/add?plannedId=${matchedPlan.id}&captureCandidateId=${candidate.id}',
+                                  );
+                                },
+                                icon: const Icon(Icons.event_repeat_rounded, size: 16),
+                                label: const Text('Pay Plan', softWrap: false),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: scheme.tertiaryContainer,
+                                  foregroundColor: scheme.onTertiaryContainer,
+                                ).merge(AppButtonStyles.compact(context)),
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                          ],
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: () => _updateCandidateStatus(
+                                context,
+                                ref,
+                                candidate.id,
+                                'approved',
+                              ),
+                              icon: const Icon(Icons.check_rounded, size: 16),
+                              label: const Text('Confirm', softWrap: false),
+                              style: AppButtonStyles.compact(context),
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
-
-                  // Confirm
-                  Expanded(
-                    flex: 3,
-                    child: FilledButton.tonalIcon(
-                      onPressed: () => _updateCandidateStatus(
-                        context,
-                        ref,
-                        candidate.id,
-                        'approved',
-                      ),
-                      icon: const Icon(Icons.check_rounded),
-                      label: const Text('Confirm'),
-                    ),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
           ],
         ],
@@ -670,47 +760,55 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                   AppSpacing.md,
                   AppSpacing.sm,
                 ),
-                child: Row(
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
                   children: [
                     TextButton.icon(
                       onPressed: () => _dismiss(ref, notification.id),
                       icon: const Icon(Icons.close_rounded, size: 16),
-                      label: const Text('Dismiss'),
+                      label: const Text('Dismiss', softWrap: false),
                       style: AppButtonStyles.compact(context),
                     ),
-                    const Spacer(),
-                    IconButton(
-                      tooltip: 'View Card Details',
-                      icon: const Icon(Icons.credit_card_outlined, size: 20),
-                      onPressed: () => context.push('/cards'),
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    FilledButton.icon(
-                      onPressed: () async {
-                        final cycle =
-                            notification.cycleKey ?? dueStatus?.cycleKey;
-                        await ref
-                            .read(ledgerProvider.notifier)
-                            .markCardBillPaid(account.id, cycle);
-                        await _dismiss(ref, notification.id);
-                        if (context.mounted) {
-                          showAppSnackBar(
-                            context,
-                            'Marked ${account.name} bill as paid',
-                            action: SnackBarAction(
-                              label: 'Undo',
-                              onPressed: () {
-                                ref
-                                    .read(ledgerProvider.notifier)
-                                    .markCardBillPaid(account.id, null);
-                              },
-                            ),
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.check_rounded, size: 16),
-                      label: const Text('Confirm Paid'),
-                      style: AppButtonStyles.compact(context),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'View Card Details',
+                          icon: const Icon(Icons.credit_card_outlined, size: 20),
+                          onPressed: () => context.push('/cards'),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        FilledButton.icon(
+                          onPressed: () async {
+                            final cycle =
+                                notification.cycleKey ?? dueStatus?.cycleKey;
+                            await ref
+                                .read(ledgerProvider.notifier)
+                                .markCardBillPaid(account.id, cycle);
+                            await _dismiss(ref, notification.id);
+                            if (context.mounted) {
+                              showAppSnackBar(
+                                context,
+                                'Marked ${account.name} bill as paid',
+                                action: SnackBarAction(
+                                  label: 'Undo',
+                                  onPressed: () {
+                                    ref
+                                        .read(ledgerProvider.notifier)
+                                        .markCardBillPaid(account.id, null);
+                                  },
+                                ),
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.check_rounded, size: 16),
+                          label: const Text('Confirm Paid', softWrap: false),
+                          style: AppButtonStyles.compact(context),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -840,21 +938,24 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                 horizontal: AppSpacing.md,
                 vertical: AppSpacing.xxs,
               ),
-              child: Row(
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
                 children: [
                   TextButton.icon(
                     onPressed: () => _dismiss(ref, notification.id),
                     icon: const Icon(Icons.close_rounded, size: 16),
-                    label: const Text('Dismiss'),
+                    label: const Text('Dismiss', softWrap: false),
                     style: AppButtonStyles.compact(context),
                   ),
-                  const Spacer(),
                   if (notification.actionRoute != null)
                     TextButton.icon(
                       onPressed: () =>
                           _openNotification(context, ref, notification),
                       icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-                      label: const Text('View'),
+                      label: const Text('View', softWrap: false),
                       style: AppButtonStyles.compact(context),
                     ),
                 ],
@@ -1276,7 +1377,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                     Text(
                       DateFormat.MMMd(
                         state.preferences.locale.replaceAll('_', '-'),
-                      ).add_jm().format(pair.createdAt),
+                      ).add_jm().format(pair.createdAt.toLocal()),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),
@@ -1309,56 +1410,29 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
             runSpacing: AppSpacing.xs,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              GlassChip(
+              _ReviewQueueChip(
                 label: 'From: ${fromAccount?.name ?? 'Account'}',
                 icon: const Icon(Icons.call_made_rounded),
-                iconSize: 13,
                 iconColor: scheme.error,
-                labelStyle: theme.textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.xxs,
-                ),
-                quality: GlassQuality.standard,
-                useOwnLayer: true,
               ),
               Icon(
                 Icons.arrow_forward_rounded,
                 size: 14,
                 color: scheme.onSurfaceVariant,
               ),
-              GlassChip(
+              _ReviewQueueChip(
                 label: 'To: ${toAccount?.name ?? 'Account'}',
                 icon: const Icon(Icons.call_received_rounded),
-                iconSize: 13,
                 iconColor: scheme.positive,
-                labelStyle: theme.textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.xxs,
-                ),
-                quality: GlassQuality.standard,
-                useOwnLayer: true,
               ),
-              GlassChip(
+              _ReviewQueueChip(
                 label: 'Transfer',
                 icon: const Icon(Icons.swap_horiz_rounded),
-                iconSize: 13,
                 iconColor: scheme.tertiary,
                 labelStyle: theme.textTheme.bodySmall?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: scheme.tertiary,
                 ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.xxs,
-                ),
-                quality: GlassQuality.standard,
-                useOwnLayer: true,
               ),
             ],
           ),
@@ -1417,33 +1491,30 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
           const SizedBox(height: AppSpacing.sm),
 
           // ── Actions ─────────────────────────────────────────────────
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Dismiss both
-                Expanded(
-                  flex: 2,
-                  child: TextButton.icon(
-                    onPressed: () => _dismissTransferPair(context, ref, pair),
-                    icon: const Icon(Icons.close_rounded),
-                    label: const Text('Dismiss'),
-                    style: AppButtonStyles.destructiveText(context),
-                  ),
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.xs,
+            children: [
+              // Dismiss both
+              TextButton.icon(
+                onPressed: () => _dismissTransferPair(context, ref, pair),
+                icon: const Icon(Icons.close_rounded, size: 16),
+                label: const Text('Dismiss', softWrap: false),
+                style: AppButtonStyles.destructiveText(context).merge(
+                  AppButtonStyles.compact(context),
                 ),
-                const SizedBox(width: AppSpacing.sm),
+              ),
 
-                // Confirm Transfer
-                Expanded(
-                  flex: 3,
-                  child: FilledButton.tonalIcon(
-                    onPressed: () => _confirmTransferPair(context, ref, pair),
-                    icon: const Icon(Icons.check_rounded),
-                    label: const Text('Confirm Transfer'),
-                  ),
-                ),
-              ],
-            ),
+              // Confirm Transfer
+              FilledButton.icon(
+                onPressed: () => _confirmTransferPair(context, ref, pair),
+                icon: const Icon(Icons.check_rounded, size: 16),
+                label: const Text('Confirm Transfer', softWrap: false),
+                style: AppButtonStyles.compact(context),
+              ),
+            ],
           ),
         ],
       ),
@@ -1503,13 +1574,14 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
 
 String _relativeDate(DateTime date) {
   final now = DateTime.now();
-  final diff = now.difference(date);
+  final localDate = date.toLocal();
+  final diff = now.difference(localDate);
   if (diff.inMinutes < 1) return 'just now';
   if (diff.inHours < 1) return '${diff.inMinutes}m ago';
   if (diff.inDays < 1) return '${diff.inHours}h ago';
   if (diff.inDays == 1) return 'yesterday';
   if (diff.inDays < 7) return '${diff.inDays}d ago';
-  return '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  return '${localDate.year.toString().padLeft(4, '0')}-${localDate.month.toString().padLeft(2, '0')}-${localDate.day.toString().padLeft(2, '0')}';
 }
 
 String _categoryChipText(LedgerState state, CaptureCandidate candidate) {
@@ -1518,4 +1590,71 @@ String _categoryChipText(LedgerState state, CaptureCandidate candidate) {
   final reason = candidate.suggestedCategoryReason?.trim();
   if (reason == null || reason.isEmpty) return name;
   return '$name · $reason';
+}
+
+/// A responsive, non-overflowing chip designed for capture candidate and
+/// notification cards across various screen widths and accessibility font scales.
+class _ReviewQueueChip extends StatelessWidget {
+  const _ReviewQueueChip({
+    required this.label,
+    required this.icon,
+    required this.iconColor,
+    this.labelStyle,
+    this.semanticLabel,
+  });
+
+  final String label;
+  final Widget icon;
+  final Color iconColor;
+  final TextStyle? labelStyle;
+  final String? semanticLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Semantics(
+      label: semanticLabel ?? label,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 280),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xxs,
+        ),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+          color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          border: Border.all(
+            color: scheme.outlineVariant.withValues(alpha: 0.35),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconTheme(
+              data: IconThemeData(
+                color: iconColor,
+                size: 13,
+              ),
+              child: icon,
+            ),
+            const SizedBox(width: AppSpacing.xxs),
+            Flexible(
+              child: Text(
+                label,
+                style: labelStyle ??
+                    theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                softWrap: false,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

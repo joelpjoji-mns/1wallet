@@ -1293,7 +1293,7 @@ class LedgerController extends StateNotifier<LedgerState> {
         final timestamp = payload['timestamp'] as String?;
         final receivedAt = timestamp == null
             ? null
-            : DateTime.tryParse(timestamp);
+            : DateTime.tryParse(timestamp)?.toLocal();
         if (payload['isBillStatement'] == true ||
             isBillStatementMessage(body)) {
           final notice = parseBillStatementNotice(
@@ -2549,7 +2549,7 @@ class LedgerController extends StateNotifier<LedgerState> {
         originalAmount: originalAmount,
         categoryId: category?.id,
         name: _blankToNull(candidate.merchant),
-        occurredAt: candidate.createdAt,
+        occurredAt: candidate.createdAt.toLocal(),
         paymentMethod: candidate.source.toUpperCase(),
         notes: (candidate.rawText?.trim().isNotEmpty == true)
             ? candidate.rawText!.trim()
@@ -2986,7 +2986,9 @@ class LedgerController extends StateNotifier<LedgerState> {
     String? nativeMatchedAmount,
     String? nativeMatchedTriggerWord,
   }) {
-    final actualReceivedAt = receivedAt ?? DateTime.now();
+    final rawTxDate = extractTransactionDateTime(rawText);
+    final actualReceivedAt =
+        (rawTxDate ?? receivedAt ?? DateTime.now()).toLocal();
 
     for (final pattern in state.preferences.smsBlockPatterns) {
       if (pattern.trim().isEmpty) continue;

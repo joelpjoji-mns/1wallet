@@ -17,6 +17,7 @@ class ParsedTransactionMessage {
     this.institutionName,
     this.matchedTriggerWord,
     this.matchedIgnoreWord,
+    this.transactionDate,
   });
 
   final String rawText;
@@ -30,6 +31,7 @@ class ParsedTransactionMessage {
   final String? institutionName;
   final String? matchedTriggerWord;
   final String? matchedIgnoreWord;
+  final DateTime? transactionDate;
 }
 
 ParsedTransactionMessage parseTransactionMessage(
@@ -54,6 +56,7 @@ ParsedTransactionMessage parseTransactionMessage(
   final transactionType = _detectTransactionType(normalized);
   final last4 = _extractLast4(text);
   final institutionName = _detectInstitution(normalized);
+  final txDate = extractTransactionDateTime(text);
 
   // 1. Reject anything matching an ignore word (OTP, promo, reminder,
   //    request, failure, ...) even if it also looks transactional.
@@ -71,6 +74,7 @@ ParsedTransactionMessage parseTransactionMessage(
       institutionName: institutionName,
       matchedTriggerWord: matchedTrigger,
       matchedIgnoreWord: matchedIgnore,
+      transactionDate: txDate,
     );
   }
 
@@ -89,6 +93,7 @@ ParsedTransactionMessage parseTransactionMessage(
       last4: last4,
       institutionName: institutionName,
       matchedTriggerWord: matchedTrigger,
+      transactionDate: txDate,
     );
   }
 
@@ -103,6 +108,7 @@ ParsedTransactionMessage parseTransactionMessage(
     last4: last4,
     institutionName: institutionName,
     matchedTriggerWord: matchedTrigger,
+    transactionDate: txDate,
   );
 }
 
@@ -290,7 +296,7 @@ final List<RegExp> _merchantPatterns = [
   ),
   // 4. Indian explicit "debited from ... to <merchant>"
   RegExp(
-    r'\bfrom\s+a/c.*to\s+([A-Za-z0-9 &@._-]+?)(?=\s+(?:on|using|via|ref)|[\(\[]|[\.,]\s|[\.,]?$)',
+    r'\bfrom\s+(?:[A-Za-z0-9]+\s+)*(?:a/c|card|acct).*?\bto\s+([A-Za-z0-9 &@._-]+?)(?=\s+(?:on|using|via|ref)|[\(\[]|[\.,]\s|[\.,]?$)',
     caseSensitive: false,
   ),
   // 5. "at <merchant>" or "to <merchant>" (avoiding common false positives)
@@ -321,6 +327,16 @@ const Set<String> _merchantNoiseWords = {
   'card',
   'bank',
   'your',
+  'to',
+  'at',
+  'from',
+  'for',
+  'by',
+  'in',
+  'on',
+  'via',
+  'a/c',
+  'acct',
 };
 
 String? _extractMerchant(String text) {
@@ -595,6 +611,166 @@ DateTime? _parseStatementDateComponent(
 
   final maxDay = DateTime(year, month + 1, 0).day;
   return DateTime(year, month, day.clamp(1, maxDay));
+}
+
+DateTime? _buildDateTime({
+  required String dayStr,
+  required String monthStr,
+  required String yearStr,
+  required String hourStr,
+  required String minuteStr,
+  String? secondStr,
+  String? amPm,
+  DateTime? fallbackNow,
+}) {
+  var day = int.tryParse(dayStr);
+  if (day == null) return null;
+
+  int? month = int.tryParse(monthStr);
+  month ??= _statementMonthMap[monthStr.toLowerCase().trim()];
+  if (month == null) return null;
+
+  // Handle DD vs MM if both numbers
+  if (day > 12 && month <= 12) {
+    // day and month are as expected (DD-MM)
+  } else if (month > 12 && day <= 12) {
+    // MM-DD format
+    final temp = day;
+    day = month;
+    month = temp;
+  }
+  if (day < 1 || day > 31 || month < 1 || month > 12) return null;
+
+  var year = int.tryParse(yearStr);
+  if (year == null) return null;
+  if (year < 100) {
+    year += 2000;
+  }
+  if (year < 2000 || year > 2100) return null;
+
+  var hour = int.tryParse(hourStr);
+  final minute = int.tryParse(minuteStr);
+  final second = secondStr != null ? (int.tryParse(secondStr) ?? 0) : 0;
+  if (hour == null || minute == null) return null;
+  if (minute < 0 || minute > 59 || second < 0 || second > 59) return null;
+
+  if (amPm != null) {
+    final lowerAmPm = amPm.toLowerCase();
+    if (lowerAmPm == 'pm' && hour < 12) hour += 12;
+    if (lowerAmPm == 'am' && hour == 12) hour = 0;
+  }
+  if (hour < 0 || hour > 23) return null;
+
+  final maxDay = DateTime(year, month + 1, 0).day;
+  return DateTime(year, month, day.clamp(1, maxDay), hour, minute, second);
+}
+
+/// Parses an explicit transaction date and time from raw message text if present.
+/// Supports common bank SMS timestamp formats (e.g., "03-11-26, 23:22:06",
+/// "03/11/2026 at 11:22 PM", "at 23:22:06 on 03-11-26", "on 03-Nov-26").
+DateTime? extractTransactionDateTime(String text, {DateTime? fallbackNow}) {
+  // 1. Date followed by Time: e.g. "03-11-26, 23:22:06", "03/11/2026 23:22", "03-Nov-26 at 11:22 PM"
+  final dateThenTimePattern = RegExp(
+    r'(?:on\s+)?(\d{1,2})[-/. ]([A-Za-z]{3,9}|\d{1,2})[-/. ](\d{2,4})[,\s]+(?:at\s+)?(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*(am|pm))?',
+    caseSensitive: false,
+  );
+  var match = dateThenTimePattern.firstMatch(text);
+  if (match != null) {
+    final dt = _buildDateTime(
+      dayStr: match.group(1)!,
+      monthStr: match.group(2)!,
+      yearStr: match.group(3)!,
+      hourStr: match.group(4)!,
+      minuteStr: match.group(5)!,
+      secondStr: match.group(6),
+      amPm: match.group(7),
+      fallbackNow: fallbackNow,
+    );
+    if (dt != null) return dt;
+  }
+
+  // 2. ISO Date followed by Time: e.g. "2026-11-03 23:22:06", "2026/11/03, 11:22 PM"
+  final isoDateThenTimePattern = RegExp(
+    r'(\d{4})[-/. ](\d{1,2})[-/. ](\d{1,2})[,\s]+(?:at\s+)?(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*(am|pm))?',
+    caseSensitive: false,
+  );
+  match = isoDateThenTimePattern.firstMatch(text);
+  if (match != null) {
+    final dt = _buildDateTime(
+      dayStr: match.group(3)!,
+      monthStr: match.group(2)!,
+      yearStr: match.group(1)!,
+      hourStr: match.group(4)!,
+      minuteStr: match.group(5)!,
+      secondStr: match.group(6),
+      amPm: match.group(7),
+      fallbackNow: fallbackNow,
+    );
+    if (dt != null) return dt;
+  }
+
+  // 3. Time followed by ISO Date: e.g. "at 10:15 on 2026-08-20"
+  final timeThenIsoDatePattern = RegExp(
+    r'(?:at\s+)?(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*(am|pm))?[,\s]+(?:on\s+)?(\d{4})[-/. ](\d{1,2})[-/. ](\d{1,2})',
+    caseSensitive: false,
+  );
+  match = timeThenIsoDatePattern.firstMatch(text);
+  if (match != null) {
+    final dt = _buildDateTime(
+      dayStr: match.group(7)!,
+      monthStr: match.group(6)!,
+      yearStr: match.group(5)!,
+      hourStr: match.group(1)!,
+      minuteStr: match.group(2)!,
+      secondStr: match.group(3),
+      amPm: match.group(4),
+      fallbackNow: fallbackNow,
+    );
+    if (dt != null) return dt;
+  }
+
+  // 4. Time followed by Date: e.g. "at 23:22:06 on 03-11-26", "11:22 PM on 03-Nov-2026"
+  final timeThenDatePattern = RegExp(
+    r'(?:at\s+)?(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*(am|pm))?[,\s]+(?:on\s+)?(\d{1,2})[-/. ]([A-Za-z]{3,9}|\d{1,2})[-/. ](\d{2,4})',
+    caseSensitive: false,
+  );
+  match = timeThenDatePattern.firstMatch(text);
+  if (match != null) {
+    final dt = _buildDateTime(
+      dayStr: match.group(5)!,
+      monthStr: match.group(6)!,
+      yearStr: match.group(7)!,
+      hourStr: match.group(1)!,
+      minuteStr: match.group(2)!,
+      secondStr: match.group(3),
+      amPm: match.group(4),
+      fallbackNow: fallbackNow,
+    );
+    if (dt != null) return dt;
+  }
+
+  // 5. Date only with explicit "on": e.g. "on 03-11-26", "on 03-Nov-2026", "on 2026-08-20"
+  final dateOnlyPattern = RegExp(
+    r'\bon\s+(?:(\d{4})[-/. ](\d{1,2})[-/. ](\d{1,2})|(\d{1,2})[-/. ]([A-Za-z]{3,9}|\d{1,2})[-/. ](\d{2,4}))\b',
+    caseSensitive: false,
+  );
+  match = dateOnlyPattern.firstMatch(text);
+  if (match != null) {
+    final now = fallbackNow ?? DateTime.now();
+    final isIso = match.group(1) != null;
+    final dt = _buildDateTime(
+      dayStr: isIso ? match.group(3)! : match.group(4)!,
+      monthStr: isIso ? match.group(2)! : match.group(5)!,
+      yearStr: isIso ? match.group(1)! : match.group(6)!,
+      hourStr: '${now.hour}',
+      minuteStr: '${now.minute}',
+      secondStr: '${now.second}',
+      fallbackNow: fallbackNow,
+    );
+    if (dt != null) return dt;
+  }
+
+  return null;
 }
 
 final List<RegExp> _dueDatePatterns = [

@@ -45,10 +45,14 @@ class SmsReceiver : BroadcastReceiver() {
         val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent) ?: return
         val combinedBody = StringBuilder()
         var sender = "Unknown"
+        var smsTimestamp: Long? = null
 
         for (message in messages) {
             sender = message.displayOriginatingAddress ?: "Unknown"
             combinedBody.append(message.displayMessageBody ?: "")
+            if (smsTimestamp == null && message.timestampMillis > 0) {
+                smsTimestamp = message.timestampMillis
+            }
         }
 
         val body = combinedBody.toString()
@@ -78,7 +82,10 @@ class SmsReceiver : BroadcastReceiver() {
                 body,
                 amount,
                 matchedBillNotice,
-                isBillStatement = true, expectedOwner = captureOwner, expectedRevision = captureConfiguration.revision
+                isBillStatement = true,
+                expectedOwner = captureOwner,
+                expectedRevision = captureConfiguration.revision,
+                smsTimestamp = smsTimestamp
             )
             val notificationShown = showBillStatementNotification(context, amount, extractLast4(body))
             appendDiagnostic(
@@ -111,7 +118,8 @@ class SmsReceiver : BroadcastReceiver() {
             val spooled = spoolMessage(
                 context, sender, body, amount, matchedTrigger,
                 expectedOwner = captureOwner, expectedRevision = captureConfiguration.revision,
-                notificationShown = shouldNotify
+                notificationShown = shouldNotify,
+                smsTimestamp = smsTimestamp
             )
             val notificationShown = if (spooled && shouldNotify) showNotification(context, amount, last4) else false
             appendDiagnostic(
@@ -183,7 +191,7 @@ class SmsReceiver : BroadcastReceiver() {
     private fun spoolMessage(
         context: Context, sender: String, body: String, amount: String?,
         matchedTrigger: String?, isBillStatement: Boolean = false, expectedOwner: String, expectedRevision: Long,
-        notificationShown: Boolean = true
+        notificationShown: Boolean = true, smsTimestamp: Long? = null
     ): Boolean {
         val payload = org.json.JSONObject()
         payload.put("sender", sender)
@@ -191,7 +199,12 @@ class SmsReceiver : BroadcastReceiver() {
         payload.put("nativeSource", "sms")
         payload.put("nativeAccepted", true)
         payload.put("notificationShown", notificationShown)
-        payload.put("timestamp", java.time.Instant.now().toString())
+        val isoTimestamp = if (smsTimestamp != null && smsTimestamp > 0) {
+            java.time.Instant.ofEpochMilli(smsTimestamp).toString()
+        } else {
+            java.time.Instant.now().toString()
+        }
+        payload.put("timestamp", isoTimestamp)
         if (isBillStatement) payload.put("isBillStatement", true)
         if (amount != null) payload.put("nativeMatchedAmount", amount)
         if (matchedTrigger != null) payload.put("nativeMatchedTriggerWord", matchedTrigger)

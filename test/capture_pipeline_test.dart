@@ -280,4 +280,38 @@ void main() {
       expect(tx.notes, fullMessage);
     },
   );
+
+  test(
+    'importSmsMessage extracts embedded bank transaction time in local timezone and approves with it',
+    () async {
+      final controller = await controllerWithAccount();
+      addTearDown(controller.dispose);
+
+      const message = '''INR 30000.00 debited
+A/c no. XX0655
+03-11-26, 23:22:06''';
+      final result = await controller.importSmsMessageDetailed(
+        message,
+        stage: 'test-sms-timestamp',
+      );
+
+      expect(result.status, CaptureImportStatus.queued);
+      final candidate = result.candidate!;
+      expect(candidate.createdAt.year, 2026);
+      expect(candidate.createdAt.month, 11);
+      expect(candidate.createdAt.day, 3);
+      expect(candidate.createdAt.hour, 23);
+      expect(candidate.createdAt.minute, 22);
+      expect(candidate.createdAt.second, 6);
+      expect(candidate.createdAt.isUtc, isFalse);
+
+      final tx = await controller.approveCaptureCandidate(candidate.id);
+      expect(tx.occurredAt.year, 2026);
+      expect(tx.occurredAt.month, 11);
+      expect(tx.occurredAt.day, 3);
+      expect(tx.occurredAt.hour, 23);
+      expect(tx.occurredAt.minute, 22);
+      expect(tx.occurredAt.isUtc, isFalse);
+    },
+  );
 }

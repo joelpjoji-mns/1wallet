@@ -105,8 +105,8 @@ Future<List<AndroidSmsInboxMessage>> readAndroidSmsInbox({
               dateValue != null && dateValue.isFinite && dateValue > 0
               ? DateTime.fromMillisecondsSinceEpoch(
                   dateValue.toInt(),
-                ).toUtc().toIso8601String()
-              : DateTime.now().toUtc().toIso8601String();
+                ).toLocal().toIso8601String()
+              : DateTime.now().toLocal().toIso8601String();
 
           return AndroidSmsInboxMessage(
             id: idValue != null
@@ -266,8 +266,8 @@ Future<List<AndroidActiveNotification>> readActiveAndroidNotifications({
               dateValue != null && dateValue.isFinite && dateValue > 0
               ? DateTime.fromMillisecondsSinceEpoch(
                   dateValue.toInt(),
-                ).toUtc().toIso8601String()
-              : DateTime.now().toUtc().toIso8601String();
+                ).toLocal().toIso8601String()
+              : DateTime.now().toLocal().toIso8601String();
 
           return AndroidActiveNotification(
             id: idValue?.toString() ?? '$receivedAt:$body',
