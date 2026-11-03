@@ -489,53 +489,40 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                   );
                 }
 
-                // Up to 3 Buttons:
-                // Single line: [ Block ] [ Dismiss ] ... [ Confirm ]
+                // 3 Buttons: [ Block ] (left) ... [ Dismiss ] (middle) ... [ Confirm ] (right)
                 return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: TextButton.icon(
-                              onPressed: () =>
-                                  _showBlockDialog(context, ref, candidate),
-                              icon: const Icon(Icons.block_rounded, size: 16),
-                              label: const Text(
-                                'Block',
-                                softWrap: false,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              style: AppButtonStyles.destructiveText(context).merge(
-                                AppButtonStyles.compact(context),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.xxs),
-                          Flexible(
-                            child: TextButton.icon(
-                              onPressed: () => _updateCandidateStatus(
-                                context,
-                                ref,
-                                candidate.id,
-                                'rejected',
-                              ),
-                              icon: const Icon(Icons.close_rounded, size: 16),
-                              label: const Text(
-                                'Dismiss',
-                                softWrap: false,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              style: AppButtonStyles.destructiveText(context).merge(
-                                AppButtonStyles.compact(context),
-                              ),
-                            ),
-                          ),
-                        ],
+                    TextButton.icon(
+                      onPressed: () =>
+                          _showBlockDialog(context, ref, candidate),
+                      icon: const Icon(Icons.block_rounded, size: 16),
+                      label: const Text(
+                        'Block',
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      style: AppButtonStyles.destructiveText(context).merge(
+                        AppButtonStyles.compact(context),
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.xs),
+                    TextButton.icon(
+                      onPressed: () => _updateCandidateStatus(
+                        context,
+                        ref,
+                        candidate.id,
+                        'rejected',
+                      ),
+                      icon: const Icon(Icons.close_rounded, size: 16),
+                      label: const Text(
+                        'Dismiss',
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      style: AppButtonStyles.destructiveText(context).merge(
+                        AppButtonStyles.compact(context),
+                      ),
+                    ),
                     FilledButton.icon(
                       onPressed: () => _updateCandidateStatus(
                         context,
@@ -544,7 +531,11 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                         'approved',
                       ),
                       icon: const Icon(Icons.check_rounded, size: 16),
-                      label: const Text('Confirm', softWrap: false),
+                      label: const Text(
+                        'Confirm',
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       style: AppButtonStyles.compact(context),
                     ),
                   ],
