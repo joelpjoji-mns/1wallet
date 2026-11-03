@@ -8,6 +8,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
+import '../../capture/message_parser.dart';
 import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
 import '../common/route_scaffold.dart';
@@ -290,9 +291,11 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      candidate.merchant ??
-                          candidate.transactionType?.toUpperCase() ??
-                          'UNKNOWN',
+                      _candidateDisplayName(
+                        state,
+                        candidate,
+                        matchedPlan: matchedPlan,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleMedium?.copyWith(
@@ -417,10 +420,14 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
             // ── Action bar: block | dismiss | confirm ─────────────────
             LayoutBuilder(
               builder: (context, constraints) {
-                final isCompact = constraints.maxWidth < 340 ||
-                    (matchedPlan != null && constraints.maxWidth < 460);
+                // When matchedPlan is present on wider viewports (tablets/landscape >= 520),
+                // all 4 buttons fit cleanly on a single row.
+                // When matchedPlan is null, the 3 buttons (Block, Dismiss, Confirm)
+                // fit on a single row on any standard screen (>= 220px).
+                final isSingleRow =
+                    matchedPlan == null || constraints.maxWidth >= 520;
 
-                if (!isCompact) {
+                if (isSingleRow) {
                   return Row(
                     children: [
                       IconButton(
@@ -477,10 +484,9 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                   );
                 }
 
-                // When matchedPlan is present or width is narrow, arrange in clean rows
-                // so labels never wrap letter-by-letter into vertical stacks.
-                final isUltraNarrow = constraints.maxWidth < 280;
-
+                // Narrow portrait screens with matched plan:
+                // Row 1: Block and Dismiss on the left.
+                // Row 2: Pay Plan and Confirm side-by-side as clean balanced actions.
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -510,70 +516,48 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                       ],
                     ),
                     const SizedBox(height: AppSpacing.xs),
-                    if (isUltraNarrow && matchedPlan != null) ...[
-                      FilledButton.tonalIcon(
-                        onPressed: () async {
-                          final router = GoRouter.of(context);
-                          await router.push(
-                            '/add?plannedId=${matchedPlan.id}&captureCandidateId=${candidate.id}',
-                          );
-                        },
-                        icon: const Icon(Icons.event_repeat_rounded, size: 16),
-                        label: const Text('Pay Plan', softWrap: false),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: scheme.tertiaryContainer,
-                          foregroundColor: scheme.onTertiaryContainer,
-                        ).merge(AppButtonStyles.compact(context)),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      FilledButton.icon(
-                        onPressed: () => _updateCandidateStatus(
-                          context,
-                          ref,
-                          candidate.id,
-                          'approved',
-                        ),
-                        icon: const Icon(Icons.check_rounded, size: 16),
-                        label: const Text('Confirm', softWrap: false),
-                        style: AppButtonStyles.compact(context),
-                      ),
-                    ] else
-                      Row(
-                        children: [
-                          if (matchedPlan != null) ...[
-                            Expanded(
-                              child: FilledButton.tonalIcon(
-                                onPressed: () async {
-                                  final router = GoRouter.of(context);
-                                  await router.push(
-                                    '/add?plannedId=${matchedPlan.id}&captureCandidateId=${candidate.id}',
-                                  );
-                                },
-                                icon: const Icon(Icons.event_repeat_rounded, size: 16),
-                                label: const Text('Pay Plan', softWrap: false),
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: scheme.tertiaryContainer,
-                                  foregroundColor: scheme.onTertiaryContainer,
-                                ).merge(AppButtonStyles.compact(context)),
-                              ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.tonalIcon(
+                            onPressed: () async {
+                              final router = GoRouter.of(context);
+                              await router.push(
+                                '/add?plannedId=${matchedPlan.id}&captureCandidateId=${candidate.id}',
+                              );
+                            },
+                            icon: const Icon(Icons.event_repeat_rounded, size: 16),
+                            label: const Text(
+                              'Pay Plan',
+                              softWrap: false,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(width: AppSpacing.sm),
-                          ],
-                          Expanded(
-                            child: FilledButton.icon(
-                              onPressed: () => _updateCandidateStatus(
-                                context,
-                                ref,
-                                candidate.id,
-                                'approved',
-                              ),
-                              icon: const Icon(Icons.check_rounded, size: 16),
-                              label: const Text('Confirm', softWrap: false),
-                              style: AppButtonStyles.compact(context),
-                            ),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: scheme.tertiaryContainer,
+                              foregroundColor: scheme.onTertiaryContainer,
+                            ).merge(AppButtonStyles.compact(context)),
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: () => _updateCandidateStatus(
+                              context,
+                              ref,
+                              candidate.id,
+                              'approved',
+                            ),
+                            icon: const Icon(Icons.check_rounded, size: 16),
+                            label: const Text(
+                              'Confirm',
+                              softWrap: false,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            style: AppButtonStyles.compact(context),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 );
               },
@@ -1304,9 +1288,13 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
           candidate.suggestedAccountId == plan.accountId) {
         score += 20;
       }
-      if (plan.name != null && candidate.merchant != null) {
+      final cleanMerchant = resolveCleanMerchant(
+        candidate.merchant,
+        rawText: candidate.rawText,
+      );
+      if (plan.name != null && cleanMerchant != null) {
         final pName = plan.name!.trim().toLowerCase();
-        final cName = candidate.merchant!.trim().toLowerCase();
+        final cName = cleanMerchant.toLowerCase();
         if (pName.isNotEmpty &&
             cName.isNotEmpty &&
             (pName.contains(cName) || cName.contains(pName))) {
@@ -1582,6 +1570,42 @@ String _relativeDate(DateTime date) {
   if (diff.inDays == 1) return 'yesterday';
   if (diff.inDays < 7) return '${diff.inDays}d ago';
   return '${localDate.year.toString().padLeft(4, '0')}-${localDate.month.toString().padLeft(2, '0')}-${localDate.day.toString().padLeft(2, '0')}';
+}
+
+String _candidateDisplayName(
+  LedgerState state,
+  CaptureCandidate candidate, {
+  TransactionRecord? matchedPlan,
+}) {
+  // 1. Try clean merchant (existing or re-parsed from rawText)
+  final cleanMerchant = resolveCleanMerchant(
+    candidate.merchant,
+    rawText: candidate.rawText,
+  );
+  if (cleanMerchant != null && cleanMerchant.isNotEmpty) {
+    return cleanMerchant;
+  }
+
+  // 2. Try matched planned payment name
+  if (matchedPlan?.name != null && matchedPlan!.name!.trim().isNotEmpty) {
+    return matchedPlan.name!.trim();
+  }
+
+  // 3. Try suggested account name
+  if (candidate.suggestedAccountId != null) {
+    final acc = state.accounts
+        .where((a) => a.id == candidate.suggestedAccountId)
+        .firstOrNull;
+    if (acc != null && acc.name.trim().isNotEmpty) {
+      return acc.name.trim();
+    }
+  }
+
+  // 4. Clean fallback for transaction type
+  if (candidate.transactionType?.toLowerCase() == 'income') {
+    return 'Income';
+  }
+  return 'Expense';
 }
 
 String _categoryChipText(LedgerState state, CaptureCandidate candidate) {

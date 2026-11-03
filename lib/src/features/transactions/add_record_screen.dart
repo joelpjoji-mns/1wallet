@@ -12,6 +12,7 @@ import 'add_record_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
+import '../../capture/message_parser.dart';
 import '../../utils/recurrence_utils.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
@@ -1403,9 +1404,11 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
             paymentMethod: _paymentMethodController.text.trim().isEmpty
                 ? null
                 : _paymentMethodController.text.trim(),
-            name: (captureCandidate?.merchant?.trim().isNotEmpty ?? false)
-                ? captureCandidate!.merchant!.trim()
-                : (plannedTransaction?.name ?? editingTransaction?.name),
+            name: resolveCleanMerchant(
+                  captureCandidate?.merchant,
+                  rawText: captureCandidate?.rawText,
+                ) ??
+                (plannedTransaction?.name ?? editingTransaction?.name),
             occurredAt: _occurredAt,
             originalTransactionId:
                 widget.plannedId ?? editingTransaction?.originalTransactionId,

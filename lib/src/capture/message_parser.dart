@@ -337,7 +337,42 @@ const Set<String> _merchantNoiseWords = {
   'via',
   'a/c',
   'acct',
+  'debited',
+  'credited',
+  'sent',
+  'received',
+  'transferred',
+  'transaction',
+  'txn',
 };
+
+/// Checks whether a raw merchant string is noise, a preposition,
+/// or a sender ID / phone number (e.g. "to", "at", "919951860002 AXISBK").
+bool isNoiseOrSenderMerchant(String? name) {
+  if (name == null) return true;
+  final trimmed = name.trim();
+  if (trimmed.isEmpty) return true;
+  final lower = trimmed.toLowerCase();
+  if (_merchantNoiseWords.contains(lower)) return true;
+  // If it starts with 7+ digits (e.g. phone number like "919951860002 AXISBK" or "+91995...")
+  if (RegExp(r'^\+?\d{7,}').hasMatch(trimmed)) return true;
+  return false;
+}
+
+/// Returns a clean merchant name if valid, or attempts to re-parse from [rawText],
+/// or returns null if no valid merchant can be determined.
+String? resolveCleanMerchant(String? candidateMerchant, {String? rawText}) {
+  if (!isNoiseOrSenderMerchant(candidateMerchant)) {
+    return candidateMerchant!.trim();
+  }
+  if (rawText != null && rawText.trim().isNotEmpty) {
+    final parsed = parseTransactionMessage(rawText);
+    if (!isNoiseOrSenderMerchant(parsed.merchant)) {
+      return parsed.merchant!.trim();
+    }
+  }
+  return null;
+}
 
 String? _extractMerchant(String text) {
   // Strip emojis and normalize whitespace
@@ -354,6 +389,11 @@ String? _extractMerchant(String text) {
     // Ignore candidates that are just phone numbers following "SMS BLOCK"
     if (_smsBlockDigitsRegex.hasMatch(candidate) &&
         _smsBlockTextRegex.hasMatch(cleanText)) {
+      continue;
+    }
+
+    // Filter out candidates that start with 7+ digits (phone number / SMS sender)
+    if (RegExp(r'^\+?\d{7,}').hasMatch(candidate)) {
       continue;
     }
 

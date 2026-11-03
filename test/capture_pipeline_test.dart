@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:one_wallet_flutter/src/capture/capture_pipeline.dart';
+import 'package:one_wallet_flutter/src/capture/message_parser.dart';
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
 import 'package:one_wallet_flutter/src/features/capture/capture_diagnostics.dart';
 import 'package:one_wallet_flutter/src/features/capture/sms_inbox_reader.dart';
@@ -306,12 +307,43 @@ A/c no. XX0655
       expect(candidate.createdAt.isUtc, isFalse);
 
       final tx = await controller.approveCaptureCandidate(candidate.id);
+      expect(tx.name, 'Main bank');
       expect(tx.occurredAt.year, 2026);
       expect(tx.occurredAt.month, 11);
       expect(tx.occurredAt.day, 3);
       expect(tx.occurredAt.hour, 23);
       expect(tx.occurredAt.minute, 22);
       expect(tx.occurredAt.isUtc, isFalse);
+    },
+  );
+
+  test(
+    'resolveCleanMerchant strips noise words and recovers real merchant from raw text',
+    () {
+      expect(
+        resolveCleanMerchant(
+          'to',
+          rawText: '''Sent Rs.30000.00
+From HDFC Bank A/C *2906
+To MUTUAL FUNDS ICCL''',
+        ),
+        'MUTUAL FUNDS ICCL',
+      );
+
+      expect(
+        resolveCleanMerchant(
+          '919951860002 AXISBK',
+          rawText: '''INR 30000.00 debited
+A/c no. XX0655
+03-11-26, 23:22:06''',
+        ),
+        isNull,
+      );
+
+      expect(
+        resolveCleanMerchant('Swiggy', rawText: 'Paid to Swiggy'),
+        'Swiggy',
+      );
     },
   );
 }

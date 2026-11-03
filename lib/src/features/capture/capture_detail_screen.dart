@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
+import '../../capture/message_parser.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
@@ -198,7 +199,11 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
             candidate.parsedAmount!.amountMinor,
             candidate.parsedAmount!.currency,
           );
-    _merchantController.text = candidate.merchant ?? '';
+    _merchantController.text = resolveCleanMerchant(
+          candidate.merchant,
+          rawText: candidate.rawText,
+        ) ??
+        '';
     _type = candidate.transactionType == 'income' ? 'income' : 'expense';
     _accountId = candidate.suggestedAccountId;
     _categoryId =

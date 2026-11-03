@@ -2536,6 +2536,10 @@ class LedgerController extends StateNotifier<LedgerState> {
         amount,
         state.preferences.baseCurrency,
       );
+      final cleanMerchant = resolveCleanMerchant(
+        candidate.merchant,
+        rawText: candidate.rawText,
+      );
       final transaction = TransactionRecord(
         id: _newId('cap-tx'),
         type: type,
@@ -2548,12 +2552,12 @@ class LedgerController extends StateNotifier<LedgerState> {
         baseAmount: baseAmount,
         originalAmount: originalAmount,
         categoryId: category?.id,
-        name: _blankToNull(candidate.merchant),
+        name: cleanMerchant ?? account.name,
         occurredAt: candidate.createdAt.toLocal(),
         paymentMethod: candidate.source.toUpperCase(),
         notes: (candidate.rawText?.trim().isNotEmpty == true)
             ? candidate.rawText!.trim()
-            : _blankToNull(candidate.merchant),
+            : cleanMerchant,
       );
       final candidates = [
         for (final item in state.captureCandidates)
@@ -2563,11 +2567,13 @@ class LedgerController extends StateNotifier<LedgerState> {
               ? item.copyWith(status: 'approved')
               : item,
       ];
-      final preferences = _preferencesRememberingCategory(
-        state,
-        candidate.merchant,
-        category?.id,
-      );
+      final preferences = cleanMerchant != null
+          ? _preferencesRememberingCategory(
+              state,
+              cleanMerchant,
+              category?.id,
+            )
+          : state.preferences;
       await _commit(
         state.copyWith(
           preferences: preferences,
