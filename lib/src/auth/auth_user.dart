@@ -20,7 +20,7 @@ class AuthUser {
     email: 'Stored only on this device',
     displayName: (displayName?.trim().isNotEmpty ?? false)
         ? displayName!.trim()
-        : 'Offline wallet',
+        : null,
     provider: localProvider,
   );
 
@@ -48,9 +48,17 @@ class AuthUser {
   }
 
   String get initials {
-    final source = (displayName?.trim().isNotEmpty ?? false)
-        ? displayName!.trim()
-        : email;
+    final name = displayName?.trim();
+    if (isLocalProvider) {
+      if (name != null && name.isNotEmpty) {
+        final letterMatch = RegExp(r'[a-zA-Z0-9]').firstMatch(name);
+        return (letterMatch?.group(0) ??
+                String.fromCharCode(name.runes.first))
+            .toUpperCase();
+      }
+      return '1W';
+    }
+    final source = (name?.isNotEmpty ?? false) ? name! : email;
     final parts = source
         .split(RegExp(r'\s+|@'))
         .where((part) => part.isNotEmpty)

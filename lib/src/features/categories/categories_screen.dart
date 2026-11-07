@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -42,24 +43,15 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           onPressed: () => _openCategoryEditor(context, state),
           icon: Icons.add_rounded,
         ),
-        PopupMenuButton<String>(
-          tooltip: 'Category options',
+        GlassPullDownButton(
+          semanticLabel: 'Category options',
           icon: const Icon(Icons.more_vert_rounded),
-          onSelected: (action) {
-            if (action == 'reset') {
-              _confirmResetDefaults();
-            }
-          },
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'reset',
-              child: Row(
-                children: [
-                  Icon(Icons.restart_alt_rounded, size: 20),
-                  SizedBox(width: AppSpacing.sm),
-                  Text('Reset to default categories'),
-                ],
-              ),
+          menuWidth: 260,
+          items: [
+            GlassMenuItem(
+              title: 'Reset to default categories',
+              icon: const Icon(Icons.restart_alt_rounded, size: 20),
+              onTap: _confirmResetDefaults,
             ),
           ],
         ),
@@ -469,51 +461,32 @@ class _CategoryTreeNode extends StatelessWidget {
                   ],
                 ),
               ),
-              PopupMenuButton<_CategoryAction>(
-                onSelected: (action) {
-                  switch (action) {
-                    case _CategoryAction.edit:
-                      onEdit(category);
-                      break;
-                    case _CategoryAction.addChild:
-                      onAddChild(category);
-                      break;
-                    case _CategoryAction.toggleArchive:
-                      onToggleArchive(category);
-                      break;
-                    case _CategoryAction.delete:
-                      onDelete(category);
-                      break;
-                  }
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: _CategoryAction.edit,
-                    child: Text('Edit'),
-                  ),
-                  const PopupMenuItem(
-                    value: _CategoryAction.addChild,
-                    child: Text('Add subcategory'),
-                  ),
-                  PopupMenuItem(
-                    value: _CategoryAction.toggleArchive,
-                    child: Text(category.isArchived ? 'Restore' : 'Archive'),
-                  ),
-                  PopupMenuItem(
-                    value: _CategoryAction.delete,
-                    child: Text(
-                      'Delete',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                  ),
-                ],
-
+              GlassPullDownButton(
                 icon: Icon(
                   Icons.more_vert_rounded,
                   color: tone.resolve(scheme),
                 ),
+                semanticLabel: 'Category actions',
+                menuWidth: 180,
+                items: [
+                  GlassMenuItem(
+                    title: 'Edit',
+                    onTap: () => onEdit(category),
+                  ),
+                  GlassMenuItem(
+                    title: 'Add subcategory',
+                    onTap: () => onAddChild(category),
+                  ),
+                  GlassMenuItem(
+                    title: category.isArchived ? 'Restore' : 'Archive',
+                    onTap: () => onToggleArchive(category),
+                  ),
+                  GlassMenuItem(
+                    title: 'Delete',
+                    isDestructive: true,
+                    onTap: () => onDelete(category),
+                  ),
+                ],
               ),
             ],
           ),

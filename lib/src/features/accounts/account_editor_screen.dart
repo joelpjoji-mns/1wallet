@@ -1195,6 +1195,7 @@ class _DetailField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppPanel(
+      glass: true,
       onTap: onTap,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

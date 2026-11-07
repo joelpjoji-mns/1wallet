@@ -522,13 +522,13 @@ class _BackupPassphraseDialogState extends State<_BackupPassphraseDialog> {
         const Text(
           'Keep this passphrase safely. It cannot be recovered or reset.',
         ),
-        TextField(
+        AppGlassTextField(
           controller: _passphrase,
           obscureText: true,
           decoration: const InputDecoration(labelText: 'Backup passphrase'),
         ),
         if (widget.exporting)
-          TextField(
+          AppGlassTextField(
             controller: _confirmation,
             obscureText: true,
             decoration: const InputDecoration(labelText: 'Confirm passphrase'),

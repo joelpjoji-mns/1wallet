@@ -1835,19 +1835,41 @@ class AppSheetHandle extends StatelessWidget {
   }
 }
 
-/// Opaque, top-rounded surface for draggable/full-height bottom sheets.
+/// Top-rounded liquid glass surface for draggable/full-height bottom sheets.
 class AppSheetSurface extends StatelessWidget {
   const AppSheetSurface({
     required this.child,
     super.key,
     this.showHandle = true,
+    this.glass = true,
   });
 
   final Widget child;
   final bool showHandle;
+  final bool glass;
 
   @override
   Widget build(BuildContext context) {
+    final isAmoled = AppSurfaces.isAmoled(context);
+    final content = Column(
+      children: [
+        if (showHandle) const AppSheetHandle(),
+        Expanded(child: child),
+      ],
+    );
+
+    if (glass && !isAmoled) {
+      return GlassCard(
+        margin: EdgeInsets.zero,
+        padding: EdgeInsets.zero,
+        shape: const LiquidRoundedSuperellipse(
+          borderRadius: AppRadii.lg,
+        ),
+        quality: GlassQuality.standard,
+        child: content,
+      );
+    }
+
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
@@ -1862,12 +1884,7 @@ class AppSheetSurface extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        children: [
-          if (showHandle) const AppSheetHandle(),
-          Expanded(child: child),
-        ],
-      ),
+      child: content,
     );
   }
 }

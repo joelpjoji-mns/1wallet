@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -317,9 +318,8 @@ class _TransactionDetailScreenState
                 runSpacing: AppSpacing.sm,
                 children: [
                   for (final tag in transaction.tags)
-                    Chip(
-                      label: Text(tag.replaceAll('#', '').trim()),
-                      visualDensity: VisualDensity.compact,
+                    GlassChip(
+                      label: tag.replaceAll('#', '').trim(),
                     ),
                 ],
               ),

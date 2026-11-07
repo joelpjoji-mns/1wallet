@@ -493,50 +493,56 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    TextButton.icon(
-                      onPressed: () =>
-                          _showBlockDialog(context, ref, candidate),
-                      icon: const Icon(Icons.block_rounded, size: 16),
-                      label: const Text(
-                        'Block',
-                        softWrap: false,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      style: AppButtonStyles.destructiveText(context).merge(
-                        AppButtonStyles.compact(context),
-                      ),
-                    ),
-                    TextButton.icon(
-                      onPressed: () => _updateCandidateStatus(
-                        context,
-                        ref,
-                        candidate.id,
-                        'rejected',
-                      ),
-                      icon: const Icon(Icons.close_rounded, size: 16),
-                      label: const Text(
-                        'Dismiss',
-                        softWrap: false,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      style: AppButtonStyles.destructiveText(context).merge(
-                        AppButtonStyles.compact(context),
+                    Flexible(
+                      child: TextButton.icon(
+                        onPressed: () =>
+                            _showBlockDialog(context, ref, candidate),
+                        icon: const Icon(Icons.block_rounded, size: 16),
+                        label: const Text(
+                          'Block',
+                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        style: AppButtonStyles.destructiveText(context).merge(
+                          AppButtonStyles.compact(context),
+                        ),
                       ),
                     ),
-                    FilledButton.icon(
-                      onPressed: () => _updateCandidateStatus(
-                        context,
-                        ref,
-                        candidate.id,
-                        'approved',
+                    Flexible(
+                      child: TextButton.icon(
+                        onPressed: () => _updateCandidateStatus(
+                          context,
+                          ref,
+                          candidate.id,
+                          'rejected',
+                        ),
+                        icon: const Icon(Icons.close_rounded, size: 16),
+                        label: const Text(
+                          'Dismiss',
+                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        style: AppButtonStyles.destructiveText(context).merge(
+                          AppButtonStyles.compact(context),
+                        ),
                       ),
-                      icon: const Icon(Icons.check_rounded, size: 16),
-                      label: const Text(
-                        'Confirm',
-                        softWrap: false,
-                        overflow: TextOverflow.ellipsis,
+                    ),
+                    Flexible(
+                      child: FilledButton.icon(
+                        onPressed: () => _updateCandidateStatus(
+                          context,
+                          ref,
+                          candidate.id,
+                          'approved',
+                        ),
+                        icon: const Icon(Icons.check_rounded, size: 16),
+                        label: const Text(
+                          'Confirm',
+                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        style: AppButtonStyles.compact(context),
                       ),
-                      style: AppButtonStyles.compact(context),
                     ),
                   ],
                 );

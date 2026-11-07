@@ -51,9 +51,15 @@ void main() {
     final tagField = find.descendant(of: tagsBox, matching: find.byType(TextField));
     expect(tagField, findsOneWidget);
 
+    // Unfocused and empty: hint text is hidden so it doesn't collide with the resting "Tags" label
+    expect(find.text('Add tags (e.g. Work, Vacation)'), findsNothing);
+
     // Tap the text field directly to focus it
     await tester.tap(tagField);
     await tester.pumpAndSettle();
+
+    // When focused, the label floats and hint text is visible
+    expect(find.text('Add tags (e.g. Work, Vacation)'), findsOneWidget);
 
     // Verify saved tags show immediately in the options view on focus
     expect(find.text('Groceries'), findsOneWidget);

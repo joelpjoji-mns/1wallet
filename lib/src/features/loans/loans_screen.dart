@@ -438,14 +438,14 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                       spacing: AppSpacing.xs,
                       children: [
                         for (var i = 1; i <= 7; i++)
-                          FilterChip(
-                            label: Text(
-                              ['', 'M', 'T', 'W', 'T', 'F', 'S', 'S'][i],
-                            ),
+                          GlassChip(
+                            label: ['', 'M', 'T', 'W', 'T', 'F', 'S', 'S'][i],
                             selected: _daysOfWeek.contains(i),
-                            onSelected: (selected) {
+                            selectedColor:
+                                Theme.of(context).colorScheme.primaryContainer,
+                            onTap: () {
                               setState(() {
-                                if (selected) {
+                                if (!_daysOfWeek.contains(i)) {
                                   if (_daysOfWeek.length < _interval) {
                                     _daysOfWeek.add(i);
                                   }
@@ -470,15 +470,14 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                       runSpacing: AppSpacing.xxs,
                       children: [
                         for (var i = 1; i <= 31; i++)
-                          FilterChip(
-                            label: Text('$i'),
-                            padding: EdgeInsets.zero,
-                            materialTapTargetSize:
-                                MaterialTapTargetSize.shrinkWrap,
+                          GlassChip(
+                            label: '$i',
                             selected: _daysOfMonth.contains(i),
-                            onSelected: (selected) {
+                            selectedColor:
+                                Theme.of(context).colorScheme.primaryContainer,
+                            onTap: () {
                               setState(() {
-                                if (selected) {
+                                if (!_daysOfMonth.contains(i)) {
                                   if (_daysOfMonth.length < _interval) {
                                     _daysOfMonth.add(i);
                                   }
@@ -488,17 +487,14 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                               });
                             },
                           ),
-                        FilterChip(
-                          label: const Text('Last day of month'),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.xxs,
-                          ),
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
+                        GlassChip(
+                          label: 'Last day of month',
                           selected: _daysOfMonth.contains(32),
-                          onSelected: (selected) {
+                          selectedColor:
+                              Theme.of(context).colorScheme.primaryContainer,
+                          onTap: () {
                             setState(() {
-                              if (selected) {
+                              if (!_daysOfMonth.contains(32)) {
                                 if (_daysOfMonth.length < _interval) {
                                   _daysOfMonth.add(32);
                                 }
@@ -974,7 +970,7 @@ class LoanDetailView extends ConsumerWidget {
                               ],
                             ),
                             const SizedBox(height: AppSpacing.xs),
-                            LinearProgressIndicator(value: progress),
+                            GlassProgressIndicator.linear(value: progress),
                           ],
                         );
                       },
@@ -1339,7 +1335,7 @@ class _LoanCompactCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: AppSpacing.xs),
-                    LinearProgressIndicator(value: progress),
+                    GlassProgressIndicator.linear(value: progress),
                   ],
                 );
               },
@@ -2238,7 +2234,7 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             Expanded(
-              child: Slider(value: _zoomPercent, onChanged: _onSliderChange),
+              child: GlassSlider(value: _zoomPercent, onChanged: _onSliderChange),
             ),
             Icon(
               Icons.zoom_in_rounded,
@@ -2703,18 +2699,23 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                 const SizedBox(height: AppSpacing.sm),
                 SizedBox(
                   width: double.infinity,
-                  child: SegmentedButton<double>(
-                    showSelectedIcon: false,
+                  child: GlassSegmentedControl(
                     segments: const [
-                      ButtonSegment(value: 0.0, label: Text('Base')),
-                      ButtonSegment(value: 0.5, label: Text('Balanced')),
-                      ButtonSegment(value: 1.0, label: Text('Max')),
+                      GlassSegment(label: 'Base'),
+                      GlassSegment(label: 'Balanced'),
+                      GlassSegment(label: 'Max'),
                     ],
-                    selected: {
-                      _snapAllocation(_debouncedExtraAllocationPercent),
+                    selectedIndex: switch (_snapAllocation(_debouncedExtraAllocationPercent)) {
+                      0.5 => 1,
+                      1.0 => 2,
+                      _ => 0,
                     },
-                    onSelectionChanged: (selection) {
-                      final val = selection.first;
+                    onSegmentSelected: (index) {
+                      final val = switch (index) {
+                        1 => 0.5,
+                        2 => 1.0,
+                        _ => 0.0,
+                      };
                       setState(() {
                         _extraAllocationPercent = val;
                         _debouncedExtraAllocationPercent = val;

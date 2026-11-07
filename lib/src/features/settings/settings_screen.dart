@@ -81,6 +81,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     offline: auth.isLocalOnly,
                     onSignOut: () => _signOut(ref),
                     onUpgrade: () => showOfflineUpgradeSheet(context),
+                    onEditName: auth.isLocalOnly
+                        ? () => _editOfflineName(
+                              context,
+                              ref,
+                              auth.localDisplayName,
+                            )
+                        : null,
                   ),
                   const SizedBox(height: AppSpacing.md),
 
@@ -422,6 +429,47 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await ref.read(themeControllerProvider.notifier).setPreference(next);
     if (!mounted) return;
     _showMessage('Theme preference saved.');
+  }
+
+  Future<void> _editOfflineName(
+    BuildContext context,
+    WidgetRef ref,
+    String? currentName,
+  ) async {
+    final controller = TextEditingController(text: currentName ?? '');
+    final saved = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Your name'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(
+            labelText: 'Name',
+            hintText: 'Enter your name',
+          ),
+          onSubmitted: (val) => Navigator.of(ctx).pop(val),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (saved != null) {
+      await ref
+          .read(authControllerProvider.notifier)
+          .setLocalDisplayName(saved);
+      if (!mounted) return;
+      _showMessage('Name updated.');
+    }
   }
 
   Future<void> _signOut(WidgetRef ref) async {

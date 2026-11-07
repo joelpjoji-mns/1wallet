@@ -93,7 +93,7 @@ class BottomIslandNavBar extends StatelessWidget {
                               icon:
                                   item.badgeCount != null &&
                                       item.badgeCount! > 0
-                                  ? Badge.count(
+                                  ? GlassBadge(
                                       count: item.badgeCount!,
                                       backgroundColor: scheme.error,
                                       child: Icon(item.icon),
@@ -102,7 +102,7 @@ class BottomIslandNavBar extends StatelessWidget {
                               activeIcon:
                                   item.badgeCount != null &&
                                       item.badgeCount! > 0
-                                  ? Badge.count(
+                                  ? GlassBadge(
                                       count: item.badgeCount!,
                                       backgroundColor: scheme.error,
                                       child: Icon(item.activeIcon),

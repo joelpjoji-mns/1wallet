@@ -747,63 +747,68 @@ class RecoveryState extends StatelessWidget {
     return Scaffold(
       body: LaunchBackdrop(
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const LaunchBrandMark(size: 96, animated: false),
-                const SizedBox(height: AppSpacing.xl),
-                Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: textTheme.headlineMedium?.copyWith(
-                    color: palette.text,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.7,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  body,
-                  textAlign: TextAlign.center,
-                  style: textTheme.bodyLarge?.copyWith(
-                    color: palette.mutedText,
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                FilledButton(
-                  onPressed: onAction,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: palette.primary,
-                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                  ).merge(AppButtonStyles.cta),
-                  child: Text(actionLabel),
-                ),
-                if (secondaryLabel != null && onSecondaryAction != null) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  TextButton(
-                    onPressed: onSecondaryAction,
-                    child: Text(
-                      secondaryLabel!,
-                      style: TextStyle(color: palette.mutedText),
-                    ),
-                  ),
-                ],
-                if (tertiaryLabel != null && onTertiaryAction != null) ...[
-                  const SizedBox(height: AppSpacing.xs),
-                  TextButton(
-                    onPressed: onTertiaryAction,
-                    child: Text(
-                      tertiaryLabel!,
-                      style: textTheme.labelMedium?.copyWith(
-                        color: palette.mutedText.withValues(alpha: 0.6),
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: BrandFrostedPanel(
+                borderRadius: AppRadii.xl,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const LaunchBrandMark(size: 96, animated: false),
+                    const SizedBox(height: AppSpacing.xl),
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: textTheme.headlineMedium?.copyWith(
+                        color: palette.text,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.7,
                       ),
                     ),
-                  ),
-                ],
-              ],
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      body,
+                      textAlign: TextAlign.center,
+                      style: textTheme.bodyLarge?.copyWith(
+                        color: palette.mutedText,
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    FilledButton(
+                      onPressed: onAction,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: palette.primary,
+                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                      ).merge(AppButtonStyles.cta),
+                      child: Text(actionLabel),
+                    ),
+                    if (secondaryLabel != null && onSecondaryAction != null) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      TextButton(
+                        onPressed: onSecondaryAction,
+                        child: Text(
+                          secondaryLabel!,
+                          style: TextStyle(color: palette.mutedText),
+                        ),
+                      ),
+                    ],
+                    if (tertiaryLabel != null && onTertiaryAction != null) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      TextButton(
+                        onPressed: onTertiaryAction,
+                        child: Text(
+                          tertiaryLabel!,
+                          style: textTheme.labelMedium?.copyWith(
+                            color: palette.mutedText.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
           ),
         ),

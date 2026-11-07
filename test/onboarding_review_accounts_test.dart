@@ -64,15 +64,11 @@ void main() {
     // out — using `.first` each time reliably targets the current step's
     // controls rather than assuming every step is simultaneously mounted.
 
-    // Step 1 (Profile) -> Step 2 (Use cases).
+    // Step 1 (Profile) -> Step 2 (Account).
     await tester.tap(find.widgetWithText(FilledButton, 'Continue').first);
     await _pumpBounded(tester);
 
-    // Step 2 (Use cases) -> Step 3 (Account).
-    await tester.tap(find.widgetWithText(FilledButton, 'Continue').first);
-    await _pumpBounded(tester);
-
-    // Step 3 (Account): fill in one account and save it, which advances
+    // Step 2 (Account): fill in one account and save it, which advances
     // straight to the review step.
     final textFields = find.byType(AppGlassTextField);
     await tester.enterText(textFields.at(0), 'Test Wallet');

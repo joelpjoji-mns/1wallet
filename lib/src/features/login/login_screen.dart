@@ -46,14 +46,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       children: [
                         const SizedBox(width: 48),
                         const Spacer(),
-                        Text(
-                          'SIGN IN',
-                          style: textTheme.labelLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 2,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.4),
+                        AppPanel(
+                          glass: true,
+                          radius: AppRadii.pill,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md,
+                            vertical: AppSpacing.xs,
+                          ),
+                          child: Text(
+                            'SIGN IN',
+                            style: textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 2,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.6),
+                            ),
                           ),
                         ),
                         const Spacer(),
@@ -260,28 +268,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   if (auth.errorMessage != null &&
                                       !unavailable) ...[
                                     const SizedBox(height: AppSpacing.lg),
-                                    Container(
+                                    AppPanel(
+                                      glass: true,
+                                      radius: AppRadii.md,
                                       padding: const EdgeInsets.all(
                                         AppSpacing.md,
                                       ),
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .errorContainer
-                                            .withValues(alpha: 0.3),
-                                        borderRadius: BorderRadius.circular(
-                                          AppRadii.md,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        auth.errorMessage!,
-                                        textAlign: TextAlign.center,
-                                        style: textTheme.bodyMedium?.copyWith(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.error,
-                                          fontWeight: FontWeight.w500,
-                                        ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.error_outline_rounded,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .error,
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: AppSpacing.sm),
+                                          Expanded(
+                                            child: Text(
+                                              auth.errorMessage!,
+                                              textAlign: TextAlign.start,
+                                              style: textTheme.bodyMedium
+                                                  ?.copyWith(
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).colorScheme.error,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
@@ -294,29 +310,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         StaggeredFadeIn(
                           delay: const Duration(milliseconds: 260),
                           child: Center(
-                            child: TextButton.icon(
-                              key: LoginScreen.offlineButtonKey,
-                              onPressed: auth.isSigningIn
-                                  ? null
-                                  : () => showOfflineModeSheet(context),
-                              icon: const Icon(Icons.phonelink_lock_outlined),
-                              label: const Text(
-                                'Use without an account (Offline)',
-                                style: TextStyle(fontWeight: FontWeight.w600),
+                            child: AppPanel(
+                              glass: true,
+                              radius: AppRadii.pill,
+                              padding: EdgeInsets.zero,
+                              child: TextButton.icon(
+                                key: LoginScreen.offlineButtonKey,
+                                onPressed: auth.isSigningIn
+                                    ? null
+                                    : () => showOfflineModeSheet(context),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: AppSpacing.lg,
+                                    vertical: AppSpacing.sm,
+                                  ),
+                                ),
+                                icon: const Icon(Icons.phonelink_lock_outlined),
+                                label: const Text(
+                                  'Use without an account (Offline)',
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
                               ),
                             ),
                           ),
                         ),
                         const SizedBox(height: AppSpacing.xl),
                         Center(
-                          child: Text(
-                            'Secure • Private • Local First',
-                            style: textTheme.labelMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 1,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.3),
+                          child: AppPanel(
+                            glass: true,
+                            radius: AppRadii.pill,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.md,
+                              vertical: AppSpacing.xs,
+                            ),
+                            child: Text(
+                              'Secure • Private • Local First',
+                              style: textTheme.labelSmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.5),
+                              ),
                             ),
                           ),
                         ),

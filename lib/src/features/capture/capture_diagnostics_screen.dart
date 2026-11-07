@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -66,12 +67,15 @@ class _CaptureDiagnosticsScreenState
           semanticLabel: 'Refresh diagnostics',
           onPressed: _refresh,
         ),
-        PopupMenuButton<String>(
+        GlassPullDownButton(
           icon: const Icon(Icons.more_vert_rounded),
-          tooltip: 'Diagnostic options',
-          onSelected: (value) async {
-            switch (value) {
-              case 'prune':
+          semanticLabel: 'Diagnostic options',
+          menuWidth: 240,
+          items: [
+            GlassMenuItem(
+              title: 'Prune expired logs',
+              icon: const Icon(Icons.cleaning_services_outlined),
+              onTap: () async {
                 final pruned = await CaptureDiagnostics.pruneOldEvents(
                   ownerId: state.userId,
                 );
@@ -83,13 +87,23 @@ class _CaptureDiagnosticsScreenState
                       : 'No expired logs found (retention: $_retentionDays days).',
                 );
                 _refresh();
-                break;
-              case 'clear':
+              },
+            ),
+            GlassMenuItem(
+              title: 'Clear user diagnostics',
+              icon: const Icon(Icons.delete_sweep_outlined),
+              isDestructive: true,
+              onTap: () async {
                 await CaptureDiagnostics.clear(ownerId: state.userId);
                 if (!mounted) return;
                 _refresh();
-                break;
-              case 'clearLegacy':
+              },
+            ),
+            GlassMenuItem(
+              title: 'Clear unassigned logs',
+              icon: const Icon(Icons.history_rounded),
+              isDestructive: true,
+              onTap: () async {
                 final confirmed = await showAppConfirmDialog(
                   context,
                   title: 'Clear unassigned diagnostic history?',
@@ -125,39 +139,7 @@ class _CaptureDiagnosticsScreenState
                     );
                   }
                 }
-                break;
-            }
-          },
-          itemBuilder: (context) => const [
-            PopupMenuItem(
-              value: 'prune',
-              child: Row(
-                children: [
-                  Icon(Icons.cleaning_services_outlined),
-                  SizedBox(width: AppSpacing.sm),
-                  Text('Prune expired logs'),
-                ],
-              ),
-            ),
-            PopupMenuItem(
-              value: 'clear',
-              child: Row(
-                children: [
-                  Icon(Icons.delete_sweep_outlined),
-                  SizedBox(width: AppSpacing.sm),
-                  Text('Clear user diagnostics'),
-                ],
-              ),
-            ),
-            PopupMenuItem(
-              value: 'clearLegacy',
-              child: Row(
-                children: [
-                  Icon(Icons.history_rounded),
-                  SizedBox(width: AppSpacing.sm),
-                  Text('Clear unassigned logs'),
-                ],
-              ),
+              },
             ),
           ],
         ),

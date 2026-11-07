@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
@@ -172,8 +173,7 @@ class HomeProgressRow extends StatelessWidget {
         const SizedBox(height: AppSpacing.xs),
         ClipRRect(
           borderRadius: BorderRadius.circular(AppRadii.pill),
-          child: LinearProgressIndicator(
-            minHeight: 6,
+          child: GlassProgressIndicator.linear(
             value: progress.clamp(0, 1).toDouble(),
             color: color,
           ),

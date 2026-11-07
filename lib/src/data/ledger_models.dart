@@ -35,6 +35,16 @@ const kRnDefaultHomeWidgetOrder = <String>[
   'topCategories',
   'creditUtilization',
   'netWorth',
+  'pendingReview',
+  'savingsRate',
+  'topMerchants',
+  'tagCloud',
+  'subscriptionRadar',
+  'safeToSpend',
+  'cashBurnRunway',
+  'noSpendStreak',
+  'weekendWeekdayRatio',
+  'cardGracePeriod',
 ];
 
 @immutable

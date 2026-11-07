@@ -713,12 +713,7 @@ class _RecurringCompactCard extends StatelessWidget {
                                 ],
                               ),
                               const SizedBox(height: AppSpacing.xs),
-                              LinearProgressIndicator(
-                                value: progress,
-                                borderRadius: BorderRadius.circular(
-                                  AppRadii.xs,
-                                ),
-                              ),
+                              GlassProgressIndicator.linear(value: progress),
                             ],
                           );
                         },
@@ -1005,20 +1000,19 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                     spacing: AppSpacing.xs,
                     children: [
                       for (var i = 1; i <= 7; i++)
-                        FilterChip(
-                          label: Text(
-                            ['', 'M', 'T', 'W', 'T', 'F', 'S', 'S'][i],
-                          ),
+                        GlassChip(
+                          label: ['', 'M', 'T', 'W', 'T', 'F', 'S', 'S'][i],
                           selected: _daysOfWeek.contains(i),
-                          onSelected: (selected) {
+                          selectedColor:
+                              Theme.of(context).colorScheme.primaryContainer,
+                          onTap: () {
                             setState(() {
-                              if (selected) {
+                              if (!_daysOfWeek.contains(i)) {
                                 _daysOfWeek.add(i);
-                                _updateNextDateToMatchRecurrence();
                               } else {
                                 _daysOfWeek.remove(i);
-                                _updateNextDateToMatchRecurrence();
                               }
+                              _updateNextDateToMatchRecurrence();
                             });
                           },
                         ),
@@ -1037,40 +1031,35 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                     runSpacing: AppSpacing.xxs,
                     children: [
                       for (var i = 1; i <= 31; i++)
-                        FilterChip(
-                          label: Text('$i'),
-                          padding: EdgeInsets.zero,
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
+                        GlassChip(
+                          label: '$i',
                           selected: _daysOfMonth.contains(i),
-                          onSelected: (selected) {
+                          selectedColor:
+                              Theme.of(context).colorScheme.primaryContainer,
+                          onTap: () {
                             setState(() {
-                              if (selected) {
+                              if (!_daysOfMonth.contains(i)) {
                                 _daysOfMonth.add(i);
-                                _updateNextDateToMatchRecurrence();
                               } else {
                                 _daysOfMonth.remove(i);
-                                _updateNextDateToMatchRecurrence();
                               }
+                              _updateNextDateToMatchRecurrence();
                             });
                           },
                         ),
-                      FilterChip(
-                        label: const Text('Last day of month'),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.xxs,
-                        ),
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      GlassChip(
+                        label: 'Last day of month',
                         selected: _daysOfMonth.contains(32),
-                        onSelected: (selected) {
+                        selectedColor:
+                            Theme.of(context).colorScheme.primaryContainer,
+                        onTap: () {
                           setState(() {
-                            if (selected) {
+                            if (!_daysOfMonth.contains(32)) {
                               _daysOfMonth.add(32);
-                              _updateNextDateToMatchRecurrence();
                             } else {
                               _daysOfMonth.remove(32);
-                              _updateNextDateToMatchRecurrence();
                             }
+                            _updateNextDateToMatchRecurrence();
                           });
                         },
                       ),
@@ -1694,10 +1683,7 @@ class RecurringDetailView extends ConsumerWidget {
                               ],
                             ),
                             const SizedBox(height: AppSpacing.xs),
-                            LinearProgressIndicator(
-                              value: progress,
-                              borderRadius: BorderRadius.circular(AppRadii.xs),
-                            ),
+                            GlassProgressIndicator.linear(value: progress),
                           ],
                         );
                       },

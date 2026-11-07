@@ -10,7 +10,17 @@ enum HomeDashboardWidgetId {
   topCategories('topCategories'),
   currencyValues('currencyValues'),
   creditUtilization('creditUtilization'),
-  netWorth('netWorth');
+  netWorth('netWorth'),
+  pendingReview('pendingReview'),
+  savingsRate('savingsRate'),
+  topMerchants('topMerchants'),
+  tagCloud('tagCloud'),
+  subscriptionRadar('subscriptionRadar'),
+  safeToSpend('safeToSpend'),
+  cashBurnRunway('cashBurnRunway'),
+  noSpendStreak('noSpendStreak'),
+  weekendWeekdayRatio('weekendWeekdayRatio'),
+  cardGracePeriod('cardGracePeriod');
 
   const HomeDashboardWidgetId(this.storageKey);
 
@@ -27,6 +37,17 @@ const defaultHomeWidgetOrder = [
   HomeDashboardWidgetId.netWorth,
   HomeDashboardWidgetId.upcomingScheduled,
   HomeDashboardWidgetId.creditUtilization,
+  HomeDashboardWidgetId.accountGroups,
+  HomeDashboardWidgetId.pendingReview,
+  HomeDashboardWidgetId.savingsRate,
+  HomeDashboardWidgetId.topMerchants,
+  HomeDashboardWidgetId.tagCloud,
+  HomeDashboardWidgetId.subscriptionRadar,
+  HomeDashboardWidgetId.safeToSpend,
+  HomeDashboardWidgetId.cashBurnRunway,
+  HomeDashboardWidgetId.noSpendStreak,
+  HomeDashboardWidgetId.weekendWeekdayRatio,
+  HomeDashboardWidgetId.cardGracePeriod,
 ];
 
 const standardHomeDateFilterOptions = [
@@ -247,6 +268,7 @@ String defaultDatePresetForHomeWidget(String id) {
     'accountGrid' || 'accountGroups' => 'allTime',
     'currencyValues' => 'This month',
     'balanceTrend' => 'This month',
+    'savingsRate' || 'topMerchants' || 'tagCloud' || 'weekendWeekdayRatio' => 'This month',
     _ => 'This month',
   };
 }

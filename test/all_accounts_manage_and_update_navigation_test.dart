@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:one_wallet_flutter/src/data/ledger_codec.dart';
 import 'package:one_wallet_flutter/src/data/ledger_defaults.dart';
 import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 import 'package:one_wallet_flutter/src/features/home/home_screen.dart';

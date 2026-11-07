@@ -120,28 +120,43 @@ class _OfflineModeSheetState extends ConsumerState<OfflineModeSheet> {
                       'device without a backup, your wallet cannot be recovered.',
                 ),
                 const SizedBox(height: AppSpacing.xs),
-                CheckboxListTile(
-                  key: OfflineModeSheet.acknowledgeKey,
-                  value: _acknowledged,
-                  onChanged: _busy
-                      ? null
-                      : (value) =>
-                            setState(() => _acknowledged = value ?? false),
-                  contentPadding: EdgeInsets.zero,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  title: const Text(
-                    'I understand my data stays only on this device',
+                AppPanel(
+                  glass: true,
+                  radius: AppRadii.md,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.xxs,
+                  ),
+                  child: CheckboxListTile(
+                    key: OfflineModeSheet.acknowledgeKey,
+                    value: _acknowledged,
+                    onChanged: _busy
+                        ? null
+                        : (value) =>
+                              setState(() => _acknowledged = value ?? false),
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    title: const Text(
+                      'I understand my data stays only on this device',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: AppSpacing.xs),
-                  Container(
+                  AppPanel(
+                    glass: true,
+                    radius: AppRadii.md,
                     padding: const EdgeInsets.all(AppSpacing.sm),
-                    decoration: BoxDecoration(
-                      color: scheme.errorContainer.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(AppRadii.md),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline_rounded, color: scheme.error, size: 20),
+                        const SizedBox(width: AppSpacing.xs),
+                        Expanded(
+                          child: Text(_error!, style: TextStyle(color: scheme.error)),
+                        ),
+                      ],
                     ),
-                    child: Text(_error!, style: TextStyle(color: scheme.error)),
                   ),
                 ],
                 const SizedBox(height: AppSpacing.md),
@@ -177,12 +192,20 @@ class _Point extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final effectiveColor = color ?? scheme.primary;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: color ?? scheme.primary),
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.xxs),
+            decoration: BoxDecoration(
+              color: effectiveColor.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 16, color: effectiveColor),
+          ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(

@@ -15,6 +15,7 @@ class SettingsProfileSection extends StatelessWidget {
     required this.onSignOut,
     this.offline = false,
     this.onUpgrade,
+    this.onEditName,
     super.key,
   });
 
@@ -25,6 +26,7 @@ class SettingsProfileSection extends StatelessWidget {
   /// instead of "Sign out" (which would strand the device-only wallet).
   final bool offline;
   final VoidCallback? onUpgrade;
+  final VoidCallback? onEditName;
 
   @override
   Widget build(BuildContext context) {
@@ -46,13 +48,37 @@ class SettingsProfileSection extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        user?.displayName ?? '1wallet account',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              user?.displayName ??
+                                  (offline
+                                      ? 'Offline wallet'
+                                      : '1wallet account'),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                          if (offline && onEditName != null) ...[
+                            const SizedBox(width: AppSpacing.xxs),
+                            InkWell(
+                              onTap: onEditName,
+                              borderRadius: BorderRadius.circular(AppRadii.sm),
+                              child: Padding(
+                                padding: const EdgeInsets.all(AppSpacing.xxxs),
+                                child: Icon(
+                                  Icons.edit_outlined,
+                                  size: 16,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       Text(
                         user?.email ?? 'Not signed in',

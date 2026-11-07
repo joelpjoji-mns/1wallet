@@ -8,6 +8,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import 'home_screen.dart';
 import 'home_widgets_extra.dart';
+import 'home_widgets_new.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -87,6 +88,16 @@ Widget buildHomeDashboardWidget({
       state: state,
     ),
     HomeDashboardWidgetId.netWorth => NetWorthHomeWidget(state: state),
+    HomeDashboardWidgetId.pendingReview => PendingReviewHomeWidget(state: state),
+    HomeDashboardWidgetId.savingsRate => SavingsRateHomeWidget(state: state),
+    HomeDashboardWidgetId.topMerchants => TopMerchantsHomeWidget(state: state),
+    HomeDashboardWidgetId.tagCloud => TagCloudHomeWidget(state: state),
+    HomeDashboardWidgetId.subscriptionRadar => SubscriptionRadarHomeWidget(state: state),
+    HomeDashboardWidgetId.safeToSpend => SafeToSpendHomeWidget(state: state),
+    HomeDashboardWidgetId.cashBurnRunway => CashBurnRunwayHomeWidget(state: state),
+    HomeDashboardWidgetId.noSpendStreak => NoSpendStreakHomeWidget(state: state),
+    HomeDashboardWidgetId.weekendWeekdayRatio => WeekendWeekdayRatioHomeWidget(state: state),
+    HomeDashboardWidgetId.cardGracePeriod => CardGracePeriodHomeWidget(state: state),
   };
 }
 
@@ -229,7 +240,7 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                   label: displayCurrency,
                   icon: Icons.currency_exchange_rounded,
                   onTap: forcedCurrency == null
-                      ? () => context.push('/currency-values')
+                      ? () => context.push('/currencies')
                       : null,
                 ),
             ],
@@ -2186,8 +2197,7 @@ class _CategoryItemWidget extends StatelessWidget {
                 const SizedBox(height: AppSpacing.xxs),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(AppRadii.pill),
-                  child: LinearProgressIndicator(
-                    minHeight: 5,
+                  child: GlassProgressIndicator.linear(
                     value: progress,
                     color: color,
                   ),
@@ -2298,8 +2308,7 @@ class _CategoryItemWidget extends StatelessWidget {
                           const SizedBox(height: AppSpacing.xxs),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(AppRadii.pill),
-                            child: LinearProgressIndicator(
-                              minHeight: 3,
+                            child: GlassProgressIndicator.linear(
                               value: item.amountMinor == 0
                                   ? 0.0
                                   : (sub.amountMinor / item.amountMinor).clamp(
@@ -2307,8 +2316,6 @@ class _CategoryItemWidget extends StatelessWidget {
                                       1.0,
                                     ),
                               color: (sub.color ?? color).withAlphaFactor(0.8),
-                              backgroundColor: scheme.surfaceContainerHighest
-                                  .withAlphaFactor(0.5),
                             ),
                           ),
                         ],
@@ -2883,11 +2890,9 @@ class CreditUtilizationWidget extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: AppSpacing.xs),
-                    LinearProgressIndicator(
+                    GlassProgressIndicator.linear(
                       value: limit > 0 ? util.clamp(0.0, 1.0) : 0.0,
                       color: acc.color ?? scheme.primary,
-                      minHeight: 16,
-                      borderRadius: BorderRadius.circular(AppRadii.xs),
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Row(

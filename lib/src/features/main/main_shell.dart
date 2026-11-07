@@ -378,15 +378,17 @@ class AppMainDrawer extends ConsumerWidget {
             updateState.status == UpdateStatus.idle
         ? '!'
         : null;
+    final profileUser = auth.profileUser;
     final profileName = auth.isLocalOnly && auth.localDisplayName != null
         ? auth.localDisplayName!
-        : _profileName(auth.user, ledger);
+        : _profileName(profileUser, ledger);
     final profileSubtitle = _profileSubtitle(
-      auth.user,
+      profileUser,
       ledger,
       offline: auth.isLocalOnly,
     );
-    final profileInitials = auth.user?.initials ?? _walletInitials(profileName);
+    final profileInitials =
+        profileUser?.initials ?? _walletInitials(profileName);
 
     Widget content = SafeArea(
       child: Container(
@@ -462,7 +464,7 @@ class AppMainDrawer extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         AuthUserAvatar(
-                          user: auth.user,
+                          user: profileUser,
                           radius: 26,
                           fallbackLabel: profileInitials,
                         ),
@@ -811,7 +813,8 @@ String _walletInitials(String source) {
       .where((part) => part.trim().isNotEmpty)
       .toList();
   if (parts.isEmpty) return '1W';
-  return parts.take(2).map((part) => part[0].toUpperCase()).join();
+  final letterMatch = RegExp(r'[a-zA-Z0-9]').firstMatch(parts.first);
+  return (letterMatch?.group(0) ?? parts.first[0]).toUpperCase();
 }
 
 class _KeepAliveWrapper extends StatefulWidget {

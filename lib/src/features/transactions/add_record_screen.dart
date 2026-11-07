@@ -780,9 +780,16 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                                       const EdgeInsets.symmetric(
                                                         vertical: AppSpacing.xs,
                                                       ),
-                                                  hintText: _tags.isNotEmpty
-                                                      ? 'Add tag...'
-                                                      : 'Add tags (e.g. Work, Vacation)',
+                                                  hintText:
+                                                      (!isFocused &&
+                                                              _tags.isEmpty &&
+                                                              textEditingController
+                                                                  .text
+                                                                  .isEmpty)
+                                                          ? null
+                                                          : (_tags.isNotEmpty
+                                                              ? 'Add tag...'
+                                                              : 'Add tags (e.g. Work, Vacation)'),
                                                   hintStyle: theme.textTheme
                                                       .bodyMedium
                                                       ?.copyWith(

@@ -1540,17 +1540,10 @@ class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xs),
-                    TextField(
+                    AppGlassTextField(
                       controller: _nameController,
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         hintText: 'e.g. Swiggy order batch',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppRadii.md),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md,
-                          vertical: AppSpacing.sm,
-                        ),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.md),
@@ -1627,15 +1620,9 @@ class _MergeTransactionsSheetState extends State<_MergeTransactionsSheet> {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xs),
-                    TextField(
+                    AppGlassTextField(
                       controller: _notesController,
                       maxLines: 3,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppRadii.md),
-                        ),
-                        contentPadding: const EdgeInsets.all(AppSpacing.md),
-                      ),
                     ),
                     const SizedBox(height: AppSpacing.lg),
 

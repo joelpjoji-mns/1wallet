@@ -114,6 +114,7 @@ class _PermissionsSetupScreenState
                   StaggeredFadeIn(
                     delay: const Duration(milliseconds: 200),
                     child: AppPanel(
+                      glass: true,
                       padding: EdgeInsets.zero,
                       child: Column(
                         children: [
@@ -195,10 +196,14 @@ class _PermissionsSetupScreenState
           Container(
             padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: BoxDecoration(
-              color: scheme.primaryContainer,
+              color: scheme.primary.withValues(alpha: 0.15),
               shape: BoxShape.circle,
+              border: Border.all(
+                color: scheme.primary.withValues(alpha: 0.3),
+                width: 1,
+              ),
             ),
-            child: Icon(icon, color: scheme.onPrimaryContainer, size: 24),
+            child: Icon(icon, color: scheme.primary, size: 24),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(

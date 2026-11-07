@@ -35,7 +35,7 @@ final _homeNotificationCountProvider = Provider.autoDispose<int>((ref) {
 });
 
 final _homeAuthUserProvider = Provider.autoDispose((ref) {
-  return ref.watch(authControllerProvider.select((state) => state.user));
+  return ref.watch(authControllerProvider.select((state) => state.profileUser));
 });
 
 final _homeWidgetOrderProvider =
@@ -342,5 +342,15 @@ String _homeWidgetLabel(HomeDashboardWidgetId id) {
     HomeDashboardWidgetId.currencyValues => 'Currency calculator',
     HomeDashboardWidgetId.creditUtilization => 'Credit Utilization',
     HomeDashboardWidgetId.netWorth => 'Net Worth',
+    HomeDashboardWidgetId.pendingReview => 'Pending Review',
+    HomeDashboardWidgetId.savingsRate => 'Savings Rate',
+    HomeDashboardWidgetId.topMerchants => 'Top Merchants',
+    HomeDashboardWidgetId.tagCloud => 'Tag Breakdown',
+    HomeDashboardWidgetId.subscriptionRadar => 'Subscriptions',
+    HomeDashboardWidgetId.safeToSpend => 'Daily Safe-to-Spend',
+    HomeDashboardWidgetId.cashBurnRunway => 'Cash Runway',
+    HomeDashboardWidgetId.noSpendStreak => 'No-Spend Days',
+    HomeDashboardWidgetId.weekendWeekdayRatio => 'Weekend vs Weekday',
+    HomeDashboardWidgetId.cardGracePeriod => 'Card Float Optimizer',
   };
 }

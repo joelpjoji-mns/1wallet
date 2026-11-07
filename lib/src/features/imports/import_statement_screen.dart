@@ -595,14 +595,11 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
                   : 'This statement is password-protected. Enter the password to unlock:',
             ),
             const SizedBox(height: AppSpacing.sm),
-            TextField(
+            AppGlassTextField(
               controller: controller,
               autofocus: true,
               obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Password',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: 'Password'),
               onSubmitted: (val) => Navigator.of(ctx).pop(val),
             ),
             const SizedBox(height: AppSpacing.md),
