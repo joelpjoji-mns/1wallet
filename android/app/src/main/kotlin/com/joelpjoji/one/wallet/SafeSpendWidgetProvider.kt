@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetPlugin
@@ -19,13 +20,13 @@ class SafeSpendWidgetProvider : AppWidgetProvider() {
         for (appWidgetId in appWidgetIds) {
             val views = RemoteViews(context.packageName, R.layout.widget_safe_spend)
 
-            val amount = widgetData.getString("widget_safe_amount", "$0.00")
-            val subtitle = widgetData.getString("widget_safe_subtitle", "Available for today")
-            val progress = widgetData.getInt("widget_safe_progress", 50)
-
-            views.setTextViewText(R.id.widget_safe_amount, amount)
-            views.setTextViewText(R.id.widget_safe_subtitle, subtitle)
-            views.setProgressBar(R.id.widget_safe_progress, 100, progress, false)
+            val bitmapPath = widgetData.getString("widget_safe_bitmap", null)
+            if (bitmapPath != null) {
+                val bitmap = BitmapFactory.decodeFile(bitmapPath)
+                if (bitmap != null) {
+                    views.setImageViewBitmap(R.id.widget_safe_spend_root, bitmap)
+                }
+            }
 
             val intent = Intent(context, MainActivity::class.java).apply {
                 action = Intent.ACTION_VIEW

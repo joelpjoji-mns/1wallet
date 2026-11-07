@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetPlugin
@@ -19,15 +20,13 @@ class WalletBalanceWidgetProvider : AppWidgetProvider() {
         for (appWidgetId in appWidgetIds) {
             val views = RemoteViews(context.packageName, R.layout.widget_balance)
 
-            val totalBalance = widgetData.getString("widget_total_balance", "$0.00")
-            val netWorth = widgetData.getString("widget_networth", "Net Worth")
-            val income = widgetData.getString("widget_income", "+$0.00")
-            val expense = widgetData.getString("widget_expense", "-$0.00")
-
-            views.setTextViewText(R.id.widget_total_balance, totalBalance)
-            views.setTextViewText(R.id.widget_networth_label, netWorth)
-            views.setTextViewText(R.id.widget_income_text, income)
-            views.setTextViewText(R.id.widget_expense_text, expense)
+            val bitmapPath = widgetData.getString("widget_balance_bitmap", null)
+            if (bitmapPath != null) {
+                val bitmap = BitmapFactory.decodeFile(bitmapPath)
+                if (bitmap != null) {
+                    views.setImageViewBitmap(R.id.widget_balance_root, bitmap)
+                }
+            }
 
             val intent = Intent(context, MainActivity::class.java).apply {
                 action = Intent.ACTION_VIEW

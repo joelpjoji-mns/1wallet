@@ -5,8 +5,10 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.widget.RemoteViews
+import es.antonborri.home_widget.HomeWidgetPlugin
 
 class QuickActionsWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(
@@ -14,35 +16,31 @@ class QuickActionsWidgetProvider : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
+        val widgetData = HomeWidgetPlugin.getData(context)
         for (appWidgetId in appWidgetIds) {
             val views = RemoteViews(context.packageName, R.layout.widget_quick_actions)
 
-            fun makePendingIntent(route: String, requestCode: Int): PendingIntent {
-                val intent = Intent(context, MainActivity::class.java).apply {
-                    action = Intent.ACTION_VIEW
-                    data = Uri.parse("onewallet://app$route")
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            val bitmapPath = widgetData.getString("widget_quick_actions_bitmap", null)
+            if (bitmapPath != null) {
+                val bitmap = BitmapFactory.decodeFile(bitmapPath)
+                if (bitmap != null) {
+                    views.setImageViewBitmap(R.id.widget_quick_actions_root, bitmap)
                 }
-                return PendingIntent.getActivity(
-                    context,
-                    requestCode,
-                    intent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
             }
 
-            views.setOnClickPendingIntent(
-                R.id.widget_action_add_expense,
-                makePendingIntent("/transactions/new?type=expense", appWidgetId * 10 + 1)
+            // Tapping the widget always opens the home screen
+            val intent = Intent(context, MainActivity::class.java).apply {
+                action = Intent.ACTION_VIEW
+                data = Uri.parse("onewallet://app/home")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                appWidgetId,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            views.setOnClickPendingIntent(
-                R.id.widget_action_add_income,
-                makePendingIntent("/transactions/new?type=income", appWidgetId * 10 + 2)
-            )
-            views.setOnClickPendingIntent(
-                R.id.widget_action_scan,
-                makePendingIntent("/transactions/scan", appWidgetId * 10 + 3)
-            )
+            views.setOnClickPendingIntent(R.id.widget_quick_actions_root, pendingIntent)
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }
