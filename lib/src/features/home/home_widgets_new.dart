@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -316,147 +317,6 @@ class SavingsRateHomeWidget extends ConsumerWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. Top Payees & Merchants Widget
-// ─────────────────────────────────────────────────────────────────────────────
-class TopMerchantsHomeWidget extends ConsumerWidget {
-  const TopMerchantsHomeWidget({required this.state, super.key});
-
-  final LedgerState state;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    final period = getHomeWidgetFilterForWidget(
-      state.preferences.homeWidgetFilters,
-      'topMerchants',
-    );
-    final range = homeWidgetDateRange(period);
-    final displayCurrency = state.preferences.displayCurrency.toUpperCase();
-
-    final merchantTotals = <String, ({int amountMinor, int count})>{};
-
-    for (final t in state.transactions) {
-      if (t.status == 'void' || t.status == 'scheduled' || t.status == 'paused') {
-        continue;
-      }
-      if (!expenseTypes.contains(t.type)) continue;
-      if (t.occurredAt.isBefore(range.start) || !t.occurredAt.isBefore(range.end)) {
-        continue;
-      }
-
-      final rawName = t.name?.trim();
-      final merchant = (rawName != null && rawName.isNotEmpty)
-          ? rawName
-          : (t.notes != null && t.notes!.trim().isNotEmpty
-              ? t.notes!.trim()
-              : 'Unknown Payee');
-
-      final converted = convertMoneyForDisplay(state, t.amount, displayCurrency);
-      final existing = merchantTotals[merchant] ?? (amountMinor: 0, count: 0);
-      merchantTotals[merchant] = (
-        amountMinor: existing.amountMinor + converted.amountMinor,
-        count: existing.count + 1,
-      );
-    }
-
-    final sorted = merchantTotals.entries.toList()
-      ..sort((a, b) => b.value.amountMinor.compareTo(a.value.amountMinor));
-    final topMerchants = sorted.take(4).toList();
-    final maxAmount = topMerchants.isNotEmpty
-        ? math.max(1, topMerchants.first.value.amountMinor)
-        : 1;
-
-    return HomeWidgetCard(
-      title: 'Top merchants',
-      subtitle: topMerchants.isEmpty
-          ? 'No payee records in $period'
-          : '${topMerchants.length} top spend vendors · $period',
-      icon: Icons.storefront_outlined,
-      iconColor: scheme.primary,
-      dateFilter: period,
-      onDateFilterChanged: (val) {
-        final newFilters = Map<String, String>.from(state.preferences.homeWidgetFilters);
-        newFilters['topMerchants'] = val;
-        ref.read(ledgerProvider.notifier).updatePreferencesWith(
-              (p) => p.copyWith(homeWidgetFilters: newFilters),
-            );
-      },
-      child: topMerchants.isEmpty
-          ? const EmptyState(
-              icon: Icons.storefront_outlined,
-              title: 'No merchant data',
-              body: 'Enter payee or merchant names on records to view vendor insights.',
-            )
-          : Column(
-              children: [
-                for (final item in topMerchants) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxs),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                item.key,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontWeight: FontWeight.w700),
-                              ),
-                            ),
-                            Text(
-                              '${item.value.count}x  ·  ',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                            ),
-                            PrivacyText(
-                              formatMoney(
-                                Money(
-                                  amountMinor: item.value.amountMinor,
-                                  currency: displayCurrency,
-                                ),
-                                state.preferences.locale,
-                              ),
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                color: scheme.onSurface,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: AppSpacing.xxs),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(AppRadii.pill),
-                          child: Container(
-                            height: 5,
-                            color: scheme.surfaceContainerHighest,
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: FractionallySizedBox(
-                                widthFactor: (item.value.amountMinor / maxAmount)
-                                    .clamp(0.02, 1.0),
-                                child: Container(
-                                  color: scheme.primary.withAlphaFactor(0.85),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (item != topMerchants.last)
-                    const Divider(height: AppSpacing.sm),
-                ],
-              ],
-            ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // 4. Tag Spending Breakdown Widget
 // ─────────────────────────────────────────────────────────────────────────────
 class TagCloudHomeWidget extends ConsumerWidget {
@@ -567,124 +427,6 @@ class TagCloudHomeWidget extends ConsumerWidget {
                       ],
                     ),
                   ),
-              ],
-            ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. Subscription Radar Widget
-// ─────────────────────────────────────────────────────────────────────────────
-class SubscriptionRadarHomeWidget extends ConsumerWidget {
-  const SubscriptionRadarHomeWidget({required this.state, super.key});
-
-  final LedgerState state;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    final displayCurrency = state.preferences.displayCurrency.toUpperCase();
-    final rules = state.preferences.futureGenerationRules ?? const [];
-
-    final recurringExpenses = rules
-        .where((r) => r.enabled && expenseTypes.contains(r.type))
-        .toList();
-
-    int totalMonthlyMinor = 0;
-    for (final rule in recurringExpenses) {
-      final converted = convertMoneyForDisplay(
-        state,
-        Money(amountMinor: rule.amountMinor, currency: rule.currency),
-        displayCurrency,
-      );
-      final monthlyAmount = switch (rule.frequency) {
-        'weekly' => (converted.amountMinor * 52 / 12).round(),
-        'biweekly' => (converted.amountMinor * 26 / 12).round(),
-        'quarterly' => (converted.amountMinor / 3).round(),
-        'yearly' => (converted.amountMinor / 12).round(),
-        _ => converted.amountMinor, // default monthly
-      };
-      totalMonthlyMinor += monthlyAmount;
-    }
-
-    final totalAnnualMinor = totalMonthlyMinor * 12;
-
-    return HomeWidgetCard(
-      title: 'Subscriptions',
-      subtitle: recurringExpenses.isEmpty
-          ? 'No active recurring commitments'
-          : '${recurringExpenses.length} recurring rules active',
-      icon: Icons.autorenew_rounded,
-      iconColor: scheme.primary,
-      actionLabel: 'Planner',
-      onAction: () => context.push('/planner'),
-      child: recurringExpenses.isEmpty
-          ? const EmptyState(
-              icon: Icons.autorenew_rounded,
-              title: 'No recurring subscriptions',
-              body: 'Add your recurring bills and subscriptions in Planner to track annual burn.',
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: HomeMetricTile(
-                        label: 'Monthly burn',
-                        value: maskMoneyIfPrivate(
-                          state,
-                          formatMoney(
-                            Money(
-                              amountMinor: totalMonthlyMinor,
-                              currency: displayCurrency,
-                            ),
-                            state.preferences.locale,
-                          ),
-                        ),
-                        icon: Icons.calendar_month_outlined,
-                        tone: MetricTone.danger,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Expanded(
-                      child: HomeMetricTile(
-                        label: 'Projected annual',
-                        value: maskMoneyIfPrivate(
-                          state,
-                          formatMoney(
-                            Money(
-                              amountMinor: totalAnnualMinor,
-                              currency: displayCurrency,
-                            ),
-                            state.preferences.locale,
-                          ),
-                        ),
-                        icon: Icons.schedule_rounded,
-                        tone: MetricTone.standard,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                for (final item in recurringExpenses.take(3)) ...[
-                  HomeDetailRow(
-                    icon: Icons.repeat_rounded,
-                    title: item.name,
-                    subtitle: 'Frequency: ${item.frequency}',
-                    trailing: maskMoneyIfPrivate(
-                      state,
-                      formatMoney(
-                        Money(amountMinor: item.amountMinor, currency: item.currency),
-                        state.preferences.locale,
-                      ),
-                    ),
-                    tone: MetricTone.danger,
-                  ),
-                  if (item != recurringExpenses.take(3).last)
-                    const Divider(height: AppSpacing.sm),
-                ],
               ],
             ),
     );
@@ -889,19 +631,37 @@ class CashBurnRunwayHomeWidget extends ConsumerWidget {
     }
 
     final dailyBurnMinor = (past30DaysExpenseMinor / 30).round();
+    final monthlyBurnMinor = (dailyBurnMinor * 30.4).round();
     final runwayDays = dailyBurnMinor > 0
         ? (totalLiquidMinor / dailyBurnMinor).round()
-        : 999;
-    final runwayMonths = (runwayDays / 30.4).toStringAsFixed(1);
+        : (totalLiquidMinor > 0 ? 999 : 0);
+    final runwayMonths = dailyBurnMinor > 0
+        ? (runwayDays / 30.4).toStringAsFixed(1)
+        : (totalLiquidMinor > 0 ? '∞' : '0.0');
+
+    // Visual gauge progress towards a healthy 6-month buffer (180 days)
+    final progress = totalLiquidMinor <= 0
+        ? 0.0
+        : (dailyBurnMinor <= 0 ? 1.0 : (runwayDays / 180.0).clamp(0.0, 1.0));
 
     final MetricTone runwayTone;
-    if (runwayDays >= 90) {
+    if (runwayDays >= 180 || (dailyBurnMinor == 0 && totalLiquidMinor > 0)) {
+      runwayTone = MetricTone.positive;
+    } else if (runwayDays >= 60) {
       runwayTone = MetricTone.positive;
     } else if (runwayDays >= 30) {
       runwayTone = MetricTone.warning;
     } else {
       runwayTone = MetricTone.danger;
     }
+
+    final statusText = runwayDays >= 180 || (dailyBurnMinor == 0 && totalLiquidMinor > 0)
+        ? 'Excellent emergency cushion (6+ months)'
+        : runwayDays >= 90
+            ? 'Healthy cushion (3–6 months)'
+            : runwayDays >= 30
+                ? 'Moderate buffer (< 3 months)'
+                : 'Low cash buffer (< 1 month)';
 
     return HomeWidgetCard(
       title: 'Cash runway',
@@ -926,7 +686,9 @@ class CashBurnRunwayHomeWidget extends ConsumerWidget {
                     ),
                     const SizedBox(height: AppSpacing.xxxs),
                     Text(
-                      '$runwayMonths Months',
+                      dailyBurnMinor == 0 && totalLiquidMinor > 0
+                          ? 'Indefinite'
+                          : '$runwayMonths Months',
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.w900,
                             letterSpacing: -0.5,
@@ -949,12 +711,45 @@ class CashBurnRunwayHomeWidget extends ConsumerWidget {
                   ),
                 ),
                 child: Text(
-                  '$runwayDays days',
+                  dailyBurnMinor == 0 && totalLiquidMinor > 0
+                      ? 'No burn'
+                      : '$runwayDays days',
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                     color: runwayTone.resolve(scheme),
                   ),
                 ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          // Buffer health progress bar
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    statusText,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: runwayTone.resolve(scheme),
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  Text(
+                    '${(progress * 100).round()}% of 6mo goal',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                        ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xxs),
+              GlassProgressIndicator.linear(
+                value: progress,
+                color: runwayTone.resolve(scheme),
               ),
             ],
           ),
@@ -989,6 +784,28 @@ class CashBurnRunwayHomeWidget extends ConsumerWidget {
                   icon: Icons.account_balance_wallet_outlined,
                   tone: MetricTone.positive,
                 ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Est. monthly burn',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+              ),
+              PrivacyText(
+                formatMoney(
+                  Money(amountMinor: monthlyBurnMinor, currency: displayCurrency),
+                  state.preferences.locale,
+                ),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
               ),
             ],
           ),

@@ -87,12 +87,9 @@ Widget buildHomeDashboardWidget({
     HomeDashboardWidgetId.creditUtilization => CreditUtilizationWidget(
       state: state,
     ),
-    HomeDashboardWidgetId.netWorth => NetWorthHomeWidget(state: state),
     HomeDashboardWidgetId.pendingReview => PendingReviewHomeWidget(state: state),
     HomeDashboardWidgetId.savingsRate => SavingsRateHomeWidget(state: state),
-    HomeDashboardWidgetId.topMerchants => TopMerchantsHomeWidget(state: state),
     HomeDashboardWidgetId.tagCloud => TagCloudHomeWidget(state: state),
-    HomeDashboardWidgetId.subscriptionRadar => SubscriptionRadarHomeWidget(state: state),
     HomeDashboardWidgetId.safeToSpend => SafeToSpendHomeWidget(state: state),
     HomeDashboardWidgetId.cashBurnRunway => CashBurnRunwayHomeWidget(state: state),
     HomeDashboardWidgetId.noSpendStreak => NoSpendStreakHomeWidget(state: state),
@@ -1853,10 +1850,22 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
         );
 
     final next = scheduled.take(4).toList();
+    final overdueCount = scheduled.where((t) {
+      final day = DateTime(t.occurredAt.year, t.occurredAt.month, t.occurredAt.day);
+      return day.isBefore(today);
+    }).length;
+    final dueTodayCount = scheduled.where((t) {
+      final day = DateTime(t.occurredAt.year, t.occurredAt.month, t.occurredAt.day);
+      return day.isAtSameMomentAs(today);
+    }).length;
 
     return HomeWidgetCard(
       title: 'Upcoming & due',
-      subtitle: 'Scheduled payments and bills',
+      subtitle: overdueCount > 0
+          ? '$overdueCount overdue · $dueTodayCount due today'
+          : dueTodayCount > 0
+              ? '$dueTodayCount payment${dueTodayCount > 1 ? 's' : ''} due today'
+              : 'Scheduled payments and bills',
       icon: Icons.event_available_outlined,
       iconColor: Theme.of(context).colorScheme.secondary,
       actionLabel: 'Open',
@@ -1884,9 +1893,11 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
                   label: 'Due soon',
                   value: '${scheduled.length}',
                   icon: Icons.event_busy_outlined,
-                  tone: scheduled.isEmpty
-                      ? MetricTone.standard
-                      : MetricTone.danger,
+                  tone: overdueCount > 0
+                      ? MetricTone.danger
+                      : scheduled.isEmpty
+                          ? MetricTone.standard
+                          : MetricTone.positive,
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),
@@ -1898,7 +1909,7 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
                     _formatDisplayBaseMoney(state, dueAmount),
                   ),
                   icon: Icons.payments_outlined,
-                  tone: MetricTone.danger,
+                  tone: overdueCount > 0 ? MetricTone.danger : MetricTone.standard,
                 ),
               ),
             ],
@@ -1913,17 +1924,172 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
           ] else ...[
             const SizedBox(height: AppSpacing.sm),
             for (final transaction in next) ...[
-              TransactionRow(
+              _UpcomingTransactionRow(
                 state: state,
                 transaction: transaction,
-                glass: false,
-                onTap: () => context.push('/transaction/${transaction.id}'),
+                today: today,
+                onTap: () => context.push('/recurring/${transaction.id}'),
               ),
               if (transaction != next.last)
                 const SizedBox(height: AppSpacing.xxs),
             ],
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _UpcomingTransactionRow extends StatelessWidget {
+  const _UpcomingTransactionRow({
+    required this.state,
+    required this.transaction,
+    required this.today,
+    required this.onTap,
+  });
+
+  final LedgerState state;
+  final TransactionRecord transaction;
+  final DateTime today;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final category = categoryById(state, transaction.categoryId);
+    final account = accountById(state, transaction.accountId);
+    final dueDay = DateTime(
+      transaction.occurredAt.year,
+      transaction.occurredAt.month,
+      transaction.occurredAt.day,
+    );
+    final daysUntilDue = dueDay.difference(today).inDays;
+    final isOverdue = daysUntilDue < 0;
+    final isToday = daysUntilDue == 0;
+
+    final (badgeText, badgeColor, badgeTextColor) = switch (daysUntilDue) {
+      < 0 => ('OVERDUE', scheme.errorContainer, scheme.onErrorContainer),
+      0 => ('TODAY', scheme.errorContainer, scheme.onErrorContainer),
+      1 => ('TOMORROW', scheme.tertiaryContainer, scheme.onTertiaryContainer),
+      _ => ('IN ${daysUntilDue}D', scheme.surfaceContainerHighest, scheme.onSurfaceVariant),
+    };
+
+    final title = (transaction.name != null && transaction.name!.trim().isNotEmpty)
+        ? transaction.name!.trim()
+        : (category?.name.trim().isNotEmpty == true)
+            ? category!.name.trim()
+            : (account?.name ?? 'Scheduled');
+
+    final amountText = formatMoney(
+      transaction.amount,
+      state.preferences.locale,
+    );
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        decoration: BoxDecoration(
+          color: isOverdue
+              ? scheme.error.withValues(alpha: 0.06)
+              : scheme.surfaceContainerLow.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          border: Border.all(
+            color: isOverdue
+                ? scheme.error.withValues(alpha: 0.3)
+                : scheme.outlineVariant.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: (categoryColor(category, context) ?? scheme.primary)
+                    .withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(AppRadii.sm),
+              ),
+              child: Icon(
+                category != null
+                    ? categoryIcon(category)
+                    : transactionIcon(transaction),
+                size: 20,
+                color: categoryColor(category, context) ?? scheme.primary,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: badgeColor,
+                          borderRadius: BorderRadius.circular(AppRadii.pill),
+                        ),
+                        child: Text(
+                          badgeText,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                            color: badgeTextColor,
+                          ),
+                        ),
+                      ),
+                      if (account != null) ...[
+                        const SizedBox(width: AppSpacing.xs),
+                        Expanded(
+                          child: Text(
+                            account.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            PrivacyText(
+              amountText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: expenseTypes.contains(transaction.type)
+                        ? scheme.error
+                        : scheme.primary,
+                  ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2795,32 +2961,35 @@ class CreditUtilizationWidget extends ConsumerWidget {
         .toList();
     final balances = accountBalanceMap(state);
 
-    final accountMetrics = creditAccounts.map((acc) {
-      final rawBal = convertMoneyForDisplay(
-        state,
-        accountBalanceFromMap(balances, acc),
-        state.preferences.displayCurrency,
-      ).amountMinor;
-      final balForDisplay = rawBal.abs();
-      final debt = rawBal < 0 ? -rawBal : 0;
+    final accountMetrics = creditAccounts
+        .map((acc) {
+          final rawBal = convertMoneyForDisplay(
+            state,
+            accountBalanceFromMap(balances, acc),
+            state.preferences.displayCurrency,
+          ).amountMinor;
+          final balForDisplay = rawBal.abs();
+          final debt = rawBal < 0 ? -rawBal : 0;
 
-      final limit = acc.creditLimit != null
-          ? convertMoneyForDisplay(
-              state,
-              acc.creditLimit!,
-              state.preferences.displayCurrency,
-            ).amountMinor
-          : 0;
-      final util = limit > 0 ? (debt / limit) : 0.0;
-      return (
-        account: acc,
-        balForDisplay: balForDisplay,
-        debt: debt,
-        limit: limit,
-        util: util,
-        hasLimit: limit > 0,
-      );
-    }).toList()
+          final limit = acc.creditLimit != null
+              ? convertMoneyForDisplay(
+                  state,
+                  acc.creditLimit!,
+                  state.preferences.displayCurrency,
+                ).amountMinor
+              : 0;
+          final util = limit > 0 ? (debt / limit) : 0.0;
+          return (
+            account: acc,
+            balForDisplay: balForDisplay,
+            debt: debt,
+            limit: limit,
+            util: util,
+            hasLimit: limit > 0,
+          );
+        })
+        .where((metric) => metric.util > 0)
+        .toList()
       ..sort((a, b) {
         // Sort by utilisation descending: highest percentage first
         if (a.hasLimit && !b.hasLimit) {
@@ -2848,10 +3017,14 @@ class CreditUtilizationWidget extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (accountMetrics.isEmpty)
-              const EmptyState(
+              EmptyState(
                 icon: Icons.credit_card_outlined,
-                title: 'No credit accounts.',
-                body: 'Credit cards you add will appear here.',
+                title: creditAccounts.isEmpty
+                    ? 'No credit accounts.'
+                    : 'No credit cards in use.',
+                body: creditAccounts.isEmpty
+                    ? 'Credit cards you add will appear here.'
+                    : 'Cards with zero utilization are hidden.',
               ),
             ...accountMetrics.map((metric) {
               final acc = metric.account;

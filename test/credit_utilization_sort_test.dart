@@ -76,17 +76,52 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    // Verify all 3 cards are rendered
+    // Verify cards with utilization > 0 are rendered, zero utilization is hidden
     expect(find.text('Card High 80%'), findsOneWidget);
     expect(find.text('Card Low 10%'), findsOneWidget);
-    expect(find.text('Card Zero 0%'), findsOneWidget);
+    expect(find.text('Card Zero 0%'), findsNothing);
 
-    // Verify ordering: High (80%) must appear before Low (10%) and Zero (0%)
+    // Verify ordering: High (80%) must appear before Low (10%)
     final highTop = tester.getTopLeft(find.text('Card High 80%')).dy;
     final lowTop = tester.getTopLeft(find.text('Card Low 10%')).dy;
-    final zeroTop = tester.getTopLeft(find.text('Card Zero 0%')).dy;
 
     expect(highTop, lessThan(lowTop), reason: '80% card should appear before 10% card');
-    expect(lowTop, lessThan(zeroTop), reason: '10% card should appear before 0% card');
+  });
+
+  testWidgets('CreditUtilizationWidget shows empty state when all cards have zero utilization', (tester) async {
+    Money usd(int minor) => Money(amountMinor: minor, currency: 'USD');
+
+    final cardZeroUtil = Account(
+      id: 'card-zero',
+      name: 'Card Zero 0%',
+      type: 'credit_card',
+      currency: 'USD',
+      openingBalance: usd(0),
+      creditLimit: usd(50000),
+    );
+
+    final base = sampleLedgerState();
+    final ledgerState = base.copyWith(
+      accounts: [cardZeroUtil],
+      transactions: [],
+      preferences: base.preferences.copyWith(displayCurrency: 'USD', locale: 'en_US'),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ProviderScope(
+            child: SingleChildScrollView(
+              child: CreditUtilizationWidget(state: ledgerState),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Card Zero 0%'), findsNothing);
+    expect(find.text('No credit cards in use.'), findsOneWidget);
   });
 }

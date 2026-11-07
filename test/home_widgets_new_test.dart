@@ -87,46 +87,6 @@ void main() {
       expect(find.text('60%'), findsOneWidget); // (1000 - 400) / 1000 = 60%
     });
 
-    testWidgets('3. TopMerchantsHomeWidget groups by payee and ranks highest spend first', (tester) async {
-      final now = DateTime.now();
-      final base = sampleLedgerState();
-      final sampleTx = base.transactions.first;
-
-      final txShell = sampleTx.copyWith(
-        id: 'tx-1',
-        name: 'Shell Petrol',
-        type: 'expense',
-        status: 'cleared',
-        amount: usd(7500), // $75
-        occurredAt: now,
-      );
-      final txGrab = sampleTx.copyWith(
-        id: 'tx-2',
-        name: 'GrabFood Delivery',
-        type: 'expense',
-        status: 'cleared',
-        amount: usd(12000), // $120
-        occurredAt: now,
-      );
-
-      final state = base.copyWith(
-        transactions: [txShell, txGrab],
-        preferences: base.preferences.copyWith(displayCurrency: 'USD', locale: 'en_US'),
-      );
-
-      await tester.pumpWidget(buildTestApp(TopMerchantsHomeWidget(state: state)));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Top merchants'), findsOneWidget);
-      expect(find.text('GrabFood Delivery'), findsOneWidget);
-      expect(find.text('Shell Petrol'), findsOneWidget);
-
-      // Verify GrabFood ($120) appears higher than Shell ($75)
-      final grabTop = tester.getTopLeft(find.text('GrabFood Delivery')).dy;
-      final shellTop = tester.getTopLeft(find.text('Shell Petrol')).dy;
-      expect(grabTop, lessThan(shellTop));
-    });
-
     testWidgets('4. TagCloudHomeWidget aggregates and displays custom tag chips', (tester) async {
       final now = DateTime.now();
       final base = sampleLedgerState();
@@ -160,42 +120,6 @@ void main() {
       expect(find.text('Tag breakdown'), findsOneWidget);
       expect(find.text('#dining'), findsOneWidget);
       expect(find.text('#weekend'), findsOneWidget);
-    });
-
-    testWidgets('5. SubscriptionRadarHomeWidget calculates monthly and annual commitments', (tester) async {
-      final now = DateTime.now();
-      final base = sampleLedgerState();
-
-      final ruleNetflix = FutureGenerationRule(
-        id: 'rule-netflix',
-        name: 'Netflix Subscription',
-        enabled: true,
-        type: 'expense',
-        accountId: 'acc-bank',
-        amountMinor: 2000, // $20/month
-        currency: 'USD',
-        frequency: 'monthly',
-        interval: 1,
-        startsOn: now,
-        createdAt: now,
-        updatedAt: now,
-      );
-
-      final state = base.copyWith(
-        preferences: base.preferences.copyWith(
-          displayCurrency: 'USD',
-          locale: 'en_US',
-          futureGenerationRules: [ruleNetflix],
-        ),
-      );
-
-      await tester.pumpWidget(buildTestApp(SubscriptionRadarHomeWidget(state: state)));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Subscriptions'), findsOneWidget);
-      expect(find.text('Netflix Subscription'), findsOneWidget);
-      expect(find.text('Monthly burn'), findsOneWidget);
-      expect(find.text('Projected annual'), findsOneWidget);
     });
 
     testWidgets('6. SafeToSpendHomeWidget renders daily allowance metrics', (tester) async {
@@ -307,9 +231,7 @@ void main() {
       final newWidgetIds = [
         HomeDashboardWidgetId.pendingReview,
         HomeDashboardWidgetId.savingsRate,
-        HomeDashboardWidgetId.topMerchants,
         HomeDashboardWidgetId.tagCloud,
-        HomeDashboardWidgetId.subscriptionRadar,
         HomeDashboardWidgetId.safeToSpend,
         HomeDashboardWidgetId.cashBurnRunway,
         HomeDashboardWidgetId.noSpendStreak,

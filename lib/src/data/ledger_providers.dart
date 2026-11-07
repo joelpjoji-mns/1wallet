@@ -1685,6 +1685,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     bool? isExcludedFromReports,
     String? originalTransactionId,
     String? postMode,
+    List<TransactionAttachment>? attachments,
   }) => _runMutation(
     () => _upsertTransaction(
       id: id,
@@ -1716,6 +1717,7 @@ class LedgerController extends StateNotifier<LedgerState> {
       isExcludedFromReports: isExcludedFromReports,
       originalTransactionId: originalTransactionId,
       postMode: postMode,
+      attachments: attachments,
     ),
   );
 
@@ -1749,6 +1751,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     bool? isExcludedFromReports,
     String? originalTransactionId,
     String? postMode,
+    List<TransactionAttachment>? attachments,
   }) async {
     final sourceAccount = accountById(state, accountId);
     if (sourceAccount == null) {
@@ -1871,7 +1874,7 @@ class LedgerController extends StateNotifier<LedgerState> {
       recurrenceLimit: clearRecurrenceLimit
           ? null
           : (recurrenceLimit ?? existing?.recurrenceLimit),
-      attachments: existing?.attachments ?? const [],
+      attachments: attachments ?? existing?.attachments ?? const [],
       tags: tags ?? existing?.tags ?? const [],
       isReimbursable: existing?.isReimbursable ?? false,
       isTaxDeductible: existing?.isTaxDeductible ?? false,
@@ -2148,6 +2151,49 @@ class LedgerController extends StateNotifier<LedgerState> {
       occurredAt: existing.occurredAt,
       recurrenceFrequency: existing.recurrenceFrequency,
       attachments: [...existing.attachments, attachment],
+      isReimbursable: existing.isReimbursable,
+      isTaxDeductible: existing.isTaxDeductible,
+      isExcludedFromReports: existing.isExcludedFromReports,
+      sourceConfidence: existing.sourceConfidence,
+      externalRef: existing.externalRef,
+      originalTransactionId: existing.originalTransactionId,
+    );
+    transactions[index] = updated;
+    await _commit(state.copyWith(transactions: transactions));
+  });
+
+  Future<void> removeAttachment(
+    String transactionId,
+    String attachmentId,
+  ) => _runMutation(() async {
+    final transactions = [...state.transactions];
+    final index = transactions.indexWhere((item) => item.id == transactionId);
+    if (index == -1) throw StateError('Transaction not found.');
+    final existing = transactions[index];
+    final updated = TransactionRecord(
+      id: existing.id,
+      type: existing.type,
+      status: existing.status,
+      source: existing.source,
+      accountId: existing.accountId,
+      counterAccountId: existing.counterAccountId,
+      amount: existing.amount,
+      baseAmount: existing.baseAmount,
+      counterAmount: existing.counterAmount,
+      originalAmount: existing.originalAmount,
+      fxRate: existing.fxRate,
+      originalFxRate: existing.originalFxRate,
+      categoryId: existing.categoryId,
+      locationLabel: existing.locationLabel,
+      paymentMethod: existing.paymentMethod,
+      name: existing.name,
+      notes: existing.notes,
+      importBatchId: existing.importBatchId,
+      occurredAt: existing.occurredAt,
+      recurrenceFrequency: existing.recurrenceFrequency,
+      attachments: existing.attachments
+          .where((att) => att.id != attachmentId)
+          .toList(),
       isReimbursable: existing.isReimbursable,
       isTaxDeductible: existing.isTaxDeductible,
       isExcludedFromReports: existing.isExcludedFromReports,

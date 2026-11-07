@@ -150,7 +150,7 @@ class BottomIslandNavBar extends StatelessWidget {
                         right: 0,
                         bottom: compactAction
                             ? (AppSizes.bottomBar - 64) / 2
-                            : AppSizes.bottomBarContentHeight + 16,
+                            : AppSizes.bottomBarContentHeight + 8,
                         child: AnimatedOpacity(
                           duration: const Duration(milliseconds: 180),
                           opacity: 1.0,

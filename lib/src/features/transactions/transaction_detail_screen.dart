@@ -12,6 +12,7 @@ import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/privacy_text.dart';
 import '../common/route_scaffold.dart';
+import 'attachment_thumbnail.dart';
 
 class TransactionDetailScreen extends ConsumerStatefulWidget {
   const TransactionDetailScreen({required this.transactionId, super.key});
@@ -359,15 +360,35 @@ class _TransactionDetailScreenState
                 ),
                 if (transaction.attachments.isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.md),
-                  for (final attachment in transaction.attachments) ...[
-                    InfoRow(
-                      icon: Icons.attach_file_outlined,
-                      label: attachment.source,
-                      value: attachment.name,
-                    ),
-                    if (attachment != transaction.attachments.last)
-                      const Divider(height: AppSpacing.md),
-                  ],
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [
+                      for (final attachment in transaction.attachments)
+                        AttachmentThumbnail(
+                          attachment: attachment,
+                          showDelete: true,
+                          onDelete: () async {
+                            final confirmed = await showAppConfirmDialog(
+                              context,
+                              title: 'Delete photo',
+                              message:
+                                  'Are you sure you want to delete this attachment?',
+                              confirmLabel: 'Delete',
+                              destructive: true,
+                            );
+                            if (confirmed == true && mounted) {
+                              await ref
+                                  .read(ledgerProvider.notifier)
+                                  .removeAttachment(
+                                    transaction.id,
+                                    attachment.id,
+                                  );
+                            }
+                          },
+                        ),
+                    ],
+                  ),
                 ],
               ],
             ),

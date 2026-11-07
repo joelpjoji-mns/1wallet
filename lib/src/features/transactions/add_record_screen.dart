@@ -22,6 +22,7 @@ import '../../widgets/app_kit.dart';
 import '../common/route_scaffold.dart';
 import '../common/category_hierarchy_picker.dart';
 import '../common/full_screen_picker.dart';
+import 'attachment_thumbnail.dart';
 
 class AddRecordScreen extends ConsumerStatefulWidget {
   const AddRecordScreen({
@@ -73,6 +74,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
   bool _localAmountEdited = false;
   bool _counterAmountEdited = false;
   String? _status;
+  final _attachments = <TransactionAttachment>[];
 
   @override
   void initState() {
@@ -1011,6 +1013,129 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                             ),
                           ),
                         ),
+                        const SizedBox(height: AppSpacing.sm),
+                        // Attached photos
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md,
+                            vertical: AppSpacing.sm,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerLow
+                                .withAlphaFactor(0.4),
+                            borderRadius: BorderRadius.circular(AppRadii.lg),
+                            border: Border.all(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .outlineVariant
+                                  .withAlphaFactor(0.2),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.photo_library_outlined,
+                                    size: 18,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: AppSpacing.xs),
+                                  Text(
+                                    'Attached photos',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface,
+                                        ),
+                                  ),
+                                  const Spacer(),
+                                  PopupMenuButton<ImageSource>(
+                                    tooltip: 'Add photo',
+                                    icon: Icon(
+                                      Icons.add_photo_alternate_outlined,
+                                      size: 20,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary,
+                                    ),
+                                    onSelected: _addPhotoAttachment,
+                                    itemBuilder: (context) => [
+                                      const PopupMenuItem(
+                                        value: ImageSource.camera,
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.camera_alt_outlined),
+                                            SizedBox(width: AppSpacing.xs),
+                                            Text('Take photo'),
+                                          ],
+                                        ),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: ImageSource.gallery,
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.image_outlined),
+                                            SizedBox(width: AppSpacing.xs),
+                                            Text('Choose from gallery'),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              if (_attachments.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: AppSpacing.xs,
+                                  ),
+                                  child: Text(
+                                    'No photos attached yet.',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                        ),
+                                  ),
+                                )
+                              else
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: AppSpacing.xs,
+                                  ),
+                                  child: Wrap(
+                                    spacing: AppSpacing.sm,
+                                    runSpacing: AppSpacing.sm,
+                                    children: [
+                                      for (int i = 0; i < _attachments.length; i++)
+                                        AttachmentThumbnail(
+                                          attachment: _attachments[i],
+                                          showDelete: true,
+                                          onDelete: () {
+                                            setState(() {
+                                              _attachments.removeAt(i);
+                                            });
+                                          },
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
                         const SizedBox(height: AppSpacing.md),
                       ],
                     ),
@@ -1147,11 +1272,40 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
           );
         }
         if (fields.merchant != null) _notesController.text = fields.merchant!;
+        _attachments.add(
+          TransactionAttachment(
+            id: 'att-${DateTime.now().millisecondsSinceEpoch}',
+            source: source == ImageSource.camera ? 'camera' : 'library',
+            name: file.name,
+            uri: file.path,
+          ),
+        );
       });
     } catch (_) {
     } finally {
       if (mounted) setState(() => _isScanning = false);
     }
+  }
+
+  Future<void> _addPhotoAttachment(ImageSource source) async {
+    final picker = ImagePicker();
+    final file = await picker.pickImage(
+      source: source,
+      maxWidth: 1920,
+      maxHeight: 1920,
+      imageQuality: 85,
+    );
+    if (file == null) return;
+    setState(() {
+      _attachments.add(
+        TransactionAttachment(
+          id: 'att-${DateTime.now().millisecondsSinceEpoch}',
+          source: source == ImageSource.camera ? 'camera' : 'library',
+          name: file.name,
+          uri: file.path,
+        ),
+      );
+    });
   }
 
   Future<void> _showAccountPicker(bool counter) async {
@@ -1431,6 +1585,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
             occurredAt: _occurredAt,
             originalTransactionId:
                 widget.plannedId ?? editingTransaction?.originalTransactionId,
+            attachments: _attachments,
           );
 
       if (plannedTransaction != null) {
@@ -1571,6 +1726,9 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       );
       _occurredAt = source.occurredAt.toLocal();
       _status = (tx == null && planned != null) ? 'cleared' : source.status;
+      _attachments
+        ..clear()
+        ..addAll(source.attachments);
     }
   }
 
