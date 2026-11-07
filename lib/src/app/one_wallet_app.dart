@@ -35,6 +35,20 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
   @override
   void initState() {
     super.initState();
+    _notificationRouteHandler = (route) {
+      if (mounted) {
+        _pendingNotificationRoute = route;
+        _tryPushPendingRoute();
+      }
+    };
+    NotificationService.onNotificationTapped = _notificationRouteHandler;
+    NotificationService.checkPendingNotificationLaunch((route) {
+      if (mounted) {
+        _pendingNotificationRoute = route;
+        _tryPushPendingRoute();
+      }
+    });
+
     _listener = AppLifecycleListener(onStateChange: _onStateChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
@@ -63,13 +77,6 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
         _tryPushPendingRoute();
       }
     });
-    _notificationRouteHandler = (route) {
-      if (mounted) {
-        _pendingNotificationRoute = route;
-        _tryPushPendingRoute();
-      }
-    };
-    NotificationService.onNotificationTapped = _notificationRouteHandler;
   }
 
   void _tryPushPendingRoute() {

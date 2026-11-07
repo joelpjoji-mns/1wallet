@@ -86,7 +86,7 @@ class _MainShellState extends ConsumerState<MainShell>
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(exchangeRateServiceProvider).refreshRatesIfStale();
-      ref.read(appUpdateProvider.notifier).checkForUpdates();
+      ref.read(appUpdateProvider.notifier).checkForUpdates(force: true);
     });
     // The redirect that follows an offline → Google upgrade replaces the page
     // stack (closing the upgrade sheet), so confirm the result here.
@@ -377,10 +377,7 @@ class AppMainDrawer extends ConsumerWidget {
     final upcomingPlannedCount = _upcomingPlannedCount(ledger);
     final syncBadge = _syncBadge(sync);
     final updatesBadge =
-        updateState.latestRelease != null &&
-            updateState.status == UpdateStatus.idle
-        ? '!'
-        : null;
+        updateState.latestRelease != null ? '!' : null;
     final profileUser = auth.profileUser;
     final profileName = auth.isLocalOnly && auth.localDisplayName != null
         ? auth.localDisplayName!

@@ -308,6 +308,7 @@ class AppScreen extends StatelessWidget {
     required this.child,
     super.key,
     this.onMenuPressed,
+    this.menuIndicator = false,
     this.actions = const [],
     this.padding = const EdgeInsets.fromLTRB(
       AppSpacing.md,
@@ -323,6 +324,7 @@ class AppScreen extends StatelessWidget {
   final String title;
   final Widget child;
   final VoidCallback? onMenuPressed;
+  final bool menuIndicator;
   final List<Widget> actions;
   final EdgeInsetsGeometry padding;
   final bool scrollable;
@@ -384,6 +386,7 @@ class AppScreen extends StatelessWidget {
                       onMenuPressed: isDesktop
                           ? null
                           : onMenuPressed, // Hide menu button on desktop since drawer is persistent
+                      menuIndicator: menuIndicator,
                       actions: actions,
                     ),
                   ),
@@ -458,11 +461,13 @@ class AppHeader extends StatelessWidget {
     required this.title,
     super.key,
     this.onMenuPressed,
+    this.menuIndicator = false,
     this.actions = const [],
   });
 
   final String title;
   final VoidCallback? onMenuPressed;
+  final bool menuIndicator;
   final List<Widget> actions;
 
   @override
@@ -478,7 +483,10 @@ class AppHeader extends StatelessWidget {
         ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
       ),
       leading: onMenuPressed != null
-          ? AppMenuAction(onPressed: onMenuPressed!)
+          ? AppMenuAction(
+              onPressed: onMenuPressed!,
+              showIndicator: menuIndicator,
+            )
           : canPop
           ? const AppBackAction()
           : null,
@@ -497,10 +505,13 @@ class AppHeader extends StatelessWidget {
 /// Combines a base accessibility label with a pending-badge count so screen
 /// readers announce e.g. "Open menu, 3 pending" instead of leaving the badge
 /// number as a disconnected, context-less text node.
-String? _headerButtonSemanticLabel(String? label, int? badge) {
+String? _headerButtonSemanticLabel(String? label, int? badge, {bool showIndicator = false}) {
   final count = badge ?? 0;
   if (label == null) return null;
-  if (count <= 0) return label;
+  if (count <= 0) {
+    if (showIndicator) return '$label, update available';
+    return label;
+  }
   return '$label, $count pending';
 }
 
@@ -509,6 +520,7 @@ class GlassHeaderButton extends StatelessWidget {
     required this.icon,
     required this.onPressed,
     this.badge,
+    this.showIndicator = false,
     this.semanticLabel,
     super.key,
   });
@@ -516,6 +528,7 @@ class GlassHeaderButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onPressed;
   final int? badge;
+  final bool showIndicator;
 
   /// Accessibility label announced by screen readers (e.g. "Open menu").
   /// Without this, `GlassIconButton` exposes an empty label and the button
@@ -527,20 +540,30 @@ class GlassHeaderButton extends StatelessWidget {
     icon: icon,
     onPressed: onPressed,
     badge: badge,
+    showIndicator: showIndicator,
     semanticLabel: semanticLabel,
   );
 }
 
 class AppMenuAction extends StatelessWidget {
-  const AppMenuAction({required this.onPressed, super.key});
+  const AppMenuAction({
+    required this.onPressed,
+    this.badge,
+    this.showIndicator = false,
+    super.key,
+  });
 
   final VoidCallback onPressed;
+  final int? badge;
+  final bool showIndicator;
 
   @override
   Widget build(BuildContext context) {
     return GlassHeaderButton(
       icon: Icons.menu_rounded,
       onPressed: onPressed,
+      badge: badge,
+      showIndicator: showIndicator,
       semanticLabel: 'Open menu',
     );
   }
@@ -552,6 +575,7 @@ class HeaderIconButton extends StatelessWidget {
     required this.onPressed,
     super.key,
     this.badge,
+    this.showIndicator = false,
     this.semanticLabel,
     this.tooltip,
     this.loading = false,
@@ -561,6 +585,7 @@ class HeaderIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onPressed;
   final int? badge;
+  final bool showIndicator;
   final bool loading;
 
   /// Tints the icon with the error colour (e.g. delete-selection actions).
@@ -607,6 +632,7 @@ class HeaderIconButton extends StatelessWidget {
               semanticLabel: _headerButtonSemanticLabel(
                 semanticLabel,
                 badgeCount,
+                showIndicator: showIndicator,
               ),
             ),
           ),
@@ -633,6 +659,25 @@ class HeaderIconButton extends StatelessWidget {
                       color: Theme.of(context).colorScheme.onError,
                       fontWeight: FontWeight.w800,
                       height: 1.1,
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else if (showIndicator)
+            Positioned(
+              right: 10,
+              top: 10,
+              child: ExcludeSemantics(
+                child: Container(
+                  width: 9,
+                  height: 9,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.error,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.surface,
+                      width: 1.5,
                     ),
                   ),
                 ),

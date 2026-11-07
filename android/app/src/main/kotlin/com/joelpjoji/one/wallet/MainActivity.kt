@@ -41,6 +41,8 @@ class MainActivity : FlutterFragmentActivity() {
             if (dataUri.host == "review") return "/review"
             if (dataUri.host == "sync") return "/sync"
             if (dataUri.host == "updates") return "/updates"
+            val hostPath = dataUri.host ?: ""
+            if (hostPath.isNotBlank()) return "/$hostPath"
         }
         return null
     }

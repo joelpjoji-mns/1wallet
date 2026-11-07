@@ -139,7 +139,31 @@ class NotificationReceiver : NotificationListenerService() {
             }
             if (latestCode > currentCode && latestCode > lastNotified) {
                 showAppUpdateNotification(context, latestName)
-                prefs.edit().putLong("flutter.lastNotifiedVersionCode.stable", latestCode.toLong()).apply()
+                val updateJson = org.json.JSONObject().apply {
+                    put("id", "stable-$latestCode")
+                    put("platform", "android")
+                    put("channel", "stable")
+                    put("status", "published")
+                    put("versionName", latestName)
+                    put("versionCode", latestCode)
+                    put("runtimeVersion", "2.1.0")
+                    put("releaseType", "full")
+                    put("requirement", "optional")
+                    put("mandatory", false)
+                    put("minimumSupportedVersionCode", 200000)
+                    put("publishedAt", java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply {
+                        timeZone = java.util.TimeZone.getTimeZone("UTC")
+                    }.format(java.util.Date()))
+                    put("changelog", org.json.JSONObject().apply {
+                        put("newFeatures", org.json.JSONArray().put("New update $latestName is ready to install."))
+                        put("bugFixes", org.json.JSONArray())
+                        put("notes", org.json.JSONArray())
+                    })
+                }
+                prefs.edit()
+                    .putLong("flutter.lastNotifiedVersionCode.stable", latestCode.toLong())
+                    .putString("flutter.cached_latest_release_json", updateJson.toString())
+                    .apply()
             }
         }
 
@@ -161,7 +185,7 @@ class NotificationReceiver : NotificationListenerService() {
                 val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
                     putExtra("flutter_route", "/updates")
                     addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                    data = android.net.Uri.parse("onewallet://updates?ts=${System.currentTimeMillis()}")
+                    data = android.net.Uri.parse("onewallet://app/updates?ts=${System.currentTimeMillis()}")
                 }
                 val reqCode = (System.currentTimeMillis() % 100000).toInt() + 5000
                 val pendingIntent = PendingIntent.getActivity(

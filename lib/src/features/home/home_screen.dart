@@ -9,6 +9,7 @@ import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/user_identity_widgets.dart';
 import '../notifications/notification_engine.dart';
+import '../updates/app_update_provider.dart';
 import 'home_widget_card.dart';
 import 'home_widget_models.dart';
 import 'home_widgets.dart';
@@ -66,10 +67,14 @@ class HomeScreen extends ConsumerWidget {
     final widgetOrder = ref.watch(_homeWidgetOrderProvider);
     final user = ref.watch(_homeAuthUserProvider);
     final reorderMode = ref.watch(homeWidgetReorderModeProvider);
+    final hasUpdate = ref.watch(
+      appUpdateProvider.select((s) => s.latestRelease != null),
+    );
 
     return AppScreen(
       title: '1Wallet',
       onMenuPressed: onMenuPressed,
+      menuIndicator: hasUpdate,
       actions: [
         if (reorderMode)
           HeaderIconButton(
