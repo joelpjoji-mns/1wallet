@@ -107,7 +107,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/home', redirect: (context, state) => '/'),
       GoRoute(path: '/dashboard', redirect: (context, state) => '/'),
-      GoRoute(path: '/transactions', redirect: (context, state) => '/'),
+      GoRoute(path: '/transactions', redirect: (context, state) => '/?tab=1'),
       GoRoute(path: '/wallets', redirect: (context, state) => '/accounts'),
       GoRoute(path: '/budgets/new', redirect: (context, state) => '/widgets'),
       GoRoute(path: '/goals/new', redirect: (context, state) => '/widgets'),
@@ -133,13 +133,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/',
-        builder: (context, state) => const AppGlassPage(child: MainShell()),
+        builder: (context, state) {
+          final tabStr = state.uri.queryParameters['tab'];
+          final initialTab = int.tryParse(tabStr ?? '0') ?? 0;
+          return AppGlassPage(child: MainShell(initialTab: initialTab));
+        },
       ),
+      GoRoute(path: '/transactions/new', redirect: (context, state) {
+        final query = state.uri.query.isNotEmpty ? '?${state.uri.query}' : '';
+        return '/add$query';
+      }),
+      GoRoute(path: '/transactions/scan', redirect: (context, state) => '/add?scan=1'),
+      GoRoute(path: '/calendar', redirect: (context, state) => '/?tab=2'),
       GoRoute(
         path: '/add',
         builder: (context, state) {
           final tabStr = state.uri.queryParameters['tab'];
           final initialTab = int.tryParse(tabStr ?? '0') ?? 0;
+          final type = state.uri.queryParameters['type'];
+          final autoScan = state.uri.queryParameters['scan'] == '1';
           return AppGlassPage(
             child: AddRecordScreen(
               transactionId: state.uri.queryParameters['transactionId'],
@@ -148,6 +160,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               captureCandidateId:
                   state.uri.queryParameters['captureCandidateId'],
               initialTab: initialTab,
+              initialType: type,
+              autoScan: autoScan,
             ),
           );
         },

@@ -32,6 +32,8 @@ class AddRecordScreen extends ConsumerStatefulWidget {
     this.plannedId,
     this.captureCandidateId,
     this.initialTab = 0,
+    this.initialType,
+    this.autoScan = false,
   });
 
   final String? transactionId;
@@ -39,6 +41,8 @@ class AddRecordScreen extends ConsumerStatefulWidget {
   final String? plannedId;
   final String? captureCandidateId;
   final int initialTab;
+  final String? initialType;
+  final bool autoScan;
 
   @override
   ConsumerState<AddRecordScreen> createState() => _AddRecordScreenState();
@@ -79,8 +83,19 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialType != null &&
+        (widget.initialType == 'expense' ||
+            widget.initialType == 'income' ||
+            widget.initialType == 'transfer')) {
+      _type = widget.initialType!;
+    }
     _accountId = widget.initialAccountId;
     _tagFocusNode.addListener(_onTagFocusChanged);
+    if (widget.autoScan) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _scanReceipt(ImageSource.camera);
+      });
+    }
   }
 
   void _triggerTagOptions() {

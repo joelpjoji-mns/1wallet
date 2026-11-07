@@ -5,7 +5,8 @@
     android:initialLayout="@layout/widget_recent_transactions"
     android:minWidth="250dp"
     android:minHeight="110dp"
-    android:previewImage="@mipmap/ic_launcher"
+    android:previewImage="@drawable/widget_preview_default"
+    android:previewLayout="@layout/widget_recent_transactions"
     android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="1800000"
     android:widgetCategory="home_screen" />

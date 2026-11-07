@@ -29,7 +29,9 @@ import '../updates/app_update_provider.dart';
 import '../../widgets/app_kit.dart';
 
 class MainShell extends ConsumerStatefulWidget {
-  const MainShell({super.key});
+  const MainShell({this.initialTab = 0, super.key});
+
+  final int initialTab;
 
   @override
   ConsumerState<MainShell> createState() => _MainShellState();
@@ -39,7 +41,7 @@ class _MainShellState extends ConsumerState<MainShell>
     with WidgetsBindingObserver {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   late final PageController _pageController;
-  final ValueNotifier<int> _selectedIndex = ValueNotifier(0);
+  late final ValueNotifier<int> _selectedIndex;
   Timer? _lightBackgroundPeriodicTimer;
   late final List<Widget> _screens;
   late final Widget _mainBody;
@@ -47,7 +49,8 @@ class _MainShellState extends ConsumerState<MainShell>
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
+    _pageController = PageController(initialPage: widget.initialTab);
+    _selectedIndex = ValueNotifier(widget.initialTab);
     _screens = [
       _KeepAliveWrapper(
         key: const PageStorageKey<String>('main-shell-tab-0'),

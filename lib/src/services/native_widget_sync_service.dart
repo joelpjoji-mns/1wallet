@@ -242,6 +242,7 @@ class NativeWidgetSyncService {
       for (final provider in androidWidgetProviders) {
         await HomeWidget.updateWidget(
           androidName: provider,
+          qualifiedAndroidName: 'com.joelpjoji.one.wallet.$provider',
         );
       }
     } catch (e, stack) {

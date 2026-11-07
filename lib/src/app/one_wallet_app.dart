@@ -53,6 +53,9 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
       await ref
           .read(cloudSyncControllerProvider.notifier)
           .checkAndTriggerSync();
+      if (mounted) {
+        NativeWidgetSyncService.syncWidgets(ref.read(ledgerProvider));
+      }
     });
     _cancelSmsRoute = listenForSmsRoute((route) {
       if (mounted) {
@@ -168,6 +171,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     ref.listen(startupStateProvider, (prev, next) {
       if (!next.isPending && next.destination == StartupDestination.home) {
         _tryPushPendingRoute();
+        NativeWidgetSyncService.syncWidgets(ref.read(ledgerProvider));
       }
     });
 
