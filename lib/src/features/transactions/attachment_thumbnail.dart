@@ -50,11 +50,11 @@ class AttachmentThumbnail extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(
-                  color: scheme.surface.withAlpha(220),
+                  color: scheme.surface.withValues(alpha: 0.86),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withAlpha(40),
+                      color: Colors.black.withValues(alpha: 0.16),
                       blurRadius: 4,
                     ),
                   ],
@@ -130,6 +130,7 @@ Future<void> showAttachmentPreviewDialog(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // ui-guard: allow modal dialog header
               AppBar(
                 title: Text(
                   attachment.name,

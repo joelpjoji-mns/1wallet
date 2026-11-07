@@ -2050,8 +2050,8 @@ class _UpcomingTransactionRow extends StatelessWidget {
                         ),
                         child: Text(
                           badgeText,
-                          style: TextStyle(
-                            fontSize: 10,
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            fontSize: 10, // ui-guard: allow compact badge font
                             fontWeight: FontWeight.w800,
                             letterSpacing: 0.5,
                             color: badgeTextColor,

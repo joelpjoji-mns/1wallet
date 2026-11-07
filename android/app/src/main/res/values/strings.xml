@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">1wallet</string>
+    <string name="widget_balance_description">1Wallet Total Balance &amp; Cash Flow</string>
+    <string name="widget_quick_actions_description">1Wallet Quick Actions (Add Expense, Income, Scan)</string>
+    <string name="widget_recent_description">1Wallet Recent Transactions</string>
+    <string name="widget_safe_spend_description">1Wallet Daily Safe-to-Spend</string>
+    <string name="widget_upcoming_description">1Wallet Upcoming Bills &amp; Due Payments</string>
+    <string name="widget_calendar_description">1Wallet Calendar &amp; Daily Spending Pace</string>
+    <string name="widget_accounts_description">1Wallet Accounts Overview</string>
+</resources>

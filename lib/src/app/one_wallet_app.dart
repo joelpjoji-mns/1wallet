@@ -12,6 +12,7 @@ import '../data/ledger_providers.dart';
 import '../features/capture/sms_inbox_reader.dart';
 import '../features/updates/app_update_provider.dart';
 import '../services/notification_service.dart';
+import '../services/native_widget_sync_service.dart';
 import '../startup/startup_state.dart';
 import '../security/app_lock.dart';
 
@@ -168,6 +169,10 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
       if (!next.isPending && next.destination == StartupDestination.home) {
         _tryPushPendingRoute();
       }
+    });
+
+    ref.listen(ledgerProvider, (prev, next) {
+      NativeWidgetSyncService.syncWidgets(next);
     });
 
     final router = ref.watch(appRouterProvider);

@@ -33,6 +33,11 @@ class MainActivity : FlutterFragmentActivity() {
         if (!directRoute.isNullOrBlank()) return directRoute
         val dataUri = intent?.data
         if (dataUri != null) {
+            if (dataUri.scheme == "onewallet" && dataUri.host == "app") {
+                val path = dataUri.path ?: ""
+                val query = dataUri.query?.let { "?$it" } ?: ""
+                return path + query
+            }
             if (dataUri.host == "review") return "/review"
             if (dataUri.host == "sync") return "/sync"
             if (dataUri.host == "updates") return "/updates"
