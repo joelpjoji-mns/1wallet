@@ -19,8 +19,7 @@ enum HomeDashboardWidgetId {
   safeToSpend('safeToSpend'),
   cashBurnRunway('cashBurnRunway'),
   noSpendStreak('noSpendStreak'),
-  weekendWeekdayRatio('weekendWeekdayRatio'),
-  cardGracePeriod('cardGracePeriod');
+  weekendWeekdayRatio('weekendWeekdayRatio');
 
   const HomeDashboardWidgetId(this.storageKey);
 
@@ -47,7 +46,6 @@ const defaultHomeWidgetOrder = [
   HomeDashboardWidgetId.cashBurnRunway,
   HomeDashboardWidgetId.noSpendStreak,
   HomeDashboardWidgetId.weekendWeekdayRatio,
-  HomeDashboardWidgetId.cardGracePeriod,
 ];
 
 const standardHomeDateFilterOptions = [

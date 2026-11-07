@@ -31,7 +31,7 @@ class NetWorthHomeWidget extends ConsumerWidget {
       subtitle: 'What you own minus what you owe',
       icon: Icons.account_balance_outlined,
       actionLabel: 'Accounts',
-      onAction: () => context.push('/account/all'),
+      onAction: () => context.push('/accounts'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -301,32 +301,7 @@ void main() {
       expect(find.textContaining('Weekends'), findsOneWidget);
     });
 
-    testWidgets('10. CardGracePeriodHomeWidget recommends card with longest float', (tester) async {
-      final base = sampleLedgerState();
-      final cardWithStmt = Account(
-        id: 'card-active',
-        name: 'Travel Rewards Visa',
-        type: 'credit_card',
-        currency: 'USD',
-        openingBalance: usd(0),
-        statementDay: DateTime.now().day, // Statement closed today -> maximum float!
-        dueDay: 25,
-      );
-
-      final state = base.copyWith(
-        accounts: [cardWithStmt],
-        preferences: base.preferences.copyWith(displayCurrency: 'USD', locale: 'en_US'),
-      );
-
-      await tester.pumpWidget(buildTestApp(CardGracePeriodHomeWidget(state: state)));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Card float optimizer'), findsOneWidget);
-      expect(find.textContaining('Travel Rewards Visa'), findsWidgets);
-      expect(find.textContaining('days of interest-free float'), findsOneWidget);
-    });
-
-    testWidgets('11. buildHomeDashboardWidget correctly dispatches all 10 new widget IDs', (tester) async {
+    testWidgets('10. buildHomeDashboardWidget correctly dispatches all 9 new widget IDs', (tester) async {
       final state = sampleLedgerState();
 
       final newWidgetIds = [
@@ -339,7 +314,6 @@ void main() {
         HomeDashboardWidgetId.cashBurnRunway,
         HomeDashboardWidgetId.noSpendStreak,
         HomeDashboardWidgetId.weekendWeekdayRatio,
-        HomeDashboardWidgetId.cardGracePeriod,
       ];
 
       for (final widgetId in newWidgetIds) {

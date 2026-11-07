@@ -531,8 +531,6 @@ class _CategoryTreeNode extends StatelessWidget {
   }
 }
 
-enum _CategoryAction { edit, addChild, toggleArchive, delete }
-
 List<Category> _visibleCategories(
   List<Category> categories, {
   required bool includeArchived,

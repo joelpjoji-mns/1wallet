@@ -44,7 +44,6 @@ const kRnDefaultHomeWidgetOrder = <String>[
   'cashBurnRunway',
   'noSpendStreak',
   'weekendWeekdayRatio',
-  'cardGracePeriod',
 ];
 
 @immutable
@@ -281,6 +280,61 @@ const List<String> kDefaultNotificationPackages = [
   'com.yahoo.mobile.client.android.mail',
 ];
 
+enum GlassIntensity {
+  light,
+  medium,
+  heavy;
+
+  static GlassIntensity fromString(
+    String? value, {
+    GlassIntensity fallback = GlassIntensity.medium,
+  }) {
+    if (value == null) return fallback;
+    return switch (value.toLowerCase()) {
+      'light' => GlassIntensity.light,
+      'heavy' => GlassIntensity.heavy,
+      'medium' => GlassIntensity.medium,
+      _ => fallback,
+    };
+  }
+
+  double get blur => switch (this) {
+    GlassIntensity.light => 4.0,
+    GlassIntensity.medium => 9.0,
+    GlassIntensity.heavy => 16.0,
+  };
+
+  double get backgroundOpacity => switch (this) {
+    GlassIntensity.light => 0.08,
+    GlassIntensity.medium => 0.15,
+    GlassIntensity.heavy => 0.28,
+  };
+
+  double get refractionLevel => switch (this) {
+    GlassIntensity.light => 0.5,
+    GlassIntensity.medium => 1.0,
+    GlassIntensity.heavy => 1.0,
+  };
+
+  double get interactionStrength => switch (this) {
+    GlassIntensity.light => 0.20,
+    GlassIntensity.medium => 0.35,
+    GlassIntensity.heavy => 0.50,
+  };
+
+  double get specularOpacity => switch (this) {
+    GlassIntensity.light => 0.60,
+    GlassIntensity.medium => 1.0,
+    GlassIntensity.heavy => 1.0,
+  };
+
+  double get specularSaturation => switch (this) {
+    GlassIntensity.light => 1.2,
+    GlassIntensity.medium => 2.0,
+    GlassIntensity.heavy => 2.0,
+  };
+}
+
 @immutable
 class LedgerPreferences {
   const LedgerPreferences({
@@ -294,6 +348,7 @@ class LedgerPreferences {
     this.homeWidgetSizes = const {},
     this.homeWidgetFilters = const {},
     this.futureGenerationRules,
+    this.glassIntensity = GlassIntensity.medium,
     this.glassSpecularOpacity = 1.0,
     this.glassSpecularSaturation = 2.0,
     this.glassRefractionLevel = 1.0,
@@ -335,6 +390,7 @@ class LedgerPreferences {
   final Map<String, String> homeWidgetSizes;
   final Map<String, String> homeWidgetFilters;
   final List<FutureGenerationRule>? futureGenerationRules;
+  final GlassIntensity glassIntensity;
   final double glassSpecularOpacity;
   final double glassSpecularSaturation;
   final double glassRefractionLevel;
@@ -365,6 +421,18 @@ class LedgerPreferences {
   final bool showExcludedAccounts;
   final bool showArchivedAccounts;
 
+  LedgerPreferences withGlassIntensity(GlassIntensity intensity) {
+    return copyWith(
+      glassIntensity: intensity,
+      glassBlurLevel: intensity.blur,
+      glassBackgroundOpacity: intensity.backgroundOpacity,
+      glassRefractionLevel: intensity.refractionLevel,
+      glassInteractionStrength: intensity.interactionStrength,
+      glassSpecularOpacity: intensity.specularOpacity,
+      glassSpecularSaturation: intensity.specularSaturation,
+    );
+  }
+
   LedgerPreferences copyWith({
     String? baseCurrency,
     String? displayCurrency,
@@ -376,6 +444,7 @@ class LedgerPreferences {
     Map<String, String>? homeWidgetSizes,
     Map<String, String>? homeWidgetFilters,
     List<FutureGenerationRule>? futureGenerationRules,
+    GlassIntensity? glassIntensity,
     double? glassSpecularOpacity,
     double? glassSpecularSaturation,
     double? glassRefractionLevel,
@@ -418,6 +487,7 @@ class LedgerPreferences {
       homeWidgetFilters: homeWidgetFilters ?? this.homeWidgetFilters,
       futureGenerationRules:
           futureGenerationRules ?? this.futureGenerationRules,
+      glassIntensity: glassIntensity ?? this.glassIntensity,
       glassSpecularOpacity: glassSpecularOpacity ?? this.glassSpecularOpacity,
       glassSpecularSaturation:
           glassSpecularSaturation ?? this.glassSpecularSaturation,

@@ -97,7 +97,6 @@ Widget buildHomeDashboardWidget({
     HomeDashboardWidgetId.cashBurnRunway => CashBurnRunwayHomeWidget(state: state),
     HomeDashboardWidgetId.noSpendStreak => NoSpendStreakHomeWidget(state: state),
     HomeDashboardWidgetId.weekendWeekdayRatio => WeekendWeekdayRatioHomeWidget(state: state),
-    HomeDashboardWidgetId.cardGracePeriod => CardGracePeriodHomeWidget(state: state),
   };
 }
 

@@ -351,6 +351,5 @@ String _homeWidgetLabel(HomeDashboardWidgetId id) {
     HomeDashboardWidgetId.cashBurnRunway => 'Cash Runway',
     HomeDashboardWidgetId.noSpendStreak => 'No-Spend Days',
     HomeDashboardWidgetId.weekendWeekdayRatio => 'Weekend vs Weekday',
-    HomeDashboardWidgetId.cardGracePeriod => 'Card Float Optimizer',
   };
 }

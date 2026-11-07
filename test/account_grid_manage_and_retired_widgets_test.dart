@@ -16,6 +16,7 @@ void main() {
     expect(storageKeys, isNot(contains('loanPayoff')));
     expect(storageKeys, isNot(contains('cardDebt')));
     expect(storageKeys, isNot(contains('cardPaymentPlan')));
+    expect(storageKeys, isNot(contains('cardGracePeriod')));
   });
 
   testWidgets('AccountGridHomeWidget Manage button selects Accounts tab (index 3)', (tester) async {

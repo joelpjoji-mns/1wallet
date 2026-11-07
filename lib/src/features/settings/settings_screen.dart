@@ -148,11 +148,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   const SizedBox(height: AppSpacing.md),
 
-                  _GlassTuningSection(
-                    preferences: state.preferences,
-                    onSave: (preferences) => ref
-                        .read(ledgerProvider.notifier)
-                        .updatePreferencesWith(preferences),
+                  // ── Glass appearance ──
+                  AppGroupedSection(
+                    header: 'Glass appearance',
+                    children: [
+                      AppGroupedTile(
+                        leading: const Icon(Icons.opacity_outlined),
+                        title: const Text('Glass effect'),
+                        subtitle: Text(
+                          _glassIntensityLabel(state.preferences.glassIntensity),
+                        ),
+                        showChevron: true,
+                        onTap: () => _showGlassIntensityPicker(
+                          ref,
+                          state.preferences.glassIntensity,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: AppSpacing.md),
 
@@ -503,153 +515,51 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _ => locale,
     };
   }
-}
 
-class _GlassTuningSection extends StatefulWidget {
-  const _GlassTuningSection({required this.preferences, required this.onSave});
-
-  final LedgerPreferences preferences;
-  final ValueChanged<LedgerPreferences Function(LedgerPreferences)> onSave;
-
-  @override
-  State<_GlassTuningSection> createState() => _GlassTuningSectionState();
-}
-
-class _GlassTuningSectionState extends State<_GlassTuningSection> {
-  late double _blur;
-  late double _fill;
-  late double _refraction;
-  late double _interaction;
-  late double _shine;
-
-  @override
-  void initState() {
-    super.initState();
-    _readPreferences();
-  }
-
-  @override
-  void didUpdateWidget(covariant _GlassTuningSection oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.preferences != widget.preferences) _readPreferences();
-  }
-
-  void _readPreferences() {
-    final preferences = widget.preferences;
-    _blur = preferences.glassBlurLevel.clamp(0, 18).toDouble();
-    _fill = preferences.glassBackgroundOpacity.clamp(0, .5).toDouble();
-    _refraction = preferences.glassRefractionLevel.clamp(0, 1).toDouble();
-    _interaction = preferences.glassInteractionStrength.clamp(0, 1).toDouble();
-    _shine = preferences.glassSpecularOpacity.clamp(.15, 1).toDouble();
-  }
-
-  void _save() {
-    final blur = _blur;
-    final fill = _fill;
-    final refraction = _refraction;
-    final interaction = _interaction;
-    final shine = _shine;
-    widget.onSave(
-      (livePreferences) => livePreferences.copyWith(
-        glassBlurLevel: blur,
-        glassBackgroundOpacity: fill,
-        glassRefractionLevel: refraction,
-        glassInteractionStrength: interaction,
-        glassSpecularOpacity: shine,
-      ),
-    );
-  }
-
-  Widget _slider(
-    String label,
-    String value,
-    double current,
-    double max,
-    ValueChanged<double> update,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.sm,
-        AppSpacing.md,
-        AppSpacing.xs,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(child: Text(label)),
-              Text(
-                value,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-          GlassSlider(
-            value: current,
-            max: max,
-            onChanged: update,
-            onChangeEnd: (_) => _save(),
-            label: label,
-            quality: GlassQuality.standard,
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AppGroupedSection(
-      header: 'Glass appearance',
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            AppSpacing.sm,
-            AppSpacing.md,
-            0,
-          ),
-          child: Text(
-            'Tune the shared glass surfaces and interactions across the app.',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+  Future<void> _showGlassIntensityPicker(
+    WidgetRef ref,
+    GlassIntensity selected,
+  ) async {
+    final next = await showFullScreenPicker<GlassIntensity>(
+      context: context,
+      title: 'Glass effect',
+      searchable: false,
+      selectedValue: selected,
+      options: const [
+        PickerOption(
+          value: GlassIntensity.light,
+          title: 'Light',
+          subtitle: 'Subtle frosted surface with soft blur and low opacity',
+          icon: Icons.blur_off_outlined,
         ),
-        _slider('Frosting', '${_blur.round()}', _blur, 18, (value) {
-          setState(() => _blur = value);
-          _save();
-        }),
-        _slider('Tint strength', '${(_fill * 100).round()}%', _fill, .5, (
-          value,
-        ) {
-          setState(() => _fill = value);
-          _save();
-        }),
-        _slider(
-          'Refraction',
-          '${(_refraction * 100).round()}%',
-          _refraction,
-          1,
-          (value) {
-            setState(() => _refraction = value);
-            _save();
-          },
+        PickerOption(
+          value: GlassIntensity.medium,
+          title: 'Medium',
+          subtitle: 'Balanced liquid glass with standard blur and refraction',
+          icon: Icons.blur_linear_outlined,
         ),
-        _slider('Bounce', '${(_interaction * 100).round()}%', _interaction, 1, (
-          value,
-        ) {
-          setState(() => _interaction = value);
-          _save();
-        }),
-        _slider('Highlight', '${(_shine * 100).round()}%', _shine, 1, (value) {
-          setState(() => _shine = value);
-          _save();
-        }),
+        PickerOption(
+          value: GlassIntensity.heavy,
+          title: 'Heavy',
+          subtitle: 'Strong frosted glass with deeper blur and opacity',
+          icon: Icons.blur_on_outlined,
+        ),
       ],
     );
+    if (next == null) return;
+    ref
+        .read(ledgerProvider.notifier)
+        .updatePreferencesWith((live) => live.withGlassIntensity(next));
+    if (!mounted) return;
+    _showMessage('Glass appearance updated.');
+  }
+
+  String _glassIntensityLabel(GlassIntensity intensity) {
+    return switch (intensity) {
+      GlassIntensity.light => 'Light',
+      GlassIntensity.medium => 'Medium',
+      GlassIntensity.heavy => 'Heavy',
+    };
   }
 }
 

@@ -36,7 +36,7 @@ class PendingReviewHomeWidget extends ConsumerWidget {
       iconColor: pending.isEmpty ? scheme.primary : scheme.error,
       actionLabel: pending.isNotEmpty ? 'Review' : null,
       onAction: pending.isNotEmpty
-          ? () => context.push('/capture/review-queue')
+          ? () => context.push('/review')
           : null,
       child: pending.isEmpty
           ? const EmptyState(
@@ -49,7 +49,7 @@ class PendingReviewHomeWidget extends ConsumerWidget {
               children: [
                 for (final candidate in pending.take(3)) ...[
                   InkWell(
-                    onTap: () => context.push('/capture/review-queue'),
+                    onTap: () => context.push('/review'),
                     borderRadius: BorderRadius.circular(AppRadii.sm),
                     child: Container(
                       padding: const EdgeInsets.all(AppSpacing.sm),
@@ -1307,137 +1307,6 @@ class WeekendWeekdayRatioHomeWidget extends ConsumerWidget {
                 ),
               ],
             ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 10. Credit Card Float & Statement Optimizer Widget
-// ─────────────────────────────────────────────────────────────────────────────
-class CardGracePeriodHomeWidget extends ConsumerWidget {
-  const CardGracePeriodHomeWidget({required this.state, super.key});
-
-  final LedgerState state;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    final now = DateTime.now();
-
-    final cardAccounts = state.accounts
-        .where(
-          (a) =>
-              !a.isArchived &&
-              (a.type == 'credit_card' || a.type == 'card') &&
-              a.statementDay != null &&
-              a.statementDay! > 0,
-        )
-        .toList();
-
-    if (cardAccounts.isEmpty) {
-      return HomeWidgetCard(
-        title: 'Card float optimizer',
-        subtitle: 'Configure billing dates to maximize interest-free credit',
-        icon: Icons.credit_score_outlined,
-        iconColor: scheme.primary,
-        actionLabel: 'Cards',
-        onAction: () => context.push('/cards'),
-        child: const EmptyState(
-          icon: Icons.credit_card_off_outlined,
-          title: 'No statement cycles set',
-          body: 'Set statement closing days on your credit cards to get real-time recommendations on the best card to use.',
-        ),
-      );
-    }
-
-    // Determine card with longest float remaining
-    // Float is maximized right after statementDay closes.
-    Account? bestCard;
-    int maxFloatDays = -1;
-
-    for (final card in cardAccounts) {
-      final stmtDay = card.statementDay!;
-      int daysSinceStatement;
-      if (now.day >= stmtDay) {
-        daysSinceStatement = now.day - stmtDay;
-      } else {
-        final prevMonthEnd = DateTime(now.year, now.month, 0).day;
-        daysSinceStatement = (prevMonthEnd - stmtDay) + now.day;
-      }
-      // Standard billing cycle gives 30 + 20 = ~50 days of float if used right after statement day
-      final floatRemaining = math.max(0, 50 - daysSinceStatement);
-      if (floatRemaining > maxFloatDays) {
-        maxFloatDays = floatRemaining;
-        bestCard = card;
-      }
-    }
-
-    return HomeWidgetCard(
-      title: 'Card float optimizer',
-      subtitle: bestCard != null
-          ? 'Recommended today: ${bestCard.name}'
-          : 'Credit card float recommendations',
-      icon: Icons.credit_score_outlined,
-      iconColor: scheme.primary,
-      actionLabel: 'Cards',
-      onAction: () => context.push('/cards'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            decoration: BoxDecoration(
-              color: positiveTone(context).withAlphaFactor(0.12),
-              borderRadius: BorderRadius.circular(AppRadii.sm),
-              border: Border.all(
-                color: positiveTone(context).withAlphaFactor(0.3),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.auto_awesome_rounded,
-                  color: positiveTone(context),
-                  size: 20,
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        bestCard != null ? 'Use: ${bestCard.name}' : 'Best Pick',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: positiveTone(context),
-                        ),
-                      ),
-                      Text(
-                        'Up to $maxFloatDays days of interest-free float if charged today.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          for (final card in cardAccounts.take(3)) ...[
-            HomeDetailRow(
-              icon: Icons.credit_card_rounded,
-              title: card.name,
-              subtitle: 'Statement Day: ${card.statementDay} · Due Day: ${card.dueDay ?? '-'}',
-              trailing: 'Cycle Day ${card.statementDay}',
-              tone: card == bestCard ? MetricTone.positive : MetricTone.standard,
-            ),
-            if (card != cardAccounts.take(3).last)
-              const Divider(height: AppSpacing.sm),
-          ],
-        ],
-      ),
     );
   }
 }

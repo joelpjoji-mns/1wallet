@@ -1,6 +1,8 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../design/tokens.dart';
 
 import '../features/launch/launch_screen.dart';
 import '../features/login/login_screen.dart';
@@ -69,7 +71,48 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         StartupDestination.launch => isLaunch ? null : '/launch',
       };
     },
+    errorBuilder: (context, state) => AppGlassPage(
+      child: RouteScaffold(
+        title: 'Page Not Found',
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.search_off_rounded, size: 64, color: Colors.grey),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'Page not found',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  'The requested path "${state.uri.path}" could not be found.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                FilledButton.icon(
+                  onPressed: () => context.go('/'),
+                  icon: const Icon(Icons.home_rounded),
+                  label: const Text('Return to Home'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
     routes: [
+      GoRoute(path: '/home', redirect: (context, state) => '/'),
+      GoRoute(path: '/dashboard', redirect: (context, state) => '/'),
+      GoRoute(path: '/transactions', redirect: (context, state) => '/'),
+      GoRoute(path: '/wallets', redirect: (context, state) => '/accounts'),
+      GoRoute(path: '/budgets/new', redirect: (context, state) => '/widgets'),
+      GoRoute(path: '/goals/new', redirect: (context, state) => '/widgets'),
+      GoRoute(path: '/import-wallet-csv', redirect: (context, state) => '/import-statement'),
+      GoRoute(path: '/imports/missing', redirect: (context, state) => '/imports'),
       GoRoute(
         path: '/account-deletion',
         builder: (context, state) => const AccountDeletionScreen(),
@@ -125,6 +168,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
         ),
       ),
+      GoRoute(path: '/account/all', redirect: (context, state) => '/accounts'),
       GoRoute(
         path: '/account/:id',
         builder: (context, state) => AppGlassPage(
@@ -154,6 +198,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           child: DrawerConfig(hasDrawer: true, child: ReviewQueueScreen()),
         ),
       ),
+      GoRoute(path: '/capture/review-queue', redirect: (context, state) => '/review'),
       GoRoute(
         path: '/capture/:id',
         builder: (context, state) => AppGlassPage(
@@ -174,6 +219,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) =>
             const AppGlassPage(child: RecurringScreen()),
       ),
+      GoRoute(path: '/planner', redirect: (context, state) => '/recurring'),
       GoRoute(
         path: '/recurring/new',
         builder: (context, state) =>

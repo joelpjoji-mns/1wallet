@@ -251,6 +251,7 @@ Map<String, Object?> _preferencesToJson(LedgerPreferences preferences) {
       'futureGenerationRules': preferences.futureGenerationRules!
           .map(_ruleToJson)
           .toList(),
+    'glassIntensity': preferences.glassIntensity.name,
     'glassSpecularOpacity': preferences.glassSpecularOpacity,
     'glassSpecularSaturation': preferences.glassSpecularSaturation,
     'glassRefractionLevel': preferences.glassRefractionLevel,
@@ -336,6 +337,14 @@ LedgerPreferences _preferencesFromJson(Map<String, dynamic> json) {
               .map(_ruleFromJson)
               .toList()
         : null,
+    glassIntensity: json['glassIntensity'] != null
+        ? GlassIntensity.fromString(
+            json['glassIntensity'] as String?,
+            fallback: fallback.glassIntensity,
+          )
+        : (json['glassBlurLevel'] != null
+            ? _deduceIntensity(json['glassBlurLevel'])
+            : fallback.glassIntensity),
     glassSpecularOpacity: _double(
       json['glassSpecularOpacity'],
       fallback: fallback.glassSpecularOpacity,
@@ -1028,6 +1037,14 @@ String? _extractFrequencyFromTags(Object? tagsObj) {
     }
   }
   return null;
+}
+
+GlassIntensity _deduceIntensity(Object? raw) {
+  final val = raw is num ? raw.toDouble() : double.tryParse(raw?.toString() ?? '');
+  if (val == null) return GlassIntensity.medium;
+  if (val <= 6.0) return GlassIntensity.light;
+  if (val >= 13.0) return GlassIntensity.heavy;
+  return GlassIntensity.medium;
 }
 
 // Public wrappers for Firestore serialization
