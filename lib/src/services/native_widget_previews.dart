@@ -25,12 +25,14 @@ class _NativeCard extends StatelessWidget {
     required this.title,
     required this.child,
     this.subtitle,
+    this.headerTrailing,
   });
 
   final IconData icon;
   final Color iconColor;
   final String title;
   final String? subtitle;
+  final Widget? headerTrailing;
   final Widget child;
 
   @override
@@ -87,6 +89,7 @@ class _NativeCard extends StatelessWidget {
                   ],
                 ),
               ),
+              ?headerTrailing,
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -1171,4 +1174,855 @@ Color _legibleForeground(Color background) {
   return contrastRatio(background, light) >= contrastRatio(background, dark)
       ? light
       : dark;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 8. Balance & Net Worth Trend
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _TrendSparklinePainter extends CustomPainter {
+  const _TrendSparklinePainter({
+    required this.points,
+    required this.lineColor,
+    required this.gradientColor,
+  });
+
+  final List<double> points;
+  final Color lineColor;
+  final Color gradientColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.isEmpty) return;
+    if (points.length == 1) {
+      final p = Paint()..color = lineColor..strokeWidth = 3;
+      canvas.drawCircle(Offset(size.width / 2, size.height / 2), 4, p);
+      return;
+    }
+
+    final path = Path();
+    final fillPath = Path();
+
+    final stepX = size.width / (points.length - 1);
+    for (var i = 0; i < points.length; i++) {
+      final x = i * stepX;
+      final y = size.height - (points[i].clamp(0.0, 1.0) * (size.height - 8) + 4);
+      if (i == 0) {
+        path.moveTo(x, y);
+        fillPath.moveTo(x, size.height);
+        fillPath.lineTo(x, y);
+      } else {
+        path.lineTo(x, y);
+        fillPath.lineTo(x, y);
+      }
+    }
+    fillPath.lineTo(size.width, size.height);
+    fillPath.close();
+
+    final fillPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          gradientColor.withValues(alpha: 0.35),
+          gradientColor.withValues(alpha: 0.0),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    canvas.drawPath(fillPath, fillPaint);
+
+    final linePaint = Paint()
+      ..color = lineColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    canvas.drawPath(path, linePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _TrendSparklinePainter oldDelegate) => true;
+}
+
+class NativeBalanceTrendWidget extends StatelessWidget {
+  const NativeBalanceTrendWidget({
+    required this.netWorthLabel,
+    required this.deltaText,
+    required this.isPositive,
+    required this.points,
+    required this.periodLabel,
+    super.key,
+  });
+
+  final String netWorthLabel;
+  final String deltaText;
+  final bool isPositive;
+  final List<double> points;
+  final String periodLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final deltaColor = isPositive ? _positiveColor(scheme) : scheme.error;
+
+    return _NativeCard(
+      icon: Icons.trending_up_rounded,
+      iconColor: scheme.primary,
+      title: 'Balance trend',
+      subtitle: periodLabel,
+      headerTrailing: _StaticPill(
+        label: deltaText,
+        icon: isPositive ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            netWorthLabel,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          SizedBox(
+            height: 90,
+            child: CustomPaint(
+              size: const Size(double.infinity, 90),
+              painter: _TrendSparklinePainter(
+                points: points,
+                lineColor: deltaColor,
+                gradientColor: deltaColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 9. Top Categories
+// ─────────────────────────────────────────────────────────────────────────────
+
+class NativeCategoryEntry {
+  const NativeCategoryEntry({
+    required this.name,
+    required this.amountText,
+    required this.percentage,
+    required this.color,
+  });
+
+  final String name;
+  final String amountText;
+  final double percentage;
+  final Color color;
+}
+
+class NativeTopCategoriesWidget extends StatelessWidget {
+  const NativeTopCategoriesWidget({
+    required this.categories,
+    required this.periodLabel,
+    super.key,
+  });
+
+  final List<NativeCategoryEntry> categories;
+  final String periodLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return _NativeCard(
+      icon: Icons.pie_chart_outline_rounded,
+      iconColor: const Color(0xFFFF4081),
+      title: 'Top categories',
+      subtitle: periodLabel,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final cat in categories) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: cat.color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Expanded(
+                        child: Text(
+                          cat.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        cat.amountText,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                    child: LinearProgressIndicator(
+                      value: cat.percentage.clamp(0.0, 1.0),
+                      minHeight: 6,
+                      backgroundColor: scheme.surfaceContainerHigh,
+                      valueColor: AlwaysStoppedAnimation(cat.color),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 10. Currency Exchange Values
+// ─────────────────────────────────────────────────────────────────────────────
+
+class NativeCurrencyEntry {
+  const NativeCurrencyEntry({
+    required this.currencyCode,
+    required this.rateText,
+    required this.equivalentText,
+  });
+
+  final String currencyCode;
+  final String rateText;
+  final String equivalentText;
+}
+
+class NativeCurrencyValuesWidget extends StatelessWidget {
+  const NativeCurrencyValuesWidget({
+    required this.baseCurrency,
+    required this.rates,
+    super.key,
+  });
+
+  final String baseCurrency;
+  final List<NativeCurrencyEntry> rates;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return _NativeCard(
+      icon: Icons.currency_exchange_rounded,
+      iconColor: const Color(0xFFFFAB00),
+      title: 'Exchange rates',
+      subtitle: 'Base currency: $baseCurrency',
+      child: Wrap(
+        spacing: AppSpacing.xs,
+        runSpacing: AppSpacing.xs,
+        children: [
+          for (final rate in rates)
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
+              ),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(AppRadii.md),
+                border: Border.all(color: scheme.outlineVariant),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    rate.currencyCode,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      color: scheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    rate.equivalentText,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 11. Account Groups
+// ─────────────────────────────────────────────────────────────────────────────
+
+class NativeAccountGroupEntry {
+  const NativeAccountGroupEntry({
+    required this.name,
+    required this.balanceText,
+    required this.countText,
+    required this.icon,
+    required this.color,
+  });
+
+  final String name;
+  final String balanceText;
+  final String countText;
+  final IconData icon;
+  final Color color;
+}
+
+class NativeAccountGroupsWidget extends StatelessWidget {
+  const NativeAccountGroupsWidget({
+    required this.groups,
+    super.key,
+  });
+
+  final List<NativeAccountGroupEntry> groups;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return _NativeCard(
+      icon: Icons.folder_outlined,
+      iconColor: scheme.primary,
+      title: 'Account groups',
+      subtitle: 'Group balances',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final g in groups) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Row(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: g.color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(AppRadii.sm),
+                    ),
+                    child: Icon(g.icon, size: 16, color: g.color),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          g.name,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        Text(
+                          g.countText,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    g.balanceText,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 12. Credit Utilization
+// ─────────────────────────────────────────────────────────────────────────────
+
+class NativeCreditUtilizationWidget extends StatelessWidget {
+  const NativeCreditUtilizationWidget({
+    required this.utilizationPercent,
+    required this.usedAmountText,
+    required this.limitAmountText,
+    super.key,
+  });
+
+  final double utilizationPercent;
+  final String usedAmountText;
+  final String limitAmountText;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = utilizationPercent > 50
+        ? scheme.error
+        : (utilizationPercent > 30 ? const Color(0xFFFFAB00) : _positiveColor(scheme));
+
+    return _NativeCard(
+      icon: Icons.credit_card_rounded,
+      iconColor: color,
+      title: 'Credit utilization',
+      subtitle: 'Used: $usedAmountText / Limit: $limitAmountText',
+      headerTrailing: _StaticPill(
+        label: '${utilizationPercent.toStringAsFixed(0)}%',
+        icon: Icons.speed_rounded,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+            child: LinearProgressIndicator(
+              value: (utilizationPercent / 100).clamp(0.0, 1.0),
+              minHeight: 12,
+              backgroundColor: scheme.surfaceContainerHigh,
+              valueColor: AlwaysStoppedAnimation(color),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            utilizationPercent <= 30
+                ? 'Healthy ratio (<30%)'
+                : 'Consider paying down balances',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 13. Savings Rate
+// ─────────────────────────────────────────────────────────────────────────────
+
+class NativeSavingsRateWidget extends StatelessWidget {
+  const NativeSavingsRateWidget({
+    required this.savingsRatePercent,
+    required this.savedAmountText,
+    required this.incomeAmountText,
+    required this.periodLabel,
+    super.key,
+  });
+
+  final double savingsRatePercent;
+  final String savedAmountText;
+  final String incomeAmountText;
+  final String periodLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = savingsRatePercent >= 20 ? _positiveColor(scheme) : const Color(0xFFFFAB00);
+
+    return _NativeCard(
+      icon: Icons.savings_outlined,
+      iconColor: color,
+      title: 'Savings rate',
+      subtitle: periodLabel,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Text(
+                '${savingsRatePercent.toStringAsFixed(0)}%',
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: color,
+                  letterSpacing: -1.0,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Saved: $savedAmountText',
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    Text(
+                      'Income: $incomeAmountText',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+            child: LinearProgressIndicator(
+              value: (savingsRatePercent / 100).clamp(0.0, 1.0),
+              minHeight: 10,
+              backgroundColor: scheme.surfaceContainerHigh,
+              valueColor: AlwaysStoppedAnimation(color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 14. Tag Cloud
+// ─────────────────────────────────────────────────────────────────────────────
+
+class NativeTagEntry {
+  const NativeTagEntry({
+    required this.tag,
+    required this.amountText,
+  });
+
+  final String tag;
+  final String amountText;
+}
+
+class NativeTagCloudWidget extends StatelessWidget {
+  const NativeTagCloudWidget({
+    required this.tags,
+    super.key,
+  });
+
+  final List<NativeTagEntry> tags;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return _NativeCard(
+      icon: Icons.local_offer_outlined,
+      iconColor: const Color(0xFFFFAB00),
+      title: 'Top tags',
+      subtitle: 'Frequent tags',
+      child: Wrap(
+        spacing: AppSpacing.xs,
+        runSpacing: AppSpacing.xs,
+        children: [
+          for (final tag in tags)
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
+              ),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(AppRadii.pill),
+                border: Border.all(color: scheme.outlineVariant),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '#${tag.tag}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: scheme.primary,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    tag.amountText,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 15. Cash Burn Runway
+// ─────────────────────────────────────────────────────────────────────────────
+
+class NativeCashBurnRunwayWidget extends StatelessWidget {
+  const NativeCashBurnRunwayWidget({
+    required this.runwayMonthsText,
+    required this.monthlyBurnText,
+    required this.liquidReservesText,
+    super.key,
+  });
+
+  final String runwayMonthsText;
+  final String monthlyBurnText;
+  final String liquidReservesText;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return _NativeCard(
+      icon: Icons.local_fire_department_outlined,
+      iconColor: const Color(0xFFFFAB00),
+      title: 'Cash runway',
+      subtitle: 'Financial runway',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            runwayMonthsText,
+            style: Theme.of(context).textTheme.displaySmall?.copyWith(
+              fontWeight: FontWeight.w900,
+              color: const Color(0xFFFFAB00),
+              letterSpacing: -1.0,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xxxs),
+          Text(
+            'Monthly burn: $monthlyBurnText · Reserves: $liquidReservesText',
+            style: TextStyle(
+              fontSize: 11,
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 16. No-Spend Streak
+// ─────────────────────────────────────────────────────────────────────────────
+
+class NativeNoSpendStreakWidget extends StatelessWidget {
+  const NativeNoSpendStreakWidget({
+    required this.streakDays,
+    required this.bestStreakDays,
+    super.key,
+  });
+
+  final int streakDays;
+  final int bestStreakDays;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return _NativeCard(
+      icon: Icons.bolt_rounded,
+      iconColor: const Color(0xFFFF5252),
+      title: 'No-spend streak',
+      subtitle: 'Discretionary spend freeze',
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF5252).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              border: Border.all(
+                color: const Color(0xFFFF5252).withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.local_fire_department_rounded,
+                  color: Color(0xFFFF5252),
+                  size: 28,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Text(
+                  '$streakDays',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFFFF5252),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Text(
+                  'days',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              'Best streak: $bestStreakDays days\nKeep up the discipline!',
+              style: TextStyle(
+                fontSize: 12,
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 17. Weekend vs Weekday Ratio
+// ─────────────────────────────────────────────────────────────────────────────
+
+class NativeWeekendWeekdayWidget extends StatelessWidget {
+  const NativeWeekendWeekdayWidget({
+    required this.ratioText,
+    required this.weekdayAvgText,
+    required this.weekendAvgText,
+    super.key,
+  });
+
+  final String ratioText;
+  final String weekdayAvgText;
+  final String weekendAvgText;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return _NativeCard(
+      icon: Icons.compare_arrows_rounded,
+      iconColor: const Color(0xFF00E5FF),
+      title: 'Weekend vs weekday',
+      subtitle: 'Daily spending pace',
+      child: Row(
+        children: [
+          Expanded(
+            child: _FlowPanel(
+              label: 'Weekday avg',
+              value: weekdayAvgText,
+              color: scheme.primary,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: _FlowPanel(
+              label: 'Weekend avg',
+              value: weekendAvgText,
+              color: const Color(0xFF00E5FF),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 18. Pending Review
+// ─────────────────────────────────────────────────────────────────────────────
+
+class NativePendingReviewWidget extends StatelessWidget {
+  const NativePendingReviewWidget({
+    required this.pendingCount,
+    required this.subtitleText,
+    super.key,
+  });
+
+  final int pendingCount;
+  final String subtitleText;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = pendingCount > 0 ? const Color(0xFFFFAB00) : _positiveColor(scheme);
+
+    return _NativeCard(
+      icon: Icons.mark_email_unread_outlined,
+      iconColor: color,
+      title: 'Pending review',
+      subtitle: subtitleText,
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              border: Border.all(color: color.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  pendingCount > 0
+                      ? Icons.pending_actions_rounded
+                      : Icons.check_circle_outline_rounded,
+                  color: color,
+                  size: 24,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Text(
+                  '$pendingCount',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              pendingCount > 0
+                  ? 'Tap to verify and confirm into ledger'
+                  : 'All transactions verified and clean',
+              style: TextStyle(
+                fontSize: 12,
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

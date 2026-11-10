@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_top_categories_description"
+    android:initialKeyguardLayout="@layout/widget_top_categories"
+    android:initialLayout="@layout/widget_top_categories"
+    android:minWidth="180dp"
+    android:minHeight="140dp"
+    android:minResizeWidth="140dp"
+    android:minResizeHeight="70dp"
+    android:maxResizeWidth="600dp"
+    android:maxResizeHeight="600dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:previewImage="@drawable/widget_preview_top_categories"
+    android:previewLayout="@layout/widget_top_categories"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen" />

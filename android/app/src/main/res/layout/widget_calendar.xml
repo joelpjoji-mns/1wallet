@@ -3,5 +3,7 @@
     android:id="@+id/widget_calendar_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:scaleType="fitXY"
-    android:contentDescription="1Wallet Calendar" />
+    android:scaleType="fitCenter"
+    android:adjustViewBounds="true"
+    android:src="@drawable/widget_preview_calendar"
+    android:contentDescription="1Wallet Calendar Pace" />

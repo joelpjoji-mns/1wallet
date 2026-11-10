@@ -175,19 +175,36 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
 
   @override
   Widget build(BuildContext context) {
+    final themeState = ref.watch(themeControllerProvider);
+    final activeTheme = themeState.themeMode == ThemeMode.light
+        ? AppTheme.light()
+        : AppTheme.amoled();
+
     ref.listen(startupStateProvider, (prev, next) {
       if (!next.isPending && next.destination == StartupDestination.home) {
         _tryPushPendingRoute();
-        NativeWidgetSyncService.syncWidgets(ref.read(ledgerProvider));
+        NativeWidgetSyncService.syncWidgets(
+          ref.read(ledgerProvider),
+          theme: activeTheme,
+        );
       }
     });
 
     ref.listen(ledgerProvider, (prev, next) {
-      NativeWidgetSyncService.syncWidgets(next);
+      NativeWidgetSyncService.syncWidgets(next, theme: activeTheme);
+    });
+
+    ref.listen(themeControllerProvider, (prev, next) {
+      final newTheme = next.themeMode == ThemeMode.light
+          ? AppTheme.light()
+          : AppTheme.amoled();
+      NativeWidgetSyncService.syncWidgets(
+        ref.read(ledgerProvider),
+        theme: newTheme,
+      );
     });
 
     final router = ref.watch(appRouterProvider);
-    final themeState = ref.watch(themeControllerProvider);
     final glass = ref.watch(
       ledgerProvider.select(
         (state) => (

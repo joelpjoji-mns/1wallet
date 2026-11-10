@@ -3,5 +3,7 @@
     android:id="@+id/widget_upcoming_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:scaleType="fitXY"
+    android:scaleType="fitCenter"
+    android:adjustViewBounds="true"
+    android:src="@drawable/widget_preview_upcoming"
     android:contentDescription="1Wallet Upcoming and Due" />

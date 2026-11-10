@@ -8,4 +8,15 @@
     <string name="widget_upcoming_description">1Wallet Upcoming Bills &amp; Due Payments</string>
     <string name="widget_calendar_description">1Wallet Calendar &amp; Daily Spending Pace</string>
     <string name="widget_accounts_description">1Wallet Accounts Overview</string>
+    <string name="widget_balance_trend_description">1Wallet Balance &amp; Net Worth Trend</string>
+    <string name="widget_top_categories_description">1Wallet Top Spending Categories</string>
+    <string name="widget_currency_values_description">1Wallet Currency Exchange Values</string>
+    <string name="widget_account_groups_description">1Wallet Account Groups Breakdown</string>
+    <string name="widget_credit_utilization_description">1Wallet Credit Limit Utilization</string>
+    <string name="widget_savings_rate_description">1Wallet Monthly Savings Rate</string>
+    <string name="widget_tag_cloud_description">1Wallet Top Spending Tags</string>
+    <string name="widget_cash_burn_runway_description">1Wallet Cash Burn &amp; Runway</string>
+    <string name="widget_no_spend_streak_description">1Wallet No-Spend Days Streak</string>
+    <string name="widget_weekend_weekday_description">1Wallet Weekend vs Weekday Spending</string>
+    <string name="widget_pending_review_description">1Wallet Pending Review Items</string>
 </resources>

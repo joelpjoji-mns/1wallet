@@ -7,7 +7,7 @@ void main() {
 
   group('NativeWidgetSyncService', () {
     test('contains all expected Android AppWidget provider identifiers', () {
-      expect(NativeWidgetSyncService.androidWidgetProviders, containsAll([
+      expect(NativeWidgetSyncService.androidWidgetProviders, [
         'WalletBalanceWidgetProvider',
         'QuickActionsWidgetProvider',
         'RecentTransactionsWidgetProvider',
@@ -15,7 +15,18 @@ void main() {
         'UpcomingWidgetProvider',
         'CalendarWidgetProvider',
         'AccountsWidgetProvider',
-      ]));
+        'BalanceTrendWidgetProvider',
+        'TopCategoriesWidgetProvider',
+        'CurrencyValuesWidgetProvider',
+        'AccountGroupsWidgetProvider',
+        'CreditUtilizationWidgetProvider',
+        'SavingsRateWidgetProvider',
+        'TagCloudWidgetProvider',
+        'CashBurnRunwayWidgetProvider',
+        'NoSpendStreakWidgetProvider',
+        'WeekendWeekdayWidgetProvider',
+        'PendingReviewWidgetProvider',
+      ]);
     });
 
     test('syncWidgets executes cleanly without throwing on ledger data', () async {
