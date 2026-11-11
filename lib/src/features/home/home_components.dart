@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
@@ -171,12 +170,10 @@ class HomeProgressRow extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.xs),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(AppRadii.pill),
-          child: GlassProgressIndicator.linear(
-            value: progress.clamp(0, 1).toDouble(),
-            color: color,
-          ),
+        HomeLiveProgressBar(
+          progress: progress.clamp(0, 1).toDouble(),
+          color: color,
+          height: 8,
         ),
       ],
     );
@@ -219,6 +216,78 @@ class AddAccountHomeRow extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A smooth, high-fidelity animated progress bar for live finance data.
+///
+/// Features animated fluid tweening, capsule rounding, gradient shading,
+/// and responsive scaling.
+class HomeLiveProgressBar extends StatelessWidget {
+  const HomeLiveProgressBar({
+    required this.progress,
+    this.color,
+    this.gradientColors,
+    this.backgroundColor,
+    this.height = 10.0,
+    this.duration = const Duration(milliseconds: 650),
+    this.curve = Curves.easeOutCubic,
+    super.key,
+  });
+
+  final double progress;
+  final Color? color;
+  final List<Color>? gradientColors;
+  final Color? backgroundColor;
+  final double height;
+  final Duration duration;
+  final Curve curve;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final resolvedColor = color ?? scheme.primary;
+    final bg = backgroundColor ?? scheme.surfaceContainerHighest.withValues(alpha: 0.5);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(height / 2),
+      child: Container(
+        height: height,
+        width: double.infinity,
+        color: bg,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: 0.0, end: progress.clamp(0.0, 1.0)),
+          duration: duration,
+          curve: curve,
+          builder: (context, animatedValue, child) {
+            return FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: animatedValue,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(height / 2),
+                  gradient: gradientColors != null
+                      ? LinearGradient(colors: gradientColors!)
+                      : LinearGradient(
+                          colors: [
+                            resolvedColor.withValues(alpha: 0.8),
+                            resolvedColor,
+                          ],
+                        ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: resolvedColor.withValues(alpha: 0.35),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

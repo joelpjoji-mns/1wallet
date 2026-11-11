@@ -38,63 +38,124 @@ class _NativeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.55),
+    return SizedBox.expand(
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(AppRadii.sm),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: scheme.outlineVariant.withValues(alpha: 0.45),
+            width: 1.5,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppRadii.sm),
+                  ),
+                  child: Icon(icon, size: 18, color: iconColor),
                 ),
-                child: Icon(icon, size: 18, color: iconColor),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    if (subtitle != null)
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       Text(
-                        subtitle!,
+                        title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
-                  ],
+                      if (subtitle != null)
+                        Text(
+                          subtitle!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                ?headerTrailing,
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Expanded(
+              child: ClipRect(
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: child,
                 ),
               ),
-              ?headerTrailing,
-            ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Shared native progress bar ──────────────────────────────────────────────
+
+class _NativeProgressBar extends StatelessWidget {
+  const _NativeProgressBar({
+    required this.progress,
+    required this.color,
+    this.height = 10.0,
+  });
+
+  final double progress;
+  final Color color;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(height / 2),
+      child: Container(
+        height: height,
+        width: double.infinity,
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        child: FractionallySizedBox(
+          alignment: Alignment.centerLeft,
+          widthFactor: progress.clamp(0.0, 1.0),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(height / 2),
+              gradient: LinearGradient(
+                colors: [
+                  color.withValues(alpha: 0.75),
+                  color,
+                ],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.35),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          child,
-        ],
+        ),
       ),
     );
   }
@@ -178,18 +239,24 @@ class NativeBalanceWidget extends StatelessWidget {
     final positive = _positiveColor(scheme);
     final danger = scheme.error;
 
-    return Container(
-      constraints: const BoxConstraints(minHeight: 178),
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.55)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
+    return SizedBox.expand(
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: scheme.outlineVariant.withValues(alpha: 0.45),
+            width: 1.5,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
           // Header row
           Row(
             children: [
@@ -295,7 +362,8 @@ class NativeBalanceWidget extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 }
 
@@ -647,10 +715,10 @@ class NativeUpcomingWidget extends StatelessWidget {
             ],
           ),
           if (entries.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
-            for (int i = 0; i < entries.length; i++) ...[
+            const SizedBox(height: AppSpacing.xs),
+            for (int i = 0; i < math.min(entries.length, 2); i++) ...[
               _UpcomingRowNative(entry: entries[i]),
-              if (i < entries.length - 1)
+              if (i < math.min(entries.length, 2) - 1)
                 const SizedBox(height: AppSpacing.xxs),
             ],
           ] else ...[
@@ -889,21 +957,12 @@ class NativeSafeSpendWidget extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.xxs),
+          const SizedBox(height: AppSpacing.xs),
           // Progress bar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-            child: Container(
-              height: 6,
-              color: scheme.surfaceContainerHighest,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: FractionallySizedBox(
-                  widthFactor: spentRatio.clamp(0.0, 1.0),
-                  child: Container(color: progressColor),
-                ),
-              ),
-            ),
+          _NativeProgressBar(
+            progress: spentRatio,
+            color: progressColor,
+            height: 10,
           ),
         ],
       ),
@@ -1334,7 +1393,6 @@ class NativeTopCategoriesWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return _NativeCard(
       icon: Icons.pie_chart_outline_rounded,
       iconColor: const Color(0xFFFF4081),
@@ -1380,15 +1438,11 @@ class NativeTopCategoriesWidget extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 3),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadii.pill),
-                    child: LinearProgressIndicator(
-                      value: cat.percentage.clamp(0.0, 1.0),
-                      minHeight: 6,
-                      backgroundColor: scheme.surfaceContainerHigh,
-                      valueColor: AlwaysStoppedAnimation(cat.color),
-                    ),
+                  const SizedBox(height: 4),
+                  _NativeProgressBar(
+                    progress: cat.percentage,
+                    color: cat.color,
+                    height: 7,
                   ),
                 ],
               ),
@@ -1597,14 +1651,10 @@ class NativeCreditUtilizationWidget extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-            child: LinearProgressIndicator(
-              value: (utilizationPercent / 100).clamp(0.0, 1.0),
-              minHeight: 12,
-              backgroundColor: scheme.surfaceContainerHigh,
-              valueColor: AlwaysStoppedAnimation(color),
-            ),
+          _NativeProgressBar(
+            progress: utilizationPercent / 100,
+            color: color,
+            height: 10,
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
@@ -1688,14 +1738,10 @@ class NativeSavingsRateWidget extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-            child: LinearProgressIndicator(
-              value: (savingsRatePercent / 100).clamp(0.0, 1.0),
-              minHeight: 10,
-              backgroundColor: scheme.surfaceContainerHigh,
-              valueColor: AlwaysStoppedAnimation(color),
-            ),
+          _NativeProgressBar(
+            progress: savingsRatePercent / 100,
+            color: color,
+            height: 10,
           ),
         ],
       ),
@@ -1820,6 +1866,12 @@ class NativeCashBurnRunwayWidget extends StatelessWidget {
               color: scheme.onSurfaceVariant,
               fontWeight: FontWeight.w600,
             ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          const _NativeProgressBar(
+            progress: 0.68,
+            color: Color(0xFFFFAB00),
+            height: 8,
           ),
         ],
       ),

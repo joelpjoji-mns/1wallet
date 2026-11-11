@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import 'home_screen.dart';
-import 'home_widgets_extra.dart';
 import 'home_widgets_new.dart';
 
 import '../../data/ledger_models.dart';
@@ -1994,12 +1993,12 @@ class _UpcomingTransactionRow extends StatelessWidget {
           vertical: AppSpacing.xs,
         ),
         decoration: BoxDecoration(
-          color: isOverdue
+          color: (isOverdue || isToday)
               ? scheme.error.withValues(alpha: 0.06)
               : scheme.surfaceContainerLow.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(AppRadii.md),
           border: Border.all(
-            color: isOverdue
+            color: (isOverdue || isToday)
                 ? scheme.error.withValues(alpha: 0.3)
                 : scheme.outlineVariant.withValues(alpha: 0.3),
           ),
@@ -2010,7 +2009,7 @@ class _UpcomingTransactionRow extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: (categoryColor(category, context) ?? scheme.primary)
+                color: categoryColor(category, context)
                     .withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(AppRadii.sm),
               ),
@@ -2019,7 +2018,7 @@ class _UpcomingTransactionRow extends StatelessWidget {
                     ? categoryIcon(category)
                     : transactionIcon(transaction),
                 size: 20,
-                color: categoryColor(category, context) ?? scheme.primary,
+                color: categoryColor(category, context),
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
@@ -2360,12 +2359,10 @@ class _CategoryItemWidget extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.xxs),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadii.pill),
-                  child: GlassProgressIndicator.linear(
-                    value: progress,
-                    color: color,
-                  ),
+                HomeLiveProgressBar(
+                  progress: progress,
+                  color: color,
+                  height: 8,
                 ),
               ],
             ),
@@ -2471,17 +2468,15 @@ class _CategoryItemWidget extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: AppSpacing.xxs),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(AppRadii.pill),
-                            child: GlassProgressIndicator.linear(
-                              value: item.amountMinor == 0
-                                  ? 0.0
-                                  : (sub.amountMinor / item.amountMinor).clamp(
-                                      0.0,
-                                      1.0,
-                                    ),
-                              color: (sub.color ?? color).withAlphaFactor(0.8),
-                            ),
+                          HomeLiveProgressBar(
+                            progress: item.amountMinor == 0
+                                ? 0.0
+                                : (sub.amountMinor / item.amountMinor).clamp(
+                                    0.0,
+                                    1.0,
+                                  ),
+                            color: (sub.color ?? color).withAlphaFactor(0.8),
+                            height: 6,
                           ),
                         ],
                       ),
@@ -3062,9 +3057,10 @@ class CreditUtilizationWidget extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: AppSpacing.xs),
-                    GlassProgressIndicator.linear(
-                      value: limit > 0 ? util.clamp(0.0, 1.0) : 0.0,
+                    HomeLiveProgressBar(
+                      progress: limit > 0 ? util.clamp(0.0, 1.0) : 0.0,
                       color: acc.color ?? scheme.primary,
+                      height: 8,
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Row(

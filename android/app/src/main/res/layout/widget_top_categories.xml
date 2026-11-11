@@ -3,7 +3,9 @@
     android:id="@+id/widget_top_categories_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:scaleType="fitCenter"
-    android:adjustViewBounds="true"
+    android:background="@drawable/widget_background"
+    android:clipToOutline="true"
+    android:scaleType="centerCrop"
+    android:adjustViewBounds="false"
     android:src="@drawable/widget_preview_top_categories"
     android:contentDescription="1Wallet Top Spending Categories" />

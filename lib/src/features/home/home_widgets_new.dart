@@ -2,7 +2,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -10,6 +9,7 @@ import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/privacy_text.dart';
+import 'home_components.dart';
 import 'home_widget_card.dart';
 import 'home_widget_models.dart';
 
@@ -262,19 +262,10 @@ class SavingsRateHomeWidget extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-            child: Container(
-              height: 6,
-              color: scheme.surfaceContainerHighest,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: FractionallySizedBox(
-                  widthFactor: savingsRate.clamp(0.0, 1.0),
-                  child: Container(color: toneColor),
-                ),
-              ),
-            ),
+          HomeLiveProgressBar(
+            progress: savingsRate.clamp(0.0, 1.0),
+            color: toneColor,
+            height: 10,
           ),
           const SizedBox(height: AppSpacing.sm),
           Row(
@@ -560,22 +551,11 @@ class SafeToSpendHomeWidget extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.xxs),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-            child: Container(
-              height: 6,
-              color: scheme.surfaceContainerHighest,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: FractionallySizedBox(
-                  widthFactor: spentRatio,
-                  child: Container(
-                    color: spentRatio > 0.9 ? scheme.error : positiveTone(context),
-                  ),
-                ),
-              ),
-            ),
+          const SizedBox(height: AppSpacing.xs),
+          HomeLiveProgressBar(
+            progress: spentRatio,
+            color: spentRatio > 0.9 ? scheme.error : positiveTone(context),
+            height: 10,
           ),
         ],
       ),
@@ -747,9 +727,10 @@ class CashBurnRunwayHomeWidget extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: AppSpacing.xxs),
-              GlassProgressIndicator.linear(
-                value: progress,
+              HomeLiveProgressBar(
+                progress: progress,
                 color: runwayTone.resolve(scheme),
+                height: 8,
               ),
             ],
           ),

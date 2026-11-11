@@ -3,7 +3,9 @@
     android:id="@+id/widget_no_spend_streak_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:scaleType="fitCenter"
-    android:adjustViewBounds="true"
+    android:background="@drawable/widget_background"
+    android:clipToOutline="true"
+    android:scaleType="centerCrop"
+    android:adjustViewBounds="false"
     android:src="@drawable/widget_preview_no_spend_streak"
     android:contentDescription="1Wallet No-Spend Days Streak" />
