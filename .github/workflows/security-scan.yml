@@ -62,6 +62,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          touch config.env
           flutter pub get
           flutter gen-l10n
 
