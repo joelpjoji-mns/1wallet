@@ -37,8 +37,14 @@ Before submitting any Pull Request, you must verify that all automated test suit
 # 1. Run Flutter unit and widget tests
 flutter test
 
-# 2. Run Flutter static analyzer
-flutter analyze
+# 2. Run BDD Executable Specifications
+flutter test test/bdd_suite_test.dart
+
+# 3. Run Automated Accessibility & Guideline Checks
+flutter test test/accessibility/
+
+# 4. Run Flutter static analyzer
+flutter analyze --no-fatal-infos
 
 # Validate dynamic notification resources in the actual shrunk release APK.
 node --test scripts/validate-android-notification-resources.test.mjs

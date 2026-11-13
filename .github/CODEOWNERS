@@ -1,0 +1,30 @@
+# 1Wallet Global Code Ownership
+
+# Core Flutter Application
+* @joelpjoji-mns
+
+# Ledger Domain, Codes & Financial Math
+/lib/src/data/ @joelpjoji-mns
+/lib/src/ledger/ @joelpjoji-mns
+/packages/one_wallet_money/ @joelpjoji-mns
+
+# Offline Mode & Cloud Sync Engine
+/lib/src/offline_mode/ @joelpjoji-mns
+/lib/src/cloud_sync/ @joelpjoji-mns
+/firebase/ @joelpjoji-mns
+
+# Ingestion Pipeline & Capture
+/lib/src/capture/ @joelpjoji-mns
+/lib/src/imports/ @joelpjoji-mns
+
+# Observability & Logging
+/lib/src/observability/ @joelpjoji-mns
+
+# Release Engineering & CI/CD
+/.github/ @joelpjoji-mns
+/scripts/ @joelpjoji-mns
+/android/fastlane/ @joelpjoji-mns
+/ios/fastlane/ @joelpjoji-mns
+
+# Companion Web PWA
+/pwa/ @joelpjoji-mns

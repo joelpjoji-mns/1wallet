@@ -1,0 +1,26 @@
+{
+  "name": "1Wallet Devcontainer",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "Dart-Code.flutter",
+        "Dart-Code.dart-code",
+        "alexisvt.flutter-snippets",
+        "eamodio.gitlens",
+        "streetsidesoftware.code-spell-checker"
+      ],
+      "settings": {
+        "dart.flutterSdkPath": "/sdks/flutter",
+        "editor.formatOnSave": true,
+        "[dart]": {
+          "editor.formatOnSave": true,
+          "editor.selectionHighlight": false
+        }
+      }
+    }
+  },
+  "remoteUser": "developer"
+}

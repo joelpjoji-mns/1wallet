@@ -1,0 +1,13 @@
+name: one_wallet_money
+description: Pure Dart financial money arithmetic in integer minor units with zero floating-point drift.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  meta: ^1.15.0
+
+dev_dependencies:
+  test: ^1.25.0

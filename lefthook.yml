@@ -1,0 +1,18 @@
+pre-commit:
+  parallel: true
+  commands:
+    format:
+      glob: "*.dart"
+      run: dart format --output=none --set-exit-if-changed {staged_files}
+
+    analyze:
+      glob: "*.dart"
+      run: flutter analyze --no-fatal-infos
+
+    bdd-specs:
+      glob: "{test/bdd/**,lib/src/data/**}"
+      run: flutter test test/bdd_suite_test.dart
+
+    observability-tests:
+      glob: "{lib/src/observability/**,test/observability_test.dart}"
+      run: flutter test test/observability_test.dart

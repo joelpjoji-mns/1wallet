@@ -1,0 +1,43 @@
+{
+  "@@locale": "en",
+  "appTitle": "1Wallet",
+  "@appTitle": {
+    "description": "Application title"
+  },
+  "offlineMode": "Offline Mode",
+  "@offlineMode": {
+    "description": "Indicator label when running offline without cloud sync"
+  },
+  "offlineModeDescription": "All transactions and account balances stay strictly stored on this device.",
+  "@offlineModeDescription": {
+    "description": "Description of privacy guarantees in offline mode"
+  },
+  "totalBalance": "Total Balance",
+  "@totalBalance": {
+    "description": "Label for cumulative net worth or account balance"
+  },
+  "addTransaction": "Add Transaction",
+  "@addTransaction": {
+    "description": "Action button to record a new transaction"
+  },
+  "transferFunds": "Transfer Funds",
+  "@transferFunds": {
+    "description": "Action button to transfer money between accounts"
+  },
+  "expense": "Expense",
+  "@expense": {
+    "description": "Transaction type expense"
+  },
+  "income": "Income",
+  "@income": {
+    "description": "Transaction type income"
+  },
+  "transfer": "Transfer",
+  "@transfer": {
+    "description": "Transaction type transfer"
+  },
+  "accountDeleted": "Account archived successfully",
+  "@accountDeleted": {
+    "description": "Confirmation message upon archiving an account"
+  }
+}

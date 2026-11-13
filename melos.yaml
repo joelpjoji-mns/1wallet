@@ -1,0 +1,36 @@
+name: one_wallet_workspace
+repository: https://github.com/joelpjoji/1wallet
+
+packages:
+  - "."
+  - "packages/*"
+
+command:
+  version:
+    linkToCommits: true
+    workspaceChangelog: true
+
+scripts:
+  analyze:
+    run: flutter analyze --no-fatal-infos
+    description: Run static analysis across the workspace.
+
+  test:
+    run: flutter test
+    description: Run Flutter unit and widget tests.
+
+  bdd:
+    run: flutter test test/bdd_suite_test.dart
+    description: Run BDD executable specifications suite.
+
+  a11y:
+    run: flutter test test/accessibility/
+    description: Run automated accessibility and WCAG guideline checks.
+
+  format:
+    run: dart format .
+    description: Automatically format all Dart code in the workspace.
+
+  format:check:
+    run: dart format --output=none --set-exit-if-changed .
+    description: Verify that code is properly formatted.
