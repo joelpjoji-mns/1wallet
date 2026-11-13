@@ -13,7 +13,7 @@
   "dependencies": {
     "firebase": "^12.16.0",
     "lucide-react": "^1.71.0",
-    "pako": "^3.0.2",
+    "pako": "^3.0.3",
     "react": "^19.2.7",
     "react-dom": "^19.3.1",
     "react-router-dom": "^7.18.1"
@@ -21,7 +21,7 @@
   "devDependencies": {
     "@types/jsdom": "^30.0.0",
     "@types/node": "^26.6.6",
-    "@types/pako": "^2.0.4",
+    "@types/pako": "^3.0.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
