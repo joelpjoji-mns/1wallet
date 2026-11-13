@@ -27,70 +27,76 @@ void main() {
   });
 
   testWidgets(
-      'ReviewQueueScreen renders credit card notification with Confirm Paid and Dismiss actions',
-      (tester) async {
-    final now = DateTime.now();
-    final cardAccount = Account(
-      id: 'cc-test-1',
-      name: 'Freedom Unlimited',
-      institution: 'Chase Bank',
-      type: 'credit_card',
-      currency: 'USD',
-      openingBalance: const Money(amountMinor: -45000, currency: 'USD'),
-      creditLimit: const Money(amountMinor: 1000000, currency: 'USD'),
-      statementDay: 1,
-      dueDay: now.day,
-      notifyDaysBeforeDue: 3,
-    );
+    'ReviewQueueScreen renders credit card notification with Confirm Paid and Dismiss actions',
+    (tester) async {
+      final now = DateTime.now();
+      final cardAccount = Account(
+        id: 'cc-test-1',
+        name: 'Freedom Unlimited',
+        institution: 'Chase Bank',
+        type: 'credit_card',
+        currency: 'USD',
+        openingBalance: const Money(amountMinor: -45000, currency: 'USD'),
+        creditLimit: const Money(amountMinor: 1000000, currency: 'USD'),
+        statementDay: 1,
+        dueDay: now.day,
+        notifyDaysBeforeDue: 3,
+      );
 
-    final seedState = LedgerState(
-      version: 1,
-      userId: 'test-user',
-      accounts: [cardAccount],
-      transactions: const [],
-      categories: const [],
-      captureCandidates: const [],
-      preferences: const LedgerPreferences(
-        baseCurrency: 'USD',
-        displayCurrency: 'USD',
-        notificationInboxEnabled: true,
-      ),
-    );
-
-    final prefs = await SharedPreferences.getInstance();
-    final container = ProviderContainer(
-      overrides: authenticatedSampleOverrides(ledger: seedState, prefs: prefs),
-    );
-    addTearDown(container.dispose);
-    await container.read(ledgerProvider.notifier).restoreLedgerState(seedState);
-
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: MaterialApp(
-          theme: AppTheme.light().copyWith(
-            splashFactory: NoSplash.splashFactory,
-          ),
-          home: const ReviewQueueScreen(),
+      final seedState = LedgerState(
+        version: 1,
+        userId: 'test-user',
+        accounts: [cardAccount],
+        transactions: const [],
+        categories: const [],
+        captureCandidates: const [],
+        preferences: const LedgerPreferences(
+          baseCurrency: 'USD',
+          displayCurrency: 'USD',
+          notificationInboxEnabled: true,
         ),
-      ),
-    );
-    await _pumpBounded(tester);
+      );
 
-    // Verify card notification title and card name appear
-    expect(find.text('Freedom Unlimited'), findsOneWidget);
-    expect(find.text('Confirm Paid'), findsOneWidget);
-    expect(find.text('Dismiss'), findsOneWidget);
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: authenticatedSampleOverrides(
+          ledger: seedState,
+          prefs: prefs,
+        ),
+      );
+      addTearDown(container.dispose);
+      await container
+          .read(ledgerProvider.notifier)
+          .restoreLedgerState(seedState);
 
-    // Tap Confirm Paid
-    await tester.tap(find.text('Confirm Paid'));
-    await _pumpBounded(tester);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: AppTheme.light().copyWith(
+              splashFactory: NoSplash.splashFactory,
+            ),
+            home: const ReviewQueueScreen(),
+          ),
+        ),
+      );
+      await _pumpBounded(tester);
 
-    // Verify account was marked paid in state
-    final updatedAccount = container
-        .read(ledgerProvider)
-        .accounts
-        .firstWhere((a) => a.id == 'cc-test-1');
-    expect(updatedAccount.lastPaidBillMonth, isNotNull);
-  });
+      // Verify card notification title and card name appear
+      expect(find.text('Freedom Unlimited'), findsOneWidget);
+      expect(find.text('Confirm Paid'), findsOneWidget);
+      expect(find.text('Dismiss'), findsOneWidget);
+
+      // Tap Confirm Paid
+      await tester.tap(find.text('Confirm Paid'));
+      await _pumpBounded(tester);
+
+      // Verify account was marked paid in state
+      final updatedAccount = container
+          .read(ledgerProvider)
+          .accounts
+          .firstWhere((a) => a.id == 'cc-test-1');
+      expect(updatedAccount.lastPaidBillMonth, isNotNull);
+    },
+  );
 }

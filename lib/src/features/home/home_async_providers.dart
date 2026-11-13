@@ -64,21 +64,24 @@ final homeBalanceTrendProvider = FutureProvider.family
       })
     >((ref, args) async {
       final state = ref.watch(ledgerProvider);
-      return await compute((msg) {
-        return balanceTrendForRange(
-          msg.state,
-          start: msg.start,
-          end: msg.end,
-          accountId: msg.accountId,
-          targetCurrency: msg.targetCurrency,
-        );
-      }, (
-        state: state,
-        start: args.start,
-        end: args.end,
-        accountId: args.accountId,
-        targetCurrency: args.targetCurrency,
-      ));
+      return await compute(
+        (msg) {
+          return balanceTrendForRange(
+            msg.state,
+            start: msg.start,
+            end: msg.end,
+            accountId: msg.accountId,
+            targetCurrency: msg.targetCurrency,
+          );
+        },
+        (
+          state: state,
+          start: args.start,
+          end: args.end,
+          accountId: args.accountId,
+          targetCurrency: args.targetCurrency,
+        ),
+      );
     });
 
 final homeBalanceFutureTrendProvider = FutureProvider.family
@@ -92,42 +95,37 @@ final homeBalanceFutureTrendProvider = FutureProvider.family
       })
     >((ref, args) async {
       final state = ref.watch(ledgerProvider);
-      return await compute((msg) {
-        return balanceFutureTrendForRange(
-          msg.state,
-          start: msg.start,
-          end: msg.end,
-          accountId: msg.accountId,
-          targetCurrency: msg.targetCurrency,
-        );
-      }, (
-        state: state,
-        start: args.start,
-        end: args.end,
-        accountId: args.accountId,
-        targetCurrency: args.targetCurrency,
-      ));
+      return await compute(
+        (msg) {
+          return balanceFutureTrendForRange(
+            msg.state,
+            start: msg.start,
+            end: msg.end,
+            accountId: msg.accountId,
+            targetCurrency: msg.targetCurrency,
+          );
+        },
+        (
+          state: state,
+          start: args.start,
+          end: args.end,
+          accountId: args.accountId,
+          targetCurrency: args.targetCurrency,
+        ),
+      );
     });
 
 final homeAccountBalanceMapProvider = Provider.autoDispose<Map<String, Money>>((
   ref,
 ) {
-  ref.watch(
-    ledgerProvider.select(
-      (s) => (s.accounts, s.transactions),
-    ),
-  );
+  ref.watch(ledgerProvider.select((s) => (s.accounts, s.transactions)));
   final state = ref.read(ledgerProvider);
   return accountBalanceMap(state);
 });
 
 final homeCurrencyBreakdownProvider = Provider.family
     .autoDispose<List<Money>, String?>((ref, accountId) {
-      ref.watch(
-        ledgerProvider.select(
-          (s) => (s.accounts, s.transactions),
-        ),
-      );
+      ref.watch(ledgerProvider.select((s) => (s.accounts, s.transactions)));
       final state = ref.read(ledgerProvider);
       return balanceBreakdownByCurrency(state, accountId: accountId);
     });

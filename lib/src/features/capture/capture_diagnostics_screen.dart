@@ -157,8 +157,8 @@ class _CaptureDiagnosticsScreenState
                   child: Text(
                     'Keep logs for',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 GlassDropdownPill<int>(

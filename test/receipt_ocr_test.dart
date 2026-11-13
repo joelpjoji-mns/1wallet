@@ -25,22 +25,19 @@ void main() {
     },
   );
 
-  test(
-    'parses a comma-decimal amount (e.g. European "12,34") next to a total '
-    'keyword instead of silently dropping the amount',
-    () {
-      const text = 'Total 12,34';
-      const eurOptions = ReceiptPhotoOptions(
-        fallbackCurrency: 'EUR',
-        fallbackOccurredAt: '2024-01-01T00:00:00.000Z',
-      );
+  test('parses a comma-decimal amount (e.g. European "12,34") next to a total '
+      'keyword instead of silently dropping the amount', () {
+    const text = 'Total 12,34';
+    const eurOptions = ReceiptPhotoOptions(
+      fallbackCurrency: 'EUR',
+      fallbackOccurredAt: '2024-01-01T00:00:00.000Z',
+    );
 
-      final fields = parseReceiptText(text, eurOptions);
+    final fields = parseReceiptText(text, eurOptions);
 
-      expect(fields.amountMinor, 1234);
-      expect(fields.currency, 'EUR');
-    },
-  );
+    expect(fields.amountMinor, 1234);
+    expect(fields.currency, 'EUR');
+  });
 
   test('returns no amount for receipts with no numeric text', () {
     const fields = ReceiptOcrStatus.failed;

@@ -76,19 +76,19 @@ class _NativeCard extends StatelessWidget {
                         title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w900),
                       ),
                       if (subtitle != null)
                         Text(
                           subtitle!,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                              ),
                         ),
                     ],
                   ),
@@ -99,10 +99,7 @@ class _NativeCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.xs),
             Expanded(
               child: ClipRect(
-                child: Align(
-                  alignment: Alignment.topLeft,
-                  child: child,
-                ),
+                child: Align(alignment: Alignment.topLeft, child: child),
               ),
             ),
           ],
@@ -141,10 +138,7 @@ class _NativeProgressBar extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(height / 2),
               gradient: LinearGradient(
-                colors: [
-                  color.withValues(alpha: 0.75),
-                  color,
-                ],
+                colors: [color.withValues(alpha: 0.75), color],
               ),
               boxShadow: [
                 BoxShadow(
@@ -230,6 +224,7 @@ class NativeBalanceWidget extends StatelessWidget {
   final String netWorthLabel;
   final String incomeText;
   final String expenseText;
+
   /// e.g. ['USD 12,480.00', 'INR 10,34,500'] — empty list = hide
   final List<String> currencyBreakdown;
 
@@ -257,113 +252,117 @@ class NativeBalanceWidget extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-          // Header row
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: scheme.primary.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(AppRadii.sm),
+            // Header row
+            Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppRadii.sm),
+                  ),
+                  child: Icon(
+                    Icons.account_balance_wallet_outlined,
+                    size: 18,
+                    color: scheme.primary,
+                  ),
                 ),
-                child: Icon(
-                  Icons.account_balance_wallet_outlined,
-                  size: 18,
-                  color: scheme.primary,
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    'Balance',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                // Static "This month" pill
+                const _StaticPill(
+                  label: 'This month',
+                  icon: Icons.calendar_month_rounded,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xxxs),
+            // Big balance number
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                totalBalance,
+                maxLines: 1,
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -1.2,
                 ),
               ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: Text(
-                  'Balance',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w900,
+            ),
+            // Currency breakdown chips
+            if (currencyBreakdown.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.xs),
+              SizedBox(
+                height: 24,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      for (final chip in currencyBreakdown) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.xs,
+                            vertical: AppSpacing.xxxs,
+                          ),
+                          decoration: BoxDecoration(
+                            color: scheme.surfaceContainerHigh,
+                            borderRadius: BorderRadius.circular(AppRadii.pill),
+                            border: Border.all(color: scheme.outlineVariant),
+                          ),
+                          child: Text(
+                            chip,
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                        ),
+                        if (chip != currencyBreakdown.last)
+                          const SizedBox(width: AppSpacing.xs),
+                      ],
+                    ],
                   ),
                 ),
               ),
-              // Static "This month" pill
-              const _StaticPill(label: 'This month', icon: Icons.calendar_month_rounded),
             ],
-          ),
-          const SizedBox(height: AppSpacing.xxxs),
-          // Big balance number
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              totalBalance,
-              maxLines: 1,
-              style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                fontWeight: FontWeight.w900,
-                letterSpacing: -1.2,
-              ),
-            ),
-          ),
-          // Currency breakdown chips
-          if (currencyBreakdown.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.xs),
-            SizedBox(
-              height: 24,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    for (final chip in currencyBreakdown) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.xs,
-                          vertical: AppSpacing.xxxs,
-                        ),
-                        decoration: BoxDecoration(
-                          color: scheme.surfaceContainerHigh,
-                          borderRadius: BorderRadius.circular(AppRadii.pill),
-                          border: Border.all(color: scheme.outlineVariant),
-                        ),
-                        child: Text(
-                          chip,
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      if (chip != currencyBreakdown.last)
-                        const SizedBox(width: AppSpacing.xs),
-                    ],
-                  ],
+            // Income / Expense panels
+            Row(
+              children: [
+                Expanded(
+                  child: _FlowPanel(
+                    label: 'Income',
+                    value: incomeText,
+                    color: positive,
+                  ),
                 ),
-              ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: _FlowPanel(
+                    label: 'Expense',
+                    value: expenseText,
+                    color: danger,
+                  ),
+                ),
+              ],
             ),
           ],
-          const SizedBox(height: AppSpacing.xs),
-          // Income / Expense panels
-          Row(
-            children: [
-              Expanded(
-                child: _FlowPanel(
-                  label: 'Income',
-                  value: incomeText,
-                  color: positive,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _FlowPanel(
-                  label: 'Expense',
-                  value: expenseText,
-                  color: danger,
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
-    ),
-  );
+    );
   }
 }
 
@@ -409,9 +408,7 @@ class NativeAccountsWidget extends StatelessWidget {
         builder: (context, constraints) {
           const spacing = AppSpacing.xs;
           final tileWidth =
-              ((constraints.maxWidth.isFinite
-                      ? constraints.maxWidth
-                      : 300.0) -
+              ((constraints.maxWidth.isFinite ? constraints.maxWidth : 300.0) -
                   spacing * (columns - 1)) /
               columns;
           return Wrap(
@@ -586,9 +583,7 @@ class _NativeTxnRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(AppRadii.sm),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -603,8 +598,8 @@ class _NativeTxnRow extends StatelessWidget {
               entry.isTransfer
                   ? Icons.swap_horiz_rounded
                   : (entry.isExpense
-                      ? Icons.arrow_upward_rounded
-                      : Icons.arrow_downward_rounded),
+                        ? Icons.arrow_upward_rounded
+                        : Icons.arrow_downward_rounded),
               size: 16,
               color: iconColor,
             ),
@@ -701,7 +696,9 @@ class NativeUpcomingWidget extends StatelessWidget {
                 child: _MetricBox(
                   label: 'Due soon',
                   value: '$dueSoonCount',
-                  color: overdueCount > 0 ? scheme.error : _positiveColor(scheme),
+                  color: overdueCount > 0
+                      ? scheme.error
+                      : _positiveColor(scheme),
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),
@@ -744,7 +741,11 @@ class _UpcomingRowNative extends StatelessWidget {
     final isOverdue = entry.daysUntilDue < 0;
     final isToday = entry.daysUntilDue == 0;
 
-    final (badgeText, badgeColor, badgeTextColor) = switch (entry.daysUntilDue) {
+    final (
+      badgeText,
+      badgeColor,
+      badgeTextColor,
+    ) = switch (entry.daysUntilDue) {
       < 0 => ('OVERDUE', scheme.errorContainer, scheme.onErrorContainer),
       0 => ('TODAY', scheme.errorContainer, scheme.onErrorContainer),
       1 => ('TOMORROW', scheme.tertiaryContainer, scheme.onTertiaryContainer),
@@ -874,8 +875,7 @@ class NativeSafeSpendWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final positive = _positiveColor(scheme);
-    final progressColor =
-        spentRatio > 0.9 ? scheme.error : positive;
+    final progressColor = spentRatio > 0.9 ? scheme.error : positive;
     final pct = (spentRatio * 100).round();
 
     return _NativeCard(
@@ -906,11 +906,12 @@ class NativeSafeSpendWidget extends StatelessWidget {
                       alignment: Alignment.centerLeft,
                       child: Text(
                         dailyAllowance,
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w900,
-                          color: scheme.primary,
-                          letterSpacing: -0.5,
-                        ),
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: scheme.primary,
+                              letterSpacing: -0.5,
+                            ),
                       ),
                     ),
                   ],
@@ -1168,9 +1169,9 @@ class _EmptyMessage extends StatelessWidget {
           const SizedBox(width: AppSpacing.xs),
           Text(
             message,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
           ),
         ],
       ),
@@ -1214,10 +1215,9 @@ class _StaticPill extends StatelessWidget {
   }
 }
 
-Color _positiveColor(ColorScheme scheme) =>
-    scheme.brightness == Brightness.dark
-        ? const Color(0xFF8ED99F)
-        : const Color(0xFF137A3A);
+Color _positiveColor(ColorScheme scheme) => scheme.brightness == Brightness.dark
+    ? const Color(0xFF8ED99F)
+    : const Color(0xFF137A3A);
 
 Color _legibleForeground(Color background) {
   const light = Colors.white;
@@ -1254,7 +1254,9 @@ class _TrendSparklinePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (points.isEmpty) return;
     if (points.length == 1) {
-      final p = Paint()..color = lineColor..strokeWidth = 3;
+      final p = Paint()
+        ..color = lineColor
+        ..strokeWidth = 3;
       canvas.drawCircle(Offset(size.width / 2, size.height / 2), 4, p);
       return;
     }
@@ -1265,7 +1267,8 @@ class _TrendSparklinePainter extends CustomPainter {
     final stepX = size.width / (points.length - 1);
     for (var i = 0; i < points.length; i++) {
       final x = i * stepX;
-      final y = size.height - (points[i].clamp(0.0, 1.0) * (size.height - 8) + 4);
+      final y =
+          size.height - (points[i].clamp(0.0, 1.0) * (size.height - 8) + 4);
       if (i == 0) {
         path.moveTo(x, y);
         fillPath.moveTo(x, size.height);
@@ -1332,7 +1335,9 @@ class NativeBalanceTrendWidget extends StatelessWidget {
       subtitle: periodLabel,
       headerTrailing: _StaticPill(
         label: deltaText,
-        icon: isPositive ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+        icon: isPositive
+            ? Icons.arrow_upward_rounded
+            : Icons.arrow_downward_rounded,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1425,9 +1430,8 @@ class NativeTopCategoriesWidget extends StatelessWidget {
                           cat.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                       ),
                       Text(
@@ -1548,10 +1552,7 @@ class NativeAccountGroupEntry {
 }
 
 class NativeAccountGroupsWidget extends StatelessWidget {
-  const NativeAccountGroupsWidget({
-    required this.groups,
-    super.key,
-  });
+  const NativeAccountGroupsWidget({required this.groups, super.key});
 
   final List<NativeAccountGroupEntry> groups;
 
@@ -1636,7 +1637,9 @@ class NativeCreditUtilizationWidget extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final color = utilizationPercent > 50
         ? scheme.error
-        : (utilizationPercent > 30 ? const Color(0xFFFFAB00) : _positiveColor(scheme));
+        : (utilizationPercent > 30
+              ? const Color(0xFFFFAB00)
+              : _positiveColor(scheme));
 
     return _NativeCard(
       icon: Icons.credit_card_rounded,
@@ -1694,7 +1697,9 @@ class NativeSavingsRateWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final color = savingsRatePercent >= 20 ? _positiveColor(scheme) : const Color(0xFFFFAB00);
+    final color = savingsRatePercent >= 20
+        ? _positiveColor(scheme)
+        : const Color(0xFFFFAB00);
 
     return _NativeCard(
       icon: Icons.savings_outlined,
@@ -1754,20 +1759,14 @@ class NativeSavingsRateWidget extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class NativeTagEntry {
-  const NativeTagEntry({
-    required this.tag,
-    required this.amountText,
-  });
+  const NativeTagEntry({required this.tag, required this.amountText});
 
   final String tag;
   final String amountText;
 }
 
 class NativeTagCloudWidget extends StatelessWidget {
-  const NativeTagCloudWidget({
-    required this.tags,
-    super.key,
-  });
+  const NativeTagCloudWidget({required this.tags, super.key});
 
   final List<NativeTagEntry> tags;
 
@@ -2020,7 +2019,9 @@ class NativePendingReviewWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final color = pendingCount > 0 ? const Color(0xFFFFAB00) : _positiveColor(scheme);
+    final color = pendingCount > 0
+        ? const Color(0xFFFFAB00)
+        : _positiveColor(scheme);
 
     return _NativeCard(
       icon: Icons.mark_email_unread_outlined,

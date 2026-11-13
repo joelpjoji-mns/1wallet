@@ -29,12 +29,15 @@ void main() {
       ]);
     });
 
-    test('syncWidgets executes cleanly without throwing on ledger data', () async {
-      final sampleState = emptyLedgerState(userId: 'test-user');
-      await expectLater(
-        NativeWidgetSyncService.syncWidgets(sampleState),
-        completes,
-      );
-    });
+    test(
+      'syncWidgets executes cleanly without throwing on ledger data',
+      () async {
+        final sampleState = emptyLedgerState(userId: 'test-user');
+        await expectLater(
+          NativeWidgetSyncService.syncWidgets(sampleState),
+          completes,
+        );
+      },
+    );
   });
 }

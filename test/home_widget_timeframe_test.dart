@@ -43,68 +43,71 @@ void main() {
   });
 
   group('flowForPeriod', () {
-    test('correctly isolates transactions in Last month, This month, and This year', () {
-      final now = DateTime.now();
-      final currentMonthDate = DateTime(now.year, now.month, 10);
-      final lastMonthDate = DateTime(now.year, now.month - 1, 10);
+    test(
+      'correctly isolates transactions in Last month, This month, and This year',
+      () {
+        final now = DateTime.now();
+        final currentMonthDate = DateTime(now.year, now.month, 10);
+        final lastMonthDate = DateTime(now.year, now.month - 1, 10);
 
-      final state = LedgerState(
-        version: currentLedgerStateVersion,
-        userId: 'test-user',
-        preferences: const LedgerPreferences(displayCurrency: 'USD'),
-        accounts: const [
-          Account(
-            id: 'bank',
-            name: 'Bank',
-            type: 'bank',
-            currency: 'USD',
-            openingBalance: Money(amountMinor: 0, currency: 'USD'),
-          ),
-        ],
-        categories: const [],
-        transactions: [
-          TransactionRecord(
-            id: 'tx-this-month',
-            accountId: 'bank',
-            type: 'income',
-            status: 'cleared',
-            source: 'manual',
-            amount: const Money(amountMinor: 50000, currency: 'USD'),
-            baseAmount: const Money(amountMinor: 50000, currency: 'USD'),
-            occurredAt: currentMonthDate,
-          ),
-          TransactionRecord(
-            id: 'tx-last-month',
-            accountId: 'bank',
-            type: 'expense',
-            status: 'cleared',
-            source: 'manual',
-            amount: const Money(amountMinor: 30000, currency: 'USD'),
-            baseAmount: const Money(amountMinor: 30000, currency: 'USD'),
-            occurredAt: lastMonthDate,
-          ),
-        ],
-        captureCandidates: const [],
-        exchangeRates: const [],
-      );
+        final state = LedgerState(
+          version: currentLedgerStateVersion,
+          userId: 'test-user',
+          preferences: const LedgerPreferences(displayCurrency: 'USD'),
+          accounts: const [
+            Account(
+              id: 'bank',
+              name: 'Bank',
+              type: 'bank',
+              currency: 'USD',
+              openingBalance: Money(amountMinor: 0, currency: 'USD'),
+            ),
+          ],
+          categories: const [],
+          transactions: [
+            TransactionRecord(
+              id: 'tx-this-month',
+              accountId: 'bank',
+              type: 'income',
+              status: 'cleared',
+              source: 'manual',
+              amount: const Money(amountMinor: 50000, currency: 'USD'),
+              baseAmount: const Money(amountMinor: 50000, currency: 'USD'),
+              occurredAt: currentMonthDate,
+            ),
+            TransactionRecord(
+              id: 'tx-last-month',
+              accountId: 'bank',
+              type: 'expense',
+              status: 'cleared',
+              source: 'manual',
+              amount: const Money(amountMinor: 30000, currency: 'USD'),
+              baseAmount: const Money(amountMinor: 30000, currency: 'USD'),
+              occurredAt: lastMonthDate,
+            ),
+          ],
+          captureCandidates: const [],
+          exchangeRates: const [],
+        );
 
-      final thisMonthFlow = flowForPeriod(state, 'This month');
-      expect(thisMonthFlow.income.amountMinor, equals(50000));
-      expect(thisMonthFlow.expense.amountMinor, equals(0));
+        final thisMonthFlow = flowForPeriod(state, 'This month');
+        expect(thisMonthFlow.income.amountMinor, equals(50000));
+        expect(thisMonthFlow.expense.amountMinor, equals(0));
 
-      final lastMonthFlow = flowForPeriod(state, 'Last month');
-      expect(lastMonthFlow.income.amountMinor, equals(0));
-      expect(lastMonthFlow.expense.amountMinor, equals(30000));
+        final lastMonthFlow = flowForPeriod(state, 'Last month');
+        expect(lastMonthFlow.income.amountMinor, equals(0));
+        expect(lastMonthFlow.expense.amountMinor, equals(30000));
 
-      final thisYearFlow = flowForPeriod(state, 'This year');
-      expect(thisYearFlow.income.amountMinor, equals(50000));
-      if (now.month > 1) {
-        expect(thisYearFlow.expense.amountMinor, equals(30000));
-      }
+        final thisYearFlow = flowForPeriod(state, 'This year');
+        expect(thisYearFlow.income.amountMinor, equals(50000));
+        if (now.month > 1) {
+          expect(thisYearFlow.expense.amountMinor, equals(30000));
+        }
 
-      final allTimeFlow = flowForPeriod(state, 'All time');
-      expect(allTimeFlow.income.amountMinor, equals(50000));
-      expect(allTimeFlow.expense.amountMinor, equals(30000));
-    });
+        final allTimeFlow = flowForPeriod(state, 'All time');
+        expect(allTimeFlow.income.amountMinor, equals(50000));
+        expect(allTimeFlow.expense.amountMinor, equals(30000));
+      },
+    );
   });
 }

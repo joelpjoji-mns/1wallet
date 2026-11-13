@@ -42,10 +42,7 @@ void main() {
               child: child!,
             ),
             home: Scaffold(
-              body: AccountGridHomeWidget(
-                state: state,
-                onTabSelected: (_) {},
-              ),
+              body: AccountGridHomeWidget(state: state, onTabSelected: (_) {}),
             ),
           ),
         ),

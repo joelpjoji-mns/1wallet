@@ -104,10 +104,7 @@ void main() {
           GoRoute(
             path: '/',
             builder: (context, routerState) => Scaffold(
-              body: AccountGridHomeWidget(
-                state: state,
-                onTabSelected: (_) {},
-              ),
+              body: AccountGridHomeWidget(state: state, onTabSelected: (_) {}),
             ),
           ),
           GoRoute(
@@ -123,9 +120,7 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: MaterialApp.router(
-            routerConfig: router,
-          ),
+          child: MaterialApp.router(routerConfig: router),
         ),
       );
       await tester.pumpAndSettle();
@@ -170,10 +165,7 @@ void main() {
           GoRoute(
             path: '/',
             builder: (context, routerState) => Scaffold(
-              body: AccountGridHomeWidget(
-                state: state,
-                onTabSelected: (_) {},
-              ),
+              body: AccountGridHomeWidget(state: state, onTabSelected: (_) {}),
             ),
           ),
           GoRoute(
@@ -189,9 +181,7 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: MaterialApp.router(
-            routerConfig: router,
-          ),
+          child: MaterialApp.router(routerConfig: router),
         ),
       );
       await tester.pumpAndSettle();
@@ -212,9 +202,7 @@ void main() {
     ) async {
       final updateProvider = _TrackingUpdateProvider();
       final container = ProviderContainer(
-        overrides: [
-          appUpdateProvider.overrideWith((ref) => updateProvider),
-        ],
+        overrides: [appUpdateProvider.overrideWith((ref) => updateProvider)],
       );
       addTearDown(container.dispose);
 

@@ -36,42 +36,45 @@ void main() {
     return controller;
   }
 
-  test('merging transactions from the same account sums amount and combines details', () async {
-    final controller = await setupController();
-    addTearDown(controller.dispose);
+  test(
+    'merging transactions from the same account sums amount and combines details',
+    () async {
+      final controller = await setupController();
+      addTearDown(controller.dispose);
 
-    final tx1 = await controller.upsertTransaction(
-      id: 'tx-1',
-      type: 'expense',
-      accountId: 'acc-1',
-      amountMinor: 20000, // 200.00
-      categoryId: 'cat-food',
-      name: 'Coffee',
-      occurredAt: DateTime(2026, 6, 1, 10, 0),
-    );
+      final tx1 = await controller.upsertTransaction(
+        id: 'tx-1',
+        type: 'expense',
+        accountId: 'acc-1',
+        amountMinor: 20000, // 200.00
+        categoryId: 'cat-food',
+        name: 'Coffee',
+        occurredAt: DateTime(2026, 6, 1, 10, 0),
+      );
 
-    final tx2 = await controller.upsertTransaction(
-      id: 'tx-2',
-      type: 'expense',
-      accountId: 'acc-1',
-      amountMinor: 35000, // 350.00
-      categoryId: 'cat-food',
-      name: 'Lunch',
-      occurredAt: DateTime(2026, 6, 1, 13, 0),
-    );
+      final tx2 = await controller.upsertTransaction(
+        id: 'tx-2',
+        type: 'expense',
+        accountId: 'acc-1',
+        amountMinor: 35000, // 350.00
+        categoryId: 'cat-food',
+        name: 'Lunch',
+        occurredAt: DateTime(2026, 6, 1, 13, 0),
+      );
 
-    expect(controller.state.transactions, hasLength(2));
+      expect(controller.state.transactions, hasLength(2));
 
-    final merged = await controller.mergeTransactions(
-      transactionIds: {tx1.id, tx2.id},
-    );
+      final merged = await controller.mergeTransactions(
+        transactionIds: {tx1.id, tx2.id},
+      );
 
-    expect(controller.state.transactions, hasLength(1));
-    expect(merged.amount.amountMinor, 55000); // 200 + 350 = 550
-    expect(merged.accountId, 'acc-1');
-    expect(merged.categoryId, 'cat-food'); // Same category kept
-    expect(merged.occurredAt, tx2.occurredAt); // Latest timestamp kept
-  });
+      expect(controller.state.transactions, hasLength(1));
+      expect(merged.amount.amountMinor, 55000); // 200 + 350 = 550
+      expect(merged.accountId, 'acc-1');
+      expect(merged.categoryId, 'cat-food'); // Same category kept
+      expect(merged.occurredAt, tx2.occurredAt); // Latest timestamp kept
+    },
+  );
 
   test('merging allows overriding category if categories differed', () async {
     final controller = await setupController();
@@ -107,29 +110,30 @@ void main() {
     expect(merged.name, 'Combined household');
   });
 
-  test('merging transactions from different accounts throws ArgumentError', () async {
-    final controller = await setupController();
-    addTearDown(controller.dispose);
+  test(
+    'merging transactions from different accounts throws ArgumentError',
+    () async {
+      final controller = await setupController();
+      addTearDown(controller.dispose);
 
-    final tx1 = await controller.upsertTransaction(
-      id: 'tx-x',
-      type: 'expense',
-      accountId: 'acc-1',
-      amountMinor: 10000,
-    );
+      final tx1 = await controller.upsertTransaction(
+        id: 'tx-x',
+        type: 'expense',
+        accountId: 'acc-1',
+        amountMinor: 10000,
+      );
 
-    final tx2 = await controller.upsertTransaction(
-      id: 'tx-y',
-      type: 'expense',
-      accountId: 'acc-2',
-      amountMinor: 20000,
-    );
+      final tx2 = await controller.upsertTransaction(
+        id: 'tx-y',
+        type: 'expense',
+        accountId: 'acc-2',
+        amountMinor: 20000,
+      );
 
-    expect(
-      () => controller.mergeTransactions(
-        transactionIds: {tx1.id, tx2.id},
-      ),
-      throwsA(isA<ArgumentError>()),
-    );
-  });
+      expect(
+        () => controller.mergeTransactions(transactionIds: {tx1.id, tx2.id}),
+        throwsA(isA<ArgumentError>()),
+      );
+    },
+  );
 }

@@ -518,9 +518,8 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
           .map(
             (m) => (
               text: m.body,
-              receivedAt:
-                  (DateTime.tryParse(m.receivedAt) ?? DateTime.now())
-                      .toLocal(),
+              receivedAt: (DateTime.tryParse(m.receivedAt) ?? DateTime.now())
+                  .toLocal(),
             ),
           )
           .toList();

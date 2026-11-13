@@ -469,10 +469,7 @@ class _CategoryTreeNode extends StatelessWidget {
                 semanticLabel: 'Category actions',
                 menuWidth: 180,
                 items: [
-                  GlassMenuItem(
-                    title: 'Edit',
-                    onTap: () => onEdit(category),
-                  ),
+                  GlassMenuItem(title: 'Edit', onTap: () => onEdit(category)),
                   GlassMenuItem(
                     title: 'Add subcategory',
                     onTap: () => onAddChild(category),

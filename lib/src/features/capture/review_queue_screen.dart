@@ -27,8 +27,8 @@ class TransferCandidatePair {
 
   DateTime get createdAt =>
       debitCandidate.createdAt.isAfter(creditCandidate.createdAt)
-          ? debitCandidate.createdAt
-          : creditCandidate.createdAt;
+      ? debitCandidate.createdAt
+      : creditCandidate.createdAt;
 }
 
 class ReviewQueueScreen extends ConsumerStatefulWidget {
@@ -415,9 +415,9 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                                 softWrap: false,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              style: AppButtonStyles.destructiveText(context).merge(
-                                AppButtonStyles.compact(context),
-                              ),
+                              style: AppButtonStyles.destructiveText(
+                                context,
+                              ).merge(AppButtonStyles.compact(context)),
                             ),
                           ),
                           const SizedBox(width: AppSpacing.xs),
@@ -429,7 +429,10 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                                   '/add?plannedId=${matchedPlan.id}&captureCandidateId=${candidate.id}',
                                 );
                               },
-                              icon: const Icon(Icons.event_repeat_rounded, size: 16),
+                              icon: const Icon(
+                                Icons.event_repeat_rounded,
+                                size: 16,
+                              ),
                               label: const Text(
                                 'Pay Plan',
                                 softWrap: false,
@@ -460,9 +463,9 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                                 softWrap: false,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              style: AppButtonStyles.destructiveText(context).merge(
-                                AppButtonStyles.compact(context),
-                              ),
+                              style: AppButtonStyles.destructiveText(
+                                context,
+                              ).merge(AppButtonStyles.compact(context)),
                             ),
                           ),
                           const SizedBox(width: AppSpacing.xs),
@@ -503,9 +506,9 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                           softWrap: false,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        style: AppButtonStyles.destructiveText(context).merge(
-                          AppButtonStyles.compact(context),
-                        ),
+                        style: AppButtonStyles.destructiveText(
+                          context,
+                        ).merge(AppButtonStyles.compact(context)),
                       ),
                     ),
                     Flexible(
@@ -522,9 +525,9 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                           softWrap: false,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        style: AppButtonStyles.destructiveText(context).merge(
-                          AppButtonStyles.compact(context),
-                        ),
+                        style: AppButtonStyles.destructiveText(
+                          context,
+                        ).merge(AppButtonStyles.compact(context)),
                       ),
                     ),
                     Flexible(
@@ -747,7 +750,10 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                       children: [
                         IconButton(
                           tooltip: 'View Card Details',
-                          icon: const Icon(Icons.credit_card_outlined, size: 20),
+                          icon: const Icon(
+                            Icons.credit_card_outlined,
+                            size: 20,
+                          ),
                           onPressed: () => context.push('/cards'),
                         ),
                         const SizedBox(width: AppSpacing.xs),
@@ -1153,10 +1159,12 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
         if (other != null) {
           final debit = c.transactionType == 'expense' ? c : other;
           final credit = c.transactionType == 'expense' ? other : c;
-          pairs.add(TransferCandidatePair(
-            debitCandidate: debit,
-            creditCandidate: credit,
-          ));
+          pairs.add(
+            TransferCandidatePair(
+              debitCandidate: debit,
+              creditCandidate: credit,
+            ),
+          );
           pairedIds.add(debit.id);
           pairedIds.add(credit.id);
         }
@@ -1207,31 +1215,31 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
 
         final debit = c.transactionType == 'expense' ? c : other;
         final credit = c.transactionType == 'expense' ? other : c;
-        pairs.add(TransferCandidatePair(
-          debitCandidate: debit,
-          creditCandidate: credit,
-        ));
+        pairs.add(
+          TransferCandidatePair(debitCandidate: debit, creditCandidate: credit),
+        );
         pairedIds.add(debit.id);
         pairedIds.add(credit.id);
         break;
       }
     }
 
-    final standalone =
-        pendingCandidates.where((c) => !pairedIds.contains(c.id)).toList();
+    final standalone = pendingCandidates
+        .where((c) => !pairedIds.contains(c.id))
+        .toList();
 
     final items = <dynamic>[...pairs, ...standalone, ...notifications];
     items.sort((a, b) {
       final aDate = a is TransferCandidatePair
           ? a.createdAt
           : (a is CaptureCandidate
-              ? a.createdAt
-              : (a as AppNotification).createdAt);
+                ? a.createdAt
+                : (a as AppNotification).createdAt);
       final bDate = b is TransferCandidatePair
           ? b.createdAt
           : (b is CaptureCandidate
-              ? b.createdAt
-              : (b as AppNotification).createdAt);
+                ? b.createdAt
+                : (b as AppNotification).createdAt);
       return bDate.compareTo(aDate);
     });
     return items;
@@ -1313,10 +1321,12 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
     final debit = pair.debitCandidate;
     final credit = pair.creditCandidate;
 
-    final fromAccount = state.accounts
-        .firstWhereOrNull((a) => a.id == debit.suggestedAccountId);
-    final toAccount = state.accounts
-        .firstWhereOrNull((a) => a.id == credit.suggestedAccountId);
+    final fromAccount = state.accounts.firstWhereOrNull(
+      (a) => a.id == debit.suggestedAccountId,
+    );
+    final toAccount = state.accounts.firstWhereOrNull(
+      (a) => a.id == credit.suggestedAccountId,
+    );
 
     final amount = debit.parsedAmount ?? credit.parsedAmount;
 
@@ -1473,9 +1483,9 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                 onPressed: () => _dismissTransferPair(context, ref, pair),
                 icon: const Icon(Icons.close_rounded, size: 16),
                 label: const Text('Dismiss', softWrap: false),
-                style: AppButtonStyles.destructiveText(context).merge(
-                  AppButtonStyles.compact(context),
-                ),
+                style: AppButtonStyles.destructiveText(
+                  context,
+                ).merge(AppButtonStyles.compact(context)),
               ),
 
               // Confirm Transfer
@@ -1498,7 +1508,9 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
     TransferCandidatePair pair,
   ) async {
     try {
-      await ref.read(ledgerProvider.notifier).linkTransferCandidates(
+      await ref
+          .read(ledgerProvider.notifier)
+          .linkTransferCandidates(
             debitCandidateId: pair.debitCandidate.id,
             creditCandidateId: pair.creditCandidate.id,
           );
@@ -1640,17 +1652,15 @@ class _ReviewQueueChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             IconTheme(
-              data: IconThemeData(
-                color: iconColor,
-                size: 13,
-              ),
+              data: IconThemeData(color: iconColor, size: 13),
               child: icon,
             ),
             const SizedBox(width: AppSpacing.xxs),
             Flexible(
               child: Text(
                 label,
-                style: labelStyle ??
+                style:
+                    labelStyle ??
                     theme.textTheme.bodySmall?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),

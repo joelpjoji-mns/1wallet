@@ -381,7 +381,9 @@ This is a system generated statement. Hence, it does not require any signature.
       final date = r.occurredAt?.toIso8601String().substring(0, 10) ?? '—';
       final type = r.type.toUpperCase().padRight(7);
       final amt = (r.amount.amountMinor / 100).toStringAsFixed(2).padLeft(9);
-      print('#${(i + 1).toString().padLeft(2)} | $date | $type | ${r.amount.currency} $amt | ${r.notes}');
+      print(
+        '#${(i + 1).toString().padLeft(2)} | $date | $type | ${r.amount.currency} $amt | ${r.notes}',
+      );
     }
 
     expect(result.detectedCurrency, 'INR');

@@ -209,7 +209,8 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     if (state.status == UpdateStatus.checking) {
       if (hasUpdate) {
         statusTitle = 'Checking for updates…';
-        statusSubtitle = 'Version ${state.latestRelease!.versionName} available';
+        statusSubtitle =
+            'Version ${state.latestRelease!.versionName} available';
         icon = Icons.sync_rounded;
         color = scheme.primary;
       } else {

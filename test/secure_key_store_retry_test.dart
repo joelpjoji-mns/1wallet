@@ -56,26 +56,28 @@ class _FlakyPlatform extends FlutterSecureStoragePlatform {
       _inner.deleteAll(options: options);
 
   @override
-  Future<Map<String, String>> readAll({
-    required Map<String, String> options,
-  }) => _inner.readAll(options: options);
+  Future<Map<String, String>> readAll({required Map<String, String> options}) =>
+      _inner.readAll(options: options);
 }
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('a failed key read/create is not cached, so a later call can retry', () async {
-    final inner = TestFlutterSecureStoragePlatform(<String, String>{});
-    final flaky = _FlakyPlatform(inner, failReadsRemaining: 1);
-    FlutterSecureStoragePlatform.instance = flaky;
+  test(
+    'a failed key read/create is not cached, so a later call can retry',
+    () async {
+      final inner = TestFlutterSecureStoragePlatform(<String, String>{});
+      final flaky = _FlakyPlatform(inner, failReadsRemaining: 1);
+      FlutterSecureStoragePlatform.instance = flaky;
 
-    await expectLater(
-      () => SecureKeyStore.encrypt('will-fail'),
-      throwsA(isA<StateError>()),
-    );
+      await expectLater(
+        () => SecureKeyStore.encrypt('will-fail'),
+        throwsA(isA<StateError>()),
+      );
 
-    // The next call should succeed (retry), not rethrow a cached failure.
-    final cipher = await SecureKeyStore.encrypt('will-succeed');
-    expect(await SecureKeyStore.decrypt(cipher), 'will-succeed');
-  });
+      // The next call should succeed (retry), not rethrow a cached failure.
+      final cipher = await SecureKeyStore.encrypt('will-succeed');
+      expect(await SecureKeyStore.decrypt(cipher), 'will-succeed');
+    },
+  );
 }

@@ -441,8 +441,9 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                           GlassChip(
                             label: ['', 'M', 'T', 'W', 'T', 'F', 'S', 'S'][i],
                             selected: _daysOfWeek.contains(i),
-                            selectedColor:
-                                Theme.of(context).colorScheme.primaryContainer,
+                            selectedColor: Theme.of(
+                              context,
+                            ).colorScheme.primaryContainer,
                             onTap: () {
                               setState(() {
                                 if (!_daysOfWeek.contains(i)) {
@@ -473,8 +474,9 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                           GlassChip(
                             label: '$i',
                             selected: _daysOfMonth.contains(i),
-                            selectedColor:
-                                Theme.of(context).colorScheme.primaryContainer,
+                            selectedColor: Theme.of(
+                              context,
+                            ).colorScheme.primaryContainer,
                             onTap: () {
                               setState(() {
                                 if (!_daysOfMonth.contains(i)) {
@@ -490,8 +492,9 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                         GlassChip(
                           label: 'Last day of month',
                           selected: _daysOfMonth.contains(32),
-                          selectedColor:
-                              Theme.of(context).colorScheme.primaryContainer,
+                          selectedColor: Theme.of(
+                            context,
+                          ).colorScheme.primaryContainer,
                           onTap: () {
                             setState(() {
                               if (!_daysOfMonth.contains(32)) {
@@ -2234,7 +2237,10 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             Expanded(
-              child: GlassSlider(value: _zoomPercent, onChanged: _onSliderChange),
+              child: GlassSlider(
+                value: _zoomPercent,
+                onChanged: _onSliderChange,
+              ),
             ),
             Icon(
               Icons.zoom_in_rounded,
@@ -2603,145 +2609,144 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
               'Adjust your emergency fund and extra cash allocation to see the payoff graph.',
           child: Column(
             children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                    child: Text(
-                      'Emergency Fund / Savings Buffer',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-                GlassTextField(
-                  controller: _emergencyController,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    ThousandsSeparatorInputFormatter(
-                      widget.state.preferences.locale,
-                    ),
-                  ],
-                  placeholder: 'Enter amount to protect ($currencySymbol)',
-                  prefixIcon: const Icon(Icons.savings_outlined),
-                  onSubmitted: (_) => _flushEmergencyCash(),
-                  onChanged: (val) {
-                    final newMinor = _amountMinorFromInput(
-                      val,
-                      baseCurrency,
-                    ).abs();
-                    _emergencyDebounce?.cancel();
-                    _emergencyDebounce = Timer(
-                      const Duration(milliseconds: 120),
-                      () {
-                        if (!mounted) return;
-                        ref
-                            .read(ledgerProvider.notifier)
-                            .updatePreferencesWith(
-                              (livePreferences) => livePreferences.copyWith(
-                                forecastEmergencyCashMinor: newMinor,
-                              ),
-                            );
-                        setState(() {});
-                      },
-                    );
-                  },
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                DropdownButtonFormField<int>(
-                  isExpanded: true,
-                  initialValue:
-                      const [
-                        0,
-                        7,
-                        14,
-                        30,
-                      ].contains(widget.state.preferences.loanPayoffDelayDays)
-                      ? widget.state.preferences.loanPayoffDelayDays
-                      : 0,
-                  decoration: const InputDecoration(
-                    labelText: 'Delay before closing loan',
-                    prefixIcon: Icon(Icons.timer_outlined),
-                  ),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 0,
-                      child: Text('Close immediately'),
-                    ),
-                    DropdownMenuItem(value: 7, child: Text('Wait 1 week')),
-                    DropdownMenuItem(value: 14, child: Text('Wait 2 weeks')),
-                    DropdownMenuItem(value: 30, child: Text('Wait 1 month')),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) {
-                      ref
-                          .read(ledgerProvider.notifier)
-                          .updatePreferencesWith(
-                            (livePreferences) => livePreferences.copyWith(
-                              loanPayoffDelayDays: val,
-                            ),
-                          );
-                    }
-                  },
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Align(
-                  alignment: Alignment.centerLeft,
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                   child: Text(
-                    'Extra cash toward loans',
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: scheme.onSurfaceVariant,
+                    'Emergency Fund / Savings Buffer',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                SizedBox(
-                  width: double.infinity,
-                  child: GlassSegmentedControl(
-                    segments: const [
-                      GlassSegment(label: 'Base'),
-                      GlassSegment(label: 'Balanced'),
-                      GlassSegment(label: 'Max'),
-                    ],
-                    selectedIndex: switch (_snapAllocation(_debouncedExtraAllocationPercent)) {
-                      0.5 => 1,
-                      1.0 => 2,
-                      _ => 0,
-                    },
-                    onSegmentSelected: (index) {
-                      final val = switch (index) {
-                        1 => 0.5,
-                        2 => 1.0,
-                        _ => 0.0,
-                      };
-                      setState(() {
-                        _extraAllocationPercent = val;
-                        _debouncedExtraAllocationPercent = val;
-                      });
+              ),
+              GlassTextField(
+                controller: _emergencyController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  ThousandsSeparatorInputFormatter(
+                    widget.state.preferences.locale,
+                  ),
+                ],
+                placeholder: 'Enter amount to protect ($currencySymbol)',
+                prefixIcon: const Icon(Icons.savings_outlined),
+                onSubmitted: (_) => _flushEmergencyCash(),
+                onChanged: (val) {
+                  final newMinor = _amountMinorFromInput(
+                    val,
+                    baseCurrency,
+                  ).abs();
+                  _emergencyDebounce?.cancel();
+                  _emergencyDebounce = Timer(
+                    const Duration(milliseconds: 120),
+                    () {
+                      if (!mounted) return;
                       ref
                           .read(ledgerProvider.notifier)
                           .updatePreferencesWith(
                             (livePreferences) => livePreferences.copyWith(
-                              forecastExtraAllocationPercent: val,
+                              forecastEmergencyCashMinor: newMinor,
                             ),
                           );
+                      setState(() {});
                     },
-                  ),
+                  );
+                },
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              DropdownButtonFormField<int>(
+                isExpanded: true,
+                initialValue:
+                    const [
+                      0,
+                      7,
+                      14,
+                      30,
+                    ].contains(widget.state.preferences.loanPayoffDelayDays)
+                    ? widget.state.preferences.loanPayoffDelayDays
+                    : 0,
+                decoration: const InputDecoration(
+                  labelText: 'Delay before closing loan',
+                  prefixIcon: Icon(Icons.timer_outlined),
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  _allocationHint(
-                    _snapAllocation(_debouncedExtraAllocationPercent),
-                  ),
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                items: const [
+                  DropdownMenuItem(value: 0, child: Text('Close immediately')),
+                  DropdownMenuItem(value: 7, child: Text('Wait 1 week')),
+                  DropdownMenuItem(value: 14, child: Text('Wait 2 weeks')),
+                  DropdownMenuItem(value: 30, child: Text('Wait 1 month')),
+                ],
+                onChanged: (val) {
+                  if (val != null) {
+                    ref
+                        .read(ledgerProvider.notifier)
+                        .updatePreferencesWith(
+                          (livePreferences) => livePreferences.copyWith(
+                            loanPayoffDelayDays: val,
+                          ),
+                        );
+                  }
+                },
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Extra cash toward loans',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
                     color: scheme.onSurfaceVariant,
                   ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              SizedBox(
+                width: double.infinity,
+                child: GlassSegmentedControl(
+                  segments: const [
+                    GlassSegment(label: 'Base'),
+                    GlassSegment(label: 'Balanced'),
+                    GlassSegment(label: 'Max'),
+                  ],
+                  selectedIndex: switch (_snapAllocation(
+                    _debouncedExtraAllocationPercent,
+                  )) {
+                    0.5 => 1,
+                    1.0 => 2,
+                    _ => 0,
+                  },
+                  onSegmentSelected: (index) {
+                    final val = switch (index) {
+                      1 => 0.5,
+                      2 => 1.0,
+                      _ => 0.0,
+                    };
+                    setState(() {
+                      _extraAllocationPercent = val;
+                      _debouncedExtraAllocationPercent = val;
+                    });
+                    ref
+                        .read(ledgerProvider.notifier)
+                        .updatePreferencesWith(
+                          (livePreferences) => livePreferences.copyWith(
+                            forecastExtraAllocationPercent: val,
+                          ),
+                        );
+                  },
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                _allocationHint(
+                  _snapAllocation(_debouncedExtraAllocationPercent),
+                ),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ),
+        ),
         const Gap(AppSpacing.lg),
 
         SectionCard(
@@ -2770,78 +2775,77 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
           subtitle:
               'Drag and drop to change priority. The timeline reflects exactly when each loan pays off.',
           child: ReorderableListView(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              onReorderItem: (oldIndex, newIndex) {
-                setState(() {
-                  final item = _priorityLoans.removeAt(oldIndex);
-                  _priorityLoans.insert(newIndex, item);
-                });
-                final newOrder = _priorityLoans.map((l) => l.id).toList();
-                // Important: Delay updatePreferences slightly so the ReorderableListView finishes its animation
-                // before the parent triggers a rebuild with the new state.
-                Future.delayed(const Duration(milliseconds: 50), () {
-                  if (mounted) {
-                    ref
-                        .read(ledgerProvider.notifier)
-                        .updatePreferencesWith(
-                          (livePreferences) => livePreferences.copyWith(
-                            loanPriorityIds: newOrder,
-                          ),
-                        );
-                  }
-                });
-              },
-              children: _priorityLoans.asMap().entries.map((entry) {
-                final index = entry.key;
-                final loan = entry.value;
-                final event = result.payoffEvents.firstWhereOrNull(
-                  (e) => e.loan.id == loan.id,
-                );
-                final payoffStr = event != null
-                    ? ' · Pays off ${formatLedgerDate(event.payoffDate, locale)}'
-                    : ' · No payoff date (check EMI)';
-                final rawBal = accountBalance(widget.state, loan);
-                final outstandingBal = rawBal.copyWith(
-                  amountMinor: rawBal.amountMinor < 0 ? -rawBal.amountMinor : 0,
-                );
-                final balStr = maskMoneyIfPrivate(
-                  widget.state,
-                  'Outstanding: ${formatMoney(outstandingBal, locale)}',
-                );
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            onReorderItem: (oldIndex, newIndex) {
+              setState(() {
+                final item = _priorityLoans.removeAt(oldIndex);
+                _priorityLoans.insert(newIndex, item);
+              });
+              final newOrder = _priorityLoans.map((l) => l.id).toList();
+              // Important: Delay updatePreferences slightly so the ReorderableListView finishes its animation
+              // before the parent triggers a rebuild with the new state.
+              Future.delayed(const Duration(milliseconds: 50), () {
+                if (mounted) {
+                  ref
+                      .read(ledgerProvider.notifier)
+                      .updatePreferencesWith(
+                        (livePreferences) =>
+                            livePreferences.copyWith(loanPriorityIds: newOrder),
+                      );
+                }
+              });
+            },
+            children: _priorityLoans.asMap().entries.map((entry) {
+              final index = entry.key;
+              final loan = entry.value;
+              final event = result.payoffEvents.firstWhereOrNull(
+                (e) => e.loan.id == loan.id,
+              );
+              final payoffStr = event != null
+                  ? ' · Pays off ${formatLedgerDate(event.payoffDate, locale)}'
+                  : ' · No payoff date (check EMI)';
+              final rawBal = accountBalance(widget.state, loan);
+              final outstandingBal = rawBal.copyWith(
+                amountMinor: rawBal.amountMinor < 0 ? -rawBal.amountMinor : 0,
+              );
+              final balStr = maskMoneyIfPrivate(
+                widget.state,
+                'Outstanding: ${formatMoney(outstandingBal, locale)}',
+              );
 
-                return AppGroupedTile(
-                  key: ValueKey(loan.id),
-                  leading: ReorderableDragStartListener(
-                    index: index,
-                    child: const Icon(Icons.drag_handle_rounded),
-                  ),
-                  title: Row(
-                    children: [
-                      Semantics(
-                        label: 'Priority ${index + 1}',
-                        child: CircleAvatar(
-                          radius: 12,
-                          backgroundColor: scheme.primary,
-                          child: Text(
-                            '${index + 1}',
-                            style: Theme.of(context).textTheme.labelMedium
-                                ?.copyWith(
-                                  color: scheme.onPrimary,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
+              return AppGroupedTile(
+                key: ValueKey(loan.id),
+                leading: ReorderableDragStartListener(
+                  index: index,
+                  child: const Icon(Icons.drag_handle_rounded),
+                ),
+                title: Row(
+                  children: [
+                    Semantics(
+                      label: 'Priority ${index + 1}',
+                      child: CircleAvatar(
+                        radius: 12,
+                        backgroundColor: scheme.primary,
+                        child: Text(
+                          '${index + 1}',
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(
+                                color: scheme.onPrimary,
+                                fontWeight: FontWeight.bold,
+                              ),
                         ),
                       ),
-                      const SizedBox(width: AppSpacing.xs),
-                      Expanded(child: Text(loan.name)),
-                    ],
-                  ),
-                  subtitle: Text('$balStr$payoffStr'),
-                );
-              }).toList(),
-            ),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(child: Text(loan.name)),
+                  ],
+                ),
+                subtitle: Text('$balStr$payoffStr'),
+              );
+            }).toList(),
           ),
+        ),
       ],
     );
   }

@@ -21,39 +21,38 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets(
-    'Cards screen "Add" preselects the Credit Card account type',
-    (tester) async {
-      final container = ProviderContainer(
-        overrides: authenticatedSampleOverrides(),
-      );
-      addTearDown(container.dispose);
-      final router = container.read(appRouterProvider);
-      await container
-          .read(ledgerProvider.notifier)
-          .restoreLedgerState(sampleLedgerState());
+  testWidgets('Cards screen "Add" preselects the Credit Card account type', (
+    tester,
+  ) async {
+    final container = ProviderContainer(
+      overrides: authenticatedSampleOverrides(),
+    );
+    addTearDown(container.dispose);
+    final router = container.read(appRouterProvider);
+    await container
+        .read(ledgerProvider.notifier)
+        .restoreLedgerState(sampleLedgerState());
 
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: MaterialApp.router(
-            debugShowCheckedModeBanner: false,
-            routerConfig: router,
-            theme: AppTheme.light(),
-            darkTheme: AppTheme.amoled(),
-          ),
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(
+          debugShowCheckedModeBanner: false,
+          routerConfig: router,
+          theme: AppTheme.light(),
+          darkTheme: AppTheme.amoled(),
         ),
-      );
-      router.go('/cards');
-      await tester.pumpAndSettle();
+      ),
+    );
+    router.go('/cards');
+    await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.add_rounded));
-      await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.add_rounded));
+    await tester.pumpAndSettle();
 
-      expect(find.text('New account'), findsOneWidget);
-      expect(find.text('Credit Card'), findsOneWidget);
-    },
-  );
+    expect(find.text('New account'), findsOneWidget);
+    expect(find.text('Credit Card'), findsOneWidget);
+  });
 
   testWidgets(
     'the plain Accounts screen "Add account" still defaults to Bank (no '

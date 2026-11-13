@@ -250,7 +250,9 @@ class HomeLiveProgressBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final resolvedColor = color ?? scheme.primary;
-    final bg = backgroundColor ?? scheme.surfaceContainerHighest.withValues(alpha: 0.5);
+    final bg =
+        backgroundColor ??
+        scheme.surfaceContainerHighest.withValues(alpha: 0.5);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(height / 2),

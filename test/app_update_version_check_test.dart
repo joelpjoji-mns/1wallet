@@ -76,28 +76,31 @@ void main() {
       );
     });
 
-    test('seamlessly transitions from legacy 2.1.146 (code 2002146) to new schema 2.1.51 (code 2100151)', () {
-      expect(
-        AppUpdateProvider.isReleaseNewer(
-          latestVersionCode: 2100151,
-          latestVersionName: '2.1.51',
-          currentVersionCode: 2002146,
-          currentVersionName: '2.1.146',
-        ),
-        isTrue,
-      );
+    test(
+      'seamlessly transitions from legacy 2.1.146 (code 2002146) to new schema 2.1.51 (code 2100151)',
+      () {
+        expect(
+          AppUpdateProvider.isReleaseNewer(
+            latestVersionCode: 2100151,
+            latestVersionName: '2.1.51',
+            currentVersionCode: 2002146,
+            currentVersionName: '2.1.146',
+          ),
+          isTrue,
+        );
 
-      // Once 2.1.51 is installed (arm64 split adds 2000 -> 2102151):
-      expect(
-        AppUpdateProvider.isReleaseNewer(
-          latestVersionCode: 2100151,
-          latestVersionName: '2.1.51',
-          currentVersionCode: 2102151,
-          currentVersionName: '2.1.51',
-        ),
-        isFalse,
-      );
-    });
+        // Once 2.1.51 is installed (arm64 split adds 2000 -> 2102151):
+        expect(
+          AppUpdateProvider.isReleaseNewer(
+            latestVersionCode: 2100151,
+            latestVersionName: '2.1.51',
+            currentVersionCode: 2102151,
+            currentVersionName: '2.1.51',
+          ),
+          isFalse,
+        );
+      },
+    );
 
     test('handles patch rollover (e.g. 2.1.99 to 2.2.00)', () {
       expect(

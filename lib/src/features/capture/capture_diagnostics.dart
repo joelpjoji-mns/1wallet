@@ -113,7 +113,8 @@ class CaptureDiagnosticEvent {
 
 class CaptureDiagnostics {
   static const _key = 'one_wallet_flutter.capture_diagnostics';
-  static const _retentionKey = 'one_wallet_flutter.capture_diagnostics_retention_days';
+  static const _retentionKey =
+      'one_wallet_flutter.capture_diagnostics_retention_days';
   static const _maxEvents = 150;
   static const defaultRetentionDays = 30;
 

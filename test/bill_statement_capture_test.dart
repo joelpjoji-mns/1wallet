@@ -159,15 +159,18 @@ void main() {
       expect(matched!.id, 'acc_hdfc_card');
     });
 
-    test('matches credit card loosely by institution and card context when last4 is masked differently', () {
-      const text =
-          'HDFC Bank Credit Card statement generated. Total Due Rs. 5,000 due by Nov 12.';
-      final notice = parseBillStatementNotice(text, fallbackCurrency: 'INR')!;
-      final matched = matchAccountForStatement(ledgerState, notice);
+    test(
+      'matches credit card loosely by institution and card context when last4 is masked differently',
+      () {
+        const text =
+            'HDFC Bank Credit Card statement generated. Total Due Rs. 5,000 due by Nov 12.';
+        final notice = parseBillStatementNotice(text, fallbackCurrency: 'INR')!;
+        final matched = matchAccountForStatement(ledgerState, notice);
 
-      expect(matched, isNotNull);
-      expect(matched!.id, 'acc_hdfc_card');
-    });
+        expect(matched, isNotNull);
+        expect(matched!.id, 'acc_hdfc_card');
+      },
+    );
 
     test('matches account by full accountNumber in encryptedDetails', () {
       const customCard = Account(

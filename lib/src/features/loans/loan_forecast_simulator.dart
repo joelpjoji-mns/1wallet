@@ -85,9 +85,12 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
 }) {
   int initialNetLiquidBalance = 0;
 
-  final validActiveLoans =
-      activeLoans.where((l) => l.principalMinor > 0).toList();
-  final activeLoanAccountIds = validActiveLoans.map((l) => l.account.id).toSet();
+  final validActiveLoans = activeLoans
+      .where((l) => l.principalMinor > 0)
+      .toList();
+  final activeLoanAccountIds = validActiveLoans
+      .map((l) => l.account.id)
+      .toSet();
 
   for (final account in state.accounts) {
     if (!account.isArchived && account.includeInReports) {
@@ -234,7 +237,9 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
 
   // Initialize simulation states
   final baseLoans = validActiveLoans.map((l) => _SimulatedLoan(l)).toList();
-  final acceleratedLoans = validActiveLoans.map((l) => _SimulatedLoan(l)).toList();
+  final acceleratedLoans = validActiveLoans
+      .map((l) => _SimulatedLoan(l))
+      .toList();
 
   // Sort by priority (highest priority first)
   acceleratedLoans.sort((a, b) {
@@ -386,15 +391,19 @@ LoanForecastSimulationResult simulateForecastPayoffGraph({
   if (validActiveLoans.isNotEmpty) {
     for (final loan in baseLoans) {
       if (loan.payoffDate == null) {
-        final expectedMonths =
-            math.max(61, loan.account.loanDetails?.repaymentCount ?? 61);
+        final expectedMonths = math.max(
+          61,
+          loan.account.loanDetails?.repaymentCount ?? 61,
+        );
         baseMaxMonths = math.max(baseMaxMonths, expectedMonths);
       }
     }
     for (final loan in acceleratedLoans) {
       if (loan.payoffDate == null) {
-        final expectedMonths =
-            math.max(61, loan.account.loanDetails?.repaymentCount ?? 61);
+        final expectedMonths = math.max(
+          61,
+          loan.account.loanDetails?.repaymentCount ?? 61,
+        );
         acceleratedMaxMonths = math.max(acceleratedMaxMonths, expectedMonths);
       }
     }

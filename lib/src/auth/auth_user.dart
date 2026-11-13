@@ -52,8 +52,7 @@ class AuthUser {
     if (isLocalProvider) {
       if (name != null && name.isNotEmpty) {
         final letterMatch = RegExp(r'[a-zA-Z0-9]').firstMatch(name);
-        return (letterMatch?.group(0) ??
-                String.fromCharCode(name.runes.first))
+        return (letterMatch?.group(0) ?? String.fromCharCode(name.runes.first))
             .toUpperCase();
       }
       return '1W';

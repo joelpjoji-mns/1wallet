@@ -72,7 +72,8 @@ StatementParseResult parseStatement(
       skippedLines: 0,
       totalLines: 0,
       detectedCurrency: defaultCurrency ?? 'INR',
-      diagnostics: 'The document appears to be empty or contains no readable text. '
+      diagnostics:
+          'The document appears to be empty or contains no readable text. '
           'If this is a scanned paper statement, image-only PDFs require OCR.',
     );
   }
@@ -86,10 +87,7 @@ StatementParseResult parseStatement(
   final statementPeriod = extractStatementPeriod(fullText);
   final initialBalance = _extractOpeningBalance(lines);
 
-  final monthFirst = _detectMonthFirst(
-    lines,
-    currency: detectedCurrency,
-  );
+  final monthFirst = _detectMonthFirst(lines, currency: detectedCurrency);
 
   List<ParsedWalletCsvRow> bestRows = [];
   ParsingStrategy bestStrategy = ParsingStrategy.dateAnchoredLedger;
@@ -226,7 +224,17 @@ int? parseAmountMinor(String? raw) {
 }
 
 const _validCurrencies = {
-  'INR', 'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'SGD', 'AED', 'JPY', 'CHF', 'NZD',
+  'INR',
+  'USD',
+  'EUR',
+  'GBP',
+  'CAD',
+  'AUD',
+  'SGD',
+  'AED',
+  'JPY',
+  'CHF',
+  'NZD',
 };
 
 String detectCurrency(String text, {String fallback = 'INR'}) {
@@ -294,8 +302,13 @@ String? extractStatementPeriod(String text) {
 
 int? _extractOpeningBalance(List<String> lines) {
   for (final line in lines) {
-    if (RegExp(r'\b(?:OPENING\s+BALANCE|BROUGHT\s+FORWARD|B/F)\b', caseSensitive: false).hasMatch(line)) {
-      final matches = RegExp(r'(?<!\d)([+\-]?(?:\d{1,3}(?:,\d{2,3})*|\d+)\.\d{2})(?!\d)').allMatches(line);
+    if (RegExp(
+      r'\b(?:OPENING\s+BALANCE|BROUGHT\s+FORWARD|B/F)\b',
+      caseSensitive: false,
+    ).hasMatch(line)) {
+      final matches = RegExp(
+        r'(?<!\d)([+\-]?(?:\d{1,3}(?:,\d{2,3})*|\d+)\.\d{2})(?!\d)',
+      ).allMatches(line);
       if (matches.isNotEmpty) {
         final parsed = parseAmountMinor(matches.last.group(1));
         if (parsed != null && parsed > 0) return parsed;
@@ -310,7 +323,9 @@ bool _detectMonthFirst(List<String> lines, {String? currency}) {
   var sawP2Over12 = false;
 
   for (final line in lines) {
-    final matches = RegExp(r'\b(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})\b').allMatches(line);
+    final matches = RegExp(
+      r'\b(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})\b',
+    ).allMatches(line);
     for (final m in matches) {
       final p1 = int.tryParse(m.group(1)!);
       final p2 = int.tryParse(m.group(2)!);
@@ -335,10 +350,30 @@ bool _detectMonthFirst(List<String> lines, {String? currency}) {
 // ─────────────────────────────────────────────────────────────
 
 final _monthMap = {
-  'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
-  'jul': 7, 'aug': 8, 'sep': 9, 'sept': 9, 'oct': 10, 'nov': 11, 'dec': 12,
-  'january': 1, 'february': 2, 'march': 3, 'april': 4, 'june': 6,
-  'july': 7, 'august': 8, 'september': 9, 'october': 10, 'november': 11, 'december': 12,
+  'jan': 1,
+  'feb': 2,
+  'mar': 3,
+  'apr': 4,
+  'may': 5,
+  'jun': 6,
+  'jul': 7,
+  'aug': 8,
+  'sep': 9,
+  'sept': 9,
+  'oct': 10,
+  'nov': 11,
+  'dec': 12,
+  'january': 1,
+  'february': 2,
+  'march': 3,
+  'april': 4,
+  'june': 6,
+  'july': 7,
+  'august': 8,
+  'september': 9,
+  'october': 10,
+  'november': 11,
+  'december': 12,
 };
 
 final _datePrefixRegex = RegExp(
@@ -359,7 +394,11 @@ final _datePrefixRegex = RegExp(
 );
 
 class _DateBlock {
-  _DateBlock({required this.dateStr, required this.firstLine, required this.lines});
+  _DateBlock({
+    required this.dateStr,
+    required this.firstLine,
+    required this.lines,
+  });
   final String dateStr;
   final String firstLine;
   final List<String> lines;
@@ -367,7 +406,9 @@ class _DateBlock {
 
 bool _blockHasMonetaryAmount(List<String> lines) {
   final combined = lines.join(' ');
-  return RegExp(r'(?<!\d)([+\-]?(?:\d{1,3}(?:,\d{2,3})*|\d+)\.\d{2})(?!\d)').hasMatch(combined);
+  return RegExp(
+    r'(?<!\d)([+\-]?(?:\d{1,3}(?:,\d{2,3})*|\d+)\.\d{2})(?!\d)',
+  ).hasMatch(combined);
 }
 
 List<_DateBlock> _chunkIntoDateBlocks(
@@ -383,14 +424,19 @@ List<_DateBlock> _chunkIntoDateBlocks(
 
     final match = _datePrefixRegex.firstMatch(line);
     if (match != null) {
-      final dateStr = (match.namedGroup('d1') ??
+      final dateStr =
+          (match.namedGroup('d1') ??
               match.namedGroup('d2') ??
               match.namedGroup('d3') ??
               match.namedGroup('d4') ??
               match.namedGroup('d5')) ??
           '';
 
-      final parsed = _parseAnyDate(dateStr, fallbackYear: fallbackYear, monthFirst: monthFirst);
+      final parsed = _parseAnyDate(
+        dateStr,
+        fallbackYear: fallbackYear,
+        monthFirst: monthFirst,
+      );
       if (parsed != null) {
         // If current block exists and doesn't have any monetary amounts yet,
         // this subsequent date is almost certainly a Value Date in the same row.
@@ -400,11 +446,7 @@ List<_DateBlock> _chunkIntoDateBlocks(
         }
 
         if (current != null) blocks.add(current);
-        current = _DateBlock(
-          dateStr: dateStr,
-          firstLine: line,
-          lines: [line],
-        );
+        current = _DateBlock(dateStr: dateStr, firstLine: line, lines: [line]);
         continue;
       }
     }
@@ -418,22 +460,35 @@ List<_DateBlock> _chunkIntoDateBlocks(
 
 bool _isNoiseOrHeaderLine(String line) {
   // Page number footer
-  if (RegExp(r'^Page\s+\d+(\s+of\s+\d+)?$', caseSensitive: false).hasMatch(line)) {
+  if (RegExp(
+    r'^Page\s+\d+(\s+of\s+\d+)?$',
+    caseSensitive: false,
+  ).hasMatch(line)) {
     return true;
   }
   // Standalone summary card lines (like "Opening Balance: $5,000" or "Closing Balance: $4,250")
-  if (RegExp(r'^(?:Opening|Closing)\s+Balance\s*:\s*[$₹€£]?[\d,]+(?:\.\d{2})?', caseSensitive: false).hasMatch(line)) {
+  if (RegExp(
+    r'^(?:Opening|Closing)\s+Balance\s*:\s*[$₹€£]?[\d,]+(?:\.\d{2})?',
+    caseSensitive: false,
+  ).hasMatch(line)) {
     return true;
   }
   // Table headers
   if (RegExp(r'\bDate\b', caseSensitive: false).hasMatch(line) &&
-      (RegExp(r'\b(?:Narration|Particulars|Description|Details)\b', caseSensitive: false).hasMatch(line) ||
-          RegExp(r'\b(?:Withdrawal|Debit|Deposit|Credit|Balance)\b', caseSensitive: false).hasMatch(line))) {
+      (RegExp(
+            r'\b(?:Narration|Particulars|Description|Details)\b',
+            caseSensitive: false,
+          ).hasMatch(line) ||
+          RegExp(
+            r'\b(?:Withdrawal|Debit|Deposit|Credit|Balance)\b',
+            caseSensitive: false,
+          ).hasMatch(line))) {
     return true;
   }
-  if (RegExp(r'^(?:Statement\s+of\s+Account|Account\s+Number|Customer\s+ID|IFSC\s+Code|Branch\s*:)',
-          caseSensitive: false)
-      .hasMatch(line)) {
+  if (RegExp(
+    r'^(?:Statement\s+of\s+Account|Account\s+Number|Customer\s+ID|IFSC\s+Code|Branch\s*:)',
+    caseSensitive: false,
+  ).hasMatch(line)) {
     return true;
   }
   return false;
@@ -447,7 +502,9 @@ DateTime? _parseAnyDate(
   final cleaned = raw.trim();
   if (cleaned.isEmpty) return null;
 
-  final m1 = RegExp(r'^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})$').firstMatch(cleaned);
+  final m1 = RegExp(
+    r'^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})$',
+  ).firstMatch(cleaned);
   if (m1 != null) {
     var p1 = int.tryParse(m1.group(1)!);
     var p2 = int.tryParse(m1.group(2)!);
@@ -475,7 +532,9 @@ DateTime? _parseAnyDate(
     return DateTime(y, m, d);
   }
 
-  final m4 = RegExp(r'^(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})$').firstMatch(cleaned);
+  final m4 = RegExp(
+    r'^(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})$',
+  ).firstMatch(cleaned);
   if (m4 != null) {
     final y = int.tryParse(m4.group(1)!);
     final m = int.tryParse(m4.group(2)!);
@@ -485,7 +544,9 @@ DateTime? _parseAnyDate(
     return DateTime(y, m, d);
   }
 
-  final m2 = RegExp(r'^(\d{1,2})[\s\-]([A-Za-z]{3,9})[\s\-](\d{2,4})$').firstMatch(cleaned);
+  final m2 = RegExp(
+    r'^(\d{1,2})[\s\-]([A-Za-z]{3,9})[\s\-](\d{2,4})$',
+  ).firstMatch(cleaned);
   if (m2 != null) {
     final d = int.tryParse(m2.group(1)!);
     final mStr = m2.group(2)!.toLowerCase();
@@ -497,7 +558,9 @@ DateTime? _parseAnyDate(
     return DateTime(y, m, d);
   }
 
-  final m3 = RegExp(r'^([A-Za-z]{3,9})\s+(\d{1,2}),?\s+(\d{2,4})$').firstMatch(cleaned);
+  final m3 = RegExp(
+    r'^([A-Za-z]{3,9})\s+(\d{1,2}),?\s+(\d{2,4})$',
+  ).firstMatch(cleaned);
   if (m3 != null) {
     final mStr = m3.group(1)!.toLowerCase();
     final d = int.tryParse(m3.group(2)!);
@@ -527,7 +590,11 @@ DateTime? _parseAnyDate(
 // ─────────────────────────────────────────────────────────────
 
 class _ExtractedAmount {
-  const _ExtractedAmount({required this.raw, required this.minor, required this.isNegative});
+  const _ExtractedAmount({
+    required this.raw,
+    required this.minor,
+    required this.isNegative,
+  });
   final String raw;
   final int minor;
   final bool isNegative;
@@ -559,7 +626,11 @@ _ParsedBlockCandidate? _parseBlockCandidate(
   required String currency,
   bool monthFirst = false,
 }) {
-  final date = _parseAnyDate(block.dateStr, fallbackYear: fallbackYear, monthFirst: monthFirst);
+  final date = _parseAnyDate(
+    block.dateStr,
+    fallbackYear: fallbackYear,
+    monthFirst: monthFirst,
+  );
   if (date == null) return null;
 
   final combined = block.lines.join(' ');
@@ -586,13 +657,15 @@ _ParsedBlockCandidate? _parseBlockCandidate(
 
   if (extracted.isEmpty) return null;
 
-  final hasCr = RegExp(r'\b(?:CR|Cr)\b|(?:\s*/CR\b)|(?:\bCREDIT\b(?!(\s+CARD)))|(?:\bDEP(?:OSIT)?\b)',
-          caseSensitive: false)
-      .hasMatch(combined);
+  final hasCr = RegExp(
+    r'\b(?:CR|Cr)\b|(?:\s*/CR\b)|(?:\bCREDIT\b(?!(\s+CARD)))|(?:\bDEP(?:OSIT)?\b)',
+    caseSensitive: false,
+  ).hasMatch(combined);
 
-  final hasDr = RegExp(r'\b(?:DR|Dr)\b|(?:\s*/DR\b)|(?:\bDEBIT\b)|(?:\bWDL\b)|(?:\bWITHDRAWAL\b)',
-          caseSensitive: false)
-      .hasMatch(combined);
+  final hasDr = RegExp(
+    r'\b(?:DR|Dr)\b|(?:\s*/DR\b)|(?:\bDEBIT\b)|(?:\bWDL\b)|(?:\bWITHDRAWAL\b)',
+    caseSensitive: false,
+  ).hasMatch(combined);
 
   final cleanNotes = _cleanNotes(combined, block.dateStr, extracted);
 
@@ -606,7 +679,11 @@ _ParsedBlockCandidate? _parseBlockCandidate(
   );
 }
 
-String _cleanNotes(String combined, String dateStr, List<_ExtractedAmount> amounts) {
+String _cleanNotes(
+  String combined,
+  String dateStr,
+  List<_ExtractedAmount> amounts,
+) {
   var text = combined;
   text = text.replaceFirst(dateStr, ' ');
   for (final a in amounts) {
@@ -615,7 +692,10 @@ String _cleanNotes(String combined, String dateStr, List<_ExtractedAmount> amoun
   // Remove remaining dates (like Value Date)
   text = text.replaceAll(RegExp(r'\b\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}\b'), ' ');
   text = text.replaceAll(RegExp(r'\b(?:CR|DR|Cr|Dr)\b'), ' ');
-  text = text.replaceAll(RegExp(r'\b(?:Chq/Ref\s*No|Value\s*Dt)\b', caseSensitive: false), ' ');
+  text = text.replaceAll(
+    RegExp(r'\b(?:Chq/Ref\s*No|Value\s*Dt)\b', caseSensitive: false),
+    ' ',
+  );
   text = text.replaceAll(RegExp(r'\s+'), ' ').trim();
   return text.isEmpty ? 'Transaction' : text;
 }
@@ -642,12 +722,18 @@ List<ParsedWalletCsvRow> _resolveCandidateRows(
     final curr = candidates[i];
 
     // If this entry is purely an Opening Balance / Brought Forward entry without an actual transaction
-    final isOpeningBalance = RegExp(r'\b(?:OPENING\s+BALANCE|BALANCE\s+B/F|BROUGHT\s+FORWARD|BAL\s+B/F)\b', caseSensitive: false)
-            .hasMatch(curr.notes) ||
-        RegExp(r'\b(?:OPENING\s+BALANCE|BALANCE\s+B/F|BROUGHT\s+FORWARD|BAL\s+B/F)\b', caseSensitive: false)
-            .hasMatch(curr.combinedText);
+    final isOpeningBalance =
+        RegExp(
+          r'\b(?:OPENING\s+BALANCE|BALANCE\s+B/F|BROUGHT\s+FORWARD|BAL\s+B/F)\b',
+          caseSensitive: false,
+        ).hasMatch(curr.notes) ||
+        RegExp(
+          r'\b(?:OPENING\s+BALANCE|BALANCE\s+B/F|BROUGHT\s+FORWARD|BAL\s+B/F)\b',
+          caseSensitive: false,
+        ).hasMatch(curr.combinedText);
 
-    if (isOpeningBalance && (curr.amounts.length <= 1 || curr.runningBalance != null)) {
+    if (isOpeningBalance &&
+        (curr.amounts.length <= 1 || curr.runningBalance != null)) {
       if (initialBalance == null && curr.amounts.isNotEmpty) {
         initialBalance = curr.amounts.last.minor;
       }
@@ -678,19 +764,34 @@ List<ParsedWalletCsvRow> _resolveCandidateRows(
                 .take(curr.amounts.length - 1)
                 .firstWhere(
                   (a) => a.minor == targetMinor,
-                  orElse: () => _ExtractedAmount(raw: '', minor: targetMinor, isNegative: delta < 0),
+                  orElse: () => _ExtractedAmount(
+                    raw: '',
+                    minor: targetMinor,
+                    isNegative: delta < 0,
+                  ),
                 );
 
             amountMinor = matched.minor;
             type = delta > 0 ? 'income' : 'expense';
             resolved = true;
-            rows.add(_buildRow(rowNumber, accountName, amountMinor, type, curr.notes, curr.date, currency));
+            rows.add(
+              _buildRow(
+                rowNumber,
+                accountName,
+                amountMinor,
+                type,
+                curr.notes,
+                curr.date,
+                currency,
+              ),
+            );
             continue;
           }
         }
       } else {
         int? earlierBal;
-        if (i < candidates.length - 1 && candidates[i + 1].runningBalance != null) {
+        if (i < candidates.length - 1 &&
+            candidates[i + 1].runningBalance != null) {
           earlierBal = candidates[i + 1].runningBalance!;
         } else if (i == candidates.length - 1 && initialBalance != null) {
           earlierBal = initialBalance;
@@ -704,13 +805,27 @@ List<ParsedWalletCsvRow> _resolveCandidateRows(
                 .take(curr.amounts.length - 1)
                 .firstWhere(
                   (a) => a.minor == targetMinor,
-                  orElse: () => _ExtractedAmount(raw: '', minor: targetMinor, isNegative: delta < 0),
+                  orElse: () => _ExtractedAmount(
+                    raw: '',
+                    minor: targetMinor,
+                    isNegative: delta < 0,
+                  ),
                 );
 
             amountMinor = matched.minor;
             type = delta > 0 ? 'income' : 'expense';
             resolved = true;
-            rows.add(_buildRow(rowNumber, accountName, amountMinor, type, curr.notes, curr.date, currency));
+            rows.add(
+              _buildRow(
+                rowNumber,
+                accountName,
+                amountMinor,
+                type,
+                curr.notes,
+                curr.date,
+                currency,
+              ),
+            );
             continue;
           }
         }
@@ -755,7 +870,17 @@ List<ParsedWalletCsvRow> _resolveCandidateRows(
         }
       }
 
-      rows.add(_buildRow(rowNumber, accountName, amountMinor, type, curr.notes, curr.date, currency));
+      rows.add(
+        _buildRow(
+          rowNumber,
+          accountName,
+          amountMinor,
+          type,
+          curr.notes,
+          curr.date,
+          currency,
+        ),
+      );
     }
   }
 
@@ -786,7 +911,11 @@ List<ParsedWalletCsvRow> _parseViaLooseDateScanner(
     final dateMatch = _anywhereDateRegex.firstMatch(line);
     if (dateMatch == null) continue;
 
-    final date = _parseAnyDate(dateMatch.group(0)!, fallbackYear: fallbackYear, monthFirst: monthFirst);
+    final date = _parseAnyDate(
+      dateMatch.group(0)!,
+      fallbackYear: fallbackYear,
+      monthFirst: monthFirst,
+    );
     if (date == null) continue;
 
     final amountMatches = RegExp(
@@ -800,7 +929,13 @@ List<ParsedWalletCsvRow> _parseViaLooseDateScanner(
       final raw = m.group(1)!;
       final parsed = parseAmountMinor(raw);
       if (parsed != null && parsed != 0) {
-        amounts.add(_ExtractedAmount(raw: raw, minor: parsed.abs(), isNegative: parsed < 0 || raw.startsWith('-')));
+        amounts.add(
+          _ExtractedAmount(
+            raw: raw,
+            minor: parsed.abs(),
+            isNegative: parsed < 0 || raw.startsWith('-'),
+          ),
+        );
       }
     }
 
@@ -810,8 +945,14 @@ List<ParsedWalletCsvRow> _parseViaLooseDateScanner(
     final amt = amounts.first;
     final cleanNotes = _cleanNotes(line, dateMatch.group(0)!, amounts);
 
-    final hasCr = RegExp(r'\b(?:CR|Cr|Credit|Deposit|Refund)\b', caseSensitive: false).hasMatch(line);
-    final hasDr = RegExp(r'\b(?:DR|Dr|Debit|Withdrawal)\b', caseSensitive: false).hasMatch(line);
+    final hasCr = RegExp(
+      r'\b(?:CR|Cr|Credit|Deposit|Refund)\b',
+      caseSensitive: false,
+    ).hasMatch(line);
+    final hasDr = RegExp(
+      r'\b(?:DR|Dr|Debit|Withdrawal)\b',
+      caseSensitive: false,
+    ).hasMatch(line);
 
     String type;
     if (amt.isNegative) {
@@ -824,7 +965,17 @@ List<ParsedWalletCsvRow> _parseViaLooseDateScanner(
       type = _guessTypeFromNotes(cleanNotes);
     }
 
-    rows.add(_buildRow(rowNumber, accountName, amt.minor, type, cleanNotes, date, currency));
+    rows.add(
+      _buildRow(
+        rowNumber,
+        accountName,
+        amt.minor,
+        type,
+        cleanNotes,
+        date,
+        currency,
+      ),
+    );
   }
 
   return rows;
@@ -851,7 +1002,11 @@ List<ParsedWalletCsvRow> _parseViaCreditCardScanner(
     final dateMatch = _anywhereDateRegex.firstMatch(line);
     if (dateMatch == null) continue;
 
-    final date = _parseAnyDate(dateMatch.group(0)!, fallbackYear: fallbackYear, monthFirst: monthFirst);
+    final date = _parseAnyDate(
+      dateMatch.group(0)!,
+      fallbackYear: fallbackYear,
+      monthFirst: monthFirst,
+    );
     if (date == null) continue;
 
     var combined = line;
@@ -876,15 +1031,27 @@ List<ParsedWalletCsvRow> _parseViaCreditCardScanner(
       caseSensitive: false,
     ).hasMatch(combined);
 
-    final cleanNotes = _cleanNotes(
-      combined,
-      dateMatch.group(0)!,
-      [_ExtractedAmount(raw: rawAmount, minor: parsed.abs(), isNegative: parsed < 0)],
-    );
+    final cleanNotes = _cleanNotes(combined, dateMatch.group(0)!, [
+      _ExtractedAmount(
+        raw: rawAmount,
+        minor: parsed.abs(),
+        isNegative: parsed < 0,
+      ),
+    ]);
 
     final type = (parsed < 0 || isCredit) ? 'income' : 'expense';
 
-    rows.add(_buildRow(rowNumber, accountName, parsed.abs(), type, cleanNotes, date, currency));
+    rows.add(
+      _buildRow(
+        rowNumber,
+        accountName,
+        parsed.abs(),
+        type,
+        cleanNotes,
+        date,
+        currency,
+      ),
+    );
   }
 
   return rows;
@@ -908,7 +1075,11 @@ List<ParsedWalletCsvRow> _parseViaTabularDelimiter(
     if (_isNoiseOrHeaderLine(line)) continue;
 
     // Split on 2 or more spaces or tabs
-    final parts = line.split(RegExp(r'\s{2,}|\t')).map((p) => p.trim()).where((p) => p.isNotEmpty).toList();
+    final parts = line
+        .split(RegExp(r'\s{2,}|\t'))
+        .map((p) => p.trim())
+        .where((p) => p.isNotEmpty)
+        .toList();
     if (parts.length < 3) continue;
 
     DateTime? date;
@@ -918,14 +1089,20 @@ List<ParsedWalletCsvRow> _parseViaTabularDelimiter(
 
     for (final part in parts) {
       if (date == null) {
-        final d = _parseAnyDate(part, fallbackYear: fallbackYear, monthFirst: monthFirst);
+        final d = _parseAnyDate(
+          part,
+          fallbackYear: fallbackYear,
+          monthFirst: monthFirst,
+        );
         if (d != null) {
           date = d;
           continue;
         }
       }
 
-      final amtMatch = RegExp(r'(?<!\d)([+\-]?(?:\d{1,3}(?:,\d{2,3})*|\d+)\.\d{2})(?!\d)').firstMatch(part);
+      final amtMatch = RegExp(
+        r'(?<!\d)([+\-]?(?:\d{1,3}(?:,\d{2,3})*|\d+)\.\d{2})(?!\d)',
+      ).firstMatch(part);
       if (amtMatch != null && amountMinor == null) {
         final p = parseAmountMinor(amtMatch.group(1)!);
         if (p != null && p != 0) {
@@ -937,14 +1114,26 @@ List<ParsedWalletCsvRow> _parseViaTabularDelimiter(
         }
       }
 
-      if (part.length > 3 && !RegExp(r'^\d+$').hasMatch(part) && narration == null) {
+      if (part.length > 3 &&
+          !RegExp(r'^\d+$').hasMatch(part) &&
+          narration == null) {
         narration = part;
       }
     }
 
     if (date != null && amountMinor != null) {
       rowNumber++;
-      rows.add(_buildRow(rowNumber, accountName, amountMinor, type, narration ?? 'Transaction', date, currency));
+      rows.add(
+        _buildRow(
+          rowNumber,
+          accountName,
+          amountMinor,
+          type,
+          narration ?? 'Transaction',
+          date,
+          currency,
+        ),
+      );
     }
   }
 
@@ -962,9 +1151,9 @@ String _generateDiagnostics(String fullText, List<String> lines) {
   }
 
   final datesFound = _anywhereDateRegex.allMatches(fullText).length;
-  final amountsFound = RegExp(r'(?<!\d)[+\-]?(?:\d{1,3}(?:,\d{2,3})*|\d+)\.\d{2}(?!\d)')
-      .allMatches(fullText)
-      .length;
+  final amountsFound = RegExp(
+    r'(?<!\d)[+\-]?(?:\d{1,3}(?:,\d{2,3})*|\d+)\.\d{2}(?!\d)',
+  ).allMatches(fullText).length;
 
   if (datesFound == 0) {
     return 'Text was extracted (${lines.length} lines), but no valid transaction dates '
@@ -1007,10 +1196,7 @@ ParsedWalletCsvRow _buildRow(
   return ParsedWalletCsvRow(
     rowNumber: rowNumber,
     accountName: accountName,
-    amount: Money(
-      amountMinor: amountMinor,
-      currency: currency,
-    ),
+    amount: Money(amountMinor: amountMinor, currency: currency),
     type: type,
     notes: notes,
     occurredAt: date,

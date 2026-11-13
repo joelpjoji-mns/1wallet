@@ -22,10 +22,14 @@ void main() {
     final interFile = File('assets/fonts/Inter-Regular.ttf');
     if (interFile.existsSync()) {
       final fontLoader = FontLoader('Inter');
-      fontLoader.addFont(Future.value(ByteData.view(interFile.readAsBytesSync().buffer)));
+      fontLoader.addFont(
+        Future.value(ByteData.view(interFile.readAsBytesSync().buffer)),
+      );
       final interBold = File('assets/fonts/Inter-Bold.ttf');
       if (interBold.existsSync()) {
-        fontLoader.addFont(Future.value(ByteData.view(interBold.readAsBytesSync().buffer)));
+        fontLoader.addFont(
+          Future.value(ByteData.view(interBold.readAsBytesSync().buffer)),
+        );
       }
       await fontLoader.load();
     }
@@ -38,7 +42,9 @@ void main() {
       final f = File(path);
       if (f.existsSync()) {
         final iconLoader = FontLoader('MaterialIcons');
-        iconLoader.addFont(Future.value(ByteData.view(f.readAsBytesSync().buffer)));
+        iconLoader.addFont(
+          Future.value(ByteData.view(f.readAsBytesSync().buffer)),
+        );
         await iconLoader.load();
         break;
       }
@@ -49,8 +55,10 @@ void main() {
     // ignore: avoid_print
     print('ALL 18 THUMBNAILS COMPLETED SUCCESSFULLY!');
     // Also copy balance to default
-    const balancePath = 'android/app/src/main/res/drawable/widget_preview_balance.png';
-    const defaultPath = 'android/app/src/main/res/drawable/widget_preview_default.png';
+    const balancePath =
+        'android/app/src/main/res/drawable/widget_preview_balance.png';
+    const defaultPath =
+        'android/app/src/main/res/drawable/widget_preview_default.png';
     if (File(balancePath).existsSync()) {
       File(defaultPath).writeAsBytesSync(File(balancePath).readAsBytesSync());
     }
@@ -63,15 +71,16 @@ void main() {
   final theme = ThemeData(
     brightness: Brightness.dark,
     fontFamily: 'Inter',
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: AppColors.primary,
-      brightness: Brightness.dark,
-    ).copyWith(
-      surfaceContainerLow: const Color(0xFF151820),
-      surfaceContainerHigh: const Color(0xFF1E222D),
-      surfaceContainerHighest: const Color(0xFF262B38),
-      outlineVariant: const Color(0xFF333846),
-    ),
+    colorScheme:
+        ColorScheme.fromSeed(
+          seedColor: AppColors.primary,
+          brightness: Brightness.dark,
+        ).copyWith(
+          surfaceContainerLow: const Color(0xFF151820),
+          surfaceContainerHigh: const Color(0xFF1E222D),
+          surfaceContainerHighest: const Color(0xFF262B38),
+          outlineVariant: const Color(0xFF333846),
+        ),
   );
 
   final specs = [
@@ -93,10 +102,34 @@ void main() {
       sizeWide,
       NativeAccountsWidget(
         accounts: [
-          NativeAccountEntry(name: 'Main Checking', balance: '\$8,420.00', type: 'checking', color: Color(0xFF388E3C), isNegative: false),
-          NativeAccountEntry(name: 'High Yield Savings', balance: '\$14,200.00', type: 'savings', color: Color(0xFF1976D2), isNegative: false),
-          NativeAccountEntry(name: 'Sapphire Credit', balance: '-\$1,120.00', type: 'credit', color: Color(0xFFD32F2F), isNegative: true),
-          NativeAccountEntry(name: 'Index Portfolio', balance: '\$6,500.00', type: 'investment', color: Color(0xFF7B1FA2), isNegative: false),
+          NativeAccountEntry(
+            name: 'Main Checking',
+            balance: '\$8,420.00',
+            type: 'checking',
+            color: Color(0xFF388E3C),
+            isNegative: false,
+          ),
+          NativeAccountEntry(
+            name: 'High Yield Savings',
+            balance: '\$14,200.00',
+            type: 'savings',
+            color: Color(0xFF1976D2),
+            isNegative: false,
+          ),
+          NativeAccountEntry(
+            name: 'Sapphire Credit',
+            balance: '-\$1,120.00',
+            type: 'credit',
+            color: Color(0xFFD32F2F),
+            isNegative: true,
+          ),
+          NativeAccountEntry(
+            name: 'Index Portfolio',
+            balance: '\$6,500.00',
+            type: 'investment',
+            color: Color(0xFF7B1FA2),
+            isNegative: false,
+          ),
         ],
         accountCount: '4 active accounts',
       ),
@@ -107,10 +140,38 @@ void main() {
       sizeTall,
       NativeRecentWidget(
         transactions: [
-          NativeTransactionEntry(name: 'Whole Foods Market', accountName: 'Main Checking', dateLabel: 'Today, 2:15 PM', amountText: '-\$64.20', isExpense: true, isTransfer: false),
-          NativeTransactionEntry(name: 'Tech Corp Salary', accountName: 'Main Checking', dateLabel: 'Yesterday', amountText: '+\$2,700.00', isExpense: false, isTransfer: false),
-          NativeTransactionEntry(name: 'Blue Bottle Coffee', accountName: 'Sapphire Credit', dateLabel: 'Nov 10', amountText: '-\$5.75', isExpense: true, isTransfer: false),
-          NativeTransactionEntry(name: 'Savings Transfer', accountName: 'High Yield', dateLabel: 'Nov 09', amountText: '\$500.00', isExpense: false, isTransfer: true),
+          NativeTransactionEntry(
+            name: 'Whole Foods Market',
+            accountName: 'Main Checking',
+            dateLabel: 'Today, 2:15 PM',
+            amountText: '-\$64.20',
+            isExpense: true,
+            isTransfer: false,
+          ),
+          NativeTransactionEntry(
+            name: 'Tech Corp Salary',
+            accountName: 'Main Checking',
+            dateLabel: 'Yesterday',
+            amountText: '+\$2,700.00',
+            isExpense: false,
+            isTransfer: false,
+          ),
+          NativeTransactionEntry(
+            name: 'Blue Bottle Coffee',
+            accountName: 'Sapphire Credit',
+            dateLabel: 'Nov 10',
+            amountText: '-\$5.75',
+            isExpense: true,
+            isTransfer: false,
+          ),
+          NativeTransactionEntry(
+            name: 'Savings Transfer',
+            accountName: 'High Yield',
+            dateLabel: 'Nov 09',
+            amountText: '\$500.00',
+            isExpense: false,
+            isTransfer: true,
+          ),
         ],
       ),
     ),
@@ -133,9 +194,24 @@ void main() {
       sizeTall,
       NativeUpcomingWidget(
         entries: [
-          NativeUpcomingEntry(name: 'Netflix Subscription', accountName: 'Sapphire Credit', amountText: '-\$15.99', daysUntilDue: 2),
-          NativeUpcomingEntry(name: 'Equinox Fitness Gym', accountName: 'Main Checking', amountText: '-\$180.00', daysUntilDue: 5),
-          NativeUpcomingEntry(name: 'Consulting Retainer', accountName: 'Main Checking', amountText: '+\$1,500.00', daysUntilDue: 7),
+          NativeUpcomingEntry(
+            name: 'Netflix Subscription',
+            accountName: 'Sapphire Credit',
+            amountText: '-\$15.99',
+            daysUntilDue: 2,
+          ),
+          NativeUpcomingEntry(
+            name: 'Equinox Fitness Gym',
+            accountName: 'Main Checking',
+            amountText: '-\$180.00',
+            daysUntilDue: 5,
+          ),
+          NativeUpcomingEntry(
+            name: 'Consulting Retainer',
+            accountName: 'Main Checking',
+            amountText: '+\$1,500.00',
+            daysUntilDue: 7,
+          ),
         ],
         dueSoonCount: 3,
         totalAmountDue: '\$195.99',
@@ -176,10 +252,30 @@ void main() {
       sizeWide,
       NativeTopCategoriesWidget(
         categories: [
-          NativeCategoryEntry(name: 'Housing & Utilities', amountText: '\$1,250.00', percentage: 0.58, color: Color(0xFF1E88E5)),
-          NativeCategoryEntry(name: 'Groceries & Dining', amountText: '\$480.00', percentage: 0.22, color: Color(0xFF43A047)),
-          NativeCategoryEntry(name: 'Transportation', amountText: '\$210.00', percentage: 0.10, color: Color(0xFFFB8C00)),
-          NativeCategoryEntry(name: 'Entertainment', amountText: '\$140.00', percentage: 0.07, color: Color(0xFF8E24AA)),
+          NativeCategoryEntry(
+            name: 'Housing & Utilities',
+            amountText: '\$1,250.00',
+            percentage: 0.58,
+            color: Color(0xFF1E88E5),
+          ),
+          NativeCategoryEntry(
+            name: 'Groceries & Dining',
+            amountText: '\$480.00',
+            percentage: 0.22,
+            color: Color(0xFF43A047),
+          ),
+          NativeCategoryEntry(
+            name: 'Transportation',
+            amountText: '\$210.00',
+            percentage: 0.10,
+            color: Color(0xFFFB8C00),
+          ),
+          NativeCategoryEntry(
+            name: 'Entertainment',
+            amountText: '\$140.00',
+            percentage: 0.07,
+            color: Color(0xFF8E24AA),
+          ),
         ],
         periodLabel: 'This month',
       ),
@@ -191,9 +287,21 @@ void main() {
       NativeCurrencyValuesWidget(
         baseCurrency: 'USD',
         rates: [
-          NativeCurrencyEntry(currencyCode: 'EUR', rateText: '1 USD = 0.92 EUR', equivalentText: '€4,200.00'),
-          NativeCurrencyEntry(currencyCode: 'GBP', rateText: '1 USD = 0.79 GBP', equivalentText: '£1,850.00'),
-          NativeCurrencyEntry(currencyCode: 'JPY', rateText: '1 USD = 154.20 JPY', equivalentText: '¥3,830,000'),
+          NativeCurrencyEntry(
+            currencyCode: 'EUR',
+            rateText: '1 USD = 0.92 EUR',
+            equivalentText: '€4,200.00',
+          ),
+          NativeCurrencyEntry(
+            currencyCode: 'GBP',
+            rateText: '1 USD = 0.79 GBP',
+            equivalentText: '£1,850.00',
+          ),
+          NativeCurrencyEntry(
+            currencyCode: 'JPY',
+            rateText: '1 USD = 154.20 JPY',
+            equivalentText: '¥3,830,000',
+          ),
         ],
       ),
     ),
@@ -203,9 +311,27 @@ void main() {
       sizeWide,
       NativeAccountGroupsWidget(
         groups: [
-          NativeAccountGroupEntry(name: 'Liquid Cash & Checking', balanceText: '\$14,200.00', countText: '2 accounts', icon: Icons.payments_outlined, color: Color(0xFF00E676)),
-          NativeAccountGroupEntry(name: 'Investment & Retirement', balanceText: '\$18,400.00', countText: '2 accounts', icon: Icons.trending_up_rounded, color: Color(0xFF7C4DFF)),
-          NativeAccountGroupEntry(name: 'Liabilities & Cards', balanceText: '-\$1,120.00', countText: '1 account', icon: Icons.credit_card_rounded, color: Color(0xFFFF5252)),
+          NativeAccountGroupEntry(
+            name: 'Liquid Cash & Checking',
+            balanceText: '\$14,200.00',
+            countText: '2 accounts',
+            icon: Icons.payments_outlined,
+            color: Color(0xFF00E676),
+          ),
+          NativeAccountGroupEntry(
+            name: 'Investment & Retirement',
+            balanceText: '\$18,400.00',
+            countText: '2 accounts',
+            icon: Icons.trending_up_rounded,
+            color: Color(0xFF7C4DFF),
+          ),
+          NativeAccountGroupEntry(
+            name: 'Liabilities & Cards',
+            balanceText: '-\$1,120.00',
+            countText: '1 account',
+            icon: Icons.credit_card_rounded,
+            color: Color(0xFFFF5252),
+          ),
         ],
       ),
     ),
@@ -258,10 +384,7 @@ void main() {
       'No Spend Streak',
       'widget_preview_no_spend_streak.png',
       sizeWide,
-      NativeNoSpendStreakWidget(
-        streakDays: 5,
-        bestStreakDays: 14,
-      ),
+      NativeNoSpendStreakWidget(streakDays: 5, bestStreakDays: 14),
     ),
     const _WidgetSpec(
       'Weekend Weekday',
@@ -286,7 +409,10 @@ void main() {
 
   for (final spec in specs) {
     testWidgets('Render ${spec.name}', (tester) async {
-      tester.view.physicalSize = Size(spec.size.width * 2, spec.size.height * 2);
+      tester.view.physicalSize = Size(
+        spec.size.width * 2,
+        spec.size.height * 2,
+      );
       tester.view.devicePixelRatio = 2.0;
       addTearDown(() {
         tester.view.resetPhysicalSize();
@@ -316,7 +442,8 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
-      final boundary = key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+      final boundary =
+          key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
       await tester.runAsync(() async {
         final image = await boundary.toImage(pixelRatio: 2.0);
         final byteData = await image.toByteData(format: ui.ImageByteFormat.png);

@@ -9,7 +9,9 @@ import 'test_harness.dart';
 
 void main() {
   test('HomeDashboardWidgetId no longer contains retired widgets', () {
-    final storageKeys = HomeDashboardWidgetId.values.map((w) => w.storageKey).toSet();
+    final storageKeys = HomeDashboardWidgetId.values
+        .map((w) => w.storageKey)
+        .toSet();
     expect(storageKeys, isNot(contains('loansTile')));
     expect(storageKeys, isNot(contains('plannedPaymentsTile')));
     expect(storageKeys, isNot(contains('emiTracker')));
@@ -19,36 +21,37 @@ void main() {
     expect(storageKeys, isNot(contains('cardGracePeriod')));
   });
 
-  testWidgets('AccountGridHomeWidget Manage button selects Accounts tab (index 3)', (tester) async {
-    final ledgerState = sampleLedgerState();
-    int? selectedTab;
+  testWidgets(
+    'AccountGridHomeWidget Manage button selects Accounts tab (index 3)',
+    (tester) async {
+      final ledgerState = sampleLedgerState();
+      int? selectedTab;
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          ...authenticatedSampleOverrides(ledger: ledgerState),
-        ],
-        child: MaterialApp(
-          home: Scaffold(
-            body: SingleChildScrollView(
-              child: AccountGridHomeWidget(
-                state: ledgerState,
-                onTabSelected: (tab) => selectedTab = tab,
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [...authenticatedSampleOverrides(ledger: ledgerState)],
+          child: MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: AccountGridHomeWidget(
+                  state: ledgerState,
+                  onTabSelected: (tab) => selectedTab = tab,
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('All accounts'), findsOneWidget);
-    final manageButton = find.text('Manage');
-    expect(manageButton, findsOneWidget);
+      expect(find.text('All accounts'), findsOneWidget);
+      final manageButton = find.text('Manage');
+      expect(manageButton, findsOneWidget);
 
-    await tester.tap(manageButton);
-    await tester.pumpAndSettle();
+      await tester.tap(manageButton);
+      await tester.pumpAndSettle();
 
-    expect(selectedTab, 3);
-  });
+      expect(selectedTab, 3);
+    },
+  );
 }

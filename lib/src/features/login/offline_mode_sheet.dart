@@ -150,10 +150,17 @@ class _OfflineModeSheetState extends ConsumerState<OfflineModeSheet> {
                     padding: const EdgeInsets.all(AppSpacing.sm),
                     child: Row(
                       children: [
-                        Icon(Icons.error_outline_rounded, color: scheme.error, size: 20),
+                        Icon(
+                          Icons.error_outline_rounded,
+                          color: scheme.error,
+                          size: 20,
+                        ),
                         const SizedBox(width: AppSpacing.xs),
                         Expanded(
-                          child: Text(_error!, style: TextStyle(color: scheme.error)),
+                          child: Text(
+                            _error!,
+                            style: TextStyle(color: scheme.error),
+                          ),
                         ),
                       ],
                     ),

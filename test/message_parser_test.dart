@@ -62,21 +62,28 @@ To MUTUAL FUNDS ICCL''';
     expect(parsed.merchant, 'MUTUAL FUNDS ICCL');
   });
 
-  test('extractTransactionDateTime handles 12-hour AM/PM and other date formats', () {
-    final dt1 = extractTransactionDateTime('Debited \$50 on 15/04/2026 at 02:30 PM');
-    expect(dt1, isNotNull);
-    expect(dt1?.year, 2026);
-    expect(dt1?.month, 4);
-    expect(dt1?.day, 15);
-    expect(dt1?.hour, 14);
-    expect(dt1?.minute, 30);
+  test(
+    'extractTransactionDateTime handles 12-hour AM/PM and other date formats',
+    () {
+      final dt1 = extractTransactionDateTime(
+        'Debited \$50 on 15/04/2026 at 02:30 PM',
+      );
+      expect(dt1, isNotNull);
+      expect(dt1?.year, 2026);
+      expect(dt1?.month, 4);
+      expect(dt1?.day, 15);
+      expect(dt1?.hour, 14);
+      expect(dt1?.minute, 30);
 
-    final dt2 = extractTransactionDateTime('Paid EUR 10 at 10:15 on 2026-08-20');
-    expect(dt2, isNotNull);
-    expect(dt2?.year, 2026);
-    expect(dt2?.month, 8);
-    expect(dt2?.day, 20);
-    expect(dt2?.hour, 10);
-    expect(dt2?.minute, 15);
-  });
+      final dt2 = extractTransactionDateTime(
+        'Paid EUR 10 at 10:15 on 2026-08-20',
+      );
+      expect(dt2, isNotNull);
+      expect(dt2?.year, 2026);
+      expect(dt2?.month, 8);
+      expect(dt2?.day, 20);
+      expect(dt2?.hour, 10);
+      expect(dt2?.minute, 15);
+    },
+  );
 }

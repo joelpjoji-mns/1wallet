@@ -67,7 +67,7 @@ List<BalanceTrendPoint> balanceTrendForRange(
       targetCurrency ??
       (accountId != null && accountId != 'cash_group'
           ? (accountById(state, accountId)?.currency ??
-              state.preferences.displayCurrency)
+                state.preferences.displayCurrency)
           : state.preferences.displayCurrency);
 
   final now = DateTime.now();
@@ -198,7 +198,7 @@ List<BalanceTrendPoint> balanceFutureTrendForRange(
       targetCurrency ??
       (accountId != null && accountId != 'cash_group'
           ? (accountById(state, accountId)?.currency ??
-              state.preferences.displayCurrency)
+                state.preferences.displayCurrency)
           : state.preferences.displayCurrency);
 
   // Seed running balance from all posted transactions (same as balanceTrendForRange)

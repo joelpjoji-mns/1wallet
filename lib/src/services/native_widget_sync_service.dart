@@ -45,10 +45,7 @@ class NativeWidgetSyncService {
   static const Size _sizeTall = Size(400, 320); // 4×3 cells
 
   /// Synchronises current ledger data into native HomeWidget bitmaps.
-  static Future<void> syncWidgets(
-    LedgerState state, {
-    ThemeData? theme,
-  }) async {
+  static Future<void> syncWidgets(LedgerState state, {ThemeData? theme}) async {
     if (!Platform.isAndroid && !Platform.isIOS) return;
 
     final renderTheme = theme ?? await _resolveTheme();
@@ -90,23 +87,24 @@ class NativeWidgetSyncService {
       );
 
       // ── 2. Accounts Overview ─────────────────────────────────────────────
-      final accounts = state.accounts
-          .where((a) => !a.isArchived && a.showOnHome)
-          .toList()
-        ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+      final accounts =
+          state.accounts.where((a) => !a.isArchived && a.showOnHome).toList()
+            ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
       final balancesMap = accountBalanceMap(state);
 
       final accountEntries = <NativeAccountEntry>[];
       for (final acc in accounts.take(6)) {
         final bal = accountBalanceFromMap(balancesMap, acc);
         final display = convertMoneyForDisplay(state, bal);
-        accountEntries.add(NativeAccountEntry(
-          name: acc.name,
-          balance: formatMoney(display, locale),
-          type: acc.type,
-          color: acc.color ?? renderTheme.colorScheme.primary,
-          isNegative: bal.amountMinor < 0,
-        ));
+        accountEntries.add(
+          NativeAccountEntry(
+            name: acc.name,
+            balance: formatMoney(display, locale),
+            type: acc.type,
+            color: acc.color ?? renderTheme.colorScheme.primary,
+            isNegative: bal.amountMinor < 0,
+          ),
+        );
       }
 
       await HomeWidget.renderFlutterWidget(
@@ -122,10 +120,10 @@ class NativeWidgetSyncService {
       );
 
       // ── 3. Recent Transactions ───────────────────────────────────────────
-      final txList = sortedTransactions(state, includeScheduled: false)
-          .where((t) => t.status != 'void')
-          .take(4)
-          .toList();
+      final txList = sortedTransactions(
+        state,
+        includeScheduled: false,
+      ).where((t) => t.status != 'void').take(4).toList();
 
       final categoryMap = {for (final c in state.categories) c.id: c};
       final accountMap = {for (final a in state.accounts) a.id: a};
@@ -139,16 +137,19 @@ class NativeWidgetSyncService {
         final isTransfer = tx.type == 'transfer';
         final isExpense = expenseTypes.contains(tx.type);
 
-        recentEntries.add(NativeTransactionEntry(
-          name: tx.name?.isNotEmpty == true
-              ? tx.name!
-              : (cat?.name ?? 'Transaction'),
-          accountName: acc?.name ?? '',
-          dateLabel: _shortDate(tx.occurredAt, locale),
-          amountText: '${isIncome ? '+' : '-'}${formatMoney(converted, locale)}',
-          isExpense: isExpense,
-          isTransfer: isTransfer,
-        ));
+        recentEntries.add(
+          NativeTransactionEntry(
+            name: tx.name?.isNotEmpty == true
+                ? tx.name!
+                : (cat?.name ?? 'Transaction'),
+            accountName: acc?.name ?? '',
+            dateLabel: _shortDate(tx.occurredAt, locale),
+            amountText:
+                '${isIncome ? '+' : '-'}${formatMoney(converted, locale)}',
+            isExpense: isExpense,
+            isTransfer: isTransfer,
+          ),
+        );
       }
 
       await HomeWidget.renderFlutterWidget(
@@ -168,7 +169,9 @@ class NativeWidgetSyncService {
       final monthBudget = monthFlow.income.amountMinor > 0
           ? monthFlow.income.amountMinor
           : 200000;
-      final safeSpendDaily = ((monthBudget - monthFlow.expense.amountMinor) / remainingDays).round();
+      final safeSpendDaily =
+          ((monthBudget - monthFlow.expense.amountMinor) / remainingDays)
+              .round();
       final safeSpendMoney = Money(
         amountMinor: math.max(0, safeSpendDaily),
         currency: currency,
@@ -194,10 +197,11 @@ class NativeWidgetSyncService {
       );
 
       // ── 5. Upcoming & Due ────────────────────────────────────────────────
-      final scheduled = scheduledTransactions(state)
-          .where((t) => t.status != 'void' && t.status != 'paused')
-          .toList()
-        ..sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
+      final scheduled =
+          scheduledTransactions(
+              state,
+            ).where((t) => t.status != 'void' && t.status != 'paused').toList()
+            ..sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
 
       final upcomingEntries = <NativeUpcomingEntry>[];
       int overdueCount = 0;
@@ -215,14 +219,18 @@ class NativeWidgetSyncService {
 
         final cat = tx.categoryId != null ? categoryMap[tx.categoryId] : null;
         final account = accountMap[tx.accountId];
-        final name = tx.name?.isNotEmpty == true ? tx.name! : (cat?.name ?? 'Payment');
+        final name = tx.name?.isNotEmpty == true
+            ? tx.name!
+            : (cat?.name ?? 'Payment');
 
-        upcomingEntries.add(NativeUpcomingEntry(
-          name: name,
-          accountName: account?.name ?? '',
-          amountText: formatMoney(converted, locale),
-          daysUntilDue: daysUntil,
-        ));
+        upcomingEntries.add(
+          NativeUpcomingEntry(
+            name: name,
+            accountName: account?.name ?? '',
+            amountText: formatMoney(converted, locale),
+            daysUntilDue: daysUntil,
+          ),
+        );
       }
 
       await HomeWidget.renderFlutterWidget(
@@ -261,10 +269,7 @@ class NativeWidgetSyncService {
 
       // ── 7. Quick Actions ──────────────────────────────────────────────────
       await HomeWidget.renderFlutterWidget(
-        Theme(
-          data: renderTheme,
-          child: const NativeQuickActionsWidget(),
-        ),
+        Theme(data: renderTheme, child: const NativeQuickActionsWidget()),
         logicalSize: _sizeCompact,
         key: 'widget_quick_actions_bitmap',
       );
@@ -274,12 +279,17 @@ class NativeWidgetSyncService {
       int runningMinor = totalBal.amountMinor;
       final dailyDelta = <int, int>{};
       for (final t in state.transactions) {
-        if (t.status == 'void' || t.status == 'scheduled' || t.status == 'paused') continue;
+        if (t.status == 'void' ||
+            t.status == 'scheduled' ||
+            t.status == 'paused') {
+          continue;
+        }
         if (t.occurredAt.isAfter(thirtyDaysAgo) && t.occurredAt.isBefore(now)) {
           final dayDiff = now.difference(t.occurredAt).inDays;
           final conv = convertMoneyForDisplay(state, t.amount, currency);
           final sign = expenseTypes.contains(t.type) ? -1 : 1;
-          dailyDelta[dayDiff] = (dailyDelta[dayDiff] ?? 0) + (conv.amountMinor * sign);
+          dailyDelta[dayDiff] =
+              (dailyDelta[dayDiff] ?? 0) + (conv.amountMinor * sign);
         }
       }
       var curr = runningMinor;
@@ -304,7 +314,8 @@ class NativeWidgetSyncService {
           data: renderTheme,
           child: NativeBalanceTrendWidget(
             netWorthLabel: formatMoney(netWorthVal, locale),
-            deltaText: '${isTrendPos ? '+' : '-'}${formatMoney(deltaMoney, locale)}',
+            deltaText:
+                '${isTrendPos ? '+' : '-'}${formatMoney(deltaMoney, locale)}',
             isPositive: isTrendPos,
             points: trendPoints,
             periodLabel: 'Last 30 days',
@@ -332,13 +343,20 @@ class NativeWidgetSyncService {
       for (final entry in sortedCats.take(4)) {
         final cat = categoryMap[entry.key];
         final name = cat?.name ?? 'Uncategorized';
-        final pct = totalCatExpenseMinor > 0 ? (entry.value / totalCatExpenseMinor) : 0.0;
-        catEntries.add(NativeCategoryEntry(
-          name: name,
-          amountText: formatMoney(Money(amountMinor: entry.value, currency: currency), locale),
-          percentage: pct,
-          color: cat?.color ?? renderTheme.colorScheme.primary,
-        ));
+        final pct = totalCatExpenseMinor > 0
+            ? (entry.value / totalCatExpenseMinor)
+            : 0.0;
+        catEntries.add(
+          NativeCategoryEntry(
+            name: name,
+            amountText: formatMoney(
+              Money(amountMinor: entry.value, currency: currency),
+              locale,
+            ),
+            percentage: pct,
+            color: cat?.color ?? renderTheme.colorScheme.primary,
+          ),
+        );
       }
 
       await HomeWidget.renderFlutterWidget(
@@ -358,11 +376,14 @@ class NativeWidgetSyncService {
       for (final cur in allCurrencies.where((c) => c != currency).take(4)) {
         final oneUnit = Money(amountMinor: 100, currency: currency);
         final converted = convertMoneyForDisplay(state, oneUnit, cur);
-        currencyEntries.add(NativeCurrencyEntry(
-          currencyCode: cur,
-          rateText: '1 $currency = ${(converted.amountMinor / 100.0).toStringAsFixed(2)} $cur',
-          equivalentText: formatMoney(converted, locale),
-        ));
+        currencyEntries.add(
+          NativeCurrencyEntry(
+            currencyCode: cur,
+            rateText:
+                '1 $currency = ${(converted.amountMinor / 100.0).toStringAsFixed(2)} $cur',
+            equivalentText: formatMoney(converted, locale),
+          ),
+        );
       }
 
       await HomeWidget.renderFlutterWidget(
@@ -381,7 +402,9 @@ class NativeWidgetSyncService {
       final groupTotals = <String, int>{};
       final groupCounts = <String, int>{};
       for (final acc in accounts) {
-        final grp = acc.groupName?.isNotEmpty == true ? acc.groupName! : 'Other';
+        final grp = acc.groupName?.isNotEmpty == true
+            ? acc.groupName!
+            : 'Other';
         final bal = accountBalanceFromMap(balancesMap, acc);
         final display = convertMoneyForDisplay(state, bal);
         groupTotals[grp] = (groupTotals[grp] ?? 0) + display.amountMinor;
@@ -407,13 +430,18 @@ class NativeWidgetSyncService {
           col = const Color(0xFF7C4DFF);
         }
 
-        groupEntries.add(NativeAccountGroupEntry(
-          name: gName,
-          balanceText: formatMoney(Money(amountMinor: total, currency: currency), locale),
-          countText: '$count account${count > 1 ? 's' : ''}',
-          icon: icon,
-          color: col,
-        ));
+        groupEntries.add(
+          NativeAccountGroupEntry(
+            name: gName,
+            balanceText: formatMoney(
+              Money(amountMinor: total, currency: currency),
+              locale,
+            ),
+            countText: '$count account${count > 1 ? 's' : ''}',
+            icon: icon,
+            color: col,
+          ),
+        );
       }
 
       await HomeWidget.renderFlutterWidget(
@@ -427,13 +455,20 @@ class NativeWidgetSyncService {
 
       // ── 12. Credit Utilization ───────────────────────────────────────────
       final creditAccs = state.accounts
-          .where((a) => (a.type == 'credit_card' || a.type == 'card') && !a.isArchived)
+          .where(
+            (a) =>
+                (a.type == 'credit_card' || a.type == 'card') && !a.isArchived,
+          )
           .toList();
       int totalCreditLimitMinor = 0;
       int totalCreditUsedMinor = 0;
       for (final cAcc in creditAccs) {
         if (cAcc.creditLimit != null) {
-          final lim = convertMoneyForDisplay(state, cAcc.creditLimit!, currency);
+          final lim = convertMoneyForDisplay(
+            state,
+            cAcc.creditLimit!,
+            currency,
+          );
           totalCreditLimitMinor += lim.amountMinor;
         }
         final bal = accountBalanceFromMap(balancesMap, cAcc);
@@ -443,7 +478,10 @@ class NativeWidgetSyncService {
         }
       }
       final utilPct = totalCreditLimitMinor > 0
-          ? ((totalCreditUsedMinor / totalCreditLimitMinor) * 100).clamp(0.0, 100.0)
+          ? ((totalCreditUsedMinor / totalCreditLimitMinor) * 100).clamp(
+              0.0,
+              100.0,
+            )
           : 0.0;
 
       await HomeWidget.renderFlutterWidget(
@@ -451,8 +489,14 @@ class NativeWidgetSyncService {
           data: renderTheme,
           child: NativeCreditUtilizationWidget(
             utilizationPercent: utilPct,
-            usedAmountText: formatMoney(Money(amountMinor: totalCreditUsedMinor, currency: currency), locale),
-            limitAmountText: formatMoney(Money(amountMinor: totalCreditLimitMinor, currency: currency), locale),
+            usedAmountText: formatMoney(
+              Money(amountMinor: totalCreditUsedMinor, currency: currency),
+              locale,
+            ),
+            limitAmountText: formatMoney(
+              Money(amountMinor: totalCreditLimitMinor, currency: currency),
+              locale,
+            ),
           ),
         ),
         logicalSize: _sizeWide,
@@ -472,7 +516,10 @@ class NativeWidgetSyncService {
           data: renderTheme,
           child: NativeSavingsRateWidget(
             savingsRatePercent: savingsPct,
-            savedAmountText: formatMoney(Money(amountMinor: math.max(0, savedMinor), currency: currency), locale),
+            savedAmountText: formatMoney(
+              Money(amountMinor: math.max(0, savedMinor), currency: currency),
+              locale,
+            ),
             incomeAmountText: formatMoney(monthFlow.income, locale),
             periodLabel: 'This month',
           ),
@@ -496,10 +543,15 @@ class NativeWidgetSyncService {
       final tagEntries = <NativeTagEntry>[];
       for (final tag in sortedTags.take(6)) {
         final tot = tagTotals[tag] ?? 0;
-        tagEntries.add(NativeTagEntry(
-          tag: tag,
-          amountText: formatMoney(Money(amountMinor: tot, currency: currency), locale),
-        ));
+        tagEntries.add(
+          NativeTagEntry(
+            tag: tag,
+            amountText: formatMoney(
+              Money(amountMinor: tot, currency: currency),
+              locale,
+            ),
+          ),
+        );
       }
 
       await HomeWidget.renderFlutterWidget(
@@ -514,7 +566,10 @@ class NativeWidgetSyncService {
       // ── 15. Cash Burn Runway ─────────────────────────────────────────────
       int liquidTotalMinor = 0;
       for (final acc in accounts) {
-        if (acc.type == 'cash' || acc.type == 'bank' || acc.type == 'checking' || acc.type == 'savings') {
+        if (acc.type == 'cash' ||
+            acc.type == 'bank' ||
+            acc.type == 'checking' ||
+            acc.type == 'savings') {
           final bal = accountBalanceFromMap(balancesMap, acc);
           final conv = convertMoneyForDisplay(state, bal, currency);
           if (conv.amountMinor > 0) liquidTotalMinor += conv.amountMinor;
@@ -532,8 +587,14 @@ class NativeWidgetSyncService {
           data: renderTheme,
           child: NativeCashBurnRunwayWidget(
             runwayMonthsText: '${runwayMonths.toStringAsFixed(1)} mo',
-            monthlyBurnText: formatMoney(Money(amountMinor: monthlyBurnMinor, currency: currency), locale),
-            liquidReservesText: formatMoney(Money(amountMinor: liquidTotalMinor, currency: currency), locale),
+            monthlyBurnText: formatMoney(
+              Money(amountMinor: monthlyBurnMinor, currency: currency),
+              locale,
+            ),
+            liquidReservesText: formatMoney(
+              Money(amountMinor: liquidTotalMinor, currency: currency),
+              locale,
+            ),
           ),
         ),
         logicalSize: _sizeWide,
@@ -543,7 +604,11 @@ class NativeWidgetSyncService {
       // ── 16. No-Spend Streak ──────────────────────────────────────────────
       final expenseDays = <int>{};
       for (final t in state.transactions) {
-        if (t.status == 'void' || t.status == 'scheduled' || t.status == 'paused') continue;
+        if (t.status == 'void' ||
+            t.status == 'scheduled' ||
+            t.status == 'paused') {
+          continue;
+        }
         if (!expenseTypes.contains(t.type)) continue;
         if (t.occurredAt.year == now.year && t.occurredAt.month == now.month) {
           expenseDays.add(t.occurredAt.day);
@@ -578,7 +643,9 @@ class NativeWidgetSyncService {
       for (final t in state.transactions) {
         if (t.status == 'void' || !expenseTypes.contains(t.type)) continue;
         if (t.occurredAt.isBefore(thirtyDaysAgo)) continue;
-        final isWeekend = t.occurredAt.weekday == DateTime.saturday || t.occurredAt.weekday == DateTime.sunday;
+        final isWeekend =
+            t.occurredAt.weekday == DateTime.saturday ||
+            t.occurredAt.weekday == DateTime.sunday;
         final conv = convertMoneyForDisplay(state, t.amount, currency);
         if (isWeekend) {
           weekendMinor += conv.amountMinor;
@@ -594,8 +661,12 @@ class NativeWidgetSyncService {
           weekdayDaysCount++;
         }
       }
-      final avgWeekday = weekdayDaysCount > 0 ? (weekdayMinor / weekdayDaysCount).round() : 0;
-      final avgWeekend = weekendDaysCount > 0 ? (weekendMinor / weekendDaysCount).round() : 0;
+      final avgWeekday = weekdayDaysCount > 0
+          ? (weekdayMinor / weekdayDaysCount).round()
+          : 0;
+      final avgWeekend = weekendDaysCount > 0
+          ? (weekendMinor / weekendDaysCount).round()
+          : 0;
       final ratio = avgWeekday > 0 ? (avgWeekend / avgWeekday) : 1.0;
 
       await HomeWidget.renderFlutterWidget(
@@ -603,8 +674,14 @@ class NativeWidgetSyncService {
           data: renderTheme,
           child: NativeWeekendWeekdayWidget(
             ratioText: '${ratio.toStringAsFixed(1)}x',
-            weekdayAvgText: formatMoney(Money(amountMinor: avgWeekday, currency: currency), locale),
-            weekendAvgText: formatMoney(Money(amountMinor: avgWeekend, currency: currency), locale),
+            weekdayAvgText: formatMoney(
+              Money(amountMinor: avgWeekday, currency: currency),
+              locale,
+            ),
+            weekendAvgText: formatMoney(
+              Money(amountMinor: avgWeekend, currency: currency),
+              locale,
+            ),
           ),
         ),
         logicalSize: _sizeWide,
@@ -612,7 +689,9 @@ class NativeWidgetSyncService {
       );
 
       // ── 18. Pending Review ───────────────────────────────────────────────
-      final pendingCount = state.captureCandidates.where((c) => c.status == 'pending').length;
+      final pendingCount = state.captureCandidates
+          .where((c) => c.status == 'pending')
+          .length;
 
       await HomeWidget.renderFlutterWidget(
         Theme(
@@ -656,7 +735,9 @@ class NativeWidgetSyncService {
   static Future<ThemeData> _resolveTheme() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final prefName = prefs.getString('one_wallet_flutter.theme.preference.v1');
+      final prefName = prefs.getString(
+        'one_wallet_flutter.theme.preference.v1',
+      );
       if (prefName == 'light') {
         return AppTheme.light();
       } else if (prefName == 'amoled') {

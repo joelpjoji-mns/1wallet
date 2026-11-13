@@ -14,10 +14,9 @@ List<String> extractTextFromPdf(Uint8List bytes, {String? password}) {
     final pages = <String>[];
     for (var i = 0; i < document.pages.count; i++) {
       try {
-        final text = PdfTextExtractor(document).extractText(
-          startPageIndex: i,
-          endPageIndex: i,
-        );
+        final text = PdfTextExtractor(
+          document,
+        ).extractText(startPageIndex: i, endPageIndex: i);
         pages.add(text);
       } catch (_) {
         pages.add('');

@@ -199,10 +199,8 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
             candidate.parsedAmount!.amountMinor,
             candidate.parsedAmount!.currency,
           );
-    _merchantController.text = resolveCleanMerchant(
-          candidate.merchant,
-          rawText: candidate.rawText,
-        ) ??
+    _merchantController.text =
+        resolveCleanMerchant(candidate.merchant, rawText: candidate.rawText) ??
         '';
     _type = candidate.transactionType == 'income' ? 'income' : 'expense';
     _accountId = candidate.suggestedAccountId;

@@ -115,7 +115,10 @@ void main() {
 
 Widget _wrap(LedgerState state, {required List<Override> overrides}) {
   return ProviderScope(
-    overrides: [...authenticatedSampleOverrides(ledger: state), ...overrides],
+    overrides: [
+      ...authenticatedSampleOverrides(ledger: state),
+      ...overrides,
+    ],
     child: MaterialApp(
       home: Scaffold(body: BalanceTrendHomeWidget(state: state)),
     ),

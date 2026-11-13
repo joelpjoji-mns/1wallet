@@ -31,25 +31,19 @@ void main() {
       expect(format('12345').text, '12,345');
     });
 
-    test(
-      'an integer part beyond the 64-bit range does not throw and rejects '
-      'the edit instead of crashing',
-      () {
-        final huge = '9' * 25;
-        expect(() => format(huge), returnsNormally);
-        // Falls back to `oldValue` (empty), same as the existing
-        // multiple-decimal-points guard does for other invalid input.
-        expect(format(huge).text, '');
-      },
-    );
+    test('an integer part beyond the 64-bit range does not throw and rejects '
+        'the edit instead of crashing', () {
+      final huge = '9' * 25;
+      expect(() => format(huge), returnsNormally);
+      // Falls back to `oldValue` (empty), same as the existing
+      // multiple-decimal-points guard does for other invalid input.
+      expect(format(huge).text, '');
+    });
 
-    test(
-      'a merely large but valid amount still formats normally at the '
-      'boundary of what a wallet amount could plausibly be',
-      () {
-        expect(format('999999999999').text, '999,999,999,999');
-      },
-    );
+    test('a merely large but valid amount still formats normally at the '
+        'boundary of what a wallet amount could plausibly be', () {
+      expect(format('999999999999').text, '999,999,999,999');
+    });
   });
 
   group('formatNumberExpression', () {
@@ -57,18 +51,15 @@ void main() {
       expect(formatNumberExpression('1000+2000', 'en_US'), '1,000+2,000');
     });
 
-    test(
-      'a number beyond the 64-bit range inside an expression does not '
-      'throw and is left unformatted instead of breaking the whole '
-      'expression',
-      () {
-        final huge = '9' * 25;
-        expect(
-          () => formatNumberExpression('$huge+500', 'en_US'),
-          returnsNormally,
-        );
-        expect(formatNumberExpression('$huge+500', 'en_US'), '$huge+500');
-      },
-    );
+    test('a number beyond the 64-bit range inside an expression does not '
+        'throw and is left unformatted instead of breaking the whole '
+        'expression', () {
+      final huge = '9' * 25;
+      expect(
+        () => formatNumberExpression('$huge+500', 'en_US'),
+        returnsNormally,
+      );
+      expect(formatNumberExpression('$huge+500', 'en_US'), '$huge+500');
+    });
   });
 }

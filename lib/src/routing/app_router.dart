@@ -80,7 +80,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.search_off_rounded, size: 64, color: Colors.grey),
+                const Icon(
+                  Icons.search_off_rounded,
+                  size: 64,
+                  color: Colors.grey,
+                ),
                 const SizedBox(height: AppSpacing.md),
                 Text(
                   'Page not found',
@@ -111,8 +115,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/wallets', redirect: (context, state) => '/accounts'),
       GoRoute(path: '/budgets/new', redirect: (context, state) => '/widgets'),
       GoRoute(path: '/goals/new', redirect: (context, state) => '/widgets'),
-      GoRoute(path: '/import-wallet-csv', redirect: (context, state) => '/import-statement'),
-      GoRoute(path: '/imports/missing', redirect: (context, state) => '/imports'),
+      GoRoute(
+        path: '/import-wallet-csv',
+        redirect: (context, state) => '/import-statement',
+      ),
+      GoRoute(
+        path: '/imports/missing',
+        redirect: (context, state) => '/imports',
+      ),
       GoRoute(
         path: '/account-deletion',
         builder: (context, state) => const AccountDeletionScreen(),
@@ -139,11 +149,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return AppGlassPage(child: MainShell(initialTab: initialTab));
         },
       ),
-      GoRoute(path: '/transactions/new', redirect: (context, state) {
-        final query = state.uri.query.isNotEmpty ? '?${state.uri.query}' : '';
-        return '/add$query';
-      }),
-      GoRoute(path: '/transactions/scan', redirect: (context, state) => '/add?scan=1'),
+      GoRoute(
+        path: '/transactions/new',
+        redirect: (context, state) {
+          final query = state.uri.query.isNotEmpty ? '?${state.uri.query}' : '';
+          return '/add$query';
+        },
+      ),
+      GoRoute(
+        path: '/transactions/scan',
+        redirect: (context, state) => '/add?scan=1',
+      ),
       GoRoute(path: '/calendar', redirect: (context, state) => '/?tab=2'),
       GoRoute(
         path: '/add',
@@ -212,7 +228,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           child: DrawerConfig(hasDrawer: true, child: ReviewQueueScreen()),
         ),
       ),
-      GoRoute(path: '/capture/review-queue', redirect: (context, state) => '/review'),
+      GoRoute(
+        path: '/capture/review-queue',
+        redirect: (context, state) => '/review',
+      ),
       GoRoute(
         path: '/capture/:id',
         builder: (context, state) => AppGlassPage(
@@ -339,10 +358,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/import-statement',
         builder: (context, state) => const AppGlassPage(
-          child: DrawerConfig(
-            hasDrawer: true,
-            child: ImportStatementScreen(),
-          ),
+          child: DrawerConfig(hasDrawer: true, child: ImportStatementScreen()),
         ),
       ),
       GoRoute(
@@ -375,10 +391,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/data-backup',
         builder: (context, state) => const AppGlassPage(
-          child: DrawerConfig(
-            hasDrawer: true,
-            child: DataBackupScreen(),
-          ),
+          child: DrawerConfig(hasDrawer: true, child: DataBackupScreen()),
         ),
       ),
       GoRoute(

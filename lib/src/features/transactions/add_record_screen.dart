@@ -730,8 +730,8 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                             );
                                         final fieldWidth =
                                             remainingWidth >= 90.0
-                                                ? remainingWidth
-                                                : constraints.maxWidth;
+                                            ? remainingWidth
+                                            : constraints.maxWidth;
 
                                         return Wrap(
                                           spacing: AppSpacing.xs,
@@ -743,7 +743,8 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                               InputChip(
                                                 label: Text(
                                                   tag,
-                                                  style: theme.textTheme
+                                                  style: theme
+                                                      .textTheme
                                                       .labelMedium
                                                       ?.copyWith(
                                                         fontWeight:
@@ -786,8 +787,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                                       InputBorder.none,
                                                   disabledBorder:
                                                       InputBorder.none,
-                                                  errorBorder:
-                                                      InputBorder.none,
+                                                  errorBorder: InputBorder.none,
                                                   focusedErrorBorder:
                                                       InputBorder.none,
                                                   filled: false,
@@ -799,15 +799,16 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                                       ),
                                                   hintText:
                                                       (!isFocused &&
-                                                              _tags.isEmpty &&
-                                                              textEditingController
-                                                                  .text
-                                                                  .isEmpty)
-                                                          ? null
-                                                          : (_tags.isNotEmpty
-                                                              ? 'Add tag...'
-                                                              : 'Add tags (e.g. Work, Vacation)'),
-                                                  hintStyle: theme.textTheme
+                                                          _tags.isEmpty &&
+                                                          textEditingController
+                                                              .text
+                                                              .isEmpty)
+                                                      ? null
+                                                      : (_tags.isNotEmpty
+                                                            ? 'Add tag...'
+                                                            : 'Add tags (e.g. Work, Vacation)'),
+                                                  hintStyle: theme
+                                                      .textTheme
                                                       .bodyMedium
                                                       ?.copyWith(
                                                         color: theme
@@ -818,9 +819,8 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                                             ),
                                                       ),
                                                 ),
-                                                style: theme
-                                                    .textTheme
-                                                    .bodyMedium,
+                                                style:
+                                                    theme.textTheme.bodyMedium,
                                                 onTap: _triggerTagOptions,
                                                 onSubmitted: (value) {
                                                   final val = value
@@ -923,8 +923,9 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                             Expanded(
                               child: AddRecordTappableDetailField(
                                 icon: Icons.schedule_outlined,
-                                label:
-                                    DateFormat.jm().format(_occurredAt.toLocal()),
+                                label: DateFormat.jm().format(
+                                  _occurredAt.toLocal(),
+                                ),
                                 onTap: _selectTime,
                               ),
                             ),
@@ -1042,10 +1043,9 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                 .withAlphaFactor(0.4),
                             borderRadius: BorderRadius.circular(AppRadii.lg),
                             border: Border.all(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .outlineVariant
-                                  .withAlphaFactor(0.2),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.outlineVariant.withAlphaFactor(0.2),
                             ),
                           ),
                           child: Column(
@@ -1056,9 +1056,9 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                   Icon(
                                     Icons.photo_library_outlined,
                                     size: 18,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
                                   ),
                                   const SizedBox(width: AppSpacing.xs),
                                   Text(
@@ -1068,9 +1068,9 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                         .labelMedium
                                         ?.copyWith(
                                           fontWeight: FontWeight.w700,
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onSurface,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurface,
                                         ),
                                   ),
                                   const Spacer(),
@@ -1079,9 +1079,9 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                     icon: Icon(
                                       Icons.add_photo_alternate_outlined,
                                       size: 20,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .primary,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
                                     ),
                                     onSelected: _addPhotoAttachment,
                                     itemBuilder: (context) => [
@@ -1116,13 +1116,11 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                   ),
                                   child: Text(
                                     'No photos attached yet.',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
+                                    style: Theme.of(context).textTheme.bodySmall
                                         ?.copyWith(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onSurfaceVariant,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
                                         ),
                                   ),
                                 )
@@ -1135,7 +1133,11 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                     spacing: AppSpacing.sm,
                                     runSpacing: AppSpacing.sm,
                                     children: [
-                                      for (int i = 0; i < _attachments.length; i++)
+                                      for (
+                                        int i = 0;
+                                        i < _attachments.length;
+                                        i++
+                                      )
                                         AttachmentThumbnail(
                                           attachment: _attachments[i],
                                           showDelete: true,
@@ -1592,7 +1594,8 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
             paymentMethod: _paymentMethodController.text.trim().isEmpty
                 ? null
                 : _paymentMethodController.text.trim(),
-            name: resolveCleanMerchant(
+            name:
+                resolveCleanMerchant(
                   captureCandidate?.merchant,
                   rawText: captureCandidate?.rawText,
                 ) ??
@@ -1688,9 +1691,11 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
         _accountId = candidate.suggestedAccountId ?? widget.initialAccountId;
         _counterAccountId = candidate.suggestedCounterAccountId;
       } else {
-        _type = planned?.type ??
+        _type =
+            planned?.type ??
             (candidate.transactionType == 'income' ? 'income' : 'expense');
-        _accountId = candidate.suggestedAccountId ??
+        _accountId =
+            candidate.suggestedAccountId ??
             planned?.accountId ??
             widget.initialAccountId;
       }

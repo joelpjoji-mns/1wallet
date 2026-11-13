@@ -351,7 +351,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       }
       if (_categoryFilters.isNotEmpty || _includeUncategorizedCategory) {
         final catId = f.categoryId;
-        final match = (catId == null && _includeUncategorizedCategory) ||
+        final match =
+            (catId == null && _includeUncategorizedCategory) ||
             (catId != null && _categoryFilters.contains(catId));
         if (!match) continue;
       }
@@ -369,7 +370,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       }
       if (_categoryFilters.isNotEmpty || _includeUncategorizedCategory) {
         final catId = transaction.categoryId;
-        final match = (catId == null && _includeUncategorizedCategory) ||
+        final match =
+            (catId == null && _includeUncategorizedCategory) ||
             (catId != null && _categoryFilters.contains(catId));
         if (!match) return false;
       }
@@ -546,8 +548,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     if (result == null) return;
 
     final hasUncategorized = result.contains(categoryTreeUncategorizedKey);
-    final categoryIds =
-        result.where((id) => id != categoryTreeUncategorizedKey).toSet();
+    final categoryIds = result
+        .where((id) => id != categoryTreeUncategorizedKey)
+        .toSet();
 
     setState(() {
       _categoryFilters

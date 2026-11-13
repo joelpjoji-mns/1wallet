@@ -69,7 +69,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   final _displayNameController = TextEditingController();
 
-
   String _baseCurrency = kDefaultCurrency;
   final _accounts = <_AccountDraft>[];
   late _AccountDraft _currentDraft;
@@ -239,7 +238,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         await ledgerNotifier.upsertAccount(
           id: const Uuid().v4(),
           name: draft.name,
-          institution: draft.institution.trim().isEmpty ? null : draft.institution.trim(),
+          institution: draft.institution.trim().isEmpty
+              ? null
+              : draft.institution.trim(),
           type: draft.type,
           currency: draft.currency,
           openingBalanceMinor: openingBalanceMinor,
@@ -288,10 +289,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       Container(
                         padding: const EdgeInsets.all(AppSpacing.md),
                         decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withValues(alpha: 0.15),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -303,9 +303,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       const SizedBox(height: AppSpacing.lg),
                       Text(
                         'Cloud Wallet Found',
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineSmall
+                        style: Theme.of(context).textTheme.headlineSmall
                             ?.copyWith(fontWeight: FontWeight.w900),
                       ),
                       const SizedBox(height: AppSpacing.sm),
@@ -313,11 +311,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         'We detected an existing wallet for your Google account. Your data is safe in Firebase.',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                              height: 1.4,
-                            ),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          height: 1.4,
+                        ),
                       ),
                       const SizedBox(height: AppSpacing.xl),
                       FilledButton.icon(
@@ -378,11 +374,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                               decoration: BoxDecoration(
                                 color: i == _currentPage
                                     ? Theme.of(context).colorScheme.primary
-                                    : Theme.of(context)
-                                        .colorScheme
-                                        .onSurface
-                                        .withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(AppRadii.pill),
+                                    : Theme.of(context).colorScheme.onSurface
+                                          .withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(
+                                  AppRadii.pill,
+                                ),
                               ),
                             ),
                             if (i < 3) const SizedBox(width: 4),
@@ -390,13 +386,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           const SizedBox(width: AppSpacing.xs),
                           Text(
                             'Step ${_currentPage + 1} of 4',
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withValues(alpha: 0.7),
-                            ),
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.7),
+                                ),
                           ),
                         ],
                       ),
@@ -536,7 +531,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     width: 1.5,
                   ),
                 ),
-                child: Icon(_currentDraft.icon, color: _currentDraft.color, size: 22),
+                child: Icon(
+                  _currentDraft.icon,
+                  color: _currentDraft.color,
+                  size: 22,
+                ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -596,7 +595,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           'Account accent color',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.8),
           ),
         ),
         const SizedBox(height: AppSpacing.xs),
@@ -633,7 +634,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         ],
                       ),
                       child: _currentDraft.color == c
-                          ? const Icon(Icons.check_rounded, size: 18, color: Colors.white)
+                          ? const Icon(
+                              Icons.check_rounded,
+                              size: 18,
+                              color: Colors.white,
+                            )
                           : null,
                     ),
                   ),
@@ -662,10 +667,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           .surfaceContainerHighest
                           .withValues(alpha: 0.4),
                       border: Border.all(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .outlineVariant
-                            .withValues(alpha: 0.5),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.outlineVariant.withValues(alpha: 0.5),
                       ),
                     ),
                     child: Icon(
@@ -760,7 +764,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   glass: true,
                   icon: Icons.currency_exchange_outlined,
                   title: _currentDraft.currency,
-                  subtitle: '${getCurrencyInfo(_currentDraft.currency).name} • Tap to change',
+                  subtitle:
+                      '${getCurrencyInfo(_currentDraft.currency).name} • Tap to change',
                   onTap: () async {
                     final curr = await showCurrencyPicker(
                       context: context,
@@ -781,7 +786,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 AppGlassTextField(
-                  onChanged: (v) => setState(() => _currentDraft.institution = v),
+                  onChanged: (v) =>
+                      setState(() => _currentDraft.institution = v),
                   decoration: const InputDecoration(
                     hintText: 'e.g. Chase, Revolut, Cash in wallet',
                   ),
@@ -840,10 +846,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   Icon(
                     Icons.account_balance_wallet_outlined,
                     size: 48,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withValues(alpha: 0.6),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.6),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   Text(
@@ -879,7 +884,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       color: _accounts[i].color.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(_accounts[i].icon, color: _accounts[i].color, size: 20),
+                    child: Icon(
+                      _accounts[i].icon,
+                      color: _accounts[i].color,
+                      size: 20,
+                    ),
                   ),
                   title: Text(_accounts[i].name),
                   subtitle: PrivacyText(

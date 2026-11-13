@@ -96,24 +96,23 @@ void main() {
     expect(tester.widget<Text>(amountDisplay()).data, '50');
   });
 
-  testWidgets(
-    '+/- on an expense never renders a double "--" minus sign',
-    (tester) async {
-      await pumpAddRecord(tester, initialAccountId: 'acc-cash');
+  testWidgets('+/- on an expense never renders a double "--" minus sign', (
+    tester,
+  ) async {
+    await pumpAddRecord(tester, initialAccountId: 'acc-cash');
 
-      // Expense is the default type, which already auto-prefixes "-".
-      await tester.tap(find.text('5').last);
-      await tester.tap(find.text('0').last);
-      await tester.pumpAndSettle();
-      expect(tester.widget<Text>(amountDisplay()).data, '-50');
+    // Expense is the default type, which already auto-prefixes "-".
+    await tester.tap(find.text('5').last);
+    await tester.tap(find.text('0').last);
+    await tester.pumpAndSettle();
+    expect(tester.widget<Text>(amountDisplay()).data, '-50');
 
-      await tester.tap(find.text('+/-').last);
-      await tester.pumpAndSettle();
-      final displayed = tester.widget<Text>(amountDisplay()).data!;
-      expect(displayed, '-50');
-      expect(displayed.contains('--'), isFalse);
-    },
-  );
+    await tester.tap(find.text('+/-').last);
+    await tester.pumpAndSettle();
+    final displayed = tester.widget<Text>(amountDisplay()).data!;
+    expect(displayed, '-50');
+    expect(displayed.contains('--'), isFalse);
+  });
 
   testWidgets('% divides the current entry by 100', (tester) async {
     await pumpAddRecord(tester, initialAccountId: 'acc-cash');
@@ -162,9 +161,7 @@ void main() {
 
       final transactions = container.read(ledgerProvider).transactions;
       expect(transactions.length, beforeCount + 1);
-      final saved = transactions.singleWhere(
-        (t) => !beforeIds.contains(t.id),
-      );
+      final saved = transactions.singleWhere((t) => !beforeIds.contains(t.id));
       expect(saved.amount.amountMinor, 124);
     },
   );

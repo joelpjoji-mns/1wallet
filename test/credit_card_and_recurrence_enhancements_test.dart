@@ -7,32 +7,35 @@ import 'package:one_wallet_flutter/src/features/notifications/notification_engin
 
 void main() {
   group('Last day of month recurrence', () {
-    test('advances cursor dynamically to the last day of each month for day 32', () {
-      final start = DateTime(2026, 1, 31);
-      final nextFeb = advanceRecurrenceCursor(
-        current: start,
-        frequency: 'monthly',
-        interval: 1,
-        daysOfMonth: [32],
-      );
-      expect(nextFeb, DateTime(2026, 2, 28));
+    test(
+      'advances cursor dynamically to the last day of each month for day 32',
+      () {
+        final start = DateTime(2026, 1, 31);
+        final nextFeb = advanceRecurrenceCursor(
+          current: start,
+          frequency: 'monthly',
+          interval: 1,
+          daysOfMonth: [32],
+        );
+        expect(nextFeb, DateTime(2026, 2, 28));
 
-      final nextMar = advanceRecurrenceCursor(
-        current: nextFeb,
-        frequency: 'monthly',
-        interval: 1,
-        daysOfMonth: [32],
-      );
-      expect(nextMar, DateTime(2026, 3, 31));
+        final nextMar = advanceRecurrenceCursor(
+          current: nextFeb,
+          frequency: 'monthly',
+          interval: 1,
+          daysOfMonth: [32],
+        );
+        expect(nextMar, DateTime(2026, 3, 31));
 
-      final nextApr = advanceRecurrenceCursor(
-        current: nextMar,
-        frequency: 'monthly',
-        interval: 1,
-        daysOfMonth: [32],
-      );
-      expect(nextApr, DateTime(2026, 4, 30));
-    });
+        final nextApr = advanceRecurrenceCursor(
+          current: nextMar,
+          frequency: 'monthly',
+          interval: 1,
+          daysOfMonth: [32],
+        );
+        expect(nextApr, DateTime(2026, 4, 30));
+      },
+    );
   });
 
   group('Credit Card Due Date status and notifications', () {
@@ -76,7 +79,10 @@ void main() {
       expect(creditCardsDueSoonCount(baseState, now: now), 1);
 
       final notifications = buildNotificationInbox(baseState, now: now);
-      expect(notifications.any((n) => n.id.startsWith('card_due_card-1_')), isTrue);
+      expect(
+        notifications.any((n) => n.id.startsWith('card_due_card-1_')),
+        isTrue,
+      );
     });
 
     test('calculates overdue status when past due date and unpaid', () {
@@ -108,25 +114,28 @@ void main() {
       expect(creditCardsDueSoonCount(state, now: now), 0);
     });
 
-    test('is marked paid after due date has passed in same month without resetting', () {
-      // Due date was Oct 5, today is Oct 25.
-      final paidAccount = account.copyWith(lastPaidBillMonth: '2026-10');
-      final state = baseState.copyWith(accounts: [paidAccount]);
+    test(
+      'is marked paid after due date has passed in same month without resetting',
+      () {
+        // Due date was Oct 5, today is Oct 25.
+        final paidAccount = account.copyWith(lastPaidBillMonth: '2026-10');
+        final state = baseState.copyWith(accounts: [paidAccount]);
 
-      final now = DateTime(2026, 10, 25);
-      final status = creditCardDueStatus(state, paidAccount, now: now);
+        final now = DateTime(2026, 10, 25);
+        final status = creditCardDueStatus(state, paidAccount, now: now);
 
-      expect(status, isNotNull);
-      expect(status!.isPaid, isTrue);
-      expect(status.isOverdue, isFalse);
-      expect(status.isDueSoon, isFalse);
-      expect(status.isStatementGenerated, isFalse);
-      expect(status.cycleKey, '2026-10');
+        expect(status, isNotNull);
+        expect(status!.isPaid, isTrue);
+        expect(status.isOverdue, isFalse);
+        expect(status.isDueSoon, isFalse);
+        expect(status.isStatementGenerated, isFalse);
+        expect(status.cycleKey, '2026-10');
 
-      expect(creditCardsDueSoonCount(state, now: now), 0);
-      final notifications = buildNotificationInbox(state, now: now);
-      expect(notifications.any((n) => n.id.startsWith('card_')), isFalse);
-    });
+        expect(creditCardsDueSoonCount(state, now: now), 0);
+        final notifications = buildNotificationInbox(state, now: now);
+        expect(notifications.any((n) => n.id.startsWith('card_')), isFalse);
+      },
+    );
 
     test('unmarking card bill paid clears lastPaidBillMonth', () {
       final paidAccount = account.copyWith(lastPaidBillMonth: '2026-10');
@@ -158,7 +167,9 @@ void main() {
 
       final notifications = buildNotificationInbox(state, now: now);
       expect(
-        notifications.any((n) => n.id.startsWith('card_statement_card-stmt-only_')),
+        notifications.any(
+          (n) => n.id.startsWith('card_statement_card-stmt-only_'),
+        ),
         isTrue,
       );
     });

@@ -115,7 +115,8 @@ class RouteScaffold extends StatelessWidget {
       ),
     );
 
-    final canPop = automaticallyImplyLeading &&
+    final canPop =
+        automaticallyImplyLeading &&
         (Navigator.of(context).canPop() ||
             (GoRouter.maybeOf(context)?.canPop() ?? false));
 

@@ -376,8 +376,7 @@ class AppMainDrawer extends ConsumerWidget {
     final combinedInboxCount = pendingReviewCount + unreadNotificationCount;
     final upcomingPlannedCount = _upcomingPlannedCount(ledger);
     final syncBadge = _syncBadge(sync);
-    final updatesBadge =
-        updateState.latestRelease != null ? '!' : null;
+    final updatesBadge = updateState.latestRelease != null ? '!' : null;
     final profileUser = auth.profileUser;
     final profileName = auth.isLocalOnly && auth.localDisplayName != null
         ? auth.localDisplayName!

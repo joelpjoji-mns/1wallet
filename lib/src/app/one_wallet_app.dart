@@ -90,7 +90,8 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     if (route != null) {
       _pendingNotificationRoute = null;
       _pendingSmsRoute = null;
-      final isCaptureRoute = route == '/review' ||
+      final isCaptureRoute =
+          route == '/review' ||
           route == '/auto-capture' ||
           route.startsWith('/import-sms') ||
           route.startsWith('/capture');

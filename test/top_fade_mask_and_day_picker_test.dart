@@ -4,34 +4,35 @@ import 'package:one_wallet_flutter/src/features/accounts/account_editor_screen.d
 import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 
 void main() {
-  testWidgets('AppTopFadeMask applies gradient overlay without blocking content', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: AppTopFadeMask(
-            fadeHeight: 20.0,
-            child: SizedBox(
-              width: 200,
-              height: 200,
-              child: Text('Content'),
+  testWidgets(
+    'AppTopFadeMask applies gradient overlay without blocking content',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: AppTopFadeMask(
+              fadeHeight: 20.0,
+              child: SizedBox(width: 200, height: 200, child: Text('Content')),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    final contentFinder = find.text('Content');
-    expect(contentFinder, findsOneWidget);
+      final contentFinder = find.text('Content');
+      expect(contentFinder, findsOneWidget);
 
-    final stackFinder = find.byType(Stack);
-    expect(stackFinder, findsWidgets);
+      final stackFinder = find.byType(Stack);
+      expect(stackFinder, findsWidgets);
 
-    final stack = tester.widget<Stack>(stackFinder.first);
-    expect(stack.alignment, equals(Alignment.center));
-    expect(stack.fit, equals(StackFit.passthrough));
-  });
+      final stack = tester.widget<Stack>(stackFinder.first);
+      expect(stack.alignment, equals(Alignment.center));
+      expect(stack.fit, equals(StackFit.passthrough));
+    },
+  );
 
-  testWidgets('showDayOfMonthPicker displays days 1 to 31 and picks a day', (tester) async {
+  testWidgets('showDayOfMonthPicker displays days 1 to 31 and picks a day', (
+    tester,
+  ) async {
     int? pickedDay;
 
     await tester.pumpWidget(

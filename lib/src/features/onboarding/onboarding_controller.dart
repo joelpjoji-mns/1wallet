@@ -60,18 +60,16 @@ class OnboardingState {
 }
 
 class OnboardingController extends StateNotifier<OnboardingState> {
-  OnboardingController({
-    SharedPreferences? prefs,
-    String? initialUserId,
-  }) : _prefs = prefs,
-       super(
-         (prefs != null && initialUserId != null)
-             ? OnboardingState(
-                 userId: initialUserId,
-                 completed: prefs.getBool(_key(initialUserId)) ?? false,
-               )
-             : const OnboardingState(),
-       );
+  OnboardingController({SharedPreferences? prefs, String? initialUserId})
+    : _prefs = prefs,
+      super(
+        (prefs != null && initialUserId != null)
+            ? OnboardingState(
+                userId: initialUserId,
+                completed: prefs.getBool(_key(initialUserId)) ?? false,
+              )
+            : const OnboardingState(),
+      );
 
   final SharedPreferences? _prefs;
 

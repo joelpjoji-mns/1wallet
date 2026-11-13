@@ -83,10 +83,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     onUpgrade: () => showOfflineUpgradeSheet(context),
                     onEditName: auth.isLocalOnly
                         ? () => _editOfflineName(
-                              context,
-                              ref,
-                              auth.localDisplayName,
-                            )
+                            context,
+                            ref,
+                            auth.localDisplayName,
+                          )
                         : null,
                   ),
                   const SizedBox(height: AppSpacing.md),
@@ -156,7 +156,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         leading: const Icon(Icons.opacity_outlined),
                         title: const Text('Glass effect'),
                         subtitle: Text(
-                          _glassIntensityLabel(state.preferences.glassIntensity),
+                          _glassIntensityLabel(
+                            state.preferences.glassIntensity,
+                          ),
                         ),
                         showChevron: true,
                         onTap: () => _showGlassIntensityPicker(

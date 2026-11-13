@@ -264,7 +264,9 @@ final _monthlyStatsProvider = Provider.autoDispose
       ).reversed;
 
       for (final t in fullLedger) {
-        final monthStr = monthFormat.format(t.occurredAt.toLocal()).toUpperCase();
+        final monthStr = monthFormat
+            .format(t.occurredAt.toLocal())
+            .toUpperCase();
         final sourceIncluded = includedAccounts.contains(t.accountId);
         final counterIncluded =
             t.counterAccountId != null &&
@@ -354,9 +356,7 @@ final _monthlyStatsProvider = Provider.autoDispose
     });
 
 final transactionsTypeFilterProvider = StateProvider<String>((ref) => 'all');
-final transactionsDateFilterProvider = StateProvider<String>(
-  (ref) => 'all',
-);
+final transactionsDateFilterProvider = StateProvider<String>((ref) => 'all');
 final transactionsStatusFilterProvider = StateProvider<String>((ref) => 'all');
 final transactionsCategoryFilterProvider = StateProvider<Set<String>>(
   (ref) => <String>{},
@@ -1006,8 +1006,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     if (result == null) return;
 
     final hasUncategorized = result.contains(categoryTreeUncategorizedKey);
-    final categoryIds =
-        result.where((id) => id != categoryTreeUncategorizedKey).toSet();
+    final categoryIds = result
+        .where((id) => id != categoryTreeUncategorizedKey)
+        .toSet();
 
     setState(() {
       _categoryFilters

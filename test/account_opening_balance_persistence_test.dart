@@ -69,9 +69,7 @@ void main() {
 
       final accounts = container.read(ledgerProvider).accounts;
       expect(accounts.length, beforeCount + 1);
-      final created = accounts.firstWhere(
-        (a) => a.name == 'Owed Credit Card',
-      );
+      final created = accounts.firstWhere((a) => a.name == 'Owed Credit Card');
       expect(created.openingBalance.amountMinor, -50025);
       expect(created.openingBalance.currency, 'USD');
     },
@@ -195,10 +193,7 @@ void main() {
           .accounts
           .where((a) => a.name == 'Double Tap Wallet');
       expect(accounts.length, 1);
-      expect(
-        container.read(ledgerProvider).accounts.length,
-        beforeCount + 1,
-      );
+      expect(container.read(ledgerProvider).accounts.length, beforeCount + 1);
     },
   );
 }

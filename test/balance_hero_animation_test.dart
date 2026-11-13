@@ -19,9 +19,7 @@ void main() {
   ) async {
     final baseState = sampleLedgerState();
     final state = baseState.copyWith(
-      preferences: baseState.preferences.copyWith(
-        displayCurrency: 'INR',
-      ),
+      preferences: baseState.preferences.copyWith(displayCurrency: 'INR'),
     );
     final container = ProviderContainer(
       overrides: authenticatedSampleOverrides(ledger: state),
@@ -34,10 +32,7 @@ void main() {
         container: container,
         child: MaterialApp(
           home: Scaffold(
-            body: BalanceHomeWidget(
-              state: state,
-              onTabSelected: (_) {},
-            ),
+            body: BalanceHomeWidget(state: state, onTabSelected: (_) {}),
           ),
         ),
       ),
@@ -47,10 +42,9 @@ void main() {
     // The widget should have TweenAnimationBuilder for total net balance, income, and expense (3 total)
     expect(find.byType(TweenAnimationBuilder<double>), findsNWidgets(3));
 
-    final initialTotal = container.read(homeTotalBalanceProvider((
-      accountId: null,
-      targetCurrency: 'INR',
-    )));
+    final initialTotal = container.read(
+      homeTotalBalanceProvider((accountId: null, targetCurrency: 'INR')),
+    );
     expect(
       find.text(formatMoney(initialTotal, state.preferences.locale)),
       findsOneWidget,
@@ -63,10 +57,12 @@ void main() {
     // Pump frame: animation begins
     await tester.pump();
 
-    final targetTotal = container.read(homeTotalBalanceProvider((
-      accountId: account.id,
-      targetCurrency: account.currency,
-    )));
+    final targetTotal = container.read(
+      homeTotalBalanceProvider((
+        accountId: account.id,
+        targetCurrency: account.currency,
+      )),
+    );
 
     // Mid-animation frame (before 600ms)
     await tester.pump(const Duration(milliseconds: 300));
@@ -95,9 +91,7 @@ void main() {
       );
       final state = baseState.copyWith(
         accounts: [...baseState.accounts, accountEur],
-        preferences: baseState.preferences.copyWith(
-          displayCurrency: 'INR',
-        ),
+        preferences: baseState.preferences.copyWith(displayCurrency: 'INR'),
       );
       final container = ProviderContainer(
         overrides: authenticatedSampleOverrides(ledger: state),
@@ -110,20 +104,16 @@ void main() {
           container: container,
           child: MaterialApp(
             home: Scaffold(
-              body: BalanceHomeWidget(
-                state: state,
-                onTabSelected: (_) {},
-              ),
+              body: BalanceHomeWidget(state: state, onTabSelected: (_) {}),
             ),
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      final initialTotal = container.read(homeTotalBalanceProvider((
-        accountId: null,
-        targetCurrency: 'INR',
-      )));
+      final initialTotal = container.read(
+        homeTotalBalanceProvider((accountId: null, targetCurrency: 'INR')),
+      );
       expect(
         find.text(formatMoney(initialTotal, state.preferences.locale)),
         findsOneWidget,
@@ -136,10 +126,12 @@ void main() {
       // Pump frame: animation starts
       await tester.pump();
 
-      final targetEurTotal = container.read(homeTotalBalanceProvider((
-        accountId: accountEur.id,
-        targetCurrency: 'EUR',
-      )));
+      final targetEurTotal = container.read(
+        homeTotalBalanceProvider((
+          accountId: accountEur.id,
+          targetCurrency: 'EUR',
+        )),
+      );
 
       // Mid-animation frame at 300ms: has not yet reached targetEurTotal
       await tester.pump(const Duration(milliseconds: 300));

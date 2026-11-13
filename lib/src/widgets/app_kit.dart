@@ -505,7 +505,11 @@ class AppHeader extends StatelessWidget {
 /// Combines a base accessibility label with a pending-badge count so screen
 /// readers announce e.g. "Open menu, 3 pending" instead of leaving the badge
 /// number as a disconnected, context-less text node.
-String? _headerButtonSemanticLabel(String? label, int? badge, {bool showIndicator = false}) {
+String? _headerButtonSemanticLabel(
+  String? label,
+  int? badge, {
+  bool showIndicator = false,
+}) {
   final count = badge ?? 0;
   if (label == null) return null;
   if (count <= 0) {
@@ -1907,9 +1911,7 @@ class AppSheetSurface extends StatelessWidget {
       return GlassCard(
         margin: EdgeInsets.zero,
         padding: EdgeInsets.zero,
-        shape: const LiquidRoundedSuperellipse(
-          borderRadius: AppRadii.lg,
-        ),
+        shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.lg),
         quality: GlassQuality.standard,
         child: content,
       );

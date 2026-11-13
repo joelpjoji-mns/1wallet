@@ -285,10 +285,7 @@ final List<RegExp> _merchantPatterns = [
     caseSensitive: false,
   ),
   // 2. UPI / VPA markers (very common in India)
-  RegExp(
-    r'\b(?:vpa|upi|info)[:\s-]+([A-Za-z0-9&@._-]+)',
-    caseSensitive: false,
-  ),
+  RegExp(r'\b(?:vpa|upi|info)[:\s-]+([A-Za-z0-9&@._-]+)', caseSensitive: false),
   // 3. "paid <merchant>" or "transfer to <merchant>"
   RegExp(
     r'\b(?:paid to|paid|transfer to|spent at)\s+([A-Za-z0-9 &._-]+?)(?=\s+(?:from|on|using|via|ref|bal|avl|available|₹|\$|€|£|Rs)|[\.,]\s|[\.,]?$)',
@@ -316,7 +313,10 @@ final List<RegExp> _merchantPatterns = [
   ),
 ];
 final RegExp _smsBlockDigitsRegex = RegExp(r'^\d{8,12}$');
-final RegExp _smsBlockTextRegex = RegExp(r'block\s+.*\bto\b', caseSensitive: false);
+final RegExp _smsBlockTextRegex = RegExp(
+  r'block\s+.*\bto\b',
+  caseSensitive: false,
+);
 final RegExp _numericRefRegex = RegExp(r'^[\d.\-]+$');
 final RegExp _asteriskHashRegex = RegExp(r'[*#]');
 const Set<String> _merchantNoiseWords = {
@@ -606,18 +606,30 @@ bool isBillStatementMessage(String text) {
 }
 
 const Map<String, int> _statementMonthMap = {
-  'jan': 1, 'january': 1,
-  'feb': 2, 'february': 2,
-  'mar': 3, 'march': 3,
-  'apr': 4, 'april': 4,
+  'jan': 1,
+  'january': 1,
+  'feb': 2,
+  'february': 2,
+  'mar': 3,
+  'march': 3,
+  'apr': 4,
+  'april': 4,
   'may': 5,
-  'jun': 6, 'june': 6,
-  'jul': 7, 'july': 7,
-  'aug': 8, 'august': 8,
-  'sep': 9, 'september': 9, 'sept': 9,
-  'oct': 10, 'october': 10,
-  'nov': 11, 'november': 11,
-  'dec': 12, 'december': 12,
+  'jun': 6,
+  'june': 6,
+  'jul': 7,
+  'july': 7,
+  'aug': 8,
+  'august': 8,
+  'sep': 9,
+  'september': 9,
+  'sept': 9,
+  'oct': 10,
+  'october': 10,
+  'nov': 11,
+  'november': 11,
+  'dec': 12,
+  'december': 12,
 };
 
 DateTime? _parseStatementDateComponent(
@@ -1030,7 +1042,10 @@ BillStatementNotice? parseBillStatementNotice(
   );
 }
 
-Account? matchAccountForStatement(LedgerState state, BillStatementNotice notice) {
+Account? matchAccountForStatement(
+  LedgerState state,
+  BillStatementNotice notice,
+) {
   final activeAccounts = state.accounts.where((a) => !a.isArchived).toList();
   if (activeAccounts.isEmpty) return null;
 

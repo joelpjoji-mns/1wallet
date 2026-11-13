@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 
 void main() {
-  testWidgets('EmptyState is centered within its parent container', (tester) async {
+  testWidgets('EmptyState is centered within its parent container', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -29,7 +31,7 @@ void main() {
 
     final emptyStateFinder = find.byType(EmptyState);
     final emptyStateCenter = tester.getCenter(emptyStateFinder);
-    
+
     // Parent center is (400, 300)
     expect(emptyStateCenter.dx, equals(400.0));
     expect(emptyStateCenter.dy, equals(300.0));

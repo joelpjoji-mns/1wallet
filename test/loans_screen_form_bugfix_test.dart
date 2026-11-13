@@ -87,20 +87,11 @@ void main() {
     final container = await pumpLoanForm(tester);
     final loansBefore = container.read(ledgerProvider).accounts.length;
 
-    await tester.enterText(
-      find.byType(CupertinoTextField).at(0),
-      'Bike Loan',
-    );
-    await tester.enterText(
-      find.byType(CupertinoTextField).at(2),
-      '50000',
-    );
+    await tester.enterText(find.byType(CupertinoTextField).at(0), 'Bike Loan');
+    await tester.enterText(find.byType(CupertinoTextField).at(2), '50000');
     // 0 is a valid *digit* (so it passes the digits-only input formatter)
     // but is not a valid tenure length.
-    await tester.enterText(
-      find.byType(CupertinoTextField).at(6),
-      '0',
-    );
+    await tester.enterText(find.byType(CupertinoTextField).at(6), '0');
     await tester.pumpAndSettle();
 
     final saveButton = find.bySemanticsLabel('Save');
@@ -123,10 +114,7 @@ void main() {
   ) async {
     await pumpLoanForm(tester);
 
-    await tester.enterText(
-      find.byType(CupertinoTextField).at(6),
-      '-12',
-    );
+    await tester.enterText(find.byType(CupertinoTextField).at(6), '-12');
     await tester.pumpAndSettle();
 
     final field = tester.widget<CupertinoTextField>(
@@ -149,10 +137,7 @@ void main() {
       find.byType(CupertinoTextField).at(0),
       'Double Tap Loan',
     );
-    await tester.enterText(
-      find.byType(CupertinoTextField).at(2),
-      '75000',
-    );
+    await tester.enterText(find.byType(CupertinoTextField).at(2), '75000');
     await tester.pumpAndSettle();
 
     final saveButton = find.byType(HeaderSaveAction);

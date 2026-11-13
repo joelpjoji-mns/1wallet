@@ -108,14 +108,11 @@ void main() {
     },
   );
 
-  testWidgets(
-    'Past recurring still shows skipped occurrences when '
-    'hideSkippedInHistory is false',
-    (tester) async {
-      await pumpPastRecurring(tester, buildSeed(hideSkipped: false));
-      expect(find.text('SkippedRentMarker'), findsOneWidget);
-    },
-  );
+  testWidgets('Past recurring still shows skipped occurrences when '
+      'hideSkippedInHistory is false', (tester) async {
+    await pumpPastRecurring(tester, buildSeed(hideSkipped: false));
+    expect(find.text('SkippedRentMarker'), findsOneWidget);
+  });
 
   testWidgets(
     'entering more fractional digits than the currency supports rounds '

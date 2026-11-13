@@ -66,29 +66,28 @@ void main() {
     },
   );
 
-  testWidgets(
-    'calendar has no duplicate header Add record action',
-    (tester) async {
-      final handle = tester.ensureSemantics();
-      final state = _ledger();
+  testWidgets('calendar has no duplicate header Add record action', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    final state = _ledger();
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: authenticatedSampleOverrides(ledger: state),
-          child: MaterialApp(
-            home: Scaffold(body: CalendarScreen(onMenuPressed: () {})),
-          ),
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: authenticatedSampleOverrides(ledger: state),
+        child: MaterialApp(
+          home: Scaffold(body: CalendarScreen(onMenuPressed: () {})),
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      // MainShell owns the fixed add action; Calendar no longer duplicates it
-      // in the page header.
-      expect(find.bySemanticsLabel('Add record'), findsNothing);
+    // MainShell owns the fixed add action; Calendar no longer duplicates it
+    // in the page header.
+    expect(find.bySemanticsLabel('Add record'), findsNothing);
 
-      handle.dispose();
-    },
-  );
+    handle.dispose();
+  });
 }
 
 LedgerState _ledger() {

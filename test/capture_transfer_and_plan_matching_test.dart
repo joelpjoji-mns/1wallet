@@ -216,10 +216,15 @@ void main() {
 
         final prefs = await SharedPreferences.getInstance();
         final container = ProviderContainer(
-          overrides: authenticatedSampleOverrides(ledger: seedState, prefs: prefs),
+          overrides: authenticatedSampleOverrides(
+            ledger: seedState,
+            prefs: prefs,
+          ),
         );
         addTearDown(container.dispose);
-        await container.read(ledgerProvider.notifier).restoreLedgerState(seedState);
+        await container
+            .read(ledgerProvider.notifier)
+            .restoreLedgerState(seedState);
 
         await tester.pumpWidget(
           UncontrolledProviderScope(
@@ -295,10 +300,15 @@ void main() {
 
         final prefs = await SharedPreferences.getInstance();
         final container = ProviderContainer(
-          overrides: authenticatedSampleOverrides(ledger: seedState, prefs: prefs),
+          overrides: authenticatedSampleOverrides(
+            ledger: seedState,
+            prefs: prefs,
+          ),
         );
         addTearDown(container.dispose);
-        await container.read(ledgerProvider.notifier).restoreLedgerState(seedState);
+        await container
+            .read(ledgerProvider.notifier)
+            .restoreLedgerState(seedState);
 
         await tester.pumpWidget(
           UncontrolledProviderScope(
@@ -377,10 +387,15 @@ A/c no. XX0655
 
         final prefs = await SharedPreferences.getInstance();
         final container = ProviderContainer(
-          overrides: authenticatedSampleOverrides(ledger: seedState, prefs: prefs),
+          overrides: authenticatedSampleOverrides(
+            ledger: seedState,
+            prefs: prefs,
+          ),
         );
         addTearDown(container.dispose);
-        await container.read(ledgerProvider.notifier).restoreLedgerState(seedState);
+        await container
+            .read(ledgerProvider.notifier)
+            .restoreLedgerState(seedState);
 
         await tester.pumpWidget(
           UncontrolledProviderScope(
@@ -449,7 +464,8 @@ A/c no. XX0655
           transactionType: 'expense',
           suggestedAccountId: 'acc-groww',
           suggestedCategoryId: 'cat-invest',
-          suggestedCategoryReason: 'Learned merchant category from mutual fund transfer',
+          suggestedCategoryReason:
+              'Learned merchant category from mutual fund transfer',
         );
 
         final seedState = emptyLedgerState().copyWith(
@@ -476,9 +492,14 @@ A/c no. XX0655
 
           final prefs = await SharedPreferences.getInstance();
           final container = ProviderContainer(
-            overrides: authenticatedSampleOverrides(ledger: seedState, prefs: prefs),
+            overrides: authenticatedSampleOverrides(
+              ledger: seedState,
+              prefs: prefs,
+            ),
           );
-          await container.read(ledgerProvider.notifier).restoreLedgerState(seedState);
+          await container
+              .read(ledgerProvider.notifier)
+              .restoreLedgerState(seedState);
 
           await tester.pumpWidget(
             UncontrolledProviderScope(
@@ -568,10 +589,15 @@ A/c no. XX0655
 
         final prefs = await SharedPreferences.getInstance();
         final container = ProviderContainer(
-          overrides: authenticatedSampleOverrides(ledger: seedState, prefs: prefs),
+          overrides: authenticatedSampleOverrides(
+            ledger: seedState,
+            prefs: prefs,
+          ),
         );
         addTearDown(container.dispose);
-        await container.read(ledgerProvider.notifier).restoreLedgerState(seedState);
+        await container
+            .read(ledgerProvider.notifier)
+            .restoreLedgerState(seedState);
 
         await tester.pumpWidget(
           UncontrolledProviderScope(
@@ -580,9 +606,7 @@ A/c no. XX0655
               theme: AppTheme.light().copyWith(
                 splashFactory: NoSplash.splashFactory,
               ),
-              home: AddRecordScreen(
-                captureCandidateId: transferCandidate.id,
-              ),
+              home: AddRecordScreen(captureCandidateId: transferCandidate.id),
             ),
           ),
         );
@@ -654,10 +678,15 @@ A/c no. XX0655
 
         final prefs = await SharedPreferences.getInstance();
         final container = ProviderContainer(
-          overrides: authenticatedSampleOverrides(ledger: seedState, prefs: prefs),
+          overrides: authenticatedSampleOverrides(
+            ledger: seedState,
+            prefs: prefs,
+          ),
         );
         addTearDown(container.dispose);
-        await container.read(ledgerProvider.notifier).restoreLedgerState(seedState);
+        await container
+            .read(ledgerProvider.notifier)
+            .restoreLedgerState(seedState);
 
         await tester.pumpWidget(
           UncontrolledProviderScope(

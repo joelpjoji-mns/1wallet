@@ -75,10 +75,7 @@ void main() {
               splashFactory: NoSplash.splashFactory,
             ),
             home: Scaffold(
-              body: BalanceHomeWidget(
-                state: state,
-                onTabSelected: (_) {},
-              ),
+              body: BalanceHomeWidget(state: state, onTabSelected: (_) {}),
             ),
           ),
         ),
@@ -101,7 +98,8 @@ void main() {
       );
 
       // When an account is selected, currency is pinned to that account's currency as HomeBalancePill
-      container.read(homeSelectedAccountProvider.notifier).state = inrAccount.id;
+      container.read(homeSelectedAccountProvider.notifier).state =
+          inrAccount.id;
       await _pumpBounded(tester);
 
       expect(find.byType(HomeBalancePill), findsOneWidget);

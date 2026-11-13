@@ -36,14 +36,13 @@ class PendingReviewHomeWidget extends ConsumerWidget {
       icon: Icons.mark_email_unread_outlined,
       iconColor: pending.isEmpty ? scheme.primary : scheme.error,
       actionLabel: pending.isNotEmpty ? 'Review' : null,
-      onAction: pending.isNotEmpty
-          ? () => context.push('/review')
-          : null,
+      onAction: pending.isNotEmpty ? () => context.push('/review') : null,
       child: pending.isEmpty
           ? const EmptyState(
               icon: Icons.check_circle_outline_rounded,
               title: 'All caught up',
-              body: 'No pending SMS or notification transactions waiting for review.',
+              body:
+                  'No pending SMS or notification transactions waiting for review.',
             )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -85,13 +84,16 @@ class PendingReviewHomeWidget extends ConsumerWidget {
                               children: [
                                 Text(
                                   candidate.merchant ??
-                                      (candidate.rawText != null && candidate.rawText!.length > 30
+                                      (candidate.rawText != null &&
+                                              candidate.rawText!.length > 30
                                           ? '${candidate.rawText!.substring(0, 30)}...'
                                           : candidate.rawText) ??
                                       'Transaction alert',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontWeight: FontWeight.w700),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                                 Text(
                                   candidate.suggestedAccountId != null
@@ -99,7 +101,8 @@ class PendingReviewHomeWidget extends ConsumerWidget {
                                       : 'Source: ${candidate.source.toUpperCase()}',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
                                         color: scheme.onSurfaceVariant,
                                       ),
                                 ),
@@ -109,7 +112,10 @@ class PendingReviewHomeWidget extends ConsumerWidget {
                           const SizedBox(width: AppSpacing.xs),
                           if (candidate.parsedAmount != null)
                             PrivacyText(
-                              formatMoney(candidate.parsedAmount!, state.preferences.locale),
+                              formatMoney(
+                                candidate.parsedAmount!,
+                                state.preferences.locale,
+                              ),
                               style: TextStyle(
                                 fontWeight: FontWeight.w800,
                                 color: scheme.error,
@@ -150,14 +156,21 @@ class SavingsRateHomeWidget extends ConsumerWidget {
     int totalExpenseMinor = 0;
 
     for (final t in state.transactions) {
-      if (t.status == 'void' || t.status == 'scheduled' || t.status == 'paused') {
+      if (t.status == 'void' ||
+          t.status == 'scheduled' ||
+          t.status == 'paused') {
         continue;
       }
-      if (t.occurredAt.isBefore(range.start) || !t.occurredAt.isBefore(range.end)) {
+      if (t.occurredAt.isBefore(range.start) ||
+          !t.occurredAt.isBefore(range.end)) {
         continue;
       }
 
-      final converted = convertMoneyForDisplay(state, t.amount, displayCurrency);
+      final converted = convertMoneyForDisplay(
+        state,
+        t.amount,
+        displayCurrency,
+      );
       if (incomeTypes.contains(t.type)) {
         totalIncomeMinor += converted.amountMinor;
       } else if (expenseTypes.contains(t.type)) {
@@ -189,9 +202,13 @@ class SavingsRateHomeWidget extends ConsumerWidget {
       iconColor: toneColor,
       dateFilter: period,
       onDateFilterChanged: (val) {
-        final newFilters = Map<String, String>.from(state.preferences.homeWidgetFilters);
+        final newFilters = Map<String, String>.from(
+          state.preferences.homeWidgetFilters,
+        );
         newFilters['savingsRate'] = val;
-        ref.read(ledgerProvider.notifier).updatePreferencesWith(
+        ref
+            .read(ledgerProvider.notifier)
+            .updatePreferencesWith(
               (p) => p.copyWith(homeWidgetFilters: newFilters),
             );
       },
@@ -207,17 +224,21 @@ class SavingsRateHomeWidget extends ConsumerWidget {
                     Text(
                       'Net Saved',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.xxxs),
                     PrivacyText(
                       formatMoney(
-                        Money(amountMinor: netSavedMinor, currency: displayCurrency),
+                        Money(
+                          amountMinor: netSavedMinor,
+                          currency: displayCurrency,
+                        ),
                         state.preferences.locale,
                       ),
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
                             fontWeight: FontWeight.w900,
                             color: toneColor,
                             letterSpacing: -0.5,
@@ -243,8 +264,8 @@ class SavingsRateHomeWidget extends ConsumerWidget {
                       savingsRate >= 0.20
                           ? Icons.emoji_events_outlined
                           : savingsRate >= 0.0
-                              ? Icons.savings_outlined
-                              : Icons.warning_amber_rounded,
+                          ? Icons.savings_outlined
+                          : Icons.warning_amber_rounded,
                       size: 16,
                       color: toneColor,
                     ),
@@ -276,7 +297,10 @@ class SavingsRateHomeWidget extends ConsumerWidget {
                   value: maskMoneyIfPrivate(
                     state,
                     formatMoney(
-                      Money(amountMinor: totalIncomeMinor, currency: displayCurrency),
+                      Money(
+                        amountMinor: totalIncomeMinor,
+                        currency: displayCurrency,
+                      ),
                       state.preferences.locale,
                     ),
                   ),
@@ -291,7 +315,10 @@ class SavingsRateHomeWidget extends ConsumerWidget {
                   value: maskMoneyIfPrivate(
                     state,
                     formatMoney(
-                      Money(amountMinor: totalExpenseMinor, currency: displayCurrency),
+                      Money(
+                        amountMinor: totalExpenseMinor,
+                        currency: displayCurrency,
+                      ),
                       state.preferences.locale,
                     ),
                   ),
@@ -328,18 +355,25 @@ class TagCloudHomeWidget extends ConsumerWidget {
     final tagTotals = <String, int>{};
 
     for (final t in state.transactions) {
-      if (t.status == 'void' || t.status == 'scheduled' || t.status == 'paused') {
+      if (t.status == 'void' ||
+          t.status == 'scheduled' ||
+          t.status == 'paused') {
         continue;
       }
       if (!expenseTypes.contains(t.type)) continue;
-      if (t.occurredAt.isBefore(range.start) || !t.occurredAt.isBefore(range.end)) {
+      if (t.occurredAt.isBefore(range.start) ||
+          !t.occurredAt.isBefore(range.end)) {
         continue;
       }
 
       final tags = t.tags;
       if (tags.isEmpty) continue;
 
-      final converted = convertMoneyForDisplay(state, t.amount, displayCurrency);
+      final converted = convertMoneyForDisplay(
+        state,
+        t.amount,
+        displayCurrency,
+      );
       for (final rawTag in tags) {
         final tag = rawTag.trim();
         if (tag.isEmpty) continue;
@@ -360,9 +394,13 @@ class TagCloudHomeWidget extends ConsumerWidget {
       iconColor: scheme.tertiary,
       dateFilter: period,
       onDateFilterChanged: (val) {
-        final newFilters = Map<String, String>.from(state.preferences.homeWidgetFilters);
+        final newFilters = Map<String, String>.from(
+          state.preferences.homeWidgetFilters,
+        );
         newFilters['tagCloud'] = val;
-        ref.read(ledgerProvider.notifier).updatePreferencesWith(
+        ref
+            .read(ledgerProvider.notifier)
+            .updatePreferencesWith(
               (p) => p.copyWith(homeWidgetFilters: newFilters),
             );
       },
@@ -370,7 +408,8 @@ class TagCloudHomeWidget extends ConsumerWidget {
           ? const EmptyState(
               icon: Icons.label_off_outlined,
               title: 'No tagged expenses',
-              body: 'Tag your transactions with #dining, #work, etc. to view tag insights here.',
+              body:
+                  'Tag your transactions with #dining, #work, etc. to view tag insights here.',
             )
           : Wrap(
               spacing: AppSpacing.xs,
@@ -396,10 +435,11 @@ class TagCloudHomeWidget extends ConsumerWidget {
                           tagEntry.key.startsWith('#')
                               ? tagEntry.key
                               : '#${tagEntry.key}',
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: scheme.primary,
-                          ),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: scheme.primary,
+                              ),
                         ),
                         const SizedBox(width: AppSpacing.xs),
                         PrivacyText(
@@ -410,10 +450,11 @@ class TagCloudHomeWidget extends ConsumerWidget {
                             ),
                             state.preferences.locale,
                           ),
-                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: scheme.onSurface,
-                          ),
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: scheme.onSurface,
+                              ),
                         ),
                       ],
                     ),
@@ -450,15 +491,22 @@ class SafeToSpendHomeWidget extends ConsumerWidget {
     int monthIncomeMinor = 0;
 
     for (final t in state.transactions) {
-      if (t.status == 'void' || t.status == 'scheduled' || t.status == 'paused') {
+      if (t.status == 'void' ||
+          t.status == 'scheduled' ||
+          t.status == 'paused') {
         continue;
       }
       if (t.occurredAt.isBefore(startOfMonth)) continue;
 
-      final converted = convertMoneyForDisplay(state, t.amount, displayCurrency);
+      final converted = convertMoneyForDisplay(
+        state,
+        t.amount,
+        displayCurrency,
+      );
       if (expenseTypes.contains(t.type)) {
         monthExpensesMinor += converted.amountMinor;
-        if (!t.occurredAt.isBefore(todayStart) && t.occurredAt.isBefore(tomorrowStart)) {
+        if (!t.occurredAt.isBefore(todayStart) &&
+            t.occurredAt.isBefore(tomorrowStart)) {
           todayExpensesMinor += converted.amountMinor;
         }
       } else if (incomeTypes.contains(t.type)) {
@@ -466,8 +514,12 @@ class SafeToSpendHomeWidget extends ConsumerWidget {
       }
     }
 
-    final balanceRemainingMinor = math.max(0, monthIncomeMinor - monthExpensesMinor);
-    final safeDailyAllowanceMinor = (balanceRemainingMinor / remainingDays).round();
+    final balanceRemainingMinor = math.max(
+      0,
+      monthIncomeMinor - monthExpensesMinor,
+    );
+    final safeDailyAllowanceMinor = (balanceRemainingMinor / remainingDays)
+        .round();
     final spentRatio = safeDailyAllowanceMinor > 0
         ? (todayExpensesMinor / safeDailyAllowanceMinor).clamp(0.0, 1.0)
         : 1.0;
@@ -489,9 +541,9 @@ class SafeToSpendHomeWidget extends ConsumerWidget {
                     Text(
                       'Today\'s Allowance',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.xxxs),
                     PrivacyText(
@@ -502,7 +554,8 @@ class SafeToSpendHomeWidget extends ConsumerWidget {
                         ),
                         state.preferences.locale,
                       ),
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
                             fontWeight: FontWeight.w900,
                             color: scheme.primary,
                             letterSpacing: -0.5,
@@ -538,16 +591,18 @@ class SafeToSpendHomeWidget extends ConsumerWidget {
               Text(
                 'Spent today: ${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: todayExpensesMinor, currency: displayCurrency), state.preferences.locale))}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               Text(
                 '${(spentRatio * 100).round()}% used',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: spentRatio > 0.9 ? scheme.error : positiveTone(context),
-                      fontWeight: FontWeight.w700,
-                    ),
+                  color: spentRatio > 0.9
+                      ? scheme.error
+                      : positiveTone(context),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -599,14 +654,20 @@ class CashBurnRunwayHomeWidget extends ConsumerWidget {
     int past30DaysExpenseMinor = 0;
 
     for (final t in state.transactions) {
-      if (t.status == 'void' || t.status == 'scheduled' || t.status == 'paused') {
+      if (t.status == 'void' ||
+          t.status == 'scheduled' ||
+          t.status == 'paused') {
         continue;
       }
       if (!expenseTypes.contains(t.type)) continue;
       if (t.occurredAt.isBefore(thirtyDaysAgo) || t.occurredAt.isAfter(now)) {
         continue;
       }
-      final converted = convertMoneyForDisplay(state, t.amount, displayCurrency);
+      final converted = convertMoneyForDisplay(
+        state,
+        t.amount,
+        displayCurrency,
+      );
       past30DaysExpenseMinor += converted.amountMinor;
     }
 
@@ -635,13 +696,14 @@ class CashBurnRunwayHomeWidget extends ConsumerWidget {
       runwayTone = MetricTone.danger;
     }
 
-    final statusText = runwayDays >= 180 || (dailyBurnMinor == 0 && totalLiquidMinor > 0)
+    final statusText =
+        runwayDays >= 180 || (dailyBurnMinor == 0 && totalLiquidMinor > 0)
         ? 'Excellent emergency cushion (6+ months)'
         : runwayDays >= 90
-            ? 'Healthy cushion (3–6 months)'
-            : runwayDays >= 30
-                ? 'Moderate buffer (< 3 months)'
-                : 'Low cash buffer (< 1 month)';
+        ? 'Healthy cushion (3–6 months)'
+        : runwayDays >= 30
+        ? 'Moderate buffer (< 3 months)'
+        : 'Low cash buffer (< 1 month)';
 
     return HomeWidgetCard(
       title: 'Cash runway',
@@ -660,16 +722,17 @@ class CashBurnRunwayHomeWidget extends ConsumerWidget {
                     Text(
                       'Survival Runway',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.xxxs),
                     Text(
                       dailyBurnMinor == 0 && totalLiquidMinor > 0
                           ? 'Indefinite'
                           : '$runwayMonths Months',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
                             fontWeight: FontWeight.w900,
                             letterSpacing: -0.5,
                             color: runwayTone.resolve(scheme),
@@ -713,16 +776,16 @@ class CashBurnRunwayHomeWidget extends ConsumerWidget {
                   Text(
                     statusText,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: runwayTone.resolve(scheme),
-                          fontWeight: FontWeight.w600,
-                        ),
+                      color: runwayTone.resolve(scheme),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   Text(
                     '${(progress * 100).round()}% of 6mo goal',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
@@ -743,7 +806,10 @@ class CashBurnRunwayHomeWidget extends ConsumerWidget {
                   value: maskMoneyIfPrivate(
                     state,
                     formatMoney(
-                      Money(amountMinor: dailyBurnMinor, currency: displayCurrency),
+                      Money(
+                        amountMinor: dailyBurnMinor,
+                        currency: displayCurrency,
+                      ),
                       state.preferences.locale,
                     ),
                   ),
@@ -758,7 +824,10 @@ class CashBurnRunwayHomeWidget extends ConsumerWidget {
                   value: maskMoneyIfPrivate(
                     state,
                     formatMoney(
-                      Money(amountMinor: totalLiquidMinor, currency: displayCurrency),
+                      Money(
+                        amountMinor: totalLiquidMinor,
+                        currency: displayCurrency,
+                      ),
                       state.preferences.locale,
                     ),
                   ),
@@ -774,19 +843,22 @@ class CashBurnRunwayHomeWidget extends ConsumerWidget {
             children: [
               Text(
                 'Est. monthly burn',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
               PrivacyText(
                 formatMoney(
-                  Money(amountMinor: monthlyBurnMinor, currency: displayCurrency),
+                  Money(
+                    amountMinor: monthlyBurnMinor,
+                    currency: displayCurrency,
+                  ),
                   state.preferences.locale,
                 ),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -814,7 +886,9 @@ class NoSpendStreakHomeWidget extends ConsumerWidget {
     // Identify days with expenses this month
     final expenseDays = <int>{};
     for (final t in state.transactions) {
-      if (t.status == 'void' || t.status == 'scheduled' || t.status == 'paused') {
+      if (t.status == 'void' ||
+          t.status == 'scheduled' ||
+          t.status == 'paused') {
         continue;
       }
       if (!expenseTypes.contains(t.type)) continue;
@@ -867,14 +941,15 @@ class NoSpendStreakHomeWidget extends ConsumerWidget {
                     Text(
                       'Zero-Spend Days',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.xxxs),
                     Text(
                       '$noSpendDaysCount of $daysInMonthSoFar Days',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
                             fontWeight: FontWeight.w900,
                             letterSpacing: -0.5,
                           ),
@@ -906,9 +981,9 @@ class NoSpendStreakHomeWidget extends ConsumerWidget {
                     Text(
                       '$streak day streak',
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: scheme.tertiary,
-                          ),
+                        fontWeight: FontWeight.w900,
+                        color: scheme.tertiary,
+                      ),
                     ),
                   ],
                 ),
@@ -925,12 +1000,21 @@ class NoSpendStreakHomeWidget extends ConsumerWidget {
                   builder: (context) {
                     final dayDate = today.subtract(Duration(days: i));
                     final isNoSpend = !expenseDays.contains(dayDate.day);
-                    final dayLabel = ['M', 'T', 'W', 'T', 'F', 'S', 'S'][dayDate.weekday - 1];
+                    final dayLabel = [
+                      'M',
+                      'T',
+                      'W',
+                      'T',
+                      'F',
+                      'S',
+                      'S',
+                    ][dayDate.weekday - 1];
                     return Column(
                       children: [
                         Text(
                           dayLabel,
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
                                 fontWeight: FontWeight.w600,
                                 color: scheme.onSurfaceVariant,
                               ),
@@ -947,12 +1031,16 @@ class NoSpendStreakHomeWidget extends ConsumerWidget {
                             border: Border.all(
                               color: isNoSpend
                                   ? positiveTone(context)
-                                  : scheme.outlineVariant.withValues(alpha: 0.5),
+                                  : scheme.outlineVariant.withValues(
+                                      alpha: 0.5,
+                                    ),
                             ),
                           ),
                           child: Center(
                             child: Icon(
-                              isNoSpend ? Icons.check_rounded : Icons.close_rounded,
+                              isNoSpend
+                                  ? Icons.check_rounded
+                                  : Icons.close_rounded,
                               size: 12,
                               color: isNoSpend
                                   ? positiveTone(context)
@@ -995,15 +1083,22 @@ class WeekendWeekdayRatioHomeWidget extends ConsumerWidget {
     int weekdayTotalMinor = 0;
 
     for (final t in state.transactions) {
-      if (t.status == 'void' || t.status == 'scheduled' || t.status == 'paused') {
+      if (t.status == 'void' ||
+          t.status == 'scheduled' ||
+          t.status == 'paused') {
         continue;
       }
       if (!expenseTypes.contains(t.type)) continue;
-      if (t.occurredAt.isBefore(range.start) || !t.occurredAt.isBefore(range.end)) {
+      if (t.occurredAt.isBefore(range.start) ||
+          !t.occurredAt.isBefore(range.end)) {
         continue;
       }
 
-      final converted = convertMoneyForDisplay(state, t.amount, displayCurrency);
+      final converted = convertMoneyForDisplay(
+        state,
+        t.amount,
+        displayCurrency,
+      );
       if (t.occurredAt.weekday == DateTime.saturday ||
           t.occurredAt.weekday == DateTime.sunday) {
         weekendTotalMinor += converted.amountMinor;
@@ -1013,7 +1108,9 @@ class WeekendWeekdayRatioHomeWidget extends ConsumerWidget {
     }
 
     final totalMinor = weekendTotalMinor + weekdayTotalMinor;
-    final weekendPct = totalMinor > 0 ? (weekendTotalMinor / totalMinor * 100).round() : 0;
+    final weekendPct = totalMinor > 0
+        ? (weekendTotalMinor / totalMinor * 100).round()
+        : 0;
     final weekdayPct = 100 - weekendPct;
 
     return HomeWidgetCard(
@@ -1025,9 +1122,13 @@ class WeekendWeekdayRatioHomeWidget extends ConsumerWidget {
       iconColor: scheme.secondary,
       dateFilter: period,
       onDateFilterChanged: (val) {
-        final newFilters = Map<String, String>.from(state.preferences.homeWidgetFilters);
+        final newFilters = Map<String, String>.from(
+          state.preferences.homeWidgetFilters,
+        );
         newFilters['weekendWeekdayRatio'] = val;
-        ref.read(ledgerProvider.notifier).updatePreferencesWith(
+        ref
+            .read(ledgerProvider.notifier)
+            .updatePreferencesWith(
               (p) => p.copyWith(homeWidgetFilters: newFilters),
             );
       },
@@ -1035,7 +1136,8 @@ class WeekendWeekdayRatioHomeWidget extends ConsumerWidget {
           ? const EmptyState(
               icon: Icons.weekend_outlined,
               title: 'No expense records',
-              body: 'Expenses recorded in this timeframe will show your lifestyle spending split.',
+              body:
+                  'Expenses recorded in this timeframe will show your lifestyle spending split.',
             )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1047,18 +1149,12 @@ class WeekendWeekdayRatioHomeWidget extends ConsumerWidget {
                       if (weekdayPct > 0)
                         Expanded(
                           flex: weekdayPct,
-                          child: Container(
-                            height: 8,
-                            color: scheme.primary,
-                          ),
+                          child: Container(height: 8, color: scheme.primary),
                         ),
                       if (weekendPct > 0)
                         Expanded(
                           flex: weekendPct,
-                          child: Container(
-                            height: 8,
-                            color: scheme.tertiary,
-                          ),
+                          child: Container(height: 8, color: scheme.tertiary),
                         ),
                     ],
                   ),

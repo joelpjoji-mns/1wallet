@@ -761,7 +761,9 @@ class ImportBatchDetailScreen extends ConsumerWidget {
         children: [
           SectionCard(
             title: transactionTypeLabel(batch.source),
-            subtitle: DateFormat.yMMMMEEEEd().add_jm().format(batch.createdAt.toLocal()),
+            subtitle: DateFormat.yMMMMEEEEd().add_jm().format(
+              batch.createdAt.toLocal(),
+            ),
             child: Column(
               children: [
                 InfoRow(

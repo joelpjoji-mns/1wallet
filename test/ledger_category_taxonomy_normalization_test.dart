@@ -42,25 +42,22 @@ void main() {
     LedgerProvidersConfig.disableAutoBackup = true;
   });
 
-  test(
-    'normalizing a current-version ledger is an O(1) no-op that reuses the '
-    'same transaction, category, and capture-candidate lists',
-    () {
-      final state = _stateWith(
-        categories: defaultCategories(),
-        transactions: [_tx('tx-1', categoryId: 'cat-food')],
-      );
+  test('normalizing a current-version ledger is an O(1) no-op that reuses the '
+      'same transaction, category, and capture-candidate lists', () {
+    final state = _stateWith(
+      categories: defaultCategories(),
+      transactions: [_tx('tx-1', categoryId: 'cat-food')],
+    );
 
-      final normalized = normalizeLedgerState(state);
+    final normalized = normalizeLedgerState(state);
 
-      expect(identical(normalized, state), isTrue);
-      expect(identical(normalized.transactions, state.transactions), isTrue);
-      expect(
-        identical(normalized.captureCandidates, state.captureCandidates),
-        isTrue,
-      );
-    },
-  );
+    expect(identical(normalized, state), isTrue);
+    expect(identical(normalized.transactions, state.transactions), isTrue);
+    expect(
+      identical(normalized.captureCandidates, state.captureCandidates),
+      isTrue,
+    );
+  });
 
   test(
     'normalizing a large current-version ledger never scans the transaction list',
@@ -83,69 +80,65 @@ void main() {
     },
   );
 
-  test(
-    'decoding a ledger payload does not run legacy category migration and '
-    'preserves categories as-is',
-    () {
-      final customState = _stateWith(
-        categories: [
-          ...defaultCategories(),
-          const Category(id: 'custom-cat', name: 'My Custom', kind: 'expense'),
-        ],
-        transactions: [_tx('tx-1', categoryId: 'custom-cat')],
-      );
+  test('decoding a ledger payload does not run legacy category migration and '
+      'preserves categories as-is', () {
+    final customState = _stateWith(
+      categories: [
+        ...defaultCategories(),
+        const Category(id: 'custom-cat', name: 'My Custom', kind: 'expense'),
+      ],
+      transactions: [_tx('tx-1', categoryId: 'custom-cat')],
+    );
 
-      final roundTripped = decodeLedgerState(encodeLedgerState(customState));
+    final roundTripped = decodeLedgerState(encodeLedgerState(customState));
 
-      expect(roundTripped.version, currentLedgerStateVersion);
-      expect(
-        roundTripped.categories.any((c) => c.id == 'custom-cat'),
-        isTrue,
-      );
-      expect(roundTripped.transactions.single.categoryId, 'custom-cat');
-    },
-  );
+    expect(roundTripped.version, currentLedgerStateVersion);
+    expect(roundTripped.categories.any((c) => c.id == 'custom-cat'), isTrue);
+    expect(roundTripped.transactions.single.categoryId, 'custom-cat');
+  });
 
-  test(
-    'forceFullCategoryReferenceScan clears dangling category references '
-    'while keeping valid transactions untouched',
-    () {
-      final untouched = _tx('tx-fine', categoryId: 'cat-food');
-      final state = _stateWith(
-        categories: defaultCategories(),
-        transactions: [
-          untouched,
-          _tx('tx-orphan', categoryId: 'cat-deleted-long-ago'),
-        ],
-      );
+  test('forceFullCategoryReferenceScan clears dangling category references '
+      'while keeping valid transactions untouched', () {
+    final untouched = _tx('tx-fine', categoryId: 'cat-food');
+    final state = _stateWith(
+      categories: defaultCategories(),
+      transactions: [
+        untouched,
+        _tx('tx-orphan', categoryId: 'cat-deleted-long-ago'),
+      ],
+    );
 
-      final defaultResult = normalizeLedgerState(state);
-      expect(identical(defaultResult.transactions, state.transactions), isTrue);
+    final defaultResult = normalizeLedgerState(state);
+    expect(identical(defaultResult.transactions, state.transactions), isTrue);
 
-      final forcedResult = normalizeLedgerState(
-        state,
-        forceFullCategoryReferenceScan: true,
-      );
-      expect(identical(forcedResult.transactions.first, untouched), isTrue);
-      expect(forcedResult.transactions.last.categoryId, isNull);
-    },
-  );
+    final forcedResult = normalizeLedgerState(
+      state,
+      forceFullCategoryReferenceScan: true,
+    );
+    expect(identical(forcedResult.transactions.first, untouched), isTrue);
+    expect(forcedResult.transactions.last.categoryId, isNull);
+  });
 
   test(
     'resetCategoriesToDefault restores standard 100 categories and clears merchant rules',
     () async {
       final controller = LedgerController(
         const LedgerRepository(),
-        initialState: _stateWith(
-          categories: [
-            const Category(id: 'custom-foo', name: 'Custom Foo', kind: 'expense'),
-          ],
-          transactions: [_tx('tx-1', categoryId: 'custom-foo')],
-        ).copyWith(
-          preferences: const LedgerPreferences(
-            merchantCategoryRules: {'Merchant': 'custom-foo'},
-          ),
-        ),
+        initialState:
+            _stateWith(
+              categories: [
+                const Category(
+                  id: 'custom-foo',
+                  name: 'Custom Foo',
+                  kind: 'expense',
+                ),
+              ],
+              transactions: [_tx('tx-1', categoryId: 'custom-foo')],
+            ).copyWith(
+              preferences: const LedgerPreferences(
+                merchantCategoryRules: {'Merchant': 'custom-foo'},
+              ),
+            ),
       );
       addTearDown(controller.dispose);
 

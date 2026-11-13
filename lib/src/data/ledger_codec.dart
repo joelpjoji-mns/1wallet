@@ -343,8 +343,8 @@ LedgerPreferences _preferencesFromJson(Map<String, dynamic> json) {
             fallback: fallback.glassIntensity,
           )
         : (json['glassBlurLevel'] != null
-            ? _deduceIntensity(json['glassBlurLevel'])
-            : fallback.glassIntensity),
+              ? _deduceIntensity(json['glassBlurLevel'])
+              : fallback.glassIntensity),
     glassSpecularOpacity: _double(
       json['glassSpecularOpacity'],
       fallback: fallback.glassSpecularOpacity,
@@ -872,8 +872,9 @@ CaptureCandidate _captureCandidateFromJson(Map<String, dynamic> json) {
     merchant: _nullableString(json['merchant']),
     transactionType: _nullableString(json['transactionType']),
     suggestedAccountId: _nullableString(json['suggestedAccountId']),
-    suggestedCounterAccountId:
-        _nullableString(json['suggestedCounterAccountId']),
+    suggestedCounterAccountId: _nullableString(
+      json['suggestedCounterAccountId'],
+    ),
     pairedCandidateId: _nullableString(json['pairedCandidateId']),
     suggestedCategoryId: _nullableString(json['suggestedCategoryId']),
     suggestedCategoryConfidence: _nullableDouble(
@@ -1040,7 +1041,9 @@ String? _extractFrequencyFromTags(Object? tagsObj) {
 }
 
 GlassIntensity _deduceIntensity(Object? raw) {
-  final val = raw is num ? raw.toDouble() : double.tryParse(raw?.toString() ?? '');
+  final val = raw is num
+      ? raw.toDouble()
+      : double.tryParse(raw?.toString() ?? '');
   if (val == null) return GlassIntensity.medium;
   if (val <= 6.0) return GlassIntensity.light;
   if (val >= 13.0) return GlassIntensity.heavy;

@@ -278,9 +278,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         children: [
                                           Icon(
                                             Icons.error_outline_rounded,
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .error,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.error,
                                             size: 20,
                                           ),
                                           const SizedBox(width: AppSpacing.sm),

@@ -95,58 +95,58 @@ class _CategoryTreeMultiSelectPickerState
             tooltip: 'Back',
             onPressed: () => Navigator.of(context).pop(),
           ),
-        actions: [
-          if (_selectedIds.isNotEmpty)
-            TextButton(
-              onPressed: () => setState(() => _selectedIds.clear()),
-              child: const Text('Clear all'),
+          actions: [
+            if (_selectedIds.isNotEmpty)
+              TextButton(
+                onPressed: () => setState(() => _selectedIds.clear()),
+                child: const Text('Clear all'),
+              ),
+            FilledButton.tonal(
+              onPressed: () => Navigator.of(context).pop(_selectedIds),
+              child: Text(
+                _selectedIds.isEmpty
+                    ? 'All categories'
+                    : 'Apply (${_selectedIds.length})',
+              ),
             ),
-          FilledButton.tonal(
-            onPressed: () => Navigator.of(context).pop(_selectedIds),
-            child: Text(
-              _selectedIds.isEmpty
-                  ? 'All categories'
-                  : 'Apply (${_selectedIds.length})',
-            ),
-          ),
-        ],
-        scrollView: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            0,
-            AppSpacing.md,
-            AppSpacing.xxl,
-          ),
-          children: [
-            Text(
-              'Select categories to filter. Tap any category to toggle selection.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            PremiumSearchInput(
-              hintText: 'Search categories...',
-              value: _query,
-              onChanged: (value) => setState(() => _query = value),
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            if (hasQuery) ...[
-              // Flat search results
-              _buildSearchResults(allActive, queryLower, scheme),
-            ] else ...[
-              // Tree structure like CategoriesScreen
-              _buildUncategorizedTile(scheme),
-              const SizedBox(height: AppSpacing.sm),
-              _buildCategoryTree(allActive, scheme),
-            ],
           ],
+          scrollView: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              0,
+              AppSpacing.md,
+              AppSpacing.xxl,
+            ),
+            children: [
+              Text(
+                'Select categories to filter. Tap any category to toggle selection.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              PremiumSearchInput(
+                hintText: 'Search categories...',
+                value: _query,
+                onChanged: (value) => setState(() => _query = value),
+              ),
+              const SizedBox(height: AppSpacing.md),
+
+              if (hasQuery) ...[
+                // Flat search results
+                _buildSearchResults(allActive, queryLower, scheme),
+              ] else ...[
+                // Tree structure like CategoriesScreen
+                _buildUncategorizedTile(scheme),
+                const SizedBox(height: AppSpacing.sm),
+                _buildCategoryTree(allActive, scheme),
+              ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildUncategorizedTile(ColorScheme scheme) {
     final isSelected = _selectedIds.contains(categoryTreeUncategorizedKey);
@@ -164,11 +164,11 @@ class _CategoryTreeMultiSelectPickerState
   Widget _buildCategoryTree(List<Category> source, ColorScheme scheme) {
     final byId = {for (final c in source) c.id: c};
     final roots = source.where((c) {
-      final directParentId =
-          c.parentId != null && byId.containsKey(c.parentId) ? c.parentId : null;
+      final directParentId = c.parentId != null && byId.containsKey(c.parentId)
+          ? c.parentId
+          : null;
       return directParentId == null;
-    }).toList()
-      ..sort((a, b) => compareCategoriesByUsage(widget.state, a, b));
+    }).toList()..sort((a, b) => compareCategoriesByUsage(widget.state, a, b));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -236,11 +236,12 @@ class _CategoryTreeMultiSelectPickerState
   ) {
     final matches = source.where((c) {
       final nameMatches = c.name.toLowerCase().contains(query);
-      final pathMatches =
-          categoryPath(widget.state, c).toLowerCase().contains(query);
+      final pathMatches = categoryPath(
+        widget.state,
+        c,
+      ).toLowerCase().contains(query);
       return nameMatches || pathMatches;
-    }).toList()
-      ..sort((a, b) => compareCategoriesByUsage(widget.state, a, b));
+    }).toList()..sort((a, b) => compareCategoriesByUsage(widget.state, a, b));
 
     final matchesUncategorized =
         'uncategorized'.contains(query) || 'none'.contains(query);
@@ -251,9 +252,9 @@ class _CategoryTreeMultiSelectPickerState
           padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
           child: Text(
             'No matching categories',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
           ),
         ),
       );
@@ -330,11 +331,7 @@ class _SelectableCategoryCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              IconBubble(
-                icon: icon,
-                color: iconColor,
-                compact: true,
-              ),
+              IconBubble(icon: icon, color: iconColor, compact: true),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
@@ -345,12 +342,11 @@ class _SelectableCategoryCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight:
-                                isSelected ? FontWeight.w800 : FontWeight.w600,
-                            color: isSelected
-                                ? scheme.onSurface
-                                : scheme.onSurface,
-                          ),
+                        fontWeight: isSelected
+                            ? FontWeight.w800
+                            : FontWeight.w600,
+                        color: isSelected ? scheme.onSurface : scheme.onSurface,
+                      ),
                     ),
                     if (subtitle != null) ...[
                       const SizedBox(height: 2),
@@ -359,8 +355,8 @@ class _SelectableCategoryCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
+                          color: scheme.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ],

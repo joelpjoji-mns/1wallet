@@ -8,8 +8,9 @@ void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   group('Performance & Jank Benchmark (Timeline Traces)', () {
-    testWidgets('captures frame timeline and verifies rendering performance',
-        (tester) async {
+    testWidgets('captures frame timeline and verifies rendering performance', (
+      tester,
+    ) async {
       AppLogger.info('PerfTest', 'Starting timeline trace benchmark');
 
       await binding.traceAction(() async {

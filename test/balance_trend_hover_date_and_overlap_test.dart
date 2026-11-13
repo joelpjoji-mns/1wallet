@@ -66,7 +66,9 @@ void main() {
         overrides: [
           ...authenticatedSampleOverrides(ledger: state),
           homeBalanceTrendProvider.overrideWith((ref, args) => pastPoints),
-          homeBalanceFutureTrendProvider.overrideWith((ref, args) => futurePoints),
+          homeBalanceFutureTrendProvider.overrideWith(
+            (ref, args) => futurePoints,
+          ),
         ],
       );
       addTearDown(container.dispose);

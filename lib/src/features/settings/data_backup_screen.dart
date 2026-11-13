@@ -208,10 +208,8 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
                       Expanded(
                         child: Text(
                           'Auto-backup is active on device',
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                       ),
                     ],
@@ -234,13 +232,17 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 FilledButton.icon(
-                  onPressed: _busy ? null : () => _generateAndSaveArchive(encrypted: false),
+                  onPressed: _busy
+                      ? null
+                      : () => _generateAndSaveArchive(encrypted: false),
                   icon: const Icon(Icons.file_download_outlined),
                   label: const Text('Export to file'),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 OutlinedButton.icon(
-                  onPressed: _busy ? null : () => _generateAndSaveArchive(encrypted: true),
+                  onPressed: _busy
+                      ? null
+                      : () => _generateAndSaveArchive(encrypted: true),
                   icon: const Icon(Icons.lock_rounded),
                   label: const Text('Export with password (encrypted)'),
                 ),
@@ -311,9 +313,7 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
         );
         archive = await notifier.exportPortableBackup(passphrase);
       } else {
-        setState(
-          () => _status = 'Exporting backup archive...',
-        );
+        setState(() => _status = 'Exporting backup archive...');
         archive = notifier.exportArchive();
       }
       if (!mounted) return;
@@ -342,8 +342,8 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
         );
         outputFile = uri != null
             ? (uri.hasScheme && uri.scheme == 'file'
-                ? uri.toFilePath()
-                : uri.toString())
+                  ? uri.toFilePath()
+                  : uri.toString())
             : null;
       } catch (_) {
         // Platform might not support saveFile dialog

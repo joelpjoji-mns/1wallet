@@ -758,7 +758,8 @@ class LedgerController extends StateNotifier<LedgerState> {
     );
   }
 
-  Future<Directory> getAutoBackupDirectory() => getOneWalletDocumentsDirectory();
+  Future<Directory> getAutoBackupDirectory() =>
+      getOneWalletDocumentsDirectory();
 
   @override
   void dispose() {
@@ -2162,48 +2163,48 @@ class LedgerController extends StateNotifier<LedgerState> {
     await _commit(state.copyWith(transactions: transactions));
   });
 
-  Future<void> removeAttachment(
-    String transactionId,
-    String attachmentId,
-  ) => _runMutation(() async {
-    final transactions = [...state.transactions];
-    final index = transactions.indexWhere((item) => item.id == transactionId);
-    if (index == -1) throw StateError('Transaction not found.');
-    final existing = transactions[index];
-    final updated = TransactionRecord(
-      id: existing.id,
-      type: existing.type,
-      status: existing.status,
-      source: existing.source,
-      accountId: existing.accountId,
-      counterAccountId: existing.counterAccountId,
-      amount: existing.amount,
-      baseAmount: existing.baseAmount,
-      counterAmount: existing.counterAmount,
-      originalAmount: existing.originalAmount,
-      fxRate: existing.fxRate,
-      originalFxRate: existing.originalFxRate,
-      categoryId: existing.categoryId,
-      locationLabel: existing.locationLabel,
-      paymentMethod: existing.paymentMethod,
-      name: existing.name,
-      notes: existing.notes,
-      importBatchId: existing.importBatchId,
-      occurredAt: existing.occurredAt,
-      recurrenceFrequency: existing.recurrenceFrequency,
-      attachments: existing.attachments
-          .where((att) => att.id != attachmentId)
-          .toList(),
-      isReimbursable: existing.isReimbursable,
-      isTaxDeductible: existing.isTaxDeductible,
-      isExcludedFromReports: existing.isExcludedFromReports,
-      sourceConfidence: existing.sourceConfidence,
-      externalRef: existing.externalRef,
-      originalTransactionId: existing.originalTransactionId,
-    );
-    transactions[index] = updated;
-    await _commit(state.copyWith(transactions: transactions));
-  });
+  Future<void> removeAttachment(String transactionId, String attachmentId) =>
+      _runMutation(() async {
+        final transactions = [...state.transactions];
+        final index = transactions.indexWhere(
+          (item) => item.id == transactionId,
+        );
+        if (index == -1) throw StateError('Transaction not found.');
+        final existing = transactions[index];
+        final updated = TransactionRecord(
+          id: existing.id,
+          type: existing.type,
+          status: existing.status,
+          source: existing.source,
+          accountId: existing.accountId,
+          counterAccountId: existing.counterAccountId,
+          amount: existing.amount,
+          baseAmount: existing.baseAmount,
+          counterAmount: existing.counterAmount,
+          originalAmount: existing.originalAmount,
+          fxRate: existing.fxRate,
+          originalFxRate: existing.originalFxRate,
+          categoryId: existing.categoryId,
+          locationLabel: existing.locationLabel,
+          paymentMethod: existing.paymentMethod,
+          name: existing.name,
+          notes: existing.notes,
+          importBatchId: existing.importBatchId,
+          occurredAt: existing.occurredAt,
+          recurrenceFrequency: existing.recurrenceFrequency,
+          attachments: existing.attachments
+              .where((att) => att.id != attachmentId)
+              .toList(),
+          isReimbursable: existing.isReimbursable,
+          isTaxDeductible: existing.isTaxDeductible,
+          isExcludedFromReports: existing.isExcludedFromReports,
+          sourceConfidence: existing.sourceConfidence,
+          externalRef: existing.externalRef,
+          originalTransactionId: existing.originalTransactionId,
+        );
+        transactions[index] = updated;
+        await _commit(state.copyWith(transactions: transactions));
+      });
 
   Future<Account> upsertAccount({
     String? id,
@@ -2500,10 +2501,12 @@ class LedgerController extends StateNotifier<LedgerState> {
     required String debitCandidateId,
     required String creditCandidateId,
   }) => _runMutation(() async {
-    final debitCandidate =
-        state.captureCandidates.firstWhereOrNull((c) => c.id == debitCandidateId);
-    final creditCandidate =
-        state.captureCandidates.firstWhereOrNull((c) => c.id == creditCandidateId);
+    final debitCandidate = state.captureCandidates.firstWhereOrNull(
+      (c) => c.id == debitCandidateId,
+    );
+    final creditCandidate = state.captureCandidates.firstWhereOrNull(
+      (c) => c.id == creditCandidateId,
+    );
     if (debitCandidate == null || creditCandidate == null) return;
 
     final candidates = [
@@ -2562,7 +2565,7 @@ class LedgerController extends StateNotifier<LedgerState> {
       final category = type == 'transfer'
           ? null
           : (categoryById(state, candidate.suggestedCategoryId) ??
-              _matchCategory(state, candidate.merchant, type));
+                _matchCategory(state, candidate.merchant, type));
       Money amount;
       Money? originalAmount;
       final parsedCurrency = candidate.parsedAmount!.currency.toUpperCase();
@@ -2592,8 +2595,9 @@ class LedgerController extends StateNotifier<LedgerState> {
         status: 'cleared',
         source: candidate.source,
         accountId: account.id,
-        counterAccountId:
-            type == 'transfer' ? candidate.suggestedCounterAccountId : null,
+        counterAccountId: type == 'transfer'
+            ? candidate.suggestedCounterAccountId
+            : null,
         amount: amount,
         baseAmount: baseAmount,
         originalAmount: originalAmount,
@@ -2614,11 +2618,7 @@ class LedgerController extends StateNotifier<LedgerState> {
               : item,
       ];
       final preferences = cleanMerchant != null
-          ? _preferencesRememberingCategory(
-              state,
-              cleanMerchant,
-              category?.id,
-            )
+          ? _preferencesRememberingCategory(state, cleanMerchant, category?.id)
           : state.preferences;
       await _commit(
         state.copyWith(
@@ -3039,8 +3039,8 @@ class LedgerController extends StateNotifier<LedgerState> {
     String? nativeMatchedTriggerWord,
   }) {
     final rawTxDate = extractTransactionDateTime(rawText);
-    final actualReceivedAt =
-        (rawTxDate ?? receivedAt ?? DateTime.now()).toLocal();
+    final actualReceivedAt = (rawTxDate ?? receivedAt ?? DateTime.now())
+        .toLocal();
 
     for (final pattern in state.preferences.smsBlockPatterns) {
       if (pattern.trim().isEmpty) continue;

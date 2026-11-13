@@ -46,18 +46,16 @@ class PermissionSetupState {
 }
 
 class PermissionSetupController extends StateNotifier<PermissionSetupState> {
-  PermissionSetupController({
-    SharedPreferences? prefs,
-    String? initialUserId,
-  }) : _prefs = prefs,
-       super(
-         (prefs != null && initialUserId != null)
-             ? PermissionSetupState(
-                 userId: initialUserId,
-                 completed: prefs.getBool(_key(initialUserId)) ?? false,
-               )
-             : const PermissionSetupState(),
-       );
+  PermissionSetupController({SharedPreferences? prefs, String? initialUserId})
+    : _prefs = prefs,
+      super(
+        (prefs != null && initialUserId != null)
+            ? PermissionSetupState(
+                userId: initialUserId,
+                completed: prefs.getBool(_key(initialUserId)) ?? false,
+              )
+            : const PermissionSetupState(),
+      );
 
   final SharedPreferences? _prefs;
 

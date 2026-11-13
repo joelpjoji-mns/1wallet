@@ -103,7 +103,9 @@ Future<LedgerState> _rewrapFields(
             context: SecureKeyStore.fieldContext(account.id, entry.key),
           );
         } catch (error) {
-          debugPrint('Secure field kept during import re-wrap: ${error.runtimeType}');
+          debugPrint(
+            'Secure field kept during import re-wrap: ${error.runtimeType}',
+          );
           next[entry.key] = entry.value;
         }
       }

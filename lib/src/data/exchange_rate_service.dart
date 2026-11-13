@@ -26,8 +26,7 @@ class ExchangeRateService {
     // Check if any API-provided rate is older than maxAge (defaults to 1 hour to prevent radio battery churn)
     for (final rate in state.exchangeRates) {
       if (rate.provider != null &&
-          DateTime.now().difference(rate.updatedAt ?? rate.asOfDate) >
-              maxAge) {
+          DateTime.now().difference(rate.updatedAt ?? rate.asOfDate) > maxAge) {
         isStale = true;
         break;
       }

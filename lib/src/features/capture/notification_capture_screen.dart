@@ -396,9 +396,8 @@ class _NotificationCaptureScreenState
           .map(
             (n) => (
               text: n.body,
-              receivedAt:
-                  (DateTime.tryParse(n.receivedAt) ?? DateTime.now())
-                      .toLocal(),
+              receivedAt: (DateTime.tryParse(n.receivedAt) ?? DateTime.now())
+                  .toLocal(),
               sender: n.appName.isNotEmpty ? n.appName : n.title,
             ),
           )

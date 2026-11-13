@@ -56,10 +56,17 @@ void main() {
       await CaptureDiagnostics.recordEvent(freshEvent, ownerId: owner);
 
       // Default is 30 days. When pruneOldEvents runs, oldEvent (>30 days) is pruned.
-      final prunedDefault = await CaptureDiagnostics.pruneOldEvents(ownerId: owner);
+      final prunedDefault = await CaptureDiagnostics.pruneOldEvents(
+        ownerId: owner,
+      );
       expect(prunedDefault, 1);
-      final eventsAfterDefault = await CaptureDiagnostics.recentEvents(ownerId: owner);
-      expect(eventsAfterDefault.map((e) => e.id), containsAll(['event-fresh', 'event-recent']));
+      final eventsAfterDefault = await CaptureDiagnostics.recentEvents(
+        ownerId: owner,
+      );
+      expect(
+        eventsAfterDefault.map((e) => e.id),
+        containsAll(['event-fresh', 'event-recent']),
+      );
       expect(eventsAfterDefault.map((e) => e.id), isNot(contains('event-old')));
 
       // Now set retention to 7 days and prune
@@ -67,7 +74,9 @@ void main() {
       final pruned = await CaptureDiagnostics.pruneOldEvents(ownerId: owner);
       expect(pruned, 1); // event-recent (10 days old) was pruned
 
-      final eventsAfter7Days = await CaptureDiagnostics.recentEvents(ownerId: owner);
+      final eventsAfter7Days = await CaptureDiagnostics.recentEvents(
+        ownerId: owner,
+      );
       expect(eventsAfter7Days, hasLength(1));
       expect(eventsAfter7Days.first.id, 'event-fresh');
     });

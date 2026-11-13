@@ -780,11 +780,14 @@ class RecoveryState extends StatelessWidget {
                       onPressed: onAction,
                       style: FilledButton.styleFrom(
                         backgroundColor: palette.primary,
-                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                        foregroundColor: Theme.of(
+                          context,
+                        ).colorScheme.onPrimary,
                       ).merge(AppButtonStyles.cta),
                       child: Text(actionLabel),
                     ),
-                    if (secondaryLabel != null && onSecondaryAction != null) ...[
+                    if (secondaryLabel != null &&
+                        onSecondaryAction != null) ...[
                       const SizedBox(height: AppSpacing.sm),
                       TextButton(
                         onPressed: onSecondaryAction,

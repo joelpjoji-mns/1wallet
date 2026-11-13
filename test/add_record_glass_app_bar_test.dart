@@ -77,41 +77,39 @@ void main() {
     },
   );
 
-  testWidgets(
-    'back button pops to the previous route when one exists',
-    (tester) async {
-      final container = await pumpApp(tester);
-      final router = container.read(appRouterProvider);
-      router.go('/');
-      await tester.pumpAndSettle();
-      router.push('/add');
-      await tester.pumpAndSettle();
+  testWidgets('back button pops to the previous route when one exists', (
+    tester,
+  ) async {
+    final container = await pumpApp(tester);
+    final router = container.read(appRouterProvider);
+    router.go('/');
+    await tester.pumpAndSettle();
+    router.push('/add');
+    await tester.pumpAndSettle();
 
-      expect(find.byType(AddRecordScreen), findsOneWidget);
-      await tester.tap(find.byIcon(Icons.arrow_back_rounded));
-      await tester.pumpAndSettle();
+    expect(find.byType(AddRecordScreen), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+    await tester.pumpAndSettle();
 
-      expect(find.byType(AddRecordScreen), findsNothing);
-      expect(find.byType(MainShell), findsOneWidget);
-    },
-  );
+    expect(find.byType(AddRecordScreen), findsNothing);
+    expect(find.byType(MainShell), findsOneWidget);
+  });
 
-  testWidgets(
-    'back button falls back to home when there is nothing to pop',
-    (tester) async {
-      final container = await pumpApp(tester);
-      final router = container.read(appRouterProvider);
-      // /add is the only entry on the stack here, so context.canPop() is
-      // false and the screen's back handler must fall back to context.go('/').
-      router.go('/add');
-      await tester.pumpAndSettle();
+  testWidgets('back button falls back to home when there is nothing to pop', (
+    tester,
+  ) async {
+    final container = await pumpApp(tester);
+    final router = container.read(appRouterProvider);
+    // /add is the only entry on the stack here, so context.canPop() is
+    // false and the screen's back handler must fall back to context.go('/').
+    router.go('/add');
+    await tester.pumpAndSettle();
 
-      expect(find.byType(AddRecordScreen), findsOneWidget);
-      await tester.tap(find.byIcon(Icons.arrow_back_rounded));
-      await tester.pumpAndSettle();
+    expect(find.byType(AddRecordScreen), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+    await tester.pumpAndSettle();
 
-      expect(find.byType(AddRecordScreen), findsNothing);
-      expect(find.byType(MainShell), findsOneWidget);
-    },
-  );
+    expect(find.byType(AddRecordScreen), findsNothing);
+    expect(find.byType(MainShell), findsOneWidget);
+  });
 }

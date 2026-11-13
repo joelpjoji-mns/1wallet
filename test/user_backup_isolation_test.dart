@@ -92,151 +92,156 @@ void main() {
       LedgerProvidersConfig.disableAutoBackup = true;
     });
 
-    test('clearSessionOnSignOut wipes active local ledger and unsynced flags', () async {
-      const repo = LedgerRepository();
-      const userA = LedgerUserIdentity(
-        userId: 'user-a',
-        email: 'usera@example.com',
-        displayName: 'User A',
-      );
+    test(
+      'clearSessionOnSignOut wipes active local ledger and unsynced flags',
+      () async {
+        const repo = LedgerRepository();
+        const userA = LedgerUserIdentity(
+          userId: 'user-a',
+          email: 'usera@example.com',
+          displayName: 'User A',
+        );
 
-      final ready = Completer<void>();
-      final controller = LedgerController(
-        repo,
-        setLoadState: (state) {
-          if (state.isReady && !ready.isCompleted) ready.complete();
-        },
-        initialUser: userA,
-      );
-      addTearDown(controller.dispose);
-      await ready.future;
+        final ready = Completer<void>();
+        final controller = LedgerController(
+          repo,
+          setLoadState: (state) {
+            if (state.isReady && !ready.isCompleted) ready.complete();
+          },
+          initialUser: userA,
+        );
+        addTearDown(controller.dispose);
+        await ready.future;
 
-      final testDate = DateTime(2026, 11, 1);
-      expect(
-        controller.defaultManualBackupFileName(date: testDate),
-        '1wallet_manual_export_User_A_usera@example.com_2026-11-01.onewallet',
-      );
+        final testDate = DateTime(2026, 11, 1);
+        expect(
+          controller.defaultManualBackupFileName(date: testDate),
+          '1wallet_manual_export_User_A_usera@example.com_2026-11-01.onewallet',
+        );
 
-      await controller.createStarterWallet(
-        userId: 'user-a',
-        accountName: 'User A Checking',
-        currency: 'INR',
-        accountColor: Colors.blue,
-        openingBalanceMinor: 50000,
-      );
+        await controller.createStarterWallet(
+          userId: 'user-a',
+          accountName: 'User A Checking',
+          currency: 'INR',
+          accountColor: Colors.blue,
+          openingBalanceMinor: 50000,
+        );
 
-      expect(controller.state.userId, 'user-a');
-      expect(controller.state.accounts, isNotEmpty);
+        expect(controller.state.userId, 'user-a');
+        expect(controller.state.accounts, isNotEmpty);
 
-      await controller.clearSessionOnSignOut();
+        await controller.clearSessionOnSignOut();
 
-      expect(controller.state.userId, 'local-user');
-      expect(controller.state.accounts, isEmpty);
-      expect(controller.state.transactions, isEmpty);
+        expect(controller.state.userId, 'local-user');
+        expect(controller.state.accounts, isEmpty);
+        expect(controller.state.transactions, isEmpty);
 
-      final persistedAfterSignOut = await repo.load();
-      expect(persistedAfterSignOut, isNull);
+        final persistedAfterSignOut = await repo.load();
+        expect(persistedAfterSignOut, isNull);
 
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getBool('has_unsynced_changes'), isNull);
-      expect(prefs.getString('last_local_modified_at'), isNull);
-      expect(prefs.getString('last_active_user_id'), isNull);
-    });
+        final prefs = await SharedPreferences.getInstance();
+        expect(prefs.getBool('has_unsynced_changes'), isNull);
+        expect(prefs.getString('last_local_modified_at'), isNull);
+        expect(prefs.getString('last_active_user_id'), isNull);
+      },
+    );
 
-    test('switching to a different user discards previous user persisted ledger', () async {
-      const repo = LedgerRepository();
-      // Seed SharedPreferences with User A's wallet
-      final userALedger = emptyLedgerState(userId: 'user-a').copyWith(
-        accounts: const [
-          Account(
-            id: 'acc-a',
-            name: 'User A Private Account',
-            type: 'bank',
-            currency: 'INR',
-            openingBalance: Money(amountMinor: 100000, currency: 'INR'),
-            color: Colors.teal,
-            sortOrder: 1,
-          ),
-        ],
-      );
-      await repo.save(userALedger);
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('last_active_user_id', 'user-a');
-      await prefs.setBool('has_unsynced_changes', true);
+    test(
+      'switching to a different user discards previous user persisted ledger',
+      () async {
+        const repo = LedgerRepository();
+        // Seed SharedPreferences with User A's wallet
+        final userALedger = emptyLedgerState(userId: 'user-a').copyWith(
+          accounts: const [
+            Account(
+              id: 'acc-a',
+              name: 'User A Private Account',
+              type: 'bank',
+              currency: 'INR',
+              openingBalance: Money(amountMinor: 100000, currency: 'INR'),
+              color: Colors.teal,
+              sortOrder: 1,
+            ),
+          ],
+        );
+        await repo.save(userALedger);
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('last_active_user_id', 'user-a');
+        await prefs.setBool('has_unsynced_changes', true);
 
-      // Now User B signs in
-      const userB = LedgerUserIdentity(
-        userId: 'user-b',
-        email: 'userb@example.com',
-        displayName: 'User B',
-      );
-      final ready = Completer<void>();
-      final controller = LedgerController(
-        repo,
-        setLoadState: (state) {
-          if (state.isReady && !ready.isCompleted) ready.complete();
-        },
-        initialUser: userB,
-      );
-      addTearDown(controller.dispose);
-      await ready.future;
+        // Now User B signs in
+        const userB = LedgerUserIdentity(
+          userId: 'user-b',
+          email: 'userb@example.com',
+          displayName: 'User B',
+        );
+        final ready = Completer<void>();
+        final controller = LedgerController(
+          repo,
+          setLoadState: (state) {
+            if (state.isReady && !ready.isCompleted) ready.complete();
+          },
+          initialUser: userB,
+        );
+        addTearDown(controller.dispose);
+        await ready.future;
 
-      expect(controller.state.userId, 'user-b');
-      expect(controller.state.accounts, isEmpty);
-      expect(prefs.getBool('has_unsynced_changes'), isNull);
-      expect(prefs.getString('last_active_user_id'), 'user-b');
-    });
+        expect(controller.state.userId, 'user-b');
+        expect(controller.state.accounts, isEmpty);
+        expect(prefs.getBool('has_unsynced_changes'), isNull);
+        expect(prefs.getString('last_active_user_id'), 'user-b');
+      },
+    );
 
-    test('importArchive rejects backup from a different account unless forced', () async {
-      const repo = LedgerRepository();
-      const userA = LedgerUserIdentity(
-        userId: 'user-a',
-        email: 'usera@example.com',
-        displayName: 'User A',
-      );
-      const userB = LedgerUserIdentity(
-        userId: 'user-b',
-        email: 'userb@example.com',
-        displayName: 'User B',
-      );
+    test(
+      'importArchive rejects backup from a different account unless forced',
+      () async {
+        const repo = LedgerRepository();
+        const userA = LedgerUserIdentity(
+          userId: 'user-a',
+          email: 'usera@example.com',
+          displayName: 'User A',
+        );
+        const userB = LedgerUserIdentity(
+          userId: 'user-b',
+          email: 'userb@example.com',
+          displayName: 'User B',
+        );
 
-      final ready = Completer<void>();
-      final controllerA = LedgerController(
-        repo,
-        setLoadState: (state) {
-          if (state.isReady && !ready.isCompleted) ready.complete();
-        },
-        initialUser: userA,
-      );
-      addTearDown(controllerA.dispose);
-      await ready.future;
+        final ready = Completer<void>();
+        final controllerA = LedgerController(
+          repo,
+          setLoadState: (state) {
+            if (state.isReady && !ready.isCompleted) ready.complete();
+          },
+          initialUser: userA,
+        );
+        addTearDown(controllerA.dispose);
+        await ready.future;
 
-      await controllerA.createStarterWallet(
-        userId: 'user-a',
-        accountName: 'User A Savings',
-        currency: 'INR',
-        accountColor: Colors.indigo,
-        openingBalanceMinor: 25000,
-      );
-      final archiveFromA = controllerA.exportArchive();
-      await controllerA.clearSessionOnSignOut();
+        await controllerA.createStarterWallet(
+          userId: 'user-a',
+          accountName: 'User A Savings',
+          currency: 'INR',
+          accountColor: Colors.indigo,
+          openingBalanceMinor: 25000,
+        );
+        final archiveFromA = controllerA.exportArchive();
+        await controllerA.clearSessionOnSignOut();
 
-      // User B logs in and attempts to import User A's archive
-      await controllerA.setActiveUser(userB);
-      await expectLater(
-        controllerA.importArchive(archiveFromA),
-        throwsA(
-          predicate(
-            (e) => e.toString().contains('different account'),
-          ),
-        ),
-      );
-      expect(controllerA.state.accounts, isEmpty);
+        // User B logs in and attempts to import User A's archive
+        await controllerA.setActiveUser(userB);
+        await expectLater(
+          controllerA.importArchive(archiveFromA),
+          throwsA(predicate((e) => e.toString().contains('different account'))),
+        );
+        expect(controllerA.state.accounts, isEmpty);
 
-      // Force restore succeeds and re-stamps userId to User B
-      await controllerA.importArchive(archiveFromA, force: true);
-      expect(controllerA.state.userId, 'user-b');
-      expect(controllerA.state.accounts.single.name, 'User A Savings');
-    });
+        // Force restore succeeds and re-stamps userId to User B
+        await controllerA.importArchive(archiveFromA, force: true);
+        expect(controllerA.state.userId, 'user-b');
+        expect(controllerA.state.accounts.single.name, 'User A Savings');
+      },
+    );
   });
 }

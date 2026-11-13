@@ -319,9 +319,7 @@ class _TransactionDetailScreenState
                 runSpacing: AppSpacing.sm,
                 children: [
                   for (final tag in transaction.tags)
-                    GlassChip(
-                      label: tag.replaceAll('#', '').trim(),
-                    ),
+                    GlassChip(label: tag.replaceAll('#', '').trim()),
                 ],
               ),
             ),

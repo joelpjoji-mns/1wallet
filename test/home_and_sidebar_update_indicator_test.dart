@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:one_wallet_flutter/src/features/home/home_screen.dart';
 import 'package:one_wallet_flutter/src/features/main/main_shell.dart';
 import 'package:one_wallet_flutter/src/features/updates/app_update_provider.dart';
 import 'package:one_wallet_flutter/src/theme/app_theme.dart';
@@ -71,7 +70,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final menuAction = tester.widget<AppMenuAction>(find.byType(AppMenuAction));
+      final menuAction = tester.widget<AppMenuAction>(
+        find.byType(AppMenuAction),
+      );
       expect(menuAction.showIndicator, isTrue);
 
       expect(
@@ -107,60 +108,55 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final menuAction = tester.widget<AppMenuAction>(find.byType(AppMenuAction));
-      expect(menuAction.showIndicator, isFalse);
-      expect(
-        find.bySemanticsLabel('Open menu'),
-        findsOneWidget,
+      final menuAction = tester.widget<AppMenuAction>(
+        find.byType(AppMenuAction),
       );
+      expect(menuAction.showIndicator, isFalse);
+      expect(find.bySemanticsLabel('Open menu'), findsOneWidget);
       handle.dispose();
     },
   );
 
-  testWidgets(
-    'AppMainDrawer shows updates badge when update is available',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1080, 2400));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets('AppMainDrawer shows updates badge when update is available', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1080, 2400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      final container = ProviderContainer(
-        overrides: [
-          ...authenticatedSampleOverrides(),
-          appUpdateProvider.overrideWith(
-            (ref) => _MockAppUpdateProvider(release: updateRelease),
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
+    final container = ProviderContainer(
+      overrides: [
+        ...authenticatedSampleOverrides(),
+        appUpdateProvider.overrideWith(
+          (ref) => _MockAppUpdateProvider(release: updateRelease),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
 
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: MaterialApp(
-            theme: AppTheme.light(),
-            home: Scaffold(
-              drawer: AppMainDrawer(
-                selectedIndex: 0,
-                onTabSelected: (_) {},
-              ),
-              body: const SizedBox.shrink(),
-            ),
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            drawer: AppMainDrawer(selectedIndex: 0, onTabSelected: (_) {}),
+            body: const SizedBox.shrink(),
           ),
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      // Open drawer
-      tester.state<ScaffoldState>(find.byType(Scaffold)).openDrawer();
-      await tester.pumpAndSettle();
+    // Open drawer
+    tester.state<ScaffoldState>(find.byType(Scaffold)).openDrawer();
+    await tester.pumpAndSettle();
 
-      // Scroll to ensure bottom section is visible if needed
-      await tester.scrollUntilVisible(find.text('Updates'), 200);
-      await tester.pumpAndSettle();
+    // Scroll to ensure bottom section is visible if needed
+    await tester.scrollUntilVisible(find.text('Updates'), 200);
+    await tester.pumpAndSettle();
 
-      // Verify "Updates" row is present with badge "!"
-      expect(find.text('Updates'), findsOneWidget);
-      expect(find.text('!'), findsOneWidget);
-    },
-  );
+    // Verify "Updates" row is present with badge "!"
+    expect(find.text('Updates'), findsOneWidget);
+    expect(find.text('!'), findsOneWidget);
+  });
 }

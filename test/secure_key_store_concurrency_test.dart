@@ -18,28 +18,23 @@ import 'package:one_wallet_flutter/src/utils/secure_key_store.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test(
-    'concurrent encrypt calls share one device key instead of racing to '
-    'create two',
-    () async {
-      FlutterSecureStoragePlatform.instance = TestFlutterSecureStoragePlatform(
-        <String, String>{},
-      );
+  test('concurrent encrypt calls share one device key instead of racing to '
+      'create two', () async {
+    FlutterSecureStoragePlatform.instance = TestFlutterSecureStoragePlatform(
+      <String, String>{},
+    );
 
-      // Fire both encryptions "simultaneously" (before either has resolved
-      // its read-or-create-key step) to reproduce the race window.
-      final results = await Future.wait([
-        SecureKeyStore.encrypt('first-secret'),
-        SecureKeyStore.encrypt('second-secret'),
-      ]);
+    // Fire both encryptions "simultaneously" (before either has resolved
+    // its read-or-create-key step) to reproduce the race window.
+    final results = await Future.wait([
+      SecureKeyStore.encrypt('first-secret'),
+      SecureKeyStore.encrypt('second-secret'),
+    ]);
 
-      // Both values must decrypt correctly under whatever single key ended
-      // up persisted — if the two calls had raced to independently create
-      // different keys, only one ciphertext (at most) would still decrypt.
-      final decrypted = await Future.wait(
-        results.map(SecureKeyStore.decrypt),
-      );
-      expect(decrypted, ['first-secret', 'second-secret']);
-    },
-  );
+    // Both values must decrypt correctly under whatever single key ended
+    // up persisted — if the two calls had raced to independently create
+    // different keys, only one ciphertext (at most) would still decrypt.
+    final decrypted = await Future.wait(results.map(SecureKeyStore.decrypt));
+    expect(decrypted, ['first-secret', 'second-secret']);
+  });
 }

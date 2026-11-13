@@ -1003,8 +1003,9 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                         GlassChip(
                           label: ['', 'M', 'T', 'W', 'T', 'F', 'S', 'S'][i],
                           selected: _daysOfWeek.contains(i),
-                          selectedColor:
-                              Theme.of(context).colorScheme.primaryContainer,
+                          selectedColor: Theme.of(
+                            context,
+                          ).colorScheme.primaryContainer,
                           onTap: () {
                             setState(() {
                               if (!_daysOfWeek.contains(i)) {
@@ -1034,8 +1035,9 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                         GlassChip(
                           label: '$i',
                           selected: _daysOfMonth.contains(i),
-                          selectedColor:
-                              Theme.of(context).colorScheme.primaryContainer,
+                          selectedColor: Theme.of(
+                            context,
+                          ).colorScheme.primaryContainer,
                           onTap: () {
                             setState(() {
                               if (!_daysOfMonth.contains(i)) {
@@ -1050,8 +1052,9 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                       GlassChip(
                         label: 'Last day of month',
                         selected: _daysOfMonth.contains(32),
-                        selectedColor:
-                            Theme.of(context).colorScheme.primaryContainer,
+                        selectedColor: Theme.of(
+                          context,
+                        ).colorScheme.primaryContainer,
                         onTap: () {
                           setState(() {
                             if (!_daysOfMonth.contains(32)) {

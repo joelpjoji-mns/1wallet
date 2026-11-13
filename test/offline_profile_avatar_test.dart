@@ -69,7 +69,10 @@ void main() {
   group('Offline avatar in UI', () {
     setUp(() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(_nativeCaptureChannel, (call) async => null);
+          .setMockMethodCallHandler(
+            _nativeCaptureChannel,
+            (call) async => null,
+          );
     });
 
     tearDown(() {

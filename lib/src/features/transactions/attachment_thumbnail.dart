@@ -59,11 +59,7 @@ class AttachmentThumbnail extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: Icon(
-                  Icons.close_rounded,
-                  size: 14,
-                  color: scheme.error,
-                ),
+                child: Icon(Icons.close_rounded, size: 14, color: scheme.error),
               ),
             ),
           ),
@@ -81,7 +77,7 @@ class AttachmentThumbnail extends StatelessWidget {
         return Image.file(
           file,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _fallbackIcon(scheme),
+          errorBuilder: (context, error, stackTrace) => _fallbackIcon(scheme),
         );
       } catch (_) {
         return _fallbackIcon(scheme);
@@ -92,7 +88,7 @@ class AttachmentThumbnail extends StatelessWidget {
       return Image.network(
         uri,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _fallbackIcon(scheme),
+        errorBuilder: (context, error, stackTrace) => _fallbackIcon(scheme),
       );
     }
 
@@ -136,9 +132,8 @@ Future<void> showAttachmentPreviewDialog(
                   attachment.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(dialogContext).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                  style: Theme.of(dialogContext).textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 actions: [
                   if (!kIsWeb && attachment.uri.isNotEmpty)
@@ -185,7 +180,7 @@ Widget _buildFullImage(BuildContext context, TransactionAttachment attachment) {
       return Image.file(
         file,
         fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => _previewFallback(scheme),
+        errorBuilder: (context, error, stackTrace) => _previewFallback(scheme),
       );
     } catch (_) {
       return _previewFallback(scheme);
@@ -196,7 +191,7 @@ Widget _buildFullImage(BuildContext context, TransactionAttachment attachment) {
     return Image.network(
       uri,
       fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) => _previewFallback(scheme),
+      errorBuilder: (context, error, stackTrace) => _previewFallback(scheme),
     );
   }
 

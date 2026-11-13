@@ -43,7 +43,10 @@ final Expando<Map<String, List<AppNotification>>> _inboxCacheExpando =
 /// Builds the notification inbox from ledger state.
 ///
 /// - Overdue scheduled payments
-List<AppNotification> buildNotificationInbox(LedgerState state, {DateTime? now}) {
+List<AppNotification> buildNotificationInbox(
+  LedgerState state, {
+  DateTime? now,
+}) {
   // The master "Notification inbox" toggle disables the in-app inbox
   // entirely (native/device alerts are gated separately in
   // NotificationService using deviceNotificationsEnabled).
@@ -67,7 +70,11 @@ List<AppNotification> buildNotificationInbox(LedgerState state, {DateTime? now})
 
   // Scheduled payment notifications
   if (state.preferences.channelScheduledEnabled) {
-    final today = DateTime(currentTime.year, currentTime.month, currentTime.day);
+    final today = DateTime(
+      currentTime.year,
+      currentTime.month,
+      currentTime.day,
+    );
     for (final transaction in scheduledTransactions(
       state,
     ).where((t) => t.status == 'scheduled')) {
@@ -165,8 +172,8 @@ List<AppNotification> buildNotificationInbox(LedgerState state, {DateTime? now})
       final when = status.daysUntilDue == 0
           ? 'today'
           : (status.daysUntilDue == 1
-              ? 'tomorrow'
-              : 'in ${status.daysUntilDue} days');
+                ? 'tomorrow'
+                : 'in ${status.daysUntilDue} days');
       notifications.add(
         AppNotification(
           id: 'card_due_${account.id}_$todayKey',
@@ -183,8 +190,8 @@ List<AppNotification> buildNotificationInbox(LedgerState state, {DateTime? now})
           badgeLabel: status.daysUntilDue == 0
               ? 'Due today'
               : (status.daysUntilDue == 1
-                  ? 'Due tomorrow'
-                  : 'Due in ${status.daysUntilDue}d'),
+                    ? 'Due tomorrow'
+                    : 'Due in ${status.daysUntilDue}d'),
           isDueSoon: true,
         ),
       );

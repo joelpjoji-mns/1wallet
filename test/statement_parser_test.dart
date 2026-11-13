@@ -195,7 +195,10 @@ Date        Details                           Amount (€)      Balance (€)
 10/07/2025  SALARY JULY 2025                  2,000.00        2,000.00
 ''';
 
-      final result = parseStatement(reverseStatement, accountName: 'EUR Account');
+      final result = parseStatement(
+        reverseStatement,
+        accountName: 'EUR Account',
+      );
 
       expect(result.detectedCurrency, 'EUR');
       expect(result.rows.length, 2);
@@ -207,8 +210,10 @@ Date        Details                           Amount (€)      Balance (€)
       expect(result.rows[1].amount.amountMinor, 200000);
     });
 
-    test('ignores messy page headers and footers across multi-page statement', () {
-      const multiPageStatement = '''
+    test(
+      'ignores messy page headers and footers across multi-page statement',
+      () {
+        const multiPageStatement = '''
 Statement of Account
 Account No: 12340001
 Page 1 of 2
@@ -227,19 +232,25 @@ Page 2 of 2
 End of statement
 ''';
 
-      final result = parseStatement(multiPageStatement, accountName: 'Savings');
+        final result = parseStatement(
+          multiPageStatement,
+          accountName: 'Savings',
+        );
 
-      expect(result.rows.length, 3);
-      expect(result.rows[0].notes, contains('GROCERIES'));
-      expect(result.rows[0].type, 'expense');
-      expect(result.rows[1].notes, contains('CASH DEPOSIT'));
-      expect(result.rows[1].type, 'income');
-      expect(result.rows[2].notes, contains('ELECTRICITY BILL'));
-      expect(result.rows[2].type, 'expense');
-    });
+        expect(result.rows.length, 3);
+        expect(result.rows[0].notes, contains('GROCERIES'));
+        expect(result.rows[0].type, 'expense');
+        expect(result.rows[1].notes, contains('CASH DEPOSIT'));
+        expect(result.rows[1].type, 'income');
+        expect(result.rows[2].notes, contains('ELECTRICITY BILL'));
+        expect(result.rows[2].type, 'expense');
+      },
+    );
 
-    test('Pass 3 self-recovery: parses credit card statement without running balances', () {
-      const cardStatement = '''
+    test(
+      'Pass 3 self-recovery: parses credit card statement without running balances',
+      () {
+        const cardStatement = '''
 Credit Card Statement
 Card ending: 9182
 Total Due: INR 22,450.00
@@ -251,25 +262,31 @@ Date        Transaction Description           Amount (INR)
 20/06/2025  AMAZON INDIA RETAIL               2,450.00
 ''';
 
-      final result = parseStatement(cardStatement, accountName: 'Credit Card');
+        final result = parseStatement(
+          cardStatement,
+          accountName: 'Credit Card',
+        );
 
-      expect(result.detectedCurrency, 'INR');
-      expect(result.rows.length, 3);
-      expect(result.rows[0].notes, contains('NETFLIX'));
-      expect(result.rows[0].type, 'expense');
-      expect(result.rows[0].amount.amountMinor, 64900);
+        expect(result.detectedCurrency, 'INR');
+        expect(result.rows.length, 3);
+        expect(result.rows[0].notes, contains('NETFLIX'));
+        expect(result.rows[0].type, 'expense');
+        expect(result.rows[0].amount.amountMinor, 64900);
 
-      expect(result.rows[1].notes, contains('AUTOPAY PAYMENT'));
-      expect(result.rows[1].type, 'income');
-      expect(result.rows[1].amount.amountMinor, 1500000);
+        expect(result.rows[1].notes, contains('AUTOPAY PAYMENT'));
+        expect(result.rows[1].type, 'income');
+        expect(result.rows[1].amount.amountMinor, 1500000);
 
-      expect(result.rows[2].notes, contains('AMAZON'));
-      expect(result.rows[2].type, 'expense');
-      expect(result.rows[2].amount.amountMinor, 245000);
-    });
+        expect(result.rows[2].notes, contains('AMAZON'));
+        expect(result.rows[2].type, 'expense');
+        expect(result.rows[2].amount.amountMinor, 245000);
+      },
+    );
 
-    test('Pass 2 self-recovery: parses statements with transaction token prefix before date', () {
-      const tokenPrefixStatement = '''
+    test(
+      'Pass 2 self-recovery: parses statements with transaction token prefix before date',
+      () {
+        const tokenPrefixStatement = '''
 Account Statement
 Account: 1092837465
 
@@ -279,25 +296,32 @@ TXN002      18/04/2025  CLIENT PAYMENT INWARD         12,000.00   CR
 TXN003      25/04/2025  UBER TRIP BLR                 420.00      DR
 ''';
 
-      final result = parseStatement(tokenPrefixStatement, accountName: 'Current');
+        final result = parseStatement(
+          tokenPrefixStatement,
+          accountName: 'Current',
+        );
 
-      expect(result.rows.length, 3);
-      expect(result.rows[0].type, 'expense');
-      expect(result.rows[0].amount.amountMinor, 28000);
-      expect(result.rows[1].type, 'income');
-      expect(result.rows[1].amount.amountMinor, 1200000);
-      expect(result.rows[2].type, 'expense');
-      expect(result.rows[2].amount.amountMinor, 42000);
-    });
+        expect(result.rows.length, 3);
+        expect(result.rows[0].type, 'expense');
+        expect(result.rows[0].amount.amountMinor, 28000);
+        expect(result.rows[1].type, 'income');
+        expect(result.rows[1].amount.amountMinor, 1200000);
+        expect(result.rows[2].type, 'expense');
+        expect(result.rows[2].amount.amountMinor, 42000);
+      },
+    );
 
-    test('generates diagnostic explanation on scanned image PDF with minimal text', () {
-      const scannedPdfText = 'Scan 001.pdf\n';
+    test(
+      'generates diagnostic explanation on scanned image PDF with minimal text',
+      () {
+        const scannedPdfText = 'Scan 001.pdf\n';
 
-      final result = parseStatement(scannedPdfText, accountName: 'Test');
+        final result = parseStatement(scannedPdfText, accountName: 'Test');
 
-      expect(result.rows, isEmpty);
-      expect(result.diagnostics, isNotNull);
-      expect(result.diagnostics, contains('scanned'));
-    });
+        expect(result.rows, isEmpty);
+        expect(result.diagnostics, isNotNull);
+        expect(result.diagnostics, contains('scanned'));
+      },
+    );
   });
 }

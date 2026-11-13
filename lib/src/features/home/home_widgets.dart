@@ -86,13 +86,21 @@ Widget buildHomeDashboardWidget({
     HomeDashboardWidgetId.creditUtilization => CreditUtilizationWidget(
       state: state,
     ),
-    HomeDashboardWidgetId.pendingReview => PendingReviewHomeWidget(state: state),
+    HomeDashboardWidgetId.pendingReview => PendingReviewHomeWidget(
+      state: state,
+    ),
     HomeDashboardWidgetId.savingsRate => SavingsRateHomeWidget(state: state),
     HomeDashboardWidgetId.tagCloud => TagCloudHomeWidget(state: state),
     HomeDashboardWidgetId.safeToSpend => SafeToSpendHomeWidget(state: state),
-    HomeDashboardWidgetId.cashBurnRunway => CashBurnRunwayHomeWidget(state: state),
-    HomeDashboardWidgetId.noSpendStreak => NoSpendStreakHomeWidget(state: state),
-    HomeDashboardWidgetId.weekendWeekdayRatio => WeekendWeekdayRatioHomeWidget(state: state),
+    HomeDashboardWidgetId.cashBurnRunway => CashBurnRunwayHomeWidget(
+      state: state,
+    ),
+    HomeDashboardWidgetId.noSpendStreak => NoSpendStreakHomeWidget(
+      state: state,
+    ),
+    HomeDashboardWidgetId.weekendWeekdayRatio => WeekendWeekdayRatioHomeWidget(
+      state: state,
+    ),
   };
 }
 
@@ -642,8 +650,8 @@ class _BalanceTrendHomeWidgetState
 
     final accountFilterName = selectedAccountId != null
         ? (selectedAccountId == 'cash_group'
-            ? 'Cash'
-            : (selectedAccount?.name ?? 'Selected account'))
+              ? 'Cash'
+              : (selectedAccount?.name ?? 'Selected account'))
         : null;
     final fallbackSubtitle = accountFilterName != null
         ? '$accountFilterName · $_period'
@@ -971,14 +979,17 @@ class _BalanceTrendHomeWidgetState
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final chartWidth = constraints.maxWidth - 52.0;
-                        final isTouchedVisible = _touchedIndex != null &&
+                        final isTouchedVisible =
+                            _touchedIndex != null &&
                             _touchedIndex! >= viewLeft &&
                             _touchedIndex! <= viewRight &&
                             chartWidth > 0;
                         Widget? touchedDateBadge;
                         if (isTouchedVisible) {
-                          final touchedIdx =
-                              _touchedIndex!.round().clamp(0, totalN - 1);
+                          final touchedIdx = _touchedIndex!.round().clamp(
+                            0,
+                            totalN - 1,
+                          );
                           final touchedDate = pastTrend.isNotEmpty
                               ? pastTrend.first.date.add(
                                   Duration(days: touchedIdx),
@@ -993,7 +1004,8 @@ class _BalanceTrendHomeWidgetState
                                   touchedDate,
                                   widget.state.preferences.locale,
                                 );
-                          final rawCenterX = 52.0 +
+                          final rawCenterX =
+                              52.0 +
                               ((_touchedIndex! - viewLeft) /
                                       (viewRight - viewLeft)) *
                                   chartWidth;
@@ -1020,7 +1032,9 @@ class _BalanceTrendHomeWidgetState
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: scheme.shadow.withAlphaFactor(0.2),
+                                        color: scheme.shadow.withAlphaFactor(
+                                          0.2,
+                                        ),
                                         blurRadius: 4,
                                         offset: const Offset(0, 1),
                                       ),
@@ -1053,16 +1067,20 @@ class _BalanceTrendHomeWidgetState
                                   horizontalInterval: niceInterval,
                                   verticalInterval: 1.0,
                                   getDrawingHorizontalLine: (value) => FlLine(
-                                    color: scheme.outlineVariant.withAlphaFactor(0.25),
+                                    color: scheme.outlineVariant
+                                        .withAlphaFactor(0.25),
                                     strokeWidth: 0.5,
                                     dashArray: [3, 5],
                                   ),
                                   getDrawingVerticalLine: (value) {
                                     final idx = value.round();
                                     if ((value - idx).abs() < 0.05 &&
-                                        ((idx - nowIndex).abs() % intervalDays) == 0) {
+                                        ((idx - nowIndex).abs() %
+                                                intervalDays) ==
+                                            0) {
                                       return FlLine(
-                                        color: scheme.outlineVariant.withAlphaFactor(0.25),
+                                        color: scheme.outlineVariant
+                                            .withAlphaFactor(0.25),
                                         strokeWidth: 0.5,
                                         dashArray: [3, 5],
                                       );
@@ -1084,7 +1102,9 @@ class _BalanceTrendHomeWidgetState
                                       getTitlesWidget: (value, meta) {
                                         return PrivacyText(
                                           formatCompact(value),
-                                          style: Theme.of(context).textTheme.labelSmall
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelSmall
                                               ?.copyWith(
                                                 color: scheme.onSurfaceVariant,
                                               ),
@@ -1107,7 +1127,9 @@ class _BalanceTrendHomeWidgetState
 
                                         // Only show dates that fall on even intervals aligned with nowIndex.
                                         // This ensures the current date is always included and intervals are identical.
-                                        if (((idx - nowIndex).abs() % intervalDays) != 0) {
+                                        if (((idx - nowIndex).abs() %
+                                                intervalDays) !=
+                                            0) {
                                           return const SizedBox.shrink();
                                         }
 
@@ -1117,9 +1139,10 @@ class _BalanceTrendHomeWidgetState
                                             _touchedIndex! <= meta.max) {
                                           final touchedPixel =
                                               ((_touchedIndex! - meta.min) /
-                                                      (meta.max - meta.min)) *
-                                                  meta.parentAxisSize;
-                                          if ((meta.axisPosition - touchedPixel).abs() <
+                                                  (meta.max - meta.min)) *
+                                              meta.parentAxisSize;
+                                          if ((meta.axisPosition - touchedPixel)
+                                                  .abs() <
                                               34.0) {
                                             return const SizedBox.shrink();
                                           }
@@ -1175,9 +1198,8 @@ class _BalanceTrendHomeWidgetState
                                   horizontalLines: [
                                     HorizontalLine(
                                       y: 0,
-                                      color: scheme.onSurfaceVariant.withAlphaFactor(
-                                        0.3,
-                                      ),
+                                      color: scheme.onSurfaceVariant
+                                          .withAlphaFactor(0.3),
                                       strokeWidth: 1,
                                     ),
                                   ],
@@ -1185,7 +1207,9 @@ class _BalanceTrendHomeWidgetState
                                     if (nowX >= viewLeft && nowX <= viewRight)
                                       VerticalLine(
                                         x: nowX,
-                                        color: scheme.primary.withAlphaFactor(0.4),
+                                        color: scheme.primary.withAlphaFactor(
+                                          0.4,
+                                        ),
                                         strokeWidth: 1.0,
                                         dashArray: [4, 4],
                                         label: VerticalLineLabel(),
@@ -1202,7 +1226,9 @@ class _BalanceTrendHomeWidgetState
                                       barWidth: 1.2,
                                       isStrokeCapRound: true,
                                       shadow: Shadow(
-                                        color: scheme.primary.withAlphaFactor(0.25),
+                                        color: scheme.primary.withAlphaFactor(
+                                          0.25,
+                                        ),
                                         blurRadius: 6,
                                         offset: const Offset(0, 3),
                                       ),
@@ -1223,7 +1249,9 @@ class _BalanceTrendHomeWidgetState
                                         cutOffY: minY,
                                         gradient: LinearGradient(
                                           colors: [
-                                            scheme.primary.withAlphaFactor(0.35),
+                                            scheme.primary.withAlphaFactor(
+                                              0.35,
+                                            ),
                                             scheme.primary.withAlphaFactor(0.0),
                                           ],
                                           begin: Alignment.topCenter,
@@ -1235,9 +1263,8 @@ class _BalanceTrendHomeWidgetState
                                   if (futureSpots.length > 1)
                                     LineChartBarData(
                                       spots: futureSpots,
-                                      color: scheme.onSurfaceVariant.withAlphaFactor(
-                                        0.45,
-                                      ),
+                                      color: scheme.onSurfaceVariant
+                                          .withAlphaFactor(0.45),
                                       barWidth: 1.0,
                                       isStrokeCapRound: true,
                                       dashArray: [6, 4],
@@ -1259,12 +1286,10 @@ class _BalanceTrendHomeWidgetState
                                         cutOffY: minY,
                                         gradient: LinearGradient(
                                           colors: [
-                                            scheme.onSurfaceVariant.withAlphaFactor(
-                                              0.12,
-                                            ),
-                                            scheme.onSurfaceVariant.withAlphaFactor(
-                                              0.0,
-                                            ),
+                                            scheme.onSurfaceVariant
+                                                .withAlphaFactor(0.12),
+                                            scheme.onSurfaceVariant
+                                                .withAlphaFactor(0.0),
                                           ],
                                           begin: Alignment.topCenter,
                                           end: Alignment.bottomCenter,
@@ -1273,25 +1298,34 @@ class _BalanceTrendHomeWidgetState
                                     ),
                                 ],
                                 lineTouchData: LineTouchData(
-                                  touchCallback: (
-                                    FlTouchEvent event,
-                                    LineTouchResponse? touchResponse,
-                                  ) {
-                                    if (!event.isInterestedForInteractions ||
-                                        touchResponse == null ||
-                                        touchResponse.lineBarSpots == null ||
-                                        touchResponse.lineBarSpots!.isEmpty) {
-                                      if (_touchedIndex != null) {
-                                        setState(() => _touchedIndex = null);
-                                      }
-                                      return;
-                                    }
-                                    final spot =
-                                        touchResponse.lineBarSpots!.first;
-                                    if (_touchedIndex != spot.x) {
-                                      setState(() => _touchedIndex = spot.x);
-                                    }
-                                  },
+                                  touchCallback:
+                                      (
+                                        FlTouchEvent event,
+                                        LineTouchResponse? touchResponse,
+                                      ) {
+                                        if (!event
+                                                .isInterestedForInteractions ||
+                                            touchResponse == null ||
+                                            touchResponse.lineBarSpots ==
+                                                null ||
+                                            touchResponse
+                                                .lineBarSpots!
+                                                .isEmpty) {
+                                          if (_touchedIndex != null) {
+                                            setState(
+                                              () => _touchedIndex = null,
+                                            );
+                                          }
+                                          return;
+                                        }
+                                        final spot =
+                                            touchResponse.lineBarSpots!.first;
+                                        if (_touchedIndex != spot.x) {
+                                          setState(
+                                            () => _touchedIndex = spot.x,
+                                          );
+                                        }
+                                      },
                                   getTouchedSpotIndicator:
                                       (
                                         LineChartBarData barData,
@@ -1300,27 +1334,31 @@ class _BalanceTrendHomeWidgetState
                                         return spotIndexes.map((index) {
                                           return TouchedSpotIndicatorData(
                                             FlLine(
-                                              color: scheme.primary.withAlphaFactor(
-                                                0.4,
-                                              ),
+                                              color: scheme.primary
+                                                  .withAlphaFactor(0.4),
                                               strokeWidth: 1.5,
                                               dashArray: [4, 4],
                                             ),
                                             FlDotData(
                                               getDotPainter:
-                                                  (spot, percent, barData, index) =>
-                                                      FlDotCirclePainter(
-                                                        radius: 4,
-                                                        color: scheme.primary,
-                                                        strokeWidth: 2,
-                                                        strokeColor: scheme.surface,
-                                                      ),
+                                                  (
+                                                    spot,
+                                                    percent,
+                                                    barData,
+                                                    index,
+                                                  ) => FlDotCirclePainter(
+                                                    radius: 4,
+                                                    color: scheme.primary,
+                                                    strokeWidth: 2,
+                                                    strokeColor: scheme.surface,
+                                                  ),
                                             ),
                                           );
                                         }).toList();
                                       },
                                   touchTooltipData: LineTouchTooltipData(
-                                    getTooltipColor: (touchedSpot) => scheme.onSurface,
+                                    getTooltipColor: (touchedSpot) =>
+                                        scheme.onSurface,
                                     getTooltipItems: (touchedSpots) {
                                       return touchedSpots
                                           .map(
@@ -1332,7 +1370,10 @@ class _BalanceTrendHomeWidgetState
                                                     amountMinor: spot.y.toInt(),
                                                     currency: displayCurrency,
                                                   ),
-                                                  widget.state.preferences.locale,
+                                                  widget
+                                                      .state
+                                                      .preferences
+                                                      .locale,
                                                 ),
                                               ),
                                               Theme.of(
@@ -1850,11 +1891,19 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
 
     final next = scheduled.take(4).toList();
     final overdueCount = scheduled.where((t) {
-      final day = DateTime(t.occurredAt.year, t.occurredAt.month, t.occurredAt.day);
+      final day = DateTime(
+        t.occurredAt.year,
+        t.occurredAt.month,
+        t.occurredAt.day,
+      );
       return day.isBefore(today);
     }).length;
     final dueTodayCount = scheduled.where((t) {
-      final day = DateTime(t.occurredAt.year, t.occurredAt.month, t.occurredAt.day);
+      final day = DateTime(
+        t.occurredAt.year,
+        t.occurredAt.month,
+        t.occurredAt.day,
+      );
       return day.isAtSameMomentAs(today);
     }).length;
 
@@ -1863,8 +1912,8 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
       subtitle: overdueCount > 0
           ? '$overdueCount overdue · $dueTodayCount due today'
           : dueTodayCount > 0
-              ? '$dueTodayCount payment${dueTodayCount > 1 ? 's' : ''} due today'
-              : 'Scheduled payments and bills',
+          ? '$dueTodayCount payment${dueTodayCount > 1 ? 's' : ''} due today'
+          : 'Scheduled payments and bills',
       icon: Icons.event_available_outlined,
       iconColor: Theme.of(context).colorScheme.secondary,
       actionLabel: 'Open',
@@ -1895,8 +1944,8 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
                   tone: overdueCount > 0
                       ? MetricTone.danger
                       : scheduled.isEmpty
-                          ? MetricTone.standard
-                          : MetricTone.positive,
+                      ? MetricTone.standard
+                      : MetricTone.positive,
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),
@@ -1908,7 +1957,9 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
                     _formatDisplayBaseMoney(state, dueAmount),
                   ),
                   icon: Icons.payments_outlined,
-                  tone: overdueCount > 0 ? MetricTone.danger : MetricTone.standard,
+                  tone: overdueCount > 0
+                      ? MetricTone.danger
+                      : MetricTone.standard,
                 ),
               ),
             ],
@@ -1970,14 +2021,19 @@ class _UpcomingTransactionRow extends StatelessWidget {
       < 0 => ('OVERDUE', scheme.errorContainer, scheme.onErrorContainer),
       0 => ('TODAY', scheme.errorContainer, scheme.onErrorContainer),
       1 => ('TOMORROW', scheme.tertiaryContainer, scheme.onTertiaryContainer),
-      _ => ('IN ${daysUntilDue}D', scheme.surfaceContainerHighest, scheme.onSurfaceVariant),
+      _ => (
+        'IN ${daysUntilDue}D',
+        scheme.surfaceContainerHighest,
+        scheme.onSurfaceVariant,
+      ),
     };
 
-    final title = (transaction.name != null && transaction.name!.trim().isNotEmpty)
+    final title =
+        (transaction.name != null && transaction.name!.trim().isNotEmpty)
         ? transaction.name!.trim()
         : (category?.name.trim().isNotEmpty == true)
-            ? category!.name.trim()
-            : (account?.name ?? 'Scheduled');
+        ? category!.name.trim()
+        : (account?.name ?? 'Scheduled');
 
     final amountText = formatMoney(
       transaction.amount,
@@ -2009,8 +2065,7 @@ class _UpcomingTransactionRow extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: categoryColor(category, context)
-                    .withValues(alpha: 0.15),
+                color: categoryColor(category, context).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(AppRadii.sm),
               ),
               child: Icon(
@@ -2032,8 +2087,8 @@ class _UpcomingTransactionRow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Row(
@@ -2049,12 +2104,14 @@ class _UpcomingTransactionRow extends StatelessWidget {
                         ),
                         child: Text(
                           badgeText,
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            fontSize: 10, // ui-guard: allow compact badge font
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.5,
-                            color: badgeTextColor,
-                          ),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                fontSize:
+                                    10, // ui-guard: allow compact badge font
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.5,
+                                color: badgeTextColor,
+                              ),
                         ),
                       ),
                       if (account != null) ...[
@@ -2064,9 +2121,8 @@ class _UpcomingTransactionRow extends StatelessWidget {
                             account.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                ),
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(color: scheme.onSurfaceVariant),
                           ),
                         ),
                       ],
@@ -2081,11 +2137,11 @@ class _UpcomingTransactionRow extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: expenseTypes.contains(transaction.type)
-                        ? scheme.error
-                        : scheme.primary,
-                  ),
+                fontWeight: FontWeight.w800,
+                color: expenseTypes.contains(transaction.type)
+                    ? scheme.error
+                    : scheme.primary,
+              ),
             ),
           ],
         ),
@@ -2956,49 +3012,50 @@ class CreditUtilizationWidget extends ConsumerWidget {
         .toList();
     final balances = accountBalanceMap(state);
 
-    final accountMetrics = creditAccounts
-        .map((acc) {
-          final rawBal = convertMoneyForDisplay(
-            state,
-            accountBalanceFromMap(balances, acc),
-            state.preferences.displayCurrency,
-          ).amountMinor;
-          final balForDisplay = rawBal.abs();
-          final debt = rawBal < 0 ? -rawBal : 0;
+    final accountMetrics =
+        creditAccounts
+            .map((acc) {
+              final rawBal = convertMoneyForDisplay(
+                state,
+                accountBalanceFromMap(balances, acc),
+                state.preferences.displayCurrency,
+              ).amountMinor;
+              final balForDisplay = rawBal.abs();
+              final debt = rawBal < 0 ? -rawBal : 0;
 
-          final limit = acc.creditLimit != null
-              ? convertMoneyForDisplay(
-                  state,
-                  acc.creditLimit!,
-                  state.preferences.displayCurrency,
-                ).amountMinor
-              : 0;
-          final util = limit > 0 ? (debt / limit) : 0.0;
-          return (
-            account: acc,
-            balForDisplay: balForDisplay,
-            debt: debt,
-            limit: limit,
-            util: util,
-            hasLimit: limit > 0,
-          );
-        })
-        .where((metric) => metric.util > 0)
-        .toList()
-      ..sort((a, b) {
-        // Sort by utilisation descending: highest percentage first
-        if (a.hasLimit && !b.hasLimit) {
-          return a.util > 0 ? -1 : 1;
-        }
-        if (!a.hasLimit && b.hasLimit) {
-          return b.util > 0 ? 1 : -1;
-        }
-        final utilComp = b.util.compareTo(a.util);
-        if (utilComp != 0) return utilComp;
-        final debtComp = b.debt.compareTo(a.debt);
-        if (debtComp != 0) return debtComp;
-        return a.account.name.compareTo(b.account.name);
-      });
+              final limit = acc.creditLimit != null
+                  ? convertMoneyForDisplay(
+                      state,
+                      acc.creditLimit!,
+                      state.preferences.displayCurrency,
+                    ).amountMinor
+                  : 0;
+              final util = limit > 0 ? (debt / limit) : 0.0;
+              return (
+                account: acc,
+                balForDisplay: balForDisplay,
+                debt: debt,
+                limit: limit,
+                util: util,
+                hasLimit: limit > 0,
+              );
+            })
+            .where((metric) => metric.util > 0)
+            .toList()
+          ..sort((a, b) {
+            // Sort by utilisation descending: highest percentage first
+            if (a.hasLimit && !b.hasLimit) {
+              return a.util > 0 ? -1 : 1;
+            }
+            if (!a.hasLimit && b.hasLimit) {
+              return b.util > 0 ? 1 : -1;
+            }
+            final utilComp = b.util.compareTo(a.util);
+            if (utilComp != 0) return utilComp;
+            final debtComp = b.debt.compareTo(a.debt);
+            if (debtComp != 0) return debtComp;
+            return a.account.name.compareTo(b.account.name);
+          });
 
     return RepaintBoundary(
       child: HomeWidgetCard(
