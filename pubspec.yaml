@@ -71,6 +71,8 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
 
   # Used directly by test/theme_controller_persistence_test.dart to simulate
   # a SharedPreferences write failure (it's already a transitive dependency
