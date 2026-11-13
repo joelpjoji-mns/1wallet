@@ -22,16 +22,21 @@ val releaseStoreFilePath = releaseProperty("ONEWALLET_RELEASE_STORE_FILE")
 val releaseStorePassword = releaseProperty("ONEWALLET_RELEASE_STORE_PASSWORD")
 val releaseKeyAlias = releaseProperty("ONEWALLET_RELEASE_KEY_ALIAS")
 val releaseKeyPassword = releaseProperty("ONEWALLET_RELEASE_KEY_PASSWORD")
-val releaseSigningReady =
-    releaseStoreFilePath != null &&
-        releaseStorePassword != null &&
-        releaseKeyAlias != null &&
-        releaseKeyPassword != null
 
 fun resolveReleaseFile(path: String): File {
     val candidate = File(path)
     return if (candidate.isAbsolute) candidate else File(project.rootDir, path)
 }
+
+val releaseStoreFile = releaseStoreFilePath?.let { resolveReleaseFile(it) }
+val releaseSigningReady =
+    releaseStoreFile != null &&
+        releaseStoreFile.exists() &&
+        releaseStoreFile.isFile &&
+        releaseStoreFile.length() > 0L &&
+        !releaseStorePassword.isNullOrBlank() &&
+        !releaseKeyAlias.isNullOrBlank() &&
+        !releaseKeyPassword.isNullOrBlank()
 
 android {
     namespace = "com.joelpjoji.one.wallet"
@@ -41,7 +46,7 @@ android {
     signingConfigs {
         if (releaseSigningReady) {
             create("oneWalletRelease") {
-                storeFile = resolveReleaseFile(releaseStoreFilePath!!)
+                storeFile = releaseStoreFile!!
                 storePassword = releaseStorePassword
                 keyAlias = releaseKeyAlias
                 keyPassword = releaseKeyPassword

@@ -23,12 +23,12 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Gitleaks Secret Scanner
-        uses: gitleaks/gitleaks-action@d4c7ea457cb3e0a1c324c965682054a8677c7b8e # v2.3.7
+        uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -37,25 +37,25 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@48ab28a6f5dab2a823c7a400f91a35451e2d788b # v3.28.0
+        uses: github/codeql-action/init@v3
         with:
           languages: javascript-typescript
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@48ab28a6f5dab2a823c7a400f91a35451e2d788b # v3.28.0
+        uses: github/codeql-action/analyze@v3
 
   dart-security-and-sbom:
     name: Dart Lints, License Compliance & SBOM
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@v4
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@44ac965b96f18d999802d4b807e3256d5a3f9fa1 # v2.16.0
+        uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
@@ -67,14 +67,14 @@ jobs:
         run: flutter analyze --no-fatal-infos
 
       - name: Generate Software Bill of Materials (SBOM)
-        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        uses: anchore/sbom-action@v0
         with:
           path: ./
           format: spdx-json
           output-file: build/sbom.spdx.json
 
       - name: Upload SBOM Artifact
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        uses: actions/upload-artifact@v4
         with:
           name: software-bill-of-materials
           path: build/sbom.spdx.json
