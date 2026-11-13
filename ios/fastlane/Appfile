@@ -1,0 +1,4 @@
+app_identifier("com.onewallet.app")
+apple_id(ENV["APPLE_ID"] || "release@onewallet.app")
+team_id(ENV["APPLE_TEAM_ID"] || "TEAMID123")
+itc_team_id(ENV["APPLE_ITC_TEAM_ID"] || "ITC123")

@@ -19,6 +19,10 @@ Contains the Android native runner, Gradle build scripts, AndroidManifest config
 - **`app/src/main/kotlin/com/joelpjoji/one/wallet/`**:
   - Native Kotlin `MainActivity` class and platform channel integrations if any.
 
+- **`fastlane/Fastfile` & `fastlane/Appfile`**:
+  - Automated deployment lanes for Google Play Internal, Beta (with staged rollouts), and Production.
+  - Consolidates with `scripts/validate-android-notification-resources.mjs`.
+
 ---
 
 ## 🛡️ Critical Invariants & Architecture

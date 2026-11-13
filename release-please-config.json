@@ -1,0 +1,22 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    ".": {
+      "release-type": "dart",
+      "package-name": "one_wallet_flutter",
+      "bump-minor-pre-major": false,
+      "bump-patch-for-minor-pre-major": false,
+      "draft": false,
+      "prerelease": false,
+      "changelog-sections": [
+        {"type": "feat", "section": "Features", "hidden": false},
+        {"type": "fix", "section": "Bug Fixes", "hidden": false},
+        {"type": "perf", "section": "Performance Improvements", "hidden": false},
+        {"type": "refactor", "section": "Code Refactoring", "hidden": false},
+        {"type": "security", "section": "Security & Supply Chain", "hidden": false},
+        {"type": "docs", "section": "Documentation", "hidden": false},
+        {"type": "chore", "section": "Maintenance & Dependencies", "hidden": true}
+      ]
+    }
+  }
+}

@@ -1,0 +1,29 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Runs iOS unit tests"
+  lane :test do
+    sh("flutter test")
+  end
+
+  desc "Push a new beta build to Apple TestFlight"
+  lane :beta do
+    sync_code_signing(type: "appstore", readonly: is_ci)
+    sh("flutter build ipa --release")
+    upload_to_testflight(
+      ipa: "build/ios/ipa/one_wallet_flutter.ipa",
+      skip_waiting_for_build_processing: true
+    )
+  end
+
+  desc "Deploy a new version to the Apple App Store"
+  lane :release do
+    sync_code_signing(type: "appstore", readonly: is_ci)
+    sh("flutter build ipa --release")
+    upload_to_app_store(
+      ipa: "build/ios/ipa/one_wallet_flutter.ipa",
+      force: true,
+      automatic_release: false
+    )
+  end
+end

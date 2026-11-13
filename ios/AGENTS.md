@@ -16,6 +16,9 @@ Houses the native Xcode project, CocoaPods configurations, and iOS-specific perm
 - **`Runner.xcodeproj` / `Runner.xcworkspace`**:
   - Xcode project schemes, bundle identifiers (`com.joelpjoji.one.wallet`), and build configurations.
 
+- **`fastlane/Fastfile` & `fastlane/Appfile`**:
+  - Automated deployment lanes for Match code signing, TestFlight beta distribution, and App Store releases.
+
 ---
 
 ## 🛡️ Critical Invariants & Architecture

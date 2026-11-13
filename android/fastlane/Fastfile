@@ -1,0 +1,64 @@
+default_platform(:android)
+
+platform :android do
+  desc "Runs local unit tests and notification resource checks"
+  lane :test do
+    gradle(
+      task: "testDebugUnitTest",
+      project_dir: "android/"
+    )
+    sh("node scripts/validate-android-notification-resources.test.mjs")
+  end
+
+  desc "Build signed App Bundle (AAB) for Google Play release"
+  lane :build_signed_aab do
+    sh("flutter build appbundle --release")
+  end
+
+  desc "Deploy a new build to Google Play Internal track"
+  lane :deploy_internal do
+    upload_to_play_store(
+      track: "internal",
+      aab: "build/app/outputs/bundle/release/app-release.aab",
+      skip_upload_metadata: false,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+
+  desc "Deploy build to Google Play Beta with staged rollout"
+  lane :deploy_beta do |options|
+    rollout_fraction = options[:rollout] || 0.20 # 20% staged rollout default
+    upload_to_play_store(
+      track: "beta",
+      aab: "build/app/outputs/bundle/release/app-release.aab",
+      rollout: rollout_fraction.to_s,
+      skip_upload_metadata: false,
+      release_status: "inProgress"
+    )
+  end
+
+  desc "Promote beta to Production staged rollout"
+  lane :deploy_production do |options|
+    rollout_fraction = options[:rollout] || 0.10 # 10% staged rollout default
+    upload_to_play_store(
+      track: "production",
+      aab: "build/app/outputs/bundle/release/app-release.aab",
+      rollout: rollout_fraction.to_s,
+      skip_upload_metadata: false,
+      release_status: "inProgress"
+    )
+  end
+
+  desc "Capture fastlane metadata and frame screenshots"
+  lane :screenshots do
+    capture_android_screenshots
+    upload_to_play_store(
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_metadata: false,
+      skip_upload_images: false,
+      skip_upload_screenshots: false
+    )
+  end
+end
