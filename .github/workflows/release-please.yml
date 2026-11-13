@@ -17,7 +17,9 @@ jobs:
       - name: Release Please Action
         id: release
         uses: googleapis/release-please-action@v4
+        continue-on-error: true
         with:
+          token: ${{ secrets.GH_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
