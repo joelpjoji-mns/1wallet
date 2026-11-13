@@ -65,7 +65,7 @@ dependencies:
   syncfusion_flutter_pdf: ^28.1.33
   timezone: ^0.11.0
   flutter_timezone: ^5.1.1
-  web: ^1.1.1
+  web: ^1.1.2
   liquid_glass_widgets: ^1.7.2
   home_widget: ^0.10.0
 dev_dependencies:
