@@ -8,7 +8,7 @@
     "test": "node --test rules.test.mjs"
   },
   "devDependencies": {
-    "@firebase/rules-unit-testing": "^5.0.2",
+    "@firebase/rules-unit-testing": "^6.0.0",
     "firebase": "^12.16.0"
   }
 }
