@@ -1,6 +1,6 @@
 // Focused tests for RouteScaffold's GlassAppBar leading-button behavior
 // (lib/src/features/common/route_scaffold.dart), added when the shared
-// Material AppBar was replaced by liquid_glass_widgets' GlassAppBar in both
+// Material AppBar was replaced by GlassAppBar in both
 // the mobile and desktop layout paths.
 //
 // This matters because GlassAppBar - unlike Material's AppBar - has no

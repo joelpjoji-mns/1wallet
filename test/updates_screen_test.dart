@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import 'package:one_wallet_flutter/src/features/updates/app_update_provider.dart';
 import 'package:one_wallet_flutter/src/features/updates/updates_screen.dart';
 import 'package:one_wallet_flutter/src/theme/app_theme.dart';
+import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 
 // AppUpdateProvider's real constructor fires off async Firebase/Firestore
 // work via _init(), which is unreachable in a plain `flutter test` run

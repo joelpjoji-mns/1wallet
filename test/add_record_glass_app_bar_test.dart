@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
@@ -9,12 +8,13 @@ import 'package:one_wallet_flutter/src/features/main/main_shell.dart';
 import 'package:one_wallet_flutter/src/features/transactions/add_record_screen.dart';
 import 'package:one_wallet_flutter/src/routing/app_router.dart';
 import 'package:one_wallet_flutter/src/theme/app_theme.dart';
+import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 
 import 'fixtures/sample_ledger.dart';
 import 'test_harness.dart';
 
 /// Smoke coverage for AddRecordScreen's nav chrome migration from a plain
-/// Material `AppBar` to the liquid_glass_widgets package's `GlassAppBar`
+/// Material `AppBar` to `GlassAppBar`
 /// (content cards/controls below the bar are intentionally left untouched).
 /// Also guards the screen's custom back semantics — pop when possible,
 /// otherwise fall back to home — which must survive the widget swap since

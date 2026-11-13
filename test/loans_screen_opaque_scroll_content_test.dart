@@ -1,5 +1,5 @@
-// Design-consistency regression test: per the liquid_glass_widgets 1.7.2
-// README, Liquid Glass should be reserved for the navigation/control layer
+// Design-consistency regression test: per the glass
+// guidance, Liquid Glass should be reserved for the navigation/control layer
 // (app bars, floating actions, icon buttons) - scrolling content and list
 // rows should stay opaque. `_LoanCompactCard` (a repeated row in the loans
 // overview list) and `LoanDetailView`'s header summary card previously wrapped
@@ -29,11 +29,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
 import 'package:one_wallet_flutter/src/features/loans/loans_screen.dart';
+import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 
 import 'test_harness.dart';
 

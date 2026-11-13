@@ -20,7 +20,7 @@ The system is designed around:
 
 | Layer | Technologies & Libraries |
 | :--- | :--- |
-| **Mobile & Desktop Core** | Flutter 3.x, Dart 3.x, Material 3, `liquid_glass_widgets` |
+| **Mobile & Desktop Core** | Flutter 3.x, Dart 3.x, Material 3, `g1455` (PlugFox Liquid Glass) |
 | **State Management** | `flutter_riverpod` (v2.6.1+), StateNotifier, Providers |
 | **Routing & Deep Linking** | `go_router` (v17.3.0+) |
 | **Local Persistence & Security** | `shared_preferences`, `flutter_secure_storage`, `encrypt` (AES-256-GCM / PBKDF2), `crypto` |

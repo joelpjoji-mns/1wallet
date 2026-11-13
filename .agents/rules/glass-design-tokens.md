@@ -7,7 +7,7 @@
    - Never hardcode arbitrary pixel paddings.
 
 2. **Accessibility & Contrast**:
-   - Glass surfaces (`liquid_glass_widgets`) must provide sufficient contrast with text colors.
+   - Glass surfaces (`g1455`) must provide sufficient contrast with text colors.
    - Respect user settings for High Contrast and Reduced Motion (`MediaQuery.disableAnimationsOf(context)`).
 
 3. **Privacy Masking**:

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import 'package:one_wallet_flutter/src/features/home/home_widget_card.dart';
 import 'package:one_wallet_flutter/src/features/home/home_widgets.dart';
+import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 
 /// The dashboard cards use the shared Liquid Glass surface while keeping
 /// their content visible and interactions functional.

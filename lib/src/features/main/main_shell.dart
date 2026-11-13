@@ -54,6 +54,9 @@ class _MainShellState extends ConsumerState<MainShell>
     _screens = [
       _KeepAliveWrapper(
         key: const PageStorageKey<String>('main-shell-tab-0'),
+        index: 0,
+        pageController: _pageController,
+        selectedIndex: _selectedIndex,
         child: HomeScreen(
           onMenuPressed: _openDrawer,
           onTabSelected: _selectTab,
@@ -61,14 +64,23 @@ class _MainShellState extends ConsumerState<MainShell>
       ),
       _KeepAliveWrapper(
         key: const PageStorageKey<String>('main-shell-tab-1'),
+        index: 1,
+        pageController: _pageController,
+        selectedIndex: _selectedIndex,
         child: TransactionsScreen(onMenuPressed: _openDrawer),
       ),
       _KeepAliveWrapper(
         key: const PageStorageKey<String>('main-shell-tab-2'),
+        index: 2,
+        pageController: _pageController,
+        selectedIndex: _selectedIndex,
         child: CalendarScreen(onMenuPressed: _openDrawer),
       ),
       _KeepAliveWrapper(
         key: const PageStorageKey<String>('main-shell-tab-3'),
+        index: 3,
+        pageController: _pageController,
+        selectedIndex: _selectedIndex,
         child: AccountsScreen(onMenuPressed: _openDrawer),
       ),
     ];
@@ -817,8 +829,18 @@ String _walletInitials(String source) {
 }
 
 class _KeepAliveWrapper extends StatefulWidget {
-  const _KeepAliveWrapper({required this.child, super.key});
+  const _KeepAliveWrapper({
+    required this.child,
+    this.index,
+    this.pageController,
+    this.selectedIndex,
+    super.key,
+  });
+
   final Widget child;
+  final int? index;
+  final PageController? pageController;
+  final ValueNotifier<int>? selectedIndex;
 
   @override
   State<_KeepAliveWrapper> createState() => _KeepAliveWrapperState();
@@ -826,12 +848,80 @@ class _KeepAliveWrapper extends StatefulWidget {
 
 class _KeepAliveWrapperState extends State<_KeepAliveWrapper>
     with AutomaticKeepAliveClientMixin {
+  late final GlassLedger _isolatedLedger = GlassLedger();
+  bool _isVisible = true;
+
   @override
   bool get wantKeepAlive => true;
 
   @override
+  void initState() {
+    super.initState();
+    widget.pageController?.addListener(_onScroll);
+    widget.selectedIndex?.addListener(_onScroll);
+    _updateVisibility();
+  }
+
+  @override
+  void didUpdateWidget(covariant _KeepAliveWrapper oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.pageController != widget.pageController) {
+      oldWidget.pageController?.removeListener(_onScroll);
+      widget.pageController?.addListener(_onScroll);
+    }
+    if (oldWidget.selectedIndex != widget.selectedIndex) {
+      oldWidget.selectedIndex?.removeListener(_onScroll);
+      widget.selectedIndex?.addListener(_onScroll);
+    }
+    _updateVisibility();
+  }
+
+  @override
+  void dispose() {
+    widget.pageController?.removeListener(_onScroll);
+    widget.selectedIndex?.removeListener(_onScroll);
+    _isolatedLedger.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    _updateVisibility();
+  }
+
+  void _updateVisibility() {
+    final idx = widget.index;
+    if (idx == null) {
+      if (!_isVisible) {
+        setState(() => _isVisible = true);
+      }
+      return;
+    }
+
+    final pc = widget.pageController;
+    bool visible;
+    if (pc != null && pc.hasClients) {
+      final page = pc.page ?? pc.initialPage.toDouble();
+      visible = idx >= page.floor() && idx <= page.ceil();
+    } else {
+      final sel = widget.selectedIndex?.value;
+      visible = (sel == null || sel == idx);
+    }
+
+    if (visible != _isVisible) {
+      setState(() => _isVisible = visible);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     super.build(context);
-    return RepaintBoundary(child: widget.child);
+    Widget content = RepaintBoundary(child: widget.child);
+    if (!_isVisible) {
+      content = GlassScope(
+        ledger: _isolatedLedger,
+        child: content,
+      );
+    }
+    return content;
   }
 }

@@ -575,6 +575,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  g1455:
+    dependency: "direct main"
+    description:
+      name: g1455
+      sha256: "22d1d2bf5e6cf8371a9cdcb454ef0985392ef1388f055946b431541adc74f647"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.0"
   go_router:
     dependency: "direct main"
     description:
@@ -844,14 +852,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.1.0"
-  liquid_glass_widgets:
-    dependency: "direct main"
-    description:
-      name: liquid_glass_widgets
-      sha256: "5b828ace169b77ebcc38cfc9bf92ad846c9a0b62d7b64a06142f43ceff9cf315"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.7.2"
   local_auth:
     dependency: "direct main"
     description:
@@ -1395,4 +1395,4 @@ packages:
     version: "3.1.4"
 sdks:
   dart: ">=3.13.0 <4.0.0"
-  flutter: ">=3.44.0"
+  flutter: ">=3.47.0"

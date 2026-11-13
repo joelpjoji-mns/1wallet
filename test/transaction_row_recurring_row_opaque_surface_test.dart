@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:one_wallet_flutter/src/data/ledger_defaults.dart';
@@ -10,13 +9,14 @@ import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
 import 'package:one_wallet_flutter/src/features/recurring/recurring_screen.dart';
 import 'package:one_wallet_flutter/src/features/transactions/transaction_row.dart';
 import 'package:one_wallet_flutter/src/theme/app_theme.dart';
+import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 
 import 'test_harness.dart';
 
 /// Covers the package-fidelity fix: `TransactionRow` and the recurring
 /// screen's compact row card are rendered in bulk inside scrolling lists
 /// (Transactions, Recurring, Home recent activity), so per the
-/// liquid_glass_widgets guidance they must stay lightweight opaque
+/// glass guidance they must stay lightweight opaque
 /// surfaces rather than per-item refractive `GlassCard`s. Glass stays
 /// reserved for the surrounding chrome (e.g. the recurring summary header).
 void main() {

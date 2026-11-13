@@ -4,7 +4,6 @@ import '../../ledger/ledger_selectors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -244,7 +243,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
     final matchedPlan = _findMatchingPlan(state, candidate);
 
     // Glass is reserved for navigation/control chrome (per the
-    // liquid_glass_widgets guidance); scrolling list rows stay opaque.
+    // g1455 guidance); scrolling list rows stay opaque.
     return AppPanel(
       onTap: () => context.push('/capture/${candidate.id}'),
       padding: const EdgeInsets.all(AppSpacing.lg),

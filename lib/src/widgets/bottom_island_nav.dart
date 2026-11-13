@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../design/tokens.dart';
+import 'app_kit.dart';
 
 @immutable
 class IslandTabItem {
@@ -40,10 +40,6 @@ class BottomIslandNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final glassTheme = GlassThemeData.of(context);
-    final glassSettings = glassTheme
-        .settingsFor(context)
-        ?.applyTo(const LiquidGlassSettings());
 
     return SafeArea(
       top: false,
@@ -73,91 +69,93 @@ class BottomIslandNavBar extends StatelessWidget {
               child: SizedBox(
                 width: totalWidth,
                 height: 148,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  alignment: Alignment.bottomCenter,
-                  children: [
-                    // Island bar position: shifts left and shrinks to fit FAB on right when down, or centered
-                    AnimatedPositioned(
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeOutCubic,
-                      left: islandLeft,
-                      bottom: 0,
-                      width: islandWidth,
-                      child: GlassTabBar.bottom(
-                        tabs: [
-                          for (final item in items)
-                            GlassTab(
-                              label: item.title,
-                              semanticLabel: item.title,
-                              icon:
-                                  item.badgeCount != null &&
-                                      item.badgeCount! > 0
-                                  ? GlassBadge(
-                                      count: item.badgeCount!,
-                                      backgroundColor: scheme.error,
-                                      child: Icon(item.icon),
-                                    )
-                                  : Icon(item.icon),
-                              activeIcon:
-                                  item.badgeCount != null &&
-                                      item.badgeCount! > 0
-                                  ? GlassBadge(
-                                      count: item.badgeCount!,
-                                      backgroundColor: scheme.error,
-                                      child: Icon(item.activeIcon),
-                                    )
-                                  : Icon(item.activeIcon),
-                            ),
-                        ],
-                        selectedIndex: selectedIndex,
-                        onTabSelected: (index) =>
-                            onSelected(items[index].pageIndex ?? index),
-                        barHeight: AppSizes.bottomBarContentHeight,
-                        horizontalPadding: hasDownFab ? 6 : 10,
-                        verticalPadding: 12,
-                        spacing: hasDownFab ? 4 : 6,
-                        settings: glassSettings,
-                        quality: GlassQuality.minimal,
-                        indicatorColor: scheme.primary.withAlphaFactor(
-                          isDark ? 0.30 : 0.14,
-                        ),
-                        selectedIconColor: scheme.primary,
-                        unselectedIconColor: scheme.onSurfaceVariant,
-                        selectedLabelColor: scheme.primary,
-                        unselectedLabelColor: scheme.onSurfaceVariant,
-                        // The package label style has no font family; keep
-                        // the app type face on the navigation labels.
-                        selectedLabelStyle: TextStyle(
-                          fontFamily: Theme.of(
-                            context,
-                          ).textTheme.labelSmall?.fontFamily,
-                        ),
-                        unselectedLabelStyle: TextStyle(
-                          fontFamily: Theme.of(
-                            context,
-                          ).textTheme.labelSmall?.fontFamily,
-                        ),
-                        backgroundQuality: GlassQuality.minimal,
-                      ),
-                    ),
-                    if (action != null)
-                      // FAB moving down animation smoothly anchored to bottom right
-                      // When compactAction is true, center the 64px FAB with the 96px total bar height ((96 - 64) / 2 = 16)
+                child: GlassBlendGroup(
+                  spacing: 16,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    alignment: Alignment.bottomCenter,
+                    children: [
+                      // Island bar position: shifts left and shrinks to fit FAB on right when down, or centered
                       AnimatedPositioned(
                         duration: const Duration(milliseconds: 200),
                         curve: Curves.easeOutCubic,
-                        right: 0,
-                        bottom: compactAction
-                            ? (AppSizes.bottomBar - 64) / 2
-                            : AppSizes.bottomBarContentHeight + 8,
-                        child: AnimatedOpacity(
-                          duration: const Duration(milliseconds: 180),
-                          opacity: 1.0,
-                          child: action!,
+                        left: islandLeft,
+                        bottom: 0,
+                        width: islandWidth,
+                        child: GlassTabBar.bottom(
+                          tabs: [
+                            for (final item in items)
+                              GlassTab(
+                                label: item.title,
+                                semanticLabel: item.title,
+                                icon:
+                                    item.badgeCount != null &&
+                                        item.badgeCount! > 0
+                                    ? GlassBadge(
+                                        count: item.badgeCount!,
+                                        backgroundColor: scheme.error,
+                                        child: Icon(item.icon),
+                                      )
+                                    : Icon(item.icon),
+                                activeIcon:
+                                    item.badgeCount != null &&
+                                        item.badgeCount! > 0
+                                    ? GlassBadge(
+                                        count: item.badgeCount!,
+                                        backgroundColor: scheme.error,
+                                        child: Icon(item.activeIcon),
+                                      )
+                                    : Icon(item.activeIcon),
+                              ),
+                          ],
+                          selectedIndex: selectedIndex,
+                          onTabSelected: (index) =>
+                              onSelected(items[index].pageIndex ?? index),
+                          barHeight: AppSizes.bottomBarContentHeight,
+                          horizontalPadding: hasDownFab ? 6 : 10,
+                          verticalPadding: 12,
+                          spacing: hasDownFab ? 4 : 6,
+                          quality: GlassQuality.minimal,
+                          indicatorColor: scheme.primary.withAlphaFactor(
+                            isDark ? 0.30 : 0.14,
+                          ),
+                          selectedIconColor: scheme.primary,
+                          unselectedIconColor: scheme.onSurfaceVariant,
+                          selectedLabelColor: scheme.primary,
+                          unselectedLabelColor: scheme.onSurfaceVariant,
+                          // The package label style has no font family; keep
+                          // the app type face on the navigation labels.
+                          selectedLabelStyle: TextStyle(
+                            fontFamily: Theme.of(
+                              context,
+                            ).textTheme.labelSmall?.fontFamily,
+                          ),
+                          unselectedLabelStyle: TextStyle(
+                            fontFamily: Theme.of(
+                              context,
+                            ).textTheme.labelSmall?.fontFamily,
+                          ),
+                          backgroundQuality: GlassQuality.minimal,
                         ),
                       ),
-                  ],
+                      if (action != null)
+                        // FAB moving down animation smoothly anchored to bottom right
+                        // When compactAction is true, center the 64px FAB with the 96px total bar height ((96 - 64) / 2 = 16)
+                        AnimatedPositioned(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOutCubic,
+                          right: 0,
+                          bottom: compactAction
+                              ? (AppSizes.bottomBar - 64) / 2
+                              : AppSizes.bottomBarContentHeight + 8,
+                          child: AnimatedOpacity(
+                            duration: const Duration(milliseconds: 180),
+                            opacity: 1.0,
+                            child: action!,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             );

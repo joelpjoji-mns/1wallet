@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../design/tokens.dart';
 import '../../startup/startup_state.dart';
@@ -249,30 +248,25 @@ class _LaunchBackdropState extends State<LaunchBackdrop>
   }
 }
 
-/// A bespoke, dependency-free frosted panel for the pre-auth brand
-/// experience (Login/Onboarding), predating this app's adoption of
-/// `package:liquid_glass_widgets`.
+/// A bespoke frosted panel for the pre-auth brand
+/// experience (Login/Onboarding).
 ///
 /// ## Why this exists instead of the package's `GlassCard`
 ///
 /// Login/Onboarding render on the app's bespoke [LaunchPalette] navy
 /// background rather than the Material `ColorScheme` the rest of the app
-/// (and `GlassThemeData`) is tuned for, and only appear a handful of times
+/// is tuned for, and only appear a handful of times
 /// per screen (never as a dense repeated list row), so the performance
 /// concerns that justify keeping `PremiumRow`/`SectionCard`/`MetricTile`
 /// opaque by default (see `app_kit.dart`) don't apply here. Using a
-/// simple, self-contained frosted panel for this one distinct "brand
-/// moment" — rather than pulling in the shared `GlassThemeData` tuned for
-/// the Material-themed app — is a deliberate, defensible choice, not an
-/// oversight.
+/// simple frosted panel for this one distinct "brand
+/// moment" is a deliberate, defensible choice, not an oversight.
 ///
 /// ## Do not use this outside Login/Onboarding
 ///
-/// This widget was previously named `GlassCard`, silently shadowing
-/// `package:liquid_glass_widgets`'s real `GlassCard` for anyone importing
-/// this file. It's kept here only for `login_screen.dart` and
+/// It's kept here only for `login_screen.dart` and
 /// `onboarding_screen.dart`; do not reach for it from any other screen —
-/// use the package's `GlassCard` (see `app_kit.dart`'s `SectionCard`/
+/// use `app_kit.dart`'s `GlassCard` (see `app_kit.dart`'s `SectionCard`/
 /// `MetricTile`/`PremiumRow` for the `glass: true` opt-in pattern) instead.
 class BrandFrostedPanel extends StatelessWidget {
   const BrandFrostedPanel({
@@ -290,11 +284,7 @@ class BrandFrostedPanel extends StatelessWidget {
     final radius = borderRadius ?? 24.0;
     // Reduce Transparency: MediaQuery.highContrastOf is the closest signal
     // Flutter exposes for iOS/Android's "reduce transparency" accessibility
-    // setting — the same proxy `liquid_glass_widgets` itself uses (see
-    // GlassAccessibilityData.reduceTransparency) to degrade its own glass
-    // shader to a solid frosted surface. This bespoke panel previously
-    // ignored that signal entirely; mirror the package's behavior instead
-    // of leaving a translucent panel that fights the user's chosen contrast.
+    // setting to degrade glass shaders to a solid frosted surface.
     return GlassCard(
       margin: EdgeInsets.zero,
       padding: padding,

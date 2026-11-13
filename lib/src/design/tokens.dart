@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:g1455/g1455.dart';
 
 abstract final class AppSpacing {
   /// Hairline gap, e.g. between a stacked title and its subtitle.
@@ -135,4 +136,48 @@ extension AppSemanticColors on ColorScheme {
   /// Attention / pending / partially-granted states. Mirrors the app's
   /// long-standing `MetricTone.warning` mapping.
   Color get warning => secondary;
+}
+
+/// Continuous superellipse shape standardizing iOS-style continuous curves.
+class GlassContinuousRectangle extends ContinuousRectangleBorder {
+  const GlassContinuousRectangle({
+    super.side,
+    super.borderRadius = const BorderRadius.all(Radius.circular(24)),
+  });
+}
+
+/// Typedef providing compatibility with iOS SmoothRectangleBorder superellipses.
+typedef SmoothRectangleBorder = ContinuousRectangleBorder;
+
+/// Calibrated liquid glass tokens powered by `g1455`.
+abstract final class AppGlassTokens {
+  /// Ultra-clean, translucent frost with subtle luminous specular edge highlights.
+  static final GlassFinish lightFinish = GlassFinish.regularLight.copyWith(
+    blurSigmaLogical: 6.0,
+    tint: const Color(0x33FFFFFF),
+    rim: kCalibratedRim,
+    optics: const GlassOptics(thickness: 24, strength: 2.8),
+  );
+
+  /// Deep space gray and true-black glass with subtle white rim lighting.
+  static final GlassFinish darkFinish = GlassFinish.regularDark.copyWith(
+    blurSigmaLogical: 8.0,
+    tint: const Color(0x66101318),
+    rim: kCalibratedRim,
+    optics: const GlassOptics(thickness: 24, strength: 2.8),
+  );
+
+  /// AMOLED mode true black glass with subtle white rim lighting.
+  static final GlassFinish amoledFinish = GlassFinish.regularDark.copyWith(
+    blurSigmaLogical: 6.0,
+    tint: const Color(0x88000000),
+    rim: kCalibratedRim,
+    optics: const GlassOptics(thickness: 24, strength: 2.8),
+  );
+
+  /// High diffusion frosted glass.
+  static const GlassFinish frostedFinish = GlassFinish.frosted;
+
+  /// Clear refractive glass without blur.
+  static const GlassFinish clearFinish = GlassFinish.clear;
 }

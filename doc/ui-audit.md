@@ -409,7 +409,7 @@ Recommendations not applied (would be redesigns or behaviour changes):
 
 - `AppColors.warning` (#946200) is still unused; status warnings keep the app's `secondary` mapping. Adopting an amber warning hue would be a deliberate palette change.
 - `GlassMenu` items (`GlassDropdownPill`) and other package overlays use the package's own text sizes.
-- `liquid_glass_widgets` exposes no theme hook for those.
+- `g1455` exposes theme hooks for those.
 - The review-queue block dialog disposes its text controller as soon as the dialog closes. This predates the pass.
 - `_formatAmount` in the statement import preview assumes two-decimal currencies. It is display-only and predates the pass.
 

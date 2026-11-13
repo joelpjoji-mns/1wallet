@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Comprehensive static audit test to identify all UI components across
-/// `lib/src` where liquid glass components (from `package:liquid_glass_widgets`
+/// `lib/src` where liquid glass components (from `package:g1455`
 /// or `app_kit.dart` glass primitives) are NOT being used where a liquid
 /// glass equivalent exists.
 void main() {
