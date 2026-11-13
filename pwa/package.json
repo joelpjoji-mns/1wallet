@@ -20,7 +20,7 @@
   },
   "devDependencies": {
     "@types/jsdom": "^30.0.0",
-    "@types/node": "^24.13.2",
+    "@types/node": "^26.6.6",
     "@types/pako": "^2.0.4",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
