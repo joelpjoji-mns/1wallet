@@ -66,6 +66,56 @@ jobs:
           flutter build apk --release --no-pub --target-platform android-arm64 --split-per-abi
           node scripts/validate-android-notification-resources.mjs --apk build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
 
+  bdd-specs:
+    name: BDD Executable Specifications
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Flutter dependencies
+        run: flutter pub get
+
+      - name: Write dummy environment
+        run: |
+          {
+            echo "EXPO_PUBLIC_FIREBASE_API_KEY=dummy"
+            echo "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=dummy"
+            echo "EXPO_PUBLIC_FIREBASE_PROJECT_ID=dummy"
+            echo "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=dummy"
+            echo "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=dummy"
+            echo "EXPO_PUBLIC_FIREBASE_APP_ID=dummy"
+            echo "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=dummy"
+            echo "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=dummy"
+            echo "EXPO_PUBLIC_FIREBASE_USE_EMULATOR=false"
+            echo "ONEWALLET_ENABLE_EMAIL_PASSWORD_AUTH=false"
+          } > .env
+          cp .env config.env
+
+      - name: Run BDD Executable Specs
+        run: flutter test test/bdd_suite_test.dart
+
+      - name: Publish BDD Gherkin Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bdd-gherkin-reports
+          path: build/reports/
+          retention-days: 14
+
   validate-pwa:
     name: PWA Lint, Typecheck, and Build
     runs-on: ubuntu-24.04
