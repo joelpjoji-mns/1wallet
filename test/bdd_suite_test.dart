@@ -22,12 +22,13 @@ void main() {
       return;
     }
 
-    final featureFiles = featuresDir
-        .listSync()
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.feature'))
-        .toList()
-      ..sort((a, b) => a.path.compareTo(b.path));
+    final featureFiles =
+        featuresDir
+            .listSync()
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.feature'))
+            .toList()
+          ..sort((a, b) => a.path.compareTo(b.path));
 
     for (final file in featureFiles) {
       final feature = BddParser.parseFile(file.path);

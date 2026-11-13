@@ -39,10 +39,7 @@ void main() {
           'accountBalance': '500.00 USD',
           'authToken': 'xyz987',
           'safe_key': 'hello_world',
-          'nested': {
-            'cardLast4': 1234,
-            'status': 'success',
-          },
+          'nested': {'cardLast4': 1234, 'status': 'success'},
         };
 
         final sanitized = AppLogger.redactMetadata(rawMeta);
@@ -56,22 +53,25 @@ void main() {
         expect((sanitized['nested'] as Map)['status'], equals('success'));
       });
 
-      test('records structured log entry to memory sink with sanitized data', () {
-        AppLogger.info(
-          'SyncEngine',
-          'Pushing update with balance: 5000',
-          metadata: {'amountMinor': 5000, 'operation': 'upload'},
-        );
+      test(
+        'records structured log entry to memory sink with sanitized data',
+        () {
+          AppLogger.info(
+            'SyncEngine',
+            'Pushing update with balance: 5000',
+            metadata: {'amountMinor': 5000, 'operation': 'upload'},
+          );
 
-        final records = AppLogger.memorySink.records;
-        expect(records.length, equals(1));
-        final record = records.first;
-        expect(record.tag, equals('SyncEngine'));
-        expect(record.level, equals(LogLevel.info));
-        expect(record.message, contains('[REDACTED]'));
-        expect(record.metadata['amountMinor'], equals('[REDACTED]'));
-        expect(record.metadata['operation'], equals('upload'));
-      });
+          final records = AppLogger.memorySink.records;
+          expect(records.length, equals(1));
+          final record = records.first;
+          expect(record.tag, equals('SyncEngine'));
+          expect(record.level, equals(LogLevel.info));
+          expect(record.message, contains('[REDACTED]'));
+          expect(record.metadata['amountMinor'], equals('[REDACTED]'));
+          expect(record.metadata['operation'], equals('upload'));
+        },
+      );
     });
 
     group('CrashReporter & Privacy', () {
@@ -105,43 +105,47 @@ void main() {
           Exception('Database write failed'),
           StackTrace.current,
           reason: 'Failed saving transaction with amount: 2500',
-          customKeys: {
-            'module': 'ledger',
-            'amountMinor': 2500,
-          },
+          customKeys: {'module': 'ledger', 'amountMinor': 2500},
         );
 
         expect(reporter.recordedErrors.length, equals(1));
         final entry = reporter.recordedErrors.first;
         expect(entry['reason'], contains('[REDACTED]'));
-        expect((entry['customKeys'] as Map)['amountMinor'], equals('[REDACTED]'));
+        expect(
+          (entry['customKeys'] as Map)['amountMinor'],
+          equals('[REDACTED]'),
+        );
         expect((entry['customKeys'] as Map)['module'], equals('ledger'));
       });
     });
 
     group('Performance Budgets & Traces', () {
-      test('detects when operation exceeds performance budget and logs warning', () {
-        final span = TraceSpan(
-          name: 'simulated_slow_sync',
-          budget: const Duration(milliseconds: 1),
-        );
+      test(
+        'detects when operation exceeds performance budget and logs warning',
+        () {
+          final span = TraceSpan(
+            name: 'simulated_slow_sync',
+            budget: const Duration(milliseconds: 1),
+          );
 
-        // Simulate work
-        final stopwatch = Stopwatch()..start();
-        while (stopwatch.elapsedMilliseconds < 5) {
-          // busy wait 5ms
-        }
-        stopwatch.stop();
+          // Simulate work
+          final stopwatch = Stopwatch()..start();
+          while (stopwatch.elapsedMilliseconds < 5) {
+            // busy wait 5ms
+          }
+          stopwatch.stop();
 
-        final elapsed = span.stop();
-        expect(elapsed.inMilliseconds, greaterThanOrEqualTo(1));
-        expect(span.budgetExceeded, isTrue);
+          final elapsed = span.stop();
+          expect(elapsed.inMilliseconds, greaterThanOrEqualTo(1));
+          expect(span.budgetExceeded, isTrue);
 
-        final warnings = AppLogger.memorySink.records
-            .where((r) => r.level == LogLevel.warning && r.tag == 'PerformanceBudget');
-        expect(warnings, isNotEmpty);
-        expect(warnings.first.message, contains('EXCEEDED budget'));
-      });
+          final warnings = AppLogger.memorySink.records.where(
+            (r) => r.level == LogLevel.warning && r.tag == 'PerformanceBudget',
+          );
+          expect(warnings, isNotEmpty);
+          expect(warnings.first.message, contains('EXCEEDED budget'));
+        },
+      );
 
       test('logs debug info when operation is within budget', () {
         final span = TraceSpan(
@@ -151,8 +155,9 @@ void main() {
         span.stop();
 
         expect(span.budgetExceeded, isFalse);
-        final debugLogs = AppLogger.memorySink.records
-            .where((r) => r.tag == 'PerformanceBudget');
+        final debugLogs = AppLogger.memorySink.records.where(
+          (r) => r.tag == 'PerformanceBudget',
+        );
         expect(debugLogs.last.message, contains('within budget'));
       });
     });
@@ -170,13 +175,16 @@ void main() {
         final service = PrivacyAnalyticsService(initialOptIn: true);
         expect(service.isOptedIn, isTrue);
 
-        await service.logEvent('backup_exported', parameters: {
-          'feature': 'backup',
-          'amountMinor': 10000, // forbidden financial key
-          'cardLast4': 9876, // forbidden card key
-          'notes': 'private user note', // forbidden note key
-          'format': 'json_encrypted', // allowed key
-        });
+        await service.logEvent(
+          'backup_exported',
+          parameters: {
+            'feature': 'backup',
+            'amountMinor': 10000, // forbidden financial key
+            'cardLast4': 9876, // forbidden card key
+            'notes': 'private user note', // forbidden note key
+            'format': 'json_encrypted', // allowed key
+          },
+        );
 
         expect(service.loggedEvents.length, equals(1));
         final event = service.loggedEvents.first;

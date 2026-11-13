@@ -2,25 +2,24 @@ import 'package:meta/meta.dart';
 
 @immutable
 class Money implements Comparable<Money> {
-  const Money({
-    required this.amountMinor,
-    required this.currency,
-  });
+  const Money({required this.amountMinor, required this.currency});
 
   /// Factory creating Money from integer major units (e.g. 100 USD -> 10000 minor units).
-  factory Money.fromMajor(int majorUnits, {required String currency, int decimals = 2}) {
+  factory Money.fromMajor(
+    int majorUnits, {
+    required String currency,
+    int decimals = 2,
+  }) {
     var multiplier = 1;
     for (var i = 0; i < decimals; i++) {
       multiplier *= 10;
     }
-    return Money(
-      amountMinor: majorUnits * multiplier,
-      currency: currency,
-    );
+    return Money(amountMinor: majorUnits * multiplier, currency: currency);
   }
 
   /// Zero money in given currency.
-  factory Money.zero(String currency) => Money(amountMinor: 0, currency: currency);
+  factory Money.zero(String currency) =>
+      Money(amountMinor: 0, currency: currency);
 
   final int amountMinor;
   final String currency;

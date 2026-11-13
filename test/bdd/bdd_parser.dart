@@ -82,11 +82,7 @@ class BddParser {
         }
 
         currentSteps.add(
-          BddStep(
-            type: effectiveType,
-            rawType: rawType,
-            text: stepText,
-          ),
+          BddStep(type: effectiveType, rawType: rawType, text: stepText),
         );
       } else if (currentScenarioName == null) {
         descriptionLines.add(line);

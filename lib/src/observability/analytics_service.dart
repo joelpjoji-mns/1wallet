@@ -7,7 +7,8 @@ abstract class AnalyticsService {
 }
 
 class PrivacyAnalyticsService implements AnalyticsService {
-  PrivacyAnalyticsService({bool initialOptIn = false}) : _optedIn = initialOptIn;
+  PrivacyAnalyticsService({bool initialOptIn = false})
+    : _optedIn = initialOptIn;
 
   bool _optedIn;
   final List<Map<String, dynamic>> loggedEvents = [];
@@ -25,14 +26,20 @@ class PrivacyAnalyticsService implements AnalyticsService {
   }
 
   static final _forbiddenParamPatterns = [
-    RegExp(r'(amount|balance|money|salary|income|expense)', caseSensitive: false),
+    RegExp(
+      r'(amount|balance|money|salary|income|expense)',
+      caseSensitive: false,
+    ),
     RegExp(r'(account_?num|card_?last4|iban|routing)', caseSensitive: false),
     RegExp(r'(notes?|memo|description|merchant|payee)', caseSensitive: false),
     RegExp(r'(token|auth|secret|password|pin)', caseSensitive: false),
   ];
 
   @override
-  Future<void> logEvent(String eventName, {Map<String, dynamic>? parameters}) async {
+  Future<void> logEvent(
+    String eventName, {
+    Map<String, dynamic>? parameters,
+  }) async {
     if (!_optedIn) {
       AppLogger.debug(
         'AnalyticsService',

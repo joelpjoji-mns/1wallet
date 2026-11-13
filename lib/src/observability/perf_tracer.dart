@@ -9,11 +9,8 @@ class PerformanceBudgets {
 }
 
 class TraceSpan {
-  TraceSpan({
-    required this.name,
-    this.budget,
-    this.onCompleted,
-  }) : _stopwatch = Stopwatch()..start();
+  TraceSpan({required this.name, this.budget, this.onCompleted})
+    : _stopwatch = Stopwatch()..start();
 
   final String name;
   final Duration? budget;
@@ -50,15 +47,14 @@ class TraceSpan {
         AppLogger.debug(
           'PerformanceBudget',
           'Trace "$name" within budget: ${durMs}ms <= ${budgetMs}ms',
-          metadata: {
-            'trace': name,
-            'durationMs': durMs,
-            'budgetMs': budgetMs,
-          },
+          metadata: {'trace': name, 'durationMs': durMs, 'budgetMs': budgetMs},
         );
       }
     } else {
-      AppLogger.debug('PerformanceTrace', 'Trace "$name" completed in ${durMs}ms');
+      AppLogger.debug(
+        'PerformanceTrace',
+        'Trace "$name" completed in ${durMs}ms',
+      );
     }
 
     onCompleted?.call(this);
@@ -103,6 +99,8 @@ class PerfTracer {
   static TraceSpan startCloudSyncTrace() =>
       instance.startTrace('cloud_sync', budget: PerformanceBudgets.cloudSync);
 
-  static TraceSpan startBackupEncryptionTrace() =>
-      instance.startTrace('backup_encryption', budget: PerformanceBudgets.backupEncryption);
+  static TraceSpan startBackupEncryptionTrace() => instance.startTrace(
+    'backup_encryption',
+    budget: PerformanceBudgets.backupEncryption,
+  );
 }

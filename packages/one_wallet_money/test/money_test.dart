@@ -10,18 +10,21 @@ void main() {
       expect(money.toDecimalString(), equals('10.50'));
     });
 
-    test('performs integer addition and subtraction without floating-point error', () {
-      const a = Money(amountMinor: 1000, currency: 'USD');
-      const b = Money(amountMinor: 250, currency: 'USD');
+    test(
+      'performs integer addition and subtraction without floating-point error',
+      () {
+        const a = Money(amountMinor: 1000, currency: 'USD');
+        const b = Money(amountMinor: 250, currency: 'USD');
 
-      final sum = a.add(b);
-      final diff = a.subtract(b);
+        final sum = a.add(b);
+        final diff = a.subtract(b);
 
-      expect(sum.amountMinor, equals(1250));
-      expect(diff.amountMinor, equals(750));
-      expect(sum.toDecimalString(), equals('12.50'));
-      expect(diff.toDecimalString(), equals('7.50'));
-    });
+        expect(sum.amountMinor, equals(1250));
+        expect(diff.amountMinor, equals(750));
+        expect(sum.toDecimalString(), equals('12.50'));
+        expect(diff.toDecimalString(), equals('7.50'));
+      },
+    );
 
     test('handles negative money correctly in integer arithmetic', () {
       const negative = Money(amountMinor: -4550, currency: 'EUR');

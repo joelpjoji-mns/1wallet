@@ -17,14 +17,14 @@ class StepExecutionRecord {
   final String? errorMessage;
 
   Map<String, dynamic> toJson() => {
-        'keyword': '$keyword ',
-        'name': name,
-        'result': {
-          'status': status,
-          'duration': durationNanos,
-          if (errorMessage != null) 'error_message': errorMessage,
-        },
-      };
+    'keyword': '$keyword ',
+    'name': name,
+    'result': {
+      'status': status,
+      'duration': durationNanos,
+      if (errorMessage != null) 'error_message': errorMessage,
+    },
+  };
 }
 
 class ScenarioExecutionRecord {
@@ -39,11 +39,11 @@ class ScenarioExecutionRecord {
   final String status;
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'type': 'scenario',
-        'keyword': 'Scenario',
-        'steps': steps.map((s) => s.toJson()).toList(),
-      };
+    'name': name,
+    'type': 'scenario',
+    'keyword': 'Scenario',
+    'steps': steps.map((s) => s.toJson()).toList(),
+  };
 }
 
 class FeatureExecutionRecord {
@@ -60,13 +60,13 @@ class FeatureExecutionRecord {
   final List<ScenarioExecutionRecord> scenarios;
 
   Map<String, dynamic> toJson() => {
-        'uri': uri,
-        'id': name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-'),
-        'name': name,
-        'description': description,
-        'keyword': 'Feature',
-        'elements': scenarios.map((s) => s.toJson()).toList(),
-      };
+    'uri': uri,
+    'id': name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-'),
+    'name': name,
+    'description': description,
+    'keyword': 'Feature',
+    'elements': scenarios.map((s) => s.toJson()).toList(),
+  };
 }
 
 class BddReporter {
@@ -83,8 +83,9 @@ class BddReporter {
     }
 
     final jsonFile = File('${dir.path}/bdd_report.json');
-    final jsonContent =
-        const JsonEncoder.withIndent('  ').convert(features.map((f) => f.toJson()).toList());
+    final jsonContent = const JsonEncoder.withIndent(
+      '  ',
+    ).convert(features.map((f) => f.toJson()).toList());
     jsonFile.writeAsStringSync(jsonContent);
 
     final summaryFile = File('${dir.path}/bdd_summary.txt');
@@ -131,8 +132,12 @@ class BddReporter {
     }
 
     buffer.writeln('----------------------------------------------------');
-    buffer.writeln('Scenarios: $passedScenarios passed, $failedScenarios failed, $totalScenarios total');
-    buffer.writeln('Steps:     $passedSteps passed, $failedSteps failed, $totalSteps total');
+    buffer.writeln(
+      'Scenarios: $passedScenarios passed, $failedScenarios failed, $totalScenarios total',
+    );
+    buffer.writeln(
+      'Steps:     $passedSteps passed, $failedSteps failed, $totalSteps total',
+    );
     buffer.writeln('Status:    ${failedScenarios == 0 ? "PASSED" : "FAILED"}');
     buffer.writeln('====================================================');
 
