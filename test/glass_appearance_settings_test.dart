@@ -21,14 +21,22 @@ void main() {
   });
 
   group('Glass intensity preferences model & codec', () {
-    test('default preferences have medium intensity and standard values', () {
+    test('default preferences have clear finish, medium intensity and standard values', () {
       const prefs = LedgerPreferences();
+      expect(prefs.glassFinish, AppGlassFinish.clear);
       expect(prefs.glassIntensity, GlassIntensity.medium);
       expect(prefs.glassBlurLevel, 9.0);
       expect(prefs.glassBackgroundOpacity, 0.15);
       expect(prefs.glassRefractionLevel, 1.0);
       expect(prefs.glassInteractionStrength, 0.35);
       expect(prefs.glassSpecularOpacity, 1.0);
+    });
+
+    test('withGlassFinish updates glass finish to regular, clear, and frosted', () {
+      const base = LedgerPreferences();
+      expect(base.withGlassFinish(AppGlassFinish.regular).glassFinish, AppGlassFinish.regular);
+      expect(base.withGlassFinish(AppGlassFinish.clear).glassFinish, AppGlassFinish.clear);
+      expect(base.withGlassFinish(AppGlassFinish.frosted).glassFinish, AppGlassFinish.frosted);
     });
 
     test(
@@ -62,16 +70,17 @@ void main() {
       },
     );
 
-    test('LedgerCodec round-trips glassIntensity', () {
+    test('LedgerCodec round-trips glassIntensity and glassFinish', () {
       final initial = emptyLedgerState().copyWith(
-        preferences: const LedgerPreferences().withGlassIntensity(
-          GlassIntensity.heavy,
-        ),
+        preferences: const LedgerPreferences()
+            .withGlassIntensity(GlassIntensity.heavy)
+            .withGlassFinish(AppGlassFinish.frosted),
       );
       final json = encodeLedgerState(initial);
       final decoded = decodeLedgerState(json);
 
       expect(decoded.preferences.glassIntensity, GlassIntensity.heavy);
+      expect(decoded.preferences.glassFinish, AppGlassFinish.frosted);
       expect(decoded.preferences.glassBlurLevel, 16.0);
       expect(decoded.preferences.glassBackgroundOpacity, 0.28);
     });
@@ -140,13 +149,18 @@ void main() {
         // Section and tile should exist
         expect(find.text('Glass appearance'), findsOneWidget);
         expect(find.text('Glass effect'), findsOneWidget);
-        expect(find.text('Medium'), findsOneWidget);
+        expect(find.textContaining('Medium'), findsOneWidget);
 
-        // Tap to open picker
+        // Tap to open glass effect options and live preview screen
         await tester.tap(find.text('Glass effect'));
         await tester.pumpAndSettle();
 
-        // Picker options should be present
+        // Finish options should be present
+        expect(find.text('Clear'), findsWidgets);
+        expect(find.text('Regular'), findsWidgets);
+        expect(find.text('Frosted'), findsWidgets);
+
+        // Intensity options should be present
         expect(find.text('Light'), findsOneWidget);
         expect(
           find.text('Subtle frosted surface with soft blur and low opacity'),
@@ -163,7 +177,17 @@ void main() {
           findsOneWidget,
         );
 
-        // Select 'Heavy'
+        // Select 'Regular' finish
+        await tester.tap(find.text('Regular'));
+        await tester.pumpAndSettle();
+        expect(
+          container.read(ledgerProvider).preferences.glassFinish,
+          AppGlassFinish.regular,
+        );
+
+        // Scroll to 'Heavy' intensity and select it
+        await tester.scrollUntilVisible(find.text('Heavy'), 200);
+        await tester.pumpAndSettle();
         await tester.tap(find.text('Heavy'));
         await tester.pumpAndSettle();
 
@@ -174,8 +198,8 @@ void main() {
         );
         expect(container.read(ledgerProvider).preferences.glassBlurLevel, 16.0);
 
-        // Screen subtitle should update to Heavy
-        expect(find.text('Heavy'), findsOneWidget);
+        // Allow auto-backup debounce timer to finish
+        await tester.pump(const Duration(milliseconds: 600));
       },
     );
   });

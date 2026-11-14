@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart' as foundation;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:g1455/g1455.dart' as g1455;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -26,6 +27,33 @@ import 'backup_codec.dart';
 
 const _ledgerStorageKey = 'one_wallet_flutter.ledger.v1';
 const _lastActiveUserIdKey = 'last_active_user_id';
+
+/// System-wide liquid glass finish derived from user preferences and theme appearance.
+final glassFinishProvider = Provider<g1455.GlassFinish>((ref) {
+  final prefs = ref.watch(ledgerProvider.select((s) => s.preferences));
+  final finishPref = prefs.glassFinish;
+  final themeState = ref.watch(themeControllerProvider);
+  final isDark = themeState.preference != AppThemePreference.light;
+  final blur = finishPref.blurForIntensity(prefs.glassIntensity);
+  final fillAlpha = finishPref.backgroundOpacity(
+    intensity: prefs.glassIntensity,
+    isDark: isDark,
+  );
+
+  return switch (finishPref) {
+    AppGlassFinish.regular => g1455.GlassFinish.regular(
+        appearance: isDark ? Brightness.dark : Brightness.light,
+      ).copyWith(blurSigmaLogical: blur),
+    AppGlassFinish.clear => g1455.GlassFinish.clear.copyWith(
+        blurSigmaLogical: 0.0,
+        tint: Color.fromRGBO(255, 255, 255, fillAlpha),
+      ),
+    AppGlassFinish.frosted => g1455.GlassFinish.frosted.copyWith(
+        blurSigmaLogical: blur,
+        tint: Color.fromRGBO(255, 255, 255, fillAlpha),
+      ),
+  };
+});
 
 @immutable
 class LedgerUserIdentity {

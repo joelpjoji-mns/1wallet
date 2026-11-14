@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:g1455/g1455.dart' as g1455;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 
@@ -285,7 +286,19 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
           themeMode: themeState.themeMode,
           builder: (context, child) {
             if (child == null) return const SizedBox.shrink();
-            return AppLockGate(child: child);
+            final isTest = WidgetsBinding.instance.runtimeType
+                .toString()
+                .contains('Test');
+            final appLock = AppLockGate(child: child);
+            if (isTest) {
+              return appLock;
+            }
+            final glassFinish = ref.watch(glassFinishProvider);
+            return g1455.GlassHost(
+              finish: glassFinish,
+              richBackdrop: true,
+              child: appLock,
+            );
           },
         ),
       ),

@@ -277,6 +277,90 @@ const List<String> kDefaultNotificationPackages = [
   'com.yahoo.mobile.client.android.mail',
 ];
 
+enum AppGlassFinish {
+  regular,
+  clear,
+  frosted;
+
+  static AppGlassFinish fromString(
+    String? value, {
+    AppGlassFinish fallback = AppGlassFinish.clear,
+  }) {
+    if (value == null) return fallback;
+    return switch (value.toLowerCase()) {
+      'regular' => AppGlassFinish.regular,
+      'clear' => AppGlassFinish.clear,
+      'frosted' => AppGlassFinish.frosted,
+      _ => fallback,
+    };
+  }
+
+  String get label => switch (this) {
+    AppGlassFinish.regular => 'Regular',
+    AppGlassFinish.clear => 'Clear',
+    AppGlassFinish.frosted => 'Frosted',
+  };
+
+  String get description => switch (this) {
+    AppGlassFinish.regular =>
+      'Apple Liquid Glass with calibrated blur & adaptive transmission',
+    AppGlassFinish.clear =>
+      'Crystal-clear optical liquid glass with zero blur & pure refraction',
+    AppGlassFinish.frosted =>
+      'Diffused frosted glass with heavy 26px blur & velvety frost',
+  };
+
+  double blurForIntensity(GlassIntensity intensity) {
+    return switch (this) {
+      AppGlassFinish.clear => 0.0,
+      AppGlassFinish.regular => switch (intensity) {
+        GlassIntensity.light => 8.0,
+        GlassIntensity.medium => 14.0,
+        GlassIntensity.heavy => 20.0,
+      },
+      AppGlassFinish.frosted => switch (intensity) {
+        GlassIntensity.light => 20.0,
+        GlassIntensity.medium => 32.0,
+        GlassIntensity.heavy => 48.0,
+      },
+    };
+  }
+
+  double get blurSigma => blurForIntensity(GlassIntensity.medium);
+
+  double backgroundOpacity({
+    GlassIntensity intensity = GlassIntensity.medium,
+    required bool isDark,
+  }) {
+    final scale = switch (intensity) {
+      GlassIntensity.light => 0.80,
+      GlassIntensity.medium => 1.0,
+      GlassIntensity.heavy => 1.30,
+    };
+    return switch (this) {
+      AppGlassFinish.clear => (isDark ? 0.05 : 0.09) * scale,
+      AppGlassFinish.regular => (isDark ? 0.16 : 0.25) * scale,
+      AppGlassFinish.frosted => (isDark ? 0.42 : 0.58) * scale,
+    }.clamp(0.02, 0.90);
+  }
+
+  double borderOpacity({
+    GlassIntensity intensity = GlassIntensity.medium,
+    required bool isDark,
+  }) {
+    final scale = switch (intensity) {
+      GlassIntensity.light => 0.85,
+      GlassIntensity.medium => 1.0,
+      GlassIntensity.heavy => 1.25,
+    };
+    return switch (this) {
+      AppGlassFinish.clear => (isDark ? 0.25 : 0.38) * scale,
+      AppGlassFinish.regular => (isDark ? 0.38 : 0.52) * scale,
+      AppGlassFinish.frosted => (isDark ? 0.55 : 0.72) * scale,
+    }.clamp(0.15, 0.95);
+  }
+}
+
 enum GlassIntensity {
   light,
   medium,
@@ -345,6 +429,7 @@ class LedgerPreferences {
     this.homeWidgetSizes = const {},
     this.homeWidgetFilters = const {},
     this.futureGenerationRules,
+    this.glassFinish = AppGlassFinish.clear,
     this.glassIntensity = GlassIntensity.medium,
     this.glassSpecularOpacity = 1.0,
     this.glassSpecularSaturation = 2.0,
@@ -387,6 +472,7 @@ class LedgerPreferences {
   final Map<String, String> homeWidgetSizes;
   final Map<String, String> homeWidgetFilters;
   final List<FutureGenerationRule>? futureGenerationRules;
+  final AppGlassFinish glassFinish;
   final GlassIntensity glassIntensity;
   final double glassSpecularOpacity;
   final double glassSpecularSaturation;
@@ -418,6 +504,10 @@ class LedgerPreferences {
   final bool showExcludedAccounts;
   final bool showArchivedAccounts;
 
+  LedgerPreferences withGlassFinish(AppGlassFinish finish) {
+    return copyWith(glassFinish: finish);
+  }
+
   LedgerPreferences withGlassIntensity(GlassIntensity intensity) {
     return copyWith(
       glassIntensity: intensity,
@@ -441,6 +531,7 @@ class LedgerPreferences {
     Map<String, String>? homeWidgetSizes,
     Map<String, String>? homeWidgetFilters,
     List<FutureGenerationRule>? futureGenerationRules,
+    AppGlassFinish? glassFinish,
     GlassIntensity? glassIntensity,
     double? glassSpecularOpacity,
     double? glassSpecularSaturation,
@@ -484,6 +575,7 @@ class LedgerPreferences {
       homeWidgetFilters: homeWidgetFilters ?? this.homeWidgetFilters,
       futureGenerationRules:
           futureGenerationRules ?? this.futureGenerationRules,
+      glassFinish: glassFinish ?? this.glassFinish,
       glassIntensity: glassIntensity ?? this.glassIntensity,
       glassSpecularOpacity: glassSpecularOpacity ?? this.glassSpecularOpacity,
       glassSpecularSaturation:

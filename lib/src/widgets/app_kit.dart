@@ -1,6 +1,8 @@
+import 'dart:ui' as ui;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:g1455/g1455.dart' as g1455;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../design/tokens.dart';
@@ -418,35 +420,94 @@ class IslandFloatingActionButton extends StatelessWidget {
     required this.onPressed,
     super.key,
     this.tooltip,
+    this.finish,
   });
 
   final IconData icon;
   final VoidCallback onPressed;
   final String? tooltip;
+  final g1455.GlassFinish? finish;
 
   @override
   Widget build(BuildContext context) {
-    final glassTheme = GlassThemeData.of(context);
-    final interaction = glassTheme.interaction;
-    final glassSettings = glassTheme
-        .settingsFor(context)
-        ?.applyTo(const LiquidGlassSettings());
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    Widget button = GlassButton(
-      icon: Icon(icon),
-      label: tooltip ?? 'Action',
-      onTap: onPressed,
-      width: 64,
-      height: 64,
-      iconSize: 30,
-      iconColor: Theme.of(context).colorScheme.primary,
-      settings: glassSettings,
-      useOwnLayer: true,
-      quality: GlassQuality.standard,
-      stretch: interaction.stretch ?? 0.5,
-      interactionScale: interaction.interactionScale ?? 1.15,
-      resistance: interaction.resistance ?? 0.01,
+    final primaryAccent = scheme.primary;
+    final brightPrimary = isDark
+        ? (ThemeData.estimateBrightnessForColor(primaryAccent) == Brightness.dark
+            ? Color.lerp(primaryAccent, Colors.white, 0.40)!
+            : (primaryAccent.computeLuminance() < 0.35
+                ? Color.lerp(primaryAccent, Colors.white, 0.35)!
+                : primaryAccent))
+        : primaryAccent;
+
+    final blur = finish?.blurSigmaLogical ?? 0.0;
+    final finishName = finish?.name.toLowerCase() ?? 'clear';
+    final isFrosted = finishName.contains('frosted') || blur >= 20.0;
+    final isClear = finishName.contains('clear') || blur == 0.0;
+    final isRegular = !isFrosted && !isClear;
+
+    final primaryAlphaTop = isFrosted
+        ? (isDark ? 0.90 : 0.92)
+        : (isRegular ? (isDark ? 0.78 : 0.82) : (isDark ? 0.65 : 0.70));
+    final primaryAlphaBottom = isFrosted
+        ? (isDark ? 0.70 : 0.75)
+        : (isRegular ? (isDark ? 0.52 : 0.58) : (isDark ? 0.38 : 0.45));
+
+    Widget button = g1455.GlassSurface(
+      borderRadius: BorderRadius.circular(32),
+      finish: finish ?? g1455.GlassFinish.clear,
+      labelled: false,
+      child: Container(
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              brightPrimary.withAlphaFactor(primaryAlphaTop),
+              brightPrimary.withAlphaFactor(primaryAlphaBottom),
+            ],
+          ),
+          border: Border.all(
+            color: Colors.white.withAlphaFactor(isDark ? 0.35 : 0.55),
+            width: 1.1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: brightPrimary.withAlphaFactor(isDark ? 0.30 : 0.20),
+              blurRadius: 16,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: GlassButton(
+          icon: Icon(icon, color: Colors.white, size: 30),
+          label: tooltip ?? 'Action',
+          onTap: onPressed,
+          width: 64,
+          height: 64,
+          iconSize: 30,
+          iconColor: scheme.primary,
+          useOwnLayer: false,
+          style: GlassButtonStyle.transparent,
+          quality: GlassQuality.minimal,
+          shape: const LiquidOval(),
+        ),
+      ),
     );
+
+    if (blur > 0.0) {
+      button = ClipOval(
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+          child: button,
+        ),
+      );
+    }
 
     final tooltipMessage = tooltip;
     if (tooltipMessage != null && tooltipMessage.isNotEmpty) {
@@ -494,7 +555,7 @@ class AppHeader extends StatelessWidget {
     );
 
     return GlassIsolationScope(
-      defaultQuality: GlassQuality.premium,
+      defaultQuality: GlassQuality.standard,
       child: onMenuPressed != null
           ? RightSwipeToOpenDrawer(onOpenDrawer: onMenuPressed!, child: header)
           : header,

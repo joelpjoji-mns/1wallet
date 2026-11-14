@@ -18,6 +18,7 @@ import 'account_deletion_controller.dart';
 import 'offline_mode_section.dart';
 import 'permission_setup_controller.dart';
 import 'settings_components.dart';
+import 'glass_effect_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -156,15 +157,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         leading: const Icon(Icons.opacity_outlined),
                         title: const Text('Glass effect'),
                         subtitle: Text(
-                          _glassIntensityLabel(
-                            state.preferences.glassIntensity,
-                          ),
+                          '${state.preferences.glassFinish.label} · ${_glassIntensityLabel(state.preferences.glassIntensity)}',
                         ),
                         showChevron: true,
-                        onTap: () => _showGlassIntensityPicker(
-                          ref,
-                          state.preferences.glassIntensity,
-                        ),
+                        onTap: () {
+                          if (GoRouter.maybeOf(context) != null) {
+                            context.push('/settings/glass');
+                          } else {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const GlassEffectScreen(),
+                              ),
+                            );
+                          }
+                        },
                       ),
                     ],
                   ),
@@ -516,44 +522,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       'en_GB' => 'English (United Kingdom)',
       _ => locale,
     };
-  }
-
-  Future<void> _showGlassIntensityPicker(
-    WidgetRef ref,
-    GlassIntensity selected,
-  ) async {
-    final next = await showFullScreenPicker<GlassIntensity>(
-      context: context,
-      title: 'Glass effect',
-      searchable: false,
-      selectedValue: selected,
-      options: const [
-        PickerOption(
-          value: GlassIntensity.light,
-          title: 'Light',
-          subtitle: 'Subtle frosted surface with soft blur and low opacity',
-          icon: Icons.blur_off_outlined,
-        ),
-        PickerOption(
-          value: GlassIntensity.medium,
-          title: 'Medium',
-          subtitle: 'Balanced liquid glass with standard blur and refraction',
-          icon: Icons.blur_linear_outlined,
-        ),
-        PickerOption(
-          value: GlassIntensity.heavy,
-          title: 'Heavy',
-          subtitle: 'Strong frosted glass with deeper blur and opacity',
-          icon: Icons.blur_on_outlined,
-        ),
-      ],
-    );
-    if (next == null) return;
-    ref
-        .read(ledgerProvider.notifier)
-        .updatePreferencesWith((live) => live.withGlassIntensity(next));
-    if (!mounted) return;
-    _showMessage('Glass appearance updated.');
   }
 
   String _glassIntensityLabel(GlassIntensity intensity) {

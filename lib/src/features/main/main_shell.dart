@@ -237,18 +237,21 @@ class _MainShellState extends ConsumerState<MainShell>
           ];
 
           final homeReordering = ref.watch(homeWidgetReorderModeProvider);
+          final glassFinish = ref.watch(glassFinishProvider);
           final showAction = selectedIndex != 0 || !homeReordering;
           final action = selectedIndex == 3
               ? IslandFloatingActionButton(
                   key: const ValueKey('add-account-action'),
                   icon: Icons.add_rounded,
                   tooltip: 'Add account',
+                  finish: glassFinish,
                   onPressed: () => context.push('/account/new'),
                 )
               : IslandFloatingActionButton(
                   key: const ValueKey('add-record-action'),
                   icon: Icons.add_rounded,
                   tooltip: 'Add record',
+                  finish: glassFinish,
                   onPressed: () {
                     if (selectedIndex == 0) {
                       final accountId = ref.read(homeSelectedAccountProvider);
@@ -280,6 +283,8 @@ class _MainShellState extends ConsumerState<MainShell>
                     onSelected: _selectTab,
                     action: showAction ? action : null,
                     compactAction: selectedIndex == 2,
+                    pageController: _pageController,
+                    finish: glassFinish,
                   ),
                 ),
               ),

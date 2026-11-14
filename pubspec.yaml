@@ -70,6 +70,7 @@ dependencies:
   web: ^1.1.2
   liquid_glass_widgets: ^1.7.2
   home_widget: ^0.10.0
+  g1455: 0.4.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

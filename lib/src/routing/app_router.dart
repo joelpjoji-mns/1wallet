@@ -16,6 +16,7 @@ import '../startup/startup_state.dart';
 import '../auth/auth_controller.dart';
 import '../widgets/app_glass_page.dart';
 import '../features/settings/account_deletion_screen.dart';
+import '../features/settings/glass_effect_screen.dart';
 
 class _RouterRefreshNotifier extends ChangeNotifier {
   void notify() => notifyListeners();
@@ -246,6 +247,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AppGlassPage(
           child: DrawerConfig(hasDrawer: true, child: SettingsScreen()),
         ),
+      ),
+      GoRoute(
+        path: '/settings/glass',
+        builder: (context, state) =>
+            const AppGlassPage(child: GlassEffectScreen()),
       ),
       GoRoute(
         path: '/recurring',

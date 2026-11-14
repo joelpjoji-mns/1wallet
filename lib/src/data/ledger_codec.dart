@@ -251,6 +251,7 @@ Map<String, Object?> _preferencesToJson(LedgerPreferences preferences) {
       'futureGenerationRules': preferences.futureGenerationRules!
           .map(_ruleToJson)
           .toList(),
+    'glassFinish': preferences.glassFinish.name,
     'glassIntensity': preferences.glassIntensity.name,
     'glassSpecularOpacity': preferences.glassSpecularOpacity,
     'glassSpecularSaturation': preferences.glassSpecularSaturation,
@@ -337,6 +338,12 @@ LedgerPreferences _preferencesFromJson(Map<String, dynamic> json) {
               .map(_ruleFromJson)
               .toList()
         : null,
+    glassFinish: json['glassFinish'] != null
+        ? AppGlassFinish.fromString(
+            json['glassFinish'] as String?,
+            fallback: fallback.glassFinish,
+          )
+        : fallback.glassFinish,
     glassIntensity: json['glassIntensity'] != null
         ? GlassIntensity.fromString(
             json['glassIntensity'] as String?,

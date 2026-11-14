@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:g1455/g1455.dart' as g1455;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -19,6 +20,7 @@ Future<void> main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: binding);
   final glassWarmup = LiquidGlassWidgets.initialize();
+  final g1455Warmup = g1455.GlassHost.precache();
   final sharedPreferencesWarmup = SharedPreferences.getInstance();
   final dateFormattingWarmup = initializeDateFormatting();
   unawaited(NotificationService.initialize());
@@ -47,7 +49,11 @@ Future<void> main() async {
   if (firebaseProjectId != null) {
     unawaited(prefs.setString('firebase_project_id', firebaseProjectId));
   }
-  await Future.wait([dateFormattingWarmup, glassWarmup]);
+  await Future.wait([
+    dateFormattingWarmup,
+    glassWarmup,
+    g1455Warmup,
+  ]);
   runApp(
     ProviderScope(
       overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
