@@ -1,0 +1,520 @@
+// The tab bar: a selection that lifts into a clear drop over the bar's own
+// glass — glass on glass — and what that costs the capture.
+//
+// `flutter test test/glass_tab_bar_test.dart`
+//
+// Breaks, each undone by swapping the string back:
+//  - in `_GlassTabBarState._onUp`, `: _pressed;` -> `: _at.value.round();`: a
+//    quick tap lands on the item the drop has reached, not the one pressed,
+//    and the tap arm selects the wrong one;
+//  - in `_TabGeometry.margin`, `+ reach.height` -> `+ 0`: the drop squashed
+//    arriving at the last item stands out of its region above and below, and
+//    the spring arm says so. (`+ reach.width` -> `+ 0` breaks nothing at the
+//    defaults: the bar's own growth leaves 3.5 px spare at the ends, more than
+//    the stretch a spring launch reaches.)
+//  - in `_GlassTabBarState._bar`, dropping `clipBehavior: Clip.none` from the
+//    outer `Stack`: wherever the bar's snapped growth does not land on a whole
+//    device pixel the bar leaves its own box, the `Stack` clips, and the drop
+//    loses its top and bottom. The arms at 1, 2.625 and 3 say so at rest; the
+//    one at 4 says so only through the lift, where the growth moves; at 2 it
+//    never happens, which is why the rest of this file missed it.
+//  - in `_GlassTabBarState._onUp`, drop `_hideViewer();`: the viewer arm
+//    finds the large content viewer still up after the finger lifted;
+//    `glassTextScale(context) < kGlassAccessibleTextScale || ` dropped from
+//    `_showViewer`: it finds one at the default size; `_under.value = …`
+//    dropped from `_onMove`: it names the item the finger left;
+//    `reverseDuration: _kViewerOut` -> `_kViewerIn`: it goes at once.
+//
+// The mechanisms the cost arms lean on — the drop as a level of its own, and
+// the watch over what the bar bears — are `GlassHost`'s, and their breaks are
+// in `glass_stack_test.dart`. Two mechanisms that look necessary are not, and
+// the package has neither: a repaint boundary around the drop's stage, and
+// watching where the bar actually is — removing either broke nothing.
+
+import 'dart:math' as math;
+import 'dart:ui' show Tristate;
+
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:g1455/g1455.dart';
+import 'package:g1455/glass_diagnostics.dart';
+import 'package:g1455/src/proxy/proxy_pipeline.dart' show GlassProxyFrame;
+
+const Size kScreen = Size(400, 400);
+
+/// The bar's box on the screen: 300 wide is a phone's layout, icon over label.
+const Rect kBar = Rect.fromLTWH(50, 300, 300, 60);
+
+/// Item [i]'s centre on the screen, by the layout read off the phone: 7 in
+/// from the ends, four items.
+Offset _item(double i) => Offset(kBar.left + 7 + (300 - 14) / 4 * (i + 0.5), kBar.center.dy);
+
+void main() {
+  testWidgets('at rest the drop costs the capture nothing, and no level is stacked', (
+    WidgetTester tester,
+  ) async {
+    await _mount(tester);
+    final GlassProxyHandle handle = _handle(tester);
+    expect(handle.frame!.keys, hasLength(1), reason: 'only the bar reads the backdrop');
+    expect(handle.upper.whereType<GlassProxyFrame>(), isEmpty, reason: 'a resting drop was stacked');
+    expect(_drop(tester).materialize, 0);
+  });
+
+  testWidgets('at an accessibility text size, a press shows the item large in the middle, as iOS does', (
+    WidgetTester tester,
+  ) async {
+    // Spike 38, iOS 26.5's `UITabBarController` at its largest text size: the
+    // labels stay at the default size, and a touch on an item puts it up in a
+    // 220 pt square in the middle of the screen, which follows the finger and
+    // goes once it lifts — the lift selects, as always.
+    Finder viewer() => find.byWidgetPredicate(
+      (Widget w) => w is GlassSurface && w.finish?.name == GlassFinish.frosted.name,
+    );
+    final GlobalKey hostKey = GlobalKey();
+    final selected = <int>[];
+    await _mount(tester, hostKey: hostKey, onSelected: selected.add, textScale: 2, overlay: true);
+    final dynamic host = hostKey.currentState! as dynamic;
+    expect(viewer(), findsNothing);
+    final TestGesture gesture = await tester.startGesture(_item(1));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(viewer(), findsOneWidget, reason: 'no viewer on the touch');
+    final Rect box = tester.getRect(viewer());
+    expect(box.size, const Size(220, 220));
+    expect(box.center, kScreen.center(Offset.zero));
+    expect(tester.renderObject<RenderGlassSurface>(viewer()).materialize, 1);
+    expect(find.descendant(of: viewer(), matching: find.text('Search')), findsOneWidget);
+    expect(
+      tester.getSize(find.descendant(of: viewer(), matching: find.text('Search'))).height,
+      greaterThan(2.5 * tester.getSize(find.text('Home')).height),
+      reason: 'the title is not large',
+    );
+    // Held still once the drop has lifted, the viewer costs no capture.
+    await tester.pump(const Duration(seconds: 1));
+    final int recorded = host.recorded as int;
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(host.recorded, recorded, reason: 'a still viewer is retaken');
+    // Slid to the last item, it names that one.
+    await gesture.moveTo(_item(3));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.descendant(of: viewer(), matching: find.text('Profile')), findsOneWidget);
+    await gesture.up();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(viewer(), findsOneWidget, reason: 'the viewer went at once, not over half a second');
+    await tester.pumpAndSettle();
+    expect(viewer(), findsNothing);
+    expect(selected, <int>[3]);
+
+    // At the default size and at iOS's largest standard one, no viewer; and
+    // none without an overlay to put it in, where the press still selects.
+    for (final (double scale, bool overlay) in <(double, bool)>[(1, true), (1.35, true), (2, false)]) {
+      selected.clear();
+      await _mount(tester, onSelected: selected.add, textScale: scale, overlay: overlay);
+      final TestGesture press = await tester.startGesture(_item(2));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(viewer(), findsNothing, reason: 'at ${scale}x${overlay ? '' : ' with no overlay'}');
+      await press.up();
+      await tester.pumpAndSettle();
+      expect(selected, <int>[2]);
+    }
+  });
+
+  testWidgets('held, the drop is glass on the bar; dragged within an item, nothing is retaken', (
+    WidgetTester tester,
+  ) async {
+    final GlobalKey hostKey = GlobalKey();
+    final selected = <int>[];
+    await _mount(tester, hostKey: hostKey, onSelected: selected.add);
+    final dynamic host = hostKey.currentState! as dynamic;
+
+    final TestGesture gesture = await tester.startGesture(_item(0));
+    // Every frame the bar under the drop changes size is a frame the drop
+    // shows another bar, and has to be recorded — including the spring's
+    // overshoot, after the capsule has gone and nothing else changes.
+    final RenderGlassSurface bar = _bar(tester);
+    Rect barWas = bar.globalRect;
+    int recordedWas = host.recorded as int;
+    var grew = 0;
+    var unseen = 0;
+    for (var i = 0; i < 40; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      final int recorded = host.recorded as int;
+      if (bar.globalRect != barWas && _drop(tester).materialize > 0) {
+        grew++;
+        if (recorded == recordedWas) {
+          unseen++;
+        }
+      }
+      barWas = bar.globalRect;
+      recordedWas = recorded;
+    }
+    expect(grew, greaterThan(3), reason: 'the bar did not grow under the drop');
+    expect(unseen, 0, reason: 'the bar changed size under the drop and the drop was not retaken');
+    final RenderGlassSurface drop = _drop(tester);
+    expect(drop.materialize, 1, reason: 'the drop never lifted');
+    final GlassProxyHandle handle = _handle(tester);
+    expect(handle.frame!.keys, hasLength(1), reason: 'the drop was captured with the backdrop, under the bar');
+    final GlassProxyFrame? upper = handle.upper.whereType<GlassProxyFrame>().firstOrNull;
+    expect(upper, isNotNull, reason: 'the drop is not a level above the bar');
+    expect(upper!.keys, contains(drop), reason: 'the stacked level is not the drop');
+    expect(drop.size.width, closeTo((300 - 14) / 4 + 7 + 2 * kGlassTabDropGrow, 0.05));
+    expect(drop.size.height, closeTo(53 + 2 * kGlassTabDropGrow, 0.05));
+
+    // Within the first item: the drop moves, the highlight does not change,
+    // and so nothing under any glass changes.
+    // And it stretches and squashes as it goes — inside its region, so that
+    // is not a capture either.
+    final int lifted = host.recorded as int;
+    final Size held = drop.size;
+    var moved = 0;
+    var deformed = 0;
+    Rect where = drop.globalRect;
+    for (final double dx in <double>[8, 6, 6, -4, -6, 5]) {
+      await gesture.moveBy(Offset(dx, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+      if (drop.globalRect != where) {
+        moved++;
+        where = drop.globalRect;
+      }
+      if (drop.size != held) {
+        deformed++;
+      }
+    }
+    expect(moved, 6, reason: 'the drop did not follow the finger');
+    expect(deformed, greaterThan(0), reason: 'the drop did not stretch as it moved');
+    expect((host.recorded as int) - lifted, 0, reason: 'moving the drop inside one item retook the proxy');
+    expect(_iconColour(tester, Icons.home), const Color(0xFF007AFF));
+
+    // Into the third: the highlight moves, which is a change under the drop.
+    await gesture.moveTo(_item(2));
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect((host.recorded as int) - lifted, greaterThan(0), reason: 'the highlight changed under the drop unseen');
+    expect(_iconColour(tester, Icons.favorite), const Color(0xFF007AFF));
+    expect(_iconColour(tester, Icons.home), isNot(const Color(0xFF007AFF)));
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(selected, <int>[2]);
+    expect(_drop(tester).materialize, 0, reason: 'the drop did not settle');
+    expect(_handle(tester).upper.whereType<GlassProxyFrame>(), isEmpty, reason: 'the settled drop is still stacked');
+  });
+
+  testWidgets('pressed on a far tab, the drop springs there: long setting off, short arriving, round on it', (
+    WidgetTester tester,
+  ) async {
+    for (final GlassDropMotion? motion in <GlassDropMotion?>[null, GlassDropMotion.none]) {
+      await _mount(tester, dropMotion: motion);
+      final TestGesture gesture = await tester.startGesture(_item(3));
+      final RenderGlassSurface drop = _drop(tester);
+      final drawn = <double>[];
+      for (var i = 0; i < 60; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        final Rect region = drop.travel!.globalRect!;
+        expect(
+          region.expandToInclude(drop.globalRect) == region,
+          isTrue,
+          reason: '$motion, frame $i: the drop left its region: ${drop.globalRect} in $region',
+        );
+        drawn.add(_stretchOf(drop.size));
+      }
+      if (motion == null) {
+        final double most = drawn.reduce(math.max);
+        final double least = drawn.reduce(math.min);
+        expect(most, greaterThan(0.02), reason: 'the drop did not stretch setting off');
+        expect(least, lessThan(-0.02), reason: 'the drop did not squash arriving');
+        expect(drawn.indexOf(most), lessThan(drawn.indexOf(least)));
+        expect(most, lessThanOrEqualTo(const GlassDropMotion().maxStretch + 1e-6));
+      } else {
+        expect(drawn.map((double s) => s.abs()), everyElement(lessThan(1e-6)), reason: 'none, and deformed');
+      }
+      expect(drawn.last.abs(), lessThan(1e-6), reason: '$motion: arrived and held, the drop is not round');
+      expect(tester.binding.hasScheduledFrame, isFalse, reason: '$motion: a drop held still keeps drawing');
+      await gesture.up();
+      await tester.pumpAndSettle();
+    }
+  });
+
+  testWidgets('custom icons and labels are built with the colour the bar resolved for them', (
+    WidgetTester tester,
+  ) async {
+    final looks = <GlassTabItemLook>[];
+    Widget swatch(BuildContext context, GlassTabItemLook look) {
+      looks.add(look);
+      return SizedBox.square(
+        key: ValueKey<String>('swatch ${look.index}'),
+        dimension: look.iconSize,
+        child: ColoredBox(color: look.color),
+      );
+    }
+
+    Widget badge(BuildContext context, GlassTabItemLook look) =>
+        Text('${look.index} new', key: ValueKey<String>('badge ${look.index}'), style: look.labelStyle);
+
+    final selected = <int>[];
+    await _mount(
+      tester,
+      onSelected: selected.add,
+      items: <GlassTabItem>[
+        const GlassTabItem(icon: Icons.home, label: 'Home'),
+        GlassTabItem(label: 'Search', iconBuilder: swatch, labelBuilder: badge),
+        const GlassTabItem(icon: Icons.favorite, label: 'Saved'),
+        GlassTabItem(label: 'Profile', iconBuilder: swatch),
+      ],
+    );
+    // The colour an unhighlighted built-in icon takes: the bar's label colour.
+    final Color? plain = _iconColour(tester, Icons.favorite);
+    expect(plain, isNotNull);
+    expect(plain, isNot(const Color(0xFF007AFF)));
+    GlassTabItemLook last(int i) => looks.lastWhere((GlassTabItemLook l) => l.index == i);
+    Color swatchColour(int i) => tester
+        .widget<ColoredBox>(
+          find.descendant(of: find.byKey(ValueKey<String>('swatch $i')), matching: find.byType(ColoredBox)),
+        )
+        .color;
+
+    expect(last(1).color, plain);
+    expect(last(1).highlighted, isFalse);
+    expect(last(1).selected, isFalse);
+    expect(last(1).labelStyle.color, plain);
+    expect(last(1).iconSize, 26, reason: 'a phone-wide bar stacks icon over label');
+    expect(last(1).inline, isFalse);
+    expect(swatchColour(1), plain);
+    expect(tester.widget<Text>(find.byKey(const ValueKey<String>('badge 1'))).style?.color, plain);
+
+    // Held on the custom item: it takes the accent, the one it left gives it up.
+    final TestGesture gesture = await tester.startGesture(_item(0));
+    await tester.pump(const Duration(milliseconds: 16));
+    await gesture.moveTo(_item(1));
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(last(1).highlighted, isTrue);
+    expect(last(1).selected, isFalse, reason: 'not selected until let go');
+    expect(last(1).color, const Color(0xFF007AFF));
+    expect(last(1).labelStyle.color, const Color(0xFF007AFF));
+    expect(swatchColour(1), const Color(0xFF007AFF));
+    expect(_iconColour(tester, Icons.home), plain);
+    expect(last(3).color, plain);
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(selected, <int>[1]);
+    expect(last(1).selected, isTrue);
+    expect(last(1).highlighted, isTrue);
+    // The label is still what a screen reader says.
+    final SemanticsHandle semantics = tester.ensureSemantics();
+    await tester.pump();
+    expect(find.semantics.byLabel('Search'), findsOne);
+    semantics.dispose();
+  });
+
+  testWidgets('let go after resting on an item, the drop settles there', (WidgetTester tester) async {
+    // The device run's sequence: down, slide, rest a while, up.
+    final selected = <int>[];
+    await _mount(tester, onSelected: selected.add);
+    final TestGesture gesture = await tester.startGesture(_item(0));
+    await tester.pump(const Duration(milliseconds: 16));
+    for (var i = 0; i <= 30; i++) {
+      await gesture.moveTo(Offset.lerp(_item(0), _item(2), i / 30)!);
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    for (var i = 0; i < 120; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await gesture.up();
+    for (var i = 0; i < 120; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(selected, <int>[2]);
+    expect(_drop(tester).materialize, 0, reason: 'the drop stayed up after the finger left');
+  });
+
+  // The bar's growth is snapped to whole device pixels, and lands on one only
+  // where `_kBarGrow` times the ratio is whole: at 2 and 4 it does, everywhere
+  // else the bar is laid out a fraction of a pixel wider than the box reserved
+  // for it. That fraction is enough for a `Stack` left at its default
+  // `Clip.hardEdge` to clip — and the drop, which stands `_TabGeometry.margin`
+  // outside that box by design, is cut with it. Held still, 2 and 4 are clean;
+  // through the lift, where the growth is a moving value, 4 clips too.
+  for (final double dpr in <double>[1, 2, 2.625, 3, 4]) {
+    testWidgets('held at a ratio of $dpr, nothing clips the drop to the bar', (WidgetTester tester) async {
+      await _mount(tester, devicePixelRatio: dpr);
+
+      final TestGesture gesture = await tester.startGesture(_item(2));
+      for (var i = 0; i < 12; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(
+          tester.layers.whereType<ClipRectLayer>(),
+          isEmpty,
+          reason: 'lifting, the bar clipped its own box and took the drop with it',
+        );
+      }
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.layers.whereType<ClipRectLayer>(),
+        isEmpty,
+        reason: 'held, the bar clipped its own box and took the drop with it',
+      );
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+  }
+
+  testWidgets('a tap on another item selects it; the semantics say which is selected', (
+    WidgetTester tester,
+  ) async {
+    final SemanticsHandle semantics = tester.ensureSemantics();
+    final selected = <int>[];
+    await _mount(tester, onSelected: selected.add);
+    await tester.tapAt(_item(3));
+    await tester.pumpAndSettle();
+    expect(selected, <int>[3]);
+    final SemanticsNode profile = tester.getSemantics(find.text('Profile'));
+    expect(profile.label, 'Profile');
+    expect(profile.flagsCollection.isSelected, Tristate.isTrue);
+    final SemanticsNode home = tester.getSemantics(find.text('Home'));
+    expect(home.flagsCollection.isSelected, Tristate.isFalse);
+    tester.semantics.tap(find.semantics.byLabel('Saved'));
+    await tester.pumpAndSettle();
+    expect(selected, <int>[3, 2]);
+    semantics.dispose();
+  });
+}
+
+/// The stretch a tab drop of [size] shows: its unstretched size is the
+/// capsule grown by the same amount on both axes (the lift), and the stretch
+/// keeps the area — so both are solved from the size.
+double _stretchOf(Size size) {
+  const double pw = (300 - 14) / 4 + 7;
+  const double ph = 53;
+  // (pw + g)(ph + g) = w h, for the growth g.
+  final double area = size.width * size.height;
+  final double g = (-(pw + ph) + math.sqrt((pw + ph) * (pw + ph) - 4 * (pw * ph - area))) / 2;
+  final double s = size.width / (pw + g) - 1;
+  return s.abs() < 1e-9 ? 0 : s;
+}
+
+Color? _iconColour(WidgetTester tester, IconData icon) =>
+    tester.widget<RichText>(find.descendant(of: find.byIcon(icon), matching: find.byType(RichText))).text.style?.color;
+
+GlassProxyHandle _handle(WidgetTester tester) => tester.widget<GlassProxyScope>(find.byType(GlassProxyScope)).handle;
+
+RenderGlassSurface _bar(WidgetTester tester) => tester
+    .renderObjectList<RenderGlassSurface>(find.byType(GlassSurface))
+    .singleWhere((RenderGlassSurface s) => s.declaredFinish == null);
+
+RenderGlassSurface _drop(WidgetTester tester) => tester
+    .renderObjectList<RenderGlassSurface>(find.byType(GlassSurface))
+    .singleWhere((RenderGlassSurface s) => s.declaredFinish?.name == GlassFinish.clear.name);
+
+Future<void> _mount(
+  WidgetTester tester, {
+  GlobalKey? hostKey,
+  ValueChanged<int>? onSelected,
+  List<GlassTabItem>? items,
+  GlassDropMotion? dropMotion,
+  double devicePixelRatio = 2,
+  double textScale = 1,
+  bool overlay = false,
+}) async {
+  Widget page(Widget child) =>
+      overlay ? Overlay(initialEntries: <OverlayEntry>[OverlayEntry(builder: (_) => child)]) : child;
+  await tester.pumpWidget(
+    MediaQuery(
+      data: MediaQueryData(
+        size: kScreen,
+        devicePixelRatio: devicePixelRatio,
+        textScaler: TextScaler.linear(textScale),
+      ),
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: GlassHost(
+            key: hostKey ?? GlobalKey(),
+            hardware: GlassHardware.appleMetal,
+            child: SizedBox.fromSize(
+              size: kScreen,
+              child: page(
+                Stack(
+                  children: <Widget>[
+                    Positioned.fill(
+                      child: RepaintBoundary(child: CustomPaint(painter: _Bars())),
+                    ),
+                    Positioned.fromRect(
+                      rect: kBar,
+                      child: _Tabs(onSelected: onSelected ?? (_) {}, items: items, dropMotion: dropMotion),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  for (var i = 0; i < 4; i++) {
+    await tester.pump();
+  }
+}
+
+class _Tabs extends StatefulWidget {
+  const _Tabs({required this.onSelected, this.items, this.dropMotion});
+
+  final ValueChanged<int> onSelected;
+  final List<GlassTabItem>? items;
+  final GlassDropMotion? dropMotion;
+
+  @override
+  State<_Tabs> createState() => _TabsState();
+}
+
+class _TabsState extends State<_Tabs> {
+  int _index = 0;
+
+  @override
+  Widget build(BuildContext context) => GlassTabBar(
+    items:
+        widget.items ??
+        const <GlassTabItem>[
+          GlassTabItem(icon: Icons.home, label: 'Home'),
+          GlassTabItem(icon: Icons.search, label: 'Search'),
+          GlassTabItem(icon: Icons.favorite, label: 'Saved'),
+          GlassTabItem(icon: Icons.person, label: 'Profile'),
+        ],
+    dropMotion: widget.dropMotion,
+    selectedIndex: _index,
+    onSelected: (int i) {
+      widget.onSelected(i);
+      setState(() => _index = i);
+    },
+  );
+}
+
+class _Bars extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFFF4F1EA));
+    for (var x = 0.0; x < size.width; x += 6) {
+      canvas.drawRect(Rect.fromLTWH(x, 0, 1, size.height), Paint()..color = const Color(0xFF1B1B1B));
+    }
+    for (var i = 0; i < 11; i++) {
+      canvas.drawRect(
+        Rect.fromLTWH(0, i * 37.0, size.width, 5),
+        Paint()..color = HSVColor.fromAHSV(1, (i * 47 % 360).toDouble(), 0.8, 0.9).toColor(),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_Bars oldDelegate) => false;
+}

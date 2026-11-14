@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:g1455/glass_diagnostics.dart' show GlassProxyScope;
 import 'package:go_router/go_router.dart';
 
 import '../../auth/auth_controller.dart';
@@ -46,10 +48,18 @@ class _MainShellState extends ConsumerState<MainShell>
   late final List<Widget> _screens;
   late final Widget _mainBody;
 
+  void _noteGlassChange() {
+    if (mounted) {
+      GlassProxyScope.maybeOf(context)?.noteChange();
+      SchedulerBinding.instance.ensureVisualUpdate();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: widget.initialTab);
+    _pageController.addListener(_noteGlassChange);
     _selectedIndex = ValueNotifier(widget.initialTab);
     _screens = [
       _KeepAliveWrapper(
@@ -72,16 +82,23 @@ class _MainShellState extends ConsumerState<MainShell>
         child: AccountsScreen(onMenuPressed: _openDrawer),
       ),
     ];
-    _mainBody = PageView(
-      controller: _pageController,
-      physics: const PageScrollPhysics(),
-      dragStartBehavior: DragStartBehavior.start,
-      onPageChanged: (index) {
-        if (_selectedIndex.value != index) {
-          _selectedIndex.value = index;
-        }
+    _mainBody = NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        _noteGlassChange();
+        return false;
       },
-      children: _screens,
+      child: PageView(
+        controller: _pageController,
+        physics: const PageScrollPhysics(),
+        dragStartBehavior: DragStartBehavior.start,
+        onPageChanged: (index) {
+          if (_selectedIndex.value != index) {
+            _selectedIndex.value = index;
+          }
+          _noteGlassChange();
+        },
+        children: _screens,
+      ),
     );
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -133,6 +150,7 @@ class _MainShellState extends ConsumerState<MainShell>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _lightBackgroundPeriodicTimer?.cancel();
+    _pageController.removeListener(_noteGlassChange);
     _pageController.dispose();
     _selectedIndex.dispose();
     super.dispose();
@@ -141,6 +159,7 @@ class _MainShellState extends ConsumerState<MainShell>
   void _openDrawer() => _scaffoldKey.currentState?.openDrawer();
 
   void _selectTab(int index) {
+    _noteGlassChange();
     if (_selectedIndex.value != index) {
       _selectedIndex.value = index;
     }
@@ -835,6 +854,6 @@ class _KeepAliveWrapperState extends State<_KeepAliveWrapper>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return RepaintBoundary(child: widget.child);
+    return widget.child;
   }
 }

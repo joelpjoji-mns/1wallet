@@ -46,11 +46,18 @@ final glassFinishProvider = Provider<g1455.GlassFinish>((ref) {
       ).copyWith(blurSigmaLogical: blur),
     AppGlassFinish.clear => g1455.GlassFinish.clear.copyWith(
         blurSigmaLogical: 0.0,
-        tint: Color.fromRGBO(255, 255, 255, fillAlpha),
+        tint: isDark
+            ? const Color.fromRGBO(255, 255, 255, 0.01)
+            : const Color.fromRGBO(0, 0, 0, 0.01),
+        rim: isDark
+            ? const Color.fromRGBO(255, 255, 255, 0.25)
+            : const Color.fromRGBO(0, 0, 0, 0.12),
       ),
     AppGlassFinish.frosted => g1455.GlassFinish.frosted.copyWith(
         blurSigmaLogical: blur,
-        tint: Color.fromRGBO(255, 255, 255, fillAlpha),
+        tint: isDark
+            ? Color.fromRGBO(255, 255, 255, fillAlpha.clamp(0.10, 0.40))
+            : Color.fromRGBO(255, 255, 255, fillAlpha.clamp(0.15, 0.45)),
       ),
   };
 });

@@ -1,5 +1,3 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -434,82 +432,66 @@ class IslandFloatingActionButton extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final primaryAccent = scheme.primary;
+    const primaryAccent = AppColors.primary;
     final brightPrimary = isDark
         ? (ThemeData.estimateBrightnessForColor(primaryAccent) == Brightness.dark
-            ? Color.lerp(primaryAccent, Colors.white, 0.40)!
-            : (primaryAccent.computeLuminance() < 0.35
-                ? Color.lerp(primaryAccent, Colors.white, 0.35)!
-                : primaryAccent))
+            ? Color.lerp(primaryAccent, Colors.white, 0.15)!
+            : primaryAccent)
         : primaryAccent;
 
-    final blur = finish?.blurSigmaLogical ?? 0.0;
-    final finishName = finish?.name.toLowerCase() ?? 'clear';
-    final isFrosted = finishName.contains('frosted') || blur >= 20.0;
-    final isClear = finishName.contains('clear') || blur == 0.0;
-    final isRegular = !isFrosted && !isClear;
+    final baseFinish = finish ??
+        g1455.GlassFinish.regular(
+          appearance: isDark ? Brightness.dark : Brightness.light,
+        );
+    final effectiveFinish = baseFinish.copyWith(
+      tint: brightPrimary.withAlphaFactor(isDark ? 0.35 : 0.25),
+    );
 
-    final primaryAlphaTop = isFrosted
-        ? (isDark ? 0.90 : 0.92)
-        : (isRegular ? (isDark ? 0.78 : 0.82) : (isDark ? 0.65 : 0.70));
-    final primaryAlphaBottom = isFrosted
-        ? (isDark ? 0.70 : 0.75)
-        : (isRegular ? (isDark ? 0.52 : 0.58) : (isDark ? 0.38 : 0.45));
-
-    final effectiveBlur = isFrosted
-        ? (blur > 0 ? blur : 24.0)
-        : (isRegular ? (blur > 0 ? blur : 12.0) : 0.0);
-
-    Widget button = DecoratedBox(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: brightPrimary.withAlphaFactor(isDark ? 0.30 : 0.20),
-            blurRadius: 16,
-            offset: const Offset(0, 5),
+    Widget button = g1455.GlassSurface(
+      borderRadius: BorderRadius.circular(32),
+      finish: effectiveFinish,
+      labelled: false,
+      child: Container(
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              brightPrimary.withAlphaFactor(isDark ? 0.85 : 0.78),
+              Color.lerp(
+                brightPrimary,
+                isDark ? Colors.black : Colors.black87,
+                0.28,
+              )!.withAlphaFactor(isDark ? 0.75 : 0.68),
+            ],
           ),
-        ],
-      ),
-      child: ClipOval(
-        child: BackdropFilter(
-          filter: effectiveBlur > 0
-              ? ui.ImageFilter.blur(
-                  sigmaX: effectiveBlur,
-                  sigmaY: effectiveBlur,
-                )
-              : ui.ImageFilter.blur(
-                  sigmaX: 0.0,
-                  sigmaY: 0.0,
-                ),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  brightPrimary.withAlphaFactor(primaryAlphaTop),
-                  brightPrimary.withAlphaFactor(primaryAlphaBottom),
-                ],
-              ),
-              border: Border.all(
-                color: Colors.white.withAlphaFactor(isDark ? 0.35 : 0.55),
-                width: 1.1,
-              ),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              shape: const CircleBorder(),
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: onPressed,
-                child: Center(
-                  child: Icon(icon, color: Colors.white, size: 30),
-                ),
-              ),
-            ),
+          border: Border.all(
+            color: Colors.white.withAlphaFactor(isDark ? 0.45 : 0.65),
+            width: 1.2,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: brightPrimary.withAlphaFactor(isDark ? 0.45 : 0.35),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: GlassButton(
+          icon: Icon(icon, color: Colors.white, size: 34),
+          label: tooltip ?? 'Action',
+          onTap: onPressed,
+          width: 64,
+          height: 64,
+          iconSize: 34,
+          iconColor: scheme.primary,
+          useOwnLayer: false,
+          style: GlassButtonStyle.transparent,
+          quality: GlassQuality.minimal,
+          shape: const LiquidOval(),
         ),
       ),
     );

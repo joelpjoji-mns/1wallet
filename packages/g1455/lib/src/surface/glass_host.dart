@@ -1,0 +1,1863 @@
+// The thing that runs the pipeline on a real screen.
+//
+// A host owns the register, the pipeline and the retake oracle, records after
+// the frame that has just been painted, and publishes the result to the
+// surfaces, which draw it on the frame after that.
+//
+// **The one-frame delay is structural, not a bug to be fixed later.** A capture
+// reads the tree that was just painted, so the earliest a surface can show it
+// is the following frame; that is the staleness the retake budget prices, and
+// it is why the first frame of any screen paints without a proxy. Both facts
+// are counted rather than hoped for — a surface that never gets a proxy and one
+// that gets a stale one look identical on a screenshot.
+//
+// What this deliberately does not do is choose *when* the frame happens. It
+// records in a post-frame callback, because that is the only place the tree is
+// both laid out and painted; the oracle decides whether to record at all.
+
+import 'dart:ui' as ui;
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
+
+import '../hardware.dart';
+import '../thermal.dart';
+import '../proxy/occlusion.dart';
+import '../proxy/proxy_blur.dart';
+import '../proxy/proxy_layer_watch.dart';
+import '../proxy/proxy_pipeline.dart';
+import '../proxy/proxy_resolution.dart';
+import '../proxy/proxy_retake.dart';
+import '../proxy/proxy_walk.dart';
+import '../proxy/shadow_filter.dart';
+import 'glass_above.dart';
+import 'glass_adaptive.dart';
+import 'glass_drop_motion.dart';
+import 'glass_finish.dart';
+import 'glass_group.dart';
+import 'glass_ledger.dart';
+import 'glass_press.dart';
+import 'glass_ripple.dart';
+import 'glass_surface.dart';
+import 'glass_theme.dart';
+import 'glass_tier.dart';
+
+/// Where the package's own shader lives.
+///
+/// One key in every bundle: the pubspec declares it through `packages/g1455/`
+/// and keeps the file under `lib/`, which the tool keys identically whether
+/// this package is the root or a dependency (see `pubspec.yaml`).
+///
+/// {@category Diagnostics}
+const String kGlassShaderAsset = 'packages/g1455/shaders/glass_surface.frag';
+
+/// The surface's shader with the ripple compiled in.
+///
+/// Loaded the first time a surface under a host declares a [GlassRipple], or
+/// by [GlassHost.precache].
+///
+/// {@category Diagnostics}
+const String kGlassRippleShaderAsset = 'packages/g1455/shaders/glass_surface_ripple.frag';
+
+/// The current proxy, as something a surface can listen to.
+///
+/// A [Listenable] holding one frame, so a surface repaints when the proxy is
+/// re-recorded and not when anything else happens. The frame's ownership stays
+/// with the pipeline; this only points at it.
+///
+/// Every [GlassHost] owns one and hands it down through [GlassProxyScope].
+/// What a report reads off it is the counters — [generation], [snapshots],
+/// [repacks], [readBacks] and the rest — which say whether a frame captured.
+///
+/// ```dart
+/// final GlassProxyHandle? handle = GlassProxyScope.maybeOf(context);
+/// debugPrint('published ${handle?.generation} frames, '
+///     '${handle?.snapshots} snapshots');
+/// ```
+///
+/// {@category Diagnostics}
+class GlassProxyHandle extends ChangeNotifier {
+  GlassProxyFrame? _frame;
+
+  /// The proxy last published at the base level, or null before the first
+  /// capture and on a screen with nothing to capture.
+  GlassProxyFrame? get frame => _frame;
+
+  /// The compiled shader, once it has arrived.
+  ///
+  /// Null until then, and a surface with a proxy and no program draws the
+  /// **unrefracted** proxy rather than nothing — which is better than a flat
+  /// tint and worse than glass, so it is counted separately
+  /// (`RenderGlassSurface.paintsWithOptics`) rather than left to look like
+  /// success on a screenshot.
+  ui.FragmentProgram? get program => _program;
+  ui.FragmentProgram? _program;
+  set program(ui.FragmentProgram? value) {
+    if (identical(value, _program)) {
+      return;
+    }
+    _program = value;
+    notifyListeners();
+  }
+
+  /// The compiled *group* shader, once it has arrived.
+  ///
+  /// A second program rather than a mode of the first, because adding a path to
+  /// a runtime effect reprices every mode already in it by 52-62% and the lone
+  /// surface is the common case. Loaded whether or not the screen has a
+  /// group: a host that compiled it lazily would put the first frame of a
+  /// fused toolbar on a different code path from every frame after it.
+  ui.FragmentProgram? get groupProgram => _groupProgram;
+  ui.FragmentProgram? _groupProgram;
+  set groupProgram(ui.FragmentProgram? value) {
+    if (identical(value, _groupProgram)) {
+      return;
+    }
+    _groupProgram = value;
+    notifyListeners();
+  }
+
+  /// The surface's program with the ripple compiled in, once something asked
+  /// for it ([wantRippleProgram]) and it arrived.
+  ///
+  /// A third program for the same reason, and loaded on demand rather than
+  /// with the other two: a ripple is opt-in, and a screen that never declares one
+  /// should not compile it. Until it arrives a touched surface draws the base
+  /// program, which is the picture without the wave.
+  ui.FragmentProgram? get rippleProgram => _rippleProgram ??= _cachedRippleProgram;
+  ui.FragmentProgram? _rippleProgram;
+
+  static ui.FragmentProgram? _cachedRippleProgram;
+  static Future<ui.FragmentProgram>? _loadingRipple;
+
+  /// The one load of the ripple program per process, which fills the cache
+  /// before anything waiting on it runs — shared by [wantRippleProgram] and
+  /// [GlassHost.precache].
+  static Future<ui.FragmentProgram> _loadRipple() => _loadingRipple ??= _loadShader(
+    kGlassRippleShaderAsset,
+    (ui.FragmentProgram program) => _cachedRippleProgram = program,
+    () => _loadingRipple = null,
+  );
+
+  /// Loads [rippleProgram], once per process, and notifies when it lands.
+  void wantRippleProgram() {
+    if (rippleProgram != null) {
+      return;
+    }
+    _loadRipple().then((ui.FragmentProgram program) {
+      if (_rippleProgram == null && !_disposed) {
+        _rippleProgram = program;
+        notifyListeners();
+      }
+    }, onError: _reportShaderLoadError);
+  }
+
+  bool _disposed = false;
+
+  /// What the host declared its hardware to be.
+  ///
+  /// Carried here for the one choice a group makes at paint time that the host
+  /// cannot make for it: whether the fused draw is split. Splitting is cheaper
+  /// on some GPU families and dearer on others, so a group has to be told
+  /// which one it is on, and the handle is what every group below a host holds.
+  GlassHardware get hardware => _hardware;
+  GlassHardware _hardware = GlassHardware.detect();
+  set hardware(GlassHardware value) {
+    if (value == _hardware) {
+      return;
+    }
+    _hardware = value;
+    notifyListeners();
+  }
+
+  /// How many frames have been published. The counter that tells a surface with
+  /// no proxy apart from a surface whose proxy never updates.
+  int get generation => _generation;
+  int _generation = 0;
+
+  /// How many rasterizations the pipeline has asked the engine for.
+  ///
+  /// Set by the host from `GlassProxyPipeline.snapshots`, because that is where
+  /// they are taken. It is what gives [GlassHost.blurPass] an observable trace:
+  /// `split` and `folded` publish the same picture from the same divisor at the
+  /// same sigma, and a report carrying only the label would be recording what
+  /// was asked for rather than what ran.
+  int snapshots = 0;
+
+  /// How many times the atlas layout has been repacked.
+  ///
+  /// Set from `GlassProxyPipeline.repacks` for the same reason [snapshots] is:
+  /// without it, the one thing a retained layout is *for* would be
+  /// unobservable from outside. Repacking every frame is the dominant cost of
+  /// the whole route, and the ratio to [generation] is the reading — 1.0 means
+  /// nothing is retained.
+  int repacks = 0;
+
+  /// How many entries the layer watch's last signature had, or 0 if it never
+  /// ran.
+  ///
+  /// The trace the watch would otherwise not have: without it a run that never
+  /// walked would report as a walk that costs nothing. Non-zero says the
+  /// composited subtree was described; its size says how much of one.
+  int watchedLayers = 0;
+
+  /// How many frames the watch saw a change that missed every slot of the atlas.
+  ///
+  /// A counter rather than a flag because "a shared texture is a shared dirty
+  /// flag" is an argument about a *rate*: a mechanism that pays on 3% of
+  /// frames and one that pays on 90% call for different designs. It is
+  /// separately readable from [generation] on purpose — a report that only
+  /// counted publishes could not tell a screen where nothing moved from one
+  /// where everything moved away from the glass.
+  int changesOutsideCapture = 0;
+
+  /// Frames on which the GPU's texture limit moved the divisor.
+  ///
+  /// Set from `GlassProxyPipeline.ceilingDeepenings` and `ceilingRefusals`, and
+  /// here for the reason every other counter on this handle is: the ceiling
+  /// fires on a geometry nobody arranges on purpose — one oversized sheet on a
+  /// desktop-sized window — so a report that did not carry it could not tell a
+  /// run where it never fired from a run where it fired on every frame, and
+  /// those look identical in every timing.
+  ///
+  /// [ceilingOverruns] is the third and it is the one that should never move:
+  /// the search reasons about the layout before packing it, the check after the
+  /// pack only refuses, and both can drop a frame. Non-zero means the reasoning
+  /// was wrong, which is a bug report and not a measurement.
+  int ceilingDeepenings = 0;
+
+  /// Frames on which nothing fit under the texture limit and no proxy was
+  /// produced. See [ceilingDeepenings].
+  int ceilingRefusals = 0;
+
+  /// Frames the pack overran a limit the search had reasoned it would fit
+  /// under. Should stay at zero; see [ceilingDeepenings].
+  int ceilingOverruns = 0;
+
+  /// Frames held across a change because thermal pressure bought the lag,
+  /// mirrored from the host so a report can read it beside
+  /// [generation]: the two reset together, with the tree, and a throttle that
+  /// never fired and one that fired every frame are otherwise the same run.
+  int throttled = 0;
+
+  /// How many times the host has read the backdrop back for glass that reads
+  /// it (`GlassHost.adaptive`) — zero for ever on a host without it, which is
+  /// the observable that says the feature costs nothing when off.
+  ///
+  /// Counted when a read is started rather than when it lands, because the
+  /// start is what was paid for: a read-back still in flight when the host goes
+  /// away cost its copy all the same.
+  int readBacks = 0;
+
+  /// The verdicts of the glass under this host, when it reads its backdrop;
+  /// null when it does not. What a component listens to — apart from this
+  /// handle, whose own notifications repaint every surface.
+  GlassBackdropReadings? get readings => _readings;
+  GlassBackdropReadings? _readings;
+
+  /// Declares a change nothing above the content is painted for.
+  ///
+  /// The last resort under [GlassContentDeclaration.declared]: the host
+  /// observes a scroll, its own repaint and the composited layers on its own.
+  /// What is left is a change none of those can see.
+  ///
+  /// Reach it with `GlassProxyScope.maybeOf(context)?.noteChange()`.
+  ///
+  /// Free under [GlassContentDeclaration.undeclared], where the proxy is
+  /// re-recorded anyway, and the difference between a working screen and a
+  /// frozen one under the default.
+  void noteChange() => _changes.notify();
+
+  /// Fires when [noteChange] is called. The host listens; nothing else should.
+  Listenable get changes => _changes;
+  final _HandleChanges _changes = _HandleChanges();
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _changes.dispose();
+    super.dispose();
+  }
+
+  /// Publishes [frame] as the base level and starts a new [generation].
+  ///
+  /// Called by the host; silent when [frame] is the one already published.
+  void publish(GlassProxyFrame? frame) {
+    if (identical(frame, _frame)) {
+      return;
+    }
+    _frame = frame;
+    _generation++;
+    notifyListeners();
+  }
+
+  /// The proxies of glass that stands on glass, by level: `upper[0]` is what
+  /// the surfaces one glass deep sample, and so on up.
+  ///
+  /// A level apart from [frame] rather than more slots in it, because what a
+  /// level captures *contains* the level below it drawn — the lens over a tab
+  /// bar has to see the bar's glass and its icons — so it can only be recorded
+  /// once the level below has been published. See `GlassHost` for the walk.
+  List<GlassProxyFrame?> get upper => _upper;
+  List<GlassProxyFrame?> _upper = const <GlassProxyFrame?>[];
+
+  /// Publishes the levels above [frame]. Not a new generation: they are the
+  /// same capture, finished.
+  ///
+  /// Silent when nothing changed, as [publish] is: the host publishes the
+  /// levels on every frame that has nothing to capture, and a notification
+  /// there repaints every surface at presence zero, whose repaint is the next
+  /// frame — a screen whose only glass was a resting drop (a segmented
+  /// control, a switch) never settled.
+  void publishUpper(List<GlassProxyFrame?> frames) {
+    if (listEquals(frames, _upper)) {
+      return;
+    }
+    _upper = List<GlassProxyFrame?>.unmodifiable(frames);
+    notifyListeners();
+  }
+
+  /// The frame that holds [key]'s slot: the base one, or the level it stands
+  /// at. The base one when none does, so that the caller's `slotForKey` says
+  /// "not in this frame" exactly as it did before there were levels.
+  GlassProxyFrame? frameFor(Object key) {
+    final GlassProxyFrame? base = _frame;
+    if (_upper.isEmpty || (base != null && base.keys.contains(key))) {
+      return base;
+    }
+    for (final GlassProxyFrame? frame in _upper) {
+      if (frame != null && frame.keys.contains(key)) {
+        return frame;
+      }
+    }
+    return base;
+  }
+}
+
+/// The application's own change declarations, as something the host can watch.
+///
+/// Shaped like `RenderGlassProxy.proxyChanges` on purpose: the oracle already
+/// subscribes to that, so a second input to the same decision is the same kind
+/// of thing rather than a second mechanism.
+class _HandleChanges extends ChangeNotifier {
+  void notify() => notifyListeners();
+}
+
+/// Carries the current proxy down the tree.
+///
+/// Installed by [GlassHost] around its child; an application does not build
+/// one. [maybeOf] is how a test, a benchmark or a custom component reaches the
+/// host's [GlassProxyHandle].
+///
+/// {@category Diagnostics}
+class GlassProxyScope extends InheritedWidget {
+  /// Hands [handle] to [child] and everything below it.
+  const GlassProxyScope({required this.handle, required super.child, super.key});
+
+  /// The host's handle.
+  final GlassProxyHandle handle;
+
+  /// The handle of the nearest [GlassHost] above [context], or null when there
+  /// is none. Registers [context] for a rebuild when the handle is replaced.
+  static GlassProxyHandle? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<GlassProxyScope>()?.handle;
+
+  @override
+  bool updateShouldNotify(GlassProxyScope oldWidget) => oldWidget.handle != handle;
+}
+
+/// Owns the whole proxy pipeline for one screen: it captures what is painted
+/// under the glass and hands it to every [GlassSurface] below it.
+///
+/// Put it above everything the glass is meant to show — in an application,
+/// once, above the navigator.
+///
+/// ## How it captures
+///
+/// Its child is the screen: the register finds the surfaces inside it, the
+/// pass reads it, and the surfaces sample the result. After each frame is
+/// painted the host records what is under the glass into one atlas, at a
+/// resolution chosen against a measured quality budget ([budgetDeltaE]), and
+/// publishes it; the surfaces draw it through their finish on the frame after.
+///
+/// **The one-frame delay is structural.** A capture reads the tree that was
+/// just painted, so the earliest a surface can show it is the following frame,
+/// and the first frame of any screen paints its glass without a proxy. The
+/// shaders arrive asynchronously too, which [precache] moves to before the
+/// first frame.
+///
+/// It records only when something under the glass changed ([content]): a
+/// still screen captures nothing, and glass moving over still content inside a
+/// [GlassTravel] captures nothing either. Below the top rung ([tier]) nothing
+/// is captured at all.
+///
+/// ## What the application declares
+///
+/// What the render tree does not carry, the host is told:
+///
+///  * what is behind the glass: [backdrop], and whether it is an image,
+///    [richBackdrop];
+///  * the accessibility the platform does not relay everywhere:
+///    [highContrast], and a floor for the labels, [minLabelContrast];
+///  * the device: [hardware], and its [thermal] state;
+///  * the look: [finish], [tier], [ripple], [dropMotion], [press], and whether the
+///    glass reads its own backdrop, [adaptive].
+///
+/// Each is installed into a [GlassThemeData] for the screen, which an inner
+/// [GlassTheme] can change for a subtree. The rest — [maxCaptures], [blurPass],
+/// [resolution], [maxTextureSide], [shadowFilter], [occlusion] — are
+/// diagnostic seams and overrides that a shipping application leaves alone.
+///
+/// ## Where it goes
+///
+/// Above the navigator, in `MaterialApp.builder` (or the `builder` of
+/// `CupertinoApp` or `WidgetsApp`), so that a dialog, a sheet or a menu — all
+/// built in the navigator's overlay — is under it and captured like any other
+/// glass. A host inside a route would not see them.
+///
+/// ```dart
+/// Future<void> main() async {
+///   WidgetsFlutterBinding.ensureInitialized();
+///   await GlassHost.precache();
+///   runApp(const MyApp());
+/// }
+///
+/// class MyApp extends StatelessWidget {
+///   const MyApp({super.key});
+///
+///   @override
+///   Widget build(BuildContext context) => MaterialApp(
+///     builder: (BuildContext context, Widget? child) => GlassHost(
+///       backdrop: const Color(0xFF101014),
+///       richBackdrop: true,
+///       minLabelContrast: kTextContrastAA,
+///       child: child!,
+///     ),
+///     home: const HomePage(),
+///   );
+/// }
+/// ```
+///
+/// See also:
+///
+///  * [GlassSurface], the glass that samples what the host captures.
+///  * [GlassTheme] and [GlassThemeData], what the host installs for its
+///    subtree.
+///  * [GlassFinish], the material named by [finish].
+///  * [GlassTravel] and [GlassProxy], which tell the host where glass moves
+///    and how a subtree is captured.
+///  * [The host](https://g1455.plugfox.dev/foundations/host) and
+///    [Installation](https://g1455.plugfox.dev/start/installation) on the site.
+///
+/// {@category Foundations}
+class GlassHost extends StatefulWidget {
+  /// A host over [child]. Every other argument is optional, and its default is
+  /// the shipping behaviour.
+  const GlassHost({
+    required this.child,
+    this.hardware,
+    this.finish,
+    this.appearance,
+    this.tier = GlassTierChoice.byDefault,
+    this.backdrop,
+    this.highContrast,
+    this.richBackdrop = false,
+    this.minLabelContrast,
+    this.ripple,
+    this.dropMotion = const GlassDropMotion(),
+    this.press = const GlassPress(),
+    this.thermal,
+    this.thermalPolicy = const GlassThermalPolicy(),
+    this.budgetDeltaE = ProxyResolutionPolicy.defaultDamageBudgetDeltaE,
+    this.shadowFilter,
+    this.occlusion,
+    this.resolution,
+    this.maxCaptures,
+    this.maxTextureSide,
+    this.blurPass,
+    this.content = GlassContentDeclaration.byDefault,
+    this.adaptive,
+    super.key,
+  });
+
+  /// The screen: everything the glass under this host may show, and the
+  /// glass itself. In an application, the navigator `MaterialApp.builder`
+  /// hands over.
+  final Widget child;
+
+  /// Whose measurements apply. Defaults to what the platform can be asked —
+  /// Apple platforms answer, everything else is [GlassHardware.unmeasured],
+  /// which gets the same divisor and the same merging as a declared family and
+  /// a null where the price would be.
+  final GlassHardware? hardware;
+
+  /// The optics every surface under this host wears unless it names its own.
+  ///
+  /// Its `name` is the key into the measured damage tables and its sigma
+  /// decides the bleed, the residual blur and — through the budget — the retake
+  /// ceiling. So a finish nobody has graded gets refusals rather than numbers,
+  /// which is the intended behaviour.
+  ///
+  /// Null is Apple's `.regular`, which is two materials:
+  /// [GlassFinish.regular] picks [GlassFinish.regularDark] or
+  /// [GlassFinish.regularLight] from [backdrop] and the platform's appearance,
+  /// and the host follows the appearance as it changes. Name either branch to
+  /// hold it — a dark glass on a light screen is a choice Apple's material
+  /// does not make, and this is where an application makes it.
+  final GlassFinish? finish;
+
+  /// The appearance `.regular` picks its branch in when [finish] is null, or
+  /// null to follow the platform's (`MediaQuery.platformBrightnessOf`).
+  ///
+  /// Declare it when the application's theme does not follow the phone's. A
+  /// dark-themed application on a phone in the light appearance otherwise
+  /// gets light glass over its dark content: in the light appearance
+  /// `.regular` takes its light branch over anything above a luma of 54
+  /// ([GlassFinish.kRegularSwitchLight]), and an ordinary dark grey page is above that.
+  ///
+  /// ```dart
+  /// MaterialApp(
+  ///   themeMode: mode,
+  ///   builder: (context, child) => GlassHost(
+  ///     appearance: mode == ThemeMode.system ? null : (mode == ThemeMode.dark ? Brightness.dark : Brightness.light),
+  ///     child: child!,
+  ///   ),
+  /// )
+  /// ```
+  ///
+  /// Unlike naming a branch in [finish], this keeps `.regular` a choice:
+  /// [backdrop] and [adaptive] still move the glass between its branches, in
+  /// the appearance declared here. Ignored when [finish] is named.
+  final Brightness? appearance;
+
+  /// Which rung of the finish ladder every surface under this host draws.
+  ///
+  /// [GlassTier.full] and its reasons are in `glass_tier.dart`; the short
+  /// version is that the ladder has no automatic input, so this is a
+  /// declaration and the package supplies no default but the top rung.
+  ///
+  /// Below the top rung the whole pipeline goes quiet: nothing under this host
+  /// reads a proxy, so nothing is captured, no atlas is packed and no shader is
+  /// sampled. The host still mounts — its register still counts the glass,
+  /// because the translucency tax does not care which rung drew it — and
+  /// `recorded` stays at zero, which is the observable that says the lower
+  /// rungs read no backdrop at all.
+  final GlassTierChoice tier;
+
+  /// What is behind the glass on this screen, on average.
+  ///
+  /// Installed into the theme, and read by [GlassTier.opaque] alone — see
+  /// [GlassThemeData.backdrop] for why the bottom rung is the only one that
+  /// cannot work it out for itself.
+  final Color? backdrop;
+
+  /// The platform's increase-contrast switch, or null to read it from
+  /// `MediaQuery.highContrastOf` — which the engine sets on iOS and on Android
+  /// 34+, and **never on macOS**, where the application has to read
+  /// `NSWorkspace.accessibilityDisplayShouldIncreaseContrast` itself and pass
+  /// it. See [GlassThemeData.highContrast] for what it draws.
+  final bool? highContrast;
+
+  /// Whether the screen under the glass is an image rather than a colour. See
+  /// [GlassThemeData.richBackdrop].
+  final bool richBackdrop;
+
+  /// The least contrast a component label must reach, met by dimming the glass
+  /// when the finish cannot reach it. See [GlassThemeData.minLabelContrast].
+  final double? minLabelContrast;
+
+  /// Whether the glass reads its own backdrop, and how; null — the default —
+  /// for glass that goes by what is declared ([backdrop], [richBackdrop], the
+  /// platform's appearance).
+  ///
+  /// Set, each component under this host ([GlassBar], [GlassCard],
+  /// [GlassButton]) is told the mean level of the captured backdrop inside its
+  /// own box, and picks the branch of `.regular` and its label colour from it —
+  /// so a bar over a photograph's sky and a button over its shadow each wear
+  /// the branch Apple's material would. The precedence against what is
+  /// declared, and the band and hold that keep it from flickering, are in
+  /// [GlassAdaptive] and `glass_adaptive.dart`.
+  ///
+  /// **What it costs** is one small asynchronous read-back per capture at most,
+  /// never per frame, and nothing on a frame that keeps its capture unless a
+  /// glass moved inside its [GlassTravel]; at most one per
+  /// [GlassAdaptive.interval], which is longer on the web, where a read-back
+  /// stalls CanvasKit. A screen whose glass reads both branches of `.regular`
+  /// is priced by the stricter one, which can lower the capture's divisor.
+  /// Off, nothing is read, recorded or scheduled, and
+  /// [GlassProxyHandle.readBacks] stays at zero.
+  ///
+  /// A raw [GlassSurface] does not adapt on its own: the label is the
+  /// component's, and so is the move between branches.
+  /// [GlassThemeData.adaptedTo] is what a custom component calls to do the
+  /// same, with a reading it gets from `GlassProxyHandle.readings` — which,
+  /// with [GlassProxyScope] and [GlassBackdropReadings], is exported by
+  /// `package:g1455/glass_diagnostics.dart`, not by this library.
+  final GlassAdaptive? adaptive;
+
+  /// The wave every surface below makes when touched, or null for none — the
+  /// platform's behaviour. See [GlassThemeData.ripple] and [GlassRipple].
+  final GlassRipple? ripple;
+
+  /// How the held drop of the switch, the slider, the segmented control and
+  /// the tab bar deforms as it launches and brakes, unless a control declares
+  /// its own. [GlassDropMotion.none] keeps every drop round. It costs no
+  /// capture; see [GlassThemeData.dropMotion] and [GlassDropMotion].
+  final GlassDropMotion dropMotion;
+
+  /// How a pressed [GlassButton] swells and leans toward a dragging finger,
+  /// unless it declares its own. [GlassPress.none] keeps every button its
+  /// size. It costs two captures a press and nothing at rest; see
+  /// [GlassThemeData.press] and [GlassPress].
+  final GlassPress press;
+
+  /// The device's thermal state, as the application read it — the package
+  /// ships no platform code to read it. Null is nominal.
+  ///
+  /// Spent by [thermalPolicy] on the retake, never on the ladder: under
+  /// pressure a changing screen may be captured less often, by as many frames
+  /// as the finish's own staleness price allows.
+  final GlassThermalState? thermal;
+
+  /// What each thermal state may spend on staleness. [GlassThermalPolicy.never]
+  /// keeps every frame fresh whatever the device says.
+  final GlassThermalPolicy thermalPolicy;
+
+  /// The whole quality allowance, in ΔE against the same finish at full
+  /// quality. 1% of the distance between two of Apple's own materials.
+  ///
+  /// One number for both axes, because the resolution's error and the
+  /// staleness's compose rather than add: the divisor is chosen against it and
+  /// the retake ceiling is what is left afterwards.
+  final double budgetDeltaE;
+
+  /// Whether this screen may hold a proxy nothing under it has changed.
+  ///
+  /// **The default holds.** That is the largest lever this package has: holding
+  /// a still screen saves 66…79% of the glass's added cost on Adreno and 98% on
+  /// Metal, because the capture is most of what the route adds.
+  ///
+  /// Holding is safe without any promise from the application: the host walks
+  /// the composited subtree each frame (under 3 µs) and retakes on any change
+  /// it sees. What is left of the risk lives in one table of layer types, and a
+  /// test checks that table against the SDK's `layer.dart`.
+  ///
+  /// Pass [GlassContentDeclaration.undeclared] to go back to re-recording every
+  /// frame — for a host compositing through something it thinks this package
+  /// misreads, or for a benchmark that wants the capture on every frame.
+  final GlassContentDeclaration content;
+
+  /// Which shadows the capture may skip. Of the quality degradations measured,
+  /// this is the cheapest by a wide margin: under 0.2 ΔE behind the glass.
+  ///
+  /// Null means "draw them", which is the conservative default rather than the
+  /// cheap one — half of `ShadowFilter` is a heuristic (a shape, line, point
+  /// or image painted through a `MaskFilter` is *usually* a shadow), and a
+  /// design that blurs a highlight on purpose would lose it silently.
+  final ShadowFilter? shadowFilter;
+
+  /// Where the descent may stop, if the application has worked it out.
+  final OcclusionPolicy? occlusion;
+
+  /// The proxy divisor, named by the host instead of chosen from the tables.
+  ///
+  /// Null is the normal case and the one every application should use: the
+  /// policy trades measured quality against measured price and says which of
+  /// the four things stopped it. This overrides that, and it exists because the
+  /// tables cannot be checked without it — see
+  /// [ProxyDivisorReason.pinnedByHost]. It is the same shape as [hardware]:
+  /// something the package cannot work out, declared by whoever can.
+  final ProxyResolution? resolution;
+
+  /// Stops recording after this many captures. Null records for ever, which is
+  /// the only shipping behaviour.
+  ///
+  /// **A diagnostic seam.** It separates the capture's own cost from the cost
+  /// of sampling its result: a held proxy is still sampled every frame at
+  /// exactly the same size, so the shader's work does not change and only the
+  /// recording stops — which is how a frame on Xclipse that spent 28.5 ms
+  /// waiting with the GPU 54% busy can be traced to its cause.
+  ///
+  /// Setting it makes the picture wrong on purpose: the proxy goes stale for
+  /// ever, which is a cost experiment and never a mode. `held` and `recorded`
+  /// are what say which happened.
+  final int? maxCaptures;
+
+  /// How the residual blur reaches the atlas — and, at [ProxyBlurPass.none],
+  /// whether it reaches it at all. The second diagnostic on this widget, and at
+  /// that value the same shape as [maxCaptures]: it makes the picture wrong on
+  /// purpose, so it is a cost experiment and never a mode.
+  ///
+  /// [ProxyBlurPass.folded] is the exception — it draws the same picture to
+  /// within a code value. Its price differs in sign between GPU families, so
+  /// null here takes [ProxyBlurPass.defaultFor], which reads the hardware
+  /// declaration. Naming one overrides that.
+  ///
+  /// [ProxyBlurPass.none] exists to explain why the cost stops falling with the
+  /// divisor (on the M2 iPad Pro, 0.94 and 0.65 ms saved across the first two
+  /// steps, then 0.05): at a divisor of 8 this pass's sigma in texels falls to 0.58, where
+  /// Impeller's truncation radius `(σ − 0.5)·√3` is 0.13 of a texel. Turning it
+  /// off splits "the blur ran out" from "the bandwidth ran out"; nothing else
+  /// does, because both follow the proxy and neither has a counter.
+  ///
+  /// Not a finish of sigma 0, which would be a different material and would
+  /// change the shader as well as the pass.
+  final ProxyBlurPass? blurPass;
+
+  /// The largest texture this GPU will actually allocate, in device pixels a
+  /// side. Null takes [GlassHardware.maxTextureSide], which is a specification
+  /// floor rather than a reading of the device.
+  ///
+  /// Worth declaring on a large screen and pointless on a phone: it is what
+  /// stops the atlas from being handed to a `toImageSync` that would silently
+  /// rescale it (`AtlasLayout.fitsTexture`), and the package's only answer to
+  /// hitting it is a coarser proxy. A host that knows its device reports 16384
+  /// and says so keeps the quality the floor of 4096 would have spent.
+  final int? maxTextureSide;
+
+  /// Compiles the package's shaders now, so that the first glass on screen is
+  /// drawn through its optics rather than without them.
+  ///
+  /// ```dart
+  /// Future<void> main() async {
+  ///   WidgetsFlutterBinding.ensureInitialized();
+  ///   await GlassHost.precache();
+  ///   runApp(const MyApp());
+  /// }
+  /// ```
+  ///
+  /// **What it changes.** A host otherwise starts compiling in its
+  /// `initState` — `FragmentProgram.fromAsset` is a future — and until a
+  /// program lands, the glass that needs it draws a stand-in:
+  ///
+  ///  - a surface with a proxy and no surface program draws the captured,
+  ///    blurred backdrop clipped to its shape: no tint, no rim, no bend
+  ///    (`RenderGlassSurface.paintsWithOptics` counts the difference). A faded
+  ///    surface, such as a soft `GlassScrollEdge`, draws nothing;
+  ///  - a fused [GlassGroup] with no group program draws nothing at all, and
+  ///    its members leave their glass to it;
+  ///  - a touched surface under a [GlassRipple] with no ripple program draws
+  ///    the surface program, which is the picture without the wave;
+  ///  - on Impeller, a proxy captured before the atlas's Gaussian arrives is
+  ///    blurred by the engine's `ImageFilter.blur`, whose kernel is cut short,
+  ///    and is captured again on the frame after it does.
+  ///
+  /// The content on the glass — a bar's title, a button's icon — is drawn in
+  /// every case. Once this future completes, every host mounted afterwards
+  /// finds the programs in the cache and hands them to its surfaces in its
+  /// `initState`, before its first frame.
+  ///
+  /// **What it does not change.** A capture reads the frame that was just
+  /// painted, so the very first frame of a host has no proxy and its glass
+  /// draws only its content, precached or not; the first frame that *has* a
+  /// proxy is the one this makes glass. The lower rungs ([GlassTier.cheap],
+  /// [GlassTier.opaque]) read no program and do not need it.
+  ///
+  /// Shares the loads a host starts on its own, so it is idempotent, costs
+  /// nothing once the programs are in, and never compiles one twice — called
+  /// after a host has mounted, it waits for the load already in flight.
+  /// [group] and [ripple] leave out the blend group's program and the
+  /// ripple's, for an application that uses neither; every host still loads
+  /// the group program itself when it mounts. Completes with a load's error
+  /// if one fails.
+  ///
+  /// > **Note:** the shaders are declared in this package's own pubspec, so an
+  /// > application adds nothing to its `flutter: shaders:` for them.
+  ///
+  /// See also:
+  ///
+  ///  * [GlassRipple], whose program `ripple: false` leaves out.
+  ///  * [GlassGroup], whose program `group: false` leaves out.
+  ///  * [Installation](https://g1455.plugfox.dev/start/installation) on the
+  ///    site.
+  static Future<void> precache({bool group = true, bool ripple = true}) async {
+    // What is cached is not waited on: the load that filled it is done, and
+    // its future belongs to the zone that started it — in a widget test, the
+    // fake clock of a test that may have ended, which nothing flushes again.
+    await Future.wait(<Future<ui.FragmentProgram>>[
+      if (_GlassHostState._cachedProgram == null) _GlassHostState._loadBase(),
+      if (group && _GlassHostState._cachedGroupProgram == null) _GlassHostState._loadGroup(),
+      if (ripple && GlassProxyHandle._cachedRippleProgram == null) GlassProxyHandle._loadRipple(),
+      if (ui.ImageFilter.isShaderFilterSupported && glassBlurProgram == null) _GlassHostState._loadBlur(),
+    ]);
+  }
+
+  @override
+  State<GlassHost> createState() => _GlassHostState();
+}
+
+class _GlassHostState extends State<GlassHost> {
+  final GlassLedger _ledger = GlassLedger();
+
+  /// What actually establishes that nothing changed, when the host is allowed
+  /// to hold at all.
+  ///
+  /// The observations above it — a scroll, this host's own repaint, a marker —
+  /// are cheap and correct and *incomplete*: each of them stops at a nested
+  /// repaint boundary, and a realistic screen crosses 8 to 15 of those. This
+  /// one cannot be hidden from, because a repaint mints new pictures in
+  /// whichever layer owns it, and a change that repaints nothing (a moved
+  /// retained layer) is a property of that layer. It runs only where
+  /// holding is possible: under the default declaration the proxy is re-recorded
+  /// anyway and the walk would be pure cost.
+  final ProxyLayerWatch _watch = ProxyLayerWatch();
+
+  /// The same walk with only the glass *draws* excluded, advanced only inside
+  /// the watch's assertion and so only in debug.
+  ///
+  /// The assertion is about the table, and the table is what both walks share;
+  /// what excluding a whole surface adds is a second reason for "no change"
+  /// that is not a hole. A repaint of the host's boundary mints its new
+  /// pictures wherever its dirty children paint, and when every one of them is
+  /// inside glass — a label in a bar changing, with nothing of the boundary's
+  /// own painted outside the glass — the oracle's walk is right to see nothing:
+  /// none of it is in the proxy. A label changing on a tap is exactly that.
+  ///
+  /// Not a walk with nothing excluded, which is the obvious version and has no
+  /// teeth: a draw layer is a type the table does not read, so it reports a
+  /// change on every frame and the assertion could never fire while any glass
+  /// was on the screen. This one is weaker than the oracle's walk on one kind
+  /// of frame: a publish repaints a surface, and with it the content inside, so
+  /// right after one the content walk changes and a hole elsewhere would pass.
+  /// On every frame without a publish it is as quiet as the oracle's — the
+  /// steady state, where a held proxy is what is at stake.
+  final ProxyLayerWatch _debugWatchContent = ProxyLayerWatch();
+
+  /// Whether the framework painted this host's subtree during the frame just
+  /// ended. Read by the watch's own assertion and cleared with every capture.
+  bool _framePainted = false;
+  final GlassProxyHandle _handle = GlassProxyHandle();
+  final GlobalKey _rootKey = GlobalKey();
+  late GlassProxyPipeline _pipeline;
+  late RetakeOracle _oracle;
+  bool _scheduled = false;
+
+  /// Frames that were recorded, and frames that were held. Counted because a
+  /// policy that quietly records every frame looks exactly like one that works.
+  int recorded = 0;
+  int held = 0;
+
+  /// Of [held], the frames held across a change because thermal pressure bought
+  /// the staleness. Counted apart because it is the one hold that knows
+  /// its picture is out of date.
+  int throttled = 0;
+
+  /// How many [GlassProxy] markers the oracle is subscribed to.
+  ///
+  /// Exposed for the same reason [recorded] and [held] are: a subscription that
+  /// never happened and one that found nothing to subscribe to look identical
+  /// from outside.
+  int get watchedMarkers => _oracle.watchedMarkers;
+
+  /// Whether the marker subscription has to be rebuilt before the next capture.
+  ///
+  /// The walk is `visitChildren` over the whole subtree — about 24 µs per pass
+  /// on a typical screen — so it runs when the tree's *structure* changes rather than
+  /// every frame. The ledger is the signal: it notifies exactly when a surface
+  /// arrives or leaves and never on geometry, because it stores surfaces rather
+  /// than their rects.
+  ///
+  /// It is a proxy for the real event and not the event: a subtree can gain a
+  /// marker without a surface arriving, and that marker stays unwatched until
+  /// something else moves. What that costs is bounded rather than unbounded —
+  /// the oracle falls back to its ceiling — and the honest fix is for markers to
+  /// register themselves the way surfaces do, which is API this package does not
+  /// have yet.
+  bool _markersStale = true;
+
+  GlassHardware get _hardware => widget.hardware ?? GlassHardware.detect();
+
+  /// [GlassHost.finish], or the branch of `.regular` the screen is on. Set
+  /// before the first [_build], from [didChangeDependencies]: the appearance
+  /// is inherited, and `initState` may not read it.
+  late GlassFinish _finish;
+
+  /// The appearance `.regular` was picked in, or null when a finish was named —
+  /// what lets a reading pick the branch again for one glass.
+  Brightness? get _regularAppearance => widget.finish != null ? null : _appearance;
+
+  /// [GlassHost.appearance], or the platform's. Read only when it is not
+  /// declared, so a declared one does not depend on the platform's.
+  Brightness get _appearance => widget.appearance ?? MediaQuery.maybePlatformBrightnessOf(context) ?? Brightness.light;
+
+  /// Reads the backdrop back for [GlassHost.adaptive]; null — and nothing at
+  /// all — without it.
+  GlassBackdropReader? _reader;
+
+  void _adapt() {
+    final GlassAdaptive? adaptive = widget.adaptive;
+    final GlassBackdropReader? reader = _reader;
+    if (adaptive == null) {
+      if (reader != null) {
+        _handle._readings = null;
+        reader.dispose();
+        _reader = null;
+      }
+    } else if (reader == null) {
+      _reader = GlassBackdropReader(adaptive, _handle);
+      _handle._readings = _reader!.readings;
+    } else {
+      reader.adaptive = adaptive;
+    }
+  }
+
+  GlassFinish _resolveFinish() =>
+      widget.finish ?? GlassFinish.regular(appearance: _appearance, backdrop: widget.backdrop);
+
+  static ui.FragmentProgram? _cachedProgram;
+  static Future<ui.FragmentProgram>? _loading;
+  static ui.FragmentProgram? _cachedGroupProgram;
+  static Future<ui.FragmentProgram>? _loadingGroup;
+
+  /// The one load of each program per process, which fills the cache before
+  /// anything waiting on it runs — shared by every host's `initState` and by
+  /// [GlassHost.precache], so neither path compiles a program twice.
+  static Future<ui.FragmentProgram> _loadBase() => _loading ??= _loadShader(
+    kGlassShaderAsset,
+    (ui.FragmentProgram program) => _cachedProgram = program,
+    () => _loading = null,
+  );
+
+  static Future<ui.FragmentProgram> _loadGroup() => _loadingGroup ??= _loadShader(
+    kGlassGroupShaderAsset,
+    (ui.FragmentProgram program) => _cachedGroupProgram = program,
+    () => _loadingGroup = null,
+  );
+
+  static Future<ui.FragmentProgram>? _loadingBlur;
+
+  /// The Gaussian the pipeline blurs with on Impeller (`proxy_blur.dart`).
+  static Future<ui.FragmentProgram> _loadBlur() => _loadingBlur ??= _loadShader(
+    kGlassBlurShaderAsset,
+    (ui.FragmentProgram program) => glassBlurProgram = program,
+    () => _loadingBlur = null,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _ledger.addListener(_markersChanged);
+    // Through a closure rather than `_oracle.noteChange` directly: the oracle is
+    // rebuilt whenever the finish, the budget or the declaration changes, and a
+    // listener bound to the old one would declare changes to a dead object.
+    _handle.changes.addListener(_noteDeclaredChange);
+    _adapt();
+    _loadProgram();
+    _loadGroupProgram();
+    _loadBlurProgram();
+  }
+
+  void _noteDeclaredChange() {
+    _oracle.noteChange();
+    _scheduleCapture();
+    SchedulerBinding.instance.ensureVisualUpdate();
+  }
+
+  /// A surface arrived or left, so the subtree is a different subtree.
+  void _markersChanged() => _markersStale = true;
+
+  /// Compiles the shader once per process.
+  ///
+  /// `FragmentProgram.fromAsset` is a future, and it is the one engine future a
+  /// widget test's fake clock does complete — it comes over the asset channel,
+  /// which the binding pumps. Everything else on that list hangs until the
+  /// ten-minute timeout.
+  void _loadProgram() {
+    final ui.FragmentProgram? cached = _cachedProgram;
+    if (cached != null) {
+      _handle.program = cached;
+      return;
+    }
+    _loadBase().then((ui.FragmentProgram program) {
+      if (mounted) {
+        _handle.program = program;
+      }
+    }, onError: _reportShaderLoadError);
+  }
+
+  /// The same, for the fused draw.
+  ///
+  /// Loaded unconditionally rather than when a group appears: a program
+  /// compiled on the frame a toolbar first fuses would put that frame on a
+  /// different path from every frame after it, and the first frame of an
+  /// animation is the one somebody screenshots.
+  void _loadGroupProgram() {
+    final ui.FragmentProgram? cached = _cachedGroupProgram;
+    if (cached != null) {
+      _handle.groupProgram = cached;
+      return;
+    }
+    _loadGroup().then((ui.FragmentProgram program) {
+      if (mounted) {
+        _handle.groupProgram = program;
+      }
+    }, onError: _reportShaderLoadError);
+  }
+
+  /// The same, for the Gaussian the atlas is blurred with on Impeller, which
+  /// the pipeline reads from `proxy_blur.dart` rather than from the handle.
+  ///
+  /// Until it arrives the atlas is blurred by `ImageFilter.blur`, corrected,
+  /// and a proxy captured so is held like any other; so its arrival is
+  /// declared as a change, and a frame is asked for to capture through it —
+  /// a still screen draws none of its own, and the capture runs after one.
+  void _loadBlurProgram() {
+    if (!ui.ImageFilter.isShaderFilterSupported || glassBlurProgram != null) {
+      return;
+    }
+    _loadBlur().then((ui.FragmentProgram program) {
+      if (mounted) {
+        _handle.noteChange();
+        SchedulerBinding.instance.ensureVisualUpdate();
+      }
+    }, onError: _reportShaderLoadError);
+  }
+
+  /// The first build, and a rebuild when the appearance moves `.regular` to
+  /// its other branch — which is a different finish exactly as a new
+  /// [GlassHost.finish] is.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final GlassFinish resolved = _resolveFinish();
+    if (!_built) {
+      _finish = resolved;
+      _built = true;
+      _build();
+    } else if (resolved != _finish) {
+      _finish = resolved;
+      _rebuild();
+    }
+  }
+
+  bool _built = false;
+
+  void _build() {
+    _handle.hardware = _hardware;
+    _pipeline = _newPipeline();
+    _oracle = RetakeOracle(
+      finish: _finish.name,
+      budgetDeltaE: widget.budgetDeltaE,
+      content: widget.content,
+    );
+    // A new oracle watches nothing, whatever the old one watched.
+    _markersStale = true;
+  }
+
+  GlassProxyPipeline _newPipeline() => GlassProxyPipeline(
+    finishSigmaLogical: _finish.blurSigmaLogical,
+    hardware: _hardware,
+    finish: _finish.name,
+    shadowFilter: widget.shadowFilter,
+    occlusion: widget.occlusion,
+    damageBudgetDeltaE: widget.budgetDeltaE,
+    pinnedResolution: widget.resolution,
+    maxTextureSide: widget.maxTextureSide,
+    blurPass: widget.blurPass,
+  );
+
+  @override
+  void didUpdateWidget(GlassHost oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.adaptive != oldWidget.adaptive) {
+      _adapt();
+    }
+    final GlassFinish resolved = _resolveFinish();
+    final bool finishMoved = resolved != _finish;
+    _finish = resolved;
+    if (finishMoved ||
+        widget.budgetDeltaE != oldWidget.budgetDeltaE ||
+        widget.resolution?.divisor != oldWidget.resolution?.divisor ||
+        widget.maxCaptures != oldWidget.maxCaptures ||
+        widget.blurPass != oldWidget.blurPass ||
+        widget.maxTextureSide != oldWidget.maxTextureSide ||
+        widget.content != oldWidget.content ||
+        _hardware != (oldWidget.hardware ?? GlassHardware.detect())) {
+      _rebuild();
+    }
+  }
+
+  /// A different finish is a different bleed, a different divisor and a
+  /// different ceiling. Rebuilt rather than mutated: the retained layout is
+  /// sized for the old one, and holding it would be holding slots for a texel
+  /// that no longer exists.
+  void _rebuild() {
+    _handle.publish(null);
+    _publishUpper(const <GlassProxyFrame?>[]);
+    _pipeline.dispose();
+    _oracle.dispose();
+    _build();
+  }
+
+  @override
+  void dispose() {
+    _handle.publish(null);
+    _publishUpper(const <GlassProxyFrame?>[]);
+    _pipeline.dispose();
+    _oracle.dispose();
+    _handle.changes.removeListener(_noteDeclaredChange);
+    _reader?.dispose();
+    _handle.dispose();
+    _ledger
+      ..removeListener(_markersChanged)
+      ..dispose();
+    super.dispose();
+  }
+
+  /// Records after the frame that has just been painted, and arms itself again.
+  ///
+  /// A post-frame callback rather than anything inside `paint`: the tree has to
+  /// be laid out *and* painted before a capture means anything, and driving a
+  /// pass from inside another node's paint is reentrancy the walk is
+  /// deliberately kept out of.
+  ///
+  /// **Re-armed from inside the callback, not from `build`.** `build` runs when
+  /// something rebuilds the host, not when a frame is produced — so a screen
+  /// that scrolls without rebuilding the host, which is most of them, would get
+  /// exactly one capture and then a proxy frozen forever.
+  ///
+  /// Re-arming costs nothing when the app is idle: `addPostFrameCallback` does
+  /// not request a frame, it waits for the next one that happens anyway. And
+  /// the oracle, not this, decides whether anything is recorded.
+  void _scheduleCapture() {
+    if (_scheduled) {
+      return;
+    }
+    _scheduled = true;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _scheduled = false;
+      if (!mounted) {
+        return;
+      }
+      try {
+        _capture();
+      } catch (e, st) {
+        debugPrint('[GlassHost] capture error: $e\n$st');
+      } finally {
+        _framePainted = false;
+      }
+    });
+  }
+
+  void _capture() {
+    final int? limit = widget.maxCaptures;
+    if (limit != null && recorded >= limit) {
+      // Counted as held rather than skipped: from the surface's point of view
+      // this frame is exactly a frame the oracle declined to retake, and the
+      // report should not have to know which of the two decided.
+      held++;
+      return;
+    }
+    final RenderObject? root = _rootKey.currentContext?.findRenderObject();
+    if (root == null) {
+      return;
+    }
+    if (_markersStale) {
+      // Before the decision, not after: the oracle's first `decide` of this
+      // frame has to be able to see a marker that fired since the last one.
+      _oracle.watch(root);
+      _markersStale = false;
+    }
+    final List<GlassSurfaceGeometry> keys = _ledger.registered.toList();
+    // A fused silhouette reaches past its members' boxes, so each member is
+    // captured with that much more around it. Per member rather than
+    // as the cluster's quad: the silhouette lies within the reach of *some*
+    // member's shape, and the quad of a scattered group is mostly empty.
+    final reachOf = <GlassSurfaceGeometry, double>{
+      for (final GlassSurfaceCluster cluster in _ledger.clusters)
+        if (cluster.bridgeReach > 0)
+          for (final GlassSurfaceGeometry member in cluster.members) member: cluster.bridgeReach,
+    };
+    // What the host's subtree covers: nothing past it is drawn, so nothing past
+    // it is captured.
+    final Rect? scene = root is RenderBox && root.hasSize
+        ? MatrixUtils.transformRect(root.getTransformTo(null), Offset.zero & root.size)
+        : null;
+    final rects = <Rect>[];
+    final present = <GlassSurfaceGeometry>[];
+    final finishes = <GlassFinish>[];
+    // The boxes a reading averages, and only when something reads them.
+    final GlassBackdropReader? reader = _reader;
+    final List<({GlassSurfaceGeometry surface, Rect box})>? boxes = reader == null
+        ? null
+        : <({GlassSurfaceGeometry surface, Rect box})>[];
+    for (final GlassSurfaceGeometry surface in keys) {
+      final GlassSurfaceRecord? record = surface.readGeometry();
+      // A surface below the top rung is in the register and not in the capture:
+      // it pays the translucency tax like any other translucent fill and reads
+      // nothing, so charging the atlas for it would pay for a
+      // snapshot no shader will ever sample.
+      //
+      // Nor is glass over a declared backdrop (`GlassBackdrop`), which samples
+      // a texture of its own: the declaration is what makes it free.
+      //
+      // Nor is a surface at presence zero, which draws nothing: capturing it
+      // would size the atlas — and, for a finish of its own, the divisor — for
+      // glass that is not there (a control's drop at rest).
+      if (record != null && record.captured) {
+        final GlassFinish finish = record.finish ?? _finish;
+        // A widened or minifying glass samples past its box; by its
+        // full reach rather than the presence-scaled one, so a drop lifting in
+        // does not change the capture's input on every frame of it.
+        final Rect wanted = record.captureRect.inflate(
+          (reachOf[surface] ?? 0) + finish.optics.reach(record.rect.size / 2),
+        );
+        if (wanted.isEmpty ||
+            wanted.width.isNaN ||
+            wanted.width.isInfinite ||
+            wanted.height.isNaN ||
+            wanted.height.isInfinite ||
+            wanted.left.isNaN ||
+            wanted.left.isInfinite ||
+            wanted.top.isNaN ||
+            wanted.top.isInfinite) {
+          continue;
+        }
+        final Rect clamped = scene != null && scene.overlaps(wanted)
+            ? wanted.intersect(scene)
+            : wanted;
+        if (clamped.isEmpty ||
+            clamped.width <= 0 ||
+            clamped.height <= 0 ||
+            clamped.width.isNaN ||
+            clamped.height.isNaN) {
+          continue;
+        }
+        rects.add(clamped);
+        present.add(surface);
+        finishes.add(finish);
+        boxes?.add((surface: surface, box: record.rect));
+      }
+    }
+    if (rects.isEmpty) {
+      // Nothing reads a proxy, so nothing is recorded — which is how "the cheap
+      // finish does not read the backdrop at all" is enforced rather than
+      // promised: there is no image for a surface to sample even by mistake.
+      _handle.publish(null);
+      _publishUpper(const <GlassProxyFrame?>[]);
+      // Published empty, so whatever comes back — the same glass at the same
+      // rects included — is a change.
+      _lastPresent = const <GlassSurfaceGeometry>{};
+      // Nothing to read, but the surfaces that left still leave: a screen
+      // whose last glass went, or whose glass all fell to a rung that reads
+      // nothing, would otherwise keep its verdicts, and the render objects
+      // they are keyed by, for the host's lifetime.
+      reader?.prune(const <GlassSurfaceGeometry>{});
+      return;
+    }
+    final Set<GlassSurfaceGeometry> presentSet = present.toSet();
+    if (!setEquals(presentSet, _lastPresent)) {
+      _lastPresent = presentSet;
+      _oracle.noteSurfacesChanged();
+    }
+    final _Levels levels = _Levels.of(present, root);
+    if (widget.content != GlassContentDeclaration.undeclared) {
+      _noteCompositedChanges(root, keys, levels);
+    }
+    final double dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? View.maybeOf(context)?.devicePixelRatio ?? 1;
+    _oracle.throttleFrames = widget.thermalPolicy.throttleFrames(
+      _finish.name,
+      widget.thermal,
+      spentDeltaE: _oracle.spentDeltaE,
+    );
+    final _Level base = levels.select(0, present, rects, finishes, _finish);
+    final ({GlassProxyFrame? frame, RetakeReason reason}) result = _pipeline.captureIfNeeded(
+      root,
+      base.rects,
+      devicePixelRatio: dpr,
+      oracle: _oracle,
+      keys: base.keys,
+      fused: _fusedGrouping(base.keys),
+      // Only when some surface wears another finish: a screen of one finish
+      // takes the path it always took, bit for bit.
+      finishes: base.mixed ? base.finishes : null,
+      // The levels above are recorded on this decision, so it watches them too.
+      // Not where glass that bears glass actually is: a bar resized inside its
+      // travel is already seen by the layer watch — its relayout repaints the
+      // content it bears or moves the layers it positions — so watching its
+      // rect as well would add nothing.
+      watched: levels.top > 0 ? rects : null,
+    );
+    // Read whether or not anything was published: a held frame takes no
+    // snapshot, and a counter that only moved on publishes could not say so.
+    _readCounters();
+    if (result.reason.holds) {
+      held++;
+      if (result.reason == RetakeReason.throttled) {
+        throttled++;
+        _handle.throttled = throttled;
+      }
+      // A reader that has never read — turned on over a still screen — reads
+      // the capture already held, once, and so does glass that moved inside
+      // its travel: the capture holds, and what is under the glass does not.
+      // Every other held frame reads nothing.
+      if (reader != null && (reader.hungry || reader.moved(boxes!))) {
+        _feed(reader, boxes!);
+      }
+      return;
+    }
+    recorded++;
+    _handle.publish(result.frame);
+    _captureUpper(root, levels, present, rects, finishes, dpr);
+    _readCounters();
+    // On a frame that published: a held frame has nothing new under the glass,
+    // which is what makes the read-back per capture and not per frame. Nor has
+    // one recorded only for a new finish — an adaptive verdict's own, among
+    // them — which is read as a held one is.
+    if (reader != null && (!_pipeline.refinished || reader.hungry || reader.moved(boxes!))) {
+      _feed(reader, boxes!);
+    }
+  }
+
+  /// Hands the capture just published, or held, to the reader.
+  ///
+  /// Pruned to the surfaces in the capture, not to every one registered: a
+  /// glass that fell to a rung that reads nothing, or to presence zero, is
+  /// registered and has nothing under it to read, and a verdict kept for it
+  /// would go on standing in for the declarations it should be back on.
+  void _feed(GlassBackdropReader reader, List<({GlassSurfaceGeometry surface, Rect box})> boxes) {
+    reader
+      ..prune(<GlassSurfaceGeometry>{for (final (:GlassSurfaceGeometry surface, box: _) in boxes) surface})
+      ..captured(boxes, SchedulerBinding.instance.currentSystemFrameTimeStamp);
+  }
+
+  /// Records the levels of glass that stand on glass, bottom up, each one
+  /// after the level below it has been published — because what a level
+  /// captures is the level below *drawn*: the walk paints every glass under
+  /// it through the surface's own frame (`RenderGlassSurface._paintIntoProxy`)
+  /// and skips its own level and everything above, which is the self-capture
+  /// rule said per level.
+  ///
+  /// Recorded whenever the base is, and never otherwise: the oracle watches
+  /// every level's surfaces, so a base that holds is a screen on which no
+  /// level has anything new to show. The price is one more snapshot per level
+  /// on every recorded frame of a screen that has one, and nothing on a screen
+  /// that does not.
+  void _captureUpper(
+    RenderObject root,
+    _Levels levels,
+    List<GlassSurfaceGeometry> present,
+    List<Rect> rects,
+    List<GlassFinish> finishes,
+    double dpr,
+  ) {
+    final previous = _handle.upper;
+    if (levels.top == 0 && previous.isEmpty) {
+      return;
+    }
+    final frames = <GlassProxyFrame?>[];
+    for (var level = 1; level <= levels.top; level++) {
+      final _Level selected = levels.select(level, present, rects, finishes, _finish);
+      while (_upperPipelines.length < level) {
+        _upperPipelines.add(_newPipeline());
+      }
+      frames.add(
+        _upperPipelines[level - 1].capture(
+          root,
+          selected.rects,
+          devicePixelRatio: dpr,
+          keys: selected.keys,
+          fused: _fusedGrouping(selected.keys),
+          finishes: selected.mixed ? selected.finishes : null,
+          glass: (RenderObject child) => levels.policy(child, level),
+        ),
+      );
+      // Before the next level's walk, which draws this one.
+      _handle.publishUpper(frames);
+    }
+    _publishUpper(frames, previous: previous);
+  }
+
+  /// Publishes [frames] as the upper levels and disposes whatever they
+  /// replaced — after, so that no surface is ever left pointing at a released
+  /// texture between the two.
+  void _publishUpper(List<GlassProxyFrame?> frames, {List<GlassProxyFrame?>? previous}) {
+    final List<GlassProxyFrame?> old = previous ?? _handle.upper;
+    _handle.publishUpper(frames);
+    for (final GlassProxyFrame? frame in old) {
+      if (frame != null && !frames.contains(frame)) {
+        frame.dispose();
+      }
+    }
+    if (frames.isEmpty) {
+      for (final GlassProxyPipeline pipeline in _upperPipelines) {
+        pipeline.dispose();
+      }
+      _upperPipelines.clear();
+    }
+  }
+
+  final List<GlassProxyPipeline> _upperPipelines = <GlassProxyPipeline>[];
+
+  /// The surfaces the last frame was captured for, by identity.
+  Set<GlassSurfaceGeometry>? _lastPresent;
+
+  void _readCounters() {
+    var snapshots = _pipeline.snapshots;
+    for (final GlassProxyPipeline pipeline in _upperPipelines) {
+      snapshots += pipeline.snapshots;
+    }
+    _handle.snapshots = snapshots;
+    _handle.repacks = _pipeline.repacks;
+    _handle.ceilingDeepenings = _pipeline.ceilingDeepenings;
+    _handle.ceilingRefusals = _pipeline.ceilingRefusals;
+    _handle.ceilingOverruns = _pipeline.ceilingOverruns;
+  }
+
+  /// The blend groups, as indices into [present].
+  ///
+  /// The one-way invariant — a blend group is never split across the atlas —
+  /// said in the only place it can be enforced: the packer is *given* these and may merge them with anything, but cannot
+  /// take one apart. Asserting it after the fact would be a check on a layout
+  /// that had already been recorded.
+  ///
+  /// A member that could not say where it is has no index and drops out, which
+  /// leaves a group of one — the same shape as a group whose second surface has
+  /// not mounted yet, and the fused draw handles it because a fold of one smooth
+  /// minimum is the shape itself.
+  List<List<int>>? _fusedGrouping(List<GlassSurfaceGeometry> present) {
+    if (_ledger.clusters.isEmpty) {
+      return null;
+    }
+    final index = <Object, int>{for (var i = 0; i < present.length; i++) present[i]: i};
+    final out = <List<int>>[];
+    for (final GlassSurfaceCluster cluster in _ledger.clusters) {
+      final members = <int>[
+        for (final GlassSurfaceGeometry surface in cluster.members)
+          if (index[surface] case final int i) i,
+      ];
+      if (members.length > 1) {
+        out.add(members..sort());
+      }
+    }
+    return out.isEmpty ? null : out;
+  }
+
+  /// The framework repainted the screen under the glass, so its pixels changed.
+  ///
+  /// Redundant as a mechanism — `ProxyLayerWatch` sees everything this sees and
+  /// a great deal more — and kept as the *check* on it. The implication runs
+  /// one way and is exact: the framework cannot paint this subtree without
+  /// minting a new `ui.Picture` in the layer that owns it, so "painted, and the
+  /// watch saw nothing" is a hole in the watch's table and nothing else.
+  /// Asserted every frame of every debug run of every application.
+  ///
+  /// It still reports the change in profile, where the assert is stripped. That
+  /// costs nothing (the watch is consulted either way) and errs towards
+  /// recording, which is the safe direction: a capture nobody needed is
+  /// expensive, a change nobody noticed is a visibly wrong picture.
+  void _noteRepaint() {
+    _framePainted = true;
+    _oracle.noteChange();
+  }
+
+  /// Ask the composited output whether anything under the host moved.
+  ///
+  /// The one input that has no blind spot, and the reason a declaration can be
+  /// a *permission* rather than a promise: the application says the glass may
+  /// hold, and this establishes whether it should. Errs towards recording in
+  /// every direction it can — no layer yet, a layer type the table does not
+  /// know, a texture whose pixels arrive from outside Dart.
+  void _noteCompositedChanges(
+    RenderObject root,
+    List<GlassSurfaceGeometry> surfaces,
+    _Levels levels,
+  ) {
+    // `layer` rather than `debugLayer`, for the reason `ProxyRecorder.stock`
+    // gives: the second is wrapped in an assert and is null in profile.
+    // ignore: invalid_use_of_protected_member
+    final ContainerLayer? rootLayer = root is RenderRepaintBoundary ? root.layer : null;
+    if (rootLayer == null) {
+      _oracle.noteChange();
+      return;
+    }
+    final exclude = <Layer>{};
+    for (final GlassSurfaceGeometry surface in surfaces) {
+      // `excludedFromProxy` rather than "it is a surface", because those two
+      // parted company when the ladder did: a surface below the top rung is in
+      // the proxy, so a change inside it has to invalidate the proxy like any
+      // other content. Excluding it would hold a backdrop over a panel that had
+      // moved — and the same predicate is what keeps it in the walk, which is
+      // why it is read from there rather than recomputed here.
+      //
+      // And only the draw when glass stands on this surface: its subtree is
+      // then in the proxy of the level above — the bar's icons under the lens —
+      // so a change there invalidates it like any other content, while the
+      // draw itself is replaced by every publish and would record for ever.
+      final Layer? layer = !surface.excludedFromProxy
+          ? null
+          : levels.bears(surface)
+          ? surface.drawLayer
+          : surface.compositedLayer;
+      if (layer != null) {
+        exclude.add(layer);
+      }
+    }
+    // And the blend groups, which draw glass of their own. Their members' layers
+    // are inside theirs and go with them; the walk skips that whole subtree, so
+    // nothing inside it is in the proxy to be invalidated.
+    for (final GlassSurfaceCluster cluster in _ledger.clusters) {
+      final Layer? layer = !cluster.excludedFromProxy
+          ? null
+          : cluster.members.any(levels.bears)
+          ? cluster.drawLayer
+          : cluster.compositedLayer;
+      if (layer != null) {
+        exclude.add(layer);
+      }
+    }
+    final LayerChange change = _watch.changeSince(rootLayer, exclude: exclude);
+    _handle.watchedLayers = _watch.lastLength;
+    assert(() {
+      // Advanced on every call, painted or not, so its previous frame is the
+      // oracle's walk's previous frame.
+      final LayerChange content = _debugWatchContent.changeSince(
+        rootLayer,
+        exclude: <Layer>{
+          for (final GlassSurfaceGeometry surface in surfaces) ?surface.drawLayer,
+          for (final GlassSurfaceCluster cluster in _ledger.clusters) ?cluster.drawLayer,
+        },
+      );
+      if (_framePainted && !content.changed && _debugRepaintMintedPicture(root, rootLayer)) {
+        throw FlutterError(
+          'GlassHost: the framework painted the screen under this host and the '
+          'layer watch reported no change, glass content included. A repaint mints a new '
+          'ui.Picture in the layer that owns it, so this is a hole in '
+          'ProxyLayerWatch, not a still screen. The proxy would have been held '
+          'over changed pixels.',
+        );
+      }
+      return true;
+    }());
+    if (!change.changed) {
+      return;
+    }
+    // Whether the change reaches the capture at all: the proxy holds
+    // the inside of the slots and nothing else, so a change that misses every
+    // source rect has missed every texel of the atlas. It is still a change —
+    // the assertion above is about that, and folding the region into it would
+    // turn a hole in the watch's table into a silent hold whenever the hole
+    // happened to sit away from the glass.
+    if (!_pipeline.capturedAreaTouchedBy(change) &&
+        !_upperPipelines.any((GlassProxyPipeline p) => p.capturedAreaTouchedBy(change))) {
+      _handle.changesOutsideCapture++;
+      return;
+    }
+    _oracle.noteChange();
+  }
+
+  /// Whether the host's boundary, repainted this frame, drew anything of its
+  /// own — a picture under its layer that no nested repaint boundary owns.
+  ///
+  /// The premise of the watch's assertion is "a repaint mints a picture", and it
+  /// is false for a boundary that draws nothing itself. `RenderObject.layout`
+  /// marks paint unconditionally (`object.dart:2939`), so a relayout that lands
+  /// on the same geometry — an application's `setState` above a `Scaffold`
+  /// re-running its layout — repaints the host's boundary, and when every pixel
+  /// under it belongs to a nested boundary (list items, a control's track, the
+  /// glass) the repaint re-appends retained layers and mints nothing. The
+  /// screen is still, and the watch is right.
+  ///
+  /// A picture outside every nested boundary is one this repaint recorded
+  /// afresh, so with one present a silent watch is still a hole. Debug only,
+  /// and asked only on the frame the assertion would otherwise fire.
+  bool _debugRepaintMintedPicture(RenderObject root, ContainerLayer rootLayer) {
+    final owned = <Layer>{};
+    void boundaries(RenderObject node) {
+      node.visitChildren((RenderObject child) {
+        // ignore: invalid_use_of_protected_member
+        final Layer? layer = child.isRepaintBoundary ? child.layer : null;
+        if (layer != null) {
+          owned.add(layer);
+        } else {
+          boundaries(child);
+        }
+      });
+    }
+
+    boundaries(root);
+    bool draws(Layer layer) {
+      if (owned.contains(layer)) {
+        return false;
+      }
+      if (layer is PictureLayer) {
+        return true;
+      }
+      if (layer is ContainerLayer) {
+        for (Layer? child = layer.firstChild; child != null; child = child.nextSibling) {
+          if (draws(child)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    return draws(rootLayer);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Every frame: the oracle decides whether anything is actually recorded, so
+    // this is a scheduling question rather than a cost one.
+    _scheduleCapture();
+    return GlassScope(
+      ledger: _ledger,
+      child: GlassTheme(
+        // The host installs the theme rather than reading one, so that the
+        // finish has exactly one home — and not on `GlassProxyHandle`, which is
+        // the pipeline: a surface below the top rung needs its finish without
+        // one.
+        data: GlassThemeData(
+          finish: _finish,
+          tier: widget.tier,
+          backdrop: widget.backdrop,
+          highContrast: widget.highContrast ?? MediaQuery.maybeHighContrastOf(context) ?? false,
+          richBackdrop: widget.richBackdrop,
+          minLabelContrast: widget.minLabelContrast,
+          ripple: widget.ripple,
+          dropMotion: widget.dropMotion,
+          press: widget.press,
+          adaptive: widget.adaptive,
+          // For a reading to pick `.regular`'s branch again, and for what
+          // follows the screen's appearance rather than the glass's, such as
+          // the hard scroll edge's band.
+          regularAppearance: _regularAppearance,
+        ),
+        child: GlassProxyScope(
+          handle: _handle,
+          child: RepaintBoundary(
+            key: _rootKey,
+            // Inside the boundary rather than outside it: what is being
+            // observed is that *this* boundary repainted, and a node above it
+            // is painted by whatever encloses the host instead.
+            child: _GlassRepaintObserver(onRepaint: _noteRepaint, child: widget.child),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Reports that the framework painted the host's subtree.
+///
+/// Transparent to layout and hit testing — it is a `RenderProxyBox` and nothing
+/// else — and its whole content is one call per repaint of the host's boundary.
+class _GlassRepaintObserver extends SingleChildRenderObjectWidget {
+  const _GlassRepaintObserver({required this.onRepaint, required Widget super.child});
+
+  final VoidCallback onRepaint;
+
+  @override
+  _RenderGlassRepaintObserver createRenderObject(BuildContext context) => _RenderGlassRepaintObserver(onRepaint);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderGlassRepaintObserver renderObject) {
+    renderObject.onRepaint = onRepaint;
+  }
+}
+
+class _RenderGlassRepaintObserver extends RenderProxyBox {
+  _RenderGlassRepaintObserver(this.onRepaint);
+
+  VoidCallback onRepaint;
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    // The capture pass paints this same subtree through its own context every
+    // time it records. Counting that would declare a change on the frame after
+    // every capture — a loop that records for ever and holds nothing, which a
+    // still screen, one that must be held, would show at once.
+    if (context is! ProxyWalkContext) {
+      onRepaint();
+    }
+    super.paint(context, offset);
+  }
+}
+
+/// Which glass stands on which: each surface's level is the number of glass
+/// surfaces above it in the tree that are themselves being captured.
+///
+/// The tree rather than the screen, on purpose. Overlap is not the question —
+/// two sibling panels that overlap are two panels of one level, each over the
+/// same backdrop — and a lens that should refract the bar under it is written
+/// *inside* the bar, which is where its paint order puts it on top anyway.
+/// Counting only surfaces that are captured is what keeps a drop at rest
+/// (presence zero, no draw) from lifting what stands on it a level for nothing.
+class _Levels {
+  _Levels._(this._of, this._bearing, this.top);
+
+  factory _Levels.of(List<GlassSurfaceGeometry> present, RenderObject root) {
+    final Set<Object> captured = present.toSet();
+    final of = <Object, int>{};
+    final bearing = <Object>{};
+    var lifted = false;
+    for (final GlassSurfaceGeometry surface in present) {
+      var level = 0;
+      if (surface is RenderObject) {
+        var inside = 0;
+        for (
+          RenderObject? node = (surface as RenderObject).parent;
+          node != null && !identical(node, root);
+          node = node.parent
+        ) {
+          if (captured.contains(node)) {
+            if (inside == 0) {
+              bearing.add(node);
+            }
+            inside++;
+            level++;
+          } else if (node is RenderGlassAbove) {
+            level += node.lift;
+            lifted = true;
+          }
+        }
+      }
+      of[surface] = level;
+    }
+    // Numbered by occupancy, so a level is a snapshot only when it has glass
+    // under it: a lifted bar over plain content is level 0, captured with
+    // everything else, and lifts of 1 and 3 over a page are two levels, not
+    // four. The tree's levels are dense already — a glass inside a captured
+    // glass is one above it — so this changes nothing on a screen with no
+    // [GlassAbove].
+    final List<int> occupied = of.values.toSet().toList()..sort();
+    final rank = <int, int>{for (var i = 0; i < occupied.length; i++) occupied[i]: i};
+    for (final Object surface in of.keys) {
+      of[surface] = rank[of[surface]]!;
+    }
+    var top = 0;
+    for (final int level in of.values) {
+      if (level > top) {
+        top = level;
+      }
+    }
+    // Under a lift, what bears glass is not something the tree says — the
+    // cards under a lifted bar are its siblings — so every surface below the
+    // top bears: its draw is excluded from the watch and its subtree is
+    // watched, because that subtree is in the capture of the level above.
+    // Conservative where the lifted glass covers none of them, and the watch
+    // is screen-wide anyway: a change in a card retakes either way.
+    if (lifted && top > 0) {
+      for (final MapEntry<Object, int> entry in of.entries) {
+        if (entry.value < top) {
+          bearing.add(entry.key);
+        }
+      }
+    }
+    return _Levels._(of, bearing, top);
+  }
+
+  final Map<Object, int> _of;
+  final Set<Object> _bearing;
+
+  /// The highest level present; zero on a screen with no glass on glass.
+  final int top;
+
+  /// Whether some captured glass stands directly on [surface].
+  bool bears(Object surface) => _bearing.contains(surface);
+
+  /// The surfaces of [level], in register order.
+  _Level select(
+    int level,
+    List<GlassSurfaceGeometry> present,
+    List<Rect> rects,
+    List<GlassFinish> finishes,
+    GlassFinish host,
+  ) {
+    if (top == 0) {
+      return _Level(present, rects, finishes, host);
+    }
+    final keys = <GlassSurfaceGeometry>[];
+    final out = <Rect>[];
+    final worn = <GlassFinish>[];
+    for (var i = 0; i < present.length; i++) {
+      if (_of[present[i]] == level) {
+        keys.add(present[i]);
+        out.add(rects[i]);
+        worn.add(finishes[i]);
+      }
+    }
+    return _Level(keys, out, worn, host);
+  }
+
+  /// The walk of [level]: glass below it is drawn, its own and above skipped.
+  ///
+  /// A group is at its members' level — fused members share a silhouette, so
+  /// they share a level by construction. Glass the register did not capture
+  /// (presence zero) is skipped at every level, as it always was.
+  WalkAction policy(RenderObject child, int level) {
+    if (child is RenderGlassSurface && child.excludedFromProxy) {
+      final int? at = _of[child];
+      return at != null && at < level ? WalkAction.paint : WalkAction.skip;
+    }
+    if (child is RenderGlassGroup && child.group.excludedFromProxy) {
+      int? at;
+      for (final GlassSurfaceGeometry member in child.group.members) {
+        at ??= _of[member];
+      }
+      return at != null && at < level ? WalkAction.paint : WalkAction.skip;
+    }
+    return skipGlassSurfaces(child);
+  }
+}
+
+class _Level {
+  _Level(this.keys, this.rects, this.finishes, GlassFinish host)
+    : mixed = finishes.any(
+        (GlassFinish f) => f.name != host.name || f.blurSigmaLogical != host.blurSigmaLogical,
+      );
+
+  final List<GlassSurfaceGeometry> keys;
+  final List<Rect> rects;
+  final List<GlassFinish> finishes;
+  final bool mixed;
+}
+
+/// How every host, ripple and [GlassHost.precache] loads a shader:
+/// [ui.FragmentProgram.fromAsset], which a widget test cannot make fail — the
+/// engine reads the asset itself, past the asset channel's mock.
+///
+/// A test that has to see a load fail sets this before anything loads, in a
+/// file of its own, since the programs are cached per process; nothing else
+/// should set it.
+///
+/// {@category Diagnostics}
+@visibleForTesting
+Future<ui.FragmentProgram> Function(String asset) debugGlassShaderLoader = ui.FragmentProgram.fromAsset;
+
+/// One load of the program at [asset], which fills the cache through [cache]
+/// before anything waiting on it runs.
+///
+/// A load that fails is forgotten through [forget], so the next host to mount,
+/// or the next [GlassHost.precache], tries again instead of being handed the
+/// same failure: an application that caught a failed precache and started
+/// anyway gets its shaders from the host's own attempt.
+Future<ui.FragmentProgram> _loadShader(
+  String asset,
+  void Function(ui.FragmentProgram program) cache,
+  void Function() forget,
+) => debugGlassShaderLoader(asset).then(
+  (ui.FragmentProgram program) {
+    cache(program);
+    return program;
+  },
+  onError: (Object error, StackTrace stack) {
+    forget();
+    Error.throwWithStackTrace(error, stack);
+  },
+);
+
+/// Reports a shader that a host or a ripple waited on and that failed to load,
+/// rather than leaving it to the zone as an uncaught error. The glass draws
+/// its stand-in without the program, as it does while one is loading.
+void _reportShaderLoadError(Object error, StackTrace stack) => FlutterError.reportError(
+  FlutterErrorDetails(
+    exception: error,
+    stack: stack,
+    library: 'glass',
+    context: ErrorDescription('while loading a glass shader'),
+  ),
+);

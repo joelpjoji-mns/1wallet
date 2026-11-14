@@ -578,10 +578,9 @@ packages:
   g1455:
     dependency: "direct main"
     description:
-      name: g1455
-      sha256: "22d1d2bf5e6cf8371a9cdcb454ef0985392ef1388f055946b431541adc74f647"
-      url: "https://pub.dev"
-    source: hosted
+      path: "packages/g1455"
+      relative: true
+    source: path
     version: "0.4.0"
   go_router:
     dependency: "direct main"
@@ -1403,4 +1402,4 @@ packages:
     version: "3.1.4"
 sdks:
   dart: ">=3.13.0 <4.0.0"
-  flutter: ">=3.47.0"
+  flutter: ">=3.44.0"

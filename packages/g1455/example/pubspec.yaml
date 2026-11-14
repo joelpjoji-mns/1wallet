@@ -1,0 +1,46 @@
+name: g1455_example
+description: "The g1455 design system: every component live, with its guide, its code and its API."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
+  g1455:
+    path: ..
+  flutter_md: ^0.2.0
+  squid: ^0.1.1
+  url_launcher: ^6.3.2
+  flutter_sficon: ^1.3.0
+  qr: ^4.0.0
+  path_parsing: ^1.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  # `tool/site.dart` only: the static pages crawlers read are the same
+  # markdown the app draws, rendered to HTML.
+  markdown: ^7.3.0
+  pubspec_generator: ^5.0.2
+  # `tool/site.dart` only: the agent skill as one archive, and the digest the
+  # discovery index names it by.
+  archive: ^4.3.0
+  crypto: ^3.0.7
+
+flutter:
+  uses-material-design: true
+  fonts:
+    # Named `monospace` on purpose: flutter_md draws code in that family, and
+    # on the web a generic name resolves to nothing — the bundled face is
+    # what every code block and inline `code` is set in.
+    - family: monospace
+      fonts:
+        - asset: assets/fonts/JetBrainsMonoNL-Regular.ttf
+        - asset: assets/fonts/JetBrainsMonoNL-Bold.ttf
+          weight: 700

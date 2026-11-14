@@ -1,5 +1,3 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 import 'package:g1455/g1455.dart' as g1455;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
@@ -117,13 +115,9 @@ class BottomIslandNavBar extends StatelessWidget {
             final containerHeight = action != null ? 176.0 : AppSizes.bottomBar;
             final activeTab = page.round().clamp(0, items.length - 1);
 
-            final primaryAccent = scheme.primary;
+            const primaryAccent = AppColors.primary;
             final brightPrimary = isDark
-                ? (ThemeData.estimateBrightnessForColor(primaryAccent) == Brightness.dark
-                    ? Color.lerp(primaryAccent, Colors.white, 0.40)!
-                    : (primaryAccent.computeLuminance() < 0.35
-                        ? Color.lerp(primaryAccent, Colors.white, 0.35)!
-                        : primaryAccent))
+                ? Color.lerp(primaryAccent, Colors.white, 0.15)!
                 : primaryAccent;
 
             return Align(
@@ -171,81 +165,71 @@ class BottomIslandNavBar extends StatelessWidget {
                               final isRegular = !isFrosted && !isClear;
 
                               final fillAlphaTop = isFrosted
-                                  ? (isDark ? 0.38 : 0.52)
+                                  ? (isDark ? 0.35 : 0.45)
                                   : (isRegular
-                                      ? (isDark ? 0.14 : 0.22)
-                                      : (isDark ? 0.02 : 0.04));
-                              final fillAlphaBottom =
-                                  (fillAlphaTop * 0.40).clamp(0.005, 0.85);
+                                      ? (isDark ? 0.12 : 0.16)
+                                      : 0.0);
+                              final fillAlphaBottom = isFrosted
+                                  ? (isDark ? 0.14 : 0.18)
+                                  : (isRegular
+                                      ? (isDark ? 0.04 : 0.05)
+                                      : 0.0);
                               final borderAlpha = isFrosted
-                                  ? (isDark ? 0.55 : 0.72)
+                                  ? (isDark ? 0.50 : 0.65)
                                   : (isRegular
-                                      ? (isDark ? 0.38 : 0.52)
-                                      : (isDark ? 0.28 : 0.40));
+                                      ? (isDark ? 0.32 : 0.42)
+                                      : (isDark ? 0.20 : 0.22));
+                              final borderColor = isDark
+                                  ? Colors.white.withAlphaFactor(borderAlpha)
+                                  : (isClear
+                                      ? scheme.outline.withAlphaFactor(0.20)
+                                      : Colors.white.withAlphaFactor(borderAlpha));
                               final shadowAlpha = isFrosted
                                   ? (isDark ? 0.35 : 0.14)
                                   : (isRegular
-                                      ? (isDark ? 0.28 : 0.10)
-                                      : (isDark ? 0.18 : 0.06));
-
-                              final effectiveBlur = isFrosted
-                                  ? (blur > 0 ? blur : 24.0)
-                                  : (isRegular
-                                      ? (blur > 0 ? blur : 12.0)
-                                      : 0.0);
+                                      ? (isDark ? 0.25 : 0.08)
+                                      : (isDark ? 0.16 : 0.05));
 
                               final pillRadius = BorderRadius.circular(
                                 AppSizes.bottomBarContentHeight / 2,
                               );
 
-                              Widget islandSurface = DecoratedBox(
-                                decoration: BoxDecoration(
-                                  borderRadius: pillRadius,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withAlphaFactor(
-                                        shadowAlpha,
-                                      ),
-                                      blurRadius: 18,
-                                      offset: const Offset(0, 6),
+                              Widget islandSurface = g1455.GlassSurface(
+                                borderRadius: pillRadius,
+                                finish: finish ?? g1455.GlassFinish.clear,
+                                labelled: false,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    borderRadius: pillRadius,
+                                    border: Border.all(
+                                      color: borderColor,
+                                      width: 1.0,
                                     ),
-                                  ],
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: pillRadius,
-                                  child: BackdropFilter(
-                                    filter: effectiveBlur > 0
-                                        ? ui.ImageFilter.blur(
-                                            sigmaX: effectiveBlur,
-                                            sigmaY: effectiveBlur,
+                                    gradient: (fillAlphaTop > 0 || fillAlphaBottom > 0)
+                                        ? LinearGradient(
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                            colors: [
+                                              Colors.white.withAlphaFactor(
+                                                fillAlphaTop,
+                                              ),
+                                              Colors.white.withAlphaFactor(
+                                                fillAlphaBottom,
+                                              ),
+                                            ],
                                           )
-                                        : ui.ImageFilter.blur(
-                                            sigmaX: 0.0,
-                                            sigmaY: 0.0,
-                                          ),
-                                    child: DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        borderRadius: pillRadius,
-                                        border: Border.all(
-                                          color: Colors.white.withAlphaFactor(
-                                            borderAlpha,
-                                          ),
-                                          width: 1.0,
+                                        : null,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withAlphaFactor(
+                                          shadowAlpha,
                                         ),
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topCenter,
-                                          end: Alignment.bottomCenter,
-                                          colors: [
-                                            Colors.white.withAlphaFactor(
-                                              fillAlphaTop,
-                                            ),
-                                            Colors.white.withAlphaFactor(
-                                              fillAlphaBottom,
-                                            ),
-                                          ],
-                                        ),
+                                        blurRadius: 18,
+                                        offset: const Offset(0, 6),
                                       ),
-                                      child: Stack(
+                                    ],
+                                  ),
+                                  child: Stack(
                                       children: [
                                         // Smooth animated active tab indicator pill following page drag in real-time
                                         if (items.isNotEmpty)
@@ -282,11 +266,15 @@ class BottomIslandNavBar extends StatelessWidget {
                                                       colors: [
                                                         brightPrimary
                                                             .withAlphaFactor(
-                                                          isDark ? 0.45 : 0.20,
+                                                          isDark
+                                                              ? 0.45
+                                                              : 0.20,
                                                         ),
                                                         brightPrimary
                                                             .withAlphaFactor(
-                                                          isDark ? 0.22 : 0.10,
+                                                          isDark
+                                                              ? 0.22
+                                                              : 0.10,
                                                         ),
                                                       ],
                                                     ),
@@ -307,7 +295,9 @@ class BottomIslandNavBar extends StatelessWidget {
                                                       BoxShadow(
                                                         color: brightPrimary
                                                             .withAlphaFactor(
-                                                          isDark ? 0.35 : 0.16,
+                                                          isDark
+                                                              ? 0.35
+                                                              : 0.16,
                                                         ),
                                                         blurRadius: 12,
                                                         spreadRadius: 1,
@@ -338,9 +328,7 @@ class BottomIslandNavBar extends StatelessWidget {
                                       ],
                                     ),
                                   ),
-                                ),
-                              ),
-                            );
+                                );
 
                               return Padding(
                                 padding:

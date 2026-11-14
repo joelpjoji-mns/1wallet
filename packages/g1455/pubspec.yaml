@@ -1,0 +1,73 @@
+name: g1455
+description: >-
+  Liquid Glass for Flutter: refraction, blur and finishes; bars, tabs,
+  switches, sliders, menus, sheets, dialogs and fusing groups, all sampling one
+  shared capture.
+version: 0.4.0
+homepage: https://github.com/PlugFox/g1455
+repository: https://github.com/PlugFox/g1455
+issue_tracker: https://github.com/PlugFox/g1455/issues
+documentation: https://g1455.plugfox.dev
+
+# pub.dev allows five topics. `shader` is the more used of `shader`/`shaders`.
+topics:
+  - liquid-glass
+  - glass
+  - glassmorphism
+  - shader
+  - ui
+
+# Half-size recordings made by `tool/showcase.sh`; the README's full-size ones
+# are not published. The first one is the thumbnail pub.dev shows in search
+# results, so it is the square, still package icon. pub.dev reads at most ten.
+screenshots:
+  - description: 'The g1455 icon: a disc of clear glass refracting a grid and a yellow disc behind it.'
+    path: doc/screenshots/g1455.png
+  - description: 'GlassGroup: three clear glass blobs orbit and fuse into one silhouette where they meet.'
+    path: doc/screenshots/group.webp
+  - description: 'GlassFinish: regular, clear and frosted glass side by side over the same backdrop.'
+    path: doc/screenshots/finishes.webp
+  - description: 'GlassRipple: taps and a drag send viscous waves across a clear glass panel.'
+    path: doc/screenshots/ripple.webp
+  - description: 'GlassSwitch: switches on a glass card, the knob turning into a clear drop while held.'
+    path: doc/screenshots/switch.webp
+  - description: 'GlassSlider: two sliders dragged, the knob a clear drop while held.'
+    path: doc/screenshots/slider.webp
+  - description: 'GlassTabBar: the selection lifts into a drop that magnifies the bar and is dragged between tabs.'
+    path: doc/screenshots/tab_bar.webp
+  - description: 'GlassSegmentedControl: the selected segment lifts into a drop and slides to another.'
+    path: doc/screenshots/segmented.webp
+  - description: 'GlassMenuAnchor and GlassButtonGroup: a button grows into a glass menu, and toolbar cells are pressed.'
+    path: doc/screenshots/menu.webp
+  - description: 'GlassAlert: an alert materializes over the screen, blur first and tint last, and is dismissed.'
+    path: doc/screenshots/alert.webp
+
+environment:
+  # The Dart of Flutter 3.47.0. CI runs analyze and the tests on 3.47.0 and on
+  # stable.
+  sdk: ^3.13.0
+  # Earlier versions are not supported: the engine paths the package relies on
+  # are different code before 3.47, its cost constants were measured on 3.47,
+  # and the modals depend on a framework fix from 3.47 (flutter/flutter#185248).
+  flutter: '>=3.47.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  shaders:
+    # Kept under `lib/` and declared with the `packages/g1455/` prefix, so the
+    # asset key is the same whether this package is the root (its own tests) or
+    # a dependency of an application. A plain relative path would get a
+    # different key in each case. (Shader file names appear only in this list:
+    # a test checks that every mention of the extension in this file is in it.)
+    - packages/g1455/shaders/glass_surface.frag
+    - packages/g1455/shaders/glass_group.frag
+    - packages/g1455/shaders/glass_surface_ripple.frag
+    - packages/g1455/shaders/glass_blur.frag
