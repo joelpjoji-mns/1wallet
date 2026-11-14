@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:g1455/g1455.dart';
+import 'package:one_wallet_flutter/src/design/tokens.dart';
 
 /// Comprehensive static audit test to identify all UI components across
 /// `lib/src` where liquid glass components (from `package:g1455`
@@ -68,15 +70,28 @@ void main() {
         // 2. Bottom Sheets
         if (relPath.endsWith('app_kit.dart') &&
             line.contains('DecoratedBox(') &&
-            i > 1845 &&
-            i < 1860) {
+            i + 3 < lines.length &&
+            lines[i + 2].contains('scaffoldBackgroundColor')) {
           auditResults['Bottom Sheets (AppSheetSurface / ModalSheet vs GlassSheet / GlassModalSheet)']!
               .add(
                 _AuditFinding(
                   relPath: relPath,
                   line: lineNum,
-                  element: 'AppSheetSurface (opaque scaffoldBackgroundColor)',
+                  element: 'AppSheetSurface (opaque scaffoldBackgroundColor fallback)',
                   replacement: 'GlassSheet / GlassModalSheet surface',
+                  snippet: line,
+                ),
+              );
+        }
+        if (line.contains('showModalBottomSheet(') &&
+            !relPath.contains('app_kit.dart')) {
+          auditResults['Bottom Sheets (AppSheetSurface / ModalSheet vs GlassSheet / GlassModalSheet)']!
+              .add(
+                _AuditFinding(
+                  relPath: relPath,
+                  line: lineNum,
+                  element: 'showModalBottomSheet',
+                  replacement: 'showAppSheet / GlassSheet',
                   snippet: line,
                 ),
               );
@@ -294,6 +309,18 @@ void main() {
       isPositive,
       reason: 'The audit must discover all candidates',
     );
+  });
+
+  test('Verify g1455 design tokens and core primitives', () {
+    expect(GlassHardware.detect(), isNotNull);
+    expect(GlassFinish.regularLight, isNotNull);
+    expect(GlassFinish.regularDark, isNotNull);
+    expect(GlassFinish.frosted, isNotNull);
+    expect(kGlassCapsule, isNotNull);
+    expect(AppGlassTokens.lightFinish, isNotNull);
+    expect(AppGlassTokens.darkFinish, isNotNull);
+    expect(AppGlassTokens.amoledFinish, isNotNull);
+    expect(AppGlassTokens.frostedFinish, isNotNull);
   });
 }
 

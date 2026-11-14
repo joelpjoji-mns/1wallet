@@ -2593,8 +2593,38 @@ class _AccountTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final color = accountDisplayColor(account);
-    final foreground = _legibleForegroundFor(color);
+    final current = ref.watch(homeSelectedAccountProvider);
+    final isSelected = current == account.id;
+
+    final foreground = isDark ? scheme.onSurface : _legibleForegroundFor(color);
+    final iconColor = isDark ? color : foreground.withValues(alpha: 0.78);
+    final tileDecoration = isDark
+        ? BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                color.withValues(alpha: isSelected ? 0.28 : 0.18),
+                color.withValues(alpha: isSelected ? 0.18 : 0.08),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            border: Border.all(
+              color: isSelected
+                  ? color.withValues(alpha: 0.85)
+                  : color.withValues(alpha: 0.24),
+              width: isSelected ? 1.5 : 0.8,
+            ),
+          )
+        : BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(AppRadii.md),
+          );
+
     final nativeBalance = accountBalanceFromMap(balances, account);
     final displayBalance = convertMoneyForDisplay(state, nativeBalance);
     final isForeignCurrency =
@@ -2641,10 +2671,7 @@ class _AccountTile extends ConsumerWidget {
         // `Wrap` sizes each row to its tallest tile, so this is safe here).
         constraints: const BoxConstraints(minHeight: 60),
         padding: const EdgeInsets.all(AppSpacing.xs),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(AppRadii.md),
-        ),
+        decoration: tileDecoration,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -2653,7 +2680,7 @@ class _AccountTile extends ConsumerWidget {
               children: [
                 Icon(
                   accountIcon(account),
-                  color: foreground.withValues(alpha: 0.78),
+                  color: iconColor,
                   size: 13,
                 ),
                 const SizedBox(width: AppSpacing.xxxs),
@@ -2680,10 +2707,14 @@ class _AccountTile extends ConsumerWidget {
                       vertical: AppSpacing.xxxs,
                     ),
                     decoration: BoxDecoration(
-                      color: foreground.withValues(alpha: 0.16),
+                      color: isDark
+                          ? color.withValues(alpha: 0.20)
+                          : foreground.withValues(alpha: 0.16),
                       borderRadius: BorderRadius.circular(AppRadii.pill),
                       border: Border.all(
-                        color: foreground.withValues(alpha: 0.24),
+                        color: isDark
+                            ? color.withValues(alpha: 0.35)
+                            : foreground.withValues(alpha: 0.24),
                         width: 0.5,
                       ),
                     ),
@@ -2692,7 +2723,9 @@ class _AccountTile extends ConsumerWidget {
                       child: Text(
                         nativeBalance.currency,
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: foreground.withValues(alpha: 0.86),
+                          color: isDark
+                              ? color
+                              : foreground.withValues(alpha: 0.86),
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.3,
                         ),
@@ -2720,7 +2753,9 @@ class _AccountTile extends ConsumerWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: foreground.withValues(alpha: 0.63),
+                  color: isDark
+                      ? scheme.onSurfaceVariant
+                      : foreground.withValues(alpha: 0.63),
                   height: 1.1,
                   fontWeight: FontWeight.w600,
                 ),

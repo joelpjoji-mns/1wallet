@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:g1455/g1455.dart' as g1455;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
@@ -68,6 +69,13 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(GlassAppBar), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(GlassAppBar),
+          matching: find.byType(g1455.GlassBar),
+        ),
+        findsOneWidget,
+      );
       expect(find.byType(AppBar), findsNothing);
       expect(find.text('Add record'), findsOneWidget);
 
