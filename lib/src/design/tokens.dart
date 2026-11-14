@@ -180,6 +180,8 @@ abstract final class AppGlassTokens {
     rim: const Color(0x00000000),
   );
 
-  /// Clear refractive glass without blur.
-  static const GlassFinish clearFinish = GlassFinish.clear;
+  /// Clear refractive glass without blur and without harsh wireframe rim.
+  static final GlassFinish clearFinish = GlassFinish.clear.copyWith(
+    rim: const Color(0x00000000),
+  );
 }

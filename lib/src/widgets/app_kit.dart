@@ -24,10 +24,7 @@ import '../design/tokens.dart';
 
 /// Liquid Rounded Superellipse shape border compatible with iOS continuous curves.
 class LiquidRoundedSuperellipse extends OutlinedBorder {
-  const LiquidRoundedSuperellipse({
-    this.borderRadius = 0.0,
-    super.side,
-  });
+  const LiquidRoundedSuperellipse({this.borderRadius = 0.0, super.side});
 
   final double borderRadius;
 
@@ -44,7 +41,8 @@ class LiquidRoundedSuperellipse extends OutlinedBorder {
   ShapeBorder? lerpFrom(ShapeBorder? a, double t) {
     if (a is LiquidRoundedSuperellipse) {
       return LiquidRoundedSuperellipse(
-        borderRadius: ui.lerpDouble(a.borderRadius, borderRadius, t) ?? borderRadius,
+        borderRadius:
+            ui.lerpDouble(a.borderRadius, borderRadius, t) ?? borderRadius,
         side: BorderSide.lerp(a.side, side, t),
       );
     }
@@ -55,7 +53,8 @@ class LiquidRoundedSuperellipse extends OutlinedBorder {
   ShapeBorder? lerpTo(ShapeBorder? b, double t) {
     if (b is LiquidRoundedSuperellipse) {
       return LiquidRoundedSuperellipse(
-        borderRadius: ui.lerpDouble(borderRadius, b.borderRadius, t) ?? borderRadius,
+        borderRadius:
+            ui.lerpDouble(borderRadius, b.borderRadius, t) ?? borderRadius,
         side: BorderSide.lerp(side, b.side, t),
       );
     }
@@ -74,9 +73,8 @@ class LiquidRoundedSuperellipse extends OutlinedBorder {
 
   @override
   Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
-    return Path()..addRRect(
-      RRect.fromRectAndRadius(rect, Radius.circular(borderRadius)),
-    );
+    return Path()
+      ..addRRect(RRect.fromRectAndRadius(rect, Radius.circular(borderRadius)));
   }
 
   @override
@@ -196,12 +194,11 @@ class GlassCard extends StatelessWidget {
         Radius.circular((shape as LiquidRoundedSuperellipse).borderRadius),
       );
     } else if (shape is RoundedRectangleBorder) {
-      effectiveRadius = (shape as RoundedRectangleBorder)
-          .borderRadius
-          .resolve(Directionality.maybeOf(context));
+      effectiveRadius = (shape as RoundedRectangleBorder).borderRadius.resolve(
+        Directionality.maybeOf(context),
+      );
     } else if (shape is ContinuousRectangleBorder) {
-      effectiveRadius = (shape as ContinuousRectangleBorder)
-          .borderRadius
+      effectiveRadius = (shape as ContinuousRectangleBorder).borderRadius
           .resolve(Directionality.maybeOf(context));
     }
 
@@ -319,16 +316,16 @@ class GlassButton extends StatelessWidget {
         Radius.circular((shape as LiquidRoundedSuperellipse).borderRadius),
       );
     } else if (shape is RoundedRectangleBorder) {
-      effectiveRadius = (shape as RoundedRectangleBorder)
-          .borderRadius
-          .resolve(Directionality.maybeOf(context));
+      effectiveRadius = (shape as RoundedRectangleBorder).borderRadius.resolve(
+        Directionality.maybeOf(context),
+      );
     } else if (shape is ContinuousRectangleBorder) {
-      effectiveRadius = (shape as ContinuousRectangleBorder)
-          .borderRadius
+      effectiveRadius = (shape as ContinuousRectangleBorder).borderRadius
           .resolve(Directionality.maybeOf(context));
     }
 
-    Widget content = child ??
+    Widget content =
+        child ??
         Row(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -451,7 +448,8 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
         leading: leading,
         middle: title != null
             ? DefaultTextStyle(
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                style:
+                    Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w800,
                       color: scheme.onSurface,
                     ) ??
@@ -541,8 +539,9 @@ class GlassSlider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final range = max - min;
-    final normalized =
-        range > 0 ? ((value - min) / range).clamp(0.0, 1.0) : 0.0;
+    final normalized = range > 0
+        ? ((value - min) / range).clamp(0.0, 1.0)
+        : 0.0;
     return g1455.GlassSlider(
       value: normalized,
       divisions: divisions,
@@ -556,11 +555,7 @@ class GlassSlider extends StatelessWidget {
 
 /// Segment item representation for GlassSegmentedControl.
 class GlassSegment extends StatelessWidget {
-  const GlassSegment({
-    required this.label,
-    this.icon,
-    super.key,
-  });
+  const GlassSegment({required this.label, this.icon, super.key});
 
   final String label;
   final IconData? icon;
@@ -571,11 +566,7 @@ class GlassSegment extends StatelessWidget {
       return Row(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 16),
-          const SizedBox(width: 4),
-          Text(label),
-        ],
+        children: [Icon(icon, size: 16), const SizedBox(width: 4), Text(label)],
       );
     }
     return Text(label);
@@ -684,7 +675,8 @@ class GlassMenu extends StatelessWidget {
   });
 
   final List<GlassMenuItem> items;
-  final Widget Function(BuildContext context, VoidCallback toggleMenu) triggerBuilder;
+  final Widget Function(BuildContext context, VoidCallback toggleMenu)
+  triggerBuilder;
   final double menuWidth;
   final GlassQuality? quality;
 
@@ -701,7 +693,8 @@ class GlassMenu extends StatelessWidget {
             isDestructive: item.isDestructive,
           ),
       ],
-      builder: (context, controller) => triggerBuilder(context, controller.open),
+      builder: (context, controller) =>
+          triggerBuilder(context, controller.open),
     );
   }
 }
@@ -873,10 +866,7 @@ class GlassChip extends StatelessWidget {
     final content = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (iconWidget != null) ...[
-          iconWidget,
-          const SizedBox(width: 4),
-        ],
+        if (iconWidget != null) ...[iconWidget, const SizedBox(width: 4)],
         Text(
           label,
           style: (labelStyle ?? theme.textTheme.labelMedium)?.copyWith(
@@ -895,8 +885,8 @@ class GlassChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       minSize: const Size(32, 32),
       finish: isEffectiveSelected
-          ? (isDark ? g1455.GlassFinish.regularDark : g1455.GlassFinish.regularLight)
-              .copyWith(tint: activeColor.withAlphaFactor(0.25))
+          ? (isDark ? AppGlassTokens.darkFinish : AppGlassTokens.lightFinish)
+                .copyWith(tint: activeColor.withAlphaFactor(0.25))
           : null,
       child: content,
     );
@@ -959,7 +949,8 @@ class GlassProgressIndicator extends StatelessWidget {
           borderRadius: BorderRadius.circular(3),
           child: LinearProgressIndicator(
             backgroundColor:
-                trackColor ?? scheme.surfaceContainerHighest.withAlphaFactor(0.4),
+                trackColor ??
+                scheme.surfaceContainerHighest.withAlphaFactor(0.4),
             color: fillColor ?? scheme.primary,
           ),
         ),
@@ -973,7 +964,8 @@ class GlassProgressIndicator extends StatelessWidget {
         child: Stack(
           children: [
             Container(
-              color: trackColor ??
+              color:
+                  trackColor ??
                   scheme.surfaceContainerHighest.withAlphaFactor(0.4),
             ),
             FractionallySizedBox(
@@ -1019,12 +1011,13 @@ class GlassGroupedSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    BorderRadius effectiveRadius =
-        const BorderRadius.all(Radius.circular(AppRadii.md));
+    BorderRadius effectiveRadius = const BorderRadius.all(
+      Radius.circular(AppRadii.md),
+    );
     if (shape is RoundedRectangleBorder) {
-      effectiveRadius = (shape as RoundedRectangleBorder)
-          .borderRadius
-          .resolve(Directionality.maybeOf(context));
+      effectiveRadius = (shape as RoundedRectangleBorder).borderRadius.resolve(
+        Directionality.maybeOf(context),
+      );
     }
 
     final sectionBody = GlassCard(
@@ -1075,8 +1068,10 @@ class GlassListTile extends StatelessWidget {
     this.leadingIconColor,
     this.titleStyle,
     this.subtitleStyle,
-    this.contentPadding =
-        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    this.contentPadding = const EdgeInsets.symmetric(
+      horizontal: 16,
+      vertical: 12,
+    ),
     super.key,
   });
 
@@ -1107,17 +1102,15 @@ class GlassListTile extends StatelessWidget {
       padding: contentPadding,
       child: Row(
         children: [
-          if (leading != null) ...[
-            leadingWidget,
-            const SizedBox(width: 14),
-          ],
+          if (leading != null) ...[leadingWidget, const SizedBox(width: 14)],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 DefaultTextStyle(
-                  style: titleStyle ??
+                  style:
+                      titleStyle ??
                       theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: scheme.onSurface,
@@ -1128,7 +1121,8 @@ class GlassListTile extends StatelessWidget {
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),
                   DefaultTextStyle(
-                    style: subtitleStyle ??
+                    style:
+                        subtitleStyle ??
                         theme.textTheme.bodySmall?.copyWith(
                           color: scheme.onSurfaceVariant,
                         ) ??
@@ -1139,10 +1133,7 @@ class GlassListTile extends StatelessWidget {
               ],
             ),
           ),
-          if (trailing != null) ...[
-            const SizedBox(width: 8),
-            trailing!,
-          ],
+          if (trailing != null) ...[const SizedBox(width: 8), trailing!],
         ],
       ),
     );
@@ -1150,10 +1141,7 @@ class GlassListTile extends StatelessWidget {
     if (onTap != null) {
       return Material(
         color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          child: content,
-        ),
+        child: InkWell(onTap: onTap, child: content),
       );
     }
     return content;
@@ -1216,9 +1204,8 @@ class GlassTabBar extends StatelessWidget {
          for (final tab in tabs)
            g1455.GlassTabItem(
              label: tab.label,
-             iconBuilder: (context, look) => look.selected
-                 ? (tab.activeIcon ?? tab.icon)
-                 : tab.icon,
+             iconBuilder: (context, look) =>
+                 look.selected ? (tab.activeIcon ?? tab.icon) : tab.icon,
            ),
        ],
        onSelected = onTabSelected,
@@ -1311,10 +1298,7 @@ class GlassTabBar extends StatelessWidget {
     }
 
     if (totalHeight != null) {
-      result = SizedBox(
-        height: totalHeight,
-        child: result,
-      );
+      result = SizedBox(height: totalHeight, child: result);
     }
 
     return result;
@@ -2423,14 +2407,18 @@ class GlassTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveStyle = textStyle ?? style ?? Theme.of(context).textTheme.bodyMedium;
+    final effectiveStyle =
+        textStyle ?? style ?? Theme.of(context).textTheme.bodyMedium;
     final scheme = Theme.of(context).colorScheme;
 
     return g1455.GlassSurface(
       borderRadius: const BorderRadius.all(Radius.circular(AppRadii.md)),
       finish: finish,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: 2,
+        ),
         child: CupertinoTextField(
           controller: controller,
           focusNode: focusNode,
@@ -2453,9 +2441,7 @@ class GlassTextField extends StatelessWidget {
           onChanged: onChanged,
           onSubmitted: onSubmitted,
           textAlign: textAlign,
-          style: effectiveStyle?.copyWith(
-            color: scheme.onSurface,
-          ),
+          style: effectiveStyle?.copyWith(color: scheme.onSurface),
           decoration: null,
           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
         ),
@@ -2589,6 +2575,13 @@ class PremiumRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bubbleColor = iconColor != null
+        ? (isDark ? iconColor!.withAlphaFactor(0.22) : iconColor!)
+        : scheme.surfaceContainerHighest;
+    final iconForeground = iconColor != null
+        ? (isDark ? iconColor! : scheme.onSurface)
+        : scheme.onSurface;
 
     final content = Material(
       color: Colors.transparent,
@@ -2607,10 +2600,10 @@ class PremiumRow extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: iconColor ?? scheme.surfaceContainerHighest,
+                  color: bubbleColor,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: scheme.onSurface, size: 20),
+                child: Icon(icon, color: iconForeground, size: 20),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
@@ -3180,10 +3173,7 @@ class GlassDialog extends StatelessWidget {
     Widget innerContent = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (icon != null) ...[
-          icon!,
-          const SizedBox(height: 12),
-        ],
+        if (icon != null) ...[icon!, const SizedBox(height: 12)],
         DefaultTextStyle.merge(
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
@@ -3201,17 +3191,12 @@ class GlassDialog extends StatelessWidget {
             child: message!,
           ),
         ],
-        if (content != null) ...[
-          const SizedBox(height: 12),
-          content!,
-        ],
+        if (content != null) ...[const SizedBox(height: 12), content!],
       ],
     );
 
     if (scrollable) {
-      innerContent = SingleChildScrollView(
-        child: innerContent,
-      );
+      innerContent = SingleChildScrollView(child: innerContent);
     }
 
     return Dialog(
@@ -3239,7 +3224,11 @@ class GlassDialog extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Expanded(child: actions![0]),
-                            VerticalDivider(width: 1, thickness: 1, color: dividerColor),
+                            VerticalDivider(
+                              width: 1,
+                              thickness: 1,
+                              color: dividerColor,
+                            ),
                             Expanded(child: actions![1]),
                           ],
                         )
@@ -3248,7 +3237,11 @@ class GlassDialog extends StatelessWidget {
                           children: [
                             for (var i = 0; i < actions!.length; i++) ...[
                               if (i > 0)
-                                Divider(height: 1, thickness: 1, color: dividerColor),
+                                Divider(
+                                  height: 1,
+                                  thickness: 1,
+                                  color: dividerColor,
+                                ),
                               actions![i],
                             ],
                           ],
@@ -3420,7 +3413,8 @@ class GlassSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveRadius = borderRadius ??
+    final effectiveRadius =
+        borderRadius ??
         const BorderRadius.vertical(top: Radius.circular(AppRadii.xl));
     return g1455.GlassSurface(
       borderRadius: effectiveRadius,
@@ -3454,10 +3448,7 @@ class AppSheetSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (glass) {
-      return GlassSheet(
-        showHandle: showHandle,
-        child: child,
-      );
+      return GlassSheet(showHandle: showHandle, child: child);
     }
 
     final content = Column(

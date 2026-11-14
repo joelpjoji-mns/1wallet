@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary & Architectural Overview
 
-This audit establishes a complete component-level inventory of all user interface elements across the **1Wallet** Flutter mobile and desktop application. The primary mission is achieving native Apple iOS visual fidelity—featuring authentic liquid glass refraction, continuous superellipse curves, organic metaball silhouette fusing (`GlassBlendGroup`), and hardware-budgeted shader execution (`GlassLedger` and `GlassHardware`).
+This audit establishes a complete component-level inventory of all user interface elements across the **1Wallet** Flutter mobile and desktop application. The primary mission is achieving native Apple iOS visual fidelity—featuring authentic liquid glass refraction, continuous superellipse curves, sleek floating island navigation, borderless frosted glass styling, and hardware-budgeted shader execution (`GlassLedger` and `GlassHardware`).
 
 ### Key Inventory Metrics
 - **Total UI Primitives Cataloged:** 487
@@ -25,7 +25,7 @@ This audit establishes a complete component-level inventory of all user interfac
 | `liquid_glass_widgets` engine | `package:g1455/g1455.dart` | Initialized via `await GlassHost.precache()` in `main()` |
 | Root App Wrapper | `GlassHost` | Configured with `GlassHardware.detect()`, `GlassPress()`, and `GlassThemeData` |
 | `GlassAppBar` / `AppBar` | `GlassBar` / `GlassAppBar` | Continuous blur with real-time backdrop refraction |
-| `BottomIslandNavBar` + FAB | `GlassTabBar` + `GlassBlendGroup` | Liquid metaball fusing between the island dock and floating action button |
+| `BottomIslandNavBar` + FAB | `GlassTabBar.bottom` + independent FAB | Sleek floating island pill dock with subtle backdrop blur and clean FAB separation |
 | `SectionCard` / `Card` | `GlassCard` (`g1455`) | iOS continuous superellipse, subtle luminous edge sheen (`kCalibratedRim`) |
 | `BrandFrostedPanel` (Launch/Auth) | `GlassCard` on `LaunchPalette` | Deep refractive glass with brand color aberration |
 | `AppGlassTextField` / `TextField` | `GlassTextField` | Inner refraction, smooth focus glow, iOS typography |
@@ -281,9 +281,9 @@ This audit establishes a complete component-level inventory of all user interfac
 - Applied to: Dense scrolling list items (`TransactionRow`, `PremiumRow`), nested tiles (`MetricTile`), and AMOLED dark mode panels.
 - **Performance Invariant:** To guarantee consistent 60/120 fps scroll rates, list view rows MUST NOT evaluate real-time backdrops individually. They render lightweight opaque or pre-baked frosted surfaces with subtle borders.
 
-### C. Liquid Fusing Group
-- Applied to: Bottom island dock (`BottomIslandNavBar`) + down-docked Floating Action Button (`IslandFloatingActionButton`).
-- Wrapped inside `GlassBlendGroup(spacing: 16)` executing a smooth minimum distance-field evaluation in `packages/g1455/shaders/glass_group.frag`. As the FAB slides beside the bar, their glass rims fluidly blend together like liquid drops.
+### C. Sleek Floating Island & Independent FAB
+- Applied to: Bottom island dock (`BottomIslandNavBar`) + independently floating Action Button (`IslandFloatingActionButton`).
+- Rendered as a thin standalone floating pill dock using `GlassTabBar.bottom` with subtle backdrop blur and zero harsh wireframe border. The Quick-Add FAB floats independently with clear separation and zero overlap over the Accounts tab.
 
 ---
 

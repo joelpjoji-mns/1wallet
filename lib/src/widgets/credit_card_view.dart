@@ -45,9 +45,10 @@ class _CreditCardViewState extends State<CreditCardView> {
 
   /// Contrast colour for text/icons drawn on the user-chosen card colour.
   Color get _foreground =>
-      ThemeData.estimateBrightnessForColor(widget.gradientStart) == Brightness.dark
-          ? Colors.white
-          : Colors.black;
+      ThemeData.estimateBrightnessForColor(widget.gradientStart) ==
+          Brightness.dark
+      ? Colors.white
+      : Colors.black;
 
   String _formatCardNumber(String number) {
     final clean = number.replaceAll(RegExp(r'\s+'), '');
@@ -67,7 +68,10 @@ class _CreditCardViewState extends State<CreditCardView> {
     String label, {
     Color? color,
   }) {
-    if (!widget.isUnlocked || text.isEmpty || text == '***' || text.contains('****')) {
+    if (!widget.isUnlocked ||
+        text.isEmpty ||
+        text == '***' ||
+        text.contains('****')) {
       return const SizedBox.shrink();
     }
     return Material(
@@ -89,8 +93,12 @@ class _CreditCardViewState extends State<CreditCardView> {
 
   @override
   Widget build(BuildContext context) {
-    final displayExpiry = widget.isUnlocked ? widget.expiry : (widget.expiry.isEmpty ? '' : 'MM/YY');
-    final displayCcv = widget.isUnlocked ? widget.ccv : (widget.ccv.isEmpty ? '' : '***');
+    final displayExpiry = widget.isUnlocked
+        ? widget.expiry
+        : (widget.expiry.isEmpty ? '' : 'MM/YY');
+    final displayCcv = widget.isUnlocked
+        ? widget.ccv
+        : (widget.ccv.isEmpty ? '' : '***');
     final displayRouting = widget.isUnlocked
         ? widget.routingNumber
         : (widget.routingNumber.isEmpty ? '' : '***');
@@ -101,7 +109,9 @@ class _CreditCardViewState extends State<CreditCardView> {
               ? (widget.type == 'bank'
                     ? '●●●● ●●●● ${widget.cardNumber.substring(math.max(0, widget.cardNumber.length - 4))}'
                     : '**** **** **** ${widget.cardNumber.substring(math.max(0, widget.cardNumber.length - 4))}')
-              : (widget.type == 'bank' ? '●●●● ●●●● 0000' : '**** **** **** 0000'));
+              : (widget.type == 'bank'
+                    ? '●●●● ●●●● 0000'
+                    : '**** **** **** 0000'));
 
     final Map<String, String> dynamicFields = {};
     if (displayCcv.isNotEmpty) dynamicFields['CVV'] = displayCcv;
@@ -138,10 +148,7 @@ class _CreditCardViewState extends State<CreditCardView> {
                       children: [
                         Text(
                           'VALID THRU',
-                          style: TextStyle(
-                            color: mutedForeground,
-                            fontSize: 8,
-                          ),
+                          style: TextStyle(color: mutedForeground, fontSize: 8),
                         ),
                         Text(
                           displayExpiry,
@@ -270,10 +277,7 @@ class _CreditCardViewState extends State<CreditCardView> {
       ..rotateY(_tilt.dx * 0.1)
       ..rotateX(-_tilt.dy * 0.1);
 
-    final gleamCenter = Alignment(
-      _tilt.dx * 0.8,
-      _tilt.dy * 0.8,
-    );
+    final gleamCenter = Alignment(_tilt.dx * 0.8, _tilt.dy * 0.8);
 
     return Transform(
       transform: transform,
@@ -334,7 +338,7 @@ class _CreditCardViewState extends State<CreditCardView> {
                   child: g1455.GlassSurface(
                     borderRadius: const BorderRadius.all(Radius.circular(20)),
                     finish: g1455.GlassFinish.clear.copyWith(
-                      rim: g1455.kCalibratedRim,
+                      rim: const Color(0x14FFFFFF),
                     ),
                     child: const SizedBox.expand(),
                   ),

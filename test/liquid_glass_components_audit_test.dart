@@ -77,7 +77,8 @@ void main() {
                 _AuditFinding(
                   relPath: relPath,
                   line: lineNum,
-                  element: 'AppSheetSurface (opaque scaffoldBackgroundColor fallback)',
+                  element:
+                      'AppSheetSurface (opaque scaffoldBackgroundColor fallback)',
                   replacement: 'GlassSheet / GlassModalSheet surface',
                   snippet: line,
                 ),
@@ -321,6 +322,7 @@ void main() {
     expect(AppGlassTokens.darkFinish, isNotNull);
     expect(AppGlassTokens.amoledFinish, isNotNull);
     expect(AppGlassTokens.frostedFinish, isNotNull);
+    expect(AppGlassTokens.clearFinish, isNotNull);
   });
 }
 
