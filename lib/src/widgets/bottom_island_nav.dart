@@ -165,30 +165,30 @@ class BottomIslandNavBar extends StatelessWidget {
                               final isRegular = !isFrosted && !isClear;
 
                               final fillAlphaTop = isFrosted
-                                  ? (isDark ? 0.35 : 0.45)
+                                  ? (isDark ? 0.38 : 0.45)
                                   : (isRegular
-                                      ? (isDark ? 0.12 : 0.16)
-                                      : 0.0);
+                                      ? (isDark ? 0.22 : 0.20)
+                                      : (isDark ? 0.16 : 0.14));
                               final fillAlphaBottom = isFrosted
-                                  ? (isDark ? 0.14 : 0.18)
+                                  ? (isDark ? 0.16 : 0.20)
                                   : (isRegular
-                                      ? (isDark ? 0.04 : 0.05)
-                                      : 0.0);
+                                      ? (isDark ? 0.08 : 0.10)
+                                      : (isDark ? 0.06 : 0.07));
                               final borderAlpha = isFrosted
-                                  ? (isDark ? 0.50 : 0.65)
+                                  ? (isDark ? 0.55 : 0.65)
                                   : (isRegular
-                                      ? (isDark ? 0.32 : 0.42)
-                                      : (isDark ? 0.20 : 0.22));
+                                      ? (isDark ? 0.38 : 0.45)
+                                      : (isDark ? 0.30 : 0.35));
                               final borderColor = isDark
                                   ? Colors.white.withAlphaFactor(borderAlpha)
                                   : (isClear
                                       ? scheme.outline.withAlphaFactor(0.20)
                                       : Colors.white.withAlphaFactor(borderAlpha));
                               final shadowAlpha = isFrosted
-                                  ? (isDark ? 0.35 : 0.14)
+                                  ? (isDark ? 0.38 : 0.16)
                                   : (isRegular
-                                      ? (isDark ? 0.25 : 0.08)
-                                      : (isDark ? 0.16 : 0.05));
+                                      ? (isDark ? 0.30 : 0.10)
+                                      : (isDark ? 0.24 : 0.08));
 
                               final pillRadius = BorderRadius.circular(
                                 AppSizes.bottomBarContentHeight / 2,

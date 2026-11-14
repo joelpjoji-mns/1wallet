@@ -61,10 +61,10 @@ abstract final class AppColors {
   static const Color amoledBackground = Color(0xFF000000);
 
   /// AMOLED surface-container ramp (low → highest) layered on pure black.
-  static const Color amoledSurfaceLow = Color(0xFF080808);
-  static const Color amoledSurface = Color(0xFF0E0E0E);
-  static const Color amoledSurfaceHigh = Color(0xFF151515);
-  static const Color amoledSurfaceHighest = Color(0xFF1C1C1C);
+  static const Color amoledSurfaceLow = Color(0xFF141518);
+  static const Color amoledSurface = Color(0xFF1C1D22);
+  static const Color amoledSurfaceHigh = Color(0xFF25272F);
+  static const Color amoledSurfaceHighest = Color(0xFF2F313B);
   static const Color launchBackground = Color(0xFF0F1820);
   static const Color launchBackgroundDeep = Color(0xFF0B1218);
   static const Color launchPrimary = Color(0xFFA9C7FF);

@@ -2188,10 +2188,16 @@ abstract final class AppSurfaces {
     double radius = AppRadii.md,
     Color? color,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return BoxDecoration(
       color: color ?? Theme.of(context).colorScheme.surfaceContainerLow,
       borderRadius: BorderRadius.circular(radius),
-      border: Border.all(color: panelBorderColor(context)),
+      border: Border.all(
+        color: isDark
+            ? Colors.white.withAlphaFactor(0.12)
+            : panelBorderColor(context),
+        width: 0.8,
+      ),
     );
   }
 
@@ -2241,7 +2247,7 @@ class AppPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final interactive = onTap != null || onLongPress != null;
     Widget content = Padding(padding: padding, child: child);
-    if (glass && !AppSurfaces.isAmoled(context)) {
+    if (glass) {
       if (interactive) {
         content = Material(
           color: Colors.transparent,

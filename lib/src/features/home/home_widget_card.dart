@@ -41,7 +41,6 @@ class HomeWidgetCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final isAmoled = AppSurfaces.isAmoled(context);
     final isDark = theme.brightness == Brightness.dark;
     final resolvedIconColor = iconColor ?? scheme.primary;
     final reorderScope = HomeWidgetCardReorderScope.maybeOf(context);
@@ -141,24 +140,14 @@ class HomeWidgetCard extends StatelessWidget {
       ),
     );
 
-    if (isAmoled) {
-      return RepaintBoundary(
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.sm),
-          decoration: AppSurfaces.panel(context),
-          child: cardContent,
-        ),
-      );
-    }
-
     return RepaintBoundary(
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppRadii.md),
           border: Border.all(
             color: isDark
-                ? scheme.outlineVariant.withValues(alpha: 0.2)
-                : Colors.transparent,
+                ? Colors.white.withAlphaFactor(0.12)
+                : scheme.outlineVariant.withValues(alpha: 0.2),
             width: 0.8,
           ),
         ),
