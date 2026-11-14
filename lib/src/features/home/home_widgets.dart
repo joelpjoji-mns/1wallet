@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:g1455/g1455.dart' as g1455;
 import 'package:go_router/go_router.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
@@ -404,15 +403,6 @@ class AccountGridHomeWidget extends ConsumerWidget {
       icon: Icons.grid_view_rounded,
       iconColor: Theme.of(context).colorScheme.primary,
       actionLabel: 'Manage',
-      ripple: const g1455.GlassRipple(
-        speed: 280,
-        amplitude: 1.4,
-        width: 8,
-        viscosity: 0.90,
-        press: 0.08,
-        pressRadius: 10,
-        light: 0.05,
-      ),
       onAction: () {
         if (selectedAccountId != null) {
           final account = accountById(state, selectedAccountId);
@@ -2592,7 +2582,7 @@ int _displayAccountBalanceMinor(
   return absolute ? balance.amountMinor.abs() : balance.amountMinor;
 }
 
-class _AccountTile extends ConsumerStatefulWidget {
+class _AccountTile extends ConsumerWidget {
   const _AccountTile({
     required this.state,
     required this.account,
@@ -2604,54 +2594,40 @@ class _AccountTile extends ConsumerStatefulWidget {
   final Map<String, Money> balances;
 
   @override
-  ConsumerState<_AccountTile> createState() => _AccountTileState();
-}
-
-class _AccountTileState extends ConsumerState<_AccountTile> {
-  Offset? _tapDownPosition;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = accountDisplayColor(widget.account);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final color = accountDisplayColor(account);
     final foreground = _legibleForegroundFor(color);
-    final nativeBalance =
-        accountBalanceFromMap(widget.balances, widget.account);
-    final displayBalance = convertMoneyForDisplay(widget.state, nativeBalance);
+    final nativeBalance = accountBalanceFromMap(balances, account);
+    final displayBalance = convertMoneyForDisplay(state, nativeBalance);
     final isForeignCurrency =
         nativeBalance.currency.toUpperCase() !=
-        widget.state.preferences.displayCurrency.toUpperCase();
-    final isCash = widget.account.type == 'cash';
+        state.preferences.displayCurrency.toUpperCase();
+    final isCash = account.type == 'cash';
 
     String primaryLabel;
     String? secondaryLabel;
 
     if (isCash) {
-      final breakdown =
-          cashCurrencyBalancesForAccount(widget.state, widget.account);
+      final breakdown = cashCurrencyBalancesForAccount(state, account);
       if (breakdown.isNotEmpty) {
-        primaryLabel =
-            formatMoney(displayBalance, widget.state.preferences.locale);
+        primaryLabel = formatMoney(displayBalance, state.preferences.locale);
         secondaryLabel = breakdown
-            .map((m) => formatMoney(m, widget.state.preferences.locale))
+            .map((m) => formatMoney(m, state.preferences.locale))
             .join(' | ');
       } else {
-        primaryLabel =
-            formatMoney(displayBalance, widget.state.preferences.locale);
+        primaryLabel = formatMoney(displayBalance, state.preferences.locale);
       }
     } else {
       if (isForeignCurrency) {
-        primaryLabel =
-            formatMoney(displayBalance, widget.state.preferences.locale);
-        secondaryLabel =
-            formatMoney(nativeBalance, widget.state.preferences.locale);
+        primaryLabel = formatMoney(displayBalance, state.preferences.locale);
+        secondaryLabel = formatMoney(nativeBalance, state.preferences.locale);
       } else {
-        primaryLabel =
-            formatMoney(displayBalance, widget.state.preferences.locale);
+        primaryLabel = formatMoney(displayBalance, state.preferences.locale);
       }
     }
 
     final isSelected =
-        ref.watch(homeSelectedAccountProvider) == widget.account.id;
+        ref.watch(homeSelectedAccountProvider) == account.id;
 
     return Material(
       color: Colors.transparent,
@@ -2662,24 +2638,12 @@ class _AccountTileState extends ConsumerState<_AccountTile> {
         splashColor: foreground.withValues(alpha: 0.35),
         highlightColor: foreground.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(AppRadii.md),
-        onTapDown: (details) {
-          _tapDownPosition = details.globalPosition;
-        },
         onTap: () {
           final current = ref.read(homeSelectedAccountProvider);
-          if (current == widget.account.id) {
+          if (current == account.id) {
             ref.read(homeSelectedAccountProvider.notifier).state = null;
           } else {
-            ref.read(homeSelectedAccountProvider.notifier).state =
-                widget.account.id;
-          }
-          final renderBox = context.findRenderObject() as RenderBox?;
-          final pos = _tapDownPosition ??
-              (renderBox != null && renderBox.hasSize
-                  ? renderBox.localToGlobal(renderBox.size.center(Offset.zero))
-                  : null);
-          if (pos != null) {
-            HomeWidgetCardRippleScope.maybeOf(context)?.triggerRippleAt(pos);
+            ref.read(homeSelectedAccountProvider.notifier).state = account.id;
           }
         },
         child: Container(
@@ -2706,14 +2670,14 @@ class _AccountTileState extends ConsumerState<_AccountTile> {
                 Row(
                   children: [
                     Icon(
-                      accountIcon(widget.account),
+                      accountIcon(account),
                       color: foreground.withValues(alpha: 0.78),
                       size: 13,
                     ),
                     const SizedBox(width: AppSpacing.xxxs),
                     Expanded(
                       child: Text(
-                        widget.account.name,
+                        account.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(

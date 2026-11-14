@@ -1,4 +1,3 @@
-import 'dart:ui' as ui;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -455,59 +454,54 @@ class IslandFloatingActionButton extends StatelessWidget {
         ? (isDark ? 0.70 : 0.75)
         : (isRegular ? (isDark ? 0.52 : 0.58) : (isDark ? 0.38 : 0.45));
 
-    Widget button = g1455.GlassSurface(
-      borderRadius: BorderRadius.circular(32),
-      finish: finish ?? g1455.GlassFinish.clear,
-      labelled: false,
-      child: Container(
-        width: 64,
-        height: 64,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              brightPrimary.withAlphaFactor(primaryAlphaTop),
-              brightPrimary.withAlphaFactor(primaryAlphaBottom),
-            ],
+    Widget button = Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: brightPrimary.withAlphaFactor(isDark ? 0.30 : 0.20),
+            blurRadius: 16,
+            offset: const Offset(0, 5),
           ),
-          border: Border.all(
-            color: Colors.white.withAlphaFactor(isDark ? 0.35 : 0.55),
-            width: 1.1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: brightPrimary.withAlphaFactor(isDark ? 0.30 : 0.20),
-              blurRadius: 16,
-              offset: const Offset(0, 5),
+        ],
+      ),
+      child: GlassCard(
+        margin: EdgeInsets.zero,
+        padding: EdgeInsets.zero,
+        shape: const LiquidOval(),
+        quality: GlassQuality.standard,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                brightPrimary.withAlphaFactor(primaryAlphaTop),
+                brightPrimary.withAlphaFactor(primaryAlphaBottom),
+              ],
             ),
-          ],
-        ),
-        child: GlassButton(
-          icon: Icon(icon, color: Colors.white, size: 30),
-          label: tooltip ?? 'Action',
-          onTap: onPressed,
-          width: 64,
-          height: 64,
-          iconSize: 30,
-          iconColor: scheme.primary,
-          useOwnLayer: false,
-          style: GlassButtonStyle.transparent,
-          quality: GlassQuality.minimal,
-          shape: const LiquidOval(),
+            border: Border.all(
+              color: Colors.white.withAlphaFactor(isDark ? 0.35 : 0.55),
+              width: 1.1,
+            ),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: onPressed,
+              child: Center(
+                child: Icon(icon, color: Colors.white, size: 30),
+              ),
+            ),
+          ),
         ),
       ),
     );
-
-    if (blur > 0.0) {
-      button = ClipOval(
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-          child: button,
-        ),
-      );
-    }
 
     final tooltipMessage = tooltip;
     if (tooltipMessage != null && tooltipMessage.isNotEmpty) {

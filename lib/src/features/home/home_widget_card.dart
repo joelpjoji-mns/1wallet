@@ -1,88 +1,13 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:g1455/g1455.dart' as g1455;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
 import 'home_widget_models.dart';
 
-/// A stack that delivers hit tests to both an overlaying glass surface and
-/// the interactive content beneath it, allowing ripples to propagate across
-/// content without intercepting or swallowing taps.
-class GlassRippleStack extends Stack {
-  const GlassRippleStack({
-    super.key,
-    super.alignment,
-    super.textDirection,
-    super.fit,
-    super.clipBehavior,
-    super.children,
-  });
-
-  @override
-  RenderStack createRenderObject(BuildContext context) {
-    return _RenderGlassRippleStack(
-      alignment: alignment,
-      textDirection: textDirection ?? Directionality.maybeOf(context),
-      fit: fit,
-      clipBehavior: clipBehavior,
-    );
-  }
-}
-
-class _RenderGlassRippleStack extends RenderStack {
-  _RenderGlassRippleStack({
-    super.alignment,
-    super.textDirection,
-    super.fit,
-    super.clipBehavior,
-  });
-
-  @override
-  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
-    var hitAny = false;
-    RenderBox? child = lastChild;
-    while (child != null) {
-      final StackParentData childParentData = child.parentData! as StackParentData;
-      final bool isHit = result.addWithPaintOffset(
-        offset: childParentData.offset,
-        position: position,
-        hitTest: (BoxHitTestResult result, Offset? transformed) {
-          return child!.hitTest(result, position: transformed!);
-        },
-      );
-      if (isHit) {
-        hitAny = true;
-      }
-      child = childParentData.previousSibling;
-    }
-    return hitAny;
-  }
-}
-
-/// An inherited widget that exposes a mechanism to trigger ripples on the
-/// enclosing [HomeWidgetCard]'s glass surface at a specific global position.
-class HomeWidgetCardRippleScope extends InheritedWidget {
-  const HomeWidgetCardRippleScope({
-    required this.triggerRippleAt,
-    required super.child,
-    super.key,
-  });
-
-  final void Function(Offset globalPosition) triggerRippleAt;
-
-  static HomeWidgetCardRippleScope? maybeOf(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<HomeWidgetCardRippleScope>();
-  }
-
-  @override
-  bool updateShouldNotify(covariant HomeWidgetCardRippleScope oldWidget) => false;
-}
-
-class HomeWidgetCard extends StatefulWidget {
+class HomeWidgetCard extends StatelessWidget {
   const HomeWidgetCard({
     required this.title,
     required this.icon,
@@ -97,7 +22,6 @@ class HomeWidgetCard extends StatefulWidget {
     this.onDateFilterChanged,
     this.dateFilterOptions = standardHomeDateFilterOptions,
     this.onIconTap,
-    this.ripple,
   });
 
   final String title;
@@ -112,31 +36,6 @@ class HomeWidgetCard extends StatefulWidget {
   final ValueChanged<String>? onDateFilterChanged;
   final List<String> dateFilterOptions;
   final VoidCallback? onIconTap;
-  final g1455.GlassRipple? ripple;
-
-  @override
-  State<HomeWidgetCard> createState() => _HomeWidgetCardState();
-}
-
-class _HomeWidgetCardState extends State<HomeWidgetCard> {
-  final GlobalKey _surfaceKey = GlobalKey();
-
-  void _triggerRippleAt(Offset globalPosition) {
-    final surfaceBox =
-        _surfaceKey.currentContext?.findRenderObject() as RenderBox?;
-    if (surfaceBox != null && surfaceBox.hasSize) {
-      final localPosition = surfaceBox.globalToLocal(globalPosition);
-      final pointer = DateTime.now().microsecondsSinceEpoch;
-      surfaceBox.handleEvent(
-        PointerDownEvent(position: globalPosition, pointer: pointer),
-        BoxHitTestEntry(surfaceBox, localPosition),
-      );
-      surfaceBox.handleEvent(
-        PointerUpEvent(position: globalPosition, pointer: pointer),
-        BoxHitTestEntry(surfaceBox, localPosition),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -144,7 +43,7 @@ class _HomeWidgetCardState extends State<HomeWidgetCard> {
     final scheme = theme.colorScheme;
     final isAmoled = AppSurfaces.isAmoled(context);
     final isDark = theme.brightness == Brightness.dark;
-    final resolvedIconColor = widget.iconColor ?? scheme.primary;
+    final resolvedIconColor = iconColor ?? scheme.primary;
     final reorderScope = HomeWidgetCardReorderScope.maybeOf(context);
 
     Widget cardContent = Material(
@@ -155,12 +54,12 @@ class _HomeWidgetCardState extends State<HomeWidgetCard> {
           Row(
             children: [
               HomeWidgetReorderableIcon(
-                icon: widget.icon,
+                icon: icon,
                 iconColor: resolvedIconColor,
-                onTap: widget.onIconTap ?? widget.onAction,
-                tooltip: widget.actionLabel != null
-                    ? '${widget.title}: ${widget.actionLabel}'
-                    : widget.title,
+                onTap: onIconTap ?? onAction,
+                tooltip: actionLabel != null
+                    ? '$title: $actionLabel'
+                    : title,
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
@@ -168,16 +67,16 @@ class _HomeWidgetCardState extends State<HomeWidgetCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.title,
+                      title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    if (widget.subtitle != null)
+                    if (subtitle != null)
                       Text(
-                        widget.subtitle!,
+                        subtitle!,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -206,48 +105,41 @@ class _HomeWidgetCardState extends State<HomeWidgetCard> {
                       : null,
                   quality: GlassQuality.minimal,
                 ),
-              ] else if (widget.dateFilter != null &&
-                  widget.onDateFilterChanged != null) ...[
+              ] else if (dateFilter != null &&
+                  onDateFilterChanged != null) ...[
                 const SizedBox(width: AppSpacing.xs),
                 GlassDropdownPill<String>(
-                  value: widget.dateFilterOptions.contains(widget.dateFilter)
-                      ? widget.dateFilter!
-                      : widget.dateFilterOptions.first,
+                  value: dateFilterOptions.contains(dateFilter)
+                      ? dateFilter!
+                      : dateFilterOptions.first,
                   options: [
-                    for (final option in widget.dateFilterOptions)
+                    for (final option in dateFilterOptions)
                       GlassDropdownOption(option, option),
                   ],
-                  semanticLabel: '${widget.title} date filter',
-                  onChanged: widget.onDateFilterChanged!,
+                  semanticLabel: '$title date filter',
+                  onChanged: onDateFilterChanged!,
                 ),
-              ] else if (widget.actionLabel != null &&
-                  widget.onAction != null &&
-                  widget.headerTrailing == null) ...[
+              ] else if (actionLabel != null &&
+                  onAction != null &&
+                  headerTrailing == null) ...[
                 const SizedBox(width: AppSpacing.xs),
                 AppActionButton(
-                  label: widget.actionLabel!,
-                  onPressed: widget.onAction,
+                  label: actionLabel!,
+                  onPressed: onAction,
                   compact: true,
                 ),
               ],
-              if (widget.headerTrailing != null) ...[
+              if (headerTrailing != null) ...[
                 const SizedBox(width: AppSpacing.xs),
-                widget.headerTrailing!,
+                headerTrailing!,
               ],
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          widget.child,
+          child,
         ],
       ),
     );
-
-    if (widget.ripple != null) {
-      cardContent = HomeWidgetCardRippleScope(
-        triggerRippleAt: _triggerRippleAt,
-        child: cardContent,
-      );
-    }
 
     if (isAmoled) {
       return RepaintBoundary(
@@ -255,54 +147,6 @@ class _HomeWidgetCardState extends State<HomeWidgetCard> {
           padding: const EdgeInsets.all(AppSpacing.sm),
           decoration: AppSurfaces.panel(context),
           child: cardContent,
-        ),
-      );
-    }
-
-    // For the ripple card: build the glass card as normal, then overlay
-    // the GlassSurface at the very top (Positioned.fill + IgnorePointer)
-    // so it doesn't interfere with touches or dim the content beneath it.
-    if (widget.ripple != null) {
-      return RepaintBoundary(
-        child: Stack(
-          children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppRadii.md),
-                border: Border.all(
-                  color: isDark
-                      ? scheme.outlineVariant.withValues(alpha: 0.2)
-                      : Colors.transparent,
-                  width: 0.8,
-                ),
-              ),
-              child: GlassCard(
-                margin: EdgeInsets.zero,
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                shape:
-                    const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-                quality: GlassQuality.standard,
-                child: cardContent,
-              ),
-            ),
-            // Invisible ripple surface — zero opacity finish, just captures
-            // programmatic pointer events to animate waves. IgnorePointer
-            // ensures it never intercepts real touches.
-            Positioned.fill(
-              child: IgnorePointer(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                  child: g1455.GlassSurface(
-                    key: _surfaceKey,
-                    borderRadius: BorderRadius.circular(AppRadii.md),
-                    finish: g1455.GlassFinish.identity,
-                    ripple: widget.ripple,
-                    child: const SizedBox.expand(),
-                  ),
-                ),
-              ),
-            ),
-          ],
         ),
       );
     }
