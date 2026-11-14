@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart' as liquid_glass;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:one_wallet_flutter/src/features/onboarding/onboarding_screen.dart';
@@ -82,7 +83,7 @@ void main() {
     expect(
       find.ancestor(
         of: accountName,
-        matching: find.byType(GlassCard),
+        matching: find.byType(liquid_glass.GlassCard),
       ),
       findsWidgets,
     );

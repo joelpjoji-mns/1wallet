@@ -1596,24 +1596,15 @@ class LedgerController extends StateNotifier<LedgerState> {
     // Debounce the heavy disk/cloud save to avoid OutOfMemory / extreme jank during slider drags
     _prefsSaveTimer?.cancel();
     final epoch = _sessionEpoch;
-    if (LedgerProvidersConfig.disableAutoBackup) {
+    _prefsSaveTimer = Timer(const Duration(milliseconds: 500), () {
+      if (!mounted || epoch != _sessionEpoch) return;
       unawaited(
         _runMutation(() async {
           await _repository.save(state);
           _checkSession();
         }),
       );
-    } else {
-      _prefsSaveTimer = Timer(const Duration(milliseconds: 500), () {
-        if (!mounted || epoch != _sessionEpoch) return;
-        unawaited(
-          _runMutation(() async {
-            await _repository.save(state);
-            _checkSession();
-          }),
-        );
-      });
-    }
+    });
   });
 
   Future<void> setDisplayCurrency(String currency) => _runMutation(() async {

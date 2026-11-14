@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:g1455/g1455.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:dynamic_color/dynamic_color.dart';
-
-import '../design/tokens.dart';
 
 import '../routing/app_router.dart';
 import '../theme/app_theme.dart';
@@ -222,23 +220,61 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
       ),
     );
     final blur = (glass.blur + glass.progressiveBlur * 8).clamp(0.0, 24.0);
-    final isDark = themeState.themeMode == ThemeMode.dark ||
-        (themeState.themeMode == ThemeMode.system &&
-            WidgetsBinding.instance.platformDispatcher.platformBrightness ==
-                Brightness.dark);
+    final fill = glass.fill.clamp(0.0, 0.5);
+    final interaction = glass.interaction.clamp(0.0, 1.0);
 
-    final finish = isDark
-        ? AppGlassTokens.darkFinish.copyWith(blurSigmaLogical: blur)
-        : AppGlassTokens.lightFinish.copyWith(blurSigmaLogical: blur);
-
-    return GlassHost(
-      hardware: GlassHardware.detect(),
-      finish: finish,
-      backdrop: isDark ? AppColors.amoledBackground : AppColors.lightBackground,
-      appearance: themeState.themeMode == ThemeMode.light
-          ? Brightness.light
-          : (themeState.themeMode == ThemeMode.dark ? Brightness.dark : null),
-      press: const GlassPress(),
+    return LiquidGlassWidgets.wrap(
+      theme: GlassThemeData(
+        light: GlassThemeVariant(
+          settings: GlassThemeSettings(
+            thickness: 20,
+            blur: blur,
+            glassColor: Color.fromRGBO(255, 255, 255, fill),
+            visibility: glass.visibility.clamp(0.15, 1.0),
+            saturation: glass.saturation.clamp(0.0, 2.0),
+            refractiveIndex: 1.0 + glass.refraction.clamp(0.0, 1.0) * 0.25,
+            fresnelStrength: 0.4,
+            ambientStrength: 0.10,
+            chromaticAberration: 0.01,
+          ),
+          quality: GlassQuality.standard,
+        ),
+        dark: GlassThemeVariant(
+          settings: GlassThemeSettings(
+            thickness: 20,
+            blur: blur,
+            glassColor: Color.fromRGBO(
+              16,
+              16,
+              16,
+              (fill * 0.75).clamp(0.12, 0.45),
+            ),
+            visibility: glass.visibility.clamp(0.15, 1.0),
+            saturation: glass.saturation.clamp(0.0, 2.0),
+            refractiveIndex: 1.0 + glass.refraction.clamp(0.0, 1.0) * 0.25,
+            lightIntensity: 0.08,
+            ambientStrength: 0.06,
+            fresnelStrength: 0.30,
+            edgeAbsorption: 0.14,
+            chromaticAberration: 0.01,
+          ),
+          quality: GlassQuality.standard,
+        ),
+        interaction: GlassInteractionSettings(
+          stretch: 0.55 * interaction,
+          interactionScale: 1.0 + 0.14 * interaction,
+          resistance: 0.06 - 0.035 * interaction,
+        ),
+      ),
+      brightnessResolver: (context) {
+        if (themeState.themeMode == ThemeMode.light) return Brightness.light;
+        if (themeState.themeMode == ThemeMode.dark) return Brightness.dark;
+        try {
+          return MediaQuery.platformBrightnessOf(context);
+        } catch (_) {
+          return WidgetsBinding.instance.platformDispatcher.platformBrightness;
+        }
+      },
       child: DynamicColorBuilder(
         builder: (lightDynamic, darkDynamic) => MaterialApp.router(
           title: '1Wallet',

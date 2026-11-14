@@ -1,7 +1,7 @@
 # `lib/src/widgets/` — Reusable Glass UI Components
 
 ## 🎯 Role & Overview
-Contains shared visual widgets designed around 1Wallet's signature frosted glass aesthetic (`g1455`), custom navigation islands, privacy text masking, and credit card visualizers. `app_kit.dart` is the canonical UI kit: feature screens compose these primitives instead of re-building frames, cards, rows, dialogs, sheets or feedback.
+Contains shared visual widgets designed around 1Wallet's signature frosted glass aesthetic (`liquid_glass_widgets`), custom navigation islands, privacy text masking, and credit card visualizers. `app_kit.dart` is the canonical UI kit: feature screens compose these primitives instead of re-building frames, cards, rows, dialogs, sheets or feedback.
 
 ---
 
@@ -49,7 +49,7 @@ Contains shared visual widgets designed around 1Wallet's signature frosted glass
 2. **Accessibility & Contrast**:
    - Frosted panels must maintain a high enough contrast ratio between text and underlying blurs.
    - Toggle rows expose one merged semantics node with the toggled state; header buttons always carry a `semanticLabel`.
-3. **Font plumbing**: several glass components replace the inherited text style and drop the font family. The kit wrappers (`AppGroupedSection/Tile`, `PremiumSearchInput`, `AppGlassTextField`, `BottomIslandNavBar`) pass the theme's Inter family back in — use them rather than the raw package widgets.
+3. **Font plumbing**: several `liquid_glass_widgets` components replace the inherited text style and drop the font family. The kit wrappers (`AppGroupedSection/Tile`, `PremiumSearchInput`, `AppGlassTextField`, `BottomIslandNavBar`) pass the theme's Inter family back in — use them rather than the raw package widgets.
 
 ---
 

@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:g1455/g1455.dart' as g1455;
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:one_wallet_flutter/src/features/capture/notification_apps_screen.dart';
 import 'package:one_wallet_flutter/src/features/capture/review_queue_screen.dart';
 import 'package:one_wallet_flutter/src/features/updates/updates_screen.dart';
 import 'package:one_wallet_flutter/src/theme/app_theme.dart';
-import 'package:one_wallet_flutter/src/widgets/app_kit.dart' show AppBackAction, GlassAppBar;
+import 'package:one_wallet_flutter/src/widgets/app_kit.dart' show AppBackAction;
 
 import 'test_harness.dart';
 
@@ -70,13 +70,6 @@ void main() {
       );
 
       expect(find.byType(GlassAppBar), findsOneWidget);
-      expect(
-        find.descendant(
-          of: find.byType(GlassAppBar),
-          matching: find.byType(g1455.GlassBar),
-        ),
-        findsOneWidget,
-      );
       expect(find.byType(AppBar), findsNothing);
       expect(find.byType(AppBackAction), findsOneWidget);
       expect(find.text('Review & Inbox'), findsOneWidget);
@@ -91,13 +84,6 @@ void main() {
       await _pumpPushed(tester, const UpdatesScreen());
 
       expect(find.byType(GlassAppBar), findsOneWidget);
-      expect(
-        find.descendant(
-          of: find.byType(GlassAppBar),
-          matching: find.byType(g1455.GlassBar),
-        ),
-        findsOneWidget,
-      );
       expect(find.byType(AppBar), findsNothing);
       expect(find.byType(AppBackAction), findsOneWidget);
       expect(find.text('Updates'), findsOneWidget);
@@ -116,13 +102,6 @@ void main() {
       );
 
       expect(find.byType(GlassAppBar), findsOneWidget);
-      expect(
-        find.descendant(
-          of: find.byType(GlassAppBar),
-          matching: find.byType(g1455.GlassBar),
-        ),
-        findsOneWidget,
-      );
       expect(find.byType(AppBar), findsNothing);
       expect(find.byType(AppBackAction), findsOneWidget);
       expect(find.text('Target Apps'), findsOneWidget);

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 class AppGlassPage extends StatelessWidget {
   const AppGlassPage({required this.child, super.key});
@@ -10,10 +10,8 @@ class AppGlassPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
-      child: DecoratedBox(
+    return GlassPage(
+      background: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -25,8 +23,11 @@ class AppGlassPage extends StatelessWidget {
             ],
           ),
         ),
-        child: child,
       ),
+      statusBarStyle: theme.brightness == Brightness.dark
+          ? GlassStatusBarStyle.light
+          : GlassStatusBarStyle.dark,
+      child: child,
     );
   }
 }

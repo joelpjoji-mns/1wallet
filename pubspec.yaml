@@ -68,7 +68,7 @@ dependencies:
   timezone: ^0.11.2
   flutter_timezone: ^5.1.1
   web: ^1.1.2
-  g1455: ^0.4.0
+  liquid_glass_widgets: ^1.7.2
   home_widget: ^0.10.0
 dev_dependencies:
   flutter_test:

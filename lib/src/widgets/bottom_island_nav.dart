@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../design/tokens.dart';
-import 'app_kit.dart';
 
 @immutable
 class IslandTabItem {
@@ -40,6 +40,10 @@ class BottomIslandNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final glassTheme = GlassThemeData.of(context);
+    final glassSettings = glassTheme
+        .settingsFor(context)
+        ?.applyTo(const LiquidGlassSettings());
 
     return SafeArea(
       top: false,
@@ -64,13 +68,11 @@ class BottomIslandNavBar extends StatelessWidget {
                 ? 0.0
                 : (totalWidth - islandWidth) / 2;
 
-            final containerHeight = action != null ? 176.0 : AppSizes.bottomBar;
-
             return Align(
               alignment: Alignment.bottomCenter,
               child: SizedBox(
                 width: totalWidth,
-                height: containerHeight,
+                height: 148,
                 child: Stack(
                   clipBehavior: Clip.none,
                   alignment: Alignment.bottomCenter,
@@ -115,6 +117,7 @@ class BottomIslandNavBar extends StatelessWidget {
                         horizontalPadding: hasDownFab ? 6 : 10,
                         verticalPadding: 12,
                         spacing: hasDownFab ? 4 : 6,
+                        settings: glassSettings,
                         quality: GlassQuality.minimal,
                         indicatorColor: scheme.primary.withAlphaFactor(
                           isDark ? 0.30 : 0.14,
@@ -140,13 +143,14 @@ class BottomIslandNavBar extends StatelessWidget {
                     ),
                     if (action != null)
                       // FAB moving down animation smoothly anchored to bottom right
+                      // When compactAction is true, center the 64px FAB with the 96px total bar height ((96 - 64) / 2 = 16)
                       AnimatedPositioned(
                         duration: const Duration(milliseconds: 200),
                         curve: Curves.easeOutCubic,
                         right: 0,
                         bottom: compactAction
                             ? (AppSizes.bottomBar - 64) / 2
-                            : AppSizes.bottomBar + AppSizes.bottomBarGap,
+                            : AppSizes.bottomBarContentHeight + 8,
                         child: AnimatedOpacity(
                           duration: const Duration(milliseconds: 180),
                           opacity: 1.0,

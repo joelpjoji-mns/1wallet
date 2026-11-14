@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:g1455/g1455.dart' as g1455;
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import 'package:one_wallet_flutter/src/features/launch/brand_widgets.dart';
-import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 
 void main() {
   group('BrandFrostedPanel', () {
@@ -15,13 +14,6 @@ void main() {
       );
 
       expect(find.byType(GlassCard), findsOneWidget);
-      expect(
-        find.descendant(
-          of: find.byType(GlassCard),
-          matching: find.byType(g1455.GlassCard),
-        ),
-        findsOneWidget,
-      );
       expect(find.text('Body'), findsOneWidget);
     });
 
@@ -38,13 +30,6 @@ void main() {
       );
 
       expect(find.byType(GlassCard), findsOneWidget);
-      expect(
-        find.descendant(
-          of: find.byType(GlassCard),
-          matching: find.byType(g1455.GlassCard),
-        ),
-        findsOneWidget,
-      );
       expect(find.text('Body'), findsOneWidget);
     });
   });

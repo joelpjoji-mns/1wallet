@@ -2,6 +2,7 @@ import 'dart:ui' show Tristate;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 
@@ -62,7 +63,7 @@ void main() {
 
   testWidgets(
     'AppSwitchListTile uses the package GlassSwitch control (not the plain '
-    'Material Switch), matching the app-wide glass usage',
+    'Material Switch), matching the app-wide liquid_glass_widgets usage',
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
