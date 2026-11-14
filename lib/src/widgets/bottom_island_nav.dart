@@ -169,66 +169,63 @@ class BottomIslandNavBar extends StatelessWidget {
                               final isRegular = !isFrosted && !isClear;
 
                               final fillAlphaTop = isFrosted
-                                  ? (isDark ? 0.42 : 0.58)
+                                  ? (isDark ? 0.38 : 0.52)
                                   : (isRegular
-                                      ? (isDark ? 0.16 : 0.25)
-                                      : (isDark ? 0.05 : 0.09));
+                                      ? (isDark ? 0.14 : 0.22)
+                                      : (isDark ? 0.02 : 0.04));
                               final fillAlphaBottom =
-                                  (fillAlphaTop * 0.45).clamp(0.01, 0.85);
+                                  (fillAlphaTop * 0.40).clamp(0.005, 0.85);
                               final borderAlpha = isFrosted
                                   ? (isDark ? 0.55 : 0.72)
                                   : (isRegular
                                       ? (isDark ? 0.38 : 0.52)
-                                      : (isDark ? 0.25 : 0.38));
+                                      : (isDark ? 0.28 : 0.40));
+                              final shadowAlpha = isFrosted
+                                  ? (isDark ? 0.35 : 0.14)
+                                  : (isRegular
+                                      ? (isDark ? 0.28 : 0.10)
+                                      : (isDark ? 0.18 : 0.06));
 
-                              Widget islandSurface = DecoratedBox(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(
-                                    AppSizes.bottomBarContentHeight / 2,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withAlphaFactor(
-                                        isDark ? 0.35 : 0.12,
-                                      ),
-                                      blurRadius: 20,
-                                      offset: const Offset(0, 8),
-                                    ),
-                                  ],
+                              Widget islandSurface = g1455.GlassSurface(
+                                borderRadius: BorderRadius.circular(
+                                  AppSizes.bottomBarContentHeight / 2,
                                 ),
-                                child: GlassCard(
-                                  margin: EdgeInsets.zero,
-                                  padding: EdgeInsets.zero,
-                                  shape: const LiquidRoundedSuperellipse(
-                                    borderRadius:
-                                        AppSizes.bottomBarContentHeight / 2,
-                                  ),
-                                  quality: GlassQuality.standard,
-                                  child: DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(
-                                        AppSizes.bottomBarContentHeight / 2,
-                                      ),
-                                      border: Border.all(
-                                        color: Colors.white.withAlphaFactor(
-                                          borderAlpha,
-                                        ),
-                                        width: 1.0,
-                                      ),
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
-                                        colors: [
-                                          Colors.white.withAlphaFactor(
-                                            fillAlphaTop,
-                                          ),
-                                          Colors.white.withAlphaFactor(
-                                            fillAlphaBottom,
-                                          ),
-                                        ],
-                                      ),
+                                finish: finish ?? g1455.GlassFinish.clear,
+                                labelled: false,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(
+                                      AppSizes.bottomBarContentHeight / 2,
                                     ),
-                                    child: Stack(
+                                    border: Border.all(
+                                      color: Colors.white.withAlphaFactor(
+                                        borderAlpha,
+                                      ),
+                                      width: 1.0,
+                                    ),
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Colors.white.withAlphaFactor(
+                                          fillAlphaTop,
+                                        ),
+                                        Colors.white.withAlphaFactor(
+                                          fillAlphaBottom,
+                                        ),
+                                      ],
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withAlphaFactor(
+                                          shadowAlpha,
+                                        ),
+                                        blurRadius: 18,
+                                        offset: const Offset(0, 6),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Stack(
                                       children: [
                                         // Smooth animated active tab indicator pill following page drag in real-time
                                         if (items.isNotEmpty)
@@ -265,11 +262,11 @@ class BottomIslandNavBar extends StatelessWidget {
                                                       colors: [
                                                         brightPrimary
                                                             .withAlphaFactor(
-                                                          isDark ? 0.45 : 0.32,
+                                                          isDark ? 0.45 : 0.20,
                                                         ),
                                                         brightPrimary
                                                             .withAlphaFactor(
-                                                          isDark ? 0.22 : 0.14,
+                                                          isDark ? 0.22 : 0.10,
                                                         ),
                                                       ],
                                                     ),
@@ -282,7 +279,7 @@ class BottomIslandNavBar extends StatelessWidget {
                                                     border: Border.all(
                                                       color: brightPrimary
                                                           .withAlphaFactor(
-                                                        isDark ? 0.80 : 0.60,
+                                                        isDark ? 0.80 : 0.50,
                                                       ),
                                                       width: 1.2,
                                                     ),
@@ -290,7 +287,7 @@ class BottomIslandNavBar extends StatelessWidget {
                                                       BoxShadow(
                                                         color: brightPrimary
                                                             .withAlphaFactor(
-                                                          isDark ? 0.35 : 0.20,
+                                                          isDark ? 0.35 : 0.16,
                                                         ),
                                                         blurRadius: 12,
                                                         spreadRadius: 1,
@@ -321,8 +318,7 @@ class BottomIslandNavBar extends StatelessWidget {
                                       ],
                                     ),
                                   ),
-                                ),
-                              );
+                                );
 
                               return Padding(
                                 padding:
@@ -372,12 +368,7 @@ class _IslandTabButton extends StatelessWidget {
         ? Colors.white.withAlphaFactor(0.78)
         : Colors.black.withAlphaFactor(0.70);
 
-    final primaryAccent = scheme.primary;
-    final selectedColor = isDark
-        ? Colors.white
-        : (ThemeData.estimateBrightnessForColor(primaryAccent) == Brightness.dark
-            ? Colors.white
-            : scheme.primary);
+    final selectedColor = isDark ? Colors.white : scheme.primary;
 
     final color = isSelected ? selectedColor : unselectedColor;
     final iconData = isSelected ? item.activeIcon : item.icon;
