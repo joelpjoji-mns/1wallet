@@ -30,14 +30,13 @@ abstract final class AppFonts {
 }
 
 abstract final class AppSizes {
-  static const double bottomBarContentHeight = 72;
-  // GlassTabBar includes 12 px of internal top/bottom padding around its
+  static const double bottomBarContentHeight = 80;
+  // GlassTabBar includes internal top/bottom padding around its
   // configured bar height, so this is its measured outer extent.
-  static const double bottomBar = bottomBarContentHeight + 24;
+  static const double bottomBar = bottomBarContentHeight + 4;
   static const double bottomBarGap =
       AppSpacing.xs; // was AppSpacing.sm (12 -> 6)
-  static const double bottomBarOuterVerticalPadding =
-      AppSpacing.xxxs; // was AppSpacing.xxs (4 -> 2)
+  static const double bottomBarOuterVerticalPadding = 0;
   static const double bottomBarClearance =
       bottomBar + bottomBarOuterVerticalPadding * 2 + bottomBarGap;
   static const double rowLarge = 76;

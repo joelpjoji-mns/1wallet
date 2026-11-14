@@ -1,10 +1,13 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:g1455/g1455.dart' as g1455;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
+import '../data/ledger_providers.dart';
 import '../design/tokens.dart';
+import '../features/notifications/notification_engine.dart';
 
 /// A horizontal drag gesture recognizer that only claims gestures moving to the right
 /// (dx > 0) beyond touch slop. Rejects gestures moving to the left so that
@@ -432,7 +435,7 @@ class IslandFloatingActionButton extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    const primaryAccent = AppColors.primary;
+    final primaryAccent = scheme.primary;
     final brightPrimary = isDark
         ? (ThemeData.estimateBrightnessForColor(primaryAccent) == Brightness.dark
             ? Color.lerp(primaryAccent, Colors.white, 0.15)!
@@ -444,7 +447,7 @@ class IslandFloatingActionButton extends StatelessWidget {
           appearance: isDark ? Brightness.dark : Brightness.light,
         );
     final effectiveFinish = baseFinish.copyWith(
-      tint: brightPrimary.withAlphaFactor(isDark ? 0.35 : 0.25),
+      tint: brightPrimary.withAlphaFactor(isDark ? 0.22 : 0.16),
     );
 
     Widget button = g1455.GlassSurface(
@@ -460,21 +463,21 @@ class IslandFloatingActionButton extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              brightPrimary.withAlphaFactor(isDark ? 0.85 : 0.78),
+              brightPrimary.withAlphaFactor(isDark ? 0.58 : 0.50),
               Color.lerp(
                 brightPrimary,
                 isDark ? Colors.black : Colors.black87,
                 0.28,
-              )!.withAlphaFactor(isDark ? 0.75 : 0.68),
+              )!.withAlphaFactor(isDark ? 0.44 : 0.38),
             ],
           ),
           border: Border.all(
-            color: Colors.white.withAlphaFactor(isDark ? 0.45 : 0.65),
+            color: Colors.white.withAlphaFactor(isDark ? 0.50 : 0.70),
             width: 1.2,
           ),
           boxShadow: [
             BoxShadow(
-              color: brightPrimary.withAlphaFactor(isDark ? 0.45 : 0.35),
+              color: brightPrimary.withAlphaFactor(isDark ? 0.35 : 0.25),
               blurRadius: 18,
               offset: const Offset(0, 6),
             ),
@@ -597,7 +600,7 @@ class GlassHeaderButton extends StatelessWidget {
   );
 }
 
-class AppMenuAction extends StatelessWidget {
+class AppMenuAction extends ConsumerWidget {
   const AppMenuAction({
     required this.onPressed,
     this.badge,
@@ -610,13 +613,99 @@ class AppMenuAction extends StatelessWidget {
   final bool showIndicator;
 
   @override
-  Widget build(BuildContext context) {
-    return GlassHeaderButton(
-      icon: Icons.menu_rounded,
-      onPressed: onPressed,
-      badge: badge,
-      showIndicator: showIndicator,
-      semanticLabel: 'Open menu',
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ledger = ref.watch(ledgerProvider);
+    final finish = ref.watch(glassFinishProvider);
+    final pendingCount = ledger.captureCandidates
+        .where((c) => c.status == 'pending')
+        .length;
+    final notifCount = unreadNotificationCount(ledger);
+    final totalBadge = badge ?? (pendingCount + notifCount);
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final buttonRadius = BorderRadius.circular(14);
+
+    Widget menuButton = g1455.GlassSurface(
+      borderRadius: buttonRadius,
+      finish: finish,
+      labelled: false,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          borderRadius: buttonRadius,
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withAlphaFactor(0.25)
+                : Colors.black.withAlphaFactor(0.08),
+            width: 1.0,
+          ),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withAlphaFactor(isDark ? 0.10 : 0.14),
+              Colors.white.withAlphaFactor(isDark ? 0.02 : 0.04),
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlphaFactor(isDark ? 0.18 : 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: buttonRadius,
+            onTap: onPressed,
+            child: const Center(
+              child: Icon(
+                Icons.menu_rounded,
+                size: 22,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (totalBadge > 0) {
+      menuButton = Badge(
+        label: Text(
+          totalBadge > 9 ? '9+' : '$totalBadge',
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: const Color(0xFFFA233B),
+        offset: const Offset(2, -2),
+        child: menuButton,
+      );
+    } else if (showIndicator) {
+      menuButton = Badge(
+        smallSize: 8,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        offset: const Offset(1, -1),
+        child: menuButton,
+      );
+    }
+
+    return Semantics(
+      label: _headerButtonSemanticLabel(
+        'Open menu',
+        totalBadge,
+        showIndicator: showIndicator,
+      ),
+      button: true,
+      child: Padding(
+        padding: const EdgeInsets.only(left: AppSpacing.xxs),
+        child: menuButton,
+      ),
     );
   }
 }

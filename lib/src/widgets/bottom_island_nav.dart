@@ -115,10 +115,10 @@ class BottomIslandNavBar extends StatelessWidget {
             final containerHeight = action != null ? 176.0 : AppSizes.bottomBar;
             final activeTab = page.round().clamp(0, items.length - 1);
 
-            const primaryAccent = AppColors.primary;
+            final primaryColor = scheme.primary;
             final brightPrimary = isDark
-                ? Color.lerp(primaryAccent, Colors.white, 0.15)!
-                : primaryAccent;
+                ? Color.lerp(primaryColor, Colors.white, 0.15)!
+                : primaryColor;
 
             return Align(
               alignment: Alignment.bottomCenter,
@@ -267,27 +267,27 @@ class BottomIslandNavBar extends StatelessWidget {
                                                         brightPrimary
                                                             .withAlphaFactor(
                                                           isDark
-                                                              ? 0.45
-                                                              : 0.20,
+                                                              ? 0.55
+                                                              : 0.28,
                                                         ),
                                                         brightPrimary
                                                             .withAlphaFactor(
                                                           isDark
-                                                              ? 0.22
-                                                              : 0.10,
+                                                              ? 0.32
+                                                              : 0.16,
                                                         ),
                                                       ],
                                                     ),
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                       (AppSizes.bottomBarContentHeight -
-                                                              10) /
+                                                              8) /
                                                           2,
                                                     ),
                                                     border: Border.all(
                                                       color: brightPrimary
                                                           .withAlphaFactor(
-                                                        isDark ? 0.80 : 0.50,
+                                                        isDark ? 0.85 : 0.60,
                                                       ),
                                                       width: 1.2,
                                                     ),
@@ -296,10 +296,10 @@ class BottomIslandNavBar extends StatelessWidget {
                                                         color: brightPrimary
                                                             .withAlphaFactor(
                                                           isDark
-                                                              ? 0.35
-                                                              : 0.16,
+                                                              ? 0.40
+                                                              : 0.20,
                                                         ),
-                                                        blurRadius: 12,
+                                                        blurRadius: 14,
                                                         spreadRadius: 1,
                                                       ),
                                                     ],
@@ -332,7 +332,7 @@ class BottomIslandNavBar extends StatelessWidget {
 
                               return Padding(
                                 padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
+                                    const EdgeInsets.symmetric(vertical: 2),
                                 child: islandSurface,
                               );
                             }(),
