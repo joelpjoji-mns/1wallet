@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:g1455/g1455.dart' as g1455;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
@@ -186,46 +188,64 @@ class BottomIslandNavBar extends StatelessWidget {
                                       ? (isDark ? 0.28 : 0.10)
                                       : (isDark ? 0.18 : 0.06));
 
-                              Widget islandSurface = g1455.GlassSurface(
-                                borderRadius: BorderRadius.circular(
-                                  AppSizes.bottomBarContentHeight / 2,
+                              final effectiveBlur = isFrosted
+                                  ? (blur > 0 ? blur : 24.0)
+                                  : (isRegular
+                                      ? (blur > 0 ? blur : 12.0)
+                                      : 0.0);
+
+                              final pillRadius = BorderRadius.circular(
+                                AppSizes.bottomBarContentHeight / 2,
+                              );
+
+                              Widget islandSurface = DecoratedBox(
+                                decoration: BoxDecoration(
+                                  borderRadius: pillRadius,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withAlphaFactor(
+                                        shadowAlpha,
+                                      ),
+                                      blurRadius: 18,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
                                 ),
-                                finish: finish ?? g1455.GlassFinish.clear,
-                                labelled: false,
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(
-                                      AppSizes.bottomBarContentHeight / 2,
-                                    ),
-                                    border: Border.all(
-                                      color: Colors.white.withAlphaFactor(
-                                        borderAlpha,
+                                child: ClipRRect(
+                                  borderRadius: pillRadius,
+                                  child: BackdropFilter(
+                                    filter: effectiveBlur > 0
+                                        ? ui.ImageFilter.blur(
+                                            sigmaX: effectiveBlur,
+                                            sigmaY: effectiveBlur,
+                                          )
+                                        : ui.ImageFilter.blur(
+                                            sigmaX: 0.0,
+                                            sigmaY: 0.0,
+                                          ),
+                                    child: DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        borderRadius: pillRadius,
+                                        border: Border.all(
+                                          color: Colors.white.withAlphaFactor(
+                                            borderAlpha,
+                                          ),
+                                          width: 1.0,
+                                        ),
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            Colors.white.withAlphaFactor(
+                                              fillAlphaTop,
+                                            ),
+                                            Colors.white.withAlphaFactor(
+                                              fillAlphaBottom,
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                      width: 1.0,
-                                    ),
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [
-                                        Colors.white.withAlphaFactor(
-                                          fillAlphaTop,
-                                        ),
-                                        Colors.white.withAlphaFactor(
-                                          fillAlphaBottom,
-                                        ),
-                                      ],
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withAlphaFactor(
-                                          shadowAlpha,
-                                        ),
-                                        blurRadius: 18,
-                                        offset: const Offset(0, 6),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Stack(
+                                      child: Stack(
                                       children: [
                                         // Smooth animated active tab indicator pill following page drag in real-time
                                         if (items.isNotEmpty)
@@ -318,7 +338,9 @@ class BottomIslandNavBar extends StatelessWidget {
                                       ],
                                     ),
                                   ),
-                                );
+                                ),
+                              ),
+                            );
 
                               return Padding(
                                 padding:

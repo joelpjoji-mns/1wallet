@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:g1455/glass_diagnostics.dart' show GlassProxyScope;
 import 'package:go_router/go_router.dart';
 
 import '../../auth/auth_controller.dart';
@@ -51,11 +50,6 @@ class _MainShellState extends ConsumerState<MainShell>
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: widget.initialTab);
-    _pageController.addListener(() {
-      if (mounted) {
-        GlassProxyScope.maybeOf(context)?.noteChange();
-      }
-    });
     _selectedIndex = ValueNotifier(widget.initialTab);
     _screens = [
       _KeepAliveWrapper(
@@ -85,9 +79,6 @@ class _MainShellState extends ConsumerState<MainShell>
       onPageChanged: (index) {
         if (_selectedIndex.value != index) {
           _selectedIndex.value = index;
-        }
-        if (mounted) {
-          GlassProxyScope.maybeOf(context)?.noteChange();
         }
       },
       children: _screens,
@@ -164,14 +155,6 @@ class _MainShellState extends ConsumerState<MainShell>
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
       );
-    }
-    if (mounted) {
-      GlassProxyScope.maybeOf(context)?.noteChange();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          GlassProxyScope.maybeOf(context)?.noteChange();
-        }
-      });
     }
   }
 

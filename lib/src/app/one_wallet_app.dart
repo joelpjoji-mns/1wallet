@@ -297,7 +297,6 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
             return g1455.GlassHost(
               finish: glassFinish,
               richBackdrop: true,
-              content: g1455.GlassContentDeclaration.undeclared,
               child: appLock,
             );
           },
