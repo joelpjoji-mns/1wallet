@@ -7,7 +7,6 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../data/ledger_providers.dart';
 import '../design/tokens.dart';
-import '../features/notifications/notification_engine.dart';
 
 /// A horizontal drag gesture recognizer that only claims gestures moving to the right
 /// (dx > 0) beyond touch slop. Rejects gestures moving to the left so that
@@ -614,14 +613,7 @@ class AppMenuAction extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ledger = ref.watch(ledgerProvider);
     final finish = ref.watch(glassFinishProvider);
-    final pendingCount = ledger.captureCandidates
-        .where((c) => c.status == 'pending')
-        .length;
-    final notifCount = unreadNotificationCount(ledger);
-    final totalBadge = badge ?? (pendingCount + notifCount);
-
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final buttonRadius = BorderRadius.circular(14);
 
@@ -672,10 +664,13 @@ class AppMenuAction extends ConsumerWidget {
       ),
     );
 
-    if (totalBadge > 0) {
+    // If caller explicitly passed a non-zero badge, show it; otherwise do not show
+    // duplicate review/notification count badge since it is already displayed on the right.
+    if ((badge ?? 0) > 0) {
+      final b = badge!;
       menuButton = Badge(
         label: Text(
-          totalBadge > 9 ? '9+' : '$totalBadge',
+          b > 9 ? '9+' : '$b',
           style: const TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.bold,
@@ -698,7 +693,7 @@ class AppMenuAction extends ConsumerWidget {
     return Semantics(
       label: _headerButtonSemanticLabel(
         'Open menu',
-        totalBadge,
+        badge,
         showIndicator: showIndicator,
       ),
       button: true,
@@ -710,7 +705,7 @@ class AppMenuAction extends ConsumerWidget {
   }
 }
 
-class HeaderIconButton extends StatelessWidget {
+class HeaderIconButton extends ConsumerWidget {
   const HeaderIconButton({
     required this.icon,
     required this.onPressed,
@@ -742,90 +737,190 @@ class HeaderIconButton extends StatelessWidget {
   final String? tooltip;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final message = tooltip;
     if (message != null && message.isNotEmpty) {
-      return Tooltip(message: message, child: _buildButton(context));
+      return Tooltip(message: message, child: _buildButton(context, ref));
     }
-    return _buildButton(context);
+    return _buildButton(context, ref);
   }
 
-  Widget _buildButton(BuildContext context) {
+  Widget _buildButton(BuildContext context, WidgetRef ref) {
     final badgeCount = badge ?? 0;
-    return Padding(
-      padding: const EdgeInsets.only(left: AppSpacing.xxs),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          UnconstrainedBox(
-            child: GlassIconButton(
-              icon: loading
+    final finish = ref.watch(glassFinishProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+    final buttonRadius = BorderRadius.circular(14);
+
+    Widget iconButton = g1455.GlassSurface(
+      borderRadius: buttonRadius,
+      finish: finish,
+      labelled: false,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          borderRadius: buttonRadius,
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withAlphaFactor(0.25)
+                : Colors.black.withAlphaFactor(0.08),
+            width: 1.0,
+          ),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withAlphaFactor(isDark ? 0.10 : 0.14),
+              Colors.white.withAlphaFactor(isDark ? 0.02 : 0.04),
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlphaFactor(isDark ? 0.18 : 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: buttonRadius,
+            onTap: onPressed,
+            child: Center(
+              child: loading
                   ? const AppInlineSpinner()
                   : Icon(
                       icon,
-                      color: destructive
-                          ? Theme.of(context).colorScheme.error
-                          : null,
+                      size: 22,
+                      color: destructive ? scheme.error : null,
                     ),
-              iconSize: 22,
-              quality: GlassQuality.standard,
-              onPressed: onPressed,
-              semanticLabel: _headerButtonSemanticLabel(
-                semanticLabel,
-                badgeCount,
-                showIndicator: showIndicator,
-              ),
             ),
           ),
-          if (badgeCount > 0)
-            Positioned(
-              right: 8,
-              top: 8,
-              // Badge count is folded into the semanticLabel above; exclude
-              // this visual duplicate so screen readers don't announce it
-              // twice, disconnected from context.
-              child: ExcludeSemantics(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 5,
-                    vertical: 1,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.error,
-                    borderRadius: BorderRadius.circular(AppRadii.pill),
-                  ),
-                  child: Text(
-                    badgeCount > 9 ? '9+' : '$badgeCount',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onError,
-                      fontWeight: FontWeight.w800,
-                      height: 1.1,
-                    ),
-                  ),
-                ),
-              ),
-            )
-          else if (showIndicator)
-            Positioned(
-              right: 10,
-              top: 10,
-              child: ExcludeSemantics(
-                child: Container(
-                  width: 9,
-                  height: 9,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.error,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.surface,
-                      width: 1.5,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
+        ),
       ),
+    );
+
+    if (badgeCount > 0) {
+      iconButton = Badge(
+        label: Text(
+          badgeCount > 9 ? '9+' : '$badgeCount',
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: const Color(0xFFFA233B),
+        offset: const Offset(2, -2),
+        child: iconButton,
+      );
+    } else if (showIndicator) {
+      iconButton = Badge(
+        smallSize: 8,
+        backgroundColor: scheme.error,
+        offset: const Offset(1, -1),
+        child: iconButton,
+      );
+    }
+
+    return Semantics(
+      label: _headerButtonSemanticLabel(
+        semanticLabel,
+        badgeCount,
+        showIndicator: showIndicator,
+      ),
+      button: true,
+      child: Padding(
+        padding: const EdgeInsets.only(left: AppSpacing.xxs),
+        child: iconButton,
+      ),
+    );
+  }
+}
+
+/// A transition builder that smoothly slides upward (`Offset(0, 0.06) -> Offset.zero`)
+/// while materializing using `g1455.GlassSurface(materialize: ..., presence: ...)`
+/// and fading in.
+Widget buildGlassMaterializeTransition(
+  Widget child,
+  Animation<double> animation, {
+  BorderRadius borderRadius = const BorderRadius.all(Radius.circular(16)),
+  g1455.GlassFinish? finish,
+}) {
+  final curved = CurvedAnimation(
+    parent: animation,
+    curve: Curves.easeOutCubic,
+    reverseCurve: Curves.easeInCubic,
+  );
+  final slide = Tween<Offset>(
+    begin: const Offset(0, 0.06),
+    end: Offset.zero,
+  ).animate(curved);
+
+  return AnimatedBuilder(
+    animation: curved,
+    builder: (context, _) {
+      final value = curved.value.clamp(0.0, 1.0);
+      return SlideTransition(
+        position: slide,
+        child: Opacity(
+          opacity: value,
+          child: g1455.GlassSurface(
+            materialize: value,
+            presence: value,
+            borderRadius: borderRadius,
+            finish: finish,
+            child: child,
+          ),
+        ),
+      );
+    },
+  );
+}
+
+/// Animated switcher that applies the going-up and glass materialize transition
+/// when children change.
+class GlassMaterializeSwitcher extends StatelessWidget {
+  const GlassMaterializeSwitcher({
+    required this.child,
+    super.key,
+    this.duration = const Duration(milliseconds: 320),
+    this.borderRadius = const BorderRadius.all(Radius.circular(16)),
+    this.finish,
+  });
+
+  final Widget child;
+  final Duration duration;
+  final BorderRadius borderRadius;
+  final g1455.GlassFinish? finish;
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
+      return child;
+    }
+    return AnimatedSwitcher(
+      duration: duration,
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      layoutBuilder: (currentChild, previousChildren) {
+        return Stack(
+          alignment: Alignment.topCenter,
+          children: <Widget>[
+            ...previousChildren,
+            ?currentChild,
+          ],
+        );
+      },
+      transitionBuilder: (child, animation) => buildGlassMaterializeTransition(
+        child,
+        animation,
+        borderRadius: borderRadius,
+        finish: finish,
+      ),
+      child: child,
     );
   }
 }

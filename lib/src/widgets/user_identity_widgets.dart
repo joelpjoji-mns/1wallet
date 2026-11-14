@@ -1,8 +1,11 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:g1455/g1455.dart' as g1455;
 
 import '../auth/auth_user.dart';
+import '../data/ledger_providers.dart';
 import '../design/tokens.dart';
 
 // Google brand colours (logo, avatar ring and Google-provider badges). Brand
@@ -196,13 +199,13 @@ class AuthPhotoStatusChip extends StatelessWidget {
   }
 }
 
-class AuthUserActionButton extends StatelessWidget {
+class AuthUserActionButton extends ConsumerWidget {
   const AuthUserActionButton({
     required this.user,
     required this.onPressed,
     super.key,
     this.tooltip,
-    this.radius = 17,
+    this.radius = 14,
   });
 
   final AuthUser? user;
@@ -211,34 +214,58 @@ class AuthUserActionButton extends StatelessWidget {
   final double radius;
 
   @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    Widget button = Material(
-      color: Colors.transparent,
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onPressed,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xxs),
-          child: AuthUserAvatar(
-            user: user,
-            radius: radius,
-            fallbackLabel: user?.initials ?? '1W',
-            showGlow: false,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final finish = ref.watch(glassFinishProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final buttonRadius = BorderRadius.circular(14);
+
+    Widget button = g1455.GlassSurface(
+      borderRadius: buttonRadius,
+      finish: finish,
+      labelled: false,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          borderRadius: buttonRadius,
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withAlphaFactor(0.25)
+                : Colors.black.withAlphaFactor(0.08),
+            width: 1.0,
+          ),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withAlphaFactor(isDark ? 0.10 : 0.14),
+              Colors.white.withAlphaFactor(isDark ? 0.02 : 0.04),
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlphaFactor(isDark ? 0.18 : 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: buttonRadius,
+            onTap: onPressed,
+            child: Center(
+              child: AuthUserAvatar(
+                user: user,
+                radius: radius,
+                fallbackLabel: user?.initials ?? '1W',
+                showGlow: false,
+              ),
+            ),
           ),
         ),
       ),
-    );
-
-    button = DecoratedBox(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.67),
-        ),
-        color: scheme.surfaceContainerLow,
-      ),
-      child: button,
     );
 
     final effectiveTooltip = tooltip;

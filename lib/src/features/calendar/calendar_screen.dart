@@ -639,32 +639,37 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    DateFormat.yMMMMd(
-                      state.preferences.locale.replaceAll('_', '-'),
-                    ).format(date),
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        DateFormat.yMMMMd(
+                          state.preferences.locale.replaceAll('_', '-'),
+                        ).format(date),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      PrivacyText(
+                        balanceDisplay,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: balanceMinor < 0 ? scheme.error : scheme.primary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                PrivacyText(
-                  balanceDisplay,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: balanceMinor < 0 ? scheme.error : scheme.primary,
-                  ),
+                IconButton.filledTonal(
+                  tooltip: 'Close',
+                  icon: const Icon(Icons.close_rounded, size: 20),
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => Navigator.of(modalContext).pop(),
                 ),
-                if (isDesktop) ...[
-                  const SizedBox(width: AppSpacing.xs),
-                  IconButton(
-                    tooltip: 'Close',
-                    icon: const Icon(Icons.close_rounded),
-                    onPressed: () => Navigator.of(modalContext).pop(),
-                  ),
-                ],
               ],
             ),
             const SizedBox(height: AppSpacing.md),
@@ -710,13 +715,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       );
     }
 
+    final glassFinish = ref.watch(glassFinishProvider);
+
     if (isDesktop) {
-      showDialog<void>(
+      g1455.showGlassDialog<void>(
         context: context,
-        builder: (dialogContext) => Dialog(
-          // The day panel draws its own (glass/opaque) surface.
-          backgroundColor: Colors.transparent,
-          elevation: 0,
+        barrierDismissible: true,
+        builder: (dialogContext) => Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 500),
             child: buildCardContent(dialogContext),
@@ -724,12 +729,18 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         ),
       );
     } else {
-      showAppSheet<void>(
+      g1455.showGlassSheet<void>(
         context: context,
-        maxWidth: 540,
+        finish: glassFinish,
+        showGrabber: true,
+        barrierDismissible: true,
+        constraints: const BoxConstraints(maxWidth: 540),
         builder: (sheetContext) => SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
             child: buildCardContent(sheetContext),
           ),
         ),

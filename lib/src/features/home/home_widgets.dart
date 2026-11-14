@@ -249,112 +249,122 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
             ],
           ),
           const SizedBox(height: AppSpacing.xxxs),
-          TweenAnimationBuilder<double>(
-            duration: const Duration(milliseconds: 600),
-            curve: Curves.easeOutCubic,
-            tween: Tween<double>(
-              begin: total.amountMinor.toDouble(),
-              end: total.amountMinor.toDouble(),
-            ),
-            builder: (context, amountMinor, child) {
-              return FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: PrivacyText(
-                  formatMoney(
-                    total.copyWith(amountMinor: amountMinor.round()),
-                    widget.state.preferences.locale,
-                  ),
-                  maxLines: 1,
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -1.2,
-                  ),
-                ),
-              );
-            },
-          ),
-
-          const SizedBox(height: AppSpacing.xs),
-          SizedBox(
-            height: 24,
-            child: currencyBreakdown.isNotEmpty
-                ? SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        for (final money in currencyBreakdown) ...[
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.xs,
-                              vertical: AppSpacing.xxxs,
-                            ),
-                            decoration: BoxDecoration(
-                              color: scheme.surfaceContainerHigh,
-                              borderRadius: BorderRadius.circular(
-                                AppRadii.pill,
-                              ),
-                              border: Border.all(color: scheme.outlineVariant),
-                            ),
-                            child: PrivacyText(
-                              '${money.currency} ${formatMoney(money, widget.state.preferences.locale)}',
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                            ),
-                          ),
-                          if (money != currencyBreakdown.last)
-                            const SizedBox(width: AppSpacing.xs),
-                        ],
-                      ],
+          GlassMaterializeSwitcher(
+            duration: const Duration(milliseconds: 320),
+            child: KeyedSubtree(
+              key: ValueKey('balance_content_${selectedAccountId ?? "all"}_$displayCurrency'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TweenAnimationBuilder<double>(
+                    key: ValueKey('total_${selectedAccountId ?? "all"}_${total.amountMinor}'),
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.easeOutCubic,
+                    tween: Tween<double>(
+                      begin: total.amountMinor.toDouble(),
+                      end: total.amountMinor.toDouble(),
                     ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-
-          const SizedBox(height: AppSpacing.xs),
-          Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: () {
-                    ref.read(transactionsTypeFilterProvider.notifier).state =
-                        'income';
-                    ref.read(transactionsDateFilterProvider.notifier).state =
-                        _mapPeriodToDateFilter(_period);
-                    widget.onTabSelected(1);
-                  },
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                  child: HomeFlowPanel(
-                    label: 'Income',
-                    value: flow.income,
-                    locale: widget.state.preferences.locale,
-                    tone: MetricTone.positive,
+                    builder: (context, amountMinor, child) {
+                      return FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: PrivacyText(
+                          formatMoney(
+                            total.copyWith(amountMinor: amountMinor.round()),
+                            widget.state.preferences.locale,
+                          ),
+                          maxLines: 1,
+                          style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -1.2,
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: InkWell(
-                  onTap: () {
-                    ref.read(transactionsTypeFilterProvider.notifier).state =
-                        'expense';
-                    ref.read(transactionsDateFilterProvider.notifier).state =
-                        _mapPeriodToDateFilter(_period);
-                    widget.onTabSelected(1);
-                  },
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                  child: HomeFlowPanel(
-                    label: 'Expense',
-                    value: flow.expense,
-                    locale: widget.state.preferences.locale,
-                    tone: MetricTone.danger,
+                  const SizedBox(height: AppSpacing.xs),
+                  SizedBox(
+                    height: 24,
+                    child: currencyBreakdown.isNotEmpty
+                        ? SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                for (final money in currencyBreakdown) ...[
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AppSpacing.xs,
+                                      vertical: AppSpacing.xxxs,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: scheme.surfaceContainerHigh,
+                                      borderRadius: BorderRadius.circular(
+                                        AppRadii.pill,
+                                      ),
+                                      border: Border.all(color: scheme.outlineVariant),
+                                    ),
+                                    child: PrivacyText(
+                                      '${money.currency} ${formatMoney(money, widget.state.preferences.locale)}',
+                                      style: Theme.of(context).textTheme.labelSmall
+                                          ?.copyWith(
+                                            color: scheme.onSurfaceVariant,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                    ),
+                                  ),
+                                  if (money != currencyBreakdown.last)
+                                    const SizedBox(width: AppSpacing.xs),
+                                ],
+                              ],
+                            ),
+                          )
+                        : const SizedBox.shrink(),
                   ),
-                ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () {
+                            ref.read(transactionsTypeFilterProvider.notifier).state =
+                                'income';
+                            ref.read(transactionsDateFilterProvider.notifier).state =
+                                _mapPeriodToDateFilter(_period);
+                            widget.onTabSelected(1);
+                          },
+                          borderRadius: BorderRadius.circular(AppRadii.md),
+                          child: HomeFlowPanel(
+                            label: 'Income',
+                            value: flow.income,
+                            locale: widget.state.preferences.locale,
+                            tone: MetricTone.positive,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () {
+                            ref.read(transactionsTypeFilterProvider.notifier).state =
+                                'expense';
+                            ref.read(transactionsDateFilterProvider.notifier).state =
+                                _mapPeriodToDateFilter(_period);
+                            widget.onTabSelected(1);
+                          },
+                          borderRadius: BorderRadius.circular(AppRadii.md),
+                          child: HomeFlowPanel(
+                            label: 'Expense',
+                            value: flow.expense,
+                            locale: widget.state.preferences.locale,
+                            tone: MetricTone.danger,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ],
       ),
@@ -510,40 +520,50 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
                   livePreferences.copyWith(homeWidgetFilters: newFilters),
             );
       },
-      child: recent.isEmpty
-          ? EmptyState(
-              icon: Icons.receipt_long_outlined,
-              title: selectedAccount != null
-                  ? 'No records for ${selectedAccount.name}'
-                  : 'No records for $period',
-              body: selectedAccount != null
-                  ? 'Tap the account tile above to clear the filter.'
-                  : 'Your latest transactions in this period will appear here.',
-            )
-          : ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 275),
-              child: Scrollbar(
-                thumbVisibility: false,
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  physics: const ClampingScrollPhysics(),
-                  padding: EdgeInsets.zero,
-                  itemCount: recent.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: AppSpacing.xxs),
-                  itemBuilder: (context, index) {
-                    final transaction = recent[index];
-                    return TransactionRow(
-                      state: state,
-                      transaction: transaction,
-                      glass: false,
-                      onTap: () =>
-                          context.push('/transaction/${transaction.id}'),
-                    );
-                  },
+      child: GlassMaterializeSwitcher(
+        duration: const Duration(milliseconds: 320),
+        child: recent.isEmpty
+            ? KeyedSubtree(
+                key: ValueKey('recent_empty_${selectedAccountId ?? "all"}_$period'),
+                child: EmptyState(
+                  icon: Icons.receipt_long_outlined,
+                  title: selectedAccount != null
+                      ? 'No records for ${selectedAccount.name}'
+                      : 'No records for $period',
+                  body: selectedAccount != null
+                      ? 'Tap the account tile above to clear the filter.'
+                      : 'Your latest transactions in this period will appear here.',
+                ),
+              )
+            : KeyedSubtree(
+                key: ValueKey('recent_list_${selectedAccountId ?? "all"}_${recent.length}'),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 275),
+                  child: Scrollbar(
+                    thumbVisibility: false,
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      physics: const ClampingScrollPhysics(),
+                      padding: EdgeInsets.zero,
+                      itemCount: recent.length,
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: AppSpacing.xxs),
+                      itemBuilder: (context, index) {
+                        final transaction = recent[index];
+                        return TransactionRow(
+                          key: ValueKey(transaction.id),
+                          state: state,
+                          transaction: transaction,
+                          glass: false,
+                          onTap: () =>
+                              context.push('/transaction/${transaction.id}'),
+                        );
+                      },
+                    ),
+                  ),
                 ),
               ),
-            ),
+      ),
     );
   }
 }
@@ -1933,59 +1953,65 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
                   livePreferences.copyWith(homeWidgetFilters: newFilters),
             );
       },
-      child: Column(
-        children: [
-          Row(
+      child: GlassMaterializeSwitcher(
+        duration: const Duration(milliseconds: 320),
+        child: KeyedSubtree(
+          key: ValueKey('upcoming_${selectedAccountId ?? "all"}_${scheduled.length}'),
+          child: Column(
             children: [
-              Expanded(
-                child: HomeMetricTile(
-                  label: 'Due soon',
-                  value: '${scheduled.length}',
-                  icon: Icons.event_busy_outlined,
-                  tone: overdueCount > 0
-                      ? MetricTone.danger
-                      : scheduled.isEmpty
-                      ? MetricTone.standard
-                      : MetricTone.positive,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: HomeMetricTile(
-                  label: 'Amount',
-                  value: maskMoneyIfPrivate(
-                    state,
-                    _formatDisplayBaseMoney(state, dueAmount),
+              Row(
+                children: [
+                  Expanded(
+                    child: HomeMetricTile(
+                      label: 'Due soon',
+                      value: '${scheduled.length}',
+                      icon: Icons.event_busy_outlined,
+                      tone: overdueCount > 0
+                          ? MetricTone.danger
+                          : scheduled.isEmpty
+                          ? MetricTone.standard
+                          : MetricTone.positive,
+                    ),
                   ),
-                  icon: Icons.payments_outlined,
-                  tone: overdueCount > 0
-                      ? MetricTone.danger
-                      : MetricTone.standard,
-                ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: HomeMetricTile(
+                      label: 'Amount',
+                      value: maskMoneyIfPrivate(
+                        state,
+                        _formatDisplayBaseMoney(state, dueAmount),
+                      ),
+                      icon: Icons.payments_outlined,
+                      tone: overdueCount > 0
+                          ? MetricTone.danger
+                          : MetricTone.standard,
+                    ),
+                  ),
+                ],
               ),
+              if (next.isEmpty) ...[
+                const SizedBox(height: AppSpacing.sm),
+                const EmptyState(
+                  icon: Icons.event_available_outlined,
+                  title: 'No scheduled records yet.',
+                  body: 'Scheduled payments and bills will appear here.',
+                ),
+              ] else ...[
+                const SizedBox(height: AppSpacing.sm),
+                for (final transaction in next) ...[
+                  _UpcomingTransactionRow(
+                    state: state,
+                    transaction: transaction,
+                    today: today,
+                    onTap: () => context.push('/recurring/${transaction.id}'),
+                  ),
+                  if (transaction != next.last)
+                    const SizedBox(height: AppSpacing.xxs),
+                ],
+              ],
             ],
           ),
-          if (next.isEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
-            const EmptyState(
-              icon: Icons.event_available_outlined,
-              title: 'No scheduled records yet.',
-              body: 'Scheduled payments and bills will appear here.',
-            ),
-          ] else ...[
-            const SizedBox(height: AppSpacing.sm),
-            for (final transaction in next) ...[
-              _UpcomingTransactionRow(
-                state: state,
-                transaction: transaction,
-                today: today,
-                onTap: () => context.push('/recurring/${transaction.id}'),
-              ),
-              if (transaction != next.last)
-                const SizedBox(height: AppSpacing.xxs),
-            ],
-          ],
-        ],
+        ),
       ),
     );
   }
