@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
@@ -18,29 +19,70 @@ class AddRecordTypeTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final options = [
-      ('expense', 'Expense', Icons.arrow_upward_rounded, scheme.error),
-      ('income', 'Income', Icons.arrow_downward_rounded, scheme.tertiary),
-      ('transfer', 'Transfer', Icons.swap_horiz_rounded, scheme.primary),
-    ];
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        for (final option in options)
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(
-                right: option == options.last ? 0 : AppSpacing.xs,
+    const options = ['expense', 'income', 'transfer'];
+    final selectedIndex = options.indexOf(value).clamp(0, options.length - 1);
+
+    return GlassSegmentedControl(
+      selectedIndex: selectedIndex,
+      onSegmentSelected: (index) => onChanged(options[index]),
+      height: 42,
+      useOwnLayer: true,
+      quality: GlassQuality.standard,
+      segments: [
+        GlassSegment(
+          icon: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.arrow_upward_rounded, size: 16, color: scheme.error),
+              const SizedBox(width: AppSpacing.xxs),
+              Text(
+                'Expense',
+                style: TextStyle(
+                  fontWeight: selectedIndex == 0 ? FontWeight.w700 : FontWeight.w600,
+                  fontSize: 13,
+                  color: selectedIndex == 0 ? scheme.error : scheme.onSurfaceVariant,
+                ),
               ),
-              child: AddRecordTypeTabPill(
-                selected: value == option.$1,
-                label: option.$2,
-                icon: option.$3,
-                color: option.$4,
-                onTap: () => onChanged(option.$1),
-              ),
-            ),
+            ],
           ),
+        ),
+        GlassSegment(
+          icon: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.arrow_downward_rounded, size: 16, color: scheme.tertiary),
+              const SizedBox(width: AppSpacing.xxs),
+              Text(
+                'Income',
+                style: TextStyle(
+                  fontWeight: selectedIndex == 1 ? FontWeight.w700 : FontWeight.w600,
+                  fontSize: 13,
+                  color: selectedIndex == 1 ? scheme.tertiary : scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        GlassSegment(
+          icon: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.swap_horiz_rounded, size: 16, color: scheme.primary),
+              const SizedBox(width: AppSpacing.xxs),
+              Text(
+                'Transfer',
+                style: TextStyle(
+                  fontWeight: selectedIndex == 2 ? FontWeight.w700 : FontWeight.w600,
+                  fontSize: 13,
+                  color: selectedIndex == 2 ? scheme.primary : scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }

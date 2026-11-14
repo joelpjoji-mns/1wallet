@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:g1455/g1455.dart' as g1455;
 import '../common/route_scaffold.dart';
 import '../../data/exchange_rate_service.dart';
 import '../../data/ledger_models.dart';
@@ -52,31 +53,47 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
             },
           )
         else ...[
-          HeaderIconButton(
-            tooltip: 'Refresh rates',
-            semanticLabel: 'Refresh rates',
-            icon: Icons.refresh_rounded,
-            onPressed: () async {
-              final messenger = ScaffoldMessenger.of(context);
-              try {
-                await ref.read(exchangeRateServiceProvider).refreshRates();
-                if (mounted) {
-                  messenger.showAppSnackBar('Exchange rates updated.');
-                }
-              } catch (e) {
-                if (mounted) {
-                  messenger.showAppSnackBar(
-                    'Failed to update exchange rates: $e',
-                  );
-                }
-              }
-            },
-          ),
-          HeaderIconButton(
-            tooltip: 'Choose display currency',
-            semanticLabel: 'Choose display currency',
-            icon: Icons.currency_exchange_rounded,
-            onPressed: () => _chooseDisplayCurrency(context, ref, state),
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
+            child: g1455.GlassButtonGroup(
+              finish: ref.watch(glassFinishProvider),
+              items: [
+                g1455.GlassToolbarItem(
+                  icon: const Icon(
+                    Icons.refresh_rounded,
+                    size: 20,
+                    color: Colors.white,
+                  ),
+                  label: 'Refresh rates',
+                  onPressed: () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    try {
+                      await ref
+                          .read(exchangeRateServiceProvider)
+                          .refreshRates();
+                      if (mounted) {
+                        messenger.showAppSnackBar('Exchange rates updated.');
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        messenger.showAppSnackBar(
+                          'Failed to update exchange rates: $e',
+                        );
+                      }
+                    }
+                  },
+                ),
+                g1455.GlassToolbarItem(
+                  icon: const Icon(
+                    Icons.currency_exchange_rounded,
+                    size: 20,
+                    color: Colors.white,
+                  ),
+                  label: 'Choose display currency',
+                  onPressed: () => _chooseDisplayCurrency(context, ref, state),
+                ),
+              ],
+            ),
           ),
         ],
       ],

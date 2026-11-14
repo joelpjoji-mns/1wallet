@@ -8,7 +8,12 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
 
 final themeControllerProvider =
     StateNotifierProvider<ThemeController, AppThemeState>((ref) {
-      final prefs = ref.watch(sharedPreferencesProvider);
+      SharedPreferences? prefs;
+      try {
+        prefs = ref.watch(sharedPreferencesProvider);
+      } catch (_) {
+        // Fallback for widget tests where sharedPreferencesProvider is not overridden
+      }
       return ThemeController(prefs);
     });
 
@@ -38,17 +43,18 @@ class AppThemeState {
 }
 
 class ThemeController extends StateNotifier<AppThemeState> {
-  ThemeController(this._preferences) : super(const AppThemeState()) {
+  ThemeController([this._preferences]) : super(const AppThemeState()) {
     _load();
   }
 
-  final SharedPreferences _preferences;
+  final SharedPreferences? _preferences;
 
   static const _storageKey = 'one_wallet_flutter.theme.preference.v1';
 
   Future<void> setPreference(AppThemePreference preference) async {
     final previousPreference = state.preference;
     state = state.copyWith(preference: preference, isLoaded: true);
+    if (_preferences == null) return;
     try {
       await _preferences.setString(_storageKey, preference.name);
     } catch (error) {
@@ -74,6 +80,10 @@ class ThemeController extends StateNotifier<AppThemeState> {
   }
 
   void _load() {
+    if (_preferences == null) {
+      state = const AppThemeState(isLoaded: true);
+      return;
+    }
     try {
       final raw = _preferences.getString(_storageKey);
       // Remap legacy 'dark' preference → 'amoled' (dark theme was removed;

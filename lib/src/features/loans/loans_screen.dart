@@ -417,7 +417,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                         setState(() => _frequency = value ?? 'monthly'),
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  TextFormField(
+                  AppGlassTextField(
                     initialValue: _interval.toString(),
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(

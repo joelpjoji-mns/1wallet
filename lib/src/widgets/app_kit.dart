@@ -1106,17 +1106,26 @@ class _PremiumSearchInputState extends State<PremiumSearchInput> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final iconColor = isDark ? Colors.white.withValues(alpha: 0.90) : scheme.primary;
     return GlassSearchBar(
       controller: _controller,
       placeholder: widget.hintText,
       onChanged: widget.onChanged,
       height: widget.height,
+      placeholderStyle: TextStyle(
+        color: scheme.onSurfaceVariant.withValues(alpha: 0.65),
+        fontFamily: theme.textTheme.bodyLarge?.fontFamily,
+        fontSize: theme.textTheme.bodyMedium?.fontSize,
+      ),
       textStyle: TextStyle(
         color: scheme.onSurface,
         fontFamily: theme.textTheme.bodyLarge?.fontFamily,
-        fontSize: theme.textTheme.bodyLarge?.fontSize,
+        fontSize: theme.textTheme.bodyMedium?.fontSize,
+        fontWeight: FontWeight.w500,
       ),
-      searchIconColor: scheme.primary,
+      searchIconColor: iconColor,
+      clearIconColor: scheme.onSurfaceVariant.withValues(alpha: 0.85),
       quality: GlassQuality.standard,
       useOwnLayer: true,
     );
@@ -1126,10 +1135,11 @@ class _PremiumSearchInputState extends State<PremiumSearchInput> {
 /// Material-compatible input API backed by the package's glass text field.
 /// This lets existing form flows migrate without changing validation or
 /// controllers while keeping input surfaces consistent across routes.
-class AppGlassTextField extends StatelessWidget {
+class AppGlassTextField extends StatefulWidget {
   const AppGlassTextField({
     super.key,
     this.controller,
+    this.initialValue,
     this.focusNode,
     this.decoration = const InputDecoration(),
     this.keyboardType,
@@ -1149,6 +1159,7 @@ class AppGlassTextField extends StatelessWidget {
   });
 
   final TextEditingController? controller;
+  final String? initialValue;
   final FocusNode? focusNode;
   final InputDecoration decoration;
   final TextInputType? keyboardType;
@@ -1167,41 +1178,364 @@ class AppGlassTextField extends StatelessWidget {
   final TextStyle? style;
 
   @override
+  State<AppGlassTextField> createState() => _AppGlassTextFieldState();
+}
+
+class _AppGlassTextFieldState extends State<AppGlassTextField> {
+  TextEditingController? _internalController;
+  TextEditingController get _effectiveController =>
+      widget.controller ??
+      (_internalController ??= TextEditingController(text: widget.initialValue));
+
+  @override
+  void didUpdateWidget(AppGlassTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.controller == null && oldWidget.controller != null) {
+      _internalController =
+          TextEditingController.fromValue(oldWidget.controller!.value);
+    } else if (widget.controller != null && oldWidget.controller == null) {
+      _internalController?.dispose();
+      _internalController = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _internalController?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final decorationEnabled = decoration.enabled;
-    final effectiveEnabled = enabled && decorationEnabled;
-    Widget? suffix = decoration.suffixIcon;
-    if (suffix == null && decoration.suffixText != null) {
+    final decorationEnabled = widget.decoration.enabled;
+    final effectiveEnabled = widget.enabled && decorationEnabled;
+    Widget? suffix = widget.decoration.suffixIcon;
+    if (suffix == null && widget.decoration.suffixText != null) {
       suffix = Padding(
         padding: const EdgeInsetsDirectional.only(end: AppSpacing.sm),
-        child: Center(widthFactor: 1, child: Text(decoration.suffixText!)),
+        child: Center(widthFactor: 1, child: Text(widget.decoration.suffixText!)),
       );
     }
 
-    return GlassTextField(
+    final isMultiline = (widget.maxLines > 1);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    final field = GlassTextField(
+      controller: _effectiveController,
+      focusNode: widget.focusNode,
+      placeholder: widget.decoration.hintText ?? widget.decoration.labelText,
+      prefixIcon: widget.decoration.prefixIcon,
+      suffixIcon: suffix,
+      keyboardType:
+          widget.keyboardType ?? (isMultiline ? TextInputType.multiline : null),
+      textInputAction:
+          widget.textInputAction ?? (isMultiline ? TextInputAction.newline : null),
+      inputFormatters: widget.inputFormatters,
+      minLines: widget.minLines,
+      maxLines: widget.maxLines,
+      maxLength: widget.maxLength,
+      obscureText: widget.obscureText,
+      enabled: effectiveEnabled,
+      readOnly: widget.readOnly,
+      autofocus: widget.autofocus,
+      onChanged: widget.onChanged,
+      onSubmitted: widget.onSubmitted,
+      shape: const LiquidRoundedRectangle(borderRadius: AppRadii.md),
+      padding: isMultiline
+          ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12)
+          : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      iconAlignment:
+          isMultiline ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+      placeholderStyle: TextStyle(
+        color: scheme.onSurfaceVariant.withValues(alpha: 0.65),
+        fontFamily: theme.textTheme.bodyLarge?.fontFamily,
+        fontSize: theme.textTheme.bodyMedium?.fontSize,
+      ),
+      textStyle: TextStyle(
+        color: scheme.onSurface,
+        fontFamily: theme.textTheme.bodyLarge?.fontFamily,
+        fontSize: theme.textTheme.bodyMedium?.fontSize,
+      ).merge(widget.style),
+      quality: GlassQuality.standard,
+      useOwnLayer: true,
+    );
+
+    if (widget.decoration.errorText != null || widget.decoration.helperText != null) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          field,
+          if (widget.decoration.errorText != null) ...[
+            const SizedBox(height: AppSpacing.xxs),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                widget.decoration.errorText!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.error,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ] else if (widget.decoration.helperText != null) ...[
+            const SizedBox(height: AppSpacing.xxs),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                widget.decoration.helperText!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.70),
+                ),
+              ),
+            ),
+          ],
+        ],
+      );
+    }
+
+    return field;
+  }
+}
+
+/// Dedicated multi-line liquid glass text area for notes, remarks, descriptions, and capture payloads.
+class AppGlassTextArea extends StatelessWidget {
+  const AppGlassTextArea({
+    super.key,
+    this.controller,
+    this.focusNode,
+    this.placeholder,
+    this.labelText,
+    this.prefixIcon,
+    this.minLines = 3,
+    this.maxLines = 6,
+    this.onChanged,
+    this.onSubmitted,
+    this.enabled = true,
+    this.readOnly = false,
+    this.autofocus = false,
+    this.style,
+  });
+
+  final TextEditingController? controller;
+  final FocusNode? focusNode;
+  final String? placeholder;
+  final String? labelText;
+  final Widget? prefixIcon;
+  final int minLines;
+  final int maxLines;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  final bool enabled;
+  final bool readOnly;
+  final bool autofocus;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppGlassTextField(
       controller: controller,
       focusNode: focusNode,
-      placeholder: decoration.hintText ?? decoration.labelText,
-      prefixIcon: decoration.prefixIcon,
-      suffixIcon: suffix,
-      keyboardType: keyboardType,
-      textInputAction: textInputAction,
-      inputFormatters: inputFormatters,
+      decoration: InputDecoration(
+        hintText: placeholder,
+        labelText: labelText,
+        prefixIcon: prefixIcon,
+      ),
       minLines: minLines,
       maxLines: maxLines,
-      maxLength: maxLength,
-      obscureText: obscureText,
-      enabled: effectiveEnabled,
-      readOnly: readOnly,
-      autofocus: autofocus,
       onChanged: onChanged,
       onSubmitted: onSubmitted,
-      textStyle: TextStyle(
-        color: Theme.of(context).colorScheme.onSurface,
-        fontFamily: Theme.of(context).textTheme.bodyLarge?.fontFamily,
-      ).merge(style),
-      quality: GlassQuality.standard,
+      enabled: enabled,
+      readOnly: readOnly,
+      autofocus: autofocus,
+      style: style,
     );
+  }
+}
+
+/// Liquid glass segmented control that seamlessly synchronizes with a [TabController]
+/// during real-time page swipe gestures, moving the liquid glass indicator in continuous
+/// frame-by-frame alignment with the finger.
+class GlassTabSegmentedControl extends StatelessWidget {
+  const GlassTabSegmentedControl({
+    super.key,
+    required this.segments,
+    this.controller,
+    this.height = 40,
+    this.useOwnLayer = true,
+  });
+
+  final List<GlassSegment> segments;
+  final TabController? controller;
+  final double height;
+  final bool useOwnLayer;
+
+  @override
+  Widget build(BuildContext context) {
+    final tabController = controller ?? DefaultTabController.of(context);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final backgroundColor = isDark
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.black.withValues(alpha: 0.08);
+    final indicatorColor = isDark
+        ? Colors.white.withValues(alpha: 0.20)
+        : Colors.white.withValues(alpha: 0.95);
+
+    final animation = tabController.animation ??
+        AlwaysStoppedAnimation<double>(tabController.index.toDouble());
+
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, _) {
+        final total = segments.length;
+        final animValue =
+            animation.value.clamp(0.0, (total - 1).toDouble());
+        final alignmentX = total > 1
+            ? -1.0 + (animValue / (total - 1)) * 2.0
+            : 0.0;
+        final isMoving = (animValue - animValue.round()).abs() > 0.01;
+        final thickness = isMoving ? 1.0 : 0.0;
+
+        Widget control = SizedBox(
+          height: height,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: GlassDefaults.safeBorderRadius(
+                GlassDefaults.capsuleRadius,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(2),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  AnimatedGlassIndicator(
+                    velocity: 0,
+                    itemCount: total,
+                    alignment: AlignmentDirectional(alignmentX, 0),
+                    thickness: thickness,
+                    quality: GlassQuality.standard,
+                    indicatorColor: indicatorColor,
+                    isBackgroundIndicator: false,
+                    borderRadius: GlassDefaults.capsuleRadius,
+                    paintBackground: true,
+                    paintGlass: true,
+                    pinchStrength: 0.4,
+                    expansion: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      for (int i = 0; i < total; i++)
+                        Expanded(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              if (segments[i].enabled) {
+                                tabController.animateTo(i);
+                              }
+                            },
+                            child: Center(
+                              child: _buildSegmentItem(
+                                context,
+                                segments[i],
+                                i,
+                                animValue,
+                                scheme,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+
+        if (useOwnLayer) {
+          control = AdaptiveLiquidGlassLayer(
+            settings: const LiquidGlassSettings(
+              thickness: GlassDefaults.thickness,
+              blur: GlassDefaults.blur,
+              chromaticAberration: GlassDefaults.chromaticAberration,
+              lightIntensity: GlassDefaults.lightIntensity,
+              refractiveIndex: GlassDefaults.refractiveIndex,
+              lightAngle: GlassDefaults.lightAngle,
+            ),
+            quality: GlassQuality.standard,
+            child: control,
+          );
+        }
+
+        return control;
+      },
+    );
+  }
+
+  Widget _buildSegmentItem(
+    BuildContext context,
+    GlassSegment segment,
+    int index,
+    double animValue,
+    ColorScheme scheme,
+  ) {
+    final distance = (animValue - index).abs().clamp(0.0, 1.0);
+    final activeFactor = 1.0 - distance;
+    final activeColor = scheme.onSurface;
+    final inactiveColor = scheme.onSurfaceVariant;
+    final currentColor =
+        Color.lerp(inactiveColor, activeColor, activeFactor)!;
+    final isSelected = activeFactor > 0.5;
+
+    if (segment.icon != null && segment.label != null) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconTheme(
+            data: IconThemeData(
+              color: currentColor,
+              size: 16,
+            ),
+            child: segment.icon!,
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Text(
+            segment.label!,
+            style: TextStyle(
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              fontSize: 13,
+              color: currentColor,
+            ),
+          ),
+        ],
+      );
+    } else if (segment.icon != null) {
+      return IconTheme(
+        data: IconThemeData(
+          color: currentColor,
+          size: 18,
+        ),
+        child: segment.icon!,
+      );
+    } else {
+      return Text(
+        segment.label ?? '',
+        style: TextStyle(
+          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+          fontSize: 13,
+          color: currentColor,
+        ),
+      );
+    }
   }
 }
 

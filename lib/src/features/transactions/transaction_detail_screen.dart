@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
+import 'package:g1455/g1455.dart' as g1455;
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -65,17 +66,32 @@ class _TransactionDetailScreenState
     return RouteScaffold(
       title: 'Transaction detail',
       actions: [
-        HeaderIconButton(
-          icon: Icons.edit_outlined,
-          semanticLabel: 'Edit transaction',
-          tooltip: 'Edit transaction',
-          onPressed: () => context.push('/add?transactionId=${transaction.id}'),
-        ),
-        HeaderIconButton(
-          icon: Icons.delete_outline_rounded,
-          semanticLabel: 'Delete transaction',
-          tooltip: 'Delete transaction',
-          onPressed: () => _confirmDelete(context, ref, transaction),
+        Padding(
+          padding: const EdgeInsets.only(right: AppSpacing.sm),
+          child: g1455.GlassButtonGroup(
+            finish: ref.watch(glassFinishProvider),
+            items: [
+              g1455.GlassToolbarItem(
+                icon: const Icon(
+                  Icons.edit_outlined,
+                  size: 20,
+                  color: Colors.white,
+                ),
+                label: 'Edit transaction',
+                onPressed: () =>
+                    context.push('/add?transactionId=${transaction.id}'),
+              ),
+              g1455.GlassToolbarItem(
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  size: 20,
+                  color: Colors.white,
+                ),
+                label: 'Delete transaction',
+                onPressed: () => _confirmDelete(context, ref, transaction),
+              ),
+            ],
+          ),
         ),
       ],
       child: Column(
@@ -330,29 +346,44 @@ class _TransactionDetailScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
+                Row(
                   children: [
-                    FilledButton.tonalIcon(
-                      onPressed: _isAttaching
-                          ? null
-                          : () =>
-                                _attachReceipt(transaction, ImageSource.camera),
-                      icon: _isAttaching
-                          ? const AppInlineSpinner(size: 16)
-                          : const Icon(Icons.camera_alt_outlined),
-                      label: const Text('Scan'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: _isAttaching
-                          ? null
-                          : () => _attachReceipt(
-                              transaction,
-                              ImageSource.gallery,
-                            ),
-                      icon: const Icon(Icons.image_outlined),
-                      label: const Text('Photo'),
+                    g1455.GlassButtonGroup(
+                      finish: ref.watch(glassFinishProvider),
+                      items: [
+                        g1455.GlassToolbarItem(
+                          icon: _isAttaching
+                              ? const AppInlineSpinner(size: 16)
+                              : const Icon(
+                                  Icons.camera_alt_outlined,
+                                  size: 20,
+                                  color: Colors.white,
+                                ),
+                          label: 'Scan receipt',
+                          onPressed: _isAttaching
+                              ? null
+                              : () => _attachReceipt(
+                                    transaction,
+                                    ImageSource.camera,
+                                  ),
+                        ),
+                        g1455.GlassToolbarItem(
+                          icon: _isAttaching
+                              ? const AppInlineSpinner(size: 16)
+                              : const Icon(
+                                  Icons.image_outlined,
+                                  size: 20,
+                                  color: Colors.white,
+                                ),
+                          label: 'Photo from gallery',
+                          onPressed: _isAttaching
+                              ? null
+                              : () => _attachReceipt(
+                                    transaction,
+                                    ImageSource.gallery,
+                                  ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

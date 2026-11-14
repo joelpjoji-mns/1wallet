@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
+import 'package:g1455/g1455.dart' as g1455;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -428,22 +429,42 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       ),
       actions: _selectedTransactionIds.isNotEmpty
           ? [
-              if (_selectedTransactionIds.length >= 2)
-                HeaderIconButton(
-                  icon: Icons.call_merge_rounded,
-                  onPressed: _showMergeDialog,
-                  semanticLabel: 'Merge selected transactions',
+              Padding(
+                padding: const EdgeInsets.only(right: AppSpacing.sm),
+                child: g1455.GlassButtonGroup(
+                  finish: ref.watch(glassFinishProvider),
+                  items: [
+                    if (_selectedTransactionIds.length >= 2)
+                      g1455.GlassToolbarItem(
+                        icon: const Icon(
+                          Icons.call_merge_rounded,
+                          size: 20,
+                          color: Colors.white,
+                        ),
+                        label: 'Merge selected transactions',
+                        onPressed: _showMergeDialog,
+                      ),
+                    g1455.GlassToolbarItem(
+                      icon: const Icon(
+                        Icons.delete_outline_rounded,
+                        size: 20,
+                        color: Colors.white,
+                      ),
+                      label: 'Delete selected transactions',
+                      onPressed: _confirmDeleteSelected,
+                    ),
+                    g1455.GlassToolbarItem(
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        size: 20,
+                        color: Colors.white,
+                      ),
+                      label: 'Clear selection',
+                      onPressed: () =>
+                          setState(() => _selectedTransactionIds.clear()),
+                    ),
+                  ],
                 ),
-              HeaderIconButton(
-                icon: Icons.delete_outline_rounded,
-                onPressed: _confirmDeleteSelected,
-                semanticLabel: 'Delete selected transactions',
-              ),
-              HeaderIconButton(
-                icon: Icons.close_rounded,
-                onPressed: () =>
-                    setState(() => _selectedTransactionIds.clear()),
-                semanticLabel: 'Clear selection',
               ),
             ]
           : [

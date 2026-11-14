@@ -1146,8 +1146,9 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                   onTap: _pickRecurringDate,
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                TextFormField(
+                AppGlassTextField(
                   controller: _notesController,
+                  minLines: 1,
                   maxLines: 3,
                   decoration: const InputDecoration(
                     labelText: 'Notes',

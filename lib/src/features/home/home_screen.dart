@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:g1455/g1455.dart' as g1455;
 import 'package:go_router/go_router.dart';
 
 import '../../auth/auth_controller.dart';
@@ -77,20 +78,35 @@ class HomeScreen extends ConsumerWidget {
       menuIndicator: hasUpdate,
       actions: [
         if (reorderMode)
-          HeaderIconButton(
-            icon: Icons.restart_alt_rounded,
-            semanticLabel: 'Reset widget order',
-            tooltip: 'Reset widget order',
-            onPressed: () {
-              ref.read(ledgerProvider.notifier).resetHomeWidgetOrder();
-            },
-          ),
-        if (reorderMode)
-          HeaderIconButton(
-            icon: Icons.check_rounded,
-            semanticLabel: 'Done reordering widgets',
-            onPressed: () =>
-                ref.read(homeWidgetReorderModeProvider.notifier).state = false,
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.xs),
+            child: g1455.GlassButtonGroup(
+              finish: ref.watch(glassFinishProvider),
+              items: [
+                g1455.GlassToolbarItem(
+                  icon: const Icon(
+                    Icons.restart_alt_rounded,
+                    size: 20,
+                    color: Colors.white,
+                  ),
+                  label: 'Reset widget order',
+                  onPressed: () {
+                    ref.read(ledgerProvider.notifier).resetHomeWidgetOrder();
+                  },
+                ),
+                g1455.GlassToolbarItem(
+                  icon: const Icon(
+                    Icons.check_rounded,
+                    size: 20,
+                    color: Colors.white,
+                  ),
+                  label: 'Done reordering widgets',
+                  onPressed: () =>
+                      ref.read(homeWidgetReorderModeProvider.notifier).state =
+                          false,
+                ),
+              ],
+            ),
           ),
 
         HeaderIconButton(

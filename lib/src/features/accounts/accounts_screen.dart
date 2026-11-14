@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
+import 'package:g1455/g1455.dart' as g1455;
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -58,25 +58,41 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
         0,
       ),
       actions: [
-        HeaderIconButton(
-          icon: Icons.credit_card_outlined,
-          onPressed: () => context.push('/cards'),
-          semanticLabel: 'Cards',
-        ),
-        HeaderIconButton(
-          icon: Icons.account_balance_outlined,
-          onPressed: () => context.push('/loans'),
-          semanticLabel: 'Loans',
+        Padding(
+          padding: const EdgeInsets.only(right: AppSpacing.sm),
+          child: g1455.GlassButtonGroup(
+            finish: ref.watch(glassFinishProvider),
+            items: [
+              g1455.GlassToolbarItem(
+                icon: const Icon(
+                  Icons.credit_card_outlined,
+                  size: 20,
+                  color: Colors.white,
+                ),
+                label: 'Cards',
+                onPressed: () => context.push('/cards'),
+              ),
+              g1455.GlassToolbarItem(
+                icon: const Icon(
+                  Icons.account_balance_outlined,
+                  size: 20,
+                  color: Colors.white,
+                ),
+                label: 'Loans',
+                onPressed: () => context.push('/loans'),
+              ),
+            ],
+          ),
         ),
       ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          GlassSearchBar(
-            placeholder: 'Search accounts...',
+          PremiumSearchInput(
+            hintText: 'Search accounts...',
+            value: _query,
             onChanged: (value) => setState(() => _query = value),
-            useOwnLayer: true,
-            quality: GlassQuality.standard,
+            height: 46,
           ),
           const SizedBox(height: AppSpacing.sm),
           Expanded(

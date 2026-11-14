@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:g1455/g1455.dart' as g1455;
 import 'package:go_router/go_router.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
@@ -394,6 +395,7 @@ class AccountGridHomeWidget extends ConsumerWidget {
             .where((account) => !account.isArchived && account.showOnHome)
             .toList()
           ..sort((left, right) => left.sortOrder.compareTo(right.sortOrder));
+
     return HomeWidgetCard(
       title: 'All accounts',
       subtitle: selectedAccountId != null
@@ -402,6 +404,15 @@ class AccountGridHomeWidget extends ConsumerWidget {
       icon: Icons.grid_view_rounded,
       iconColor: Theme.of(context).colorScheme.primary,
       actionLabel: 'Manage',
+      ripple: const g1455.GlassRipple(
+        speed: 280,
+        amplitude: 1.4,
+        width: 8,
+        viscosity: 0.90,
+        press: 0.08,
+        pressRadius: 10,
+        light: 0.05,
+      ),
       onAction: () {
         if (selectedAccountId != null) {
           final account = accountById(state, selectedAccountId);
@@ -2581,7 +2592,7 @@ int _displayAccountBalanceMinor(
   return absolute ? balance.amountMinor.abs() : balance.amountMinor;
 }
 
-class _AccountTile extends ConsumerWidget {
+class _AccountTile extends ConsumerStatefulWidget {
   const _AccountTile({
     required this.state,
     required this.account,
@@ -2593,143 +2604,194 @@ class _AccountTile extends ConsumerWidget {
   final Map<String, Money> balances;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final color = accountDisplayColor(account);
+  ConsumerState<_AccountTile> createState() => _AccountTileState();
+}
+
+class _AccountTileState extends ConsumerState<_AccountTile> {
+  Offset? _tapDownPosition;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = accountDisplayColor(widget.account);
     final foreground = _legibleForegroundFor(color);
-    final nativeBalance = accountBalanceFromMap(balances, account);
-    final displayBalance = convertMoneyForDisplay(state, nativeBalance);
+    final nativeBalance =
+        accountBalanceFromMap(widget.balances, widget.account);
+    final displayBalance = convertMoneyForDisplay(widget.state, nativeBalance);
     final isForeignCurrency =
         nativeBalance.currency.toUpperCase() !=
-        state.preferences.displayCurrency.toUpperCase();
-    final isCash = account.type == 'cash';
+        widget.state.preferences.displayCurrency.toUpperCase();
+    final isCash = widget.account.type == 'cash';
 
     String primaryLabel;
     String? secondaryLabel;
 
     if (isCash) {
-      final breakdown = cashCurrencyBalancesForAccount(state, account);
+      final breakdown =
+          cashCurrencyBalancesForAccount(widget.state, widget.account);
       if (breakdown.isNotEmpty) {
-        primaryLabel = formatMoney(displayBalance, state.preferences.locale);
+        primaryLabel =
+            formatMoney(displayBalance, widget.state.preferences.locale);
         secondaryLabel = breakdown
-            .map((m) => formatMoney(m, state.preferences.locale))
+            .map((m) => formatMoney(m, widget.state.preferences.locale))
             .join(' | ');
       } else {
-        primaryLabel = formatMoney(displayBalance, state.preferences.locale);
+        primaryLabel =
+            formatMoney(displayBalance, widget.state.preferences.locale);
       }
     } else {
       if (isForeignCurrency) {
-        primaryLabel = formatMoney(displayBalance, state.preferences.locale);
-        secondaryLabel = formatMoney(nativeBalance, state.preferences.locale);
+        primaryLabel =
+            formatMoney(displayBalance, widget.state.preferences.locale);
+        secondaryLabel =
+            formatMoney(nativeBalance, widget.state.preferences.locale);
       } else {
-        primaryLabel = formatMoney(displayBalance, state.preferences.locale);
+        primaryLabel =
+            formatMoney(displayBalance, widget.state.preferences.locale);
       }
     }
 
-    return InkWell(
+    final isSelected =
+        ref.watch(homeSelectedAccountProvider) == widget.account.id;
+
+    return Material(
+      color: Colors.transparent,
       borderRadius: BorderRadius.circular(AppRadii.md),
-      onTap: () {
-        final current = ref.read(homeSelectedAccountProvider);
-        if (current == account.id) {
-          ref.read(homeSelectedAccountProvider.notifier).state = null;
-        } else {
-          ref.read(homeSelectedAccountProvider.notifier).state = account.id;
-        }
-      },
-      child: Container(
-        // A fixed `height` clips/overflows once accessibility text scaling
-        // makes the name/balance/currency rows taller than 60 logical
-        // pixels; a `minHeight` lets the tile grow instead (the surrounding
-        // `Wrap` sizes each row to its tallest tile, so this is safe here).
-        constraints: const BoxConstraints(minHeight: 60),
-        padding: const EdgeInsets.all(AppSpacing.xs),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(AppRadii.md),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        splashFactory: InkRipple.splashFactory,
+        splashColor: foreground.withValues(alpha: 0.35),
+        highlightColor: foreground.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        onTapDown: (details) {
+          _tapDownPosition = details.globalPosition;
+        },
+        onTap: () {
+          final current = ref.read(homeSelectedAccountProvider);
+          if (current == widget.account.id) {
+            ref.read(homeSelectedAccountProvider.notifier).state = null;
+          } else {
+            ref.read(homeSelectedAccountProvider.notifier).state =
+                widget.account.id;
+          }
+          final renderBox = context.findRenderObject() as RenderBox?;
+          final pos = _tapDownPosition ??
+              (renderBox != null && renderBox.hasSize
+                  ? renderBox.localToGlobal(renderBox.size.center(Offset.zero))
+                  : null);
+          if (pos != null) {
+            HomeWidgetCardRippleScope.maybeOf(context)?.triggerRippleAt(pos);
+          }
+        },
+        child: Container(
+            // A fixed `height` clips/overflows once accessibility text scaling
+            // makes the name/balance/currency rows taller than 60 logical
+            // pixels; a `minHeight` lets the tile grow instead (the surrounding
+            // `Wrap` sizes each row to its tallest tile, so this is safe here).
+            constraints: const BoxConstraints(minHeight: 60),
+            padding: const EdgeInsets.all(AppSpacing.xs),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              border: isSelected
+                  ? Border.all(color: foreground, width: 2.2)
+                  : Border.all(
+                      color: foreground.withValues(alpha: 0.20),
+                      width: 0.8,
+                    ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  accountIcon(account),
-                  color: foreground.withValues(alpha: 0.78),
-                  size: 13,
+                Row(
+                  children: [
+                    Icon(
+                      accountIcon(widget.account),
+                      color: foreground.withValues(alpha: 0.78),
+                      size: 13,
+                    ),
+                    const SizedBox(width: AppSpacing.xxxs),
+                    Expanded(
+                      child: Text(
+                        widget.account.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: foreground,
+                          height: 1.1,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    if (isSelected) ...[
+                      Icon(
+                        Icons.check_circle_rounded,
+                        color: foreground,
+                        size: 13,
+                      ),
+                      const SizedBox(width: AppSpacing.xxxs),
+                    ],
+                    // Currency badge for foreign accounts. Capped and scaled down
+                    // so very large accessibility text can't push it past the
+                    // narrow tile.
+                    if (isForeignCurrency)
+                      Container(
+                        constraints: const BoxConstraints(maxWidth: 48),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.xxs,
+                          vertical: AppSpacing.xxxs,
+                        ),
+                        decoration: BoxDecoration(
+                          color: foreground.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(AppRadii.pill),
+                          border: Border.all(
+                            color: foreground.withValues(alpha: 0.24),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            nativeBalance.currency,
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: foreground.withValues(alpha: 0.86),
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                const SizedBox(width: AppSpacing.xxxs),
-                Expanded(
-                  child: Text(
-                    account.name,
+                const SizedBox(height: AppSpacing.xxxs),
+                // Display in base currency
+                PrivacyText(
+                  primaryLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: foreground.withValues(alpha: 0.94),
+                    height: 1.1,
+                    letterSpacing: -0.3,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                if (secondaryLabel != null)
+                  PrivacyText(
+                    secondaryLabel,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: foreground,
+                      color: foreground.withValues(alpha: 0.63),
                       height: 1.1,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                // Currency badge for foreign accounts. Capped and scaled down
-                // so very large accessibility text can't push it past the
-                // narrow tile.
-                if (isForeignCurrency)
-                  Container(
-                    constraints: const BoxConstraints(maxWidth: 48),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.xxs,
-                      vertical: AppSpacing.xxxs,
-                    ),
-                    decoration: BoxDecoration(
-                      color: foreground.withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(AppRadii.pill),
-                      border: Border.all(
-                        color: foreground.withValues(alpha: 0.24),
-                        width: 0.5,
-                      ),
-                    ),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        nativeBalance.currency,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: foreground.withValues(alpha: 0.86),
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
               ],
             ),
-            const SizedBox(height: AppSpacing.xxxs),
-            // Display in base currency
-            PrivacyText(
-              primaryLabel,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: foreground.withValues(alpha: 0.94),
-                height: 1.1,
-                letterSpacing: -0.3,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            if (secondaryLabel != null)
-              PrivacyText(
-                secondaryLabel,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: foreground.withValues(alpha: 0.63),
-                  height: 1.1,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-          ],
+          ),
         ),
-      ),
-    );
+      );
   }
 }
 

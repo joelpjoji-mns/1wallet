@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
+import 'package:g1455/g1455.dart' as g1455;
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:image_picker/image_picker.dart';
 
@@ -293,62 +294,18 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                child: TabBar(
-                  dividerColor: Colors.transparent,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  labelPadding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.xs,
-                  ),
-                  indicator: BoxDecoration(
-                    color: Theme.of(context).colorScheme.secondaryContainer,
-                    borderRadius: const BorderRadius.all(
-                      Radius.circular(AppRadii.pill),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                child: GlassTabSegmentedControl(
+                  height: 40,
+                  segments: [
+                    GlassSegment(
+                      label: 'Keypad',
+                      icon: Icon(Icons.dialpad_rounded),
                     ),
-                  ),
-                  labelColor: Theme.of(
-                    context,
-                  ).colorScheme.onSecondaryContainer,
-                  unselectedLabelColor: Theme.of(
-                    context,
-                  ).colorScheme.onSurfaceVariant,
-                  tabs: const [
-                    Tab(
-                      height: 36,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.dialpad_rounded, size: 16),
-                          SizedBox(width: AppSpacing.xxs),
-                          Flexible(
-                            child: Text(
-                              'Keypad',
-                              overflow: TextOverflow.ellipsis,
-                              softWrap: false,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Tab(
-                      height: 36,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.notes_rounded, size: 16),
-                          SizedBox(width: AppSpacing.xxs),
-                          Flexible(
-                            child: Text(
-                              'Details',
-                              overflow: TextOverflow.ellipsis,
-                              softWrap: false,
-                            ),
-                          ),
-                        ],
-                      ),
+                    GlassSegment(
+                      label: 'Details',
+                      icon: Icon(Icons.notes_rounded),
                     ),
                   ],
                 ),
@@ -577,20 +534,15 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                 focusNode,
                                 onFieldSubmitted,
                               ) {
-                                return TextFormField(
+                                return AppGlassTextField(
                                   controller: textEditingController,
                                   focusNode: focusNode,
                                   minLines: 1,
                                   maxLines: 3,
-                                  decoration: InputDecoration(
+                                  decoration: const InputDecoration(
                                     labelText: 'Notes',
-                                    prefixIcon: const Icon(
+                                    prefixIcon: Icon(
                                       Icons.notes_outlined,
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppRadii.md,
-                                      ),
                                     ),
                                   ),
                                 );
@@ -932,25 +884,19 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                           ],
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        TextFormField(
+                        AppGlassTextField(
                           controller: _locationController,
-                          decoration: InputDecoration(
+                          decoration: const InputDecoration(
                             labelText: 'Place',
-                            prefixIcon: const Icon(Icons.place_outlined),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppRadii.md),
-                            ),
+                            prefixIcon: Icon(Icons.place_outlined),
                           ),
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        TextFormField(
+                        AppGlassTextField(
                           controller: _paymentMethodController,
-                          decoration: InputDecoration(
+                          decoration: const InputDecoration(
                             labelText: 'Payment method',
-                            prefixIcon: const Icon(Icons.payment_outlined),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppRadii.md),
-                            ),
+                            prefixIcon: Icon(Icons.payment_outlined),
                           ),
                         ),
                         const SizedBox(height: AppSpacing.sm),
@@ -1074,38 +1020,43 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                         ),
                                   ),
                                   const Spacer(),
-                                  PopupMenuButton<ImageSource>(
-                                    tooltip: 'Add photo',
-                                    icon: Icon(
-                                      Icons.add_photo_alternate_outlined,
-                                      size: 20,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                    ),
-                                    onSelected: _addPhotoAttachment,
-                                    itemBuilder: (context) => [
-                                      const PopupMenuItem(
-                                        value: ImageSource.camera,
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.camera_alt_outlined),
-                                            SizedBox(width: AppSpacing.xs),
-                                            Text('Take photo'),
-                                          ],
+                                  g1455.GlassMenuAnchor(
+                                    finish: ref.watch(glassFinishProvider),
+                                    items: [
+                                      g1455.GlassMenuItem(
+                                        label: 'Take photo',
+                                        icon: const Icon(
+                                          Icons.camera_alt_outlined,
+                                          size: 20,
+                                        ),
+                                        onPressed: () => _addPhotoAttachment(
+                                          ImageSource.camera,
                                         ),
                                       ),
-                                      const PopupMenuItem(
-                                        value: ImageSource.gallery,
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.image_outlined),
-                                            SizedBox(width: AppSpacing.xs),
-                                            Text('Choose from gallery'),
-                                          ],
+                                      g1455.GlassMenuItem(
+                                        label: 'Choose from gallery',
+                                        icon: const Icon(
+                                          Icons.image_outlined,
+                                          size: 20,
+                                        ),
+                                        onPressed: () => _addPhotoAttachment(
+                                          ImageSource.gallery,
                                         ),
                                       ),
                                     ],
+                                    builder: (context, controller) => IconButton(
+                                      tooltip: 'Add photo',
+                                      icon: Icon(
+                                        Icons.add_photo_alternate_outlined,
+                                        size: 20,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
+                                      ),
+                                      onPressed: controller.isOpen
+                                          ? controller.close
+                                          : controller.open,
+                                    ),
                                   ),
                                 ],
                               ),

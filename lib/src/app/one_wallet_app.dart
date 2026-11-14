@@ -294,9 +294,27 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
               return appLock;
             }
             final glassFinish = ref.watch(glassFinishProvider);
+            final isDark = themeState.preference != AppThemePreference.light;
             return g1455.GlassHost(
               finish: glassFinish,
+              tier: const g1455.GlassTierChoice(
+                g1455.GlassTier.full,
+                g1455.GlassTierReason.pinnedByHost,
+              ),
+              appearance: isDark ? Brightness.dark : Brightness.light,
+              backdrop:
+                  isDark ? const Color(0xFF000000) : const Color(0xFFFFFFFF),
+              minLabelContrast: g1455.kTextContrastAA,
               richBackdrop: true,
+              ripple: const g1455.GlassRipple(
+                speed: 280,
+                amplitude: 1.4,
+                width: 8,
+                viscosity: 0.90,
+                press: 0.08,
+                pressRadius: 10,
+                light: 0.05,
+              ),
               child: appLock,
             );
           },

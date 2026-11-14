@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:g1455/g1455.dart' as g1455;
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
@@ -143,29 +144,18 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         children: [
           Row(
             children: [
-              IconButton(
-                tooltip: 'Previous month',
-                onPressed: () => setState(
-                  () => _visibleMonth = DateTime(
-                    _visibleMonth.year,
-                    _visibleMonth.month - 1,
-                  ),
-                ),
-                icon: const Icon(Icons.chevron_left_rounded),
-              ),
               Expanded(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       DateFormat.yMMMM(locale).format(_visibleMonth),
-                      textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(fontWeight: FontWeight.w900),
                     ),
                     const SizedBox(height: AppSpacing.xxxs),
                     Text(
                       '${_categoryFilterLabel(state)} · ${selectedAccount?.name ?? 'All accounts'}',
-                      textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
@@ -173,15 +163,62 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   ],
                 ),
               ),
-              IconButton(
-                tooltip: 'Next month',
-                onPressed: () => setState(
-                  () => _visibleMonth = DateTime(
-                    _visibleMonth.year,
-                    _visibleMonth.month + 1,
+              const SizedBox(width: AppSpacing.xs),
+              g1455.GlassButtonGroup(
+                finish: ref.watch(glassFinishProvider),
+                items: [
+                  g1455.GlassToolbarItem(
+                    icon: const Tooltip(
+                      message: 'Previous month',
+                      child: Icon(
+                        Icons.chevron_left_rounded,
+                        size: 20,
+                        color: Colors.white,
+                      ),
+                    ),
+                    label: 'Previous month',
+                    onPressed: () => setState(
+                      () => _visibleMonth = DateTime(
+                        _visibleMonth.year,
+                        _visibleMonth.month - 1,
+                      ),
+                    ),
                   ),
-                ),
-                icon: const Icon(Icons.chevron_right_rounded),
+                  g1455.GlassToolbarItem(
+                    icon: const Tooltip(
+                      message: 'Current month',
+                      child: Icon(
+                        Icons.today_rounded,
+                        size: 18,
+                        color: Colors.white,
+                      ),
+                    ),
+                    label: 'Current month',
+                    onPressed: () => setState(
+                      () => _visibleMonth = DateTime(
+                        DateTime.now().year,
+                        DateTime.now().month,
+                      ),
+                    ),
+                  ),
+                  g1455.GlassToolbarItem(
+                    icon: const Tooltip(
+                      message: 'Next month',
+                      child: Icon(
+                        Icons.chevron_right_rounded,
+                        size: 20,
+                        color: Colors.white,
+                      ),
+                    ),
+                    label: 'Next month',
+                    onPressed: () => setState(
+                      () => _visibleMonth = DateTime(
+                        _visibleMonth.year,
+                        _visibleMonth.month + 1,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

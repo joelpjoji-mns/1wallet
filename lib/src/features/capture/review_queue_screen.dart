@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
+import 'package:g1455/g1455.dart' as g1455;
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -137,24 +138,6 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
         // offered a back action; keep that navigation.
         hasDrawer: false,
         actions: [
-          HeaderIconButton(
-            icon: Icons.sms_outlined,
-            semanticLabel: 'SMS auto-capture',
-            tooltip: 'SMS auto-capture',
-            onPressed: () => context.push('/import-sms'),
-          ),
-          HeaderIconButton(
-            icon: Icons.notifications_active_outlined,
-            semanticLabel: 'Notification capture',
-            tooltip: 'Notification capture',
-            onPressed: () => context.push('/notification-capture'),
-          ),
-          HeaderIconButton(
-            icon: Icons.bug_report_outlined,
-            semanticLabel: 'Capture diagnostics',
-            tooltip: 'Capture diagnostics',
-            onPressed: () => context.push('/auto-capture/debug'),
-          ),
           if (unreadCount > 0)
             HeaderIconButton(
               icon: Icons.mark_email_read_outlined,
@@ -162,6 +145,32 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
               tooltip: 'Mark all read',
               onPressed: () => _markAllRead(ref, allNotifications),
             ),
+          g1455.GlassMenuAnchor(
+            finish: ref.watch(glassFinishProvider),
+            items: [
+              g1455.GlassMenuItem(
+                label: 'SMS auto-capture',
+                icon: const Icon(Icons.sms_outlined, size: 20),
+                onPressed: () => context.push('/import-sms'),
+              ),
+              g1455.GlassMenuItem(
+                label: 'Notification capture',
+                icon: const Icon(Icons.notifications_active_outlined, size: 20),
+                onPressed: () => context.push('/notification-capture'),
+              ),
+              g1455.GlassMenuItem(
+                label: 'Capture diagnostics',
+                icon: const Icon(Icons.bug_report_outlined, size: 20),
+                onPressed: () => context.push('/auto-capture/debug'),
+              ),
+            ],
+            builder: (context, controller) => IconButton(
+              tooltip: 'Capture tools',
+              icon: const Icon(Icons.tune_rounded),
+              onPressed:
+                  controller.isOpen ? controller.close : controller.open,
+            ),
+          ),
         ],
         scrollView: RefreshIndicator(
           onRefresh: _refreshSpooled,
